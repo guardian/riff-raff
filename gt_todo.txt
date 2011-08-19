@@ -1,0 +1,7 @@
+1. decent getopts library for scala
+
+2. get a copy of /opt/deploy/lib/python/guinfo/hostprovider.py
+
+3. get an up to date copy of an app specific deploy script
+
+4. create a sample that creates the deploy
