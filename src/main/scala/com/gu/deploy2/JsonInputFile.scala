@@ -3,14 +3,13 @@ package com.gu.deploy2
 
 
 case class JsonInputFile(
-  roles: List[String],
   packages: Map[String, JsonPackage],
   recipes: Map[String, JsonRecipe]
 )
 
 case class JsonPackage(
   `type`: String,
-  defaultRoles: List[String],
+  roles: List[String],
   data: Map[String, String] = Map.empty
 )
 

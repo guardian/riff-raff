@@ -4,44 +4,10 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import net.liftweb.json._
 
-/*
- ],
-  packages: [
-    "index-builder": { type: "jetty-webapp", defaultRoles: [ "index-builder" ], data: [ "jetty-app-dir": "index-build" ] },
-    "api": { type: "jetty-webapp", defaultRoles: [ "api" ] },
-    "solr": { type: "jetty-webapp", defaultRoles: [ "solr" ] }
-  ]
-  recipes: [
-    "all": {
-      default: true,
-      depends:[ [ "index-build-only", "api-only" ], "rebuild-full-index"]
-    },
-    "index-build-only": {
-      actions: [
-        "index-builder.block",
-        "index-builder.install",
-        "index-builder.restart",
-        "index-builder.unblock",
-      ]
-    },
-    "api-only": {
-      actions: [
-        [ "api.block", "solr.block" ],
-        [ "api.install", "solr.install" ],
-        [ "api.restart", "solr.restart" ],
-        [ "api.unblock", "solr.unblock" ]
-      ]
-    }
-
-
-
- */
-
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
   val contentApiExample =
     JsonInputFile(
-      roles = List("index-builder", "api", "solr"),
       packages = Map(
         "index-builder" -> JsonPackage("jetty-webapp", List("index-builder")),
         "api" -> JsonPackage("jetty-webapp", List("api")),
@@ -64,7 +30,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = Resolver.parse(contentApiExample)
     println(parsed)
 
-    parsed.roles should be (List(Role("index-builder"), Role("api"), Role("solr")))
+    parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
 
     parsed.packages.size should be (3)
     parsed.packages("api") should be (Package(List(Role("api")), JettyWebappPackage()))
@@ -72,7 +38,6 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val recipes = parsed.recipes
     recipes.size should be (3)
     recipes("all") should be (Recipe(Nil, List("index-build-only", "api-only")))
-
   }
 
 

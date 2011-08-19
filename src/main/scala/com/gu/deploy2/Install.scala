@@ -43,9 +43,8 @@ object Recipe {
 }
 
 case class Install(
-  roles: List[Role],
   packages: Map[String, Package],
   recipes: Map[String, Recipe]
 ) {
-
+  lazy val roles = packages.values.flatMap(_.roles).toSet
 }

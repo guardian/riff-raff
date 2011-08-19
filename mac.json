@@ -1,5 +1,4 @@
 {
-  roles: [ "mac" ],
   packages: [
     { name: "mac-webapp", type: "jetty-webapp", defaultRoles: [ "mac" ], data: [ "port": 8700 ] }
   ]

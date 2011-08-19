@@ -32,11 +32,11 @@ case class Package(roles: List[Role], impl: PackageImpl) {
 }
 
 object Package {
-  def parse(jsonPackage: JsonPackage, allRoles: List[Role]) = {
+  def parse(jsonPackage: JsonPackage) = {
 
     // TODO: obviously the two .get's here are to be replaced with proper error handling
     Package(
-      jsonPackage.defaultRoles map { roleName => allRoles.find(_.name == roleName).get },
+      jsonPackage.roles map Role,
       packages.get(jsonPackage.`type`).get
     )
   }
