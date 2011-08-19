@@ -3,7 +3,6 @@ package json
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
-import net.liftweb.json._
 
 
 class JsonParserTest extends FlatSpec with ShouldMatchers {
@@ -40,6 +39,4 @@ class JsonParserTest extends FlatSpec with ShouldMatchers {
     recipes.size should be (3)
     recipes("all") should be (Recipe(Nil, List("index-build-only", "api-only")))
   }
-
-
 }

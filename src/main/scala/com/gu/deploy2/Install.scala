@@ -8,6 +8,12 @@ trait Task {
   def execute()
 }
 
+case class CopyFileTask(files:Seq[(String,String)]) extends Task {
+  def execute() {
+
+  }
+}
+
 // maybe this is just a function?
 trait Action {
   def resolve(host: Host): Seq[Task]
