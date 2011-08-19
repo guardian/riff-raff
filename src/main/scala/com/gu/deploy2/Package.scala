@@ -32,15 +32,6 @@ case class Package(roles: List[Role], impl: PackageImpl) {
 }
 
 object Package {
-  def parse(jsonPackage: JsonPackage) = {
-
-    // TODO: obviously the two .get's here are to be replaced with proper error handling
-    Package(
-      jsonPackage.roles map Role,
-      packages.get(jsonPackage.`type`).get
-    )
-  }
-
   lazy val packages = Map(
     "jetty-webapp" -> new JettyWebappPackage()
   )

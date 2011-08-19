@@ -24,23 +24,6 @@ case class Recipe(
 )
 
 
-object Recipe {
-  def parse(jsonRecipe: JsonRecipe, availablePackages: Map[String, Package]) = {
-    def parseAction(actionString: String) = {
-      actionString.split("\\.") match {
-        case Array(pkgName, actionName) =>
-          val pkg = availablePackages.get(pkgName).getOrElse(sys.error("Unknown package in action: " + actionString))
-          pkg.action(actionName)
-
-        case _ => sys.error("Badly formed action name: " + actionString)
-      }
-    }
-
-    Recipe(
-      actions = jsonRecipe.actions map parseAction,
-      dependsOn = jsonRecipe.depends)
-  }
-}
 
 case class Install(
   packages: Map[String, Package],

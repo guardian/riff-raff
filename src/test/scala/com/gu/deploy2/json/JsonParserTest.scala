@@ -1,11 +1,12 @@
 package com.gu.deploy2
+package json
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import net.liftweb.json._
 
 
-class ResolverTest extends FlatSpec with ShouldMatchers {
+class JsonParserTest extends FlatSpec with ShouldMatchers {
   val contentApiExample =
     JsonInputFile(
       packages = Map(
@@ -26,8 +27,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       )
     )
 
-  "resolver" should "parse json and resolve links" in {
-    val parsed = Resolver.parse(contentApiExample)
+  "json parser" should "parse json and resolve links" in {
+    val parsed = JsonParser.parse(contentApiExample)
     println(parsed)
 
     parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
