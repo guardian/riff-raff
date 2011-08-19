@@ -2,6 +2,8 @@ package com.gu.deploy2
 
 trait PackageImpl {
   def actions: Map[String, Host => Seq[Task]]
+  def notimpl(host: Host) = sys.error("not implemented")
+
 }
 
 case class JettyWebappPackage() extends PackageImpl {
@@ -13,7 +15,16 @@ case class JettyWebappPackage() extends PackageImpl {
     "block" -> notimpl _
   )
 
-  def notimpl(host: Host) = sys.error("not implemented")
+}
+case class FilePackage() extends PackageImpl {
+
+  lazy val actions = Map(
+    "deploy" -> copyFiles _
+  )
+
+  def copyFiles(host: Host) = {
+    List(CopyFileTask(List(("src/file1", "dest/file1"))))
+  }
 }
 
 case class Package(roles: List[Role], impl: PackageImpl) {
@@ -42,6 +53,7 @@ object Package {
   }
 
   lazy val packages = Map(
-    "jetty-webapp" -> new JettyWebappPackage()
+    "jetty-webapp" -> new JettyWebappPackage(),
+    "file" -> new FilePackage()
   )
 }
