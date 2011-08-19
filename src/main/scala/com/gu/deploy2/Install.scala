@@ -8,7 +8,7 @@ trait Task {
   def execute()
 }
 
-case class CopyFileTask(files:Seq[(String,String)]) extends Task {
+case class CopyFileTask(source:String,dest:String) extends Task {
   def execute() {
 
   }

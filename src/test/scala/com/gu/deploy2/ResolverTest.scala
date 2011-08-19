@@ -23,11 +23,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val tasks = deployRecipe.actions.flatMap( _.resolve(Host("host1")))
     tasks.size should be (1)
     tasks should be (List(
-      CopyFileTask(
-        List(
-          ("src/file1", "dest/file1")
-        )
-      )
+      CopyFileTask("packages/htmlapp-only/", "/")
     ))
   }
 

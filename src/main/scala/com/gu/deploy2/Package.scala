@@ -23,7 +23,7 @@ case class FilePackage() extends PackageImpl {
   )
 
   def copyFiles(host: Host) = {
-    List(CopyFileTask(List(("src/file1", "dest/file1"))))
+    List(CopyFileTask("packages/%s/*" format ("appname"), "/"))
   }
 }
 
