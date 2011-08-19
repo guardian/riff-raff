@@ -2,6 +2,7 @@ package com.gu.deploy2
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
+import net.liftweb.json._
 
 /*
  ],
@@ -49,10 +50,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       recipes = Map(
         "all" -> JsonRecipe(default = true, depends = List("index-build-only", "api-only")),
         "index-build-only" -> JsonRecipe(actions = List(
-          "index-builder.block",
-          "index-builder.install",
-          "index-builder.restart",
-          "index-builder.unblock")),
+          "index-builder.deploy")),
         "api-only" -> JsonRecipe(actions = List(
           "api.block", "solr.block",
           "api.install", "solr.install",
@@ -70,5 +68,12 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
     parsed.packages.size should be (3)
     parsed.packages("api") should be (Package(List(Role("api")), JettyWebappPackage()))
+
+    val recipes = parsed.recipes
+    recipes.size should be (3)
+    recipes("all") should be (Recipe(Nil, List("index-build-only", "api-only")))
+
   }
+
+
 }
