@@ -14,9 +14,14 @@ case class CopyFileTask(source:String,dest:String) extends Task {
   }
 }
 
-// maybe this is just a function?
+/*
+ An action represents a step within a recipe. It isn't executable
+ until it's reolved against a particular host.
+ */
 trait Action {
   def resolve(host: Host): Seq[Task]
+  def roles: Seq[Role]
+  def description: String
 }
 
 case class Role(name: String)
@@ -35,5 +40,5 @@ case class Install(
   packages: Map[String, Package],
   recipes: Map[String, Recipe]
 ) {
-  lazy val roles = packages.values.flatMap(_.roles).toSet
+  lazy val roles = packages.values.flatMap(_.pkgRoles).toSet
 }

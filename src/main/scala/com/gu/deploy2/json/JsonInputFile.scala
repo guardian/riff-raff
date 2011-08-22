@@ -25,7 +25,7 @@ case class JsonRecipe(
 
 object JsonParser {
   def parse(input: JsonInputFile): Install = {
-    val packages = input.packages mapValues parsePackage
+    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg) }
     val recipes = input.recipes mapValues { parseRecipe(_, packages) }
 
     Install(packages, recipes)
@@ -37,7 +37,7 @@ object JsonParser {
       actionString.split("\\.") match {
         case Array(pkgName, actionName) =>
           val pkg = availablePackages.get(pkgName).getOrElse(sys.error("Unknown package in action: " + actionString))
-          pkg.action(actionName)
+          pkg.mkAction(actionName)
 
         case _ => sys.error("Badly formed action name: " + actionString)
       }
@@ -48,10 +48,11 @@ object JsonParser {
       dependsOn = jsonRecipe.depends)
   }
 
-  private def parsePackage(jsonPackage: JsonPackage) =
+  private def parsePackage(name: String, jsonPackage: JsonPackage) =
     Package(
+      name,
       jsonPackage.roles map Role,
-      Package.packages.get(jsonPackage.`type`).get
+      Package.packageTypes.get(jsonPackage.`type`).get
     )
 
 }

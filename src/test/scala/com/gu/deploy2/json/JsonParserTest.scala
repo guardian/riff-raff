@@ -33,7 +33,7 @@ class JsonParserTest extends FlatSpec with ShouldMatchers {
     parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("api") should be (Package(List(Role("api")), JettyWebappPackage()))
+    parsed.packages("api") should be (Package("api", List(Role("api")), JettyWebappPackageType()))
 
     val recipes = parsed.recipes
     recipes.size should be (3)

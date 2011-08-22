@@ -1,12 +1,12 @@
 package com.gu.deploy2
 
-trait PackageImpl {
+trait PackageType {
   def actions: Map[String, Host => Seq[Task]]
-  def notimpl(host: Host) = sys.error("not implemented")
 
+  def notimpl(host: Host) = sys.error("not implemented")
 }
 
-case class JettyWebappPackage() extends PackageImpl {
+case class JettyWebappPackageType() extends PackageType {
   lazy val actions = Map(
     "deploy" -> (notimpl _ andThen notimpl _),
     "install" -> notimpl _,
@@ -16,7 +16,7 @@ case class JettyWebappPackage() extends PackageImpl {
   )
 
 }
-case class FilePackage() extends PackageImpl {
+case class FilePackageType() extends PackageType {
 
   lazy val actions = Map(
     "deploy" -> copyFiles _
@@ -27,24 +27,25 @@ case class FilePackage() extends PackageImpl {
   }
 }
 
-case class Package(roles: List[Role], impl: PackageImpl) {
+case class Package(pkgName: String, pkgRoles: List[Role], pkgType: PackageType) {
 
-  class PackageSuppliedAction(f: Host => Seq[Task], val name: String) extends Action {
+  class PackageAction(f: Host => Seq[Task], actionName: String) extends Action {
     def resolve(host: Host) = f(host)
+    def roles = pkgRoles
+    def description = pkgName + "." + actionName
 
-    // hmm can't find out the package name!
-    override def toString = "action " + name
+    override def toString = "action " + description
   }
 
-  def action(name: String): Action = {
-    val actionFunc = impl.actions.get(name).getOrElse(sys.error("Unknown action: " + name))
-    new PackageSuppliedAction(actionFunc, name)
+  def mkAction(name: String): Action = {
+    val actionFunc = pkgType.actions.get(name).getOrElse(sys.error("Unknown action: " + name))
+    new PackageAction(actionFunc, name)
   }
 }
 
 object Package {
-  lazy val packages = Map(
-    "jetty-webapp" -> new JettyWebappPackage(),
-    "file" -> new FilePackage()
+  lazy val packageTypes = Map(
+    "jetty-webapp" -> new JettyWebappPackageType(),
+    "file" -> new FilePackageType()
   )
 }
