@@ -6,19 +6,26 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
-  val simpleExample =
-    JsonInputFile(
-      packages = Map(
-        "htmlapp" -> JsonPackage("file", List("apache"))
-      ),
-      recipes = Map(
-        "all" -> JsonRecipe(default = true, depends = List("index-build-only", "api-only")),
-        "htmlapp-only" -> JsonRecipe(actions = List("htmlapp.deploy"))
-      )
-    )
+
+  val simpleExample = """
+  {
+    "packages":{
+      "htmlapp":{ "type":"jetty-webapp", "roles":["apache"]  }
+    },
+    "recipes":{
+      "all":{
+        "default":true,
+        "depends":["index-build-only","api-only"]
+      },
+      "htmlapp-only":{
+        "actions":["htmlapp.deploy"],
+      }
+    }
+  }
+"""
 
   "resolver" should "parse json into actions that can be executed" in {
-    val parsed = JsonParser.parse(simpleExample)
+    val parsed = JsonReader.parse(simpleExample)
     val deployRecipe = parsed.recipes("htmlapp-only")
     val tasks = deployRecipe.actions.flatMap( _.resolve(Host("host1")))
     tasks.size should be (1)

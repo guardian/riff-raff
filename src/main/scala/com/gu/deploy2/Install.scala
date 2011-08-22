@@ -26,10 +26,8 @@ trait Action {
 
 case class Role(name: String)
 
-// Hmm. I actually want dependsOn to be a seq of recipes, but
-// this creates a circular dep when parsing. So for now, it's a
-// list of recipe names
 case class Recipe(
+  name: String,
   actions: Seq[Action],
   dependsOn: Seq[String]
 )
@@ -40,5 +38,5 @@ case class Install(
   packages: Map[String, Package],
   recipes: Map[String, Recipe]
 ) {
-  lazy val roles = packages.values.flatMap(_.pkgRoles).toSet
+  lazy val roles = packages.values.flatMap(_.roles).toSet
 }

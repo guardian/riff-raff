@@ -8,7 +8,7 @@ trait PackageType {
 
 case class JettyWebappPackageType() extends PackageType {
   lazy val actions = Map(
-    "deploy" -> (notimpl _ andThen notimpl _),
+    "deploy" -> notimpl _,
     "install" -> notimpl _,
     "unblock" -> notimpl _,
     "restart" -> notimpl _,
@@ -27,6 +27,7 @@ case class FilePackageType() extends PackageType {
   }
 }
 
+
 case class Package(pkgName: String, pkgRoles: List[Role], pkgType: PackageType) {
 
   class PackageAction(f: Host => Seq[Task], actionName: String) extends Action {
@@ -41,6 +42,8 @@ case class Package(pkgName: String, pkgRoles: List[Role], pkgType: PackageType) 
     val actionFunc = pkgType.actions.get(name).getOrElse(sys.error("Unknown action: " + name))
     new PackageAction(actionFunc, name)
   }
+
+  val roles = pkgRoles
 }
 
 object Package {
