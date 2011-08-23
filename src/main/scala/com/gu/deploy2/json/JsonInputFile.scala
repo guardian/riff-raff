@@ -64,7 +64,7 @@ object JsonReader {
   private def parsePackage(name: String, jsonPackage: JsonPackage) =
     Package(
       name,
-      jsonPackage.roles map Role,
+      jsonPackage.roles.map(Role).toSet,
       Package.packageTypes.get(jsonPackage.`type`).get
     )
 

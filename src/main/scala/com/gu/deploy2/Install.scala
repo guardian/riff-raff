@@ -3,7 +3,8 @@ package com.gu.deploy2
 import net.liftweb.util.StringHelpers._
 
 case class Host(name: String, roles: Set[Role] = Set.empty) {
-  def roles(names: String*) = this.copy(roles = roles ++ names.map(Role(_)))
+  def roleNames(names: String*) = this.copy(roles = roles ++ names.map(Role(_)))
+  def roles(r: Role*) = this.copy(roles = roles ++ r)
 }
 
 trait Task {
@@ -22,7 +23,7 @@ case class CopyFileTask(source:String,dest:String) extends Task {
  */
 trait Action {
   def resolve(host: Host): List[Task]
-  def roles: List[Role]
+  def roles: Set[Role]
   def description: String
 }
 

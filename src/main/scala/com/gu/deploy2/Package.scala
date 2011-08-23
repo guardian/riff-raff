@@ -28,7 +28,7 @@ case class FilePackageType() extends PackageType {
 }
 
 
-case class Package(pkgName: String, pkgRoles: List[Role], pkgType: PackageType) {
+case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
 
   class PackageAction(f: Host => List[Task], actionName: String) extends Action {
     def resolve(host: Host) = f(host)
