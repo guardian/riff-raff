@@ -3,8 +3,8 @@ package com.gu.deploy2
 import net.liftweb.util.StringHelpers._
 
 case class Host(name: String, roles: Set[Role] = Set.empty) {
-  def roleNames(names: String*) = this.copy(roles = roles ++ names.map(Role(_)))
-  def roles(r: Role*) = this.copy(roles = roles ++ r)
+  def role(name: String) = this.copy(roles = roles + Role(name))
+  def role(role: Role) = this.copy(roles = roles + role)
 }
 
 /*
@@ -21,8 +21,8 @@ case class Role(name: String)
 
 case class Recipe(
   name: String,
-  actions: List[Action],
-  dependsOn: List[String]
+  actions: List[Action] = Nil,
+  dependsOn: List[String] = Nil
 ) {
   lazy val roles = actions.flatMap(_.roles).toSet
 }

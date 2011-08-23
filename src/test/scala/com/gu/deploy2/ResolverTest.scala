@@ -28,7 +28,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample)
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val deployinfo = Host("host1").roleNames("apache") :: Nil
+    val deployinfo = Host("host1").role("apache") :: Nil
 
     val tasks = Resolver.resolve(deployRecipe, deployinfo)
 
@@ -46,19 +46,49 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     def resolve(host: Host) = StubTask(description + "_task on " + host.name) :: Nil
   }
 
+  val role = Role("the_role")
+
+  val baseRecipe = Recipe("one",
+    actions = StubAction("action_one", Set(role)) :: Nil,
+    dependsOn = Nil)
+
+  val deployinfoSingleHost = List(Host("the_host").role(role))
+
+  val deployinfoTwoHosts =
+    List(Host("host_one").role(role), Host("host_two").role(role))
+
+
   it should "generate the tasks from the actions supplied" in {
-    val role = Role("the_role")
-
-    val recipe = Recipe(
-      name = "one",
-      actions = StubAction("action_one", Set(role)) :: Nil,
-      dependsOn = Nil)
-
-    val deployinfo = List(Host("the_host", Set(role)))
-
-    val result = Resolver.resolve(recipe, deployinfo)
-    result should be (List(
+    Resolver.resolve(baseRecipe, deployinfoSingleHost) should be (List(
       StubTask("action_one_task on the_host")
+    ))
+  }
+
+  it should "only generate tasks for hosts that have roles" in {
+    Resolver.resolve(baseRecipe, Host("other_host").role("other_role") :: deployinfoSingleHost) should be (List(
+      StubTask("action_one_task on the_host")
+    ))
+  }
+
+  it should "generate tasks for all hosts in role" in {
+    Resolver.resolve(baseRecipe, deployinfoTwoHosts) should be (List(
+      StubTask("action_one_task on host_one"),
+      StubTask("action_one_task on host_two")
+    ))
+  }
+
+  it should "resolve all actions for a given host before moving on to the next host" in {
+    val recipe = Recipe("multi-action",
+        actions =
+          StubAction("action_one", Set(role)) ::
+          StubAction("action_two", Set(role)) ::
+          Nil)
+
+    Resolver.resolve(recipe, deployinfoTwoHosts) should be (List(
+      StubTask("action_one_task on host_one"),
+      StubTask("action_two_task on host_one"),
+      StubTask("action_one_task on host_two"),
+      StubTask("action_two_task on host_two")
     ))
   }
 
