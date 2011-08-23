@@ -10,7 +10,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   val simpleExample = """
   {
     "packages":{
-      "htmlapp":{ "type":"jetty-webapp", "roles":["apache"]  }
+      "htmlapp":{ "type":"file", "roles":["apache"]  }
     },
     "recipes":{
       "all":{
@@ -27,7 +27,11 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   "resolver" should "parse json into actions that can be executed" in {
     val parsed = JsonReader.parse(simpleExample)
     val deployRecipe = parsed.recipes("htmlapp-only")
-    val tasks = deployRecipe.actions.flatMap( _.resolve(Host("host1")))
+
+    val deployinfo = Host("host1").roles("apache") :: Nil
+
+    val tasks = Resolver.resolve(deployRecipe, deployinfo)
+
     tasks.size should be (1)
     tasks should be (List(
       CopyFileTask("packages/htmlapp-only/", "/")

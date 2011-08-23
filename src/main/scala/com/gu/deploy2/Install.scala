@@ -2,7 +2,9 @@ package com.gu.deploy2
 
 import net.liftweb.util.StringHelpers._
 
-case class Host(name: String)
+case class Host(name: String, roles: Set[Role] = Set.empty) {
+  def roles(names: String*) = this.copy(roles = roles ++ names.map(Role(_)))
+}
 
 trait Task {
   def execute()
@@ -19,8 +21,8 @@ case class CopyFileTask(source:String,dest:String) extends Task {
  until it's reolved against a particular host.
  */
 trait Action {
-  def resolve(host: Host): Seq[Task]
-  def roles: Seq[Role]
+  def resolve(host: Host): List[Task]
+  def roles: List[Role]
   def description: String
 }
 
@@ -28,9 +30,11 @@ case class Role(name: String)
 
 case class Recipe(
   name: String,
-  actions: Seq[Action],
-  dependsOn: Seq[String]
-)
+  actions: List[Action],
+  dependsOn: List[String]
+) {
+  lazy val roles = actions.flatMap(_.roles).toSet
+}
 
 
 

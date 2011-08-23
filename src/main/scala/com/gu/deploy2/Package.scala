@@ -1,7 +1,7 @@
 package com.gu.deploy2
 
 trait PackageType {
-  def actions: Map[String, Host => Seq[Task]]
+  def actions: Map[String, Host => List[Task]]
 
   def notimpl(host: Host) = sys.error("not implemented")
 }
@@ -30,7 +30,7 @@ case class FilePackageType() extends PackageType {
 
 case class Package(pkgName: String, pkgRoles: List[Role], pkgType: PackageType) {
 
-  class PackageAction(f: Host => Seq[Task], actionName: String) extends Action {
+  class PackageAction(f: Host => List[Task], actionName: String) extends Action {
     def resolve(host: Host) = f(host)
     def roles = pkgRoles
     def description = pkgName + "." + actionName
