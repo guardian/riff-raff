@@ -32,15 +32,15 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(s: String): Install = {
+  def parse(s: String): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)))
   }
 
-  private def parse(input: JsonInputFile): Install = {
+  private def parse(input: JsonInputFile): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg) }
     val recipes = input.recipes map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
-    Install(packages, recipes)
+    Project(packages, recipes)
   }
 
 

@@ -9,7 +9,7 @@ case class Host(name: String, roles: Set[Role] = Set.empty) {
 
 /*
  An action represents a step within a recipe. It isn't executable
- until it's reolved against a particular host.
+ until it's resolved against a particular host.
  */
 trait Action {
   def resolve(host: Host): List[Task]
@@ -29,9 +29,9 @@ case class Recipe(
 
 
 
-case class Install(
-  packages: Map[String, Package],
-  recipes: Map[String, Recipe]
+case class Project(
+  packages: Map[String, Package] = Map.empty,
+  recipes: Map[String, Recipe] = Map.empty
 ) {
   lazy val roles = packages.values.flatMap(_.roles).toSet
 }

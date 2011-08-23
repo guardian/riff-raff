@@ -30,7 +30,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
     val deployinfo = Host("host1").role("apache") :: Nil
 
-    val tasks = Resolver.resolve(deployRecipe, deployinfo)
+    val tasks = Resolver.resolve(project(deployRecipe), deployRecipe.name, deployinfo)
 
     tasks.size should be (1)
     tasks should be (List(
@@ -59,19 +59,19 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
 
   it should "generate the tasks from the actions supplied" in {
-    Resolver.resolve(baseRecipe, deployinfoSingleHost) should be (List(
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoSingleHost) should be (List(
       StubTask("action_one_task on the_host")
     ))
   }
 
   it should "only generate tasks for hosts that have roles" in {
-    Resolver.resolve(baseRecipe, Host("other_host").role("other_role") :: deployinfoSingleHost) should be (List(
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, Host("other_host").role("other_role") :: deployinfoSingleHost) should be (List(
       StubTask("action_one_task on the_host")
     ))
   }
 
   it should "generate tasks for all hosts in role" in {
-    Resolver.resolve(baseRecipe, deployinfoTwoHosts) should be (List(
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoTwoHosts) should be (List(
       StubTask("action_one_task on host_one"),
       StubTask("action_one_task on host_two")
     ))
@@ -84,7 +84,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
           StubAction("action_two", Set(role)) ::
           Nil)
 
-    Resolver.resolve(recipe, deployinfoTwoHosts) should be (List(
+    Resolver.resolve(project(recipe), recipe.name, deployinfoTwoHosts) should be (List(
       StubTask("action_one_task on host_one"),
       StubTask("action_two_task on host_one"),
       StubTask("action_one_task on host_two"),
@@ -92,5 +92,23 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
+  it should "prepare dependsOn actions correctly" in {
+    val prereq = Recipe("prereq",
+      actions = StubAction("prereq_action", Set(role)) :: Nil)
+
+    val mainRecipe = Recipe("main",
+      actions = StubAction("main_action", Set(role)) :: Nil,
+      dependsOn = List("prereq"))
+
+    Resolver.resolve(project(mainRecipe, prereq), mainRecipe.name, deployinfoSingleHost) should be (List(
+      StubTask("prereq_action_task on the_host"),
+      StubTask("main_action_task on the_host")
+    ))
+
+  }
+
+
+  def project(recipes: Recipe*) =
+    Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
 }
