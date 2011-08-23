@@ -2,8 +2,8 @@ package com.gu.deploy2
 
 case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
 
-  class PackageAction(f: Host => List[Task], actionName: String) extends Action {
-    def resolve(host: Host) = f(host)
+  class PackageAction(f: (String,Host) => List[Task], actionName: String) extends Action {
+    def resolve(host: Host) = f(pkgName, host)
     def roles = pkgRoles
     def description = pkgName + "." + actionName
 

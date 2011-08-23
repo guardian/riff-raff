@@ -1,9 +1,9 @@
 package com.gu.deploy2
 
 trait PackageType {
-  def actions: Map[String, Host => List[Task]]
+  def actions: Map[String, (String,Host) => List[Task]]
 
-  def notimpl(host: Host) = sys.error("not implemented")
+  def notimpl(pkgName: String, host: Host) = sys.error("not implemented")
 }
 
 case class JettyWebappPackageType() extends PackageType {
@@ -22,8 +22,8 @@ case class FilePackageType() extends PackageType {
     "deploy" -> copyFiles _
   )
 
-  def copyFiles(host: Host) = {
-    List(CopyFileTask("packages/%s/*" format ("appname"), "/"))
+  def copyFiles(pkgName: String, host: Host) = {
+    List(CopyFileTask("packages/%s" format (pkgName), "/"))
   }
 }
 
