@@ -11,7 +11,9 @@ case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
   }
 
   def mkAction(name: String): Action = {
-    val actionFunc = pkgType.actions.get(name).getOrElse(sys.error("Unknown action: " + name))
+    val actionFunc = pkgType.actions.get(name).getOrElse {
+      sys.error("Action " + name + " is not supported on package " + pkgName)
+    }
     new PackageAction(actionFunc, name)
   }
 

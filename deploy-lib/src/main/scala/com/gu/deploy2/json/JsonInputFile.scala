@@ -2,6 +2,8 @@ package com.gu.deploy2
 package json
 
 import net.liftweb.json._
+import io.Source
+import java.io.File
 
 
 case class JsonInputFile(
@@ -31,6 +33,8 @@ case class JsonRecipe(
 
 object JsonReader {
   private implicit val formats = DefaultFormats
+
+  def parse(f: File): Project = parse(Source.fromFile(f).mkString)
 
   def parse(s: String): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)))

@@ -1,17 +1,17 @@
 {
-  packages: [
-    { name: "mac-webapp", type: "jetty-webapp", defaultRoles: [ "mac" ], data: [ "port": 8700 ] }
-  ]
-  recipes: [
-    { 
-      name: "default",
-      actions: [
+  "packages": {
+    "mac-webapp": { "type": "jetty-webapp", "defaultRoles": [ "mac" ], "data": { "port": 8700 } }
+   },
+  "recipes": {
+    "default": {
+      "actions": [
         "mac-webapp.block",
         "mac-webapp.install",
         "mac-webapp.restart",
         "mac-webapp.waitForReady",
         "mac-webapp.unblock"
       ]
-  ]
+    }
+  }
 }
 

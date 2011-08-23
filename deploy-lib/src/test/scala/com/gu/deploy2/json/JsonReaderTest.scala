@@ -47,7 +47,6 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 
   "json parser" should "parse json and resolve links" in {
     val parsed = JsonReader.parse(contentApiExample)
-    println(parsed)
 
     parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
 
