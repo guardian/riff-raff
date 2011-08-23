@@ -7,16 +7,6 @@ case class Host(name: String, roles: Set[Role] = Set.empty) {
   def roles(r: Role*) = this.copy(roles = roles ++ r)
 }
 
-trait Task {
-  def execute()
-}
-
-case class CopyFileTask(source:String,dest:String) extends Task {
-  def execute() {
-
-  }
-}
-
 /*
  An action represents a step within a recipe. It isn't executable
  until it's reolved against a particular host.

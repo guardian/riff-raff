@@ -1,33 +1,5 @@
 package com.gu.deploy2
 
-trait PackageType {
-  def actions: Map[String, Host => List[Task]]
-
-  def notimpl(host: Host) = sys.error("not implemented")
-}
-
-case class JettyWebappPackageType() extends PackageType {
-  lazy val actions = Map(
-    "deploy" -> notimpl _,
-    "install" -> notimpl _,
-    "unblock" -> notimpl _,
-    "restart" -> notimpl _,
-    "block" -> notimpl _
-  )
-
-}
-case class FilePackageType() extends PackageType {
-
-  lazy val actions = Map(
-    "deploy" -> copyFiles _
-  )
-
-  def copyFiles(host: Host) = {
-    List(CopyFileTask("packages/%s/*" format ("appname"), "/"))
-  }
-}
-
-
 case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
 
   class PackageAction(f: Host => List[Task], actionName: String) extends Action {
@@ -44,11 +16,4 @@ case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
   }
 
   val roles = pkgRoles
-}
-
-object Package {
-  lazy val packageTypes = Map(
-    "jetty-webapp" -> new JettyWebappPackageType(),
-    "file" -> new FilePackageType()
-  )
 }
