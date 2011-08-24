@@ -5,11 +5,7 @@
   "recipes": {
     "default": {
       "actions": [
-        "mac-webapp.block",
-        "mac-webapp.install",
-        "mac-webapp.restart",
-        "mac-webapp.waitForReady",
-        "mac-webapp.unblock"
+        "mac-webapp.deploy"
       ]
     }
   }

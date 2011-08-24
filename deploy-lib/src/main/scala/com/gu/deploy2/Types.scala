@@ -1,12 +1,16 @@
 package com.gu.deploy2
 
 trait PackageType {
+  def name: String
+
   def actions: Map[String, (String,Host) => List[Task]]
 
   def notimpl(pkgName: String, host: Host) = sys.error("not implemented")
 }
 
 case class JettyWebappPackageType() extends PackageType {
+  val name = "jetty-webapp"
+
   lazy val actions = Map(
     "deploy" -> notimpl _,
     "install" -> notimpl _,
@@ -17,7 +21,7 @@ case class JettyWebappPackageType() extends PackageType {
 
 }
 case class FilePackageType() extends PackageType {
-
+  val name = "file"
   lazy val actions = Map(
     "deploy" -> copyFiles _
   )

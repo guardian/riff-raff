@@ -22,13 +22,9 @@ case class JsonPackage(
 
 
 case class JsonRecipe(
-  default: Option[Boolean] = None,
   actions: List[String] = Nil,
   depends: List[String] = Nil
-) {
-  def isDefault = default getOrElse false
-}
-
+)
 
 
 object JsonReader {

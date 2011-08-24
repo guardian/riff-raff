@@ -12,7 +12,7 @@ case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
 
   def mkAction(name: String): Action = {
     val actionFunc = pkgType.actions.get(name).getOrElse {
-      sys.error("Action " + name + " is not supported on package " + pkgName)
+      sys.error("Action %s is not supported on package %s of type %s" format (name, pkgName, pkgType.name))
     }
     new PackageAction(actionFunc, name)
   }
