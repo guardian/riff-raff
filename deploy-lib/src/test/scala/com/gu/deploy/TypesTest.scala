@@ -7,7 +7,9 @@ import tasks._
 class TypesTest extends FlatSpec with ShouldMatchers {
 
   it should "Jetty Type should have a deploy action" in {
-    val jetty = new JettyWebappPackageType()
+    val p = Package("p", Set.empty, "jetty-webapp")
+
+    val jetty = new JettyWebappPackageType(p)
 
     jetty.deployWebapp("webapp", Host("host_name")) should be (List(
       BlockFirewallTask(),

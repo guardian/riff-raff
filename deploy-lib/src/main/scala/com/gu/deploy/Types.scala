@@ -4,8 +4,9 @@ import tasks._
 
 trait PackageType {
   def name: String
+  def pkg: Package
 
-  def mkAction(pkg: Package, name: String): Option[Action] = buildTasks(pkg, name) map { f =>
+  def mkAction(name: String): Option[Action] = PartialFunction.condOpt(name)(buildTasks) map { f =>
     new Action {
       def resolve(host: Host) = f(host)
       def roles = pkg.roles
@@ -14,15 +15,15 @@ trait PackageType {
     }
   }
 
-  def buildTasks(pkg: Package, actionName: String): Option[Host => List[Task]]
+  type TaskDefinition = PartialFunction[String, Host => List[Task]]
+  val buildTasks: TaskDefinition
 }
 
-case class JettyWebappPackageType() extends PackageType {
+case class JettyWebappPackageType(pkg: Package) extends PackageType {
   val name = "jetty-webapp"
 
-  def buildTasks(pkg: Package, name: String): Option[Host => List[Task]] = name match {
-    case "deploy" => Some({ host: Host => deployWebapp(pkg.pkgName, host) })
-    case _ => None
+  val buildTasks: TaskDefinition = {
+    case "deploy" => { host => deployWebapp(pkg.pkgName, host) }
   }
 
   def deployWebapp(packageName: String, host: Host) = List(
@@ -34,23 +35,11 @@ case class JettyWebappPackageType() extends PackageType {
 }
 
 
-case class FilePackageType() extends PackageType {
+case class FilePackageType(pkg: Package) extends PackageType {
   val name = "file"
 
-  def buildTasks(pkg: Package, name: String): Option[Host => List[Task]] = name match {
-    case "deploy" => Some({host: Host =>
-      List(CopyFileTask("packages/%s" format (pkg.pkgName), "/"))
-    }
-    )
-
-    case _ => None
+  val buildTasks: TaskDefinition = {
+    case "deploy" => host => List(CopyFileTask("packages/%s" format (pkg.pkgName), "/"))
   }
 
-}
-
-object Types {
-  lazy val packageTypes = Map(
-    "jetty-webapp" -> new JettyWebappPackageType(),
-    "file" -> new FilePackageType()
-  )
 }
