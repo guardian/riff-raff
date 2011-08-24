@@ -5,35 +5,47 @@ import tasks._
 trait PackageType {
   def name: String
 
-  def actions: Map[String, (String,Host) => List[Task]]
+  def mkAction(pkg: Package, name: String): Option[Action] = buildTasks(pkg, name) map { f =>
+    new Action {
+      def resolve(host: Host) = f(host)
+      def roles = pkg.roles
+      def description = pkg.pkgName + "." + name
+      override def toString = "action " + description
+    }
+  }
 
-  def notimpl(pkgName: String, host: Host) = sys.error("not implemented")
+  def buildTasks(pkg: Package, actionName: String): Option[Host => List[Task]]
 }
 
 case class JettyWebappPackageType() extends PackageType {
   val name = "jetty-webapp"
 
-  lazy val actions = Map(
-    "deploy" -> deployWebapp _
-  )
-  def deployWebapp(pkgName: String, host: Host) = {
-    List(
-      BlockFirewallTask(),
-      CopyFileTask("packages/%s" format pkgName, "/jetty-apps/%s/" format pkgName ),
-      RestartAndWaitTask(),
-      UnblockFirewallTask()
-    )
+  def buildTasks(pkg: Package, name: String): Option[Host => List[Task]] = name match {
+    case "deploy" => Some({ host: Host => deployWebapp(pkg.pkgName, host) })
+    case _ => None
   }
+
+  def deployWebapp(packageName: String, host: Host) = List(
+        BlockFirewallTask(),
+        CopyFileTask("packages/%s" format packageName, "/jetty-apps/%s/" format packageName),
+        RestartAndWaitTask(),
+        UnblockFirewallTask()
+      )
 }
+
+
 case class FilePackageType() extends PackageType {
   val name = "file"
-  lazy val actions = Map(
-    "deploy" -> copyFiles _
-  )
 
-  def copyFiles(pkgName: String, host: Host) = {
-    List(CopyFileTask("packages/%s" format (pkgName), "/"))
+  def buildTasks(pkg: Package, name: String): Option[Host => List[Task]] = name match {
+    case "deploy" => Some({host: Host =>
+      List(CopyFileTask("packages/%s" format (pkg.pkgName), "/"))
+    }
+    )
+
+    case _ => None
   }
+
 }
 
 object Types {
