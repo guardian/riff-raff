@@ -46,13 +46,13 @@ object Main extends App {
         Log.verbose("Loaded: " + project)
 
         Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
-        val dummyDeployInfo = List(Host("dummyhost").role("mac"))
+        val dummyDeployInfo = List(Host("localhost").role("mac"))
 
         Log.info("Resolving...")
         val tasks = Resolver.resolve(project, Config.recipe, dummyDeployInfo)
 
         Log.info("Tasks to execute: ")
-        tasks.foreach(t => Log.info(t.toString))
+        tasks.zipWithIndex.foreach { case (task, idx) => Log.info(" %d. %s" format (idx + 1, task)) }
 
       } catch {
         case e: Exception =>

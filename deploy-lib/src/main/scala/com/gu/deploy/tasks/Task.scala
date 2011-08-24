@@ -5,25 +5,25 @@ trait Task {
   def execute()
 }
 
-case class CopyFileTask(source:String,dest:String) extends Task {
+case class CopyFile(source:String,dest:String) extends Task {
   def execute() {
 
   }
 }
 
-case class BlockFirewallTask() extends Task {
+case class BlockFirewall() extends Task {
   def execute() {
 
   }
 }
 
-case class RestartAndWaitTask() extends Task {
+case class RestartAndWait() extends Task {
   def execute() {
 
   }
 }
 
-case class UnblockFirewallTask() extends Task {
+case class UnblockFirewall() extends Task {
   def execute() {
 
   }
