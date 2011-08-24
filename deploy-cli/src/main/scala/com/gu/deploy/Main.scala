@@ -47,7 +47,7 @@ object Main extends App {
         Log.verbose("Loaded: " + project)
 
         Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
-        val dummyDeployInfo = List(Host("dummyhost").role("test-role"))
+        val dummyDeployInfo = List(Host("dummyhost").role("mac"))
 
         Log.info("Resolving...")
         val tasks = Resolver.resolve(project, Config.recipe, dummyDeployInfo)
