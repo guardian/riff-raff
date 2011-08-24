@@ -6,24 +6,34 @@ trait PackageType {
   def name: String
   def pkg: Package
 
-  def mkAction(name: String): Option[Action] = PartialFunction.condOpt(name)(buildTasks) map { f =>
-    new Action {
-      def resolve(host: Host) = f(host)
-      def roles = pkg.roles
-      def description = pkg.pkgName + "." + name
-      override def toString = "action " + description
+  def mkAction(actionName: String): Action = {
+    if (actions.isDefinedAt(actionName)) {
+      new Action {
+        def resolve(host: Host) = actions(actionName)(host)
+        def roles = pkg.roles
+        def description = pkg.name + "." + actionName
+        override def toString = "action " + description
+      }
+    } else {
+      sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
     }
   }
 
-  type TaskDefinition = PartialFunction[String, Host => List[Task]]
-  val buildTasks: TaskDefinition
+  type ActionDefinition = PartialFunction[String, Host => List[Task]]
+  val actions: ActionDefinition
 }
 
 case class JettyWebappPackageType(pkg: Package) extends PackageType {
   val name = "jetty-webapp"
 
-  val buildTasks: TaskDefinition = {
-    case "deploy" => { host => deployWebapp(pkg.pkgName, host) }
+  val actions: ActionDefinition = {
+    case "deploy" => { host => List(
+        BlockFirewallTask(),
+        CopyFileTask("packages/%s" format pkg.name, "/jetty-apps/%s/" format pkg.name),
+        RestartAndWaitTask(),
+        UnblockFirewallTask()
+      )
+    }
   }
 
   def deployWebapp(packageName: String, host: Host) = List(
@@ -38,8 +48,8 @@ case class JettyWebappPackageType(pkg: Package) extends PackageType {
 case class FilePackageType(pkg: Package) extends PackageType {
   val name = "file"
 
-  val buildTasks: TaskDefinition = {
-    case "deploy" => host => List(CopyFileTask("packages/%s" format (pkg.pkgName), "/"))
+  val actions: ActionDefinition = {
+    case "deploy" => host => List(CopyFileTask("packages/%s" format (pkg.name), "/"))
   }
 
 }
