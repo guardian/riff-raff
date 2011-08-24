@@ -2,8 +2,7 @@ package com.gu.deploy
 
 import java.io.File
 import scopt.OptionParser
-import com.gu.deploy2.json.JsonReader
-import com.gu.deploy2.{Resolver, Host, Output, Log}
+import json.JsonReader
 
 object Main extends App {
 

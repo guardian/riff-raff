@@ -1,4 +1,6 @@
-package com.gu.deploy2
+package com.gu.deploy
+
+import tasks._
 
 trait PackageType {
   def name: String

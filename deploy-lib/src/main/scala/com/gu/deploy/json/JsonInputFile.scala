@@ -1,4 +1,4 @@
-package com.gu.deploy2
+package com.gu.deploy
 package json
 
 import net.liftweb.json._

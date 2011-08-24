@@ -1,9 +1,8 @@
-package com.gu.deploy2
+package com.gu.deploy
 
-import json.JsonReader
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import java.text.spi.CollatorProvider
+import tasks._
 
 class TypesTest extends FlatSpec with ShouldMatchers {
 

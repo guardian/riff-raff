@@ -1,9 +1,10 @@
-package com.gu.deploy2
+package com.gu.deploy
 
 
 import json._
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
+import tasks._
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
 

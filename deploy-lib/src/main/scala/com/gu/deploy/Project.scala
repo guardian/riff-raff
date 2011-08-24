@@ -1,6 +1,7 @@
-package com.gu.deploy2
+package com.gu.deploy
 
 import net.liftweb.util.StringHelpers._
+import tasks.Task
 
 case class Host(name: String, roles: Set[Role] = Set.empty) {
   def role(name: String) = this.copy(roles = roles + Role(name))

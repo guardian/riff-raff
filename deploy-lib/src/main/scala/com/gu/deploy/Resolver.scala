@@ -1,5 +1,6 @@
-package com.gu.deploy2
+package com.gu.deploy
 
+import tasks.Task
 
 
 object Resolver {

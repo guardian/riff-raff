@@ -1,4 +1,5 @@
-package com.gu.deploy2
+package com.gu.deploy
+package tasks
 
 trait Task {
   def execute()

@@ -1,4 +1,6 @@
-package com.gu.deploy2
+package com.gu.deploy
+
+import tasks.Task
 
 case class Package(pkgName: String, pkgRoles: Set[Role], pkgType: PackageType) {
 
