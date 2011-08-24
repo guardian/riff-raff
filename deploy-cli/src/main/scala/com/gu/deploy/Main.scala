@@ -32,7 +32,7 @@ object Main extends App {
   val parser = new OptionParser(programName, programVersion) {
     arg("<project>", "json deploy project file", { p => Config.project = p })
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
-    booleanOpt("v", "verbose", "verbose logging", { b => Config.verbose = b } )
+    opt("v", "verbose", "verbose logging", { Config.verbose = true } )
   }
 
   Log.current.withValue(CommandLineOutput) {
