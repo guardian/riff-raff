@@ -9,3 +9,21 @@ case class CopyFileTask(source:String,dest:String) extends Task {
 
   }
 }
+
+case class BlockFirewallTask() extends Task {
+  def execute() {
+
+  }
+}
+
+case class RestartAndWaitTask() extends Task {
+  def execute() {
+
+  }
+}
+
+case class UnblockFirewallTask() extends Task {
+  def execute() {
+
+  }
+}

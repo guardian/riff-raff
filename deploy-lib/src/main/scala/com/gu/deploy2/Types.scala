@@ -12,13 +12,16 @@ case class JettyWebappPackageType() extends PackageType {
   val name = "jetty-webapp"
 
   lazy val actions = Map(
-    "deploy" -> notimpl _,
-    "install" -> notimpl _,
-    "unblock" -> notimpl _,
-    "restart" -> notimpl _,
-    "block" -> notimpl _
+    "deploy" -> deployWebapp _
   )
-
+  def deployWebapp(pkgName: String, host: Host) = {
+    List(
+      BlockFirewallTask(),
+      CopyFileTask("packages/%s" format pkgName, "/jetty-apps/%s/" format pkgName ),
+      RestartAndWaitTask(),
+      UnblockFirewallTask()
+    )
+  }
 }
 case class FilePackageType() extends PackageType {
   val name = "file"

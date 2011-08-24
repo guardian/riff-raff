@@ -35,10 +35,7 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
       "api-only":{
         "default":false,
         "actions":[
-          "api.block","solr.block",
-          "api.install","solr.install",
-          "api.restart","solr.restart",
-          "api.unblock","solr.unblock"
+          "api.deploy","solr.deploy"
         ],
       }
     }
