@@ -36,12 +36,6 @@ case class JettyWebappPackageType(pkg: Package) extends PackageType {
     }
   }
 
-  def deployWebapp(packageName: String, host: Host) = List(
-        BlockFirewall(),
-        CopyFile("packages/%s" format packageName, "/jetty-apps/%s/" format packageName),
-        RestartAndWait(),
-        UnblockFirewall()
-      )
 }
 
 
@@ -51,5 +45,18 @@ case class FilePackageType(pkg: Package) extends PackageType {
   val actions: ActionDefinition = {
     case "deploy" => host => List(CopyFile("packages/%s" format (pkg.name), "/"))
   }
+}
 
+case class DemoPackageType(pkg: Package) extends PackageType {
+  val name = "demo"
+
+  val actions: ActionDefinition = {
+    case "hello" => host => List(
+      SayHello(host)
+    )
+
+    case "echo-hello" => host => List(
+      EchoHello(host)
+    )
+  }
 }

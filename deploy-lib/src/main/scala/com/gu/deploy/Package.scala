@@ -7,6 +7,7 @@ case class Package(name: String, pkgRoles: Set[Role], pkgTypeName: String) {
   lazy val pkgType = pkgTypeName match {
     case "jetty-webapp" => new JettyWebappPackageType(this)
     case "file" => new FilePackageType(this)
+    case "demo" => new DemoPackageType(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 

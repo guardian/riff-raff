@@ -54,6 +54,14 @@ object Main extends App {
         Log.info("Tasks to execute: ")
         tasks.zipWithIndex.foreach { case (task, idx) => Log.info(" %d. %s" format (idx + 1, task)) }
 
+        Log.info("Executing...")
+        tasks.foreach { task =>
+          Log.info(" Executing %s..." format task)
+          task.execute()
+        }
+
+        Log.info("Done")
+
       } catch {
         case e: Exception =>
           Log.error("FATAL: " + e)

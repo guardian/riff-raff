@@ -1,0 +1,14 @@
+{
+  "packages": {
+    "demo1": { "type": "demo", "roles": [ "mac" ], "data": { "port": 8700 } }
+   },
+  "recipes": {
+    "default": {
+      "actions": [
+        "demo1.hello",
+        "demo1.echo-hello"
+      ]
+    }
+  }
+}
+
