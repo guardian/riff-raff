@@ -28,10 +28,10 @@ case class JettyWebappPackageType(pkg: Package) extends PackageType {
 
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
-        BlockFirewall(),
-        CopyFile("packages/%s" format pkg.name, "/jetty-apps/%s/" format pkg.name),
-        RestartAndWait(),
-        UnblockFirewall()
+        BlockFirewall(host),
+        CopyFile(host,"packages/%s" format pkg.name, "/jetty-apps/%s/" format pkg.name),
+        RestartAndWait(host),
+        UnblockFirewall(host)
       )
     }
   }
@@ -43,7 +43,7 @@ case class FilePackageType(pkg: Package) extends PackageType {
   val name = "file"
 
   val actions: ActionDefinition = {
-    case "deploy" => host => List(CopyFile("packages/%s" format (pkg.name), "/"))
+    case "deploy" => host => List(CopyFile(host, "packages/%s" format (pkg.name), "/"))
   }
 }
 

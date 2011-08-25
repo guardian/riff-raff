@@ -29,13 +29,14 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample)
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val deployinfo = Host("host1").role("apache") :: Nil
+    val host = Host("host1").role("apache")
+    val deployinfo = host :: Nil
 
     val tasks = Resolver.resolve(project(deployRecipe), deployRecipe.name, deployinfo)
 
     tasks.size should be (1)
     tasks should be (List(
-      CopyFile("packages/htmlapp", "/")
+      CopyFile(host, "packages/htmlapp", "/")
     ))
   }
 

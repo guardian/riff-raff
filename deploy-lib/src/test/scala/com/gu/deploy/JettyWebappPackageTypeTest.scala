@@ -10,12 +10,13 @@ class JettyWebappPackageTypeTest extends FlatSpec with ShouldMatchers {
     val p = Package("webapp", Set.empty, "jetty-webapp")
 
     val jetty = new JettyWebappPackageType(p)
+    val host = Host("host_name")
 
-    jetty.actions("deploy")(Host("host_name")) should be (List(
-      BlockFirewall(),
-      CopyFile("packages/webapp", "/jetty-apps/webapp/"),
-      RestartAndWait(),
-      UnblockFirewall()
+    jetty.actions("deploy")(host) should be (List(
+      BlockFirewall(host),
+      CopyFile(host, "packages/webapp", "/jetty-apps/webapp/"),
+      RestartAndWait(host),
+      UnblockFirewall(host)
     ))
   }
 

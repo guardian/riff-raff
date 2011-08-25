@@ -15,28 +15,34 @@ trait ShellTask extends Task {
 
 }
 
-case class CopyFile(source:String,dest:String) extends Task {
+trait RemoteShellTask extends ShellTask {
+  def host: Host
+
+  override def execute() {
+    import sys.process._
+    val sshCommand: List[String] = List("ssh", host.name, commandLine mkString(" "))
+    Log.info(sshCommand mkString " ")
+    sshCommand.!
+  }
+
+}
+
+case class CopyFile(host:Host, source:String,dest:String) extends Task {
   def execute() {
 
   }
 }
 
-case class BlockFirewall() extends Task {
-  def execute() {
-
-  }
+case class BlockFirewall(host:Host) extends RemoteShellTask {
+    def commandLine = List("/opt/deploy/support/block.sh")
 }
 
-case class RestartAndWait() extends Task {
-  def execute() {
-
-  }
+case class RestartAndWait(host:Host) extends RemoteShellTask {
+  def commandLine = List("echo", "restarting", host.name)
 }
 
-case class UnblockFirewall() extends Task {
-  def execute() {
-
-  }
+case class UnblockFirewall(host:Host) extends RemoteShellTask {
+  def commandLine = List("/opt/deploy/support/block.sh")
 }
 
 
