@@ -1,0 +1,11 @@
+Deploy:
+    Integration
+        - get a copy of /opt/deploy/lib/python/guinfo/hostprovider.py
+        - call deployinfo.json and parse
+        - fetch artifact from artifactrepo and unzip
+    Deploy Library:
+        - decent getopts library for scala @gtackley @done
+    Do Actual Deploy:
+        - get an up to date copy of MicroappCache deploy script
+        - Match executed tasks from MicroappCache
+        - create a sample that creates the deploy @done
