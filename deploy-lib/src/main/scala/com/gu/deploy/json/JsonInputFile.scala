@@ -65,6 +65,7 @@ object JsonReader {
     Package(
       name,
       jsonPackage.roles.map(Role).toSet,
+      jsonPackage.safeData,
       jsonPackage.`type`
     )
 

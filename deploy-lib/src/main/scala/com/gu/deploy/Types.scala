@@ -21,16 +21,19 @@ trait PackageType {
 
   type ActionDefinition = PartialFunction[String, Host => List[Task]]
   val actions: ActionDefinition
+
+  val defaultData: Map[String, String]
 }
 
 case class JettyWebappPackageType(pkg: Package) extends PackageType {
   val name = "jetty-webapp"
+  val defaultData = Map("port" -> "8080")
 
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
         BlockFirewall(host),
         CopyFile(host,"packages/%s" format pkg.name, "/jetty-apps/%s/" format pkg.name),
-        RestartAndWait(host),
+        RestartAndWait(host, pkg.name, pkg.data("port")),
         UnblockFirewall(host)
       )
     }
@@ -41,6 +44,7 @@ case class JettyWebappPackageType(pkg: Package) extends PackageType {
 
 case class FilePackageType(pkg: Package) extends PackageType {
   val name = "file"
+  val defaultData = Map.empty[String,String]
 
   val actions: ActionDefinition = {
     case "deploy" => host => List(CopyFile(host, "packages/%s" format (pkg.name), "/"))
@@ -49,6 +53,7 @@ case class FilePackageType(pkg: Package) extends PackageType {
 
 case class DemoPackageType(pkg: Package) extends PackageType {
   val name = "demo"
+  val defaultData = Map.empty[String,String]
 
   val actions: ActionDefinition = {
     case "hello" => host => List(

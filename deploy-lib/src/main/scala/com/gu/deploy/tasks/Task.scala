@@ -37,8 +37,8 @@ case class BlockFirewall(host:Host) extends RemoteShellTask {
     def commandLine = List("/opt/deploy/support/block.sh")
 }
 
-case class RestartAndWait(host:Host) extends RemoteShellTask {
-  def commandLine = List("echo", "restarting", host.name)
+case class RestartAndWait(host:Host, appName: String, port: String) extends RemoteShellTask {
+  def commandLine = List("/opt/deploy/support/restart_and_wait.sh", appName, port)
 }
 
 case class UnblockFirewall(host:Host) extends RemoteShellTask {

@@ -21,6 +21,9 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
       "solr":{
         "type":"jetty-webapp",
         "roles":["solr"],
+        "data": {
+          "port": "8400"
+        }
       }
     },
     "recipes":{
@@ -48,7 +51,9 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("api") should be (Package("api", Set(Role("api")), "jetty-webapp"))
+    parsed.packages("index-builder") should be (Package("index-builder", Set(Role("index-builder")), Map.empty, "jetty-webapp"))
+    parsed.packages("api") should be (Package("api", Set(Role("api")), Map.empty, "jetty-webapp"))
+    parsed.packages("solr") should be (Package("solr", Set(Role("solr")), Map("port" -> "8400"), "jetty-webapp"))
 
     val recipes = parsed.recipes
     recipes.size should be (3)
