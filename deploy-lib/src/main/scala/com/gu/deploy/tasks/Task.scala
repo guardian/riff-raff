@@ -9,6 +9,7 @@ trait ShellTask extends Task {
   def commandLine: List[String]
 
   def execute() {
+    Log.info("Local: "+(commandLine mkString " "))
     import sys.process._
     commandLine.!
   }
@@ -21,7 +22,7 @@ trait RemoteShellTask extends ShellTask {
   override def execute() {
     import sys.process._
     val sshCommand = List("ssh", host.name, commandLine mkString(" "))
-    Log.info(sshCommand mkString " ")
+    Log.info("Remote: "+(sshCommand mkString " "))
     sshCommand.!
   }
 
