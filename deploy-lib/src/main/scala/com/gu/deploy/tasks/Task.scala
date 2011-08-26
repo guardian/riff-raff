@@ -20,17 +20,15 @@ trait RemoteShellTask extends ShellTask {
 
   override def execute() {
     import sys.process._
-    val sshCommand: List[String] = List("ssh", host.name, commandLine mkString(" "))
+    val sshCommand = List("ssh", host.name, commandLine mkString(" "))
     Log.info(sshCommand mkString " ")
     sshCommand.!
   }
 
 }
 
-case class CopyFile(host:Host, source:String,dest:String) extends Task {
-  def execute() {
-
-  }
+case class CopyFile(host:Host, source:String,dest:String) extends ShellTask {
+  def commandLine = List("scp", "-r", source, "%s:%s" format(host.name,dest))
 }
 
 case class BlockFirewall(host:Host) extends RemoteShellTask {
