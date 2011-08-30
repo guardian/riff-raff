@@ -42,6 +42,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   case class StubTask(description: String) extends Task {
     def execute() { }
+    def verbose = "stub(%s)" format description
   }
 
   case class StubAction(description: String, roles: Set[Role]) extends Action {

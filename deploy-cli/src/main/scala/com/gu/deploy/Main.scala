@@ -10,6 +10,7 @@ object Main extends App {
     var project: File = _
     var recipe: String = "default"
     var verbose = false
+    var dryRun = false
 
     def project_= (s: String) {
       val f = new File(s)
@@ -33,6 +34,7 @@ object Main extends App {
     arg("<project>", "json deploy project file", { p => Config.project = p })
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
     opt("v", "verbose", "verbose logging", { Config.verbose = true } )
+    opt("n", "dry-run", "don't execute any tasks, just show what would be done", { Config.dryRun = true })
   }
 
   Log.current.withValue(CommandLineOutput) {
@@ -52,12 +54,18 @@ object Main extends App {
         val tasks = Resolver.resolve(project, Config.recipe, dummyDeployInfo)
 
         Log.info("Tasks to execute: ")
-        tasks.zipWithIndex.foreach { case (task, idx) => Log.info(" %d. %s" format (idx + 1, task)) }
+        tasks.zipWithIndex.foreach { case (task, idx) =>
+            Log.info(" %d. %s" format (idx + 1, task.fullDescription))
+            Log.verbose("      " + task.verbose)
 
-        Log.info("Executing...")
-        tasks.foreach { task =>
-          Log.info(" Executing %s..." format task)
-          task.execute()
+        }
+
+        if (!Config.dryRun) {
+          Log.info("Executing...")
+          tasks.foreach { task =>
+            Log.info(" Executing %s..." format task.fullDescription)
+            task.execute()
+          }
         }
 
         Log.info("Done")
