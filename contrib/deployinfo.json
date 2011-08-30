@@ -1,0 +1,19 @@
+#!/bin/bash
+# This file is an example of how our host management system returns hostlists
+# Each host has a group, a stage, an application and a hostname.
+# The stage indicates the stage of servers, i.e. PROD, CODE, TEST, QA etc.
+# the application indicates the application name that can be deployed to it
+# the hostname should be obvious
+
+cat <<EOF
+{"hosts":[
+{"group":"a", "stage":"CODE", "application":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
+{"group":"b", "stage":"CODE", "application":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
+{"group":"a", "stage":"QA", "application":"microapp-cache", "hostname":"machost01.dc-qa.gnl"},
+{"group":"dc1", "stage":"PROD", "application":"microapp-cache", "hostname":"machost01.dc-1.gnl"},
+{"group":"dc2", "stage":"PROD", "application":"microapp-cache", "hostname":"machost51.dc-2.gnl"},
+{"group":"a", "stage":"CODE", "application":"related-information", "hostname":"genhost01.dc-code.gnl"},
+{"group":"a", "stage":"CODE", "application":"sportsapp", "hostname":"genhost01.dc-code.gnl"},
+{"group":"a", "stage":"PROD", "application":"related-information", "hostname":"genhost01.dc-1.gnl"}
+]}
+EOF
