@@ -13,7 +13,8 @@ case class CommandLine(commandLine: List[String]) {
     import sys.process._
     Log.context("$ " + quoted) {
       val returnValue = commandLine ! ProcessLogger(Log.info(_), Log.error(_))
-
+      Log.verbose("return value " + returnValue)
+      if (returnValue != 0) sys.error("Exit code %d from command: %s" format (returnValue, quoted))
     }
   }
 

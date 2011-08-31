@@ -4,6 +4,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import com.gu.deploy.{Output, Log}
 import collection.mutable.ListBuffer
+import java.io.IOException
 
 class CommandLineTest extends FlatSpec with ShouldMatchers {
 
@@ -39,11 +40,22 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
       blackBox.recorded.toList should be (
         "START-CONTEXT: $ echo hello" ::
         "INFO: hello" ::
+        "VERBOSE: return value 0" ::
         "END-CONTEXT: $ echo hello" ::
         Nil
       )
     }
   }
 
-  it should "throw wgheb "
+  it should "throw when command is not found" in {
+    evaluating {
+      CommandLine(List("unknown_command")).run()
+    } should produce [IOException]
+  }
+
+  it should "throw when command returns non zero exit code" in {
+    evaluating {
+      CommandLine(List("false")).run()
+    } should produce [RuntimeException]
+  }
 }
