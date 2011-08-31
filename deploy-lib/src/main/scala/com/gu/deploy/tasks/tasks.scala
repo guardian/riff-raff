@@ -10,7 +10,7 @@ case class BlockFirewall(host: Host) extends RemoteShellTask {
   def commandLine = "deploy-block-fw.sh"
 }
 
-case class Restart(host: Host, appName: String, port: String) extends RemoteShellTask {
+case class Restart(host: Host, appName: String) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, "restart")
 }
 
