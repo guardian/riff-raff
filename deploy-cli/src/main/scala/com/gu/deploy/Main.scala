@@ -8,7 +8,7 @@ object Main extends App {
   object Config {
     var project: File = _
     var recipe: String = "default"
-    var deployInfo: String = "/opt/bin/deployinfo.json"
+    var _di: String = "/opt/bin/deployinfo.json"
     var verbose = false
     var dryRun = false
 
@@ -16,6 +16,16 @@ object Main extends App {
       val f = new File(s)
       if (!f.exists() || !f.isFile) sys.error("File not found.")
       project = f
+    }
+
+    def deployInfo_= (s:String) {
+      val f = new File(s)
+      if (!f.exists() || !f.isFile) sys.error("File not found.")
+      _di = s
+    }
+    def deployInfo = {
+      import sys.process._
+      DeployInfoJsonReader.parse(_di.!!)
     }
   }
 
@@ -50,11 +60,11 @@ object Main extends App {
 
         Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
         import sys.process._
-        val deployInfo = DeployInfoJsonReader.parse(Config.deployInfo.!!)
+        val hosts = Config.deployInfo
 //        val dummyDeployInfo = List(Host("localhost").role("mac"))
 
         Log.info("Resolving...")
-        val tasks = Resolver.resolve(project, Config.recipe, deployInfo)
+        val tasks = Resolver.resolve(project, Config.recipe, hosts)
 
         Log.info("Tasks to execute: ")
         tasks.zipWithIndex.foreach { case (task, idx) =>
