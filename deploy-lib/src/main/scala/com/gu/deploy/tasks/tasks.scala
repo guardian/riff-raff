@@ -1,20 +1,20 @@
 package com.gu.deploy
 package tasks
 
-case class CopyFile(host:Host, source:String, dest:String) extends ShellTask {
+case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("scp", "-r", source, "%s:%s" format(host.name,dest))
   lazy val description = "%s -> %s:%s" format (source, host.name, dest)
 }
 
-case class BlockFirewall(host:Host) extends RemoteShellTask {
+case class BlockFirewall(host: Host) extends RemoteShellTask {
   def commandLine = "/opt/deploy/support/block.sh"
 }
 
-case class RestartAndWait(host:Host, appName: String, port: String) extends RemoteShellTask {
+case class RestartAndWait(host: Host, appName: String, port: String) extends RemoteShellTask {
   def commandLine = List("/opt/deploy/support/restart_and_wait.sh", appName, port)
 }
 
-case class UnblockFirewall(host:Host) extends RemoteShellTask {
+case class UnblockFirewall(host: Host) extends RemoteShellTask {
   def commandLine = "/opt/deploy/support/block.sh"
 }
 

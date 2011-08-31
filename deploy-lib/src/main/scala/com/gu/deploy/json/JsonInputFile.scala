@@ -30,7 +30,7 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File): Project = parse(Source.fromFile(f).mkString, f)
+  def parse(f: File): Project = parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
 
   def parse(s: String, artifactSrcDir: File): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
@@ -67,7 +67,7 @@ object JsonReader {
       jsonPackage.roles.map(Role).toSet,
       jsonPackage.safeData,
       jsonPackage.`type`,
-      new File(artifactSrcDir.getParent + "/packages/%s" format(name))
+      new File(artifactSrcDir, "/packages/%s" format(name))
     )
 
 }

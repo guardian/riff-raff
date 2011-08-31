@@ -37,7 +37,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
     tasks.size should be (1)
     tasks should be (List(
-      CopyFile(host, "packages/htmlapp", "/")
+      CopyFile(host, "/tmp/packages/htmlapp", "/")
     ))
   }
 
