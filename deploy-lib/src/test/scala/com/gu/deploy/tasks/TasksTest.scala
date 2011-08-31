@@ -3,7 +3,9 @@ package com.gu.deploy.tasks
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import com.gu.deploy.Host
-
+import java.net.{Socket, ServerSocket}
+import net.liftweb.util.TimeHelpers._
+import concurrent.ops._
 
 class TasksTest extends FlatSpec with ShouldMatchers {
   "block firewall task" should "support hosts with user name" in {
@@ -38,4 +40,18 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     task.commandLine should be (CommandLine(List("sudo", "/sbin/service", "myapp", "restart")))
   }
 
+  "waitForPort task" should "wait for port to be opened" in {
+    val task = WaitForPort(Host("localhost"), "9998", 200 millis)
+    evaluating {
+      task.execute()
+    } should produce [RuntimeException]
+  }
+
+  "waitForPort task" should "connect to open port" in {
+    val task = WaitForPort(Host("localhost"), "9998", 200 millis)
+    spawn {
+      new ServerSocket(9998).accept().close()
+    }
+    task.execute()
+  }
 }

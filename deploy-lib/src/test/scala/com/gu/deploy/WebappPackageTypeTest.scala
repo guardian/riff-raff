@@ -28,8 +28,4 @@ class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
     val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "jetty-webapp", new File("/tmp/packages/webapp"))
     overridden.data("port") should be ("80")
   }
-
-
-
-
 }
