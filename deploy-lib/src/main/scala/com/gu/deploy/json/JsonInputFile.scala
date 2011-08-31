@@ -67,7 +67,7 @@ object JsonReader {
       jsonPackage.roles.map(Role).toSet,
       jsonPackage.safeData,
       jsonPackage.`type`,
-      new File(artifactSrcDir.getPath() + "/packages/%s" format(name))
+      new File(artifactSrcDir.getParent + "/packages/%s" format(name))
     )
 
 }
