@@ -2,9 +2,9 @@ package com.gu.deploy.tasks
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
-import com.gu.deploy.{Output, Log}
 import collection.mutable.ListBuffer
 import java.io.IOException
+import com.gu.deploy.{Host, Output, Log}
 
 class CommandLineTest extends FlatSpec with ShouldMatchers {
 
@@ -57,5 +57,15 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
     evaluating {
       CommandLine(List("false")).run()
     } should produce [RuntimeException]
+  }
+
+  it should "be able to build command to execute on remote host" in {
+    val localCmd = CommandLine(List("ls", "-l"))
+
+    val host = Host("some-host")
+    localCmd on host should be (CommandLine(List("ssh", "-q", "some-host", "ls -l")))
+
+    localCmd on (host as "resin") should be (CommandLine(List("ssh", "-q", "resin@some-host", "ls -l")))
+
   }
 }

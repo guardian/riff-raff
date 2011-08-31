@@ -2,8 +2,8 @@ package com.gu.deploy
 package tasks
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
-  def commandLine = List("scp", "-r", source, "%s:%s" format(host.name,dest))
-  lazy val description = "%s -> %s:%s" format (source, host.name, dest)
+  def commandLine = List("scp", "-r", source, "%s:%s" format(host.connectStr, dest))
+  lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {

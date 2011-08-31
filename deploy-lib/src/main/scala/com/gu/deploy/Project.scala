@@ -2,10 +2,23 @@ package com.gu.deploy
 
 import tasks.Task
 
-case class Host(name: String, roles: Set[Role] = Set.empty, stage: String = "NO_STAGE") {
+case class Host(
+    name: String,
+    roles: Set[Role] = Set.empty,
+    stage: String = "NO_STAGE",
+    connectAs: Option[String] = None)
+{
   def role(name: String) = this.copy(roles = roles + Role(name))
   def role(role: Role) = this.copy(roles = roles + role)
+
+  def as(user: String) = this.copy(connectAs = Some(user))
+
+  // this allows "resin" @: Host("some-host")
+  def @:(user: String) = as(user)
+
+  lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 }
+
 
 /*
  An action represents a step within a recipe. It isn't executable
@@ -17,7 +30,10 @@ trait Action {
   def description: String
 }
 
+
 case class Role(name: String)
+
+
 
 case class Recipe(
   name: String,

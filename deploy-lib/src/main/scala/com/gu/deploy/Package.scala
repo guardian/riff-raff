@@ -5,7 +5,7 @@ import java.io.File
 case class Package(
   name: String,
   pkgRoles: Set[Role],
-  pkgSpecificData: Map[String,String],
+  pkgSpecificData: Map[String, String],
   pkgTypeName: String,
   srcDir: File) {
 

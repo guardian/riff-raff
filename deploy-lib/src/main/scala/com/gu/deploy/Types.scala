@@ -22,21 +22,23 @@ trait PackageType {
   type ActionDefinition = PartialFunction[String, Host => List[Task]]
   val actions: ActionDefinition
 
-  val defaultData: Map[String, String] = Map.empty
+  def defaultData: Map[String, String] = Map.empty
 }
 
 abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
-  override val defaultData = Map("port" -> "8080", "user" -> containerName)
+  override lazy val defaultData = Map("port" -> "8080", "user" -> containerName)
+
+  lazy val user = pkg.data("user")
 
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
-        BlockFirewall(host),
-        CopyFile(host, pkg.srcDir.getPath, "/%s-apps/" format containerName),
-        RestartAndWait(host, pkg.name, pkg.data("port")),
-        UnblockFirewall(host)
+        BlockFirewall(host as user),
+        CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
+        RestartAndWait(host as user, pkg.name, pkg.data("port")),
+        UnblockFirewall(host as user)
       )
     }
   }
