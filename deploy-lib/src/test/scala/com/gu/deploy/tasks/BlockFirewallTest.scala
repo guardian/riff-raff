@@ -11,7 +11,7 @@ class BlockFirewallTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.remoteCommandLine should be (CommandLine(List("ssh", "-q", "some-user@some-host", "/opt/deploy/support/block.sh")))
+    task.remoteCommandLine should be (CommandLine(List("ssh", "-q", "some-user@some-host", "deploy-block-fw.sh")))
   }
 
 }

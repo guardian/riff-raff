@@ -7,15 +7,15 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = "/opt/deploy/support/block.sh"
+  def commandLine = "deploy-block-fw.sh"
 }
 
-case class RestartAndWait(host: Host, appName: String, port: String) extends RemoteShellTask {
-  def commandLine = List("/opt/deploy/support/restart_and_wait.sh", appName, port)
+case class Restart(host: Host, appName: String, port: String) extends RemoteShellTask {
+  def commandLine = List("sudo", "/sbin/service", appName, "restart")
 }
 
 case class UnblockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = "/opt/deploy/support/block.sh"
+  def commandLine = "deploy-unblock-fw.sh"
 }
 
 

@@ -16,7 +16,7 @@ class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
     jetty.actions("deploy")(host) should be (List(
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
-      RestartAndWait(host as "jetty", "webapp", "8080"),
+      Restart(host as "jetty", "webapp", "8080"),
       UnblockFirewall(host as "jetty")
     ))
   }
@@ -30,7 +30,7 @@ class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
     jetty.actions("deploy")(host) should be (List(
       BlockFirewall(host),
       CopyFile(host, "/tmp/packages/webapp", "/jetty-apps/"),
-      RestartAndWait(host, "webapp", "80"),
+      Restart(host, "webapp", "80"),
       UnblockFirewall(host)
     ))
   }
