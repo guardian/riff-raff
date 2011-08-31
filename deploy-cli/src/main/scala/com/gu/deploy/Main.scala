@@ -47,7 +47,7 @@ object Main extends App {
     opt("v", "verbose", "verbose logging", { Config.verbose = true } )
     opt("n", "dry-run", "don't execute any tasks, just show what would be done", { Config.dryRun = true })
     opt("s", "stage", "stage to deploy to (default: 'PROD')", { s => Config.stage = s })
-    opt("deployinfo", "use a different deployinfo script", {deployinfo => Config.deployInfo = deployinfo})
+    opt("deployinfo", "use a different deployinfo script", {deployinfo:String => Config.deployInfo = deployinfo})
   }
 
   Log.current.withValue(CommandLineOutput) {
@@ -61,9 +61,7 @@ object Main extends App {
         Log.verbose("Loaded: " + project)
 
         Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
-        import sys.process._
         val hosts = Config.deployInfo.filter(_.stage == Config.stage)
-//        val dummyDeployInfo = List(Host("localhost").role("mac"))
 
         Log.info("Resolving...")
         val tasks = Resolver.resolve(project, Config.recipe, hosts)

@@ -3,8 +3,6 @@ package json
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
-import net.liftweb.json._
-
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
   val contentApiExample = """
