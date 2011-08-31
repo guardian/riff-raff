@@ -24,7 +24,10 @@ object Main extends App {
       if (!f.exists() || !f.isFile) sys.error("File not found.")
       _di = s
     }
-    def deployInfo = {
+
+    def deployInfo = _di
+
+    lazy val parsedDeployInfo = {
       import sys.process._
       DeployInfoJsonReader.parse(_di.!!)
     }
@@ -60,8 +63,10 @@ object Main extends App {
 
         Log.verbose("Loaded: " + project)
 
-        Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
-        val hosts = Config.deployInfo.filter(_.stage == Config.stage)
+        Log.info("Loading deployinfo...")
+        val hosts = Config.parsedDeployInfo.filter(_.stage == Config.stage)
+
+        Log.verbose("All possible hosts:\n" + dumpHostList(hosts))
 
         Log.info("Resolving...")
         val tasks = Resolver.resolve(project, Config.recipe, hosts)
@@ -93,5 +98,12 @@ object Main extends App {
           }
       }
     }
+  }
+
+  def dumpHostList(hosts: List[Host]) = {
+    hosts
+      .sortBy { _.name }
+      .map { h => " %s: %s" format (h.name, h.roles.map { _.name } mkString ", ") }
+      .mkString("\n")
   }
 }
