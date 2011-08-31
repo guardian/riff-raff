@@ -19,19 +19,3 @@ trait Task {
   //  this should be the full command line to be executed
   def verbose: String
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

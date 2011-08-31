@@ -11,9 +11,12 @@ case class CommandLine(commandLine: List[String]) {
 
   def run() {
     import sys.process._
-    Log.info("Executing: " + quoted)
-    commandLine.!
+    Log.context("$ " + quoted) {
+      val returnValue = commandLine ! ProcessLogger(Log.info(_), Log.error(_))
+
+    }
   }
+
 
   def on(host: Host) = CommandLine("ssh" :: host.name :: quoted :: Nil)
 }
