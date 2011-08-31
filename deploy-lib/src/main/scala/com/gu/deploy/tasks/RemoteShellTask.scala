@@ -10,19 +10,3 @@ trait RemoteShellTask extends ShellTask {
   lazy val description = "on " + host.name
   override lazy val verbose = "$ " + remoteCommandLine.quoted
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -19,11 +19,11 @@ object Main extends App {
     }
   }
 
-  object CommandLineOutput extends Output {
-    def verbose(s: => String) { if (Config.verbose) Console.out.println(s) }
-    def info(s: => String) { Console.out.println(s) }
-    def warn(s: => String) { Console.out.println("WARN: " + s) }
-    def error(s: => String) { Console.err.println(s) }
+  object CommandLineOutput extends Output with IndentingContext {
+    def verbose(s: => String) { if (Config.verbose) Console.out.println(indent(s)) }
+    def info(s: => String) { Console.out.println(indent(s)) }
+    def warn(s: => String) { Console.out.println(indent("WARN: " + s)) }
+    def error(s: => String) { Console.err.println(indent(s)) }
   }
 
 
@@ -56,18 +56,20 @@ object Main extends App {
         Log.info("Resolving...")
         val tasks = Resolver.resolve(project, Config.recipe, deployInfo)
 
-        Log.info("Tasks to execute: ")
-        tasks.zipWithIndex.foreach { case (task, idx) =>
-            Log.info(" %d. %s" format (idx + 1, task.fullDescription))
-            Log.verbose("      " + task.verbose)
-
+        Log.context("Tasks to execute: ") {
+          tasks.zipWithIndex.foreach { case (task, idx) =>
+            Log.context("%d. %s" format (idx + 1, task.fullDescription)) {
+              Log.verbose(task.verbose)
+            }
+          }
         }
 
         if (!Config.dryRun) {
           Log.info("Executing...")
           tasks.foreach { task =>
-            Log.info(" Executing %s..." format task.fullDescription)
-            task.execute()
+            Log.context("Executing %s..." format task.fullDescription) {
+              task.execute()
+            }
           }
         }
 

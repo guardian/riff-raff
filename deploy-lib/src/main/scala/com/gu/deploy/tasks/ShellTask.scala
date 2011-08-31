@@ -8,19 +8,3 @@ trait ShellTask extends Task {
 
   lazy val verbose = "$ " + commandLine.quoted
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
