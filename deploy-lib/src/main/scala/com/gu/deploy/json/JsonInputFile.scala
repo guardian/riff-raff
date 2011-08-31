@@ -30,14 +30,14 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File): Project = parse(Source.fromFile(f).mkString)
+  def parse(f: File): Project = parse(Source.fromFile(f).mkString, f)
 
-  def parse(s: String): Project = {
-    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)))
+  def parse(s: String, artifactSrcDir: File): Project = {
+    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
   }
 
-  private def parse(input: JsonInputFile): Project = {
-    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg) }
+  private def parse(input: JsonInputFile, artifactSrcDir: File): Project = {
+    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifactSrcDir) }
     val recipes = input.recipes map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
     Project(packages, recipes)
@@ -61,12 +61,13 @@ object JsonReader {
       dependsOn = jsonRecipe.depends)
   }
 
-  private def parsePackage(name: String, jsonPackage: JsonPackage) =
+  private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =
     Package(
       name,
       jsonPackage.roles.map(Role).toSet,
       jsonPackage.safeData,
-      jsonPackage.`type`
+      jsonPackage.`type`,
+      new File(artifactSrcDir.getPath() + "/packages/%s" format(name))
     )
 
 }

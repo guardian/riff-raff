@@ -5,6 +5,7 @@ import json._
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks._
+import java.io.File
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
 
@@ -26,7 +27,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 """
 
   "resolver" should "parse json into actions that can be executed" in {
-    val parsed = JsonReader.parse(simpleExample)
+    val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
     val host = Host("host1").role("apache")

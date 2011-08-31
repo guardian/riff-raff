@@ -32,7 +32,7 @@ case class JettyWebappPackageType(pkg: Package) extends PackageType {
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
         BlockFirewall(host),
-        CopyFile(host,"packages/%s" format pkg.name, "/jetty-apps/"),
+        CopyFile(host, "packages/%s" format pkg.name, "/jetty-apps/"),
         RestartAndWait(host, pkg.name, pkg.data("port")),
         UnblockFirewall(host)
       )

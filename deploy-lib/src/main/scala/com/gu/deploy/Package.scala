@@ -1,6 +1,13 @@
 package com.gu.deploy
 
-case class Package(name: String, pkgRoles: Set[Role], pkgSpecificData: Map[String,String], pkgTypeName: String) {
+import java.io.File
+
+case class Package(
+  name: String,
+  pkgRoles: Set[Role],
+  pkgSpecificData: Map[String,String],
+  pkgTypeName: String,
+  srcDir: File) {
 
   def mkAction(name: String): Action = pkgType.mkAction(name)
 

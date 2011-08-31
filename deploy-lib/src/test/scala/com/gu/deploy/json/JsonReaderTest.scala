@@ -3,6 +3,7 @@ package json
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
+import java.io.File
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
   val contentApiExample = """
@@ -44,14 +45,14 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 """
 
   "json parser" should "parse json and resolve links" in {
-    val parsed = JsonReader.parse(contentApiExample)
+    val parsed = JsonReader.parse(contentApiExample, new File("/tmp/abc"))
 
     parsed.roles should be (Set(Role("index-builder"), Role("api"), Role("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("index-builder") should be (Package("index-builder", Set(Role("index-builder")), Map.empty, "jetty-webapp"))
-    parsed.packages("api") should be (Package("api", Set(Role("api")), Map.empty, "jetty-webapp"))
-    parsed.packages("solr") should be (Package("solr", Set(Role("solr")), Map("port" -> "8400"), "jetty-webapp"))
+    parsed.packages("index-builder") should be (Package("index-builder", Set(Role("index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
+    parsed.packages("api") should be (Package("api", Set(Role("api")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/api")))
+    parsed.packages("solr") should be (Package("solr", Set(Role("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
 
     val recipes = parsed.recipes
     recipes.size should be (3)
