@@ -3,7 +3,7 @@ package com.gu.deploy
 import net.liftweb.util.StringHelpers._
 import tasks.Task
 
-case class Host(name: String, roles: Set[Role] = Set.empty) {
+case class Host(name: String, roles: Set[Role] = Set.empty, stage: String = "NO_STAGE") {
   def role(name: String) = this.copy(roles = roles + Role(name))
   def role(role: Role) = this.copy(roles = roles + role)
 }

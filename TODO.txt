@@ -2,7 +2,7 @@ Deploy:
 	Integration:
 		- get a copy of /opt/deploy/lib/python/guinfo/hostprovider.py
 		- call deployinfo.json and parse @done
-		- Only deploy to selected stage
+		- Only deploy to selected stage @done
 		- fetch artifact from artifactrepo and unzip
 	Deploy Library:
 		- decent getopts library for scala @gtackley @done

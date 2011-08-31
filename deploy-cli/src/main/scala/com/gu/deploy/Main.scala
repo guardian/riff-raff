@@ -8,6 +8,7 @@ object Main extends App {
   object Config {
     var project: File = _
     var recipe: String = "default"
+    var stage: String = "PROD"
     var _di: String = "/opt/bin/deployinfo.json"
     var verbose = false
     var dryRun = false
@@ -45,6 +46,7 @@ object Main extends App {
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
     opt("v", "verbose", "verbose logging", { Config.verbose = true } )
     opt("n", "dry-run", "don't execute any tasks, just show what would be done", { Config.dryRun = true })
+    opt("s", "stage", "stage to deploy to (default: 'PROD')", { s => Config.stage = s })
     opt("deployinfo", "use a different deployinfo script", {deployinfo => Config.deployInfo = deployinfo})
   }
 
@@ -60,7 +62,7 @@ object Main extends App {
 
         Log.info("Loading deployinfo... (CURRENTLY STUBBED)")
         import sys.process._
-        val hosts = Config.deployInfo
+        val hosts = Config.deployInfo.filter(_.stage == Config.stage)
 //        val dummyDeployInfo = List(Host("localhost").role("mac"))
 
         Log.info("Resolving...")

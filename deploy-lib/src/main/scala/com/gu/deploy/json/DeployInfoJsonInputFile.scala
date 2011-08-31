@@ -24,7 +24,7 @@ object DeployInfoJsonReader {
   def parse(f: File):  List[Host] = parse(Source.fromFile(f).mkString)
 
   def parse(inputFile: DeployInfoJsonInputFile): List[Host] = {
-    inputFile.hosts map { host => Host(host.hostname, Set(Role(host.role))) }
+    inputFile.hosts map { host => Host(host.hostname, Set(Role(host.role)), host.stage) }
   }
 
   def parse(s: String): List[Host] = {
