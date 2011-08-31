@@ -6,6 +6,12 @@ Deploy:
 		- fetch artifact from artifactrepo and unzip
 	Deploy Library:
 		- decent getopts library for scala @gtackley @done
+		- Java deploy tasks
+			- Wait For Open Port
+			- Verify Url
+		- Samples
+			- Simple file copy example
+			- Simple webapp
 	Do Actual Deploy:
 		- get an up to date copy of MicroappCache deploy script
 		- Match executed tasks from MicroappCache
