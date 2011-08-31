@@ -25,20 +25,30 @@ trait PackageType {
   val defaultData: Map[String, String] = Map.empty
 }
 
-case class JettyWebappPackageType(pkg: Package) extends PackageType {
-  val name = "jetty-webapp"
-  override val defaultData = Map("port" -> "8080")
+abstract class WebappPackageType extends PackageType {
+  def containerName: String
+
+  lazy val name = containerName + "-webapp"
+  override val defaultData = Map("port" -> "8080", "user" -> containerName)
 
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
         BlockFirewall(host),
-        CopyFile(host, pkg.srcDir.getPath, "/jetty-apps/"),
+        CopyFile(host, pkg.srcDir.getPath, "/%s-apps/" format containerName),
         RestartAndWait(host, pkg.name, pkg.data("port")),
         UnblockFirewall(host)
       )
     }
   }
 
+}
+
+case class JettyWebappPackageType(pkg: Package) extends WebappPackageType {
+  val containerName = "jetty"
+}
+
+case class ResinWebappPackageType(pkg: Package) extends WebappPackageType {
+  val containerName = "resin"
 }
 
 

@@ -1,6 +1,6 @@
 {
   "packages": {
-    "mac-webapp": { "type": "jetty-webapp", "roles": [ "microapp-cache" ], "data": { "port": 8700 } }
+    "mac-webapp": { "type": "resin-webapp", "roles": [ "microapp-cache" ], "data": { "port": 8700 } }
    },
   "recipes": {
     "default": {
