@@ -24,24 +24,29 @@ case class UnblockFirewall(host: Host) extends RemoteShellTask {
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
   def description = "to %s on %s" format(host.name, port)
   def verbose = fullDescription
+  val MAX_CONNECTION_ATTEMPTS: Int = 10
 
-  private def isSocketOpen = {
+
+  private def checkSocketOpen(ignored:Int) = {
     try {
         new Socket(host.name, port.toInt).close()
-        true
+        Some(true)
       }
     catch {
-      case e:IOException => false
+      case e:IOException => {
+        Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
+        None
+      }
     }
 
   }
 
   def execute() {
-    for(i <- 1 to 10) {
-      if (isSocketOpen) return
-      Thread.sleep(duration/10)
+    val range: Seq[Int] = 1 to MAX_CONNECTION_ATTEMPTS
+    Stream(range: _*).flatMap(checkSocketOpen).headOption match {
+      case None => sys.error("Timed out")
+      case _ =>
     }
-    sys.error("Timed out")
   }
 }
 
