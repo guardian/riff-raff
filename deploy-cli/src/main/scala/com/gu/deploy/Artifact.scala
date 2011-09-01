@@ -2,6 +2,7 @@ package com.gu.deploy
 
 import java.io.File
 import dispatch._
+import sbt._
 
 
 object Artifact {
@@ -13,13 +14,21 @@ object Artifact {
     } yield {
 
       val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
-        project / buildNum / "artifact.zip"
+        project / buildNum / "artifacts.zip"
 
-      Log.verbose("Downloading from %s..." format tcUrl.to_uri)
+      val tmpDir = IO.createTemporaryDirectory
 
-      new File("/tmp")
+      Log.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, tmpDir.getAbsolutePath))
+
+      val files = Http(tcUrl >> { IO.unzipStream(_, tmpDir) })
+
+      Log.verbose("downloaded:\n" + files.mkString("\n"))
+
+      tmpDir
     }
 
     f getOrElse sys.error("Must supply <project> and <build> (or, for advanced use, --local-artifact)")
   }
+
+
 }
