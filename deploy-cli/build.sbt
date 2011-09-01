@@ -1,6 +1,8 @@
-// libraryDependencies += "org.clapper" %% "argot" % "0.3.3"
 
-libraryDependencies += "com.github.scopt" %% "scopt" % "1.1.1"
+libraryDependencies ++= Seq(
+    "com.github.scopt" %% "scopt" % "1.1.1",
+    "net.databinder" %% "dispatch-http" % "0.8.5"
+)
 
 seq(sbtassembly.Plugin.assemblySettings: _*)
 
