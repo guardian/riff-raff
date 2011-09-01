@@ -40,7 +40,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     task.commandLine should be (CommandLine(List("sudo", "/sbin/service", "myapp", "restart")))
   }
 
-  "waitForPort task" should "wait for port to be opened" in {
+  "waitForPort task" should "fail after timeout" in {
     val task = WaitForPort(Host("localhost"), "9998", 200 millis)
     evaluating {
       task.execute()
@@ -50,7 +50,9 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   "waitForPort task" should "connect to open port" in {
     val task = WaitForPort(Host("localhost"), "9998", 200 millis)
     spawn {
-      new ServerSocket(9998).accept().close()
+      val server = new ServerSocket(9998)
+      server.accept().close()
+      server.close()
     }
     task.execute()
   }
