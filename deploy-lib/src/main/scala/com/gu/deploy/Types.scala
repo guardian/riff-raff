@@ -1,6 +1,8 @@
 package com.gu.deploy
 
 import tasks._
+import net.liftweb.util.TimeHelpers._
+
 
 trait PackageType {
   def name: String
@@ -38,6 +40,7 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user),
         CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
         Restart(host as user, pkg.name),
+        WaitForPort(host, defaultData("port"), 2 seconds),
         UnblockFirewall(host as user)
       )
     }

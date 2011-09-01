@@ -4,6 +4,8 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks._
 import java.io.File
+import net.liftweb.util.TimeHelpers._
+
 
 class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
 
@@ -17,6 +19,7 @@ class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
+      WaitForPort(host, "8080", 2 seconds),
       UnblockFirewall(host as "jetty")
     ))
   }
