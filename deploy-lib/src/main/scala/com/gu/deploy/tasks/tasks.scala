@@ -27,26 +27,18 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
   val MAX_CONNECTION_ATTEMPTS: Int = 10
 
 
-  private def checkSocketOpen(ignored:Int) = {
-    try {
-        new Socket(host.name, port.toInt).close()
-        Some(true)
-      }
-    catch {
-      case e:IOException => {
-        Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
-        None
-      }
-    }
-
-  }
-
   def execute() {
-    val range: Seq[Int] = 1 to MAX_CONNECTION_ATTEMPTS
-    Stream(range: _*).flatMap(checkSocketOpen).headOption match {
-      case None => sys.error("Timed out")
-      case _ =>
+    def checkOpen(currentTry: Int) {
+      if (currentTry > MAX_CONNECTION_ATTEMPTS)
+        sys.error("Timed out")
+      try new Socket(host.name, port.toInt).close()
+      catch { case e: IOException => {
+          Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
+          checkOpen(currentTry + 1)
+        }
+      }
     }
+    checkOpen(0)
   }
 }
 
