@@ -19,7 +19,7 @@ class WebappPackageTypeTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
-      WaitForPort(host, "8080", 2 seconds),
+      WaitForPort(host, "8080", 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
   }
