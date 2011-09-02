@@ -14,6 +14,7 @@ cat <<EOF
 {"group":"dc2", "stage":"PROD", "role":"microapp-cache", "hostname":"machost51.dc-2.gnl"},
 {"group":"a", "stage":"CODE", "role":"related-information", "hostname":"genhost01.dc-code.gnl"},
 {"group":"a", "stage":"CODE", "role":"sportsapp", "hostname":"genhost01.dc-code.gnl"},
-{"group":"a", "stage":"PROD", "role":"related-information", "hostname":"genhost01.dc-1.gnl"}
+{"group":"a", "stage":"PROD", "role":"related-information", "hostname":"genhost01.dc-1.gnl"},
+{"group":"a", "stage":"LOCAL", "role":"microapp-cache", "hostname":"localhost"}
 ]}
 EOF

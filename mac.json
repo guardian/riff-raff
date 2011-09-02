@@ -1,11 +1,11 @@
 {
   "packages": {
-    "mac-webapp": { "type": "resin-webapp", "roles": [ "microapp-cache" ], "data": { "port": 8700 } }
+    "microapp-cache": { "type": "resin-webapp", "roles": [ "microapp-cache" ], "data": { "port": 8700 } }
    },
   "recipes": {
     "default": {
       "actions": [
-        "mac-webapp.deploy"
+        "microapp-cache.deploy"
       ]
     }
   }
