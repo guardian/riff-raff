@@ -8,12 +8,27 @@ import net.liftweb.util.TimeHelpers._
 import concurrent.ops._
 
 class TasksTest extends FlatSpec with ShouldMatchers {
+  "block firewall task" should "use configurable path" in {
+    val host = Host("some-host") as ("some-user")
+
+    val task = BlockFirewall(host)
+
+    task.commandLine should be (CommandLine(List("/opt/deploy/bin/deploy-block-fw.sh")))
+    val rootPath = CommandLocator.rootPath
+    CommandLocator.rootPath = "/bluergh/xxx"
+
+    val task2 = BlockFirewall(host)
+
+    task2.commandLine should be (CommandLine(List("/bluergh/xxx/deploy-block-fw.sh")))
+    CommandLocator.rootPath = rootPath
+
+  }
   "block firewall task" should "support hosts with user name" in {
     val host = Host("some-host") as ("some-user")
 
     val task = BlockFirewall(host)
 
-    task.remoteCommandLine should be (CommandLine(List("ssh", "-q", "some-user@some-host", "deploy-block-fw.sh")))
+    task.remoteCommandLine should be (CommandLine(List("ssh", "-q", "some-user@some-host", CommandLocator.rootPath + "/deploy-block-fw.sh")))
   }
 
   "block firewall task" should "call block script on path" in {
@@ -21,7 +36,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.commandLine should be (CommandLine(List("deploy-block-fw.sh")))
+    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/deploy-block-fw.sh")))
   }
 
   "unblock firewall task" should "call unblock script on path" in {
@@ -29,7 +44,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = UnblockFirewall(host)
 
-    task.commandLine should be (CommandLine(List("deploy-unblock-fw.sh")))
+    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/deploy-unblock-fw.sh")))
   }
 
   "restart task" should "perform service restart" in {

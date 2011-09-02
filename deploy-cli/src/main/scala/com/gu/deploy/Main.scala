@@ -3,6 +3,7 @@ package com.gu.deploy
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
+import tasks.CommandLocator
 
 object Main extends App {
 
@@ -69,6 +70,7 @@ object Main extends App {
     opt("local-artifact", "Path to local artifact directory (overrides <project> and <build>)",
       { dir => Config.localArtifactDir = Some(new File(dir)) })
     opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
+    opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
 
     separator("\n")
 

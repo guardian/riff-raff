@@ -4,13 +4,17 @@ package tasks
 import java.net.Socket
 import java.io.IOException
 
+object CommandLocator {
+  var rootPath = "/opt/deploy/bin"
+}
+
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("scp", "-r", source, "%s:%s" format(host.connectStr, dest))
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = "deploy-block-fw.sh"
+  def commandLine = CommandLocator.rootPath + "/deploy-block-fw.sh"
 }
 
 case class Restart(host: Host, appName: String) extends RemoteShellTask {
@@ -18,7 +22,7 @@ case class Restart(host: Host, appName: String) extends RemoteShellTask {
 }
 
 case class UnblockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = "deploy-unblock-fw.sh"
+  def commandLine = CommandLocator.rootPath + "/deploy-unblock-fw.sh"
 }
 
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task {

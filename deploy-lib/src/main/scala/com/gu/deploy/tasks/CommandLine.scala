@@ -6,7 +6,7 @@ import com.gu.deploy.{Host, Log}
 //  including the ability to actually execute and become remote
 case class CommandLine(commandLine: List[String]) {
 
-  lazy val quoted = commandLine map quoteIfNeeded mkString " "
+  lazy val quoted = (commandLine) map quoteIfNeeded mkString " "
   private def quoteIfNeeded(s: String) = if (s.contains(" ")) "\"" + s + "\"" else s
 
   def run() {
