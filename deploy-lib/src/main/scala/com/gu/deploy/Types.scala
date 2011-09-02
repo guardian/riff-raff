@@ -40,7 +40,7 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user),
         CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
         Restart(host as user, pkg.name),
-        WaitForPort(host, defaultData("port"), 2 seconds),
+        WaitForPort(host, pkg.data("port"), 2 seconds),
         UnblockFirewall(host as user)
       )
     }
