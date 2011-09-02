@@ -3,34 +3,44 @@ package com.gu.deploy
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
+
 object Main extends App {
 
   object Config {
-    var project: File = _
-    var recipe: String = "default"
-    var stage: String = "PROD"
-    var _di: String = "/opt/bin/deployinfo.json"
+    var project: Option[String] = None
+    var build: Option[String] = None
+    var recipe = "default"
+    var stage = "PROD"
     var verbose = false
     var dryRun = false
 
-    def project_= (s: String) {
-      val f = new File(s)
-      if (!f.exists() || !f.isFile) sys.error("File not found.")
-      project = f
-    }
 
-    def deployInfo_= (s:String) {
+    private var _di = "/opt/bin/deployinfo.json"
+
+    def deployInfo_=(s: String) {
       val f = new File(s)
       if (!f.exists() || !f.isFile) sys.error("File not found.")
       _di = s
     }
-
     def deployInfo = _di
 
-    lazy val parsedDeployInfo = {
+   lazy val parsedDeployInfo = {
       import sys.process._
       DeployInfoJsonReader.parse(_di.!!)
     }
+
+    private var _localArtifactDir: Option[File] = None
+
+    def localArtifactDir_=(dir: Option[File]) {
+      dir.foreach { f =>
+        if (!f.exists() || !f.isDirectory) sys.error("Directory not found.")
+        Log.warn("Ignoring <project> and <build>; using local artifact directory of " + f.getAbsolutePath)
+      }
+
+      _localArtifactDir = dir
+    }
+
+    def localArtifactDir = _localArtifactDir
   }
 
   object CommandLineOutput extends Output with IndentingContext {
@@ -45,12 +55,26 @@ object Main extends App {
   val programVersion = "*PRE-ALPHA*"
 
   val parser = new OptionParser(programName, programVersion) {
-    arg("<project>", "json deploy project file", { p => Config.project = p })
+    help("h", "help", "show this usage message")
+
+    separator("\n  What to deploy:")
+    opt("s", "stage", "stage to deploy to (default: 'PROD')", { s => Config.stage = s })
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
+
+    separator("\n  Diagnostic options:")
     opt("v", "verbose", "verbose logging", { Config.verbose = true } )
     opt("n", "dry-run", "don't execute any tasks, just show what would be done", { Config.dryRun = true })
-    opt("s", "stage", "stage to deploy to (default: 'PROD')", { s => Config.stage = s })
-    opt("deployinfo", "use a different deployinfo script", {deployinfo:String => Config.deployInfo = deployinfo})
+
+    separator("\n  Advanced options:")
+    opt("local-artifact", "Path to local artifact directory (overrides <project> and <build>)",
+      { dir => Config.localArtifactDir = Some(new File(dir)) })
+    opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
+
+    separator("\n")
+
+    argOpt("<project>", "TeamCity project name (e.g. tools::stats-aggregator)", { p => Config.project = Some(p) })
+    argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
+
   }
 
   Log.current.withValue(CommandLineOutput) {
@@ -58,8 +82,11 @@ object Main extends App {
       try {
         Log.info("%s %s" format (programName, programVersion))
 
+        Log.info("Locating artifact...")
+        val dir = Config.localArtifactDir getOrElse Artifact.download(Config.project, Config.build)
+
         Log.info("Loading project file...")
-        val project = JsonReader.parse(Config.project)
+        val project = JsonReader.parse(new File(dir, "deploy.json"))
 
         Log.verbose("Loaded: " + project)
 
