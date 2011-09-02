@@ -52,7 +52,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = Restart(host, "myapp")
 
-    task.commandLine should be (CommandLine(List("sudo", "/sbin/service", "myapp", "restart")))
+    task.commandLine should be (CommandLine(List("/sbin/service", "myapp", "restart")))
   }
 
   "waitForPort task" should "fail after timeout" in {
