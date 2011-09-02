@@ -63,9 +63,9 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
     val localCmd = CommandLine(List("ls", "-l"))
 
     val host = Host("some-host")
-    localCmd on host should be (CommandLine(List("ssh", "-qtt", "some-host", "ls -l")))
+    localCmd on host should be (CommandLine(List("bash", "-c", "ssh -q some-host \"ls -l\"")))
 
-    localCmd on (host as "resin") should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
+    localCmd on (host as "resin") should be (CommandLine(List("bash", "-c", "ssh -q resin@some-host \"ls -l\"")))
 
   }
 }
