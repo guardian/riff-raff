@@ -6,3 +6,4 @@ libraryDependencies ++= Seq(
 
 seq(sbtassembly.Plugin.assemblySettings: _*)
 
+jarName in Assembly := "magenta.jar"
