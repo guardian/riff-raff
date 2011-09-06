@@ -51,15 +51,25 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   val role = Role("the_role")
+  val role2 = Role("the_2nd_role")
 
   val baseRecipe = Recipe("one",
     actions = StubAction("action_one", Set(role)) :: Nil,
+    dependsOn = Nil)
+
+  val multiRoleRecipe = Recipe("two",
+    actions = StubAction("action_one", Set(role)) ::
+      StubAction("action_two", Set(role, role2)) ::
+      StubAction("action_three", Set(role2)) :: Nil,
     dependsOn = Nil)
 
   val deployinfoSingleHost = List(Host("the_host").role(role))
 
   val deployinfoTwoHosts =
     List(Host("host_one").role(role), Host("host_two").role(role))
+
+  val deployInfoMultiHost =
+    List(Host("host_one").role(role), Host("host_two").role(role2))
 
 
   it should "generate the tasks from the actions supplied" in {
@@ -78,6 +88,15 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoTwoHosts) should be (List(
       StubTask("action_one_task on host_one"),
       StubTask("action_one_task on host_two")
+    ))
+  }
+
+  it should "generate tasks only for hosts with role per action" in {
+    Resolver.resolve(project(multiRoleRecipe), multiRoleRecipe.name, deployInfoMultiHost) should be (List(
+      StubTask("action_one_task on host_one"),
+      StubTask("action_two_task on host_one"),
+      StubTask("action_two_task on host_two"),
+      StubTask("action_three_task on host_two")
     ))
   }
 

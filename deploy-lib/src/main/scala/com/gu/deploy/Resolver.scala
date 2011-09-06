@@ -9,8 +9,8 @@ object Resolver {
 
     recipe.dependsOn.flatMap { resolve(project, _, deployinfo) } ++ {
       for {
-        host <- deployinfo.filterNot(host => (recipe.roles & host.roles).isEmpty)
-        action <- recipe.actions
+        host <- deployinfo
+        action <- recipe.actions.filterNot(action => (action.roles & host.roles).isEmpty)
         tasks <- action.resolve(host)
       } yield {
         tasks
