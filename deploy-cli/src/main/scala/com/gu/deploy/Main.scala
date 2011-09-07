@@ -10,6 +10,7 @@ object Main extends App {
   object Config {
     var project: Option[String] = None
     var build: Option[String] = None
+    var host: Option[String] = None
     var stage = ""
     var recipe = "default"
     var verbose = false
@@ -60,6 +61,7 @@ object Main extends App {
 
     separator("\n  What to deploy:")
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
+    opt("t", "host", "only deply to the named host", { h => Config.host = Some(h) })
 
     separator("\n  Diagnostic options:")
     opt("v", "verbose", "verbose logging", { Config.verbose = true } )
@@ -100,8 +102,13 @@ object Main extends App {
         if (hostsInStage.isEmpty)
           sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
 
+        val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
+
+        if (hosts.isEmpty)
+          sys.error("No hosts matched requested deploy host %s. Run with --verbose to a see a list of possible hosts." format Config.host.getOrElse(""))
+
         Log.info("Resolving...")
-        val tasks = Resolver.resolve(project, Config.recipe, hostsInStage)
+        val tasks = Resolver.resolve(project, Config.recipe, hosts)
 
         if (tasks.isEmpty)
           sys.error("No tasks were found to execute. Most likely this is because no hosts with the required roles were found.")

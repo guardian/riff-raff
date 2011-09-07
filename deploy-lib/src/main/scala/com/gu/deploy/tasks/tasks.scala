@@ -27,7 +27,7 @@ case class UnblockFirewall(host: Host) extends RemoteShellTask {
 
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
   def description = "to %s on %s" format(host.name, port)
-  def verbose = fullDescription
+  def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
   val MAX_CONNECTION_ATTEMPTS: Int = 10
 
 
