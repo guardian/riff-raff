@@ -120,6 +120,9 @@ object Main extends App {
         Log.info("Done")
 
       } catch {
+        case e: UsageError =>
+          Log.error("Error: " + e.getMessage)
+          parser.showUsage
         case e: Exception =>
           Log.error("FATAL: " + e.getMessage)
           if (Config.verbose) {

@@ -1,6 +1,5 @@
 package com.gu.deploy
 
-import java.io.File
 import dispatch._
 import sbt._
 
@@ -27,7 +26,7 @@ object Artifact {
       tmpDir
     }
 
-    f getOrElse sys.error("Must supply <project> and <build> (or, for advanced use, --local-artifact)")
+    f getOrElse UsageError("Must supply <project> and <build> (or, for advanced use, --local-artifact)")
   }
 
 
