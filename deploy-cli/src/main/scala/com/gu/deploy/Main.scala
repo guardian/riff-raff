@@ -10,8 +10,8 @@ object Main extends App {
   object Config {
     var project: Option[String] = None
     var build: Option[String] = None
+    var stage: Option[String] = None
     var recipe = "default"
-    var stage = "PROD"
     var verbose = false
     var dryRun = false
 
@@ -59,7 +59,6 @@ object Main extends App {
     help("h", "help", "show this usage message")
 
     separator("\n  What to deploy:")
-    opt("s", "stage", "stage to deploy to (default: 'PROD')", { s => Config.stage = s })
     opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = r })
 
     separator("\n  Diagnostic options:")
@@ -74,6 +73,7 @@ object Main extends App {
 
     separator("\n")
 
+    arg("<stage>", "Stage to deploy (e.g. TEST)", { s => Config.stage = Some(s) })
     argOpt("<project>", "TeamCity project name (e.g. tools::stats-aggregator)", { p => Config.project = Some(p) })
     argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
 
@@ -121,7 +121,7 @@ object Main extends App {
 
       } catch {
         case e: Exception =>
-          Log.error("FATAL: " + e)
+          Log.error("FATAL: " + e.getMessage)
           if (Config.verbose) {
             e.printStackTrace()
           }
