@@ -7,6 +7,13 @@ import sbt._
 object Artifact {
 
   def download(optProject: Option[String], optBuildNum: Option[String]) = {
+    val http = new Http {
+      override def make_logger = new Logger {
+        def info(msg: String, items: Any*) { Log.verbose("http: " + msg.format(items:_*)) }
+        def warn(msg: String, items: Any*) { Log.warn("http: " + msg.format(items:_*)) }
+      }
+    }
+
     val f = for {
       project <- optProject
       buildNum <- optBuildNum
@@ -19,12 +26,18 @@ object Artifact {
 
       Log.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, tmpDir.getAbsolutePath))
 
-      val files = Http(tcUrl >> { IO.unzipStream(_, tmpDir) })
-
-      Log.verbose("downloaded:\n" + files.mkString("\n"))
+      try {
+        val files = http(tcUrl >> { IO.unzipStream(_, tmpDir) })
+        Log.verbose("downloaded:\n" + files.mkString("\n"))
+      } catch {
+        case StatusCode(404, _) =>
+          sys.error("404 downloading %s\n - have you got the project name and build number correct?" format tcUrl.to_uri)
+      }
 
       tmpDir
     }
+
+    http.shutdown()
 
     f getOrElse UsageError("Must supply <project> and <build> (or, for advanced use, --local-artifact)")
   }

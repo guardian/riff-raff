@@ -23,7 +23,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     CommandLocator.rootPath = rootPath
 
   }
-  "block firewall task" should "support hosts with user name" in {
+  it should "support hosts with user name" in {
     val host = Host("some-host") as ("some-user")
 
     val task = BlockFirewall(host)
@@ -31,7 +31,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     task.remoteCommandLine should be (CommandLine(List("bash", "-c", "ssh -qtt some-user@some-host " + CommandLocator.rootPath + "/deploy-block-fw.sh")))
   }
 
-  "block firewall task" should "call block script on path" in {
+  it should "call block script on path" in {
     val host = Host("some-host") as ("some-user")
 
     val task = BlockFirewall(host)
@@ -62,7 +62,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     } should produce [RuntimeException]
   }
 
-  "waitForPort task" should "connect to open port" in {
+  it should "connect to open port" in {
     val task = WaitForPort(Host("localhost"), "9998", 200 millis)
     spawn {
       val server = new ServerSocket(9998)
