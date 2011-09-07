@@ -39,9 +39,7 @@ case class Recipe(
   name: String,
   actions: List[Action] = Nil,
   dependsOn: List[String] = Nil
-) {
-  lazy val roles = actions.flatMap(_.roles).toSet
-}
+)
 
 
 

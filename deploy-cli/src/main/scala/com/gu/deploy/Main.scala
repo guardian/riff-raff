@@ -10,7 +10,7 @@ object Main extends App {
   object Config {
     var project: Option[String] = None
     var build: Option[String] = None
-    var stage: Option[String] = None
+    var stage = ""
     var recipe = "default"
     var verbose = false
     var dryRun = false
@@ -73,7 +73,7 @@ object Main extends App {
 
     separator("\n")
 
-    arg("<stage>", "Stage to deploy (e.g. TEST)", { s => Config.stage = Some(s) })
+    arg("<stage>", "Stage to deploy (e.g. TEST)", { s => Config.stage = s })
     argOpt("<project>", "TeamCity project name (e.g. tools::stats-aggregator)", { p => Config.project = Some(p) })
     argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
 
@@ -93,12 +93,18 @@ object Main extends App {
         Log.verbose("Loaded: " + project)
 
         Log.info("Loading deployinfo...")
-        val hosts = Config.parsedDeployInfo.filter(_.stage == Config.stage)
+        val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
 
-        Log.verbose("All possible hosts:\n" + dumpHostList(hosts))
+        Log.verbose("All possible hosts in stage:\n" + dumpHostList(hostsInStage))
+
+        if (hostsInStage.isEmpty)
+          sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
 
         Log.info("Resolving...")
-        val tasks = Resolver.resolve(project, Config.recipe, hosts)
+        val tasks = Resolver.resolve(project, Config.recipe, hostsInStage)
+
+        if (tasks.isEmpty)
+          sys.error("No tasks were found to execute. Most likely this is because no hosts with the required roles were found.")
 
         Log.context("Tasks to execute: ") {
           tasks.zipWithIndex.foreach { case (task, idx) =>
@@ -108,16 +114,17 @@ object Main extends App {
           }
         }
 
-        if (!Config.dryRun) {
+        if (Config.dryRun) {
+          Log.info("Dry run requested. Not executing.")
+        } else {
           Log.info("Executing...")
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
               task.execute()
             }
           }
+          Log.info("Done")
         }
-
-        Log.info("Done")
 
       } catch {
         case e: UsageError =>
