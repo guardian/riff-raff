@@ -8,16 +8,16 @@ object MagentaBuild extends Build {
   // This project contains code extracted from sbt for io handling
   // Once sbt moves to the same version of scala as us, we can use a binary
   // dependency instead
-  lazy val sbtIo = deployProject("sbt-io")
+  lazy val sbtIo = magentaProject("sbt-io")
 
-  lazy val lib = deployProject("magenta-lib")
+  lazy val lib = magentaProject("magenta-lib")
 
-  lazy val cli = deployProject("magenta-cli") dependsOn(lib, sbtIo)
+  lazy val cli = magentaProject("magenta-cli") dependsOn(lib, sbtIo)
 
 
-  def deployProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
+  def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
   val magentaSettings: Seq[Setting[_]] = Seq(
-    scalaVersion := "2.9.0-1"
+    scalaVersion := "2.9.1"
   )
 }

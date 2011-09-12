@@ -53,7 +53,7 @@ object Main extends scala.App {
   }
 
 
-  val programName = "deploy"
+  val programName = "magenta"
   val programVersion = "*PRE-ALPHA*"
 
   val parser = new OptionParser(programName, programVersion) {
