@@ -14,7 +14,7 @@ case class JsonInputFile(
 
 case class JsonPackage(
   `type`: String,
-  roles: List[String],
+  apps: List[String],
   data: Option[Map[String, String]] = None
 ) {
   def safeData = data getOrElse Map.empty
@@ -64,7 +64,7 @@ object JsonReader {
   private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =
     Package(
       name,
-      jsonPackage.roles.map(Role).toSet,
+      jsonPackage.apps.map(App).toSet,
       jsonPackage.safeData,
       jsonPackage.`type`,
       new File(artifactSrcDir, "/packages/%s" format(name))

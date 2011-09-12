@@ -7,14 +7,14 @@
 
 cat <<EOF
 {"hosts":[
-{"group":"a", "stage":"CODE", "role":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
-{"group":"b", "stage":"CODE", "role":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
-{"group":"a", "stage":"QA", "role":"microapp-cache", "hostname":"machost01.dc-qa.gnl"},
-{"group":"dc1", "stage":"PROD", "role":"microapp-cache", "hostname":"machost01.dc-1.gnl"},
-{"group":"dc2", "stage":"PROD", "role":"microapp-cache", "hostname":"machost51.dc-2.gnl"},
-{"group":"a", "stage":"CODE", "role":"related-information", "hostname":"genhost01.dc-code.gnl"},
-{"group":"a", "stage":"CODE", "role":"sportsapp", "hostname":"genhost01.dc-code.gnl"},
-{"group":"a", "stage":"PROD", "role":"related-information", "hostname":"genhost01.dc-1.gnl"},
-{"group":"a", "stage":"LOCAL", "role":"microapp-cache", "hostname":"localhost"}
+{"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
+{"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
+{"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"},
+{"group":"dc1", "stage":"PROD", "app":"microapp-cache", "hostname":"machost01.dc-1.gnl"},
+{"group":"dc2", "stage":"PROD", "app":"microapp-cache", "hostname":"machost51.dc-2.gnl"},
+{"group":"a", "stage":"CODE", "app":"related-information", "hostname":"genhost01.dc-code.gnl"},
+{"group":"a", "stage":"CODE", "app":"sportsapp", "hostname":"genhost01.dc-code.gnl"},
+{"group":"a", "stage":"PROD", "app":"related-information", "hostname":"genhost01.dc-1.gnl"},
+{"group":"a", "stage":"LOCAL", "app":"microapp-cache", "hostname":"localhost"}
 ]}
 EOF

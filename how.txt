@@ -16,7 +16,7 @@ cmd request - "execute index-build-only for build 15 for all CODE hosts"
 5. look up "packages.index-builder"
 5.1 type is "jetty-webapp", locate the package implementation code for jetty-webapp call this "pkgImpl"
 
-6. default roles for "packages.index-builder" is "index-builder" 
+6. default apps for "packages.index-builder" is "index-builder"
 6.1  from host-role map (provided by deploy info?) look up stage (CODE) and role come up with a list of hosts "idx1", "idx2"
 
 7. call pkgImpl.resolve("block", "idx1")) 

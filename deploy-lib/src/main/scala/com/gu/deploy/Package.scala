@@ -4,7 +4,7 @@ import java.io.File
 
 case class Package(
   name: String,
-  pkgRoles: Set[Role],
+  pkgApps: Set[App],
   pkgSpecificData: Map[String, String],
   pkgTypeName: String,
   srcDir: File) {
@@ -21,5 +21,5 @@ case class Package(
 
   val data = pkgType.defaultData ++ pkgSpecificData
 
-  val roles = pkgRoles
+  val apps = pkgApps
 }

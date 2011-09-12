@@ -12,7 +12,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   val simpleExample = """
   {
     "packages":{
-      "htmlapp":{ "type":"file", "roles":["apache"]  }
+      "htmlapp":{ "type":"file", "apps":["apache"]  }
     },
     "recipes":{
       "all":{
@@ -30,7 +30,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val host = Host("host1").role("apache")
+    val host = Host("host1").app("apache")
     val deployinfo = host :: Nil
 
     val tasks = Resolver.resolve(project(deployRecipe), deployRecipe.name, deployinfo)
@@ -46,30 +46,30 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     def verbose = "stub(%s)" format description
   }
 
-  case class StubAction(description: String, roles: Set[Role]) extends Action {
+  case class StubAction(description: String, apps: Set[App]) extends Action {
     def resolve(host: Host) = StubTask(description + "_task on " + host.name) :: Nil
   }
 
-  val role = Role("the_role")
-  val role2 = Role("the_2nd_role")
+  val app1 = App("the_role")
+  val app2 = App("the_2nd_role")
 
   val baseRecipe = Recipe("one",
-    actions = StubAction("action_one", Set(role)) :: Nil,
+    actions = StubAction("action_one", Set(app1)) :: Nil,
     dependsOn = Nil)
 
   val multiRoleRecipe = Recipe("two",
-    actions = StubAction("action_one", Set(role)) ::
-      StubAction("action_two", Set(role, role2)) ::
-      StubAction("action_three", Set(role2)) :: Nil,
+    actions = StubAction("action_one", Set(app1)) ::
+      StubAction("action_two", Set(app1, app2)) ::
+      StubAction("action_three", Set(app2)) :: Nil,
     dependsOn = Nil)
 
-  val deployinfoSingleHost = List(Host("the_host").role(role))
+  val deployinfoSingleHost = List(Host("the_host").app(app1))
 
   val deployinfoTwoHosts =
-    List(Host("host_one").role(role), Host("host_two").role(role))
+    List(Host("host_one").app(app1), Host("host_two").app(app1))
 
   val deployInfoMultiHost =
-    List(Host("host_one").role(role), Host("host_two").role(role2))
+    List(Host("host_one").app(app1), Host("host_two").app(app2))
 
 
   it should "generate the tasks from the actions supplied" in {
@@ -78,20 +78,20 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  it should "only generate tasks for hosts that have roles" in {
-    Resolver.resolve(project(baseRecipe), baseRecipe.name, Host("other_host").role("other_role") :: deployinfoSingleHost) should be (List(
+  it should "only generate tasks for hosts that have apps" in {
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, Host("other_host").app("other_app") :: deployinfoSingleHost) should be (List(
       StubTask("action_one_task on the_host")
     ))
   }
 
-  it should "generate tasks for all hosts in role" in {
+  it should "generate tasks for all hosts with app" in {
     Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoTwoHosts) should be (List(
       StubTask("action_one_task on host_one"),
       StubTask("action_one_task on host_two")
     ))
   }
 
-  it should "generate tasks only for hosts with role per action" in {
+  it should "generate tasks only for hosts with app per action" in {
     Resolver.resolve(project(multiRoleRecipe), multiRoleRecipe.name, deployInfoMultiHost) should be (List(
       StubTask("action_one_task on host_one"),
       StubTask("action_two_task on host_one"),
@@ -103,8 +103,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   it should "resolve all actions for a given host before moving on to the next host" in {
     val recipe = Recipe("multi-action",
         actions =
-          StubAction("action_one", Set(role)) ::
-          StubAction("action_two", Set(role)) ::
+          StubAction("action_one", Set(app1)) ::
+          StubAction("action_two", Set(app1)) ::
           Nil)
 
     Resolver.resolve(project(recipe), recipe.name, deployinfoTwoHosts) should be (List(
@@ -117,10 +117,10 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "prepare dependsOn actions correctly" in {
     val prereq = Recipe("prereq",
-      actions = StubAction("prereq_action", Set(role)) :: Nil)
+      actions = StubAction("prereq_action", Set(app1)) :: Nil)
 
     val mainRecipe = Recipe("main",
-      actions = StubAction("main_action", Set(role)) :: Nil,
+      actions = StubAction("main_action", Set(app1)) :: Nil,
       dependsOn = List("prereq"))
 
     Resolver.resolve(project(mainRecipe, prereq), mainRecipe.name, deployinfoSingleHost) should be (List(

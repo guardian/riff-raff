@@ -5,7 +5,7 @@ import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import tasks.CommandLocator
 
-object Main extends App {
+object Main extends scala.App {
 
   object Config {
     var project: Option[String] = None
@@ -111,7 +111,7 @@ object Main extends App {
         val tasks = Resolver.resolve(project, Config.recipe, hosts)
 
         if (tasks.isEmpty)
-          sys.error("No tasks were found to execute. Most likely this is because no hosts with the required roles were found.")
+          sys.error("No tasks were found to execute. Most likely this is because no hosts were marked to install these applications.")
 
         Log.context("Tasks to execute: ") {
           tasks.zipWithIndex.foreach { case (task, idx) =>
@@ -149,7 +149,7 @@ object Main extends App {
   def dumpHostList(hosts: List[Host]) = {
     hosts
       .sortBy { _.name }
-      .map { h => " %s: %s" format (h.name, h.roles.map { _.name } mkString ", ") }
+      .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
       .mkString("\n")
   }
 }

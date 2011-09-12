@@ -12,7 +12,7 @@ trait PackageType {
     if (actions.isDefinedAt(actionName)) {
       new Action {
         def resolve(host: Host) = actions(actionName)(host)
-        def roles = pkg.roles
+        def apps = pkg.apps
         def description = pkg.name + "." + actionName
         override def toString = "action " + description
       }

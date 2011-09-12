@@ -4,12 +4,12 @@ import tasks.Task
 
 case class Host(
     name: String,
-    roles: Set[Role] = Set.empty,
+    apps: Set[App] = Set.empty,
     stage: String = "NO_STAGE",
     connectAs: Option[String] = None)
 {
-  def role(name: String) = this.copy(roles = roles + Role(name))
-  def role(role: Role) = this.copy(roles = roles + role)
+  def app(name: String) = this.copy(apps = apps + App(name))
+  def app(app: App) = this.copy(apps= apps + app)
 
   def as(user: String) = this.copy(connectAs = Some(user))
 
@@ -26,12 +26,12 @@ case class Host(
  */
 trait Action {
   def resolve(host: Host): List[Task]
-  def roles: Set[Role]
+  def apps: Set[App]
   def description: String
 }
 
 
-case class Role(name: String)
+case class App(name: String)
 
 
 
@@ -47,5 +47,5 @@ case class Project(
   packages: Map[String, Package] = Map.empty,
   recipes: Map[String, Recipe] = Map.empty
 ) {
-  lazy val roles = packages.values.flatMap(_.roles).toSet
+  lazy val applications = packages.values.flatMap(_.apps).toSet
 }

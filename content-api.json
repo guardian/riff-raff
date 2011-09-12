@@ -1,8 +1,8 @@
 {
   "packages": {
     "index-builder": { "type": "jetty-webapp", "roles": [ "index-builder" ], "data": [ "jetty-app-dir": "index-build" ] },
-    "api": { "type": "jetty-webapp", "roles": [ "api" ] },
-    "solr": { "type": "jetty-webapp", "roles": [ "solr" ] }
+    "api": { "type": "jetty-webapp", "apps": [ "api" ] },
+    "solr": { "type": "jetty-webapp", "apps": [ "solr" ] }
   }
   "recipes": [
     "all": { 
