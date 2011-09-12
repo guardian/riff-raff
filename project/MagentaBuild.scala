@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 import Defaults._
 
-object DeployBuild extends Build {
+object MagentaBuild extends Build {
   lazy val root = Project("root", file(".")) aggregate (lib, cli, sbtIo)
 
   // This project contains code extracted from sbt for io handling
@@ -10,14 +10,14 @@ object DeployBuild extends Build {
   // dependency instead
   lazy val sbtIo = deployProject("sbt-io")
 
-  lazy val lib = deployProject("deploy-lib")
+  lazy val lib = deployProject("magenta-lib")
 
-  lazy val cli = deployProject("deploy-cli") dependsOn(lib, sbtIo)
+  lazy val cli = deployProject("magenta-cli") dependsOn(lib, sbtIo)
 
 
-  def deployProject(name: String) = Project(name, file(name), settings = defaultSettings ++ deploySettings)
+  def deployProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
-  val deploySettings: Seq[Setting[_]] = Seq(
+  val magentaSettings: Seq[Setting[_]] = Seq(
     scalaVersion := "2.9.0-1"
   )
 }
