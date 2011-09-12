@@ -1,0 +1,45 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+
+    <title>Riff Raff</title>
+
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script>
+    <![endif]-->
+
+
+    <link rel="stylesheet" href="/static/bootstrap-1.2.0.min.css">
+    <link rel="stylesheet" href="/static/riffraff.css">
+    <script id="jquery" src="/classpath/jquery.js" type="text/javascript"></script>
+    <script id="json" src="/classpath/json.js" type="text/javascript"></script>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="fill">
+        <div class="container">
+            <h3><a href="/">Riff Raff</a></h3>
+
+            <div class="nav lift:bootstrap_menu"></div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container">
+
+
+    <lift:bind name="content"></lift:bind>
+
+    <footer>
+        <a href="https://github.com/guardian/deploy">
+            <i>Riff Raff</i>
+        </a> is part of <a href="http://www.guardian.co.uk">The Grauniad's</a> deployment toolset.
+
+        <small>I would like, if I may, to take you on a strange journey.</small>
+    </footer>
+</div>
+
+</body>
+</html>
