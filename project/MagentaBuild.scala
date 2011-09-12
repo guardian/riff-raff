@@ -10,9 +10,11 @@ object MagentaBuild extends Build {
   // dependency instead
   lazy val sbtIo = magentaProject("sbt-io")
 
-  lazy val lib = magentaProject("magenta-lib")
+  lazy val lib = magentaProject("magenta-lib") dependsOn(sbtIo)
 
-  lazy val cli = magentaProject("magenta-cli") dependsOn(lib, sbtIo)
+  lazy val cli = magentaProject("magenta-cli") dependsOn(lib)
+
+  lazy val riffraff = magentaProject("riff-raff") dependsOn(lib)
 
 
   def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
