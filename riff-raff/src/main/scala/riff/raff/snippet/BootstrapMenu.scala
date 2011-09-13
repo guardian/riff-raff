@@ -12,22 +12,15 @@ class BootstrapMenu {
     <ul class="nav">
       {
         for (item <- menuEntries) yield {
-          item match {
-            // "current" menu item
-            case MenuItem(text, uri, _, true, _, _) =>
-              <li class="active"><a href={uri}>{text}</a></li>
+          var styles = ""
 
-            // non-current top level menu item
-            case MenuItem(text, uri, _, false, _, _) =>
-              <li><a href={uri}>{text}</a></li>
+          if (item.current) styles += "active "
+          if (!item.kids.isEmpty) styles += "dropdown "
 
-            case other =>
-              NodeSeq.Empty
-
-          }
+          <li class={styles}><a href={item.uri}>{item.text}</a></li>
         }
       }
     </ul>
-  }
 
+  }
 }

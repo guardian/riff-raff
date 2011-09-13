@@ -14,7 +14,11 @@ class Boot {
 
   val menus = List(
      Menu("Home") / "index" >> MustBeLoggedIn,
-     Menu("Stage") / "stage" >> MustBeLoggedIn,
+     Menu("Stage") / "stage" >> MustBeLoggedIn submenus (
+       Menu("CODE") / "stage" / "CODE",
+       Menu("QA") / "stage" / "QA",
+       Menu("TEST") / "stage" / "TEST"
+     ),
      Menu("Login") / "login" >> MustNotBeLoggedIn,
      Menu("Logout") / "logout" >> MustBeLoggedIn
   )
@@ -28,6 +32,10 @@ class Boot {
     LiftRules.addToPackages("riff.raff")
 
     LiftRules.setSiteMap(SiteMap(menus : _*))
+
+    LiftRules.dispatch.append {
+      case Req("logout" :: Nil, _, _) => () => { AdminUser.logout(); Full(RedirectResponse("/")) }
+    }
 
   }
 

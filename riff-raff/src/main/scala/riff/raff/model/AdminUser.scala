@@ -10,5 +10,7 @@ object AdminUser {
   object current extends SessionVar[Box[AdminUser]](Empty)
 
   def isLoggedIn = current.isDefined
+
+  def logout() { current.set(Empty) }
 }
 
