@@ -7,8 +7,8 @@ import net.liftweb.sitemap.Loc._
 import riff.raff.Config
 import net.liftweb.sitemap.LocPath._
 import net.liftweb.openid.OpenIDUser
-import riff.raff.snippet._
 import riff.raff.model.AdminUser
+import riff.raff.lib.GoogleOpenIDVendor
 
 
 class Boot {
