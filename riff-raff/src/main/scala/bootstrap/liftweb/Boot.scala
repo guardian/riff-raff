@@ -4,16 +4,16 @@ import net.liftweb.sitemap._
 import net.liftweb.http._
 import net.liftweb.common._
 import net.liftweb.sitemap.Loc._
-import riff.raff.model.AdminUser
 import riff.raff.Config
 import net.liftweb.sitemap.LocPath._
-import net.liftweb.openid.SimpleOpenIDVendor
 import net.liftweb.openid.OpenIDUser
+import riff.raff.snippet._
+import riff.raff.model.AdminUser
 
 
 class Boot {
-  val MustBeLoggedIn = If(() => OpenIDUser.isDefined, () => RedirectResponse("/login"))
-  val MustNotBeLoggedIn = If(() => !OpenIDUser.isDefined, "You can't access this page if you're logged in")
+  val MustBeLoggedIn = If(() => AdminUser.isDefined, () => RedirectResponse("/login"))
+  val MustNotBeLoggedIn = If(() => AdminUser.isEmpty, "You can't access this page if you're logged in")
 
   val menus = List(
      Menu("Home") / "index" >> MustBeLoggedIn ,
@@ -33,7 +33,7 @@ class Boot {
     LiftRules.addToPackages("riff.raff")
 
     LiftRules.setSiteMap(SiteMap(menus : _*))
-    LiftRules.dispatch.append(SimpleOpenIDVendor.dispatchPF)
+    LiftRules.dispatch.append(GoogleOpenIDVendor.dispatchPF)
 
     LiftRules.statefulRewrite.append {
       case RewriteRequest(ParsePath("stage" :: stg :: Nil, "", true, _), _, _) =>

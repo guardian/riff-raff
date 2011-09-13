@@ -4,13 +4,8 @@ import net.liftweb.http.SessionVar
 import net.liftweb.common._
 
 
-case class AdminUser(email: String)
-
-object AdminUser {
-  object current extends SessionVar[Box[AdminUser]](Empty)
-
-  def isLoggedIn = current.isDefined
-
-  def logout() { current.set(Empty) }
+case class AdminUserDetails(firstname: String, lastname: String, email: String) {
+  def display = "%s %s" format (firstname, lastname)
 }
 
+object AdminUser extends SessionVar[Box[AdminUserDetails]](Empty)
