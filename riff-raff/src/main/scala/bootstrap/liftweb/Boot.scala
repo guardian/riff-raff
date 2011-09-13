@@ -17,7 +17,7 @@ class Boot {
 
   val menus = List(
      Menu("Home") / "index" >> MustBeLoggedIn ,
-     Menu("Stage") / "stage" >> MustBeLoggedIn submenus (
+     Menu("Stage") / "stage" /* >> MustBeLoggedIn */ submenus (
        for (stage <- Config.stages) yield { Menu(stage) / "stage" / stage }
      ),
      Menu("Login") / "login" >> MustNotBeLoggedIn >> MenuCssClass("secondary-nav"),

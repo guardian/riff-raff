@@ -1,14 +1,45 @@
-<div class="lift:surround?with=default;at=content">
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Riff Raff</title>
+
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script>
+    <![endif]-->
+
+    <link rel="stylesheet" href="static/bootstrap-1.2.0.min.css">
+    <link rel="stylesheet" href="static/riffraff.css">
+    <script id="jquery" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.3/jquery.min.js" type="text/javascript"></script>
+    <script id="json" src="/classpath/json.js" type="text/javascript"></script>
+    <script src="static/riffraff.js" type="text/javascript"></script>
+</head>
+<body class="lift:content_id=real_content">
+<div class="container">
+<div class="lift:surround?with=default;at=content" id="real_content">
     <div class="row">
         <div class="span4">
-            <h1 class="lift:stage.name">(Stage Name)</h1>
+            <h1 class="lift:stage.name">STAGE</h1>
         </div>
+    </div>
 
+    <div class="row lift:stage.detail">
+        <div class="span4">
+            <h3 class="app-name">microapp-cache</h3>
+        </div>
         <div class="span12">
-            Here's some information about this stage.
+            <table class="zebra-striped">
+                <tbody>
+                    <tr>
+                        <td class="host">resmac01.gul3.gnl</td>
+                        <td class="version">release 119 build 17</td>
+                        <td class="detail"><a href="#">detail</a></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
 </div>
-
-
+</div>
+</body>
+</html>
