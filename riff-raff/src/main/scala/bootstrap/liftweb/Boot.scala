@@ -3,9 +3,10 @@ package bootstrap.liftweb
 import net.liftweb.sitemap._
 import net.liftweb.http._
 import net.liftweb.common._
-import net.liftweb.util.Helpers._
 import net.liftweb.sitemap.Loc._
 import riff.raff.model.AdminUser
+import riff.raff.Config
+import net.liftweb.sitemap.LocPath._
 
 
 class Boot {
@@ -13,14 +14,12 @@ class Boot {
   val MustNotBeLoggedIn = If(() => !AdminUser.isLoggedIn, "You can't access this page if you're logged in")
 
   val menus = List(
-     Menu("Home") / "index" >> MustBeLoggedIn,
+     Menu("Home") / "index" >> MustBeLoggedIn ,
      Menu("Stage") / "stage" >> MustBeLoggedIn submenus (
-       Menu("CODE") / "stage" / "CODE",
-       Menu("QA") / "stage" / "QA",
-       Menu("TEST") / "stage" / "TEST"
+       for (stage <- Config.stages) yield { Menu(stage) / "stage" / stage }
      ),
-     Menu("Login") / "login" >> MustNotBeLoggedIn,
-     Menu("Logout") / "logout" >> MustBeLoggedIn
+     Menu("Login") / "login" >> MustNotBeLoggedIn >> MenuCssClass("secondary-nav"),
+     Menu("Logout") / "logout" >> MustBeLoggedIn >> MenuCssClass("secondary-nav")
   )
 
   def boot() {
@@ -37,6 +36,10 @@ class Boot {
       case Req("logout" :: Nil, _, _) => () => { AdminUser.logout(); Full(RedirectResponse("/")) }
     }
 
+    LiftRules.statefulRewrite.append {
+      case RewriteRequest(ParsePath("stage" :: stg :: Nil, "", true, _), _, _) =>
+        RewriteResponse("stage" :: Nil, Map("stage" -> stg))
+    }
   }
 
 }
