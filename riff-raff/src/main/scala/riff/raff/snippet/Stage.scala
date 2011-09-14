@@ -24,7 +24,7 @@ class Stage {
     def hostsForApp(app: App) = hostsInThisStage.filter(_.apps contains app)
 
     "*" #> allApps.map { app =>
-      ".app-name" #> app.name &
+      ".app-name" #> <strong>{app.name}</strong> &
       "tr" #> hostsForApp(app).map { host =>
         ".host *" #> host.name &
         ".version *" #> "(unknown version)"

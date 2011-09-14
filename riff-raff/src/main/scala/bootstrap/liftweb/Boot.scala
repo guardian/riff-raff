@@ -13,7 +13,7 @@ import riff.raff.lib.GoogleOpenIDVendor
 
 class Boot {
   val MustBeLoggedIn = If(() => AdminUser.isDefined, () => RedirectResponse("/login"))
-  val MustNotBeLoggedIn = If(() => AdminUser.isEmpty, "You can't access this page if you're logged in")
+  val MustNotBeLoggedIn = If(() => AdminUser.isEmpty, () => RedirectWithState("/", RedirectState(Empty)))
 
   val menus = List(
      Menu("Home") / "index" >> MustBeLoggedIn ,

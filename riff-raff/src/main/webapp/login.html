@@ -1,8 +1,30 @@
-<div class="lift:surround?with=default;at=content" >
+<div class="lift:surround?with=default;at=content">
 
     <div class="row">
-        <div class="lift:OpenID.renderForm">
+        <div class="span4">
+            <h1>Login</h1>
+
+            <p>Please click the button to login with your google account.</p>
         </div>
+        <div class="span12">
+            <form method="post" action="/openid/login">
+                <input
+                        type="hidden"
+                        class="openidfield"
+                        name="openid_identifier"
+                        value="https://www.google.com/accounts/o8/id">
+                <input type="submit" class="btn primary" value="Log In">
+            </form>
+
+            <div class="alert-message block-message warning lift:local_login?form=post">
+               <p>Since you're accessing this from localhost, I guess you're a nice
+               friendly developer. You can sod that OpenID crap if you like.</p>
+               <div class="alert-actions">
+                   <a class="btn small" id="jump-the-shark">Yeah, go on then</a>
+               </div>
+            </div>
+        </div>
+
     </div>
 
 </div>
