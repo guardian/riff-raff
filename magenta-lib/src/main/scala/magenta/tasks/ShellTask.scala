@@ -1,4 +1,4 @@
-package com.gu.deploy
+package magenta
 package tasks
 
 trait ShellTask extends Task {

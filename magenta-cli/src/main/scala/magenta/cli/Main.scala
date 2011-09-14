@@ -1,4 +1,5 @@
-package com.gu.deploy
+package magenta
+package cli
 
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}

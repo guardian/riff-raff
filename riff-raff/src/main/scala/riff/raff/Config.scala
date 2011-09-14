@@ -1,6 +1,6 @@
 package riff.raff
 
-import com.gu.deploy.json.DeployInfoJsonReader
+import magenta.json._
 
 
 object Config {

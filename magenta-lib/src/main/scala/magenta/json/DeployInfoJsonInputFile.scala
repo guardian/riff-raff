@@ -1,9 +1,9 @@
-package com.gu.deploy.json
+package magenta
+package json
 
 import net.liftweb.json._
 import io.Source
 import java.io.File
-import com.gu.deploy.{App, Host}
 
 case class DeployInfoJsonInputFile(
   hosts: List[DeployInfoHost]

@@ -1,10 +1,11 @@
-package com.gu.deploy.tasks
+package magenta
+package tasks
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import collection.mutable.ListBuffer
 import java.io.IOException
-import com.gu.deploy.{Host, Output, Log}
+
 
 class CommandLineTest extends FlatSpec with ShouldMatchers {
 

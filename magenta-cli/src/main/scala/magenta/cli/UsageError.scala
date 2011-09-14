@@ -1,4 +1,5 @@
-package com.gu.deploy
+package magenta
+package cli
 
 
 class UsageError(message: String) extends Exception(message)

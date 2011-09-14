@@ -1,6 +1,5 @@
-package com.gu.deploy.tasks
-
-import com.gu.deploy.{Host, Log}
+package magenta
+package tasks
 
 // represents a command line to execute
 //  including the ability to actually execute and become remote

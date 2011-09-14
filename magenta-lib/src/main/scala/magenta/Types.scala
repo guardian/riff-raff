@@ -1,4 +1,4 @@
-package com.gu.deploy
+package magenta
 
 import tasks._
 import net.liftweb.util.TimeHelpers._
@@ -22,7 +22,7 @@ trait PackageType {
   }
 
   type ActionDefinition = PartialFunction[String, Host => List[Task]]
-  val actions: ActionDefinition
+  def actions: ActionDefinition
 
   def defaultData: Map[String, String] = Map.empty
 }

@@ -1,4 +1,5 @@
-package com.gu.deploy
+package magenta
+package cli
 
 import dispatch._
 import sbt._

@@ -1,9 +1,9 @@
-package com.gu.deploy.tasks
+package magenta
+package tasks
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
-import com.gu.deploy.Host
-import java.net.{Socket, ServerSocket}
+import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
 import concurrent.ops._
 

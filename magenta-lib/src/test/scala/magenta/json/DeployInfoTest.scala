@@ -1,8 +1,9 @@
-package com.gu.deploy.json
+package magenta
+package json
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import com.gu.deploy.{App, Host}
+
 
 class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   val deployInfoSample = """

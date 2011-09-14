@@ -1,4 +1,4 @@
-package com.gu.deploy
+package magenta
 package json
 
 import org.scalatest.matchers.ShouldMatchers

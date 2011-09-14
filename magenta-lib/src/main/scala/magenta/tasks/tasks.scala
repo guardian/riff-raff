@@ -1,4 +1,4 @@
-package com.gu.deploy
+package magenta
 package tasks
 
 import java.net.Socket
