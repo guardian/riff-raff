@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# This blocks the load balancer from contacting this machine by raising the firewall
+# You may want to do something similar, but ELB's and some load balancers will
+# retry an error on another server, so killing the server might be more efficient
+sudo /sbin/service firewall block-si

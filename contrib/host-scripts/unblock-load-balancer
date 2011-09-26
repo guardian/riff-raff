@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+# This unblocks the load balancer
+
+sudo /sbin/service firewall unblock-si
