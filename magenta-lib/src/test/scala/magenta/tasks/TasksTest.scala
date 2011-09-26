@@ -13,13 +13,13 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.commandLine should be (CommandLine(List("/opt/deploy/bin/deploy-block-fw.sh")))
+    task.commandLine should be (CommandLine(List("/opt/deploy/bin/block-load-balancer")))
     val rootPath = CommandLocator.rootPath
     CommandLocator.rootPath = "/bluergh/xxx"
 
     val task2 = BlockFirewall(host)
 
-    task2.commandLine should be (CommandLine(List("/bluergh/xxx/deploy-block-fw.sh")))
+    task2.commandLine should be (CommandLine(List("/bluergh/xxx/block-load-balancer")))
     CommandLocator.rootPath = rootPath
 
   }
@@ -28,7 +28,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.remoteCommandLine should be (CommandLine(List("bash", "-c", "ssh -qtt some-user@some-host " + CommandLocator.rootPath + "/deploy-block-fw.sh")))
+    task.remoteCommandLine should be (CommandLine(List("bash", "-c", "ssh -qtt some-user@some-host " + CommandLocator.rootPath + "/block-load-balancer")))
   }
 
   it should "call block script on path" in {
@@ -36,7 +36,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/deploy-block-fw.sh")))
+    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/block-load-balancer")))
   }
 
   "unblock firewall task" should "call unblock script on path" in {
@@ -44,7 +44,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = UnblockFirewall(host)
 
-    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/deploy-unblock-fw.sh")))
+    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/unblock-load-balancer")))
   }
 
   "restart task" should "perform service restart" in {

@@ -14,7 +14,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = CommandLocator.rootPath + "/deploy-block-fw.sh"
+  def commandLine = CommandLocator.rootPath + "/block-load-balancer"
 }
 
 case class Restart(host: Host, appName: String) extends RemoteShellTask {
@@ -22,7 +22,7 @@ case class Restart(host: Host, appName: String) extends RemoteShellTask {
 }
 
 case class UnblockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = CommandLocator.rootPath + "/deploy-unblock-fw.sh"
+  def commandLine = CommandLocator.rootPath + "/unblock-load-balancer"
 }
 
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
