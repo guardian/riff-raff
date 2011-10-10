@@ -1,6 +1,6 @@
 {
   "packages": {
-    "demo1": { "type": "demo", "roles": [ "mac" ], "data": { "port": 8700 } }
+    "demo1": { "type": "demo", "apps": [ "mac" ], "data": { "port": 8700 } }
    },
   "recipes": {
     "default": {
