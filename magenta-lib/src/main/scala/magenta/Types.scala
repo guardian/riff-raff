@@ -45,7 +45,38 @@ abstract class WebappPackageType extends PackageType {
       )
     }
   }
+}
 
+case class DjangoWebappPackageType(pkg: Package) extends PackageType {
+  lazy val name = "django-webapp"
+  override lazy val defaultData = Map("port" -> "80", "user" -> "django")
+
+  lazy val user = pkg.data("user")
+  lazy val port = pkg.data("port")
+  lazy val appdir = pkg.srcDir.getPath.split("/").last
+
+  val actions: ActionDefinition = {
+    case "deploy" => { host => {
+      val destDir: String = "/django-apps/%s" format appdir
+      List(
+        BlockFirewall(host as user),
+        SetSwitch(host, port, "HEALTHCHECK_OK", false),
+        CopyFile(host as user, pkg.srcDir.getPath, destDir),
+        LinkFile(host as user, destDir, "/django-apps/%s" format pkg.name),
+        Restart(host as user, pkg.name),
+        WaitForPort(host, port, 20 seconds),
+        SetSwitch(host, port, "HEALTHCHECK_OK", true),
+        UnblockFirewall(host as user)
+
+        //        BlockFirewall(host as user),
+        //        CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format "django"),
+        //        Restart(host as user, pkg.name),
+        //        WaitForPort(host, pkg.data("port"), 20 seconds),
+        //        UnblockFirewall(host as user)
+      )
+    }
+    }
+  }
 }
 
 case class JettyWebappPackageType(pkg: Package) extends WebappPackageType {

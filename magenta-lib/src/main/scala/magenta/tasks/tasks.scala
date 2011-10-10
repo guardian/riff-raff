@@ -60,3 +60,26 @@ case class EchoHello(host: Host) extends ShellTask {
   def commandLine = List("echo", "hello to " + host.name)
   def description = "to " + host.name
 }
+
+case class SetSwitch(host: Host, port: String, switchName: String, switchState: Boolean) extends Task {
+  def execute() = {
+    // Do stuff
+  }
+
+  def switchString(b: Boolean): String = {
+    if (switchState) "On"
+    else "Off"
+  }
+
+  def description = "set %s to %s on %s:%s" format(switchName, switchString(switchState), host, port)
+
+  def verbose = fullDescription
+}
+
+case class LinkFile(host: Host, source: String, destination: String) extends RemoteShellTask {
+  def commandLine = List("ln", "-s", source, destination)
+}
+
+case class DjangoManagmentCmd(host: Host, appDirectory: String, command: String) extends RemoteShellTask {
+  def commandLine = List()
+}

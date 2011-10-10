@@ -14,6 +14,7 @@ case class Package(
   lazy val pkgType = pkgTypeName match {
     case "jetty-webapp" => new JettyWebappPackageType(this)
     case "resin-webapp" => new ResinWebappPackageType(this)
+    case "django-webapp" => new DjangoWebappPackageType(this)
     case "file" => new FilePackageType(this)
     case "demo" => new DemoPackageType(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
