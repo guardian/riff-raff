@@ -3,7 +3,6 @@ package cli
 
 import dispatch._
 import sbt._
-import java.net.URLEncoder
 
 
 object Artifact {
@@ -22,7 +21,7 @@ object Artifact {
     } yield {
 
       val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
-        URLEncoder.encode(project, "UTF-8") / buildNum / "artifacts.zip"
+        project / buildNum / "artifacts.zip"
 
       val tmpDir = IO.createTemporaryDirectory
 
