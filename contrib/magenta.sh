@@ -12,7 +12,7 @@ cd $DIR
 echo "Getting magenta version ${MAGENTA_VERSION:=.lastSuccessful}"
 $CMD $SRC
 if [ $? -eq 0 ]; then
-    java -jar magenta.jar $*
+    java -jar magenta.jar "$@"
 else
     echo "Failed to download Magenta from $SRC"
 fi
