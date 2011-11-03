@@ -6,6 +6,7 @@ import java.io.IOException
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
+  def conditional(binary: String) = List("if", "[", "-f", rootPath+"/"+binary, "];", "then", rootPath+"/"+binary,";", "fi" )
 }
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
@@ -14,7 +15,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = CommandLocator.rootPath + "/block-load-balancer"
+  def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
 case class Restart(host: Host, appName: String) extends RemoteShellTask {
@@ -22,7 +23,7 @@ case class Restart(host: Host, appName: String) extends RemoteShellTask {
 }
 
 case class UnblockFirewall(host: Host) extends RemoteShellTask {
-  def commandLine = CommandLocator.rootPath + "/unblock-load-balancer"
+  def commandLine =  CommandLocator conditional "unblock-load-balancer"
 }
 
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task {

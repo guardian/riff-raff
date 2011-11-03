@@ -13,22 +13,22 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.commandLine should be (CommandLine(List("/opt/deploy/bin/block-load-balancer")))
+    task.commandLine should be (CommandLine(List("if", "[", "-f", "/opt/deploy/bin/block-load-balancer", "];", "then", "/opt/deploy/bin/block-load-balancer", ";", "fi")))
     val rootPath = CommandLocator.rootPath
     CommandLocator.rootPath = "/bluergh/xxx"
 
     val task2 = BlockFirewall(host)
 
-    task2.commandLine should be (CommandLine(List("/bluergh/xxx/block-load-balancer")))
+    task2.commandLine should be (CommandLine(List("if", "[", "-f", "/bluergh/xxx/block-load-balancer", "];", "then", "/bluergh/xxx/block-load-balancer", ";", "fi")))
     CommandLocator.rootPath = rootPath
 
   }
   it should "support hosts with user name" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = BlockFirewall(host)
+    val task = Restart(host, "app")
 
-    task.remoteCommandLine should be (CommandLine(List("bash", "-c", "ssh -qtt some-user@some-host " + CommandLocator.rootPath + "/block-load-balancer")))
+    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "/sbin/service app restart")))
   }
 
   it should "call block script on path" in {
@@ -36,7 +36,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = BlockFirewall(host)
 
-    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/block-load-balancer")))
+    task.commandLine should be (CommandLine(List("if", "[", "-f", CommandLocator.rootPath+"/block-load-balancer", "];", "then", CommandLocator.rootPath+"/block-load-balancer", ";", "fi")))
   }
 
   "unblock firewall task" should "call unblock script on path" in {
@@ -44,7 +44,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = UnblockFirewall(host)
 
-    task.commandLine should be (CommandLine(List(CommandLocator.rootPath+"/unblock-load-balancer")))
+    task.commandLine should be (CommandLine(List("if", "[", "-f", CommandLocator.rootPath+"/unblock-load-balancer", "];", "then", CommandLocator.rootPath+"/unblock-load-balancer", ";", "fi")))
   }
 
   "restart task" should "perform service restart" in {
