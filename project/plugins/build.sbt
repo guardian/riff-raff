@@ -3,7 +3,6 @@ resolvers ++= Seq(
   Resolver.url("Typesafe repository", new java.net.URL("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/"))(Resolver.defaultIvyPatterns)
 )
 
-libraryDependencies <++= sbtVersion { sv => Seq(
-    "com.eed3si9n" %% "sbt-assembly" % ("sbt" + sv + "_0.6"),
-    "com.github.siasia" %% "xsbt-web-plugin" % ("0.1.0-" + sv)
-)}
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.7.2")
+
+libraryDependencies <+= sbtVersion(v => "com.github.siasia" %% "xsbt-web-plugin" %     (v+"-0.2.8"))

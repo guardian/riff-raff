@@ -16,6 +16,12 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
       "api":{
         "type":"jetty-webapp",
         "apps":["api"],
+        "data": {
+          "healthcheck_urls": [
+            "http://localhost:8080/api/index.json",
+            "http://localhost:8080/api/search.json"
+          ]
+        }
       },
       "solr":{
         "type":"jetty-webapp",

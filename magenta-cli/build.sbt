@@ -1,3 +1,5 @@
+import sbtassembly.Plugin._
+import AssemblyKeys._
 
 libraryDependencies ++= Seq(
     "com.github.scopt" % "scopt_2.9.0-1" % "1.1.1",
@@ -6,4 +8,4 @@ libraryDependencies ++= Seq(
 
 seq(sbtassembly.Plugin.assemblySettings: _*)
 
-jarName in Assembly := "magenta.jar"
+jarName in assembly := "magenta.jar"
