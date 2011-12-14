@@ -2,6 +2,8 @@ package magenta
 
 import tasks._
 import net.liftweb.util.TimeHelpers._
+import net.liftweb.json.JsonAST._
+import net.liftweb.json.Implicits._
 
 
 trait PackageType {
@@ -24,23 +26,23 @@ trait PackageType {
   type ActionDefinition = PartialFunction[String, Host => List[Task]]
   def actions: ActionDefinition
 
-  def defaultData: Map[String, String] = Map.empty
+  def defaultData: Map[String, JValue] = Map.empty
 }
 
 abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
-  override lazy val defaultData = Map("port" -> "8080", "user" -> containerName)
+  override lazy val defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName)
 
-  lazy val user = pkg.data("user")
+  lazy val user: String = pkg.stringData("user")
 
   val actions: ActionDefinition = {
     case "deploy" => { host => List(
         BlockFirewall(host as user),
         CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
         Restart(host as user, pkg.name),
-        WaitForPort(host, pkg.data("port"), 20 seconds),
+        WaitForPort(host, pkg.stringData("port"), 20 seconds),
         UnblockFirewall(host as user)
       )
     }
@@ -49,10 +51,10 @@ abstract class WebappPackageType extends PackageType {
 
 case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   lazy val name = "django-webapp"
-  override lazy val defaultData = Map("port" -> "80", "user" -> "django")
+  override lazy val defaultData = Map[String, JValue]("port" -> "80", "user" -> "django")
 
-  lazy val user = pkg.data("user")
-  lazy val port = pkg.data("port")
+  lazy val user = pkg.stringData("user")
+  lazy val port = pkg.stringData("port")
   lazy val appdir = pkg.srcDir.getPath.split("/").last
 
   val actions: ActionDefinition = {

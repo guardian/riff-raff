@@ -4,6 +4,8 @@ package json
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import java.io.File
+import net.liftweb.json.JsonAST._
+import net.liftweb.json.Implicits._
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
   val contentApiExample = """
@@ -57,7 +59,7 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 
     parsed.packages.size should be (3)
     parsed.packages("index-builder") should be (Package("index-builder", Set(App("index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
-    parsed.packages("api") should be (Package("api", Set(App("api")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/api")))
+    parsed.packages("api") should be (Package("api", Set(App("api")), Map("healthcheck_urls" -> JArray(List("http://localhost:8080/api/index.json","http://localhost:8080/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
     parsed.packages("solr") should be (Package("solr", Set(App("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
 
     val recipes = parsed.recipes

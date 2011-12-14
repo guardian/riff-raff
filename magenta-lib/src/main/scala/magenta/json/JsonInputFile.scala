@@ -15,7 +15,7 @@ case class JsonInputFile(
 case class JsonPackage(
   `type`: String,
   apps: List[String],
-  data: Option[Map[String, String]] = None
+  data: Option[Map[String, JValue]] = None
 ) {
   def safeData = data getOrElse Map.empty
 }

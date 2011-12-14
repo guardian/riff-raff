@@ -5,6 +5,8 @@ import org.scalatest.matchers.ShouldMatchers
 import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
+import net.liftweb.json.Implicits._
+import net.liftweb.json.JsonAST.JString
 
 
 class PackageTypeTest extends FlatSpec with ShouldMatchers {
@@ -26,10 +28,10 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
   it should "allow port to be overriden" in {
     val basic = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
-    basic.data("port") should be ("8080")
+    basic.data("port") should be (JString("8080"))
 
     val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "jetty-webapp", new File("/tmp/packages/webapp"))
-    overridden.data("port") should be ("80")
+    overridden.data("port") should be (JString("80"))
   }
 
 
