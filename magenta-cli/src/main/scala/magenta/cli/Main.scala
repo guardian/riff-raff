@@ -53,9 +53,12 @@ object Main extends scala.App {
     def error(s: => String) { Console.err.println(indent(s)) }
   }
 
+  object ManagementBuildInfo {
+    lazy val version = Option(getClass.getPackage.getImplementationVersion) getOrElse "DEV"
+  }
 
   val programName = "magenta"
-  val programVersion = "*PRE-ALPHA*"
+  val programVersion = ManagementBuildInfo.version
 
   val parser = new OptionParser(programName, programVersion) {
     help("h", "help", "show this usage message")
