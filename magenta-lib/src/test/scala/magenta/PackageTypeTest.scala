@@ -6,7 +6,7 @@ import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.JString
+import net.liftweb.json.JsonAST.{JArray, JString}
 
 
 class PackageTypeTest extends FlatSpec with ShouldMatchers {
@@ -34,7 +34,32 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     overridden.data("port") should be (JString("80"))
   }
 
+  it should "allow urls to check after deploy" in {
+    val urls = JArray(List("http://localhost:8888/test", "http://localhost:8888/xx"))
 
+    val basic = Package("webapp", Set.empty, Map("healthcheck_urls" -> urls), "jetty-webapp", new File("/tmp/packages/webapp"))
+    basic.data("healthcheck_urls") should be (urls)
+  }
+
+  it should "check urls when specified" in {
+    val url_string = List("http://localhost:8888/test", "http://localhost:8888/xx")
+    val urls = JArray(url_string map { JString(_)})
+
+    val p = Package("webapp", Set.empty, Map("healthcheck_urls" -> urls), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val jetty = new JettyWebappPackageType(p)
+    val host = Host("host_name")
+
+    jetty.actions("deploy")(host) should be (List(
+      BlockFirewall(host as "jetty"),
+      CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
+      Restart(host as "jetty", "webapp"),
+      WaitForPort(host, "8080", 20 seconds),
+      CheckUrl(url_string(0), 20 seconds),
+      CheckUrl(url_string(1), 20 seconds),
+      UnblockFirewall(host as "jetty")
+    ))
+
+  }
 
   "django web app package type" should "have a deploy action" in {
     val p = Package("webapp", Set.empty, Map.empty, "django-webapp", new File("/tmp/packages/webapp-build.7"))

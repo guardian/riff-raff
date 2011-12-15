@@ -1,8 +1,9 @@
 package magenta
 package tasks
 
-import java.net.Socket
-import java.io.IOException
+import io.Source
+import java.io.{FileNotFoundException, IOException}
+import java.net.{ConnectException, URL, Socket}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -41,6 +42,31 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
           Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
           checkOpen(currentTry + 1)
         }
+      }
+    }
+    checkOpen(0)
+  }
+}
+
+case class CheckUrl(url: String, duration: Long) extends Task {
+  def description = "check %s" format(url)
+  def verbose = "Check that %s returns a 200" format(url)
+  val MAX_CONNECTION_ATTEMPTS: Int = 10
+
+
+  def execute() {
+    def checkOpen(currentTry: Int) {
+      if (currentTry > MAX_CONNECTION_ATTEMPTS)
+        sys.error("Timed out")
+      try Source.fromURL(url)
+      catch {
+        case e: FileNotFoundException => {
+          sys.error("404 Not Found")
+        }
+        case e: IOException => {
+        Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
+        checkOpen(currentTry + 1)
+      }
       }
     }
     checkOpen(0)

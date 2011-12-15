@@ -1,8 +1,8 @@
 package magenta
 
 import java.io.File
-import net.liftweb.json.JsonAST.{JString, JValue}
 import java.util.NoSuchElementException
+import net.liftweb.json.JsonAST.{JArray, JString, JValue}
 
 case class Package(
   name: String,
@@ -24,6 +24,10 @@ case class Package(
 
   val data = pkgType.defaultData ++ pkgSpecificData
   def stringData(key: String): String = data(key) match { case JString(s) => s case _ => throw new NoSuchElementException() }
+  def arrayStringData(key: String) = data(key) match {
+    case JArray(l) => l flatMap { case JString(s) => Some(s) case _ => None }
+    case _ => List.empty
+  }
 
   val apps = pkgApps
 }

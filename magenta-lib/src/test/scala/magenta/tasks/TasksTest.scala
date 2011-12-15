@@ -6,6 +6,8 @@ import org.scalatest.FlatSpec
 import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
 import concurrent.ops._
+import java.io.OutputStreamWriter
+
 
 class TasksTest extends FlatSpec with ShouldMatchers {
   "block firewall task" should "use configurable path" in {
@@ -70,5 +72,59 @@ class TasksTest extends FlatSpec with ShouldMatchers {
       server.close()
     }
     task.execute()
+  }
+
+  "check_url task" should "fail after timeout" in {
+    val task = CheckUrl("http://localhost:9998/1", 200 millis)
+    evaluating {
+      task.execute()
+    } should produce [RuntimeException]
+  }
+
+  it should "get a 200 OK" in {
+    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    spawn {
+      val server = new ServerSocket(9997)
+      val socket = server.accept()
+      val osw = new OutputStreamWriter(socket.getOutputStream)
+      osw.write("HTTP/1.0 200 OK\r\n\r\n");
+      osw.flush()
+      socket.close()
+      server.close()
+    }
+    task.execute()
+
+  }
+
+  it should "fail on a 404 NOT FOUND" in {
+    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    spawn {
+      val server = new ServerSocket(9997)
+      val socket = server.accept()
+      val osw = new OutputStreamWriter(socket.getOutputStream)
+      osw.write("HTTP/1.0 404 NOT FOUND\r\n\r\n");
+      osw.flush()
+      socket.close()
+      server.close()
+    }
+    evaluating {
+    task.execute()
+    } should produce [RuntimeException]
+  }
+
+  it should "fail on a 500 ERROR" in {
+    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    spawn {
+      val server = new ServerSocket(9997)
+      val socket = server.accept()
+      val osw = new OutputStreamWriter(socket.getOutputStream)
+      osw.write("HTTP/1.0 500 ERROR\r\n\r\n");
+      osw.flush()
+      socket.close()
+      server.close()
+    }
+    evaluating {
+      task.execute()
+    } should produce [RuntimeException]
   }
 }
