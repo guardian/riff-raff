@@ -22,6 +22,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 20 seconds),
+      CheckUrls(host, "8080", List(), 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
   }
@@ -35,17 +36,17 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "allow urls to check after deploy" in {
-    val urls = JArray(List("http://localhost:8888/test", "http://localhost:8888/xx"))
+    val urls = JArray(List("/test", "/xx"))
 
-    val basic = Package("webapp", Set.empty, Map("healthcheck_urls" -> urls), "jetty-webapp", new File("/tmp/packages/webapp"))
-    basic.data("healthcheck_urls") should be (urls)
+    val basic = Package("webapp", Set.empty, Map("healthcheck_paths" -> urls), "jetty-webapp", new File("/tmp/packages/webapp"))
+    basic.data("healthcheck_paths") should be (urls)
   }
 
   it should "check urls when specified" in {
-    val url_string = List("http://localhost:8888/test", "http://localhost:8888/xx")
-    val urls = JArray(url_string map { JString(_)})
+    val urls = List("/test", "/xx")
+    val urls_json = JArray(urls map { JString(_)})
 
-    val p = Package("webapp", Set.empty, Map("healthcheck_urls" -> urls), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = Package("webapp", Set.empty, Map("healthcheck_paths" -> urls_json), "jetty-webapp", new File("/tmp/packages/webapp"))
     val jetty = new JettyWebappPackageType(p)
     val host = Host("host_name")
 
@@ -54,8 +55,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 20 seconds),
-      CheckUrl(url_string(0), 20 seconds),
-      CheckUrl(url_string(1), 20 seconds),
+      CheckUrls(host, "8080", urls, 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
 

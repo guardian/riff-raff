@@ -75,14 +75,14 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   }
 
   "check_url task" should "fail after timeout" in {
-    val task = CheckUrl("http://localhost:9998/1", 200 millis)
+    val task = CheckUrls(Host("localhost"), "9997",List("/"), 200 millis)
     evaluating {
       task.execute()
     } should produce [RuntimeException]
   }
 
   it should "get a 200 OK" in {
-    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
       val server = new ServerSocket(9997)
       val socket = server.accept()
@@ -97,7 +97,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "fail on a 404 NOT FOUND" in {
-    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
       val server = new ServerSocket(9997)
       val socket = server.accept()
@@ -113,7 +113,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "fail on a 500 ERROR" in {
-    val task = CheckUrl("http://localhost:9997/", 200 millis)
+    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
       val server = new ServerSocket(9997)
       val socket = server.accept()

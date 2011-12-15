@@ -24,7 +24,7 @@ case class Package(
 
   val data = pkgType.defaultData ++ pkgSpecificData
   def stringData(key: String): String = data(key) match { case JString(s) => s case _ => throw new NoSuchElementException() }
-  def arrayStringData(key: String) = data(key) match {
+  def arrayStringData(key: String) = data.getOrElse(key, List.empty) match {
     case JArray(l) => l flatMap { case JString(s) => Some(s) case _ => None }
     case _ => List.empty
   }

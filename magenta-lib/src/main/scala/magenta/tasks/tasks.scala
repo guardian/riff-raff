@@ -48,14 +48,14 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
   }
 }
 
-case class CheckUrl(url: String, duration: Long) extends Task {
-  def description = "check %s" format(url)
-  def verbose = "Check that %s returns a 200" format(url)
+case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task {
+  def description = "check [%s] on " format(paths, host)
+  def verbose = "Check that [%s] returns a 200" format(paths)
   val MAX_CONNECTION_ATTEMPTS: Int = 10
 
 
   def execute() {
-    def checkOpen(currentTry: Int) {
+    def checkOpen(url: String,  currentTry: Int) {
       if (currentTry > MAX_CONNECTION_ATTEMPTS)
         sys.error("Timed out")
       try Source.fromURL(url)
@@ -64,12 +64,12 @@ case class CheckUrl(url: String, duration: Long) extends Task {
           sys.error("404 Not Found")
         }
         case e: IOException => {
-        Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
-        checkOpen(currentTry + 1)
-      }
+          Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
+          checkOpen(url,  currentTry + 1)
+        }
       }
     }
-    checkOpen(0)
+    for (path <- paths) checkOpen("http://%s:%s%s" format (host.connectStr, port, path), 0)
   }
 }
 

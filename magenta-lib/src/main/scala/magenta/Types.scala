@@ -36,11 +36,6 @@ abstract class WebappPackageType extends PackageType {
   override lazy val defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName)
 
   lazy val user: String = pkg.stringData("user")
-  def check_urls: List[Task] = {
-    try
-      for (url <- pkg.arrayStringData("healthcheck_urls")) yield CheckUrl(url, 20 seconds)
-    catch { case _ => List.empty }
-  }
 
   val actions: ActionDefinition = {
     case "deploy" => {
@@ -48,9 +43,9 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user),
         CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
         Restart(host as user, pkg.name),
-        WaitForPort(host, pkg.stringData("port"), 20 seconds)) :::
-        check_urls :::
-        List(UnblockFirewall(host as user))
+        WaitForPort(host, pkg.stringData("port"), 20 seconds),
+        CheckUrls(host, pkg.stringData("port"), pkg.arrayStringData("healthcheck_paths"), 20 seconds),
+        UnblockFirewall(host as user))
       }
     }
   }
