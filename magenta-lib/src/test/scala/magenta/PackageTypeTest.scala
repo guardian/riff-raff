@@ -30,9 +30,11 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
   it should "allow port to be overriden" in {
     val basic = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
     basic.data("port") should be (JString("8080"))
+    basic.stringData("port") should be ("8080")
 
     val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "jetty-webapp", new File("/tmp/packages/webapp"))
     overridden.data("port") should be (JString("80"))
+    overridden.stringData("port") should be ("80")
   }
 
   it should "allow urls to check after deploy" in {
