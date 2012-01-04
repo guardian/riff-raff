@@ -62,12 +62,12 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
 
   val actions: ActionDefinition = {
     case "deploy" => { host => {
-      val destDir: String = "/django-apps/%s" format appdir
+      val destDir: String = "/django-apps/"
       List(
         BlockFirewall(host as user),
         SetSwitch(host, port, "HEALTHCHECK_OK", false),
         CopyFile(host as user, pkg.srcDir.getPath, destDir),
-        LinkFile(host as user, destDir, "/django-apps/%s" format pkg.name),
+        LinkFile(host as user, destDir + appdir, "/django-apps/%s" format pkg.name),
         GracefulApache(host as user),
         WaitForPort(host, port, 20 seconds),
         SetSwitch(host, port, "HEALTHCHECK_OK", true),
