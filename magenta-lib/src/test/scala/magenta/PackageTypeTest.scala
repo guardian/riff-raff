@@ -73,7 +73,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       SetSwitch(host, "80", "HEALTHCHECK_OK", false),
       CopyFile(host as "django", "/tmp/packages/webapp-build.7", "/django-apps/webapp-build.7"),
       LinkFile(host as "django", "/django-apps/webapp-build.7", "/django-apps/webapp"),
-      Restart(host as "django", "webapp"),
+      GracefulApache(host as "django"),
       WaitForPort(host, "80", 20 seconds),
       SetSwitch(host, "80", "HEALTHCHECK_OK", true),
       UnblockFirewall(host as "django")

@@ -107,6 +107,10 @@ case class LinkFile(host: Host, source: String, destination: String) extends Rem
   def commandLine = List("ln", "-s", source, destination)
 }
 
+case class GracefulApache(host: Host) extends RemoteShellTask {
+  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
+}
+
 case class DjangoManagmentCmd(host: Host, appDirectory: String, command: String) extends RemoteShellTask {
   def commandLine = List()
 }

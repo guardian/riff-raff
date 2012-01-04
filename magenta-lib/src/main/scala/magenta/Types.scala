@@ -68,7 +68,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         SetSwitch(host, port, "HEALTHCHECK_OK", false),
         CopyFile(host as user, pkg.srcDir.getPath, destDir),
         LinkFile(host as user, destDir, "/django-apps/%s" format pkg.name),
-        Restart(host as user, pkg.name),
+        GracefulApache(host as user),
         WaitForPort(host, port, 20 seconds),
         SetSwitch(host, port, "HEALTHCHECK_OK", true),
         UnblockFirewall(host as user)
