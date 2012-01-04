@@ -72,12 +72,6 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         WaitForPort(host, port, 20 seconds),
         SetSwitch(host, port, "HEALTHCHECK_OK", true),
         UnblockFirewall(host as user)
-
-        //        BlockFirewall(host as user),
-        //        CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format "django"),
-        //        Restart(host as user, pkg.name),
-        //        WaitForPort(host, pkg.data("port"), 20 seconds),
-        //        UnblockFirewall(host as user)
       )
     }
     }

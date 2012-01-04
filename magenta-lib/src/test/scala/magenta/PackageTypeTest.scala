@@ -79,16 +79,4 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       UnblockFirewall(host as "django")
     ))
   }
-
-//  it should "have an upgrade_database action" in {
-//    val p = Package("webapp", Set.empty, Map.empty, "django-database", new File("/tmp/packages/webapp"))
-//    val django = new DjangoWebappPackageType(p)
-//    val host = Host("host_name")
-//
-//    django.actions("upgrade_database")(host) should be (List(
-//      CopyFile(host as "django", "/tmp/packages/webapp", "/tmp/webapp-dbdeploy"),
-//      DjangoManagmentCmd(host as "django", "/tmp/webapp-dbdeploy", "syncdb --noinput"),
-//      DjangoManagmentCmd(host as "django", "/tmp/webapp-dbdeploy", "migrate --noinput")
-//    ))
-//  }
 }

@@ -88,7 +88,7 @@ object Main extends scala.App {
   Log.current.withValue(CommandLineOutput) {
     if (parser.parse(args)) {
       try {
-        Log.info("%s %s" format (programName, programVersion))
+        Log.info("%s build %s" format (programName, programVersion))
 
         Log.info("Locating artifact...")
         val dir = Config.localArtifactDir getOrElse Artifact.download(Config.project, Config.build)
