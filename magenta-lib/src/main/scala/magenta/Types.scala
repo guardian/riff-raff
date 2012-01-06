@@ -33,17 +33,18 @@ abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
-  override lazy val defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName)
+  override lazy val defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName, "servicename" -> pkg.name)
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
+  lazy val serviceName = pkg.stringData("servicename")
 
   val actions: ActionDefinition = {
     case "deploy" => {
       host => { List(
         BlockFirewall(host as user),
-        CopyFile(host as user, pkg.srcDir.getPath, "/%s-apps/" format containerName),
-        Restart(host as user, pkg.name),
+        CopyFile(host as user, pkg.srcDir.getPath+"/*", "/%s-apps/%s/" format (containerName, serviceName)),
+        Restart(host as user, serviceName),
         WaitForPort(host, port, 20 seconds),
         CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
         UnblockFirewall(host as user))
