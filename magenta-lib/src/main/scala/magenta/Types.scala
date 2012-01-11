@@ -43,7 +43,7 @@ abstract class WebappPackageType extends PackageType {
     case "deploy" => {
       host => { List(
         BlockFirewall(host as user),
-        CopyFile(host as user, pkg.srcDir.getPath+"/*", "/%s-apps/%s/" format (containerName, serviceName)),
+        CopyFile(host as user, pkg.srcDir.getPath+"/", "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
         WaitForPort(host, port, 20 seconds),
         CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),

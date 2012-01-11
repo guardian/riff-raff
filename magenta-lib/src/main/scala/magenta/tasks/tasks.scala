@@ -11,7 +11,7 @@ object CommandLocator {
 }
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
-  def commandLine = List("scp", "-r", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 }
 
