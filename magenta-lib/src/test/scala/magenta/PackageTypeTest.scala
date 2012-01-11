@@ -19,7 +19,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     jetty.actions("deploy")(host) should be (List(
       BlockFirewall(host as "jetty"),
-      CopyFile(host as "jetty", "/tmp/packages/webapp/*", "/jetty-apps/webapp/"),
+      CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 20 seconds),
       CheckUrls(host, "8080", List(), 20 seconds),
@@ -54,33 +54,11 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     jetty.actions("deploy")(host) should be (List(
       BlockFirewall(host as "jetty"),
-      CopyFile(host as "jetty", "/tmp/packages/webapp/*", "/jetty-apps/webapp/"),
+      CopyFile(host as "jetty", "/tmp/packages/webapp", "/jetty-apps/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 20 seconds),
       CheckUrls(host, "8080", urls, 20 seconds),
       UnblockFirewall(host as "jetty")
-    ))
-
-  }
-
-  it should "allow servicename to be overridden for copy and restart" in {
-    val p = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
-    val jetty = new JettyWebappPackageType(p)
-    val p2 = Package("webapp", Set.empty, Map("servicename"->"microapps"), "jetty-webapp", new File("/tmp/packages/webapp"))
-    val jetty2 = new JettyWebappPackageType(p2)
-
-    val host = Host("host_name")
-
-    jetty.actions("deploy")(host) should (contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/*", "/jetty-apps/webapp/")
-    ) and contain[Task] (
-      Restart(host as "jetty", "webapp")
-    ))
-
-    jetty2.actions("deploy")(host) should (contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/*", "/jetty-apps/microapps/")
-    ) and contain[Task] (
-      Restart(host as "jetty", "microapps")
     ))
 
   }
