@@ -5,6 +5,7 @@ import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import tasks.CommandLocator
+import HostList._
 
 object Main extends scala.App {
 
@@ -101,7 +102,7 @@ object Main extends scala.App {
         Log.info("Loading deployinfo...")
         val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
 
-        Log.verbose("All possible hosts in stage:\n" + dumpHostList(hostsInStage))
+        Log.verbose("All possible hosts in stage:\n" + hostsInStage.dump)
 
         if (hostsInStage.isEmpty)
           sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
@@ -115,7 +116,7 @@ object Main extends scala.App {
         val tasks = Resolver.resolve(project, Config.recipe, hosts)
 
         if (tasks.isEmpty)
-          sys.error("No tasks were found to execute. Ensure the app(s) %s are marked as supported by one of:\n%s." format (Resolver.possibleApps(project, Config.recipe), dumpHostList(hosts)))
+          sys.error("No tasks were found to execute. Ensure the app(s) '%s' are in the list supported by this stage/host:\n%s." format (Resolver.possibleApps(project, Config.recipe), hosts.supportedApps))
 
         Log.context("Tasks to execute: ") {
           tasks.zipWithIndex.foreach { case (task, idx) =>
@@ -148,12 +149,5 @@ object Main extends scala.App {
           }
       }
     }
-  }
-
-  def dumpHostList(hosts: List[Host]) = {
-    hosts
-      .sortBy { _.name }
-      .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
-      .mkString("\n")
   }
 }

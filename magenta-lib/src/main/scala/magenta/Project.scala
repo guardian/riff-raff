@@ -1,6 +1,7 @@
 package magenta
 
 import tasks.Task
+import collection.SortedSet
 
 case class Host(
     name: String,
@@ -17,6 +18,24 @@ case class Host(
   def @:(user: String) = as(user)
 
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
+}
+
+class HostList(hosts: List[Host]) {
+  def supportedApps = {
+    val apps = for {
+      host <- hosts
+      app <- host.apps
+    } yield app.name
+    SortedSet(apps: _*).mkString(", ")
+  }
+
+  def dump = hosts
+    .sortBy { _.name }
+    .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
+    .mkString("\n")
+}
+object HostList {
+  implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
 }
 
 
