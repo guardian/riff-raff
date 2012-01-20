@@ -115,7 +115,7 @@ object Main extends scala.App {
         val tasks = Resolver.resolve(project, Config.recipe, hosts)
 
         if (tasks.isEmpty)
-          sys.error("No tasks were found to execute. Most likely this is because no hosts were marked to install these applications.")
+          sys.error("No tasks were found to execute. Ensure the app(s) %s are marked as supported by one of:\n%s." format (Resolver.possibleApps(project, Config.recipe), dumpHostList(hosts)))
 
         Log.context("Tasks to execute: ") {
           tasks.zipWithIndex.foreach { case (task, idx) =>

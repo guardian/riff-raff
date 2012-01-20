@@ -17,6 +17,15 @@ object Resolver {
       }
     }
   }
+  
+  def possibleApps(project: Project, recipeName: String): String = {
+    val recipe = project.recipes(recipeName)
+    val appNames = for {
+      action <- recipe.actions
+      app <- action.apps
+    } yield app.name
+    appNames.mkString(", ")
+  }
 
 }
 

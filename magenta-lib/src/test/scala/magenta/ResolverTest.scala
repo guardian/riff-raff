@@ -129,6 +129,12 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
 
   }
+  
+  it should "provide a list of all apps for a recipe" in  {
+    val recipe = Recipe("recipe", actions = StubAction("action", Set(app1)) :: Nil)
+    
+    Resolver.possibleApps(project(recipe), recipe.name) should be (app1.name)
+  }
 
 
   def project(recipes: Recipe*) =
