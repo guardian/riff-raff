@@ -59,7 +59,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
 
   lazy val user = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
-  lazy val appdir = pkg.srcDir.getPath.split("/").last
+  lazy val appVersionPath = pkg.srcDir.listFiles().head
 
   val actions: ActionDefinition = {
     case "deploy" => { host => {
@@ -67,8 +67,8 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       List(
         BlockFirewall(host as user),
         SetSwitch(host, port, "HEALTHCHECK_OK", false),
-        CopyFile(host as user, pkg.srcDir.getPath, destDir),
-        LinkFile(host as user, destDir + appdir, "/django-apps/%s" format pkg.name),
+        CopyFile(host as user, appVersionPath.getPath, destDir),
+        LinkFile(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
         GracefulApache(host as user),
         WaitForPort(host, port, 20 seconds),
         SetSwitch(host, port, "HEALTHCHECK_OK", true),

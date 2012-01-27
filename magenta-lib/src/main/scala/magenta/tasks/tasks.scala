@@ -27,49 +27,44 @@ case class UnblockFirewall(host: Host) extends RemoteShellTask {
   def commandLine =  CommandLocator conditional "unblock-load-balancer"
 }
 
-case class WaitForPort(host: Host, port: String, duration: Long) extends Task {
+case class WaitForPort(host: Host, port: String, duration: Long) extends Task with RepeatedPollingCheck {
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
-  val MAX_CONNECTION_ATTEMPTS: Int = 10
-
 
   def execute() {
-    def checkOpen(currentTry: Int) {
-      if (currentTry > MAX_CONNECTION_ATTEMPTS)
-        sys.error("Timed out")
-      try new Socket(host.name, port.toInt).close()
-      catch { case e: IOException => {
-          Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
-          checkOpen(currentTry + 1)
-        }
-      }
-    }
-    checkOpen(0)
+    check { new Socket(host.name, port.toInt).close() }
   }
 }
 
-case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task {
+case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task with RepeatedPollingCheck {
   def description = "check [%s] on " format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
-  val MAX_CONNECTION_ATTEMPTS: Int = 10
-
 
   def execute() {
-    def checkOpen(url: String,  currentTry: Int) {
-      if (currentTry > MAX_CONNECTION_ATTEMPTS)
+    for (path <- paths) check { Source.fromURL("http://%s:%s%s" format (host.connectStr, port, path))  }
+  }
+}
+
+trait RepeatedPollingCheck {
+  def MAX_CONNECTION_ATTEMPTS: Int = 10
+  def duration: Long
+
+  def check(action: => Unit) {
+    def checkAttempt(currentAttempt: Int) {
+      if (currentAttempt > MAX_CONNECTION_ATTEMPTS)
         sys.error("Timed out")
-      try Source.fromURL(url)
+      try action
       catch {
         case e: FileNotFoundException => {
           sys.error("404 Not Found")
         }
         case e: IOException => {
           Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
-          checkOpen(url,  currentTry + 1)
+          checkAttempt(currentAttempt + 1)
         }
       }
     }
-    for (path <- paths) checkOpen("http://%s:%s%s" format (host.connectStr, port, path), 0)
+    checkAttempt(0)
   }
 }
 
