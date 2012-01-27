@@ -99,7 +99,7 @@ case class SetSwitch(host: Host, port: String, switchName: String, switchState: 
 }
 
 case class LinkFile(host: Host, source: String, destination: String) extends RemoteShellTask {
-  def commandLine = List("ln", "-s", source, destination)
+  def commandLine = List("ln", "-sf", source, destination)
 }
 
 case class GracefulApache(host: Host) extends RemoteShellTask {
