@@ -66,12 +66,11 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       val destDir: String = "/django-apps/"
       List(
         BlockFirewall(host as user),
-        SetSwitch(host, port, "HEALTHCHECK_OK", false),
         CopyFile(host as user, appVersionPath.getPath, destDir),
-        LinkFile(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
-        GracefulApache(host as user),
+        ApacheGracefulStop(host as user),
+        Link(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
+        ApacheStart(host as user),
         WaitForPort(host, port, 20 seconds),
-        SetSwitch(host, port, "HEALTHCHECK_OK", true),
         UnblockFirewall(host as user)
       )
     }
