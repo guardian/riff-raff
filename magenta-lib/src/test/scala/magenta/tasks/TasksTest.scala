@@ -84,13 +84,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   it should "get a 200 OK" in {
     val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
-      val server = new ServerSocket(9997)
-      val socket = server.accept()
-      val osw = new OutputStreamWriter(socket.getOutputStream)
-      osw.write("HTTP/1.0 200 OK\r\n\r\n");
-      osw.flush()
-      socket.close()
-      server.close()
+      new TestServer().withResponse("HTTP/1.0 200 OK")
     }
     task.execute()
 
@@ -99,13 +93,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   it should "fail on a 404 NOT FOUND" in {
     val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
-      val server = new ServerSocket(9997)
-      val socket = server.accept()
-      val osw = new OutputStreamWriter(socket.getOutputStream)
-      osw.write("HTTP/1.0 404 NOT FOUND\r\n\r\n");
-      osw.flush()
-      socket.close()
-      server.close()
+      new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
     evaluating {
     task.execute()
@@ -115,16 +103,22 @@ class TasksTest extends FlatSpec with ShouldMatchers {
   it should "fail on a 500 ERROR" in {
     val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis)
     spawn {
-      val server = new ServerSocket(9997)
-      val socket = server.accept()
-      val osw = new OutputStreamWriter(socket.getOutputStream)
-      osw.write("HTTP/1.0 500 ERROR\r\n\r\n");
-      osw.flush()
-      socket.close()
-      server.close()
+      new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
     evaluating {
       task.execute()
     } should produce [RuntimeException]
+  }
+}
+
+class TestServer(port:Int = 9997) {
+  def withResponse(response: String) {
+    val server = new ServerSocket(port)
+    val socket = server.accept()
+    val osw = new OutputStreamWriter(socket.getOutputStream)
+    osw.write("%s\r\n\r\n" format (response));
+    osw.flush()
+    socket.close()
+    server.close()
   }
 }
