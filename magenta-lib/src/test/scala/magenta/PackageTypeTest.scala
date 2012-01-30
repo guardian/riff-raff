@@ -99,11 +99,12 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     django.actions("deploy")(host) should be (List(
       BlockFirewall(host as "django"),
+      SetSwitch(host, "80", "HEALTHCHECK_OK", false),
       CopyFile(host as "django", specificBuildFile.getPath, "/django-apps/"),
-      ApacheGracefulStop(host as "django"),
-      Link(host as "django", "/django-apps/" + specificBuildFile.getName, "/django-apps/webapp"),
-      ApacheStart(host as "django"),
+      LinkFile(host as "django", "/django-apps/" + specificBuildFile.getName, "/django-apps/webapp"),
+      GracefulApache(host as "django"),
       WaitForPort(host, "80", 20 seconds),
+      SetSwitch(host, "80", "HEALTHCHECK_OK", true),
       UnblockFirewall(host as "django")
     ))
   }

@@ -83,14 +83,25 @@ case class EchoHello(host: Host) extends ShellTask {
   def description = "to " + host.name
 }
 
-case class Link(host: Host, target: String, linkName: String) extends RemoteShellTask {
-  def commandLine = List("ln", "-sfn", target, linkName)
+case class SetSwitch(host: Host, port: String, switchName: String, switchState: Boolean) extends Task {
+  def execute() = {
+    // Do stuff
+  }
+
+  def switchString(b: Boolean): String = {
+    if (switchState) "On"
+    else "Off"
+  }
+
+  def description = "set %s to %s on %s:%s" format(switchName, switchString(switchState), host, port)
+
+  def verbose = fullDescription
 }
 
-case class ApacheGracefulStop(host: Host) extends RemoteShellTask {
-  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful-stop")
+case class LinkFile(host: Host, source: String, destination: String) extends RemoteShellTask {
+  def commandLine = List("ln", "-sfn", source, destination)
 }
 
-case class ApacheStart(host: Host) extends RemoteShellTask {
-  def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
+case class GracefulApache(host: Host) extends RemoteShellTask {
+  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
 }
