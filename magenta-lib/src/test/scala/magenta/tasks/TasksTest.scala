@@ -109,6 +109,24 @@ class TasksTest extends FlatSpec with ShouldMatchers {
       task.execute()
     } should produce [RuntimeException]
   }
+  
+  "remote shell task" should "build a remote ssh line if no credentials" in {
+    val remoteTask = new RemoteShellTask {
+      def host = Host("some-host")
+
+      def commandLine = CommandLine(List("ls", "-l"))
+    }
+
+    remoteTask.remoteCommandLine should be (CommandLine(List("ssh", "-qtt","some-host", "ls -l")))
+
+    val remoteTaskWithUser = new RemoteShellTask {
+      def host = Host("some-host") as "resin"
+
+      def commandLine = CommandLine(List("ls", "-l"))
+    }
+
+    remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
+  }
 }
 
 class TestServer(port:Int = 9997) {
