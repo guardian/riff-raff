@@ -17,6 +17,9 @@ case class CommandLine(commandLine: List[String]) {
     }
   }
 
+
+  def on(host: Host) = CommandLine("ssh" :: "-qtt" :: host.connectStr :: quoted :: Nil)
+
 }
 
 object CommandLine {

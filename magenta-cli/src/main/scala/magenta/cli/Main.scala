@@ -6,8 +6,6 @@ import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import tasks.CommandLocator
 import HostList._
-import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
-import com.decodified.scalassh.{SshLogin, SimplePasswordProducer, PublicKeyLogin}
 
 object Main extends scala.App {
 
@@ -20,7 +18,6 @@ object Main extends scala.App {
     var verbose = false
     var dryRun = false
 
-    var jvmSsh = false
 
     private var _di = "/opt/bin/deployinfo.json"
 
@@ -80,7 +77,6 @@ object Main extends scala.App {
       { dir => Config.localArtifactDir = Some(new File(dir)) })
     opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
     opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
-    opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
 
     separator("\n")
 
@@ -89,11 +85,6 @@ object Main extends scala.App {
     argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
 
   }
-
-  lazy val sshCredentials: Option[SshLogin] = if (Config.jvmSsh) {
-    val passphrase = readLine()
-    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase), DefaultKeyLocations))
-  } else None
 
   Log.current.withValue(CommandLineOutput) {
     if (parser.parse(args)) {
@@ -141,7 +132,7 @@ object Main extends scala.App {
           Log.info("Executing...")
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
-              task.execute(sshCredentials)
+              task.execute()
             }
           }
           Log.info("Done")

@@ -59,4 +59,14 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
       CommandLine(List("false")).run()
     } should produce [RuntimeException]
   }
+
+  it should "be able to build command to execute on remote host" in {
+    val localCmd = CommandLine(List("ls", "-l"))
+
+    val host = Host("some-host")
+    localCmd on host should be (CommandLine(List("ssh", "-qtt","some-host", "ls -l")))
+
+    localCmd on (host as "resin") should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
+
+  }
 }
