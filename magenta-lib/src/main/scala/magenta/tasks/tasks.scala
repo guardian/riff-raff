@@ -4,6 +4,7 @@ package tasks
 import io.Source
 import java.io.{FileNotFoundException, IOException}
 import java.net.{ConnectException, URL, Socket}
+import com.decodified.scalassh.SshLogin
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -31,7 +32,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  def execute() {
+  def execute(sshCredentials: Option[SshLogin] = None) {
     check { new Socket(host.name, port.toInt).close() }
   }
 }
@@ -40,7 +41,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   def description = "check [%s] on " format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute() {
+  def execute(sshCredentials: Option[SshLogin] = None) {
     for (path <- paths) check { Source.fromURL("http://%s:%s%s" format (host.connectStr, port, path))  }
   }
 }
@@ -70,7 +71,7 @@ trait RepeatedPollingCheck {
 
 
 case class SayHello(host: Host) extends Task {
-  def execute() {
+  def execute(sshCredentials: Option[SshLogin] = None) {
     Log.info("Hello to " + host.name + "!")
   }
 

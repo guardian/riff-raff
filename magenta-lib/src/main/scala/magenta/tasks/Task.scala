@@ -1,9 +1,11 @@
 package magenta
 package tasks
 
+import com.decodified.scalassh.SshLogin
+
 trait Task {
   // execute this task (should throw on failure)
-  def execute()
+  def execute(sshCredentials: Option[SshLogin] = None)
 
   // name of this task: normally no need to override this method
   def name = getClass.getSimpleName
