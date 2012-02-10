@@ -15,4 +15,15 @@ packageOptions += {
     )
 }
 
+excludedFiles in assembly := { (bases: Seq[File]) =>
+  bases flatMap { base =>
+    (base / "META-INF" * "*").get collect {
+      case f if f.getName.toLowerCase == "license" => f
+      case f if f.getName.toLowerCase == "manifest.mf" => f
+      case f if f.getName.endsWith(".SF") => f
+      case f if f.getName.endsWith(".DSA") => f
+      case f if f.getName.endsWith(".RSA") => f
+    }
+  }}
+
 jarName in assembly := "magenta.jar"
