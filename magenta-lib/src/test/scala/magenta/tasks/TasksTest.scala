@@ -127,6 +127,24 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
   }
+  
+  it should "execute the command line" in {
+    var passed = false
+    val remoteTask = new RemoteShellTask {
+
+      def host = Host("some-host")
+
+      override lazy val remoteCommandLine = new CommandLine(""::Nil) {
+        override def run() { passed = true }
+      }
+
+      def commandLine = null
+    }
+    
+    remoteTask.execute()
+    
+    passed should be (true)
+  }
 }
 
 class TestServer(port:Int = 9997) {
