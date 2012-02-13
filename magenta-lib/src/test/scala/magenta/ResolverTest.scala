@@ -6,7 +6,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks._
 import java.io.File
-import com.decodified.scalassh.SshLogin
+import com.decodified.scalassh.PublicKeyLogin
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
 
@@ -43,7 +43,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   case class StubTask(description: String) extends Task {
-    def execute(sshCredentials: Option[SshLogin] = None) { }
+    def execute(sshCredentials: Option[PublicKeyLogin] = None) { }
     def verbose = "stub(%s)" format description
   }
 
