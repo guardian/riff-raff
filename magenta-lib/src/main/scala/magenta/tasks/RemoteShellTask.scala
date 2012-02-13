@@ -18,7 +18,7 @@ trait RemoteShellTask extends ShellTask {
         client.exec(commandLine.quoted)
       }
     }
-    case None => remoteCommandLine
+    case None => remoteCommandLine.run()
   }}
 
   lazy val description = "on " + host.name
