@@ -53,12 +53,12 @@ what types of machines they should be deployed to.  This is defined in the
 packages dictionary:
 
     "packages": {
-      "demo1": { 
-        "type": "demo", 
-        "apps": [ "demo-servers" ], 
-        "data": { 
-          "port": "8700" 
-        } 
+      "demo1": {
+        "type": "demo",
+        "apps": [ "demo-servers" ],
+        "data": {
+          "port": "8700"
+        }
       }
     },
 
@@ -111,16 +111,54 @@ be executed.
 Each recipe contains a list of actions that will be executed in order.  The
 actions are defined by the type that the package uses.
 
+
+I'm a developer at the guardian, how do I make my scala project deployable
+--------------------------------------------------------------------------
+
+You are using Scala, SBT and so on, so you can apply the following rules.
+
+ * Ensure you are using SBT 0.11.2 (or later)
+ * Add the dist plugin to your plugins.
+   * Add this to project/project/Plugins.scala
+
+			object MYAPPPlugins extends Build {
+				lazy val plugins = Project("MY-APP-plugins", file("."))
+				.dependsOn(
+					uri("git://github.com/guardian/sbt-dist-plugin.git#1.6")
+				)
+			}
+
+   * Add this to build.sbt
+
+			Seq(com.gu.SbtDistPlugin.distSettings :_*)
+			distPath := file("/r2/ArtifactRepository/MY-APP/trunk") / ("trunk-build." + System.getProperty("build.number", "DEV")) / "artifacts.zip"
+			distFiles <+= (packageWar in Compile) map { _ -> "packages/MY-APP/webapps/MY-APP.war" }
+			distFiles <++= (sourceDirectory in Compile) map { src => (src / "deploy" ***) x (relativeTo(src / "deploy"), false) }
+
+   * Add a deploy.json under `src/main/deploy`, something like:
+
+			{
+			    "packages":{
+			        "MY-APP":{
+			            "type":"resin-webapp",
+			            "apps":[ "APP-ROLE" ]
+			        }
+			    },
+			    "recipes": {
+			        "default": {
+			            "actions": [
+			                "MY-APP.deploy"
+			            ]
+			        }
+			    }
+			}
+
+ * Run `./sbt dist` locally and check that the artifact.zip is created correctly
+ * Update the teamcity build to use the dist target
+ * Ensure that the systems team have made your servers available as APP-ROLE in the deployinfo
+
+
 What is still left to do?
 ------
 
-This system is used for deploying the Content API and Flexible Content systems
-into production at the guardian, so in one sense you could say it has nothing
-left to do, but in reality there are a number of features that are still needed
-or strongly desired.
-
-   * IRC Notifications of deployments
-   * Use Jsch rather than calling bash/ssh as external shell processes
-   * Add Django deployments
-   * Add database version guards
-   * Handle TeamCity pinning of artifacts
+See the `TODO.txt` file in this project

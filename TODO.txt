@@ -1,18 +1,28 @@
-Deploy:
-	Integration:
-		- get a copy of /opt/deploy/lib/python/guinfo/hostprovider.py
-		- call deployinfo.json and parse @done
-		- Only deploy to selected stage @done
-		- fetch artifact from artifactrepo and unzip
-	Deploy Library:
-		- decent getopts library for scala @gtackley @done
-		- Java deploy tasks
-			- Wait For Open Port
-			- Verify Url
-		- Samples
-			- Simple file copy example
-			- Simple webapp
-	Do Actual Deploy:
-		- get an up to date copy of MicroappCache deploy script
-		- Match executed tasks from MicroappCache
-		- create a sample that creates the deploy @done
+Command Line Client
+===================
+
+Logging - We should copy all stdout and logs into a logging facility (syslog, file?)
+IRC Connection - Executing a deploy should mention to IRC what is going on.
+Configuration - FEatures like logging, irc etc, should be configurable on the deploy host
+SSH Support - Use a local key, prompt for password, allow ssh-agent connections
+TeamCity Support - Upon deploying we should tag and pin builds in teamcity.
+
+Deployment Library
+==================
+
+Convention over Configuration - in deploy.json, there should be a default "default" recipe, and a default action per package.
+
+RiffRaff
+========
+
+Prototype 0 - This should allow you to 1 button click to deploy.
+Authentication - Using OpenId, you should only be allowed to login if you have a valid domain account
+Realtime logs - You should be able to see all deploys happening, including feedback from the deploy as it happens
+Current Status Database - We should keep a list of what was last deployed to each server.
+
+Enhancements / Future Stuff
+===========================
+
+IRC Control - Kick off a deploy from irc?
+Twitter integration - Alert to deploys via twitter account
+XMPP Support - Use XMPP/Google Chat to send notifications about deploys
