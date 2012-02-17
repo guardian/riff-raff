@@ -60,6 +60,7 @@ trait RepeatedPollingCheck {
           sys.error("404 Not Found")
         }
         case e: IOException => {
+          Log.verbose("Timed out attempt #"+currentAttempt +"- Retrying")
           Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
           checkAttempt(currentAttempt + 1)
         }

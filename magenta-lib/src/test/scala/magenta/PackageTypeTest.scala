@@ -21,7 +21,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
-      WaitForPort(host, "8080", 20 seconds),
+      WaitForPort(host, "8080", 1 minute),
       CheckUrls(host, "8080", List(), 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
@@ -56,7 +56,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
-      WaitForPort(host, "8080", 20 seconds),
+      WaitForPort(host, "8080", 1 minute),
       CheckUrls(host, "8080", urls, 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
@@ -103,7 +103,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       ApacheGracefulStop(host as "django"),
       Link(host as "django", "/django-apps/" + specificBuildFile.getName, "/django-apps/webapp"),
       ApacheStart(host as "django"),
-      WaitForPort(host, "80", 20 seconds),
+      WaitForPort(host, "80", 1 minute),
       UnblockFirewall(host as "django")
     ))
   }

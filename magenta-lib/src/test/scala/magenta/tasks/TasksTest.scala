@@ -74,6 +74,18 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     task.execute()
   }
 
+  it should "connect to an open port after a short time" in {
+    val task = WaitForPort(Host("localhost"), "9997", 1 seconds)
+    spawn {
+      Thread.sleep(600 millis)
+      val server = new ServerSocket(9997)
+      server.accept().close()
+      server.close()
+    }
+    task.execute()
+  }
+
+
   "check_url task" should "fail after timeout" in {
     val task = CheckUrls(Host("localhost"), "9997",List("/"), 200 millis)
     evaluating {

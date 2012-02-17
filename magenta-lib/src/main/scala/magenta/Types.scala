@@ -45,7 +45,7 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user),
         CopyFile(host as user, pkg.srcDir.getPath+"/", "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
-        WaitForPort(host, port, 20 seconds),
+        WaitForPort(host, port, 1 minute),
         CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
         UnblockFirewall(host as user))
       }
@@ -70,7 +70,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         ApacheGracefulStop(host as user),
         Link(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
         ApacheStart(host as user),
-        WaitForPort(host, port, 20 seconds),
+        WaitForPort(host, port, 1 minute),
         UnblockFirewall(host as user)
       )
     }
