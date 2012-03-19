@@ -21,7 +21,7 @@ case class BlockFirewall(host: Host) extends RemoteShellTask {
 }
 
 case class Restart(host: Host, appName: String) extends RemoteShellTask {
-  def commandLine = List("/sbin/service", appName, "restart")
+  def commandLine = List("sudo", "/sbin/service", appName, "restart")
 }
 
 case class UnblockFirewall(host: Host) extends RemoteShellTask {

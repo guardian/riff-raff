@@ -30,7 +30,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = Restart(host, "app")
 
-    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "/sbin/service app restart")))
+    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "sudo /sbin/service app restart")))
   }
 
   it should "call block script on path" in {
@@ -54,7 +54,7 @@ class TasksTest extends FlatSpec with ShouldMatchers {
 
     val task = Restart(host, "myapp")
 
-    task.commandLine should be (CommandLine(List("/sbin/service", "myapp", "restart")))
+    task.commandLine should be (CommandLine(List("sudo", "/sbin/service", "myapp", "restart")))
   }
 
   "waitForPort task" should "fail after timeout" in {
