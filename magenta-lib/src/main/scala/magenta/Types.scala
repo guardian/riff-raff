@@ -33,7 +33,7 @@ abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
-  override lazy val defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName, "servicename" -> pkg.name)
+  override def defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName, "servicename" -> pkg.name)
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
@@ -50,6 +50,28 @@ abstract class WebappPackageType extends PackageType {
         UnblockFirewall(host as user))
       }
     }
+  }
+}
+
+case class ExecutableJarWebappPackageType(pkg: Package) extends WebappPackageType {
+  override def defaultData = super.defaultData + ("user" -> "jvmuser")
+  val containerName = "executable-jar"
+}
+
+case class JettyWebappPackageType(pkg: Package) extends WebappPackageType {
+  val containerName = "jetty"
+}
+
+case class ResinWebappPackageType(pkg: Package) extends WebappPackageType {
+  val containerName = "resin"
+}
+
+
+case class FilePackageType(pkg: Package) extends PackageType {
+  val name = "file"
+
+  val actions: ActionDefinition = {
+    case "deploy" => host => List(CopyFile(host, pkg.srcDir.getPath, "/"))
   }
 }
 
@@ -75,23 +97,6 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       )
     }
     }
-  }
-}
-
-case class JettyWebappPackageType(pkg: Package) extends WebappPackageType {
-  val containerName = "jetty"
-}
-
-case class ResinWebappPackageType(pkg: Package) extends WebappPackageType {
-  val containerName = "resin"
-}
-
-
-case class FilePackageType(pkg: Package) extends PackageType {
-  val name = "file"
-
-  val actions: ActionDefinition = {
-    case "deploy" => host => List(CopyFile(host, pkg.srcDir.getPath, "/"))
   }
 }
 

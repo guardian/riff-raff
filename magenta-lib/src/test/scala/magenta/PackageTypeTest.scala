@@ -84,6 +84,25 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     ))
 
   }
+  
+  "executable web app package type" should "have a default user of jvmuser" in {
+    
+    val webappPackage = ExecutableJarWebappPackageType(
+      Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
+    )
+
+    webappPackage.user should be ("jvmuser")
+    
+  }
+
+  it should "inherit defaults from base webapp" in {
+    val webappPackage = ExecutableJarWebappPackageType(
+      Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
+    )
+
+    webappPackage.port should be ("8080")
+    webappPackage.serviceName should be ("foo")
+  }
 
   "django web app package type" should "have a deploy action" in {
     val webappDirectory = new File("/tmp/packages/webapp")

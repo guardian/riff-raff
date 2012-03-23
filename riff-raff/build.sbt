@@ -5,7 +5,7 @@ libraryDependencies ++= Seq(
   "net.liftweb" %% "lift-webkit" % liftVersion,
   "net.liftweb" %% "lift-openid" % liftVersion,
   "ch.qos.logback" % "logback-classic" % "0.9.26",
-  "org.eclipse.jetty" % "jetty-webapp" % "7.5.1.v20110908" % "container"
+  "org.mortbay.jetty" % "jetty" % "6.1.22" % "container"
 )
 
 seq(webSettings :_*)
