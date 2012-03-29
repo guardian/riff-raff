@@ -4,7 +4,6 @@ Command Line Client
 Logging - We should copy all stdout and logs into a logging facility (syslog, file?)
 IRC Connection - Executing a deploy should mention to IRC what is going on.
 Configuration - FEatures like logging, irc etc, should be configurable on the deploy host
-SSH Support - Use a local key, prompt for password, allow ssh-agent connections
 TeamCity Support - Upon deploying we should tag and pin builds in teamcity.
 
 Deployment Library
