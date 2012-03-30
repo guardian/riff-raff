@@ -8,7 +8,7 @@ import net.liftweb.json.JsonAST._
 import net.liftweb.json.Implicits._
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
-  val contentApiExample = """
+  val deployJsonExample = """
   {
     "packages":{
       "index-builder":{
@@ -48,12 +48,21 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
           "api.deploy","solr.deploy"
         ],
       }
+      "api-counter-only":{
+        "default":false,
+        "actionsPerHost":[
+          "api.deploy","solr.deploy"
+        ],
+        "actionsBeforeApp":[
+          "api.uploadArtifacts","solr.uploadArtifacts"
+        ],
+      }
     }
   }
 """
 
   "json parser" should "parse json and resolve links" in {
-    val parsed = JsonReader.parse(contentApiExample, new File("/tmp/abc"))
+    val parsed = JsonReader.parse(deployJsonExample, new File("/tmp/abc"), "CODE")
 
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
@@ -62,9 +71,15 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.packages("api") should be (Package("api", Set(App("api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
     parsed.packages("solr") should be (Package("solr", Set(App("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
 
-    val recipes = parsed.recipes
-    recipes.size should be (3)
-    recipes("all") should be (Recipe("all", Nil, List("index-build-only", "api-only")))
-  }
+    parsed.stage should be ("CODE")
 
+    val recipes = parsed.recipes
+    recipes.size should be (4)
+    recipes("all") should be (Recipe("all", Nil, Nil, List("index-build-only", "api-only")))
+
+    val apiCounterRecipe = recipes("api-counter-only")
+
+    apiCounterRecipe.actionsPerHost.length should be (2)
+    apiCounterRecipe.actionsBeforeApp.length should be (2)
+  }
 }

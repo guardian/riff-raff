@@ -17,7 +17,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     val jetty = new JettyWebappPackageType(p)
     val host = Host("host_name")
 
-    jetty.actions("deploy")(host) should be (List(
+    jetty.perHostActions("deploy")(host) should be (List(
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
@@ -52,7 +52,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     val jetty = new JettyWebappPackageType(p)
     val host = Host("host_name")
 
-    jetty.actions("deploy")(host) should be (List(
+    jetty.perHostActions("deploy")(host) should be (List(
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
@@ -71,13 +71,13 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val host = Host("host_name")
 
-    jetty.actions("deploy")(host) should (contain[Task] (
+    jetty.perHostActions("deploy")(host) should (contain[Task] (
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/")
     ) and contain[Task] (
       Restart(host as "jetty", "webapp")
     ))
 
-    jetty2.actions("deploy")(host) should (contain[Task] (
+    jetty2.perHostActions("deploy")(host) should (contain[Task] (
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/microapps/")
     ) and contain[Task] (
       Restart(host as "jetty", "microapps")
@@ -93,6 +93,15 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     webappPackage.user should be ("jvmuser")
     
+  }
+  
+  it should  "have the correct default as managed by WebSys" in {
+    val webappPackage = ExecutableJarWebappPackageType(
+      Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
+    )
+
+    //do not change this without talking to WebSys, they own the buckets.
+    webappPackage.bucket should be ("artifacts-8356e7")
   }
 
   it should "inherit defaults from base webapp" in {
@@ -116,7 +125,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     val django = new DjangoWebappPackageType(p)
     val host = Host("host_name")
 
-    django.actions("deploy")(host) should be (List(
+    django.perHostActions("deploy")(host) should be (List(
       BlockFirewall(host as "django"),
       CopyFile(host as "django", specificBuildFile.getPath, "/django-apps/"),
       ApacheGracefulStop(host as "django"),

@@ -104,7 +104,7 @@ object Main extends scala.App {
         val dir = Config.localArtifactDir getOrElse Artifact.download(Config.project, Config.build)
 
         Log.info("Loading project file...")
-        val project = JsonReader.parse(new File(dir, "deploy.json"))
+        val project = JsonReader.parse(new File(dir, "deploy.json"), Config.stage)
 
         Log.verbose("Loaded: " + project)
 

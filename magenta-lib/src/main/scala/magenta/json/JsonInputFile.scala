@@ -22,25 +22,29 @@ case class JsonPackage(
 
 
 case class JsonRecipe(
+  actionsBeforeApp: List[String] = Nil,
+  actionsPerHost: List[String] = Nil,
+  @deprecated(message = "only here for backwards compatibility - use 'actionsPerHost'", since = "1.0")
   actions: List[String] = Nil,
   depends: List[String] = Nil
-)
+) {
+}
 
 
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File): Project = parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
+  def parse(f: File, stage: String): Project = parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile, stage)
 
-  def parse(s: String, artifactSrcDir: File): Project = {
-    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
+  def parse(s: String, artifactSrcDir: File, stage: String): Project = {
+    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir, stage: String)
   }
 
-  private def parse(input: JsonInputFile, artifactSrcDir: File): Project = {
+  private def parse(input: JsonInputFile, artifactSrcDir: File, stage: String): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifactSrcDir) }
     val recipes = input.recipes map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
-    Project(packages, recipes)
+    Project(packages, recipes, stage)
   }
 
 
@@ -57,8 +61,10 @@ object JsonReader {
 
     Recipe(
       name = name,
-      actions = jsonRecipe.actions map parseAction,
-      dependsOn = jsonRecipe.depends)
+      actionsBeforeApp = jsonRecipe.actionsBeforeApp map parseAction,
+      actionsPerHost = (jsonRecipe.actionsPerHost ++ jsonRecipe.actions) map parseAction,
+      dependsOn = jsonRecipe.depends
+    )
   }
 
   private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =

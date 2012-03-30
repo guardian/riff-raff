@@ -44,11 +44,17 @@ object HostList {
  until it's resolved against a particular host.
  */
 trait Action {
-  def resolve(host: Host): List[Task]
   def apps: Set[App]
   def description: String
 }
 
+trait PerHostAction extends Action {
+  def resolve(host: Host): List[Task]
+}
+
+trait PerAppAction extends Action {
+  def resolve(project: Project): List[Task]
+}
 
 case class App(name: String)
 
@@ -56,7 +62,8 @@ case class App(name: String)
 
 case class Recipe(
   name: String,
-  actions: List[Action] = Nil,
+  actionsBeforeApp: List[Action] = Nil, //executed once per app (before the host actions are executed)
+  actionsPerHost: List[Action] = Nil,  //executed once per host in the application
   dependsOn: List[String] = Nil
 )
 
@@ -64,7 +71,8 @@ case class Recipe(
 
 case class Project(
   packages: Map[String, Package] = Map.empty,
-  recipes: Map[String, Recipe] = Map.empty
+  recipes: Map[String, Recipe] = Map.empty,
+  stage: String
 ) {
   lazy val applications = packages.values.flatMap(_.apps).toSet
 }

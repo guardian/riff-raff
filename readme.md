@@ -14,6 +14,11 @@ system on to which the deploys will happen.
 I'm a system administrator, how do I deploy something?
 ---------------------
 
+If you are executing a task that requires upload to Amazon S3 then first do...
+
+    $ export aws_access_key=[YOUR_ACCESS_KEY]
+    $ export aws_secret_access_key=[YOUR_SECRET_KEY]
+
 Magenta is responsible for locating the depoyable artifacts, calculating the
 hosts to deploy onto and executing the deployment steps.  This should make your
 job fairly easy.  Assuming that a build exists in Team City, you simply do:
@@ -102,7 +107,7 @@ be executed.
 
      "recipes": {
        "default": {
-         "actions": [
+         "actionsPerHost": [
            "demo1.deploy"
          ]
        }
@@ -146,7 +151,7 @@ You are using Scala, SBT and so on, so you can apply the following rules.
 			    },
 			    "recipes": {
 			        "default": {
-			            "actions": [
+			            "actionsPerHost": [
 			                "MY-APP.deploy"
 			            ]
 			        }

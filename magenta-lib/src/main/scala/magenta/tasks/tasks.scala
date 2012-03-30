@@ -2,9 +2,11 @@ package magenta
 package tasks
 
 import io.Source
-import java.io.{FileNotFoundException, IOException}
-import java.net.{ConnectException, URL, Socket}
-import com.decodified.scalassh.{PublicKeyLogin, SshLogin}
+import java.net.Socket
+import com.decodified.scalassh.PublicKeyLogin
+import java.io.{File, FileNotFoundException, IOException}
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.services.s3.AmazonS3Client
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -14,6 +16,26 @@ object CommandLocator {
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
+}
+
+case class S3Upload(stage: String, bucket: String, file: File) extends Task with S3 {
+
+  private val base = file.getParent + "/"
+
+  private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
+  def description = describe
+  def verbose = describe
+
+  def execute(sshCredentials: Option[PublicKeyLogin])  {
+    val client = s3client
+    val filesToCopy = resolveFiles(file)
+    filesToCopy.par foreach { f => client.putObject(bucket, toKey(f), f) }
+  }
+
+  private def toKey(file: File) = stage + "/" + file.getAbsolutePath.replace(base, "")
+
+  private def resolveFiles(file: File): Seq[File] =
+    Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
 }
 
 case class BlockFirewall(host: Host) extends RemoteShellTask {
@@ -95,4 +117,21 @@ case class ApacheGracefulStop(host: Host) extends RemoteShellTask {
 
 case class ApacheStart(host: Host) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
+}
+
+trait S3 {
+
+  //lazy val accessKey = "AKIAJUD6V6IW75LDQZZA"
+  //lazy val secretAccessKey = "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"
+
+  lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
+    sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
+  }
+  lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
+    sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
+  }
+
+  lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
+
+  def s3client = new AmazonS3Client(credentials)
 }
