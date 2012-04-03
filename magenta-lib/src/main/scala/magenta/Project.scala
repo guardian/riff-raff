@@ -59,8 +59,8 @@ case class App(name: String)
 
 case class Recipe(
   name: String,
-  actionsBeforeApp: List[Action] = Nil, //executed once per app (before the host actions are executed)
-  actionsPerHost: List[Action] = Nil,  //executed once per host in the application
+  actionsBeforeApp: Iterable[Action] = Nil, //executed once per app (before the host actions are executed)
+  actionsPerHost: Iterable[Action] = Nil,  //executed once per host in the application
   dependsOn: List[String] = Nil
 )
 
