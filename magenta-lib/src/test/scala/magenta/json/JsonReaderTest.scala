@@ -77,7 +77,38 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 
     val apiCounterRecipe = recipes("api-counter-only")
 
-    apiCounterRecipe.actionsPerHost.length should be (2)
-    apiCounterRecipe.actionsBeforeApp.length should be (2)
+    apiCounterRecipe.actionsPerHost.toSeq.length should be (2)
+    apiCounterRecipe.actionsBeforeApp.toSeq.length should be (2)
+  }
+
+  val minimalExample = """
+{
+  "packages": {
+    "dinky": { "type": "jetty-webapp" }
+  }
+}
+"""
+
+  "json parser" should "infer a single app if none specified" in {
+    val parsed = JsonReader.parse(minimalExample, new File("/tmp/abc"))
+
+    parsed.applications should be (Set(App("dinky")))
+  }
+
+  val twoPackageExample = """
+{
+  "packages": {
+    "one": { "type": "jetty-webapp" },
+    "two": { "type": "jetty-webapp" }
+  }
+}
+"""
+
+  "json parser" should "infer a default recipe that deploys all packages" in {
+    val parsed = JsonReader.parse(twoPackageExample, new File("/tmp/abc"))
+
+    val recipes = parsed.recipes
+    recipes.size should be(1)
+    recipes("default") should be (Recipe("default", actionsPerHost = parsed.packages.values.map(_.mkAction("deploy"))))
   }
 }

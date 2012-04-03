@@ -36,7 +36,7 @@ trait PackageType {
   def defaultData: Map[String, JValue] = Map.empty
 }
 
-private abstract class PackageAction(pkg: Package, actionName: String) extends Action {
+private abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
   def apps = pkg.apps
   def description = pkg.name + "." + actionName
 }
