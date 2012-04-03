@@ -4,28 +4,43 @@ import tasks.Task
 
 
 object Resolver {
-  def resolve(project: Project, recipeName: String, deployinfo: List[Host]): List[Task] = {
+
+
+  def resolve( project: Project, recipeName: String, deployinfo: List[Host], stage: Stage): List[Task] = {
     val recipe = project.recipes(recipeName)
 
-    recipe.dependsOn.flatMap { resolve(project, _, deployinfo) } ++ {
-      for {
+    val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolve(project, _, deployinfo, stage) }
+
+    val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { resolveTasks(_, stage) }
+
+    val perHostTasks = for {
         host <- deployinfo
-        action <- recipe.actions.filterNot(action => (action.apps & host.apps).isEmpty)
-        tasks <- action.resolve(host)
+        action <- recipe.actionsPerHost.filterNot(action => (action.apps & host.apps).isEmpty)
+        tasks <- resolveTasks(action, stage, Some(host))
       } yield {
         tasks
       }
+
+    dependenciesFromOtherRecipes ++ tasksToRunBeforeApp ++ perHostTasks
+  }
+  
+  private def resolveTasks(action : Action, stage: Stage,  hostOption: Option[Host] = None) = {
+    (hostOption, action) match {
+      case (Some(host), perHostAction: PerHostAction) => perHostAction.resolve(host)
+      case (None, perAppAction: PerAppAction) => perAppAction.resolve(stage)
+      case _ => sys.error("There is no sensible task for combination of %s and %s" format (hostOption, action))
     }
   }
   
   def possibleApps(project: Project, recipeName: String): String = {
     val recipe = project.recipes(recipeName)
     val appNames = for {
-      action <- recipe.actions
+      action <- recipe.actionsPerHost
       app <- action.apps
     } yield app.name
     appNames.mkString(", ")
   }
+
 
 }
 

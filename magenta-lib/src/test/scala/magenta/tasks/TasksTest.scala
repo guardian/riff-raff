@@ -6,10 +6,13 @@ import org.scalatest.FlatSpec
 import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
 import concurrent.ops._
-import java.io.OutputStreamWriter
+import org.scalatest.mock.MockitoSugar
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.services.s3.AmazonS3Client
+import java.io.{File, OutputStreamWriter}
 
 
-class TasksTest extends FlatSpec with ShouldMatchers {
+class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   "block firewall task" should "use configurable path" in {
     val host = Host("some-host") as ("some-user")
 
@@ -157,7 +160,64 @@ class TasksTest extends FlatSpec with ShouldMatchers {
     
     passed should be (true)
   }
+
+  import org.mockito.Mockito._
+
+  "S3Upload task" should "upload a single file to S3" in {
+
+    val fileToUpload = new File("/foo/bar/the-jar.jar")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
+    task.execute()
+
+    verify(task.s3client).putObject("bucket", "CODE/the-jar.jar", fileToUpload)
+    verifyNoMoreInteractions(task.s3client)
+  }
+
+  it should "upload a directory to S3" in {
+
+    val baseDir = createTempDir()
+    val baseDirName = "CODE/%s/" format baseDir.getName
+    
+    val fileOne = new File(baseDir, "one.txt")
+    fileOne.createNewFile()
+    val fileTwo = new File(baseDir, "two.txt")
+    fileTwo.createNewFile()
+    val subDir = new File(baseDir, "sub")
+    subDir.mkdir()
+    val fileThree = new File(subDir, "three.txt")
+    fileThree.createNewFile()
+    
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir) with StubS3 {
+      override val bucket = "bucket"
+    }
+    task.execute()
+
+    verify(task.s3client).putObject("bucket", baseDirName + "one.txt", fileOne)
+    verify(task.s3client).putObject("bucket", baseDirName + "two.txt", fileTwo)
+    verify(task.s3client).putObject("bucket", baseDirName + "sub/three.txt", fileThree)
+    verifyNoMoreInteractions(task.s3client)
+  }
+  
+  private def createTempDir() = {
+    val file = File.createTempFile("foo", "bar")
+    file.delete()
+    file.mkdir()
+    file.deleteOnExit()
+    file
+  }
+  
+  trait StubS3 extends S3 {
+    override lazy val accessKey = "access"
+    override lazy val secretAccessKey = "secret"
+    override lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
+
+    override val s3client = mock[AmazonS3Client]
+  }
+  
 }
+
+
 
 class TestServer(port:Int = 9997) {
   def withResponse(response: String) {
