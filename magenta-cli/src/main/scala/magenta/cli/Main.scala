@@ -122,7 +122,7 @@ object Main extends scala.App {
           sys.error("No hosts matched requested deploy host %s. Run with --verbose to a see a list of possible hosts." format Config.host.getOrElse(""))
 
         Log.info("Resolving...")
-        val tasks = Resolver.resolve(project, Config.recipe, hosts)
+        val tasks = Resolver.resolve(project, Config.recipe, hosts, Stage(Config.stage))
 
         if (tasks.isEmpty)
           sys.error("No tasks were found to execute. Ensure the app(s) '%s' are in the list supported by this stage/host:\n%s." format (Resolver.possibleApps(project, Config.recipe), hosts.supportedApps))

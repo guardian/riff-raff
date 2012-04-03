@@ -23,6 +23,7 @@ object MagentaBuild extends Build {
 
   val magentaSettings: Seq[Setting[_]] = Seq(
     scalaVersion := "2.9.1",
-    scalacOptions ++= Seq("-deprecation")
+    scalacOptions ++= Seq("-deprecation"),
+    version := "1.0"
   )
 }
