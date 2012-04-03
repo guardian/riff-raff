@@ -67,4 +67,23 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     recipes("all") should be (Recipe("all", Nil, List("index-build-only", "api-only")))
   }
 
+  val minimalExample = """
+{
+  "packages": {
+    "dinky": { "type": "jetty-webapp" }
+  },
+  "recipes": {
+    "default": {
+      "actions": [ "dinky.deploy" ]
+    }
+  }
+}
+"""
+
+  "json parser" should "infer a single app if none specified" in {
+    val parsed = JsonReader.parse(minimalExample, new File("/tmp/abc"))
+
+    parsed.applications should be (Set(App("dinky")))
+  }
+
 }

@@ -64,7 +64,10 @@ object JsonReader {
   private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =
     Package(
       name,
-      jsonPackage.apps.map(App).toSet,
+      jsonPackage.apps match {
+        case Nil => Set(App(name))
+        case x => x.map(App).toSet
+      },
       jsonPackage.safeData,
       jsonPackage.`type`,
       new File(artifactSrcDir, "/packages/%s" format(name))
