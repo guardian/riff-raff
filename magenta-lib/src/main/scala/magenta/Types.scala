@@ -4,6 +4,8 @@ import tasks._
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.Implicits._
+import java.io.File
+import scala.PartialFunction
 
 
 trait PackageType {
@@ -11,49 +13,68 @@ trait PackageType {
   def pkg: Package
 
   def mkAction(actionName: String): Action = {
-    if (actions.isDefinedAt(actionName)) {
-      new Action {
-        def resolve(host: Host) = actions(actionName)(host)
-        def apps = pkg.apps
-        def description = pkg.name + "." + actionName
-        override def toString = "action " + description
-        override def equals(other: Any) = other match {
-          case x : Action => x.description == description
-          case _ => false
-        }
+
+    if (perHostActions.isDefinedAt(actionName))
+      new PackageAction(pkg, actionName) with PerHostAction {
+        def resolve(host: Host) = perHostActions(actionName)(host)
       }
-    } else {
-      sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
-    }
+
+    else if (perAppActions.isDefinedAt(actionName))
+      new PackageAction(pkg, actionName) with PerAppAction {
+        def resolve( stage: Stage) = perAppActions(actionName)(stage)
+      }
+
+    else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
   }
 
-  type ActionDefinition = PartialFunction[String, Host => List[Task]]
-  def actions: ActionDefinition
+  type HostActionDefinition = PartialFunction[String, Host => List[Task]]
+  def perHostActions: HostActionDefinition = Map.empty
+
+  type AppActionDefinition = PartialFunction[String, Stage => List[Task]]
+  def perAppActions: AppActionDefinition = Map.empty
 
   def defaultData: Map[String, JValue] = Map.empty
+}
+
+private abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
+  def apps = pkg.apps
+  def description = pkg.name + "." + actionName
 }
 
 abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
-  override def defaultData = Map[String, JValue]("port" -> "8080", "user" -> containerName, "servicename" -> pkg.name)
+  override def defaultData = Map[String, JValue]("port" -> "8080",
+    "user" -> containerName,
+    "servicename" -> pkg.name
+  )
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
   lazy val serviceName = pkg.stringData("servicename")
+  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val bucket = pkg.stringData("bucket")
 
-  val actions: ActionDefinition = {
+  override val perHostActions: HostActionDefinition = {
     case "deploy" => {
-      host => { List(
+      host => {
+        List(
         BlockFirewall(host as user),
-        CopyFile(host as user, pkg.srcDir.getPath+"/", "/%s-apps/%s/" format (containerName, serviceName)),
+        CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
         WaitForPort(host, port, 1 minute),
         CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
         UnblockFirewall(host as user))
       }
     }
+  }
+
+  override val perAppActions: AppActionDefinition = {
+    case "uploadArtifacts" => stage =>
+      List(
+        S3Upload(stage, bucket, new File(packageArtifactDir))
+      )
   }
 }
 
@@ -74,7 +95,7 @@ case class ResinWebappPackageType(pkg: Package) extends WebappPackageType {
 case class FilePackageType(pkg: Package) extends PackageType {
   val name = "file"
 
-  val actions: ActionDefinition = {
+  override val perHostActions: HostActionDefinition = {
     case "deploy" => host => List(CopyFile(host, pkg.srcDir.getPath, "/"))
   }
 }
@@ -87,7 +108,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   lazy val port = pkg.stringData("port")
   lazy val appVersionPath = pkg.srcDir.listFiles().head
 
-  val actions: ActionDefinition = {
+  override val perHostActions: HostActionDefinition = {
     case "deploy" => { host => {
       val destDir: String = "/django-apps/"
       List(
@@ -107,7 +128,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
 case class DemoPackageType(pkg: Package) extends PackageType {
   val name = "demo"
 
-  val actions: ActionDefinition = {
+  override val perHostActions: HostActionDefinition = {
     case "hello" => host => List(
       SayHello(host)
     )

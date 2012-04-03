@@ -8,7 +8,7 @@ import net.liftweb.json.JsonAST._
 import net.liftweb.json.Implicits._
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
-  val contentApiExample = """
+  val deployJsonExample = """
   {
     "packages":{
       "index-builder":{
@@ -48,12 +48,21 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
           "api.deploy","solr.deploy"
         ],
       }
+      "api-counter-only":{
+        "default":false,
+        "actionsPerHost":[
+          "api.deploy","solr.deploy"
+        ],
+        "actionsBeforeApp":[
+          "api.uploadArtifacts","solr.uploadArtifacts"
+        ],
+      }
     }
   }
 """
 
   "json parser" should "parse json and resolve links" in {
-    val parsed = JsonReader.parse(contentApiExample, new File("/tmp/abc"))
+    val parsed = JsonReader.parse(deployJsonExample, new File("/tmp/abc"))
 
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
@@ -63,8 +72,13 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.packages("solr") should be (Package("solr", Set(App("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
 
     val recipes = parsed.recipes
-    recipes.size should be (3)
-    recipes("all") should be (Recipe("all", Nil, List("index-build-only", "api-only")))
+    recipes.size should be (4)
+    recipes("all") should be (Recipe("all", Nil, Nil, List("index-build-only", "api-only")))
+
+    val apiCounterRecipe = recipes("api-counter-only")
+
+    apiCounterRecipe.actionsPerHost.toSeq.length should be (2)
+    apiCounterRecipe.actionsBeforeApp.toSeq.length should be (2)
   }
 
   val minimalExample = """
@@ -95,6 +109,6 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 
     val recipes = parsed.recipes
     recipes.size should be(1)
-    recipes("default") should be (Recipe("default", parsed.packages.values.map(_.mkAction("deploy")), Nil))
+    recipes("default") should be (Recipe("default", actionsPerHost = parsed.packages.values.map(_.mkAction("deploy"))))
   }
 }
