@@ -10,6 +10,8 @@ import com.decodified.scalassh.PublicKeyLogin
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
 
+  val CODE = Stage("CODE")
+
   val simpleExample = """
   {
     "packages":{
@@ -28,13 +30,13 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 """
 
   "resolver" should "parse json into actions that can be executed" in {
-    val parsed = JsonReader.parse(simpleExample, new File("/tmp"), "CODE")
+    val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
     val host = Host("host1").app("apache")
     val deployinfo = host :: Nil
 
-    val tasks = Resolver.resolve(project(deployRecipe), deployRecipe.name, deployinfo)
+    val tasks = Resolver.resolve(project(deployRecipe), deployRecipe.name, deployinfo, CODE)
 
     tasks.size should be (1)
     tasks should be (List(
@@ -52,7 +54,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(p: Project) = StubTask(description + " per app task") :: Nil
+    def resolve(stage: Stage) = StubTask(description + " per app task") :: Nil
   }
 
   val app1 = App("the_role")
@@ -80,7 +82,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
 
   it should "generate the tasks from the actions supplied" in {
-    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoSingleHost) should be (List(
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoSingleHost, CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host")
     ))
@@ -88,14 +90,15 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe), baseRecipe.name,
-      Host("other_host").app("other_app") :: deployinfoSingleHost) should be (List(
+      Host("other_host").app("other_app") :: deployinfoSingleHost,
+      CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host")
     ))
   }
 
   it should "generate tasks for all hosts with app" in {
-    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoTwoHosts) should be (List(
+    Resolver.resolve(project(baseRecipe), baseRecipe.name, deployinfoTwoHosts, CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host_one"),
       StubTask("action_one per host task on host_two")
@@ -103,7 +106,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "generate tasks only for hosts with app per action" in {
-    Resolver.resolve(project(multiRoleRecipe), multiRoleRecipe.name, deployInfoMultiHost) should be (List(
+    Resolver.resolve(project(multiRoleRecipe), multiRoleRecipe.name, deployInfoMultiHost, CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host_one"),
       StubTask("action_two per host task on host_one"),
@@ -121,7 +124,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
         Nil
     )
 
-    Resolver.resolve(project(recipe), recipe.name, deployinfoTwoHosts) should be (List(
+    Resolver.resolve(project(recipe), recipe.name, deployinfoTwoHosts, CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host_one"),
       StubTask("action_two per host task on host_one"),
@@ -140,7 +143,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       actionsPerHost = StubPerHostAction("main_action", Set(app1)) :: Nil,
       dependsOn = List("prereq"))
 
-    Resolver.resolve(project(mainRecipe, prereq), mainRecipe.name, deployinfoSingleHost) should be (List(
+    Resolver.resolve(project(mainRecipe, prereq), mainRecipe.name, deployinfoSingleHost, CODE) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("prereq_action per host task on the_host"),
       StubTask("main_init_action per app task"),
@@ -156,7 +159,6 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
 
-  def project(recipes: Recipe*) =
-    Project(Map.empty, recipes.map(r => r.name -> r).toMap, "CODE")
+  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
 }

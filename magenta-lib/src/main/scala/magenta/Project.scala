@@ -38,7 +38,6 @@ object HostList {
   implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
 }
 
-
 /*
  An action represents a step within a recipe. It isn't executable
  until it's resolved against a particular host.
@@ -53,12 +52,10 @@ trait PerHostAction extends Action {
 }
 
 trait PerAppAction extends Action {
-  def resolve(project: Project): List[Task]
+  def resolve(stage: Stage): List[Task]
 }
 
 case class App(name: String)
-
-
 
 case class Recipe(
   name: String,
@@ -67,12 +64,11 @@ case class Recipe(
   dependsOn: List[String] = Nil
 )
 
-
-
 case class Project(
   packages: Map[String, Package] = Map.empty,
-  recipes: Map[String, Recipe] = Map.empty,
-  stage: String
+  recipes: Map[String, Recipe] = Map.empty
 ) {
   lazy val applications = packages.values.flatMap(_.apps).toSet
 }
+
+case class Stage(name: String)

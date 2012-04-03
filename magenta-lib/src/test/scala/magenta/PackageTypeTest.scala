@@ -95,15 +95,6 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     
   }
   
-  it should  "have the correct default as managed by WebSys" in {
-    val webappPackage = ExecutableJarWebappPackageType(
-      Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
-    )
-
-    //do not change this without talking to WebSys, they own the buckets.
-    webappPackage.bucket should be ("artifacts-8356e7")
-  }
-
   it should "inherit defaults from base webapp" in {
     val webappPackage = ExecutableJarWebappPackageType(
       Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))

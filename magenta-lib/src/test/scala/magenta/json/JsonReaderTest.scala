@@ -62,7 +62,7 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 """
 
   "json parser" should "parse json and resolve links" in {
-    val parsed = JsonReader.parse(deployJsonExample, new File("/tmp/abc"), "CODE")
+    val parsed = JsonReader.parse(deployJsonExample, new File("/tmp/abc"))
 
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
@@ -70,8 +70,6 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.packages("index-builder") should be (Package("index-builder", Set(App("index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
     parsed.packages("api") should be (Package("api", Set(App("api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
     parsed.packages("solr") should be (Package("solr", Set(App("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
-
-    parsed.stage should be ("CODE")
 
     val recipes = parsed.recipes
     recipes.size should be (4)

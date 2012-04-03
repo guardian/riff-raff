@@ -167,7 +167,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val fileToUpload = new File("/foo/bar/the-jar.jar")
 
-    val task = new S3Upload("CODE", "bucket", fileToUpload) with StubS3
+    val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
     task.execute()
 
     verify(task.s3client).putObject("bucket", "CODE/the-jar.jar", fileToUpload)
@@ -188,7 +188,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
     
-    val task = new S3Upload("CODE", "bucket", baseDir) with StubS3 {
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir) with StubS3 {
       override val bucket = "bucket"
     }
     task.execute()

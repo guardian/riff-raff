@@ -18,7 +18,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 }
 
-case class S3Upload(stage: String, bucket: String, file: File) extends Task with S3 {
+case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with S3 {
 
   private val base = file.getParent + "/"
 
@@ -32,7 +32,7 @@ case class S3Upload(stage: String, bucket: String, file: File) extends Task with
     filesToCopy.par foreach { f => client.putObject(bucket, toKey(f), f) }
   }
 
-  private def toKey(file: File) = stage + "/" + file.getAbsolutePath.replace(base, "")
+  private def toKey(file: File) = stage.name + "/" + file.getAbsolutePath.replace(base, "")
 
   private def resolveFiles(file: File): Seq[File] =
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct

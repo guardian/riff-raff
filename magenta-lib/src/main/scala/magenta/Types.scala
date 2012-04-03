@@ -21,7 +21,7 @@ trait PackageType {
 
     else if (perAppActions.isDefinedAt(actionName))
       new PackageAction(pkg, actionName) with PerAppAction {
-        def resolve(project: Project) = perAppActions(actionName)(project)
+        def resolve( stage: Stage) = perAppActions(actionName)(stage)
       }
 
     else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
@@ -30,7 +30,7 @@ trait PackageType {
   type HostActionDefinition = PartialFunction[String, Host => List[Task]]
   def perHostActions: HostActionDefinition = Map.empty
 
-  type AppActionDefinition = PartialFunction[String, Project => List[Task]]
+  type AppActionDefinition = PartialFunction[String, Stage => List[Task]]
   def perAppActions: AppActionDefinition = Map.empty
 
   def defaultData: Map[String, JValue] = Map.empty
@@ -47,8 +47,7 @@ abstract class WebappPackageType extends PackageType {
   lazy val name = containerName + "-webapp"
   override def defaultData = Map[String, JValue]("port" -> "8080",
     "user" -> containerName,
-    "servicename" -> pkg.name,
-    "bucket" -> "artifacts-8356e7"
+    "servicename" -> pkg.name
   )
 
   lazy val user: String = pkg.stringData("user")
@@ -72,9 +71,9 @@ abstract class WebappPackageType extends PackageType {
   }
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadArtifacts" => project =>
+    case "uploadArtifacts" => stage =>
       List(
-        S3Upload(project.stage, bucket, new File(packageArtifactDir))
+        S3Upload(stage, bucket, new File(packageArtifactDir))
       )
   }
 }
