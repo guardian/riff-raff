@@ -6,7 +6,7 @@ Magenta
 About
 -----
 
-The guardians new scala based deployment library is designed to help automate
+The Guardian's scala-based deployment library is designed to help automate
 deploys by localising knowledge about how to orchestrate deploys within a
 single system, but having defined interfaces with the applications and the
 system on to which the deploys will happen.
@@ -48,14 +48,12 @@ laid out as follows:
     /packages
     /packages/<package_name>/*
 
-Inside the deploy.json you specify what packages make up your application and
-what types of machines they should be deployed to.  This is defined in the
-packages dictionary:
+Inside the deploy.json you specify what packages make up your application.  This
+is defined in the packages dictionary:
 
     "packages": {
       "demo1": {
-        "type": "demo",
-        "apps": [ "demo-servers" ],
+        "type": "jetty-webapp",
         "data": {
           "port": "8700"
         }
@@ -73,15 +71,9 @@ type.
 * Type:
 
   The type of package.  The various package types define what the deployable
-  actions are for this package.  For example the resin-webapp type, we block
-  the container, copy the files, restart the containear, test the ports, test a
+  actions are for this package.  For example the jetty-webapp type, we block
+  the container, copy the files, restart the container, test the ports, test a
   set of urls and unblock.
-
-* Apps:
-
-  The sort of machine to deploy to.  The systems machine interface will return
-  a list of hosts with compatible apps, so this must match the responses from
-  your operations teams deployment info scripts.
 
 * Data:
 
@@ -90,12 +82,19 @@ type.
   instances on the same server, and so the packages can override the port that
   it expects the server to be listening on when it has finished restarting.
 
+* Apps:
+
+  The sort of machine to deploy to. The systems machine interface will return
+  a list of hosts with compatible apps, so this must match the responses from
+  your operations teams deployment info scripts. Defaults to a single app with
+  the same name as your package.
+
 Each package should come with supporting files in the
 `/packages/<package_name>` directory.  For jetty-webapps we simply copy the
 entire directory into `/jetty-apps/<package_name>/` meaning that your war
 should be in `/packages/<package_name>/webapps/<package_name>.war`
 
-After the package definition, you need to define some deployment recipes.
+After the package definition, you may define some deployment recipes.
 These are essentially types of deployment that you might need to do.  If the
 deployer does not specify a recipe to execute, the recipe called `default` will
 be executed.
@@ -109,7 +108,9 @@ be executed.
      }
 
 Each recipe contains a list of actions that will be executed in order.  The
-actions are defined by the type that the package uses.
+actions are defined by the type that the package uses.  If no recipes are specified
+the default recipe will be assumed to be to execute the deploy action for all
+packages.
 
 
 I'm a developer at the guardian, how do I make my scala project deployable
@@ -140,15 +141,7 @@ You are using Scala, SBT and so on, so you can apply the following rules.
 			{
 			    "packages":{
 			        "MY-APP":{
-			            "type":"resin-webapp",
-			            "apps":[ "APP-ROLE" ]
-			        }
-			    },
-			    "recipes": {
-			        "default": {
-			            "actions": [
-			                "MY-APP.deploy"
-			            ]
+			            "type":"jetty-webapp",
 			        }
 			    }
 			}
