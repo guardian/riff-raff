@@ -17,6 +17,10 @@ trait PackageType {
         def apps = pkg.apps
         def description = pkg.name + "." + actionName
         override def toString = "action " + description
+        override def equals(other: Any) = other match {
+          case x : Action => x.description == description
+          case _ => false
+        }
       }
     } else {
       sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))

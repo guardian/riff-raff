@@ -8,7 +8,7 @@ import java.io.File
 
 case class JsonInputFile(
   packages: Map[String, JsonPackage],
-  recipes: Map[String, JsonRecipe]
+  recipes: Option[Map[String, JsonRecipe]]
 )
 
 
@@ -35,10 +35,13 @@ object JsonReader {
   def parse(s: String, artifactSrcDir: File): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
   }
+  
+  def defaultRecipes(packages: Map[String, Package]) =
+    Map("default" -> JsonRecipe(actions = packages.values.map(_.name + ".deploy").toList))
 
   private def parse(input: JsonInputFile, artifactSrcDir: File): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifactSrcDir) }
-    val recipes = input.recipes map { case (name, r) => name -> parseRecipe(name, r, packages) }
+    val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
     Project(packages, recipes)
   }

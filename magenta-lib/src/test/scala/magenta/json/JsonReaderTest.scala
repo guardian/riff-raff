@@ -71,11 +71,6 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
 {
   "packages": {
     "dinky": { "type": "jetty-webapp" }
-  },
-  "recipes": {
-    "default": {
-      "actions": [ "dinky.deploy" ]
-    }
   }
 }
 """
@@ -86,4 +81,20 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.applications should be (Set(App("dinky")))
   }
 
+  val twoPackageExample = """
+{
+  "packages": {
+    "one": { "type": "jetty-webapp" },
+    "two": { "type": "jetty-webapp" }
+  }
+}
+"""
+
+  "json parser" should "infer a default recipe that deploys all packages" in {
+    val parsed = JsonReader.parse(twoPackageExample, new File("/tmp/abc"))
+
+    val recipes = parsed.recipes
+    recipes.size should be(1)
+    recipes("default") should be (Recipe("default", parsed.packages.values.map(_.mkAction("deploy")), Nil))
+  }
 }

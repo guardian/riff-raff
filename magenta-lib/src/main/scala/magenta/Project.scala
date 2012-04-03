@@ -56,7 +56,7 @@ case class App(name: String)
 
 case class Recipe(
   name: String,
-  actions: List[Action] = Nil,
+  actions: Iterable[Action] = Nil,
   dependsOn: List[String] = Nil
 )
 
