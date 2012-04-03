@@ -120,10 +120,6 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
 }
 
 trait S3 {
-
-  //lazy val accessKey = "AKIAJUD6V6IW75LDQZZA"
-  //lazy val secretAccessKey = "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"
-
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
