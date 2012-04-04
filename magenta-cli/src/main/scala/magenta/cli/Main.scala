@@ -91,8 +91,8 @@ object Main extends scala.App {
   }
 
   lazy val sshCredentials: Option[PublicKeyLogin] = if (Config.jvmSsh) {
-    val passphrase = readLine("Please enter your passphrase:")
-    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase), DefaultKeyLocations))
+    val passphrase = System.console.readPassword("Please enter your passphrase:")
+    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase.toString), DefaultKeyLocations))
   } else None
 
   Log.current.withValue(CommandLineOutput) {
