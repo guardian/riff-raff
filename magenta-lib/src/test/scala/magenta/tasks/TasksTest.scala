@@ -5,11 +5,16 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
-import concurrent.ops._
+import scala.concurrent.ops._
 import org.scalatest.mock.MockitoSugar
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import java.io.{File, OutputStreamWriter}
+import com.amazonaws.services.s3.model.{CannedAccessControlList, PutObjectRequest}
+import scala._
+import scala.Predef._
+import org.mockito.Matchers.any
+import magenta.Host
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -167,18 +172,48 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val fileToUpload = new File("/foo/bar/the-jar.jar")
 
+
     val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
+
     task.execute()
 
-    verify(task.s3client).putObject("bucket", "CODE/the-jar.jar", fileToUpload)
+    verify(task.s3client).putObject(any(classOf[PutObjectRequest]))
     verifyNoMoreInteractions(task.s3client)
+  }
+
+  it should "create an upload request with correct permissions" in {
+
+    val baseDir = createTempDir()
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+
+    val file = new File("/file/path")
+
+    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file)
+
+    request.getBucketName should be ("bucket")
+
+    request.getCannedAcl should be (CannedAccessControlList.PublicRead)
+
+    request.getFile should be (file)
+
+    request.getKey should be ("foo/bar")
+  }
+
+  it should "correctly convert a file to a key" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+
+    task.toKey(child) should be ("CODE/bar/the/file/name.txt")
   }
 
   it should "upload a directory to S3" in {
 
     val baseDir = createTempDir()
     val baseDirName = "CODE/%s/" format baseDir.getName
-    
+
     val fileOne = new File(baseDir, "one.txt")
     fileOne.createNewFile()
     val fileTwo = new File(baseDir, "two.txt")
@@ -187,15 +222,15 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     subDir.mkdir()
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
-    
+
     val task = new S3Upload(Stage("CODE"), "bucket", baseDir) with StubS3 {
       override val bucket = "bucket"
     }
+
     task.execute()
 
-    verify(task.s3client).putObject("bucket", baseDirName + "one.txt", fileOne)
-    verify(task.s3client).putObject("bucket", baseDirName + "two.txt", fileTwo)
-    verify(task.s3client).putObject("bucket", baseDirName + "sub/three.txt", fileThree)
+    verify(task.s3client, times(3)).putObject(any(classOf[PutObjectRequest]))
+
     verifyNoMoreInteractions(task.s3client)
   }
   
