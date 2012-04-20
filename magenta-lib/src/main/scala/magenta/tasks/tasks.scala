@@ -1,12 +1,15 @@
 package magenta
 package tasks
 
-import io.Source
+import scala.io.Source
 import java.net.Socket
 import com.decodified.scalassh.PublicKeyLogin
-import java.io.{File, FileNotFoundException, IOException}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.model.PutObjectRequest
+import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
+import scala._
+import java.io.{IOException, FileNotFoundException, File}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -29,10 +32,11 @@ case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with 
   def execute(sshCredentials: Option[PublicKeyLogin])  {
     val client = s3client
     val filesToCopy = resolveFiles(file)
-    filesToCopy.par foreach { f => client.putObject(bucket, toKey(f), f) }
+    val requests = filesToCopy map { file => putObjectRequestWithPublicRead(bucket, toKey(file), file) }
+    requests.par foreach { client.putObject }
   }
 
-  private def toKey(file: File) = stage.name + "/" + file.getAbsolutePath.replace(base, "")
+  def toKey(file: File) = stage.name + "/" + file.getAbsolutePath.replace(base, "")
 
   private def resolveFiles(file: File): Seq[File] =
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
@@ -130,4 +134,6 @@ trait S3 {
   lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
   def s3client = new AmazonS3Client(credentials)
+  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File) =
+    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead)
 }
