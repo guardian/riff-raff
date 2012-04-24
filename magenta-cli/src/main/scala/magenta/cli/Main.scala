@@ -2,7 +2,7 @@ package magenta
 package cli
 
 import java.io.File
-import json.{DeployInfoJsonReader, JsonReader}
+import json.{DeployInfoJsonHostProvider, JsonReader}
 import scopt.OptionParser
 import tasks.CommandLocator
 import HostList._
@@ -33,7 +33,7 @@ object Main extends scala.App {
 
    lazy val parsedDeployInfo = {
       import sys.process._
-      DeployInfoJsonReader.parse(_di.!!)
+      new DeployInfoJsonHostProvider(_di.!!).hosts
     }
 
     private var _localArtifactDir: Option[File] = None

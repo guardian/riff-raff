@@ -9,8 +9,8 @@ object Config {
 
   // TODO: this needs to be re-read on a schedule
   lazy val parsedDeployInfo = {
-     import sys.process._
-     DeployInfoJsonReader.parse("contrib/deployinfo.json".!!)
+    import sys.process._
+    new DeployInfoJsonHostProvider("contrib/deployinfo.json".!!).hosts
    }
 
 }

@@ -123,16 +123,17 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
 }
 
-trait S3 {
+trait AWS {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
   lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
     sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
   }
-
   lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
+}
 
+trait S3 extends AWS {
   def s3client = new AmazonS3Client(credentials)
   def putObjectRequestWithPublicRead(bucket: String, key: String, file: File) =
     new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead)
