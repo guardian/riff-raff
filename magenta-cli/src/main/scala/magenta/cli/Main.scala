@@ -14,7 +14,9 @@ object Main extends scala.App {
 
   object Config {
     var project: Option[String] = None
+
     var build: Option[String] = None
+
     var host: Option[String] = None
     var stage = ""
     var recipe = "default"
@@ -23,6 +25,8 @@ object Main extends scala.App {
     var ec2Hosts = false
 
     var jvmSsh = false
+    var keyLocation: Option[String] = None
+    var noPassphrase = false
 
     private var _di = "/opt/bin/deployinfo.json"
 
@@ -86,8 +90,15 @@ object Main extends scala.App {
       { dir => Config.localArtifactDir = Some(new File(dir)) })
     opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
     opt("ec2-hosts", "Retrieve host list from EC2", { Config.ec2Hosts = true})
-    opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
-    opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
+    opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')",
+      { path => CommandLocator.rootPath = path })
+
+    opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so",
+      { Config.jvmSsh = true })
+    opt("k", "key-location", "location of SSH key used for authentication. Only works with JVM based SSH",
+      { location => Config.keyLocation = Some(location)})
+    opt("no-passphrase", "use a passphrase-less SSH key. Only works with JVM based SSH",
+      {Config.noPassphrase = true})
 
     separator("\n")
 
@@ -98,8 +109,10 @@ object Main extends scala.App {
   }
 
   lazy val sshCredentials: Option[PublicKeyLogin] = if (Config.jvmSsh) {
-    val passphrase = System.console.readPassword("Please enter your passphrase:")
-    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase.toString), DefaultKeyLocations))
+    val passphrase = if (Config.noPassphrase) None else Some(System.console.readPassword("Please enter your passphrase:"))
+    Some(PublicKeyLogin(System.getenv("USER"),
+      passphrase map { phrase => SimplePasswordProducer(phrase.toString) },
+      Config.keyLocation.map(List(_)).getOrElse(DefaultKeyLocations)))
   } else None
 
   Log.current.withValue(CommandLineOutput) {
