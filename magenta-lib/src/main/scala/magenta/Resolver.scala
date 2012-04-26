@@ -6,7 +6,7 @@ import tasks.Task
 object Resolver {
 
 
-  def resolve( project: Project, recipeName: String, deployinfo: List[Host], stage: Stage): List[Task] = {
+  def resolve( project: Project, recipeName: String, deployinfo: Seq[Host], stage: Stage): List[Task] = {
     val recipe = project.recipes(recipeName)
 
     val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolve(project, _, deployinfo, stage) }

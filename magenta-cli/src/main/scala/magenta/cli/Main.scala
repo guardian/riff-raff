@@ -8,6 +8,7 @@ import tasks.CommandLocator
 import HostList._
 import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
 import com.decodified.scalassh.{SshLogin, SimplePasswordProducer, PublicKeyLogin}
+import host.EC2HostProvider
 
 object Main extends scala.App {
 
@@ -19,6 +20,7 @@ object Main extends scala.App {
     var recipe = "default"
     var verbose = false
     var dryRun = false
+    var ec2Hosts = false
 
     var jvmSsh = false
 
@@ -31,9 +33,13 @@ object Main extends scala.App {
     }
     def deployInfo = _di
 
-   lazy val parsedDeployInfo = {
-      import sys.process._
-      new DeployInfoJsonHostProvider(_di.!!).hosts
+    lazy val hostList = {
+      if (ec2Hosts) {
+        new EC2HostProvider().hosts
+      } else {
+        import sys.process._
+        new DeployInfoJsonHostProvider(_di.!!).hosts
+      }
     }
 
     private var _localArtifactDir: Option[File] = None
@@ -79,6 +85,7 @@ object Main extends scala.App {
     opt("local-artifact", "Path to local artifact directory (overrides <project> and <build>)",
       { dir => Config.localArtifactDir = Some(new File(dir)) })
     opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
+    opt("ec2-hosts", "Retrieve host list from EC2", { Config.ec2Hosts = true})
     opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
     opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
 
@@ -108,8 +115,8 @@ object Main extends scala.App {
 
         Log.verbose("Loaded: " + project)
 
-        Log.info("Loading deployinfo...")
-        val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
+        Log.info("Loading host list...")
+        val hostsInStage = Config.hostList.filter(_.stage == Config.stage)
 
         Log.verbose("All possible hosts in stage:\n" + hostsInStage.dump)
 

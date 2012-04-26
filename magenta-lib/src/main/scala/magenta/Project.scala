@@ -20,7 +20,7 @@ case class Host(
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 }
 
-class HostList(hosts: List[Host]) {
+class HostList(hosts: Seq[Host]) {
   def supportedApps = {
     val apps = for {
       host <- hosts
@@ -35,7 +35,7 @@ class HostList(hosts: List[Host]) {
     .mkString("\n")
 }
 object HostList {
-  implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
+  implicit def listOfHostsAsHostList(hosts: Seq[Host]) = new HostList(hosts)
 }
 
 /*

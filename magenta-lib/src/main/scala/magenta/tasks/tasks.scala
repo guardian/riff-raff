@@ -125,10 +125,10 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
 
 trait AWS {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
-    sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
+    sys.error("Cannot authenticate, 'aws_access_key' must be set as an environment variable")
   }
   lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
-    sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
+    sys.error("Cannot authenticate, aws_secret_access_key' must be set as an environment variable")
   }
   lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 }
