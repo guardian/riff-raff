@@ -2,8 +2,7 @@ package magenta
 package json
 
 import net.liftweb.json._
-import io.Source
-import java.io.File
+import host.HostProvider
 
 case class DeployInfoJsonInputFile(
   hosts: List[DeployInfoHost]
@@ -18,12 +17,10 @@ case class DeployInfoHost(
 )
 
 
-object DeployInfoJsonReader {
+class DeployInfoJsonHostProvider(jsonString: String) extends HostProvider {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File):  List[Host] = parse(Source.fromFile(f).mkString)
-
-  def parse(inputFile: DeployInfoJsonInputFile): List[Host] = {
+  private def parse(inputFile: DeployInfoJsonInputFile): List[Host] = {
     inputFile.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
   }
 
@@ -31,6 +28,7 @@ object DeployInfoJsonReader {
     parse(Extraction.extract[DeployInfoJsonInputFile](JsonParser.parse(s)))
   }
 
+  def hosts = parse(jsonString)
 }
 
 

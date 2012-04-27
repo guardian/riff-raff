@@ -14,16 +14,13 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   
   ]}"""
   "json parser" should "parse deployinfo json" in {
-    val parsed = DeployInfoJsonReader.parse(deployInfoSample)
+    val hostProvider = new DeployInfoJsonHostProvider(deployInfoSample)
+    
+    val parsed = hostProvider.hosts
     parsed.size should be (3)
 
     val host = parsed(0)
     host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), "CODE"))
-//
-//     host.group should be ("a")
-//     host.hostname should be ("machost01.dc-code.gnl")
-//     host.app should be ("microapp-cache")
-//     host.stage should be ("CODE")
    }
 
 }
