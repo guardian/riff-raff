@@ -1,0 +1,3 @@
+@(request: AuthenticatedRequest[AnyContent], item: MenuItem)
+
+<li@if(item.isActive(request)){ class="active"}><a href="@item.target">@item.title</a></li>

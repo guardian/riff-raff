@@ -1,0 +1,14 @@
+@(request: controllers.AuthenticatedRequest[AnyContent])
+
+@main("Profile", request) {
+
+<h2>Profile for @request.identity.get.fullName</h2>
+<ul>
+    <li>E-mail: @request.identity.get.email</li>
+    <li>OpenID: @request.identity.get.openid</li>
+</ul>
+
+<h3>This is a list of deploys that you have recently done</h3>
+<p>No recent deploys</p>
+
+}
