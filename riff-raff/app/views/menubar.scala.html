@@ -1,0 +1,38 @@
+@(request: AuthenticatedRequest[AnyContent])
+
+<div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container-fluid">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <a class="brand" href="#">Riff Raff</a>
+            @if(request.identity.isDefined) {
+            <div class="btn-group pull-right">
+                <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+                    <i class="icon-user"></i> @request.identity.get.fullName
+                    <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="@routes.Application.profile()">Profile</a></li>
+                    <li class="divider"></li>
+                    <li><a href="@routes.Login.logout()">Sign Out</a></li>
+                </ul>
+            </div>
+            } else {
+            <ul class="nav pull-right">
+                @menubaritem(request,Menu.loginMenuItem)
+            </ul>
+            }
+            <div class="nav-collapse">
+                <ul class="nav">
+                    @for(item <- Menu.items(request)) {
+                      @menubaritem(request,item)
+                    }
+                </ul>
+            </div><!--/.nav-collapse -->
+        </div>
+    </div>
+</div>

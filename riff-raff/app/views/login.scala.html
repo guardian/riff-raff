@@ -1,0 +1,32 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], error: Option[String] = None)
+
+@main("Login", request) {
+<div class="row-fluid">
+    <div class="span3 offset3">
+        <h1>Login</h1>
+
+        <p>Please click the button to login with your google account.</p>
+    </div>
+    <div class="span7">
+        @if(error.isDefined) {
+        <div class="alert alert-error">
+            <p>@error.get</p>
+        </div>
+        }
+
+        <form action="/login" method="post">
+            <input value="Log In" class="btn btn-primary" type="submit">
+        </form>
+
+        <form action="/login" method="post"><div class="alert alert-block">
+            <p>Since you're accessing this from localhost, I guess you're a nice
+                friendly developer. You can sod that OpenID crap if you like.</p>
+            <div class="alert-actions">
+                <button class="btn small" id="jump-the-shark" value="_" type="submit" name="F8353145062901KZS0V">Yeah, go on then</button>
+            </div>
+        </div>
+        </form>
+    </div>
+
+</div>
+}
