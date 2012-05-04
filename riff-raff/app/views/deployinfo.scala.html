@@ -1,0 +1,16 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], deployinfo: List[magenta.Host])
+
+
+@main("Deployment Information", request) {
+
+<h2>Deployment Information</h2>
+
+<p>This is a list of nodes that we know about:</p>
+<ul>
+@for(host <- deployinfo) {
+     <li>@host.name, @host.stage</li>
+}
+</ul>
+
+
+}
