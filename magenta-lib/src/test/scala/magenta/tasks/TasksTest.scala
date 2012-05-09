@@ -166,6 +166,17 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     passed should be (true)
   }
 
+  it should "use a specific public key if specified" in {
+    val remoteTask = new RemoteShellTask {
+      def host = Host("some-host")
+
+      def commandLine = CommandLine(List("ls", "-l"))
+    }
+
+    remoteTask.remoteCommandLine(Credentials(keyFileLocation = Some(new File("foo")))) should
+      be (CommandLine(List("ssh", "-qtt", "-i", "foo", "some-host", "ls -l")))
+  }
+
   import org.mockito.Mockito._
 
   "S3Upload task" should "upload a single file to S3" in {
@@ -232,6 +243,22 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     verify(task.s3client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
     verifyNoMoreInteractions(task.s3client)
+  }
+
+  it should "specify custom remote shell for rsync if key-file specified" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+
+    val command = task.commandLine(Credentials(keyFileLocation = Some(new File("key"))))
+
+    command.quoted should be ("""rsync -e "ssh -i key" -rv /source foo.com:/dest""")
+  }
+
+  it should "not specify custom remote shell for rsync if no key-file specified" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+
+    val command = task.commandLine(Credentials())
+
+    command.quoted should be ("""rsync -rv /source foo.com:/dest""")
   }
   
   private def createTempDir() = {

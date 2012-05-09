@@ -3,7 +3,6 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import com.decodified.scalassh.PublicKeyLogin
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.PutObjectRequest
@@ -18,7 +17,16 @@ object CommandLocator {
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFileLocation map { location =>
+    val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
+    CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
+  } getOrElse (commandLine)
+
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
+
+  override def execute(sshCredentials: Credentials) {
+    commandLine(sshCredentials).run()
+  }
 }
 
 case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with S3 {

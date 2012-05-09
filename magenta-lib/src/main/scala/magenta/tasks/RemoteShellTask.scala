@@ -4,12 +4,17 @@ package tasks
 import java.io.File
 import com.decodified.scalassh.{SimplePasswordProducer, PublicKeyLogin, SSH}
 import com.decodified.scalassh.PublicKeyLogin._
-import scala.Some
 
 
 trait RemoteShellTask extends ShellTask {
   def host: Host
   lazy val remoteCommandLine = CommandLine("ssh" :: "-qtt" :: host.connectStr :: commandLine.quoted :: Nil)
+  def remoteCommandLine(credentials: Credentials): CommandLine = {
+    credentials.keyFileLocation map { location =>
+      CommandLine("ssh" :: "-qtt" :: "-i":: location.getPath :: host.connectStr :: commandLine.quoted :: Nil)
+    } getOrElse
+      remoteCommandLine
+  }
 
   override def execute(credentials: Credentials) { credentials.forScalaSsh match {
     case Some(credentials) => {
@@ -21,7 +26,7 @@ trait RemoteShellTask extends ShellTask {
         client.exec(commandLine.quoted)
       }
     }
-    case None => remoteCommandLine.run()
+    case None => remoteCommandLine(credentials).run()
   }}
 
   lazy val description = "on " + host.name
