@@ -4,10 +4,10 @@ package cli
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
-import tasks.CommandLocator
 import HostList._
 import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
 import com.decodified.scalassh.{SshLogin, SimplePasswordProducer, PublicKeyLogin}
+import tasks.{Credentials, CommandLocator}
 
 object Main extends scala.App {
 
@@ -90,11 +90,6 @@ object Main extends scala.App {
 
   }
 
-  lazy val sshCredentials: Option[PublicKeyLogin] = if (Config.jvmSsh) {
-    val passphrase = System.console.readPassword("Please enter your passphrase:")
-    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase.toString), DefaultKeyLocations))
-  } else None
-
   Log.current.withValue(CommandLineOutput) {
     if (parser.parse(args)) {
       try {
@@ -139,9 +134,13 @@ object Main extends scala.App {
           Log.info("Dry run requested. Not executing.")
         } else {
           Log.info("Executing...")
+          val credentials = if (Config.jvmSsh) {
+            val passphrase = System.console.readPassword("Please enter your passphrase:")
+            Credentials(System.getenv("USER"), passphrase.toString)
+          } else Credentials()
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
-              task.execute(sshCredentials)
+              task.execute(credentials)
             }
           }
           Log.info("Done")
