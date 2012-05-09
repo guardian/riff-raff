@@ -4,6 +4,7 @@ package tasks
 import java.io.File
 import com.decodified.scalassh.{SimplePasswordProducer, PublicKeyLogin, SSH}
 import com.decodified.scalassh.PublicKeyLogin._
+import scala.Some
 
 
 trait RemoteShellTask extends ShellTask {
@@ -40,5 +41,6 @@ case class Credentials(
 }
 
 object Credentials {
-  def apply(user: String, passphrase: String): Credentials = Credentials(Some(user), Some(passphrase))
+  def apply(user: String, passphrase: String, keyFileLocation: Option[File]): Credentials =
+    Credentials(Some(user), Some(passphrase), keyFileLocation)
 }
