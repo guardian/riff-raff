@@ -38,7 +38,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val task = Restart(host, "app")
 
-    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "sudo /sbin/service app restart")))
+    task.remoteCommandLine() should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "sudo /sbin/service app restart")))
   }
 
   it should "call block script on path" in {
@@ -137,7 +137,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTask.remoteCommandLine should be (CommandLine(List("ssh", "-qtt","some-host", "ls -l")))
+    remoteTask.remoteCommandLine() should be (CommandLine(List("ssh", "-qtt","some-host", "ls -l")))
 
     val remoteTaskWithUser = new RemoteShellTask {
       def host = Host("some-host") as "resin"
@@ -145,7 +145,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
+    remoteTaskWithUser.remoteCommandLine() should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
   }
   
   it should "execute the command line" in {
@@ -154,7 +154,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
       def host = Host("some-host")
 
-      override lazy val remoteCommandLine = new CommandLine(""::Nil) {
+      override def remoteCommandLine(credentials: Option[Credentials]) = new CommandLine(""::Nil) {
         override def run() { passed = true }
       }
 
@@ -173,7 +173,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTask.remoteCommandLine(Credentials(keyFileLocation = Some(new File("foo")))) should
+    remoteTask.remoteCommandLine(Some(Credentials(keyFileLocation = Some(new File("foo"))))) should
       be (CommandLine(List("ssh", "-qtt", "-i", "foo", "some-host", "ls -l")))
   }
 

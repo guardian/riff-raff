@@ -8,29 +8,29 @@ import com.decodified.scalassh.PublicKeyLogin._
 
 trait RemoteShellTask extends ShellTask {
   def host: Host
-  lazy val remoteCommandLine = CommandLine("ssh" :: "-qtt" :: host.connectStr :: commandLine.quoted :: Nil)
-  def remoteCommandLine(credentials: Credentials): CommandLine = {
-    credentials.keyFileLocation map { location =>
-      CommandLine("ssh" :: "-qtt" :: "-i":: location.getPath :: host.connectStr :: commandLine.quoted :: Nil)
-    } getOrElse
-      remoteCommandLine
+  def remoteCommandLine(credentials: Option[Credentials] = None): CommandLine = {
+    (for {
+      c <- credentials
+      location <- c.keyFileLocation
+    } yield CommandLine("ssh" :: "-qtt" :: "-i":: location.getPath :: host.connectStr :: commandLine.quoted :: Nil)
+    ) getOrElse CommandLine("ssh" :: "-qtt" :: host.connectStr :: commandLine.quoted :: Nil)
   }
 
   override def execute(credentials: Credentials) { credentials.forScalaSsh match {
-    case Some(credentials) => {
+    case Some(publicKeyLogin) => {
       val credentialsForHost = host.connectAs match {
-        case Some(username) => credentials.copy(user = username)
-        case None => credentials
+        case Some(username) => publicKeyLogin.copy(user = username)
+        case None => publicKeyLogin
       }
       SSH(host.name, credentialsForHost) { client =>
         client.exec(commandLine.quoted)
       }
     }
-    case None => remoteCommandLine(credentials).run()
+    case None => remoteCommandLine(Some(credentials)).run()
   }}
 
   lazy val description = "on " + host.name
-  override lazy val verbose = "$ " + remoteCommandLine.quoted
+  override lazy val verbose = "$ " + remoteCommandLine().quoted
 }
 
 case class Credentials(
