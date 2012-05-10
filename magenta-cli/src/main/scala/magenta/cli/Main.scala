@@ -4,14 +4,13 @@ package cli
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
-import tasks.CommandLocator
 import HostList._
-import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
-import com.decodified.scalassh.{SshLogin, SimplePasswordProducer, PublicKeyLogin}
+import tasks.{Credentials, CommandLocator}
 
 object Main extends scala.App {
 
   object Config {
+
     var project: Option[String] = None
     var build: Option[String] = None
     var host: Option[String] = None
@@ -20,14 +19,13 @@ object Main extends scala.App {
     var verbose = false
     var dryRun = false
 
+    var keyLocation: Option[File] = None
     var jvmSsh = false
 
     private var _di = "/opt/bin/deployinfo.json"
 
     def deployInfo_=(s: String) {
-      val f = new File(s)
-      if (!f.exists() || !f.isFile) sys.error("File not found.")
-      _di = s
+      _di = validFile(s).getPath
     }
     def deployInfo = _di
 
@@ -80,6 +78,7 @@ object Main extends scala.App {
       { dir => Config.localArtifactDir = Some(new File(dir)) })
     opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
     opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
+    opt("i", "keyLocation", "specify location of SSH key file", {keyLocation => Config.keyLocation = Some(validFile(keyLocation))})
     opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
 
     separator("\n")
@@ -90,10 +89,10 @@ object Main extends scala.App {
 
   }
 
-  lazy val sshCredentials: Option[PublicKeyLogin] = if (Config.jvmSsh) {
-    val passphrase = System.console.readPassword("Please enter your passphrase:")
-    Some(PublicKeyLogin(System.getenv("USER"), SimplePasswordProducer(passphrase.toString), DefaultKeyLocations))
-  } else None
+  def validFile(s: String) = {
+    val file = new File(s)
+    if (file.exists() && file.isFile) file else sys.error("File not found: %s" format (s))
+  }
 
   Log.current.withValue(CommandLineOutput) {
     if (parser.parse(args)) {
@@ -139,9 +138,13 @@ object Main extends scala.App {
           Log.info("Dry run requested. Not executing.")
         } else {
           Log.info("Executing...")
+          val credentials = if (Config.jvmSsh) {
+            val passphrase = System.console.readPassword("Please enter your passphrase:")
+            Credentials(System.getenv("USER"), passphrase.toString, Config.keyLocation)
+          } else Credentials(keyFileLocation = Config.keyLocation)
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
-              task.execute(sshCredentials)
+              task.execute(credentials)
             }
           }
           Log.info("Done")

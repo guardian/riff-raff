@@ -3,7 +3,6 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import com.decodified.scalassh.PublicKeyLogin
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.PutObjectRequest
@@ -18,7 +17,16 @@ object CommandLocator {
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFileLocation map { location =>
+    val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
+    CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
+  } getOrElse (commandLine)
+
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
+
+  override def execute(sshCredentials: Credentials) {
+    commandLine(sshCredentials).run()
+  }
 }
 
 case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with S3 {
@@ -29,7 +37,7 @@ case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with 
   def description = describe
   def verbose = describe
 
-  def execute(sshCredentials: Option[PublicKeyLogin])  {
+  def execute(sshCredentials: Credentials)  {
     val client = s3client
     val filesToCopy = resolveFiles(file)
     val requests = filesToCopy map { file => putObjectRequestWithPublicRead(bucket, toKey(file), file) }
@@ -58,7 +66,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  def execute(sshCredentials: Option[PublicKeyLogin] = None) {
+  def execute(sshCredentials: Credentials) {
     check { new Socket(host.name, port.toInt).close() }
   }
 }
@@ -67,7 +75,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   def description = "check [%s] on " format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute(sshCredentials: Option[PublicKeyLogin] = None) {
+  def execute(sshCredentials: Credentials) {
     for (path <- paths) check { Source.fromURL("http://%s:%s%s" format (host.connectStr, port, path))  }
   }
 }
@@ -98,7 +106,7 @@ trait RepeatedPollingCheck {
 
 
 case class SayHello(host: Host) extends Task {
-  def execute(sshCredentials: Option[PublicKeyLogin] = None) {
+  def execute(sshCredentials: Credentials) {
     Log.info("Hello to " + host.name + "!")
   }
 

@@ -45,7 +45,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   case class StubTask(description: String) extends Task {
-    def execute(sshCredentials: Option[PublicKeyLogin] = None) { }
+    def execute(credentials: Credentials) { }
     def verbose = "stub(%s)" format description
   }
 
