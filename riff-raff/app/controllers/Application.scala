@@ -9,7 +9,7 @@ trait Logging {
 }
 
 case class MenuItem(title: String, target: Call, identityRequired: Boolean) {
-  def isActive(request:AuthenticatedRequest[AnyContent]) = target.url == request.path
+  def isActive(request: AuthenticatedRequest[AnyContent]) = target.url == request.path
 }
 
 object Menu {
@@ -22,15 +22,15 @@ object Menu {
 
   def items(request: AuthenticatedRequest[AnyContent]) = {
     val loggedIn = request.identity.isDefined
-    menuItems.filter{ item =>
+    menuItems.filter { item =>
       !item.identityRequired ||
-      (item.identityRequired && loggedIn)
+        (item.identityRequired && loggedIn)
     }
   }
 }
 
 object Application extends Controller {
-  
+
   def index = NonAuthAction { implicit request =>
     request.identity.isDefined
     Ok(views.html.index(request))
