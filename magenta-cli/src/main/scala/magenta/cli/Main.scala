@@ -5,8 +5,6 @@ import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import HostList._
-import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
-import com.decodified.scalassh.{SshLogin, SimplePasswordProducer, PublicKeyLogin}
 import tasks.{Credentials, CommandLocator}
 
 object Main extends scala.App {
