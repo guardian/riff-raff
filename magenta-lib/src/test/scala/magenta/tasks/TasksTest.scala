@@ -173,7 +173,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTask.remoteCommandLine(Some(Credentials(keyFileLocation = Some(new File("foo"))))) should
+    remoteTask.remoteCommandLine(SystemUser(Some(new File("foo")))) should
       be (CommandLine(List("ssh", "-qtt", "-i", "foo", "some-host", "ls -l")))
   }
 
@@ -248,7 +248,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "specify custom remote shell for rsync if key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
-    val command = task.commandLine(Credentials(keyFileLocation = Some(new File("key"))))
+    val command = task.commandLine(SystemUser(Some(new File("key"))))
 
     command.quoted should be ("""rsync -e "ssh -i key" -rv /source foo.com:/dest""")
   }
@@ -256,7 +256,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "not specify custom remote shell for rsync if no key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
-    val command = task.commandLine(Credentials())
+    val command = task.commandLine(SystemUser(None))
 
     command.quoted should be ("""rsync -rv /source foo.com:/dest""")
   }
@@ -277,7 +277,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     override val s3client = mock[AmazonS3Client]
   }
   
-  val fakeCredentials = Credentials()
+  val fakeCredentials = SystemUser(None)
 }
 
 

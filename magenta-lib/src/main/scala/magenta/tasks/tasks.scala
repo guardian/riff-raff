@@ -17,10 +17,10 @@ object CommandLocator {
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
-  def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFileLocation map { location =>
+  def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFile map { location =>
     val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
     CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
-  } getOrElse (commandLine)
+  } getOrElse commandLine
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 

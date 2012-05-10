@@ -5,7 +5,7 @@ import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import HostList._
-import tasks.{Credentials, CommandLocator}
+import tasks.CommandLocator
 
 object Main extends scala.App {
 
@@ -140,8 +140,8 @@ object Main extends scala.App {
           Log.info("Executing...")
           val credentials = if (Config.jvmSsh) {
             val passphrase = System.console.readPassword("Please enter your passphrase:")
-            Credentials(System.getenv("USER"), passphrase.toString, Config.keyLocation)
-          } else Credentials(keyFileLocation = Config.keyLocation)
+            PassphraseProvided(System.getenv("USER"), passphrase.toString, Config.keyLocation)
+          } else SystemUser(keyFile = Config.keyLocation)
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
               task.execute(credentials)
