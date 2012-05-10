@@ -8,12 +8,14 @@ import com.decodified.scalassh.PublicKeyLogin._
 
 trait RemoteShellTask extends ShellTask {
   def host: Host
-  def remoteCommandLine(credentials: Option[Credentials] = None): CommandLine = {
-    (for {
-      c <- credentials
-      location <- c.keyFileLocation
-    } yield CommandLine("ssh" :: "-qtt" :: "-i":: location.getPath :: host.connectStr :: commandLine.quoted :: Nil)
-    ) getOrElse CommandLine("ssh" :: "-qtt" :: host.connectStr :: commandLine.quoted :: Nil)
+  def remoteCommandLine: CommandLine = remoteCommandLine(None)
+  def remoteCommandLine(credentials: Option[Credentials]): CommandLine = {
+    val keyFileArgs = for {
+      creds <- credentials.toList
+      file <- creds.keyFileLocation.toList
+      arg <- "-i" :: file.getPath :: Nil
+    } yield arg
+    CommandLine("ssh" :: "-qtt" :: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil)
   }
 
   override def execute(credentials: Credentials) { credentials.forScalaSsh match {
@@ -30,7 +32,7 @@ trait RemoteShellTask extends ShellTask {
   }}
 
   lazy val description = "on " + host.name
-  override lazy val verbose = "$ " + remoteCommandLine().quoted
+  override lazy val verbose = "$ " + remoteCommandLine.quoted
 }
 
 case class Credentials(
