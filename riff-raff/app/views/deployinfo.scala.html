@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployinfo: List[magenta.Host])
+@(request: controllers.AuthenticatedRequest[AnyContent], stageAppHosts: Map[String,Map[Set[magenta.App],List[magenta.Host]]])
 
 
 @main("Deployment Information", request) {
@@ -6,11 +6,17 @@
 <h2>Deployment Information</h2>
 
 <p>This is a list of nodes that we know about:</p>
-<ul>
-@for(host <- deployinfo) {
-     <li>@host.name, @host.stage</li>
-}
-</ul>
 
+@for((stage,appsHosts) <- stageAppHosts) {
+    <h3>@stage</h3>
+    @for((appList,hosts) <- appsHosts) {
+        <h4>@appList</h4>
+        <ul>
+            @for( host <- hosts ) {
+             <li>@host.name</li>
+            }
+        </ul>
+    }
+}
 
 }

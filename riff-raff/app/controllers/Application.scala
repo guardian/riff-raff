@@ -15,7 +15,7 @@ case class MenuItem(title: String, target: Call, identityRequired: Boolean) {
 object Menu {
   lazy val menuItems = Seq(
     MenuItem("Home", routes.Application.index, false),
-    MenuItem("Deployment Info", routes.Application.deployInfo(), true)
+    MenuItem("Deployment Info", routes.Application.deployInfo(stage = ""), true)
   )
 
   lazy val loginMenuItem = MenuItem("Login", routes.Login.login, false)
@@ -36,13 +36,21 @@ object Application extends Controller {
     Ok(views.html.index(request))
   }
 
-  def deployInfo = AuthAction { request =>
+  def deployInfo(stage: String) = AuthAction { request =>
     lazy val parsedDeployInfo = {
       import sys.process._
       DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
     }
 
-    Ok(views.html.deployinfo(request, parsedDeployInfo))
+    val stageAppHosts = parsedDeployInfo filter { host =>
+      host.stage == stage || stage == ""
+    } groupBy { _.stage } mapValues { hostList =>
+      hostList.groupBy {
+        _.apps
+      }
+    }
+
+    Ok(views.html.deployinfo(request, stageAppHosts))
   }
 
   def profile = AuthAction { request =>
