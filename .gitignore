@@ -1,4 +1,5 @@
 .idea*/
+dist/
 target/
 logs/
 readme.html
