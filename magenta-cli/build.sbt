@@ -15,6 +15,14 @@ packageOptions += {
     )
 }
 
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { current =>
+  {
+    case "NOTICE" => MergeStrategy.first
+    case meta if meta.startsWith("META-INF/") => MergeStrategy.first
+    case other => current(other)
+  }
+}
+
 excludedFiles in assembly := { (bases: Seq[File]) =>
   bases flatMap { base =>
     (base / "META-INF" * "*").get collect {
