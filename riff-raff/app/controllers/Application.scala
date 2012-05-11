@@ -39,7 +39,7 @@ object Application extends Controller {
   def deployInfo = AuthAction { request =>
     lazy val parsedDeployInfo = {
       import sys.process._
-      DeployInfoJsonReader.parse("contrib/deployinfo.json".!!)
+      DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
     }
 
     Ok(views.html.deployinfo(request, parsedDeployInfo))
