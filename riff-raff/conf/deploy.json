@@ -1,0 +1,13 @@
+{
+    "packages":{
+        "riff-raff":{
+            "type":"executable-jar-webapp",
+            "data":{
+                "port":"8080",
+                "healthcheck_paths":[
+                    "/"
+                ]
+            }
+        }
+    }
+}
