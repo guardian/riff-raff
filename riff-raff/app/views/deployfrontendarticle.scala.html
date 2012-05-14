@@ -1,0 +1,14 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], tasks: List[magenta.tasks.Task])
+
+@main("Deployment Tasks for frontend::article", request) {
+
+    <h2>Frontend Article in CODE</h2>
+
+    <h3>Deploy Tasks</h3>
+    <ol>
+    @tasks.zipWithIndex.map { case (task, index) =>
+        <li>@task.fullDescription</li>
+    }
+    </ol>
+
+}

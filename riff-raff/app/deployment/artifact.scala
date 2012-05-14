@@ -1,0 +1,38 @@
+package deployment
+
+import dispatch._
+import sbt._
+import dispatch.Request.encode_%
+import magenta.Log
+
+object Artifact {
+
+  def download(project: String, buildNum: Int) = {
+    val http = new Http {
+      override def make_logger = new Logger {
+        def info(msg: String, items: Any*) { Log.verbose("http: " + msg.format(items: _*)) }
+        def warn(msg: String, items: Any*) { Log.warn("http: " + msg.format(items: _*)) }
+      }
+    }
+
+    val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
+      encode_%(project) / buildNum.toString / "artifacts.zip"
+
+    val tmpDir = IO.createTemporaryDirectory
+
+    Log.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, tmpDir.getAbsolutePath))
+
+    try {
+      val files = http(tcUrl >> { IO.unzipStream(_, tmpDir) })
+      Log.verbose("downloaded:\n" + files.mkString("\n"))
+    } catch {
+      case StatusCode(404, _) =>
+        sys.error("404 downloading %s\n - have you got the project name and build number correct?" format tcUrl.to_uri)
+    }
+
+    http.shutdown()
+
+    tmpDir
+  }
+
+}

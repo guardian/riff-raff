@@ -6,6 +6,8 @@
 GET     /                           controllers.Application.index
 GET     /deployinfo                 controllers.Application.deployInfo(stage="")
 GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
+GET     /deployment/CODE/frontend-article   controllers.Application.frontendArticleCode
+POST     /deployment/CODE/frontend-article  controllers.Application.deployFrontendArticleCode
 GET     /profile                    controllers.Application.profile
 GET     /login                      controllers.Login.login
 POST    /login                      controllers.Login.loginPost
