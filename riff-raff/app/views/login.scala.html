@@ -14,17 +14,8 @@
         </div>
         }
 
-        <form action="/login" method="post">
+        <form action="@routes.Login.loginPost()" method="post">
             <input value="Log In" class="btn btn-primary" type="submit">
-        </form>
-
-        <form action="/login" method="post"><div class="alert alert-block">
-            <p>Since you're accessing this from localhost, I guess you're a nice
-                friendly developer. You can sod that OpenID crap if you like.</p>
-            <div class="alert-actions">
-                <button class="btn small" id="jump-the-shark" value="_" type="submit" name="F8353145062901KZS0V">Yeah, go on then</button>
-            </div>
-        </div>
         </form>
     </div>
 
