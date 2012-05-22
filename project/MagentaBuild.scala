@@ -24,7 +24,13 @@ object MagentaBuild extends Build {
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
-      jarName in assembly := "%s.jar" format name
+      jarName in assembly := "%s.jar" format name,
+      mergeStrategy in assembly <<= (mergeStrategy in assembly) { current =>
+      {
+        case "play.plugins" => MergeStrategy.concat
+        case other => current(other)
+      }
+      }
   )
 
 

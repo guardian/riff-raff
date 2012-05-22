@@ -18,6 +18,7 @@ packageOptions += {
 mergeStrategy in assembly <<= (mergeStrategy in assembly) { current =>
   {
     case "NOTICE" => MergeStrategy.first
+    case "version.txt" => MergeStrategy.first
     case meta if meta.startsWith("META-INF/") => MergeStrategy.first
     case other => current(other)
   }

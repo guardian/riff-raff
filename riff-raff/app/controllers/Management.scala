@@ -61,7 +61,6 @@ object FailedLoginCounter extends CountMetric("webapp",
   "Failed logins",
   "Number of failed logins")
 
-
 object Metrics {
   val all: Seq[TimingMetric] = Seq(TimedAction, TimedCometAction)
 }
