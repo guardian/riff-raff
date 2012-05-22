@@ -1,17 +1,24 @@
 package controllers
 
 import play.api._
-import libs.concurrent.{ Promise, Akka }
-import play.api.Play.current
+import libs._
+import libs.iteratee._
+import libs.concurrent._
+
 import play.api.data._
 import play.api.data.Forms._
-import play.api.data.validation.Constraints._
+
 import play.api.mvc._
 import deployment._
-import java.io.File
+
 import magenta.json.{ JsonReader, DeployInfoJsonReader }
 import magenta.{ Stage, Resolver }
-import magenta.tasks.Task
+
+import deployment.DeployActor.Deploy
+import akka.util.duration._
+import akka.util.Timeout
+import akka.pattern.ask
+import deployment.MessageBus.Watch
 
 trait Logging {
   implicit val log = Logger(getClass)
@@ -41,57 +48,73 @@ object Menu {
 
 object Application extends Controller with Logging {
 
-  def index = NonAuthAction { implicit request =>
-    request.identity.isDefined
-    Ok(views.html.index(request))
-  }
-
-  lazy val parsedDeployInfo = {
-    import sys.process._
-    DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
-  }
-
-  def deployInfo(stage: String) = AuthAction { request =>
-    val stageAppHosts = parsedDeployInfo filter { host =>
-      host.stage == stage || stage == ""
-    } groupBy { _.stage } mapValues { hostList =>
-      hostList.groupBy {
-        _.apps
-      }
+  def index = TimedAction {
+    NonAuthAction { implicit request =>
+      request.identity.isDefined
+      Ok(views.html.index(request))
     }
-
-    Ok(views.html.deployinfo(request, stageAppHosts))
   }
 
-  def profile = AuthAction { request =>
-    Ok(views.html.profile(request))
+  def deployInfo(stage: String) = TimedAction {
+    AuthAction { request =>
+      val stageAppHosts = DeployInfo.parsedDeployInfo filter { host =>
+        host.stage == stage || stage == ""
+      } groupBy { _.stage } mapValues { hostList =>
+        hostList.groupBy {
+          _.apps
+        }
+      }
+
+      Ok(views.html.deployinfo(request, stageAppHosts))
+    }
+  }
+
+  def profile = TimedAction {
+    AuthAction { request =>
+      Ok(views.html.profile(request))
+    }
   }
 
   lazy val deployForm = Form(
     "build" -> number(min = 1)
   )
 
-  def frontendArticleCode = AuthAction { request =>
-    Ok(views.html.frontendarticle(request, deployForm))
+  def frontendArticleCode = TimedAction {
+    AuthAction { request =>
+      Ok(views.html.frontendarticle(request, deployForm))
+    }
   }
 
-  def deployFrontendArticleCode = AuthAction { implicit request =>
-    val stage = "CODE"
-    val recipe = "default"
-    val deploy = deployForm.bindFromRequest()
+  def deployFrontendArticleCode = TimedAction {
+    AuthAction { implicit request =>
+      val stage = "CODE"
+      val build = deployForm.bindFromRequest().get
 
-    val promiseOfTasks: Promise[List[Task]] = Akka.future {
-      log.info("Downloading artifact")
-      val artifactDir = Artifact.download("frontend::article", deploy.get)
-      log.info("Reading deploy.json")
-      val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-      val hosts = parsedDeployInfo.filter(_.stage == stage)
-      log.info("Resolving tasks")
-      val tasks = Resolver.resolve(project, recipe, hosts, Stage(stage))
-      tasks
+      val deployActor = DeployActor("frontend-article", Stage(stage))
+      val updateActor = MessageBus(deployActor)
+
+      deployActor ! Deploy(build, updateActor)
+
+      Ok(views.html.deployfrontendarticle(request, updateActor.path.toString))
     }
-    Async {
-      promiseOfTasks.map(tasks => Ok(views.html.deployfrontendarticle(request, tasks)))
+  }
+
+  def deployFrontendArticleCodeComet(updateActorPath: String) = TimedCometAction {
+    AuthAction { implicit request =>
+      val updateActor = MessageBus.system.actorFor(updateActorPath)
+      // updateActor register to listen
+
+      // send deploy initialising message
+      // deployActor ! Deploy(build, updateActor)
+      //updateActor !
+
+      AsyncResult {
+        implicit val timeout = Timeout(5.seconds)
+        (updateActor ? (Watch())).mapTo[Enumerator[String]].asPromise.map { chunks =>
+          log.info("streaming new chunk")
+          Ok.stream(chunks &> Comet(callback = "parent.appendOutput"))
+        }
+      }
     }
   }
 

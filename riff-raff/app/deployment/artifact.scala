@@ -4,6 +4,7 @@ import dispatch._
 import sbt._
 import dispatch.Request.encode_%
 import magenta.Log
+import magenta.json.DeployInfoJsonReader
 
 object Artifact {
 
@@ -35,4 +36,11 @@ object Artifact {
     tmpDir
   }
 
+}
+
+object DeployInfo {
+  lazy val parsedDeployInfo = {
+    import sys.process._
+    DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
+  }
 }

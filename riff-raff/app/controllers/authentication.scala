@@ -82,7 +82,10 @@ object Login extends Controller with Logging {
       OpenID
         .redirectURL(googleOpenIdUrl, routes.Login.openIDCallback.absoluteURL(), openIdAttributes)
         .extend(_.value match {
-          case Redeemed(url) => Redirect(url)
+          case Redeemed(url) => {
+            LoginCounter.recordCount(1)
+            Redirect(url)
+          }
           case Thrown(t) => Redirect(routes.Login.login)
         })
     )
@@ -103,6 +106,7 @@ object Login extends Controller with Logging {
               session + ("identity" -> credentials.writeJson) - "loginFromUrl"
             }
           } else {
+            FailedLoginCounter.recordCount(1)
             Redirect(routes.Login.login).flashing(
               ("error" -> "I'm afraid you can only log into Riff-Raff using your Guardian Google Account")
             ).withSession(session - "identity")
@@ -110,6 +114,7 @@ object Login extends Controller with Logging {
         }
         case Thrown(t) => {
           // Here you should look at the error, and give feedback to the user
+          FailedLoginCounter.recordCount(1)
           Redirect(routes.Login.login)
         }
       })
