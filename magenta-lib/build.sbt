@@ -13,5 +13,5 @@ libraryDependencies ++= Seq(
 	"com.amazonaws" % "aws-java-sdk" % "1.2.1",
 	"org.scalatest" %% "scalatest" % "1.6.1" % "test",
 	"org.mockito" % "mockito-core" % "1.9.0" % "test",
-	"org.scala-tools.sbt" %% "io" % "0.11.2"
+	"org.scala-tools.sbt" %% "io" % "0.11.3"
 )
