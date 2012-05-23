@@ -10,5 +10,5 @@ java -Xmx768M -XX:+UseCompressedOops -XX:MaxPermSize=384m \
 	-Dhttp.proxyHost=devscreen.gudev.gnl -Dhttp.proxyPort=3128 \
 	-Dsbt.boot.directory=$SBT_BOOT_DIR \
 	$SBT_EXTRA_PARAMS \
-	-jar `dirname $0`/sbt-launch-0.11.2.jar "$@"
+	-jar `dirname $0`/sbt-launch-0.11.3.jar "$@"
 

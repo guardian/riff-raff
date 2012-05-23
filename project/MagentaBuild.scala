@@ -4,7 +4,7 @@ import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import PlayProject.{SCALA,dist}
-import com.gu.PlayArtifact._
+import com.gu.deploy.PlayArtifact._
 
 object MagentaBuild extends Build {
   lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
@@ -24,13 +24,7 @@ object MagentaBuild extends Build {
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
-      jarName in assembly := "%s.jar" format name,
-      mergeStrategy in assembly <<= (mergeStrategy in assembly) { current =>
-      {
-        case "play.plugins" => MergeStrategy.concat
-        case other => current(other)
-      }
-      }
+      jarName in assembly := "%s.jar" format name
   )
 
 
