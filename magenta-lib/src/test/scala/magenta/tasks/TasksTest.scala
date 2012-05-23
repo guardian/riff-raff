@@ -10,11 +10,11 @@ import org.scalatest.mock.MockitoSugar
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import java.io.{File, OutputStreamWriter}
-import com.amazonaws.services.s3.model.{CannedAccessControlList, PutObjectRequest}
 import scala._
 import scala.Predef._
 import org.mockito.Matchers.any
 import magenta.Host
+import com.amazonaws.services.s3.model.{ObjectMetadata, CannedAccessControlList, PutObjectRequest}
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -184,7 +184,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val fileToUpload = new File("/foo/bar/the-jar.jar")
 
 
-    val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
+    val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload, fileToUpload.getParentFile) with StubS3
 
     task.execute(fakeCredentials)
 
@@ -194,13 +194,15 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "create an upload request with correct permissions" in {
 
-    val baseDir = createTempDir()
+    val uploadDir = createTempDir()
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+    val task = new S3Upload(Stage("CODE"), "bucket", uploadDir, uploadDir.getParentFile)
 
     val file = new File("/file/path")
 
-    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file)
+    val metaData = new ObjectMetadata()
+    metaData.setCacheControl("public, max-age=300")
+    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file, Some(metaData))
 
     request.getBucketName should be ("bucket")
 
@@ -209,32 +211,34 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     request.getFile should be (file)
 
     request.getKey should be ("foo/bar")
+
+    request.getMetadata.getCacheControl should be ("public, max-age=300")
   }
 
   it should "correctly convert a file to a key" in {
-    val baseDir = new File("/foo/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
+    val uploadDir = new File("/foo/bar/something").getParentFile
+    val child = new File(uploadDir, "the/file/name.txt")
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+    val task = new S3Upload(Stage("CODE"), "bucket", uploadDir, uploadDir.getParentFile)
 
     task.toKey(child) should be ("CODE/bar/the/file/name.txt")
   }
 
   it should "upload a directory to S3" in {
 
-    val baseDir = createTempDir()
-    val baseDirName = "CODE/%s/" format baseDir.getName
+    val uploadDir = createTempDir()
+    val baseDirName = "CODE/%s/" format uploadDir.getName
 
-    val fileOne = new File(baseDir, "one.txt")
+    val fileOne = new File(uploadDir, "one.txt")
     fileOne.createNewFile()
-    val fileTwo = new File(baseDir, "two.txt")
+    val fileTwo = new File(uploadDir, "two.txt")
     fileTwo.createNewFile()
-    val subDir = new File(baseDir, "sub")
+    val subDir = new File(uploadDir, "sub")
     subDir.mkdir()
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir) with StubS3 {
+    val task = new S3Upload(Stage("CODE"), "bucket", uploadDir, uploadDir.getParentFile) with StubS3 {
       override val bucket = "bucket"
     }
 

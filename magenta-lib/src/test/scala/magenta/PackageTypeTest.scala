@@ -6,10 +6,12 @@ import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.{JArray, JString}
+import net.liftweb.json.JsonAST.{JValue, JArray, JString}
 
 
 class PackageTypeTest extends FlatSpec with ShouldMatchers {
+
+  implicit def string2file(s: String) = new File(s)
 
   "jetty web app package type" should "have a deploy action" in {
     val p = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
@@ -25,6 +27,49 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CheckUrls(host, "8080", List(), 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
+  }
+
+  it should "have an upload artifacts action" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "1234"
+    )
+    val p = Package("webapp", Set.empty, data, "jetty-webapp", new File("/tmp/packages/webapp"))
+
+    val jetty = new JettyWebappPackageType(p)
+
+    jetty.perAppActions("uploadArtifacts")(Stage("CODE")) should be (
+      List(S3Upload(Stage("CODE"),"1234","/tmp/packages/webapp","/tmp/packages",None))
+    )
+  }
+
+  it should "have the ability to specify the artifact to upload to S3" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "1234",
+      "artifact" -> "my.jar"
+    )
+    val p = Package("webapp", Set.empty, data, "jetty-webapp", new File("/tmp/packages/webapp"))
+
+    val jetty = new JettyWebappPackageType(p)
+
+    jetty.perAppActions("uploadArtifacts")(Stage("CODE")) should be (
+      List(S3Upload(Stage("CODE"),"1234","/tmp/packages/webapp/my.jar","/tmp/packages",None))
+    )
+  }
+
+  it should "have an upload static files action" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "1234",
+      "staticDir" -> "staticFiles",
+      "cacheControlHeader" -> "public, max-age=300"
+    )
+    val p = Package("webapp", Set.empty, data, "jetty-webapp", new File("/tmp/packages/webapp"))
+
+    val jetty = new JettyWebappPackageType(p)
+
+    jetty.perAppActions("uploadStaticFiles")(Stage("CODE")) should be (
+      List(S3Upload(Stage("CODE"),"1234","/tmp/packages/webapp/staticFiles","/tmp/packages/webapp",
+        Some("public, max-age=300")))
+    )
   }
 
   it should "allow port to be overriden" in {

@@ -45,35 +45,65 @@ abstract class WebappPackageType extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"
+
   override def defaultData = Map[String, JValue]("port" -> "8080",
     "user" -> containerName,
-    "servicename" -> pkg.name
+    "servicename" -> pkg.name,
+    "artifact" -> ""
   )
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
   lazy val serviceName = pkg.stringData("servicename")
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+
+  //S3 bucket to upload to
   lazy val bucket = pkg.stringData("bucket")
+
+  //Cache headers to set when uploading static files to S3
+  //there is no default, if you are not setting this do not upload static files
+  lazy val s3cacheControlHeader = pkg.stringData("cacheControlHeader")
+
+  //artifact to upload to £3
+  //defaults to everything in packageArtifactDir
+  lazy val s3Artifact = packageArtifactDir + pkg.stringData("artifact")
+
+  //static files (assets) for upload to S3
+  //there is no default, you need to tell it the directory name which is relative to the packageArtifactDir
+  lazy val s3StaticDir = packageArtifactDir + pkg.stringData("staticDir")
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
       host => {
         List(
-        BlockFirewall(host as user),
-        CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
-        Restart(host as user, serviceName),
-        WaitForPort(host, port, 1 minute),
-        CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
-        UnblockFirewall(host as user))
+          BlockFirewall(host as user),
+          CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
+          Restart(host as user, serviceName),
+          WaitForPort(host, port, 1 minute),
+          CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
+          UnblockFirewall(host as user)
+        )
       }
     }
   }
 
   override val perAppActions: AppActionDefinition = {
     case "uploadArtifacts" => stage =>
+      {
+        List(
+          S3Upload(stage, bucket,
+              file = new File(s3Artifact),
+              rootDir = new File(packageArtifactDir).getParentFile
+          )
+        )
+      }
+    case "uploadStaticFiles" => stage =>
       List(
-        S3Upload(stage, bucket, new File(packageArtifactDir))
+        S3Upload(stage, bucket,
+          file = new File(s3StaticDir),
+          rootDir = new File(packageArtifactDir),
+          cacheControlHeader = Some(s3cacheControlHeader)
+        )
       )
   }
 }

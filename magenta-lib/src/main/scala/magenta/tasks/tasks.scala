@@ -5,10 +5,10 @@ import scala.io.Source
 import java.net.Socket
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
+import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -29,9 +29,19 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   }
 }
 
-case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with S3 {
+case class S3Upload(stage: Stage,
+                    bucket: String,
+                    file: File,
+                    rootDir: File,
+                    cacheControlHeader: Option[String] = None) extends Task with S3 {
 
-  private val base = file.getParent + "/"
+  private val objectMetaData = cacheControlHeader.map{ cacheHeader =>
+    val metaData = new ObjectMetadata
+    metaData.setCacheControl(cacheHeader)
+    metaData
+  }
+
+  private val base = rootDir.getPath + "/"
 
   private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
   def description = describe
@@ -40,7 +50,7 @@ case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with 
   def execute(sshCredentials: Credentials)  {
     val client = s3client
     val filesToCopy = resolveFiles(file)
-    val requests = filesToCopy map { file => putObjectRequestWithPublicRead(bucket, toKey(file), file) }
+    val requests = filesToCopy map { file => putObjectRequestWithPublicRead(bucket, toKey(file), file, objectMetaData) }
     requests.par foreach { client.putObject }
   }
 
@@ -142,6 +152,10 @@ trait S3 {
   lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
   def s3client = new AmazonS3Client(credentials)
-  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File) =
-    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead)
+
+  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File, metaData: Option[ObjectMetadata]) = {
+    val request = new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead)
+    metaData.foreach(request.setMetadata(_))
+    request
+  }
 }
