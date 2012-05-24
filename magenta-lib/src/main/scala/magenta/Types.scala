@@ -36,6 +36,23 @@ trait PackageType {
   def defaultData: Map[String, JValue] = Map.empty
 }
 
+case class AmazonWebServicesS3(pkg: Package) extends PackageType {
+  val name = "aws-s3"
+
+  lazy val staticDir = pkg.srcDir.getPath + "/"
+
+  //required configuration, you cannot upload without setting these
+  lazy val bucket = pkg.stringData("bucket")
+  lazy val cacheControl = pkg.stringData("cacheControl")
+
+  override val perAppActions: AppActionDefinition = {
+    case "uploadStaticFiles" => stage =>
+      List(
+        S3Upload(stage, bucket, new File(staticDir), Some(cacheControl))
+      )
+  }
+}
+
 private abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
   def apps = pkg.apps
   def description = pkg.name + "." + actionName

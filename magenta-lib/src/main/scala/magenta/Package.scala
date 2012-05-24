@@ -14,12 +14,13 @@ case class Package(
   def mkAction(name: String): Action = pkgType.mkAction(name)
 
   lazy val pkgType = pkgTypeName match {
-    case "jetty-webapp" => new JettyWebappPackageType(this)
-    case "resin-webapp" => new ResinWebappPackageType(this)
-    case "django-webapp" => new DjangoWebappPackageType(this)
-    case "executable-jar-webapp" => new ExecutableJarWebappPackageType(this)
-    case "file" => new FilePackageType(this)
-    case "demo" => new DemoPackageType(this)
+    case "jetty-webapp" => JettyWebappPackageType(this)
+    case "resin-webapp" => ResinWebappPackageType(this)
+    case "django-webapp" => DjangoWebappPackageType(this)
+    case "executable-jar-webapp" => ExecutableJarWebappPackageType(this)
+    case "file" => FilePackageType(this)
+    case "demo" => DemoPackageType(this)
+    case "aws-s3" => AmazonWebServicesS3(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 
