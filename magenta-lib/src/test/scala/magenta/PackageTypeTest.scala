@@ -6,10 +6,26 @@ import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.{JArray, JString}
+import net.liftweb.json.JsonAST.{JValue, JArray, JString}
 
 
 class PackageTypeTest extends FlatSpec with ShouldMatchers {
+
+  "Amazon Web Services S3" should "have a uploadStaticFiles action" in {
+
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "bucket-1234",
+      "cacheControl" -> "no-cache"
+    )
+
+    val p = Package("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+
+    val deploy = AmazonWebServicesS3(p)
+
+    deploy.perAppActions("uploadStaticFiles")(Stage("CODE")) should be (
+      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),Some("no-cache")))
+    )
+  }
 
   "jetty web app package type" should "have a deploy action" in {
     val p = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))

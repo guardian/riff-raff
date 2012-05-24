@@ -5,10 +5,10 @@ import scala.io.Source
 import java.net.Socket
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
+import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -29,7 +29,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   }
 }
 
-case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with S3 {
+case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader: Option[String] = None) extends Task with S3 {
 
   private val base = file.getParent + "/"
 
@@ -40,7 +40,11 @@ case class S3Upload(stage: Stage, bucket: String, file: File) extends Task with 
   def execute(sshCredentials: Credentials)  {
     val client = s3client
     val filesToCopy = resolveFiles(file)
-    val requests = filesToCopy map { file => putObjectRequestWithPublicRead(bucket, toKey(file), file) }
+
+    val requests = filesToCopy map { file =>
+      putObjectRequestWithPublicRead(bucket, toKey(file), file, cacheControlHeader)
+    }
+
     requests.par foreach { client.putObject }
   }
 
@@ -142,6 +146,10 @@ trait S3 {
   lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
   def s3client = new AmazonS3Client(credentials)
-  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File) =
-    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead)
+
+  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File, cacheControlHeader: Option[String]) = {
+    val metaData = new ObjectMetadata
+    cacheControlHeader foreach { metaData.setCacheControl(_) }
+    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead).withMetadata(metaData)
+  }
 }

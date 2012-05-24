@@ -200,7 +200,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val file = new File("/file/path")
 
-    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file)
+    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file, Some("no-cache"))
 
     request.getBucketName should be ("bucket")
 
@@ -209,6 +209,8 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     request.getFile should be (file)
 
     request.getKey should be ("foo/bar")
+
+    request.getMetadata.getCacheControl should be ("no-cache")
   }
 
   it should "correctly convert a file to a key" in {
