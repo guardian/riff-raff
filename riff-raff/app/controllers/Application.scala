@@ -20,6 +20,8 @@ import akka.util.Timeout
 import akka.pattern.ask
 import deployment.MessageBus.Watch
 
+import conf._
+
 trait Logging {
   implicit val log = Logger(getClass)
 }

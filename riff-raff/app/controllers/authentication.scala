@@ -7,6 +7,7 @@ import net.liftweb.json.{ Serialization, NoTypeHints }
 import net.liftweb.json.Serialization.{ read, write }
 import play.api.libs.openid.OpenID
 import play.api.libs.concurrent.{ Thrown, Redeemed }
+import conf._
 
 case class Identity(openid: String, email: String, firstName: String, lastName: String) {
   implicit val formats = Serialization.formats(NoTypeHints)

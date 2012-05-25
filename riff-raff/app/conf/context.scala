@@ -1,4 +1,4 @@
-package controllers
+package conf
 
 import play.api.mvc._
 import play.api._
@@ -19,7 +19,7 @@ object Management extends Management {
 }
 
 class TimingAction(group: String, name: String, title: String, description: String, master: Option[Metric] = None)
-    extends TimingMetric(group, name, title, description, master) {
+  extends TimingMetric(group, name, title, description, master) {
 
   def apply(f: Request[AnyContent] => Result): Action[AnyContent] = {
     Action {
