@@ -7,5 +7,3 @@ resolvers ++= Seq(
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.0")
 
 addSbtPlugin("play" % "sbt-plugin" % "2.1-SNAPSHOT")
-
-addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")

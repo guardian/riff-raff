@@ -4,9 +4,9 @@ import play.api.mvc._
 import play.api._
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.InternalManagementPlugin
+import com.gu.management.play.Management
 
-object Management extends Logging with GlobalSettings {
+object Management extends Management {
   val applicationName = Play.current.configuration.getString("application.name").get
 
   val pages = List(
@@ -16,9 +16,6 @@ object Management extends Logging with GlobalSettings {
     StatusPage(applicationName, Metrics.all),
     new LogbackLevelPage(applicationName)
   )
-
-  val plugin = Play.current.plugin[InternalManagementPlugin]
-  plugin.foreach { _.registerPages(pages) }
 }
 
 class TimingAction(group: String, name: String, title: String, description: String, master: Option[Metric] = None)
