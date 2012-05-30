@@ -22,16 +22,11 @@ object Main extends scala.App {
     var keyLocation: Option[File] = None
     var jvmSsh = false
 
-    private var _di = "/opt/bin/deployinfo.json"
+    var deployInfo = "/opt/bin/deployinfo.json"
 
-    def deployInfo_=(s: String) {
-      _di = validFile(s).getPath
-    }
-    def deployInfo = _di
-
-   lazy val parsedDeployInfo = {
+    lazy val parsedDeployInfo = {
       import sys.process._
-      DeployInfoJsonReader.parse(_di.!!)
+      DeployInfoJsonReader.parse(deployInfo.!!)
     }
 
     private var _localArtifactDir: Option[File] = None
