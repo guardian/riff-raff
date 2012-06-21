@@ -6,6 +6,7 @@ import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import HostList._
 import tasks.CommandLocator
+import magenta.NoHostsFoundException
 
 object Main extends scala.App {
 
@@ -107,16 +108,18 @@ object Main extends scala.App {
 
         Log.verbose("All possible hosts in stage:\n" + hostsInStage.dump)
 
-        if (hostsInStage.isEmpty)
-          sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
-
         val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
 
-        if (hosts.isEmpty)
-          sys.error("No hosts matched requested deploy host %s. Run with --verbose to a see a list of possible hosts." format Config.host.getOrElse(""))
-
         Log.info("Resolving...")
-        val tasks = Resolver.resolve(project, Config.recipe, hosts, Stage(Config.stage))
+        val tasks = try Resolver.resolve(project, Config.recipe, hosts, Stage(Config.stage)) catch {
+          case _: NoHostsFoundException => sys.error(
+            if (hostsInStage.isEmpty)
+              sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
+            else
+              "No hosts matched requested deploy host %s. Run with --verbose to a see a list of possible hosts."
+                format Config.host.getOrElse(""))
+        }
+
 
         if (tasks.isEmpty)
           sys.error("No tasks were found to execute. Ensure the app(s) '%s' are in the list supported by this stage/host:\n%s." format (Resolver.possibleApps(project, Config.recipe), hosts.supportedApps))
