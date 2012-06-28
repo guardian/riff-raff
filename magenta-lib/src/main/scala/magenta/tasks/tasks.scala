@@ -19,7 +19,7 @@ object CommandLocator {
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
 
-  def commandLine = List("scp", "-rv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = List("scp", "-r", source, "%s:%s" format(host.connectStr, dest))
   def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFile map { location =>
     CommandLine(commandLine.commandLine.head :: "-i" :: location.getPath :: commandLine.commandLine.tail)
   } getOrElse commandLine
