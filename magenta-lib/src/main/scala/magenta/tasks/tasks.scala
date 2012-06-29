@@ -9,8 +9,6 @@ import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
-import com.decodified.scalassh.{SSH, SimplePasswordProducer, PublicKeyLogin}
-import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -18,28 +16,16 @@ object CommandLocator {
 }
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
-
-  def commandLine = List("scp", "-r", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
   def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFile map { location =>
-    CommandLine(commandLine.commandLine.head :: "-i" :: location.getPath :: commandLine.commandLine.tail)
+    val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
+    CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
   } getOrElse commandLine
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 
   override def execute(sshCredentials: Credentials) {
-    sshCredentials match {
-      case PassphraseProvided(user, pass, keyFile) =>
-        val publicKeyLogin =
-          PublicKeyLogin(user, SimplePasswordProducer(pass), keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)
-        val credentialsForHost = host.connectAs match {
-          case Some(username) => publicKeyLogin.copy(user = username)
-          case None => publicKeyLogin
-        }
-        SSH(host.name, credentialsForHost){ client =>
-          client.client.newSCPFileTransfer().upload(source,dest)
-        }
-      case SystemUser(keyFile) => commandLine(sshCredentials).run()
-    }
+    commandLine(sshCredentials).run()
   }
 }
 
