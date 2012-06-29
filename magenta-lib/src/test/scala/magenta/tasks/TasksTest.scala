@@ -252,7 +252,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val command = task.commandLine(SystemUser(Some(new File("key"))))
 
-    command.quoted should be ("""rsync -e "ssh -i key" -rv /source foo.com:/dest""")
+    command.quoted should be ("""scp -i key -r /source foo.com:/dest""")
   }
 
   it should "not specify custom remote shell for rsync if no key-file specified" in {
@@ -260,7 +260,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val command = task.commandLine(SystemUser(None))
 
-    command.quoted should be ("""rsync -rv /source foo.com:/dest""")
+    command.quoted should be ("""scp -r /source foo.com:/dest""")
   }
   
   private def createTempDir() = {
