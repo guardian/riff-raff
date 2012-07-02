@@ -157,6 +157,20 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     Resolver.possibleApps(project(recipe), recipe.name) should be (app1.name)
   }
 
+  it should "throw an exception if no hosts found and actions require some" in {
+    intercept[NoHostsFoundException] {
+      Resolver.resolve(project(baseRecipe), baseRecipe.name, List(), CODE)
+    }
+  }
+
+  it should "not throw an exception if no hosts found and only whole app recipes" in {
+    val nonHostRecipe = Recipe("nonHostRecipe",
+      actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
+      dependsOn = Nil)
+
+    Resolver.resolve(project(nonHostRecipe), nonHostRecipe.name, List(), CODE)
+  }
+
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 

@@ -6,20 +6,24 @@ import tasks.Task
 object Resolver {
 
 
-  def resolve( project: Project, recipeName: String, deployinfo: List[Host], stage: Stage): List[Task] = {
+  def resolve( project: Project, recipeName: String, hosts: List[Host], stage: Stage): List[Task] = {
     val recipe = project.recipes(recipeName)
 
-    val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolve(project, _, deployinfo, stage) }
+    val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolve(project, _, hosts, stage) }
 
     val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { resolveTasks(_, stage) }
 
-    val perHostTasks = for {
-        host <- deployinfo
+    val perHostTasks = {
+      if (!recipe.actionsPerHost.isEmpty && hosts.isEmpty) throw new NoHostsFoundException
+
+      for {
+        host <- hosts
         action <- recipe.actionsPerHost.filterNot(action => (action.apps & host.apps).isEmpty)
         tasks <- resolveTasks(action, stage, Some(host))
       } yield {
         tasks
       }
+    }
 
     dependenciesFromOtherRecipes ++ tasksToRunBeforeApp ++ perHostTasks
   }
@@ -41,8 +45,8 @@ object Resolver {
     appNames.mkString(", ")
   }
 
-
 }
+class NoHostsFoundException extends Exception("No hosts found")
 
 
 
