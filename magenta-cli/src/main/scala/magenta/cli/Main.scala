@@ -114,10 +114,11 @@ object Main extends scala.App {
         val tasks = try Resolver.resolve(project, Config.recipe, hosts, Stage(Config.stage)) catch {
           case _: NoHostsFoundException => sys.error(
             if (hostsInStage.isEmpty)
-              sys.error("No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage)
+              "No hosts found in stage %s; are you sure this is a valid stage?" format Config.stage
             else
               "No hosts matched requested deploy host %s. Run with --verbose to a see a list of possible hosts."
-                format Config.host.getOrElse(""))
+                format Config.host.getOrElse("")
+          )
         }
 
 
