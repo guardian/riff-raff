@@ -2,4 +2,5 @@
 dist/
 target/
 logs/
+log/
 readme.html

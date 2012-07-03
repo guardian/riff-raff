@@ -1,12 +1,43 @@
 package conf
 
-import play.api.mvc._
-import play.api._
+import play.api.Play
+import play.api.mvc.{Action, Result, AnyContent, Request}
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.Management
+import com.gu.management.play.{ Management => PlayManagement }
+import com.gu.conf.ConfigurationFactory
+import java.io.File
 
-object Management extends Management {
+
+class Configuration(val application: String, val webappConfDirectory: String = "env") {
+  protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
+
+  object sshKey {
+    lazy val path: String = configuration.getStringProperty("sshKey.path").getOrElse {
+      throw new IllegalStateException("No private SSH key configured")
+    }
+    lazy val file: File = new File(path)
+  }
+
+  object logging {
+    lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
+  }
+
+  object s3 {
+    lazy val accessKey = configuration.getStringProperty("s3.accessKey").getOrElse {
+      throw new IllegalStateException("No S3 access key configured")
+    }
+    lazy val secretAccessKey = configuration.getStringProperty("s3.secretAccessKey").getOrElse {
+      throw new IllegalStateException("No S3 secret access key configured")
+    }
+  }
+
+  override def toString(): String = configuration.toString
+}
+
+object Configuration extends Configuration("riff-raff", webappConfDirectory = "env")
+
+object Management extends PlayManagement {
   val applicationName = Play.current.configuration.getString("application.name").get
 
   val pages = List(

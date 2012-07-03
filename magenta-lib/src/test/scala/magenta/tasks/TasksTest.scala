@@ -68,7 +68,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   "waitForPort task" should "fail after timeout" in {
     val task = WaitForPort(Host("localhost"), "9998", 200 millis)
     evaluating {
-      task.execute(fakeCredentials)
+      task.execute(fakeKeyRing)
     } should produce [RuntimeException]
   }
 
@@ -79,7 +79,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       server.accept().close()
       server.close()
     }
-    task.execute(fakeCredentials)
+    task.execute(fakeKeyRing)
   }
 
   it should "connect to an open port after a short time" in {
@@ -90,14 +90,14 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       server.accept().close()
       server.close()
     }
-    task.execute(fakeCredentials)
+    task.execute(fakeKeyRing)
   }
 
 
   "check_url task" should "fail after timeout" in {
     val task = CheckUrls(Host("localhost"), "9997",List("/"), 200 millis)
     evaluating {
-      task.execute(fakeCredentials)
+      task.execute(fakeKeyRing)
     } should produce [RuntimeException]
   }
 
@@ -106,7 +106,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     spawn {
       new TestServer().withResponse("HTTP/1.0 200 OK")
     }
-    task.execute(fakeCredentials)
+    task.execute(fakeKeyRing)
 
   }
 
@@ -116,7 +116,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
     evaluating {
-      task.execute(fakeCredentials)
+      task.execute(fakeKeyRing)
     } should produce [RuntimeException]
   }
 
@@ -126,7 +126,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
     evaluating {
-      task.execute(fakeCredentials)
+      task.execute(fakeKeyRing)
     } should produce [RuntimeException]
   }
   
@@ -154,14 +154,14 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
       def host = Host("some-host")
 
-      override def remoteCommandLine(credentials: Option[Credentials]) = new CommandLine(""::Nil) {
+      override def remoteCommandLine(credentials: Option[SshCredentials]) = new CommandLine(""::Nil) {
         override def run() { passed = true }
       }
 
       def commandLine = null
     }
     
-    remoteTask.execute(fakeCredentials)
+    remoteTask.execute(fakeKeyRing)
     
     passed should be (true)
   }
@@ -186,7 +186,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
 
-    task.execute(fakeCredentials)
+    task.execute(fakeKeyRing)
 
     verify(task.s3client).putObject(any(classOf[PutObjectRequest]))
     verifyNoMoreInteractions(task.s3client)
@@ -240,7 +240,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       override val bucket = "bucket"
     }
 
-    task.execute(fakeCredentials)
+    task.execute(fakeKeyRing)
 
     verify(task.s3client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
@@ -250,7 +250,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "specify custom remote shell for rsync if key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
-    val command = task.commandLine(SystemUser(Some(new File("key"))))
+    val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
 
     command.quoted should be ("""rsync -e "ssh -i key" -rv /source foo.com:/dest""")
   }
@@ -258,7 +258,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "not specify custom remote shell for rsync if no key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
-    val command = task.commandLine(SystemUser(None))
+    val command = task.commandLine(KeyRing(SystemUser(None)))
 
     command.quoted should be ("""rsync -rv /source foo.com:/dest""")
   }
@@ -274,12 +274,12 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   trait StubS3 extends S3 {
     override lazy val accessKey = "access"
     override lazy val secretAccessKey = "secret"
-    override lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
+    override lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
     override val s3client = mock[AmazonS3Client]
   }
   
-  val fakeCredentials = SystemUser(None)
+  val fakeKeyRing = KeyRing(SystemUser(None))
 }
 
 

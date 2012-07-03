@@ -1,0 +1,10 @@
+@(task: magenta.tasks.Task, status: deployment.Status, logLines: List[String])
+
+<p><i class="icon-cog"></i> <b>@task.fullDescription</b> @Html(status.imageCode)</p>
+@if(!logLines.isEmpty) {
+    <li>
+        @for(line <- logLines) {
+            <ul>@Html(line)</ul>
+        }
+    </li>
+}

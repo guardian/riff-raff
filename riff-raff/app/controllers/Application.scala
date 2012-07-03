@@ -1,26 +1,21 @@
 package controllers
 
-import play.api._
-import libs._
-import libs.iteratee._
-import libs.concurrent._
-
 import play.api.data._
 import play.api.data.Forms._
 
 import play.api.mvc._
 import deployment._
 
-import magenta.json.{ JsonReader, DeployInfoJsonReader }
-import magenta.{ Stage, Resolver }
-
 import deployment.DeployActor.Deploy
 import akka.util.duration._
 import akka.util.Timeout
 import akka.pattern.ask
-import deployment.MessageBus.Watch
 
-import conf._
+import akka.dispatch.Await
+import deployment.MessageBus.{Clear, HistoryBuffer}
+import play.api.Logger
+import conf.{TimedAction, Configuration}
+import magenta._
 
 trait Logging {
   implicit val log = Logger(getClass)
@@ -94,29 +89,29 @@ object Application extends Controller with Logging {
 
       val deployActor = DeployActor("frontend-article", Stage(stage))
       val updateActor = MessageBus(deployActor)
+      updateActor ! Clear()
 
-      deployActor ! Deploy(build, updateActor)
+      val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
+      val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
+      deployActor ! Deploy(build, updateActor, keyRing)
 
-      Ok(views.html.deployfrontendarticle(request, updateActor.path.toString))
+      implicit val timeout = Timeout(1.seconds)
+      val futureBuffer = updateActor ? HistoryBuffer()
+      val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
+
+      Ok(views.html.deployfrontendarticle(request, updateActor.path.toString, buffer))
     }
   }
 
-  def deployFrontendArticleCodeComet(updateActorPath: String) = TimedCometAction {
+  def deployLog(updateActorPath: String) = TimedAction {
     AuthAction { implicit request =>
       val updateActor = MessageBus.system.actorFor(updateActorPath)
-      // updateActor register to listen
 
-      // send deploy initialising message
-      // deployActor ! Deploy(build, updateActor)
-      //updateActor !
+      implicit val timeout = Timeout(1.seconds)
+      val futureBuffer = updateActor ? HistoryBuffer()
+      val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
 
-      AsyncResult {
-        implicit val timeout = Timeout(5.seconds)
-        (updateActor ? (Watch())).mapTo[Enumerator[String]].asPromise.map { chunks =>
-          log.info("streaming new chunk")
-          Ok.stream(chunks &> Comet(callback = "parent.appendOutput"))
-        }
-      }
+      Ok(views.html.snippets.deployLog(request,buffer))
     }
   }
 

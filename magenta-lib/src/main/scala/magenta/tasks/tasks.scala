@@ -17,15 +17,15 @@ object CommandLocator {
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
-  def commandLine(sshCredentials: Credentials): CommandLine = sshCredentials.keyFile map { location =>
+  def commandLine(keyRing: KeyRing): CommandLine = keyRing.sshCredentials.keyFile map { location =>
     val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
     CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
   } getOrElse commandLine
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 
-  override def execute(sshCredentials: Credentials) {
-    commandLine(sshCredentials).run()
+  override def execute(keyRing: KeyRing) {
+    commandLine(keyRing).run()
   }
 }
 
@@ -37,8 +37,8 @@ case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader
   def description = describe
   def verbose = describe
 
-  def execute(sshCredentials: Credentials)  {
-    val client = s3client
+  def execute(keyRing: KeyRing)  {
+    val client = s3client(keyRing)
     val filesToCopy = resolveFiles(file)
 
     val requests = filesToCopy map { file =>
@@ -70,7 +70,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  def execute(sshCredentials: Credentials) {
+  def execute(keyRing: KeyRing) {
     check { new Socket(host.name, port.toInt).close() }
   }
 }
@@ -79,7 +79,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   def description = "check [%s] on " format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute(sshCredentials: Credentials) {
+  def execute(keyRing: KeyRing) {
     for (path <- paths) check { Source.fromURL("http://%s:%s%s" format (host.connectStr, port, path))  }
   }
 }
@@ -110,7 +110,7 @@ trait RepeatedPollingCheck {
 
 
 case class SayHello(host: Host) extends Task {
-  def execute(sshCredentials: Credentials) {
+  def execute(keyRing: KeyRing) {
     Log.info("Hello to " + host.name + "!")
   }
 
@@ -143,9 +143,13 @@ trait S3 {
     sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
   }
 
-  lazy val credentials = new BasicAWSCredentials(accessKey, secretAccessKey)
+  lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
-  def s3client = new AmazonS3Client(credentials)
+  def credentials(keyRing: KeyRing): BasicAWSCredentials = {
+    keyRing.s3Credentials.map{ c => new BasicAWSCredentials(c.accessKey,c.secretAccessKey) }.getOrElse{ envCredentials }
+  }
+
+  def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
 
   def putObjectRequestWithPublicRead(bucket: String, key: String, file: File, cacheControlHeader: Option[String]) = {
     val metaData = new ObjectMetadata

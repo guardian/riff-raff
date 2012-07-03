@@ -1,21 +1,11 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], updateActorPath: String)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], updateActorPath: String, deployLog: deployment.DeployLog)
 
     @main("Deployment Tasks for frontend::article", request) {
 
-    @helper.javascriptRouter("jsRoutes")(
-        routes.javascript.Application.deployFrontendArticleCodeComet
-    )
-
-    <h2>Frontend Article in CODE (update actor @updateActorPath)</h2>
-
-    <div id="cometOutput"></div>
-
-    <script type="text/javascript" charset="utf-8">
-        var appendOutput = function(msg) {
-            $('#cometOutput').append(msg)
-        }
-    </script>
-
-<iframe id="comet" src="@routes.Application.deployFrontendArticleCodeComet(updateActorPath).unique" style="display:none"></iframe>
-
+    <h2>Deploying Frontend Article in CODE</h2>
+    <p>(update actor @updateActorPath)</p>
+    <hr/>
+    <div class="content" @if(!deployLog.finished){data-ajax-refresh="@routes.Application.deployLog(updateActorPath)"}>
+        @views.html.snippets.deployLog(request, deployLog)
+    </div>
 }

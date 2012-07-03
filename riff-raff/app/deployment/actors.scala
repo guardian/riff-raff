@@ -3,15 +3,12 @@ package deployment
 import akka.actor._
 import magenta.json.JsonReader
 import java.io.File
-import magenta.{ Resolver, Stage }
-import play.api.libs.iteratee.{ Enumerator, PushEnumerator }
-import magenta.tasks.Task
 import controllers.Logging
+import magenta._
 
 object DeployActor {
-
   trait Event
-  case class Deploy(build: Int, updateActor: ActorRef, recipe: String = "default") extends Event
+  case class Deploy(build: Int, updateActor: ActorRef, keyRing: KeyRing, recipe: String = "default") extends Event
 
   lazy val system = ActorSystem("deploy")
 
@@ -33,20 +30,43 @@ class DeployActor(val project: String, val stage: Stage) extends Actor with Logg
   import MessageBus._
 
   def receive = {
-    case Deploy(build, updateActor, recipe) => {
-      updateActor ! Info("Downloading artifact")
-      log.info("Downloading artifact")
-      val artifactDir = Artifact.download("frontend::article", build)
-      updateActor ! Info("Reading deploy.json")
-      log.info("Reading deploy.json")
-      val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-      val hosts = DeployInfo.parsedDeployInfo.filter(_.stage == stage.name)
-      updateActor ! Info("Resolving tasks")
-      log.info("Resolving tasks")
-      val tasks = Resolver.resolve(project, recipe, hosts, stage)
-      log.info("Tasks " + tasks)
-      updateActor ! Tasks(tasks)
-      updateActor ! Finished()
+    case Deploy(build, updateActor, keyRing, recipe) => {
+      val taskStatus = new TaskStatus()
+      val deployLogger = new DeployLogger(updateActor, taskStatus)
+      val teeLogger = new TeeLogger(Log.current.value, deployLogger)
+      try {
+        Log.current.withValue(teeLogger) {
+          Log.info("Downloading artifact")
+          val artifactDir = Artifact.download("frontend::article", build)
+          Log.info("Reading deploy.json")
+          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
+          val hosts = DeployInfo.parsedDeployInfo.filter(_.stage == stage.name)
+          Log.info("Resolving tasks")
+          val tasks = Resolver.resolve(project, recipe, hosts, stage)
+
+          if (tasks.isEmpty)
+            sys.error("No tasks were found to execute. Ensure the app(s) '%s' are in the list supported by this stage/host:\n%s." format (Resolver.possibleApps(project, recipe), HostList.listOfHostsAsHostList(hosts).supportedApps))
+          taskStatus.addTasks(tasks)
+          updateActor ! Info(taskStatus)
+
+          Log.info(keyRing.toString)
+          tasks.foreach { task =>
+            taskStatus.run(task) {
+              Log.context("Executing %s..." format task.fullDescription) {
+                task.execute(keyRing)
+              }
+            }
+          }
+          Log.info("Done")
+        }
+      } catch {
+        case e =>
+        Log.info(e.toString)
+        Log.info(e.getStackTraceString)
+        deployLogger.error("Deployment aborted due to exception")
+      } finally {
+        updateActor ! Finished()
+      }
     }
   }
 
@@ -55,13 +75,11 @@ class DeployActor(val project: String, val stage: Stage) extends Actor with Logg
 object MessageBus {
 
   trait Event
-  case class Watch() extends Event
-  case class StopWatching(channel: PushEnumerator[String]) extends Event
-  case class AddMessage() extends Event
-  case class Info(message: String) extends Event
-  case class Tasks(tasks: List[Task]) extends Event
+
+  case class Info(message: LogData) extends Event
+  case class HistoryBuffer() extends Event
   case class Finished() extends Event
-  case class SendHistory(channel: PushEnumerator[String]) extends Event
+  case class Clear() extends Event
 
   lazy val system = ActorSystem("deploy")
 
@@ -80,44 +98,21 @@ object MessageBus {
 
 class MessageBus extends Actor with Logging {
   import MessageBus._
-  var members = Set.empty[PushEnumerator[String]]
-  var messages: Seq[String] = Seq.empty[String]
+  var messages: Seq[LogData] = Seq.empty
+  var finished = false
   def receive = {
-    case Watch() => {
-      log.info("New watcher")
-      // create a push enumerator
-      val channel: PushEnumerator[String] = Enumerator.imperative[String]( //onComplete = () => self ! StopWatching(channel)
-      )
-      // return enumerator to originator
-      sender ! channel
-      // add enumerator to members
-      members += channel
-      // push all previous messages into new enumerator
-      self ! SendHistory(channel)
-    }
-    case StopWatching(channel) => {
-      members -= channel
-    }
     case Info(message) => {
-      log.info("Received message to send (to %d members): %s" format (members.size, message))
-      val htmlMessage = "<p>" + message + "</p>"
-      messages = messages :+ htmlMessage
-      members.map { _.push(htmlMessage) }
+      messages = messages :+ message
     }
-    case Tasks(tasks) => {
-      tasks.map { task =>
-        self ! Info(task.fullDescription)
-      }
-    }
-    case SendHistory(channel) => {
-      log.info("Sending watcher %d previous messages" format messages.size)
-      messages.map { message =>
-        channel.push(message)
-      }
+    case HistoryBuffer() => {
+      sender ! DeployLog(messages, finished)
     }
     case Finished() => {
-      members.map { member => member.close() }
-      members = Set.empty
+      finished=true
+    }
+    case Clear() => {
+      messages = Seq.empty
+      finished = false
     }
   }
 }

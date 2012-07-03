@@ -1,0 +1,6 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], deployLog: deployment.DeployLog)
+
+@for((line) <- deployLog.lines) {
+  <p>@Html(line)</p>
+}
+<p>@if(deployLog.showLoader){<img src='@routes.Assets.at("images/ajax-loader.gif")' height='16' width='16'/>}</p>

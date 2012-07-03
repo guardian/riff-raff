@@ -8,14 +8,14 @@ trait RemoteShellTask extends ShellTask {
   def host: Host
 
   def remoteCommandLine: CommandLine = remoteCommandLine(None)
-  def remoteCommandLine(credentials: Credentials): CommandLine = remoteCommandLine(Some(credentials))
+  def remoteCommandLine(credentials: SshCredentials): CommandLine = remoteCommandLine(Some(credentials))
 
-  protected def remoteCommandLine(credentials: Option[Credentials]): CommandLine = {
+  protected def remoteCommandLine(credentials: Option[SshCredentials]): CommandLine = {
     val keyFileArgs = credentials.flatMap(_.keyFile).toList.flatMap("-i" :: _.getPath :: Nil)
     CommandLine("ssh" :: "-qtt" :: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil)
   }
 
-  override def execute(credentials: Credentials) { credentials match {
+  override def execute(keyRing: KeyRing) { keyRing.sshCredentials match {
     case PassphraseProvided(user, pass, keyFile) =>
       val publicKeyLogin =
         PublicKeyLogin(user, SimplePasswordProducer(pass), keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)
@@ -24,7 +24,7 @@ trait RemoteShellTask extends ShellTask {
         case None => publicKeyLogin
       }
       SSH(host.name, credentialsForHost)(_.exec(commandLine.quoted))
-    case SystemUser(keyFile) => remoteCommandLine(credentials).run()
+    case SystemUser(keyFile) => remoteCommandLine(keyRing.sshCredentials).run()
   }}
 
   lazy val description = "on " + host.name

@@ -143,7 +143,7 @@ object Main extends scala.App {
           } else SystemUser(keyFile = Config.keyLocation)
           tasks.foreach { task =>
             Log.context("Executing %s..." format task.fullDescription) {
-              task.execute(credentials)
+              task.execute(KeyRing(credentials))
             }
           }
           Log.info("Done")
