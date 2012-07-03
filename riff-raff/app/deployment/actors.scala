@@ -49,7 +49,6 @@ class DeployActor(val project: String, val stage: Stage) extends Actor with Logg
           taskStatus.addTasks(tasks)
           updateActor ! Info(taskStatus)
 
-          Log.info(keyRing.toString)
           tasks.foreach { task =>
             taskStatus.run(task) {
               Log.context("Executing %s..." format task.fullDescription) {
