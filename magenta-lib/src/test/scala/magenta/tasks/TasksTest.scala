@@ -187,9 +187,10 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
 
     task.execute(fakeKeyRing)
+    val s3Client = task.s3client(fakeKeyRing)
 
-    verify(task.s3client).putObject(any(classOf[PutObjectRequest]))
-    verifyNoMoreInteractions(task.s3client)
+    verify(s3Client).putObject(any(classOf[PutObjectRequest]))
+    verifyNoMoreInteractions(s3Client)
   }
 
   it should "create an upload request with correct permissions" in {
@@ -241,10 +242,11 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     }
 
     task.execute(fakeKeyRing)
+    val s3Client = task.s3client(fakeKeyRing)
 
-    verify(task.s3client, times(3)).putObject(any(classOf[PutObjectRequest]))
+    verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
-    verifyNoMoreInteractions(task.s3client)
+    verifyNoMoreInteractions(s3Client)
   }
 
   it should "specify custom remote shell for rsync if key-file specified" in {
@@ -276,7 +278,8 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     override lazy val secretAccessKey = "secret"
     override lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
-    override val s3client = mock[AmazonS3Client]
+    lazy val s3Client = mock[AmazonS3Client]
+    override def s3client(keyRing: KeyRing) = s3Client
   }
   
   val fakeKeyRing = KeyRing(SystemUser(None))
