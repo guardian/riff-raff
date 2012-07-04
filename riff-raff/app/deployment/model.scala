@@ -47,7 +47,7 @@ class TaskStatus extends LogData with Logging {
   }
   def runningTask = {
     val task = taskStatusMap.filter{ tuple => log.info(tuple._2.toString); tuple._2 == Running}.keys.headOption
-    log.info("running task is %s" format task.toString)
+    log.debug("running task is %s" format task.toString)
     task
   }
   def logToTask(task: Task, s:String) {

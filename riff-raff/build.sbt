@@ -5,7 +5,8 @@ resolvers += Resolver.url("Typesafe Ivy Releases", url("http://repo.typesafe.com
 libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % "5.13",
   "com.gu" %% "management-logback" % "5.13",
-  "com.gu" %% "configuration" % "3.6"
+  "com.gu" %% "configuration" % "3.6",
+  "org.pircbotx" % "pircbotx" % "1.7"
 )
 
 ivyXML :=

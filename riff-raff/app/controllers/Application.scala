@@ -87,7 +87,7 @@ object Application extends Controller with Logging {
       val stage = "CODE"
       val build = deployForm.bindFromRequest().get
 
-      val deployActor = DeployActor("frontend-article", Stage(stage))
+      val deployActor = DeployActor("frontend::article", Stage(stage))
       val updateActor = MessageBus(deployActor)
       updateActor ! Clear()
 

@@ -5,6 +5,7 @@ import magenta.json.JsonReader
 import java.io.File
 import controllers.Logging
 import magenta._
+import notification.IrcClient
 
 object DeployActor {
   trait Event
@@ -25,7 +26,7 @@ object DeployActor {
   }
 }
 
-class DeployActor(val project: String, val stage: Stage) extends Actor with Logging {
+class DeployActor(val projectName: String, val stage: Stage) extends Actor with Logging {
   import DeployActor._
   import MessageBus._
 
@@ -36,8 +37,9 @@ class DeployActor(val project: String, val stage: Stage) extends Actor with Logg
       val teeLogger = new TeeLogger(Log.current.value, deployLogger)
       try {
         Log.current.withValue(teeLogger) {
+          IrcClient.notify("Starting deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
           Log.info("Downloading artifact")
-          val artifactDir = Artifact.download("frontend::article", build)
+          val artifactDir = Artifact.download(projectName, build)
           Log.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val hosts = DeployInfo.parsedDeployInfo.filter(_.stage == stage.name)
@@ -57,12 +59,14 @@ class DeployActor(val project: String, val stage: Stage) extends Actor with Logg
             }
           }
           Log.info("Done")
+          IrcClient.notify("Successful deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
         }
       } catch {
         case e =>
         Log.info(e.toString)
         Log.info(e.getStackTraceString)
         deployLogger.error("Deployment aborted due to exception")
+        IrcClient.notify("FAILED: deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
       } finally {
         updateActor ! Finished()
       }

@@ -12,10 +12,16 @@ import java.io.File
 class Configuration(val application: String, val webappConfDirectory: String = "env") {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
 
-  object sshKey {
-    lazy val path: String = configuration.getStringProperty("sshKey.path").getOrElse {
-      throw new IllegalStateException("No private SSH key configured")
+  implicit def option2getOrException[T](option: Option[T]) = new {
+    def getOrException(exceptionMessage: String): T = {
+      option.getOrElse {
+        throw new IllegalStateException(exceptionMessage)
+      }
     }
+  }
+
+  object sshKey {
+    lazy val path: String = configuration.getStringProperty("sshKey.path").getOrException("No private SSH key configured")
     lazy val file: File = new File(path)
   }
 
@@ -24,12 +30,15 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object s3 {
-    lazy val accessKey = configuration.getStringProperty("s3.accessKey").getOrElse {
-      throw new IllegalStateException("No S3 access key configured")
-    }
-    lazy val secretAccessKey = configuration.getStringProperty("s3.secretAccessKey").getOrElse {
-      throw new IllegalStateException("No S3 secret access key configured")
-    }
+    lazy val accessKey = configuration.getStringProperty("s3.accessKey").getOrException("No S3 access key configured")
+    lazy val secretAccessKey = configuration.getStringProperty("s3.secretAccessKey").getOrException("No S3 secret access key configured")
+  }
+
+  object irc {
+    lazy val isConfigured = name.isDefined && host.isDefined && channel.isDefined
+    lazy val name = configuration.getStringProperty("irc.name")
+    lazy val host = configuration.getStringProperty("irc.host")
+    lazy val channel = configuration.getStringProperty("irc.channel")
   }
 
   override def toString(): String = configuration.toString
