@@ -3,13 +3,13 @@ package deployment
 import akka.actor._
 import magenta.json.JsonReader
 import java.io.File
-import controllers.Logging
 import magenta._
 import notification.IrcClient
+import controllers.{Identity, Logging}
 
 object DeployActor {
   trait Event
-  case class Deploy(build: Int, updateActor: ActorRef, keyRing: KeyRing, recipe: String = "default") extends Event
+  case class Deploy(build: Int, updateActor: ActorRef, keyRing: KeyRing, user: Identity, recipe: String = "default") extends Event
 
   lazy val system = ActorSystem("deploy")
 
@@ -31,13 +31,13 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
   import MessageBus._
 
   def receive = {
-    case Deploy(build, updateActor, keyRing, recipe) => {
+    case Deploy(build, updateActor, keyRing, user, recipe) => {
       val taskStatus = new TaskStatus()
       val deployLogger = new DeployLogger(updateActor, taskStatus)
-      val teeLogger = new TeeLogger(Log.current.value, deployLogger)
+      val teeLogger = new TeeLogger(new PlayLogger(), deployLogger)
       try {
         Log.current.withValue(teeLogger) {
-          IrcClient.notify("Starting deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
+          IrcClient.notify("[%s] Starting deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
           Log.info("Downloading artifact")
           val artifactDir = Artifact.download(projectName, build)
           Log.info("Reading deploy.json")
@@ -59,14 +59,15 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
             }
           }
           Log.info("Done")
-          IrcClient.notify("Successful deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
+          IrcClient.notify("[%s] Successful deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
         }
       } catch {
         case e =>
-        Log.info(e.toString)
-        Log.info(e.getStackTraceString)
-        deployLogger.error("Deployment aborted due to exception")
-        IrcClient.notify("FAILED: deploy of %s build %d (using recipe %s) to %s" format (projectName, build, recipe, stage))
+        log.error(e.toString)
+        log.error(e.getStackTraceString)
+        deployLogger.error("Deployment aborted due to exception", e)
+        IrcClient.notify("[%s] FAILED: deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
+        IrcClient.notify("[%s] FAILED: %s" format (e.toString))
       } finally {
         updateActor ! Finished()
       }

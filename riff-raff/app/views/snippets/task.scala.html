@@ -2,9 +2,9 @@
 
 <p><i class="icon-cog"></i> <b>@task.fullDescription</b> @Html(status.imageCode)</p>
 @if(!logLines.isEmpty) {
-    <li>
+    <ul>
         @for(line <- logLines) {
-            <ul>@Html(line)</ul>
+            <li>@Html(line)</li>
         }
-    </li>
+    </ul>
 }

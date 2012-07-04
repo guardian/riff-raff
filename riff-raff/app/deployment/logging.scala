@@ -4,6 +4,7 @@ import akka.actor.ActorRef
 import conf.Configuration
 import magenta.Output
 import deployment.MessageBus.Info
+import play.api.Logger
 
 class TeeLogger(left: Output, right: Output) extends Output {
   def verbose(s: => String) {
@@ -28,6 +29,11 @@ class DeployLogger(updateActor: ActorRef, taskStatus: TaskStatus) extends Output
   def info(s: => String) { log(s) }
   def warn(s: => String) { log(s) }
   def error(s: => String) { log(s) }
+  def error(s: => String, e: => Throwable) {
+    log(s)
+    log(e.toString)
+    log(e.getStackTraceString)
+  }
   def log(s: => String) {
     if (!s.startsWith("tcgetattr")) {
       val currentTask = taskStatus.runningTask
@@ -41,3 +47,11 @@ class DeployLogger(updateActor: ActorRef, taskStatus: TaskStatus) extends Output
   def context[T](s: => String)(block: => T) = block
 }
 
+class PlayLogger(implicit logger:Logger) extends Output {
+  def verbose(s: => String) { logger.info(s) }
+  def info(s: => String) { logger.info(s) }
+  def warn(s: => String) { logger.warn(s) }
+  def error(s: => String) { logger.error(s) }
+
+  def context[T](s: => String)(block: => T) = block
+}

@@ -102,7 +102,7 @@ object Application extends Controller with Logging {
 
       val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
       val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-      deployActor ! Deploy(build, updateActor, keyRing)
+      deployActor ! Deploy(build, updateActor, keyRing, request.identity.get)
 
       implicit val timeout = Timeout(1.seconds)
       val futureBuffer = updateActor ? HistoryBuffer()
@@ -130,7 +130,7 @@ object Application extends Controller with Logging {
 
           val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
           val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-          deployActor ! Deploy(deployParameters.build, updateActor, keyRing)
+          deployActor ! Deploy(deployParameters.build, updateActor, keyRing, request.identity.get)
 
           implicit val timeout = Timeout(1.seconds)
           val futureBuffer = updateActor ? HistoryBuffer()
