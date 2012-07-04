@@ -3,6 +3,11 @@ package deployment
 import magenta.tasks.Task
 import controllers.{Logging, routes}
 
+case class DeployParameters(project:String, build:Int, stage:String)
+
+object Stages {
+  lazy val list = List("CODE","QA","RELEASE","PROD","STAGE","TEST","INFRA").sorted
+}
 
 trait Status {
   def imageCode: String

@@ -10,6 +10,8 @@ GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
 GET     /deployment/CODE/frontend-article   controllers.Application.frontendArticleCode
 POST    /deployment/CODE/frontend-article   controllers.Application.deployFrontendArticleCode
 GET     /deployment/log   controllers.Application.deployLog(updateActorPath:String)
+GET     /deployment/request controllers.Application.deploy
+POST    /deployment/request controllers.Application.doDeploy
 
 GET     /profile                    controllers.Application.profile
 GET     /login                      controllers.Login.login

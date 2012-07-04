@@ -29,7 +29,8 @@ object Menu {
   lazy val menuItems = Seq(
     MenuItem("Home", routes.Application.index, false),
     MenuItem("Deployment Info", routes.Application.deployInfo(stage = ""), true),
-    MenuItem("Frontend-Article CODE", routes.Application.frontendArticleCode(), true)
+    MenuItem("Frontend-Article CODE", routes.Application.frontendArticleCode(), true),
+    MenuItem("Deploy Anything\u2122", routes.Application.deploy(), true)
   )
 
   lazy val loginMenuItem = MenuItem("Login", routes.Login.login, false)
@@ -72,20 +73,28 @@ object Application extends Controller with Logging {
     }
   }
 
-  lazy val deployForm = Form(
+  lazy val deployBuildForm = Form(
     "build" -> number(min = 1)
+  )
+
+  lazy val deployForm = Form[DeployParameters](
+    mapping(
+      "project" -> nonEmptyText,
+      "build" -> number(min = 1),
+      "stage" -> nonEmptyText
+    )(DeployParameters.apply)(DeployParameters.unapply)
   )
 
   def frontendArticleCode = TimedAction {
     AuthAction { request =>
-      Ok(views.html.frontendarticle(request, deployForm))
+      Ok(views.html.frontendarticle(request, deployBuildForm))
     }
   }
 
   def deployFrontendArticleCode = TimedAction {
     AuthAction { implicit request =>
       val stage = "CODE"
-      val build = deployForm.bindFromRequest().get
+      val build = deployBuildForm.bindFromRequest().get
 
       val deployActor = DeployActor("frontend::article", Stage(stage))
       val updateActor = MessageBus(deployActor)
@@ -100,6 +109,37 @@ object Application extends Controller with Logging {
       val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
 
       Ok(views.html.deployfrontendarticle(request, updateActor.path.toString, buffer))
+    }
+  }
+
+  def deploy = TimedAction {
+    AuthAction { implicit request =>
+      Ok(views.html.deployForm(request, deployForm))
+    }
+  }
+
+  def doDeploy = TimedAction {
+    AuthAction { implicit request =>
+      val stage = "CODE"
+      deployForm.bindFromRequest().fold(
+        errors => BadRequest(views.html.deployForm(request,errors)),
+        deployParameters => {
+          val deployActor = DeployActor(deployParameters.project, Stage(deployParameters.stage))
+          val updateActor = MessageBus(deployActor)
+          updateActor ! Clear()
+
+          val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
+          val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
+          deployActor ! Deploy(deployParameters.build, updateActor, keyRing)
+
+          implicit val timeout = Timeout(1.seconds)
+          val futureBuffer = updateActor ? HistoryBuffer()
+          val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
+
+          Ok(views.html.deploy(request, updateActor.path.toString, deployParameters, buffer))
+        }
+      )
+
     }
   }
 

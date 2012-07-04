@@ -22,7 +22,9 @@ object Identity {
   def readJson(json: String) = read[Identity](json)
 }
 
-class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request)
+class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request) {
+  lazy val isAuthenticated = identity.isDefined
+}
 
 object NonAuthAction {
 

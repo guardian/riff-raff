@@ -1,0 +1,42 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[deployment.DeployParameters])
+@import helper.twitterBootstrap._
+
+@main("Deploy request", request) {
+
+<h2>Deploy request</h2>
+
+<div class="alert alert-error alert-block">
+    <h4 class="alert-heading">Warning!</h4>
+    <p/>
+    <p>This general deployment option is likely to fail in many cases due to assumptions made in order to get
+    the frontend::article project to deploy in CODE - in particular:
+    <ul>
+      <li>SSH credentials are good for executable JAR deployments on non-PROD hosts</li>
+      <li>S3 credentials are good for bucket uploads in the aws-dev amazon account</li>
+    </ul>
+    </p>
+    <p>
+        Feel free to try - report any failures to <a href="mailto:simon.hildrew@@guardian.co.uk">simon.hildrew@@guardian.co.uk</a>
+    </p>
+</div>
+
+<h3>Provide deploy details</h3>
+
+@helper.form(action=routes.Application.doDeploy) {
+@helper.inputText(deployForm("project"))
+@helper.inputText(deployForm("build"))
+@helper.select(
+deployForm("stage"),
+options = helper.options(deployment.Stages.list),
+'_default -> "--- Choose a stage ---",
+'_label -> "stage",
+'_error -> deployForm("stage").error.map(_.withMessage("Please select deployment stage"))
+)
+
+<div class="actions">
+    <input type="submit" value="Deploy" class="btn btn-danger"> or
+    <a href="@routes.Application.index()" class="btn">Cancel</a>
+</div>
+}
+
+}

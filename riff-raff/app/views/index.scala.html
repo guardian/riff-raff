@@ -1,7 +1,12 @@
 @(request: controllers.AuthenticatedRequest[AnyContent])
+@import conf.Configuration._
 
 @main("Welcome", request) {
     
     <h2>Welcome to the Guardian deployment tool.</h2>
+
+    @if(request.isAuthenticated && irc.isConfigured) {
+        <p>Deployment information can also be seen in the @irc.channel IRC channel on @irc.host</p>
+    }
     
 }
