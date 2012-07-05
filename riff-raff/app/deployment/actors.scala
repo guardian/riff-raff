@@ -67,7 +67,7 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
         log.error(e.getStackTraceString)
         deployLogger.error("Deployment aborted due to exception", e)
         IrcClient.notify("[%s] FAILED: deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
-        IrcClient.notify("[%s] FAILED: %s" format (e.toString))
+        IrcClient.notify("[%s] FAILED: %s" format (user.fullName, e.toString))
       } finally {
         updateActor ! Finished()
       }
