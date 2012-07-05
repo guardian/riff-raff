@@ -9,8 +9,6 @@
 @views.html.snippets.deployLog(request, deployLog)
 </div>
 <script>
-  window.onload = function() {
-      window.ajaxRefresh.enable();
-  }
+  $(function() { ajaxRefresh.enable(); });
 </script>
 }
