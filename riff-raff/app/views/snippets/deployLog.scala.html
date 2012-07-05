@@ -4,3 +4,9 @@
   <p>@Html(line)</p>
 }
 <p>@if(deployLog.showLoader){<img src='@routes.Assets.at("images/ajax-loader.gif")' height='16' width='16'/>}</p>
+
+@if(deployLog.finished) {
+<script type="text/javascript">
+  this.ajaxRefresh.disable();
+</script>
+}

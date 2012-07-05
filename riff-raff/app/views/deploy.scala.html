@@ -5,7 +5,10 @@
 <h2>Deploying @deployParameters.project build @deployParameters.build in @deployParameters.stage</h2>
 <p>(update actor @updateActorPath)</p>
 <hr/>
-<div class="content" @if(!deployLog.finished){data-ajax-refresh="@routes.Application.deployLog(updateActorPath)"}>
+<div class="content" data-ajax-refresh="@routes.Application.deployLog(updateActorPath)">
 @views.html.snippets.deployLog(request, deployLog)
 </div>
+<script>
+  this.ajaxRefresh.enable();
+</script>
 }
