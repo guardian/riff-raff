@@ -96,19 +96,20 @@ object Application extends Controller with Logging {
       val stage = "CODE"
       val build = deployBuildForm.bindFromRequest().get
 
-      val deployActor = DeployActor("frontend::article", Stage(stage))
+      val deployParameters = new DeployParameters("frontend::article", build, stage)
+      val deployActor = DeployActor(deployParameters.project, Stage(deployParameters.stage))
       val updateActor = MessageBus(deployActor)
       updateActor ! Clear()
 
       val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
       val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-      deployActor ! Deploy(build, updateActor, keyRing, request.identity.get)
+      deployActor ! Deploy(deployParameters.build, updateActor, keyRing, request.identity.get)
 
       implicit val timeout = Timeout(1.seconds)
       val futureBuffer = updateActor ? HistoryBuffer()
       val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
 
-      Ok(views.html.deployfrontendarticle(request, updateActor.path.toString, buffer))
+      Ok(views.html.deploy(request, updateActor.path.toString, deployParameters, buffer))
     }
   }
 
