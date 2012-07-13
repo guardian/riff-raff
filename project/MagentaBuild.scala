@@ -26,7 +26,10 @@ object MagentaBuild extends Build {
     .settings( ideaSettings: _* )
     .settings(
       testOptions in Test := Nil,
-      jarName in assembly := "%s.jar" format name
+      jarName in assembly := "%s.jar" format name,
+      excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
+        cp filter {_.data.getName == "io_2.9.1-0.11.2.jar"}
+      }
   )
 
 
