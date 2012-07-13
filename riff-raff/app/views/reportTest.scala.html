@@ -1,0 +1,17 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], report: magenta.ReportTree, verbose:Boolean)
+
+@main("Report test", request) {
+<!-- verbose @verbose -->
+@if(!verbose) {
+<style>
+    span.message-verbose {
+        display:none;
+    }
+</style>
+}
+<h2>Report test (@report.message.text)</h2>
+<hr/>
+<div class="content">
+    @snippets.deployLogContent(request, report, verbose)
+</div>
+}

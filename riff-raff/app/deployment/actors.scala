@@ -1,15 +1,22 @@
 package deployment
 
-import akka.actor._
 import magenta.json.JsonReader
 import java.io.File
 import magenta._
-import notification.IrcClient
-import controllers.{Identity, Logging}
+import collection.mutable
+import collection.mutable.Buffer
+import akka.actor.{Actor, Props, ActorRef, ActorSystem}
+import akka.dispatch.Await
+import akka.util.duration._
+import akka.util.Timeout
+import akka.pattern.ask
+import play.api.Logger
+import controllers.Logging
+import net.liftweb.util.ClearClearable
 
 object DeployActor {
   trait Event
-  case class Deploy(build: Int, updateActor: ActorRef, keyRing: KeyRing, user: Identity, recipe: String = "default") extends Event
+  case class Deploy(parameters: DeployParameters, keyRing: KeyRing) extends Event
 
   lazy val system = ActorSystem("deploy")
 
@@ -28,95 +35,79 @@ object DeployActor {
 
 class DeployActor(val projectName: String, val stage: Stage) extends Actor with Logging {
   import DeployActor._
-  import MessageBus._
 
   def receive = {
-    case Deploy(build, updateActor, keyRing, user, recipe) => {
-      val taskStatus = new TaskStatus()
-      val deployLogger = new DeployLogger(updateActor, taskStatus)
-      val teeLogger = new TeeLogger(new PlayLogger(), deployLogger)
-      try {
-        Log.current.withValue(teeLogger) {
-          IrcClient.notify("[%s] Starting deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
-          Log.info("Downloading artifact")
-          val artifactDir = Artifact.download(projectName, build)
-          Log.info("Reading deploy.json")
-          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-          val hosts = DeployInfo.parsedDeployInfo.filter(_.stage == stage.name)
-          Log.info("Resolving tasks")
-          val tasks = Resolver.resolve(project, recipe, hosts, stage)
+    case Deploy(parameters, keyRing) => {
+      MessageBroker.deployContext(parameters) {
+        log.info("Downloading artifact")
+        MessageBroker.info("Downloading artifact")
+        val artifactDir = Artifact.download(parameters.build)
+        log.info("Reading deploy.json")
+        MessageBroker.info("Reading deploy.json")
+        val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
 
-          if (tasks.isEmpty)
-            sys.error("No tasks were found to execute. Ensure the app(s) '%s' are in the list supported by this stage/host:\n%s." format (Resolver.possibleApps(project, recipe), HostList.listOfHostsAsHostList(hosts).supportedApps))
-          taskStatus.addTasks(tasks)
-          updateActor ! Info(taskStatus)
-
-          tasks.foreach { task =>
-            taskStatus.run(task) {
-              Log.context("Executing %s..." format task.fullDescription) {
-                task.execute(keyRing)
-              }
-            }
-          }
-          Log.info("Done")
-          IrcClient.notify("[%s] Successful deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
-        }
-      } catch {
-        case e =>
-        log.error(e.toString)
-        log.error(e.getStackTraceString)
-        deployLogger.error("Deployment aborted due to exception", e)
-        IrcClient.notify("[%s] FAILED: deploy of %s build %d (using recipe %s) to %s" format (user.fullName, projectName, build, recipe, stage))
-        IrcClient.notify("[%s] FAILED: %s" format (user.fullName, e.toString))
-      } finally {
-        updateActor ! Finished()
+        val deployContext = parameters.toDeployContext(project, DeployInfo.hostList)
+        log.info("Executing deployContext")
+        deployContext.execute(keyRing)
       }
     }
   }
-
 }
 
-object MessageBus {
+object MessageBus extends Logging {
+
+  def init() {}
 
   trait Event
 
-  case class Info(message: LogData) extends Event
-  case class HistoryBuffer() extends Event
-  case class Finished() extends Event
-  case class Clear() extends Event
+  case class Clear(key: DeploymentKey) extends Event
+  case class NewMessage(messageStack: MessageStack, parameters: DeploymentKey) extends Event
+  case class MessageHistoryRequest(key: DeploymentKey) extends Event
+  case class MessagePayload(messageStacks: List[MessageStack]) extends Event
 
   lazy val system = ActorSystem("deploy")
 
-  var updateActors = Map.empty[ActorRef, ActorRef]
+  var updateActors = Map.empty[(String,Stage), ActorRef]
+  val actor = system.actorOf(Props[MessageBus], "message-broker")
 
-  def apply(deployActor: ActorRef): ActorRef = {
-    synchronized {
-      updateActors.get(deployActor).getOrElse {
-        val actor = system.actorOf(Props[MessageBus], "update-" + deployActor.path.name)
-        updateActors += deployActor -> actor
-        actor
-      }
+  val sink = new MessageSink {
+    def message(stack: MessageStack) {
+      stack.deployParameters.map(_.toDeploymentKey).foreach( actor ! NewMessage(stack, _) )
     }
+  }
+
+  MessageBroker.subscribe(sink)
+
+  def clear(key: DeploymentKey) {
+    actor ! Clear(key)
+  }
+
+  def messageHistory(key: DeploymentKey): List[MessageStack] = {
+    implicit val timeout = Timeout(1.seconds)
+    val futureBuffer = actor ? MessageHistoryRequest(key)
+    val payload = Await.result(futureBuffer, timeout.duration).asInstanceOf[MessagePayload]
+    payload.messageStacks
+  }
+
+  def deployReport(key: DeploymentKey): ReportTree = {
+    DeployReport(messageHistory(key), "Deployment report")
   }
 }
 
-class MessageBus extends Actor with Logging {
+class MessageBus() extends Actor {
   import MessageBus._
-  var messages: Seq[LogData] = Seq.empty
-  var finished = false
+
+  val keyToMessages = mutable.Map.empty[DeploymentKey,Buffer[MessageStack]].withDefaultValue(Buffer[MessageStack]())
+
   def receive = {
-    case Info(message) => {
-      messages = messages :+ message
+    case Clear(key) => {
+      keyToMessages(key) = Buffer[MessageStack]()
     }
-    case HistoryBuffer() => {
-      sender ! DeployLog(messages, finished)
+    case NewMessage(messageStack, key) => {
+      keyToMessages(key) += messageStack
     }
-    case Finished() => {
-      finished=true
-    }
-    case Clear() => {
-      messages = Seq.empty
-      finished = false
+    case MessageHistoryRequest(key) => {
+      sender ! MessagePayload(keyToMessages.get(key) map (_.toList) getOrElse(Nil))
     }
   }
 }

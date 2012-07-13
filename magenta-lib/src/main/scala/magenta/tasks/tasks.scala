@@ -76,7 +76,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
 }
 
 case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task with RepeatedPollingCheck {
-  def description = "check [%s] on " format(paths, host)
+  def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
   def execute(keyRing: KeyRing) {
@@ -98,7 +98,7 @@ trait RepeatedPollingCheck {
           sys.error("404 Not Found")
         }
         case e: IOException => {
-          Log.verbose("Timed out attempt #"+currentAttempt +"- Retrying")
+          MessageBroker.verbose("Timed out attempt #"+currentAttempt +"- Retrying")
           Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
           checkAttempt(currentAttempt + 1)
         }
@@ -111,7 +111,7 @@ trait RepeatedPollingCheck {
 
 case class SayHello(host: Host) extends Task {
   def execute(keyRing: KeyRing) {
-    Log.info("Hello to " + host.name + "!")
+    MessageBroker.info("Hello to " + host.name + "!")
   }
 
   def description = "to " + host.name
