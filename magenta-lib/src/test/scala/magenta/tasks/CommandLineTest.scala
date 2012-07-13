@@ -18,45 +18,74 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
       be ("echo \"this needs to be quoted\"")
   }
 
-  class RecordingOutput extends Output {
-    val recorded = new ListBuffer[String]()
-
-    def verbose(s: => String) { recorded += "VERBOSE: " + s }
-    def info(s: => String) { recorded += "INFO: " + s }
-    def warn(s: => String) { recorded += "WARN: " + s }
-    def error(s: => String) { recorded += "ERROR: " + s }
-    def context[T](s: => String)(block: => T) = {
-      recorded += "START-CONTEXT: " + s
-      try block finally recorded += "END-CONTEXT: " + s
-    }
+  class RecordingSink extends MessageSink {
+    val recorded = new ListBuffer[List[Message]]()
+    def message(s: MessageStack) { recorded += s.messages }
   }
 
   it should "execute command and pipe progress results to Logger" in {
-    val blackBox = new RecordingOutput
+    val blackBox = new RecordingSink
+    MessageBroker.subscribe(new MessageSinkFilter(blackBox, _.deployParameters == Some(parameters)))
 
-    Log.current.withValue(blackBox) {
+    MessageBroker.deployContext(parameters) {
       val c = CommandLine(List("echo", "hello"))
       c.run()
-
-      blackBox.recorded.toList should be (
-        "START-CONTEXT: $ echo hello" ::
-        "INFO: hello" ::
-        "VERBOSE: return value 0" ::
-        "END-CONTEXT: $ echo hello" ::
-        Nil
-      )
     }
+
+    blackBox.recorded.toList should be (
+      List(StartContext(Deploy(parameters))) ::
+      List(StartContext(Info("$ echo hello")),Deploy(parameters)) ::
+      List(CommandOutput("hello"),Info("$ echo hello"),Deploy(parameters)) ::
+      List(Verbose("return value 0"),Info("$ echo hello"),Deploy(parameters)) ::
+      List(FinishContext(Info("$ echo hello")), Deploy(parameters)) ::
+      List(FinishContext(Deploy(parameters))) ::
+      Nil
+    )
   }
 
   it should "throw when command is not found" in {
     evaluating {
-      CommandLine(List("unknown_command")).run()
+      MessageBroker.deployContext(parameters) {
+        CommandLine(List("unknown_command")).run()
+      }
     } should produce [IOException]
   }
 
   it should "throw when command returns non zero exit code" in {
     evaluating {
       CommandLine(List("false")).run()
-    } should produce [RuntimeException]
+    } should produce [FailException]
   }
+
+  val CODE = Stage("CODE")
+
+  case class StubTask(description: String) extends Task {
+    def execute(keyRing: KeyRing) { }
+    def verbose = "stub(%s)" format description
+  }
+
+  case class StubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
+    def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
+  }
+
+  case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
+    def resolve(stage: Stage) = StubTask(description + " per app task") :: Nil
+  }
+
+  val app1 = App("the_role")
+  val app2 = App("the_2nd_role")
+
+  val baseRecipe = Recipe("one",
+    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
+    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
+    dependsOn = Nil)
+
+  val deployinfoSingleHost = List(Host("the_host", stage=CODE.name).app(app1))
+
+  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
+
+  val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), CODE, RecipeName(baseRecipe.name))
+  val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
+
+
 }

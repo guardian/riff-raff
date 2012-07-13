@@ -6,16 +6,11 @@ import play.api.data.Forms._
 import play.api.mvc._
 import deployment._
 
-import deployment.DeployActor.Deploy
-import akka.util.duration._
-import akka.util.Timeout
-import akka.pattern.ask
-
-import akka.dispatch.Await
-import deployment.MessageBus.{Clear, HistoryBuffer}
 import play.api.Logger
 import conf.{TimedAction, Configuration}
 import magenta._
+import collection.mutable.ArrayBuffer
+import tasks.Task
 
 trait Logging {
   implicit val log = Logger(getClass)
@@ -55,7 +50,7 @@ object Application extends Controller with Logging {
 
   def deployInfo(stage: String) = TimedAction {
     AuthAction { request =>
-      val stageAppHosts = DeployInfo.parsedDeployInfo filter { host =>
+      val stageAppHosts = DeployInfo.hostList filter { host =>
         host.stage == stage || stage == ""
       } groupBy { _.stage } mapValues { hostList =>
         hostList.groupBy {
@@ -73,43 +68,18 @@ object Application extends Controller with Logging {
     }
   }
 
-  lazy val deployBuildForm = Form(
-    "build" -> number(min = 1)
-  )
-
-  lazy val deployForm = Form[DeployParameters](
+  lazy val deployForm = Form[DeployParameterForm](
     mapping(
       "project" -> nonEmptyText,
-      "build" -> number(min = 1),
+      "build" -> nonEmptyText,
       "stage" -> nonEmptyText
-    )(DeployParameters.apply)(DeployParameters.unapply)
+    )(DeployParameterForm.apply)(DeployParameterForm.unapply)
   )
 
   def frontendArticleCode = TimedAction {
     AuthAction { request =>
-      Ok(views.html.frontendarticle(request, deployBuildForm))
-    }
-  }
-
-  def deployFrontendArticleCode = TimedAction {
-    AuthAction { implicit request =>
-      val stage = "CODE"
-      val build = deployBuildForm.bindFromRequest().get
-
-      val deployParameters = new DeployParameters("frontend::article", build, stage)
-      val deployActor = DeployActor(deployParameters.project, Stage(deployParameters.stage))
-      val updateActor = MessageBus(deployActor)
-      updateActor ! Clear()
-
-      val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
-      val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-      deployActor ! Deploy(deployParameters.build, updateActor, keyRing, request.identity.get)
-
-      implicit val timeout = Timeout(1.seconds)
-      val futureBuffer = updateActor ? HistoryBuffer()
-      val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
-
-      Ok(views.html.deploy(request, updateActor.path.toString, deployParameters, buffer))
+      val parameters = DeployParameterForm("frontend::article","","CODE")
+      Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
     }
   }
 
@@ -121,38 +91,45 @@ object Application extends Controller with Logging {
 
   def doDeploy = TimedAction {
     AuthAction { implicit request =>
-      val stage = "CODE"
       deployForm.bindFromRequest().fold(
         errors => BadRequest(views.html.deployForm(request,errors)),
-        deployParameters => {
-          val deployActor = DeployActor(deployParameters.project, Stage(deployParameters.stage))
-          val updateActor = MessageBus(deployActor)
-          updateActor ! Clear()
-
+        form => {
+          log.info("Form submitted")
+          val deployActor = DeployActor(form.project, Stage(form.stage))
           val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
           val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-          deployActor ! Deploy(deployParameters.build, updateActor, keyRing, request.identity.get)
 
-          implicit val timeout = Timeout(1.seconds)
-          val futureBuffer = updateActor ? HistoryBuffer()
-          val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
+          val context = new DeployParameters(Deployer(request.identity.get.fullName),
+            Build(form.project,form.build.toString),
+            Stage(form.stage))
 
-          Ok(views.html.deploy(request, updateActor.path.toString, deployParameters, buffer))
+          val key = DeploymentKey(form.stage,form.project,form.build)
+          MessageBus.clear(key)
+
+          import deployment.DeployActor.Deploy
+          deployActor ! Deploy(context, keyRing)
+
+          Redirect(routes.Application.deployLog(key.stage,key.project,key.build))
         }
       )
-
     }
   }
 
-  def deployLog(updateActorPath: String) = TimedAction {
+  def deployLog(stage: String, project: String, build: String, recipe: String = "default", verbose:Boolean) = TimedAction {
     AuthAction { implicit request =>
-      val updateActor = MessageBus.system.actorFor(updateActorPath)
+      val key = DeploymentKey(stage,project,build,recipe)
+      val report = MessageBus.deployReport(key)
 
-      implicit val timeout = Timeout(1.seconds)
-      val futureBuffer = updateActor ? HistoryBuffer()
-      val buffer = Await.result(futureBuffer, timeout.duration).asInstanceOf[DeployLog]
+      Ok(views.html.deployLog(request, key, report,verbose))
+    }
+  }
 
-      Ok(views.html.snippets.deployLog(request,buffer))
+  def deployLogContent(stage: String, project: String, build: String, recipe: String, verbose: Boolean) = TimedAction {
+    AuthAction { implicit request =>
+      val key = DeploymentKey(stage,project,build,recipe)
+      val report = MessageBus.deployReport(key)
+
+      Ok(views.html.snippets.deployLogContent(request,report,verbose))
     }
   }
 

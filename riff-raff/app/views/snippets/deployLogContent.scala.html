@@ -1,0 +1,28 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], report: magenta.ReportTree, verbose:Boolean)
+@import magenta._
+
+@report.cascadeState match {
+    case RunState.Completed => { <div class="alert alert-success">Deploy completed</div> }
+    case RunState.Failed => {
+<div class="alert alert-error">
+    <h4 class="alert-heading">Deploy failed</h4>
+    @report.failureMessage.map{ fail =>
+      <strong>@fail.text</strong>
+      <pre>@fail.exception.getStackTraceString</pre>
+    }
+</div>
+}
+    case _ => {}
+}
+
+<ul class="magenta-reporttree">
+    @snippets.reportTree(report,verbose)
+</ul>
+
+<!-- @report.render.mkString("\n") -->
+
+@if(!report.isRunning){
+    <script type="text/javascript">
+      this.ajaxRefresh.disable();
+    </script>
+}

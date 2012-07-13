@@ -4,27 +4,48 @@ import controllers.Logging
 import conf.Configuration
 import org.pircbotx.PircBotX
 import scala.collection.JavaConversions._
-import akka.actor._
+import com.gu.management.ManagementBuildInfo
+import magenta._
+import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 
 object IrcClient {
-
-
   trait Event
   case class Notify(message: String) extends Event
 
   lazy val system = ActorSystem("notify")
   val actor = if (Configuration.irc.isConfigured) Some(system.actorOf(Props[IrcClient], "irc-client")) else None
 
-  def notify(message: String) {
+  def sendMessage(message: String) {
     actor.foreach(_ ! Notify(message))
   }
 
+  val sink = new MessageSink {
+    def message(stack: MessageStack) {
+      stack.top match {
+        case StartContext(Deploy(parameters)) =>
+          sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+        case FailContext(Deploy(parameters), exception) =>
+          sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+          sendMessage("[%s] FAILED: %s" format (parameters.deployer.name, exception.toString))
+        case FinishContext(Deploy(parameters)) =>
+          sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+        case _ =>
+      }
+    }
+  }
+
   def init(): Option[ActorRef] = {
+    MessageBroker.subscribe(sink)
     actor
   }
 
-  def shutdown() { actor.foreach(system.stop) }
-
+  def shutdown() {
+    MessageBroker.unsubscribe(sink)
+    actor.foreach(system.stop)
+  }
 }
 
 class IrcClient extends Actor with Logging {
@@ -48,6 +69,7 @@ class IrcClient extends Actor with Logging {
 
   log.info("Initialisation complete")
   log.info(ircBot.toString)
+  sendToChannel("riff-raff (build %s) started" format ManagementBuildInfo.version)
 
   def sendToChannel(message:String) { ircBot.sendMessage(Configuration.irc.channel.get, message) }
 
@@ -58,7 +80,7 @@ class IrcClient extends Actor with Logging {
   }
 
   override def postStop() {
-    ircBot.disconnect()
+    ircBot.quitServer("riff-raff (build %s) shutting down" format ManagementBuildInfo.version)
   }
 }
 
