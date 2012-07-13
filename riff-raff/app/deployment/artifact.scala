@@ -3,32 +3,32 @@ package deployment
 import dispatch._
 import sbt._
 import dispatch.Request.encode_%
-import magenta.Log
 import magenta.json.DeployInfoJsonReader
+import magenta.{MessageBroker, Build}
 
 object Artifact {
 
-  def download(project: String, buildNum: Int) = {
+  def download(build: Build) = {
     val http = new Http {
       override def make_logger = new Logger {
-        def info(msg: String, items: Any*) { Log.verbose("http: " + msg.format(items: _*)) }
-        def warn(msg: String, items: Any*) { Log.warn("http: " + msg.format(items: _*)) }
+        def info(msg: String, items: Any*) { MessageBroker.verbose("http: " + msg.format(items: _*)) }
+        def warn(msg: String, items: Any*) { MessageBroker.info("http: " + msg.format(items: _*)) }
       }
     }
 
     val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
-      encode_%(project) / buildNum.toString / "artifacts.zip"
+      encode_%(build.name) / build.id / "artifacts.zip"
 
     val tmpDir = IO.createTemporaryDirectory
 
-    Log.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, tmpDir.getAbsolutePath))
+    MessageBroker.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, tmpDir.getAbsolutePath))
 
     try {
       val files = http(tcUrl >> { IO.unzipStream(_, tmpDir) })
-      Log.verbose("downloaded:\n" + files.mkString("\n"))
+      MessageBroker.verbose("downloaded:\n" + files.mkString("\n"))
     } catch {
       case StatusCode(404, _) =>
-        sys.error("404 downloading %s\n - have you got the project name and build number correct?" format tcUrl.to_uri)
+        MessageBroker.fail("404 downloading %s\n - have you got the project name and build number correct?" format tcUrl.to_uri)
     }
 
     http.shutdown()
@@ -39,7 +39,7 @@ object Artifact {
 }
 
 object DeployInfo {
-  lazy val parsedDeployInfo = {
+  lazy val hostList = {
     import sys.process._
     DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
   }

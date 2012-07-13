@@ -7,6 +7,7 @@ import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
 import scala.concurrent.ops._
 import org.scalatest.mock.MockitoSugar
+import org.mockito.Mockito._
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import java.io.{File, OutputStreamWriter}
@@ -79,7 +80,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       server.accept().close()
       server.close()
     }
-    task.execute(fakeKeyRing)
+    MessageBroker.deployContext(parameters) { task.execute(fakeKeyRing) }
   }
 
   it should "connect to an open port after a short time" in {
@@ -177,7 +178,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       be (CommandLine(List("ssh", "-qtt", "-i", "foo", "some-host", "ls -l")))
   }
 
-  import org.mockito.Mockito._
+
 
   "S3Upload task" should "upload a single file to S3" in {
 
@@ -283,10 +284,12 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
   
   val fakeKeyRing = KeyRing(SystemUser(None))
+  val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), RecipeName("baseRecipe.name"))
 }
 
 
 class TestServer(port:Int = 9997) {
+
   def withResponse(response: String) {
     val server = new ServerSocket(port)
     val socket = server.accept()
@@ -296,4 +299,5 @@ class TestServer(port:Int = 9997) {
     socket.close()
     server.close()
   }
+
 }

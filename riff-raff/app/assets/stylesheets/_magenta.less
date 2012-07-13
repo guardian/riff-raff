@@ -1,0 +1,76 @@
+ul.magenta-reporttree {
+    list-style: none;
+}
+span.message-commandoutput,
+span.message-commanderror {
+  padding: 0 3px 2px;
+  #font > #family > .monospace;
+  font-size: @baseFontSize - 1;
+  color: @grayDark;
+  .border-radius(3px);
+  display: block;
+  padding: (@baseLineHeight - 1) / 2;
+  margin: 0 0 @baseLineHeight / 2;
+  font-size: 12px;
+  line-height: @baseLineHeight;
+  background-color: #f5f5f5;
+  border: 1px solid #ccc; // fallback for IE7-8
+  border: 1px solid rgba(0,0,0,.15);
+  .border-radius(4px);
+  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+span.message-commanderror {
+  font-weight: bold;
+}
+
+span.message-fail {
+  font-weight: bold;
+}
+
+span.message-taskrun {
+  font-weight: bold;
+  &:before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    padding-right: 5px;
+    line-height: 14px;
+    vertical-align: text-top;
+    background-image: url(@iconSpritePath);
+    background-position: -432px 0;
+    background-repeat: no-repeat;
+  }
+}
+
+span.message-tasklist {
+    display: none;
+}
+
+span.state-running {
+  &:after {
+    content: url("/assets/images/ajax-loader.gif");
+    line-height: 16px;
+    padding-left: 10px;
+    vertical-align: middle;
+  }
+}
+
+span.state-completed {
+    &:after {
+        content: "";
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        margin-left: 10px;
+        line-height: 14px;
+        vertical-align: text-top;
+        background-image: url(@iconSpritePath);
+        background-position: -288px 0;
+        background-repeat: no-repeat;
+    }
+}

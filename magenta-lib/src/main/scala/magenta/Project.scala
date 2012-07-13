@@ -20,7 +20,7 @@ case class Host(
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 }
 
-class HostList(hosts: List[Host]) {
+case class HostList(hosts: List[Host]) {
   def supportedApps = {
     val apps = for {
       host <- hosts
@@ -33,9 +33,12 @@ class HostList(hosts: List[Host]) {
     .sortBy { _.name }
     .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
     .mkString("\n")
+
+  def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
 }
 object HostList {
   implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
+  implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 
 /*
@@ -72,3 +75,13 @@ case class Project(
 }
 
 case class Stage(name: String)
+case class Build(name:String, id:String)
+case class RecipeName(name:String)
+
+case class Deployer(name: String)
+
+case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default")) {
+  def toDeployContext(project: Project, hosts:HostList): DeployContext = {
+    DeployContext(this,project,hosts)
+  }
+}

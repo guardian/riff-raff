@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[Int])
+@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[deployment.DeployParameterForm])
 @import helper.twitterBootstrap._
 
 @main("Frontend Article in CODE", request) {
@@ -7,11 +7,13 @@
 
     <h3>New Deploy</h3>
 
-    @helper.form(action=routes.Application.deployFrontendArticleCode) {
+    @helper.form(action=routes.Application.doDeploy) {
         @helper.inputText(deployForm("build"))
+        <input type="hidden" value='@deployForm("project").value' name="project" />
+        <input type="hidden" value='@deployForm("stage").value' name="stage" />
 
         <div class="actions">
-            <input type="submit" value="Deploy" class="btn primary"> or
+            <input type="submit" value="Deploy" class="btn btn-danger"> or
             <a href="@routes.Application.index()" class="btn">Cancel</a>
         </div>
     }

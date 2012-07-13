@@ -1,0 +1,19 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], key: deployment.DeploymentKey, report: magenta.ReportTree, verbose: Boolean = false)
+
+@main("Deployment report for "+key.project, request) {
+@if(!verbose) {
+<style>
+span.message-verbose {
+    display:none;
+}
+</style>
+}
+<h2>Deploying @key.project build @key.build in @key.stage</h2>
+<hr/>
+<div class="content" data-ajax-refresh="@routes.Application.deployLogContent(key.stage, key.project, key.build, key.recipe)">
+@snippets.deployLogContent(request, report, verbose)
+</div>
+<script>
+  $(function() { ajaxRefresh.enable(); });
+</script>
+}
