@@ -1,6 +1,6 @@
 resolvers ++= Seq(
-    "spray repo" at "http://repo.spray.cc",
-    "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+    Classpaths.typesafeResolver,
+    "spray repo" at "http://repo.spray.cc"
 )
 
 libraryDependencies ++= Seq(
@@ -14,5 +14,5 @@ libraryDependencies ++= Seq(
 	"com.amazonaws" % "aws-java-sdk" % "1.2.1",
 	"org.scalatest" %% "scalatest" % "1.6.1" % "test",
 	"org.mockito" % "mockito-core" % "1.9.0" % "test",
-	"org.scala-tools.sbt" %% "io" % "0.11.2"
+	"org.scala-sbt" %% "io" % "0.11.3"
 )
