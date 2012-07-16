@@ -27,7 +27,7 @@ object DeployActor {
   def apply(project: String, stage: Stage): ActorRef = {
     synchronized {
       deployActors.get((project, stage)).getOrElse {
-        val actor = system.actorOf(Props(new DeployActor(project, stage)), "deploy-%s-%s" format(URLEncoder.encode(project, "UTF-8"), stage.name))
+        val actor = system.actorOf(Props(new DeployActor(project, stage)), "deploy-%s-%s" format (project.replace(" ", "_"), stage.name))
         deployActors += (project, stage) -> actor
         actor
       }
