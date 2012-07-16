@@ -16,11 +16,14 @@ object CommandLocator {
 }
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
+  val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
+
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
-  def commandLine(keyRing: KeyRing): CommandLine = keyRing.sshCredentials.keyFile map { location =>
-    val shellCommand = CommandLine("ssh" :: "-i" :: location.getPath :: Nil).quoted
+  def commandLine(keyRing: KeyRing): CommandLine = {
+    val keyFileArgs = keyRing.sshCredentials.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
+    val shellCommand = CommandLine("ssh" :: noHostKeyChecking ::: keyFileArgs ::: Nil).quoted
     CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
-  } getOrElse commandLine
+  }
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 

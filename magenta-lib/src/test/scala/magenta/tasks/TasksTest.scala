@@ -39,7 +39,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val task = Restart(host, "app")
 
-    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "some-user@some-host", "sudo /sbin/service app restart")))
+    task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "some-user@some-host", "sudo /sbin/service app restart")))
   }
 
   it should "call block script on path" in {
@@ -138,7 +138,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTask.remoteCommandLine should be (CommandLine(List("ssh", "-qtt","some-host", "ls -l")))
+    remoteTask.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "some-host", "ls -l")))
 
     val remoteTaskWithUser = new RemoteShellTask {
       def host = Host("some-host") as "resin"
@@ -146,7 +146,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def commandLine = CommandLine(List("ls", "-l"))
     }
 
-    remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "resin@some-host", "ls -l")))
+    remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "resin@some-host", "ls -l")))
   }
   
   it should "execute the command line" in {
@@ -175,7 +175,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     }
 
     remoteTask.remoteCommandLine(SystemUser(Some(new File("foo")))) should
-      be (CommandLine(List("ssh", "-qtt", "-i", "foo", "some-host", "ls -l")))
+      be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "foo", "some-host", "ls -l")))
   }
 
 
@@ -255,15 +255,15 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
 
-    command.quoted should be ("""rsync -e "ssh -i key" -rv /source foo.com:/dest""")
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i key" -rv /source foo.com:/dest""")
   }
 
-  it should "not specify custom remote shell for rsync if no key-file specified" in {
+  it should "specify custom remote shell without keyfile if no key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
     val command = task.commandLine(KeyRing(SystemUser(None)))
 
-    command.quoted should be ("""rsync -rv /source foo.com:/dest""")
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rv /source foo.com:/dest""")
   }
   
   private def createTempDir() = {

@@ -7,12 +7,14 @@ import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
 trait RemoteShellTask extends ShellTask {
   def host: Host
 
+  val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
+
   def remoteCommandLine: CommandLine = remoteCommandLine(None)
   def remoteCommandLine(credentials: SshCredentials): CommandLine = remoteCommandLine(Some(credentials))
 
   protected def remoteCommandLine(credentials: Option[SshCredentials]): CommandLine = {
     val keyFileArgs = credentials.flatMap(_.keyFile).toList.flatMap("-i" :: _.getPath :: Nil)
-    CommandLine("ssh" :: "-qtt" :: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil)
+    CommandLine("ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil)
   }
 
   override def execute(keyRing: KeyRing) { keyRing.sshCredentials match {
