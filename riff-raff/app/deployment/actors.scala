@@ -13,6 +13,8 @@ import akka.pattern.ask
 import play.api.Logger
 import controllers.Logging
 import net.liftweb.util.ClearClearable
+import java.net.URLEncoder
+import java.nio.charset.Charset
 
 object DeployActor {
   trait Event
@@ -25,7 +27,7 @@ object DeployActor {
   def apply(project: String, stage: Stage): ActorRef = {
     synchronized {
       deployActors.get((project, stage)).getOrElse {
-        val actor = system.actorOf(Props(new DeployActor(project, stage)), "deploy-" + project + "-" + stage.name)
+        val actor = system.actorOf(Props(new DeployActor(project, stage)), "deploy-%s-%s" format(URLEncoder.encode(project, "UTF-8"), stage.name))
         deployActors += (project, stage) -> actor
         actor
       }
