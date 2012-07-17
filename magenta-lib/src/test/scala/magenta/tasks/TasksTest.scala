@@ -70,7 +70,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val task = WaitForPort(Host("localhost"), "9998", 200 millis)
     evaluating {
       task.execute(fakeKeyRing)
-    } should produce [RuntimeException]
+    } should produce [FailException]
   }
 
   it should "connect to open port" in {
@@ -99,7 +99,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val task = CheckUrls(Host("localhost"), "9997",List("/"), 200 millis)
     evaluating {
       task.execute(fakeKeyRing)
-    } should produce [RuntimeException]
+    } should produce [FailException]
   }
 
   it should "get a 200 OK" in {
@@ -118,7 +118,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     }
     evaluating {
       task.execute(fakeKeyRing)
-    } should produce [RuntimeException]
+    } should produce [FailException]
   }
 
   it should "fail on a 500 ERROR" in {
@@ -128,7 +128,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     }
     evaluating {
       task.execute(fakeKeyRing)
-    } should produce [RuntimeException]
+    } should produce [FailException]
   }
   
   "remote shell task" should "build a remote ssh line if no credentials" in {
