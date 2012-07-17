@@ -93,15 +93,15 @@ trait RepeatedPollingCheck {
 
   def check(action: => Unit) {
     def checkAttempt(currentAttempt: Int) {
-      if (currentAttempt > MAX_CONNECTION_ATTEMPTS)
-        sys.error("Timed out")
       try action
       catch {
         case e: FileNotFoundException => {
-          sys.error("404 Not Found")
+          MessageBroker.fail("404 Not Found", e)
         }
         case e: IOException => {
-          MessageBroker.verbose("Timed out attempt #"+currentAttempt +"- Retrying")
+          if (currentAttempt >= MAX_CONNECTION_ATTEMPTS)
+            MessageBroker.fail("Check failed %s times - aborting" format currentAttempt, e)
+          MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
           Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
           checkAttempt(currentAttempt + 1)
         }

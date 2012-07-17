@@ -57,6 +57,7 @@ object MessageBroker {
     send(Fail(message, e.getOrElse(new RuntimeException(message))))
     throw new FailException(message, e.getOrElse(null))
   }
+  def fail(message: String, e: Throwable) = fail(message,Some(e))
 }
 
 trait MessageSink {
