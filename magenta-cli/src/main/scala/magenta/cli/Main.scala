@@ -6,6 +6,8 @@ import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import HostList._
 import tasks.CommandLocator
+import sbt.IO
+import magenta.teamcity.Artifact._
 
 object Main extends scala.App {
 
@@ -106,43 +108,51 @@ object Main extends scala.App {
 
   if (parser.parse(args)) {
     try {
-      val parameters = DeployParameters(Config.deployer,Build(Config.project.get,Config.build.get),Stage(Config.stage),Config.recipe)
+      IO.withTemporaryDirectory { tmpDir =>
+        val build = Build(Config.project.get, Config.build.get)
+        val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe)
+        MessageBroker.deployContext(parameters) {
 
-      MessageBroker.deployContext(parameters) {
+          MessageBroker.info("%s build %s" format (programName, programVersion))
 
-        MessageBroker.info("%s build %s" format (programName, programVersion))
+          MessageBroker.info("Locating artifact...")
 
-        MessageBroker.info("Locating artifact...")
-        val dir = Config.localArtifactDir getOrElse Artifact.download(Config.project, Config.build)
-
-        MessageBroker.info("Loading project file...")
-        val project = JsonReader.parse(new File(dir, "deploy.json"))
-
-        MessageBroker.verbose("Loaded: " + project)
-        val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
-        val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
-
-        val context = DeployContext(parameters,project,hosts)
-
-        if (Config.dryRun) {
-
-          val tasks = context.tasks
-          MessageBroker.info("Tasks to execute: ")
-          tasks.zipWithIndex.foreach { case (task, idx) =>
-            MessageBroker.info("%d. %s" format (idx + 1, task.fullDescription))
-            MessageBroker.verbose(task.verbose)
+          Config.localArtifactDir.map{ file =>
+            MessageBroker.info("Making temporary copy of local artifact: %s" format file)
+            IO.copyDirectory(file, tmpDir)
+          } getOrElse {
+            build.download(tmpDir)
           }
 
-          MessageBroker.info("Dry run requested. Not executing.")
+          MessageBroker.info("Loading project file...")
+          val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
 
-        } else {
+          MessageBroker.verbose("Loaded: " + project)
+          val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
+          val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
 
-          val credentials = if (Config.jvmSsh) {
-            val passphrase = System.console.readPassword("Please enter your passphrase:")
-            PassphraseProvided(System.getenv("USER"), passphrase.toString, Config.keyLocation)
-          } else SystemUser(keyFile = Config.keyLocation)
+          val context = DeployContext(parameters,project,hosts)
 
-          context.execute(KeyRing(credentials))
+          if (Config.dryRun) {
+
+            val tasks = context.tasks
+            MessageBroker.info("Tasks to execute: ")
+            tasks.zipWithIndex.foreach { case (task, idx) =>
+              MessageBroker.info("%d. %s" format (idx + 1, task.fullDescription))
+              MessageBroker.verbose(task.verbose)
+            }
+
+            MessageBroker.info("Dry run requested. Not executing.")
+
+          } else {
+
+            val credentials = if (Config.jvmSsh) {
+              val passphrase = System.console.readPassword("Please enter your passphrase:")
+              PassphraseProvided(System.getenv("USER"), passphrase.toString, Config.keyLocation)
+            } else SystemUser(keyFile = Config.keyLocation)
+
+            context.execute(KeyRing(credentials))
+          }
         }
       }
 

@@ -10,11 +10,9 @@ import akka.dispatch.Await
 import akka.util.duration._
 import akka.util.Timeout
 import akka.pattern.ask
-import play.api.Logger
 import controllers.Logging
-import net.liftweb.util.ClearClearable
-import java.net.URLEncoder
-import java.nio.charset.Charset
+import sbt.IO
+import magenta.teamcity.Artifact._
 
 object DeployActor {
   trait Event
@@ -43,14 +41,15 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
       MessageBroker.deployContext(parameters) {
         log.info("Downloading artifact")
         MessageBroker.info("Downloading artifact")
-        val artifactDir = Artifact.download(parameters.build)
-        log.info("Reading deploy.json")
-        MessageBroker.info("Reading deploy.json")
-        val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
+        parameters.build.withDownload { artifactDir =>
+          log.info("Reading deploy.json")
+          MessageBroker.info("Reading deploy.json")
+          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
 
-        val deployContext = parameters.toDeployContext(project, DeployInfo.hostList)
-        log.info("Executing deployContext")
-        deployContext.execute(keyRing)
+          val deployContext = parameters.toDeployContext(project, DeployInfo.hostList)
+          log.info("Executing deployContext")
+          deployContext.execute(keyRing)
+        }
       }
     }
   }
