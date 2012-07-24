@@ -52,7 +52,7 @@ object Management extends PlayManagement {
   val pages = List(
     new ManifestPage,
     new HealthcheckManagementPage,
-    new Switchboard(Switches.all, applicationName),
+    new Switchboard(applicationName, Switches.all),
     StatusPage(applicationName, Metrics.all),
     new LogbackLevelPage(applicationName)
   )
