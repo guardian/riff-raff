@@ -64,7 +64,9 @@ abstract class WebappPackageType extends PackageType {
   lazy val name = containerName + "-webapp"
   override def defaultData = Map[String, JValue]("port" -> "8080",
     "user" -> containerName,
-    "servicename" -> pkg.name
+    "servicename" -> pkg.name,
+    "waitseconds" -> 60,
+    "checkseconds" -> 20
   )
 
   lazy val user: String = pkg.stringData("user")
@@ -72,6 +74,8 @@ abstract class WebappPackageType extends PackageType {
   lazy val serviceName = pkg.stringData("servicename")
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
   lazy val bucket = pkg.stringData("bucket")
+  lazy val waitDuration = pkg.intData("waitseconds").toLong.seconds
+  lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
@@ -80,8 +84,8 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user),
         CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
-        WaitForPort(host, port, 1 minute),
-        CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), 20 seconds),
+        WaitForPort(host, port, waitDuration),
+        CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), checkDuration),
         UnblockFirewall(host as user))
       }
     }

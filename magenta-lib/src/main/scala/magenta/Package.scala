@@ -2,7 +2,7 @@ package magenta
 
 import java.io.File
 import java.util.NoSuchElementException
-import net.liftweb.json.JsonAST.{JArray, JString, JValue}
+import net.liftweb.json.JsonAST.{JInt, JArray, JString, JValue}
 
 case class Package(
   name: String,
@@ -26,6 +26,7 @@ case class Package(
 
   val data = pkgType.defaultData ++ pkgSpecificData
   def stringData(key: String): String = data(key) match { case JString(s) => s case _ => throw new NoSuchElementException() }
+  def intData(key: String): BigInt = data(key) match { case JInt(i) => i case _ => throw new NoSuchElementException() }
   def arrayStringData(key: String) = data.getOrElse(key, List.empty) match {
     case JArray(l) => l flatMap { case JString(s) => Some(s) case _ => None }
     case _ => List.empty
