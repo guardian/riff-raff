@@ -7,7 +7,7 @@
 
     <h3>New Deploy</h3>
 
-    @helper.form(action=routes.Application.doDeploy) {
+    @helper.form(action=routes.Deployment.doDeploy) {
         @helper.inputText(deployForm("build"))
         <input type="hidden" value='@deployForm("project").value' name="project" />
         <input type="hidden" value='@deployForm("stage").value' name="stage" />

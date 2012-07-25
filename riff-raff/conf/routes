@@ -5,18 +5,18 @@
 # Home page
 GET     /                           controllers.Application.index
 
-# Deployment pages
 GET     /deployinfo                 controllers.Application.deployInfo(stage="")
 GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
 
-GET     /deployment/CODE/frontend-article   controllers.Application.frontendArticleCode
-GET     /deployment/log  controllers.Application.deployLog(stage:String,project:String,build:String,recipe:String="default",verbose:Boolean=false)
-GET     /deployment/log/update  controllers.Application.deployLogContent(stage:String,project:String,build:String,recipe:String,verbose:Boolean=false)
-GET     /deployment/request controllers.Application.deploy
-POST    /deployment/request controllers.Application.doDeploy
+# Deployment pages
+GET     /deployment/CODE/frontend-article   controllers.Deployment.frontendArticleCode
+GET     /deployment/log  controllers.Deployment.deployLog(stage:String,project:String,build:String,recipe:String="default",verbose:Boolean=false)
+GET     /deployment/log/update  controllers.Deployment.deployLogContent(stage:String,project:String,build:String,recipe:String,verbose:Boolean=false)
+GET     /deployment/request controllers.Deployment.deploy
+POST    /deployment/request controllers.Deployment.doDeploy
 
 # authentication endpoints
-GET     /profile                    controllers.Application.profile
+GET     /profile                    controllers.Login.profile
 GET     /login                      controllers.Login.login
 POST    /login                      controllers.Login.loginPost
 GET     /openIDCallback             controllers.Login.openIDCallback

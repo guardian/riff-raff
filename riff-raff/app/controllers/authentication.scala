@@ -129,4 +129,10 @@ object Login extends Controller with Logging {
       session - "identity"
     }
   }
+
+  def profile = TimedAction {
+    AuthAction { request =>
+      Ok(views.html.profile(request))
+    }
+  }
 }
