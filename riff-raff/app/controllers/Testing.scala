@@ -19,6 +19,8 @@ import magenta.Deploy
 import magenta.Deployer
 import magenta.Stage
 import magenta.Build
+import deployment.DeployRecord
+import java.util.UUID
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -82,7 +84,7 @@ object Testing extends Controller with Logging {
         Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))
     )
 
-    val report = DeployReport(input.toList, "Deployment report")
+    val report = DeployRecord(UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), KeyRing(null, Nil), input.toList)
 
     Ok(views.html.reportTest(request,report,verbose))
   }

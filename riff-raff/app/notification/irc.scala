@@ -7,6 +7,7 @@ import scala.collection.JavaConversions._
 import com.gu.management.ManagementBuildInfo
 import magenta._
 import akka.actor.{Actor, ActorRef, Props, ActorSystem}
+import java.util.UUID
 
 object IrcClient {
   trait Event
@@ -20,7 +21,7 @@ object IrcClient {
   }
 
   val sink = new MessageSink {
-    def message(stack: MessageStack) {
+    def message(uuid: UUID, stack: MessageStack) {
       stack.top match {
         case StartContext(Deploy(parameters)) =>
           sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format

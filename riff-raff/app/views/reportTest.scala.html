@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], report: magenta.ReportTree, verbose:Boolean)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord, verbose:Boolean)
 
 @main("Report test", request) {
 <!-- verbose @verbose -->
@@ -9,9 +9,9 @@
     }
 </style>
 }
-<h2>Report test (@report.message.text)</h2>
+<h2>Report test (@record.report.message.text)</h2>
 <hr/>
 <div class="content">
-    @snippets.deployLogContent(request, report, verbose)
+    @snippets.deployLogContent(request, record, verbose)
 </div>
 }

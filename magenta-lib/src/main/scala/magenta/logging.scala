@@ -1,6 +1,6 @@
 package magenta
 
-import java.util.Date
+import java.util.{UUID, Date}
 import magenta.tasks.Task
 import util.DynamicVariable
 import collection.mutable
@@ -11,10 +11,15 @@ object MessageBroker {
   def unsubscribe(sink: MessageSink) { listeners -= sink }
 
   private val messageStack = new DynamicVariable[List[Message]](Nil)
+  private val uuidContext = new DynamicVariable[UUID](null)
+
+  def withUUID[T](uuid:UUID)(block: => T) {
+    uuidContext.withValue(uuid){ block }
+  }
 
   def send(message: Message) {
     val stack = MessageStack(message :: messageStack.value)
-    listeners foreach(_.message(stack))
+    listeners foreach(_.message(uuidContext.value, stack))
   }
 
   def sendContext[T](message: Message)(block: => T) {
@@ -46,6 +51,10 @@ object MessageBroker {
       throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (parameters,messageStack.value))
   }
 
+  def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T) {
+    withUUID(uuid) { deployContext(parameters) { block } }
+  }
+
   def taskContext[T](task: Task)(block: => T) { sendContext(TaskRun(task))(block) }
   def taskList(tasks: List[Task]) { send(TaskList(tasks)) }
   def info(message: String) { send(Info(message)) }
@@ -61,11 +70,11 @@ object MessageBroker {
 }
 
 trait MessageSink {
-  def message(stack: MessageStack)
+  def message(uuid: UUID, stack: MessageStack)
 }
 
 class MessageSinkFilter(messageSink: MessageSink, filter: MessageStack => Boolean) extends MessageSink {
-  def message(stack: MessageStack) { if (filter(stack)) messageSink.message(stack) }
+  def message(uuid: UUID, stack: MessageStack) { if (filter(stack)) messageSink.message(uuid, stack) }
 }
 
 case class MessageStack(messages: List[Message]) {

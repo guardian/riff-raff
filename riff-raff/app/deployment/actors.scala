@@ -10,13 +10,14 @@ import akka.dispatch.Await
 import akka.util.duration._
 import akka.util.Timeout
 import akka.pattern.ask
-import controllers.Logging
+import controllers.{DeployLibrary, Logging}
 import sbt.IO
 import magenta.teamcity.Artifact._
+import java.util.UUID
 
 object DeployActor {
   trait Event
-  case class Deploy(parameters: DeployParameters, keyRing: KeyRing) extends Event
+  case class Deploy(uuid: UUID) extends Event
 
   lazy val system = ActorSystem("deploy")
 
@@ -37,8 +38,10 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
   import DeployActor._
 
   def receive = {
-    case Deploy(parameters, keyRing) => {
-      MessageBroker.deployContext(parameters) {
+    case Deploy(uuid) => {
+      val record = DeployLibrary.await(uuid)
+      val parameters = record.parameters
+      MessageBroker.deployContext(uuid, parameters) {
         log.info("Downloading artifact")
         MessageBroker.info("Downloading artifact")
         parameters.build.withDownload { artifactDir =>
@@ -48,68 +51,9 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
 
           val deployContext = parameters.toDeployContext(project, DeployInfo.hostList)
           log.info("Executing deployContext")
-          deployContext.execute(keyRing)
+          deployContext.execute(record.keyRing)
         }
       }
     }
   }
 }
-
-object MessageBus extends Logging {
-
-  def init() {}
-
-  trait Event
-
-  case class Clear(key: DeploymentKey) extends Event
-  case class NewMessage(messageStack: MessageStack, parameters: DeploymentKey) extends Event
-  case class MessageHistoryRequest(key: DeploymentKey) extends Event
-  case class MessagePayload(messageStacks: List[MessageStack]) extends Event
-
-  lazy val system = ActorSystem("deploy")
-
-  var updateActors = Map.empty[(String,Stage), ActorRef]
-  val actor = system.actorOf(Props[MessageBus], "message-broker")
-
-  val sink = new MessageSink {
-    def message(stack: MessageStack) {
-      stack.deployParameters.map(_.toDeploymentKey).foreach( actor ! NewMessage(stack, _) )
-    }
-  }
-
-  MessageBroker.subscribe(sink)
-
-  def clear(key: DeploymentKey) {
-    actor ! Clear(key)
-  }
-
-  def messageHistory(key: DeploymentKey): List[MessageStack] = {
-    implicit val timeout = Timeout(1.seconds)
-    val futureBuffer = actor ? MessageHistoryRequest(key)
-    val payload = Await.result(futureBuffer, timeout.duration).asInstanceOf[MessagePayload]
-    payload.messageStacks
-  }
-
-  def deployReport(key: DeploymentKey): ReportTree = {
-    DeployReport(messageHistory(key), "Deployment report")
-  }
-}
-
-class MessageBus() extends Actor {
-  import MessageBus._
-
-  val keyToMessages = mutable.Map.empty[DeploymentKey,Buffer[MessageStack]].withDefaultValue(Buffer[MessageStack]())
-
-  def receive = {
-    case Clear(key) => {
-      keyToMessages(key) = Buffer[MessageStack]()
-    }
-    case NewMessage(messageStack, key) => {
-      keyToMessages(key) += messageStack
-    }
-    case MessageHistoryRequest(key) => {
-      sender ! MessagePayload(keyToMessages.get(key) map (_.toList) getOrElse(Nil))
-    }
-  }
-}
-

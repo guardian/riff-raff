@@ -6,6 +6,7 @@ import tasks.Task
 import collection.mutable.Buffer
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
+import java.util.UUID
 
 class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
@@ -26,7 +27,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val sink = new MessageSink {
       val messages = Buffer[Message]()
-      def message(stack: MessageStack) {messages += stack.top}
+      def message(uuid: UUID, stack: MessageStack) {messages += stack.top}
     }
     MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
 
@@ -56,7 +57,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val sink = new MessageSink {
       val messages = Buffer[Message]()
       val finished = Buffer[Message]()
-      def message(stack: MessageStack) {
+      def message(uuid: UUID, stack: MessageStack) {
         stack.top match {
           case FinishContext(finishMessage) => finished += finishMessage
           case StartContext(startMessage) => messages += startMessage
@@ -84,7 +85,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val sink = new MessageSink {
       val messages = Buffer[Message]()
       val finished = Buffer[Message]()
-      def message(stack: MessageStack) {
+      def message(uuid: UUID, stack: MessageStack) {
         stack.top match {
           case FinishContext(finishMessage) => finished += finishMessage
           case StartContext(startMessage) => messages += startMessage

@@ -8,11 +8,12 @@ import HostList._
 import tasks.CommandLocator
 import sbt.IO
 import magenta.teamcity.Artifact._
+import java.util.UUID
 
 object Main extends scala.App {
 
   val sink = new MessageSink {
-    def message(stack: MessageStack) {
+    def message(uuid: UUID, stack: MessageStack) {
       val indent = "  " * (stack.messages.size - 1)
       stack.top match {
         case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
@@ -111,7 +112,7 @@ object Main extends scala.App {
       IO.withTemporaryDirectory { tmpDir =>
         val build = Build(Config.project.get, Config.build.get)
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe)
-        MessageBroker.deployContext(parameters) {
+        MessageBroker.deployContext(UUID.randomUUID(), parameters) {
 
           MessageBroker.info("%s build %s" format (programName, programVersion))
 

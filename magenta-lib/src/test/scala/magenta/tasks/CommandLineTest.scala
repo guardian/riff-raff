@@ -5,6 +5,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import collection.mutable.ListBuffer
 import java.io.IOException
+import java.util.UUID
 
 
 class CommandLineTest extends FlatSpec with ShouldMatchers {
@@ -20,7 +21,7 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
 
   class RecordingSink extends MessageSink {
     val recorded = new ListBuffer[List[Message]]()
-    def message(s: MessageStack) { recorded += s.messages }
+    def message(uuid: UUID, s: MessageStack) { recorded += s.messages }
   }
 
   it should "execute command and pipe progress results to Logger" in {
