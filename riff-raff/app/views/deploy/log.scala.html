@@ -11,7 +11,7 @@ span.message-verbose {
 <h2>Deploying @record.project build @record.build in @record.stage</h2>
 <hr/>
 <div class="content" data-ajax-refresh="@routes.Deployment.deployLogContent(record.uuid.toString)">
-@snippets.deployLogContent(request, record, verbose)
+@deploy.logContent(request, record, verbose)
 </div>
 <script>
   $(function() { ajaxRefresh.enable(); });

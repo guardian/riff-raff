@@ -70,14 +70,14 @@ object Deployment extends Controller with Logging {
 
   def deploy = TimedAction {
     AuthAction { implicit request =>
-      Ok(views.html.deployForm(request, deployForm))
+      Ok(views.html.deploy.form(request, deployForm))
     }
   }
 
   def doDeploy = TimedAction {
     AuthAction { implicit request =>
       deployForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.deployForm(request,errors)),
+        errors => BadRequest(views.html.deploy.form(request,errors)),
         form => {
           log.info("Form submitted")
           val deployActor = DeployActor(form.project, Stage(form.stage))
@@ -103,7 +103,7 @@ object Deployment extends Controller with Logging {
     AuthAction { implicit request =>
       val record = DeployLibrary.get(UUID.fromString(uuid))
 
-      Ok(views.html.deployLog(request, record, verbose))
+      Ok(views.html.deploy.log(request, record, verbose))
     }
   }
 
@@ -111,7 +111,7 @@ object Deployment extends Controller with Logging {
     AuthAction { implicit request =>
       val record = DeployLibrary.get(UUID.fromString(uuid))
 
-      Ok(views.html.snippets.deployLogContent(request, record, verbose))
+      Ok(views.html.deploy.logContent(request, record, verbose))
     }
   }
 }

@@ -77,7 +77,7 @@ object Login extends Controller with Logging {
 
   def login = NonAuthAction { request =>
     val error = request.flash.get("error")
-    Ok(views.html.login(request, error))
+    Ok(views.html.auth.login(request, error))
   }
 
   def loginPost = Action { implicit request =>
@@ -132,7 +132,7 @@ object Login extends Controller with Logging {
 
   def profile = TimedAction {
     AuthAction { request =>
-      Ok(views.html.profile(request))
+      Ok(views.html.auth.profile(request))
     }
   }
 }

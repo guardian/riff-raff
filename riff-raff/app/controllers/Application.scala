@@ -58,7 +58,7 @@ object Application extends Controller with Logging {
         }
       }
 
-      Ok(views.html.deployinfo(request, stageAppHosts))
+      Ok(views.html.deploy.hostInfo(request, stageAppHosts))
     }
   }
 
