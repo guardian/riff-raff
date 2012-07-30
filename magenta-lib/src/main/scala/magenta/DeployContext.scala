@@ -8,15 +8,17 @@ case class DeployContext(parameters: DeployParameters, project: Project, hosts: 
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  lazy val relevantHosts = {
+  lazy val stageHosts = {
     val stageHosts = hosts.filterByStage(parameters.stage)
     MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
     stageHosts
   }
 
+  lazy val hostNames = tasks.flatMap(_.taskHosts).map(_.name).distinct
+
   lazy val tasks = {
     MessageBroker.info("Resolving tasks...")
-    val taskList = Resolver.resolve(project, parameters.recipe.name, relevantHosts, parameters.stage)
+    val taskList = Resolver.resolve(project, parameters.recipe.name, stageHosts, parameters.stage)
     MessageBroker.taskList(taskList)
     taskList
   }

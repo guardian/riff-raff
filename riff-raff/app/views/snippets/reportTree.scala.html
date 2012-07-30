@@ -1,6 +1,4 @@
-@(reportTree: magenta.ReportTree, verbose: Boolean)
-@import helper.magenta.MessageHelper
-@import magenta._
+@(reportTree: magenta.ReportTree)
 
 <li>
 <span class="@MessageHelper.classNames(reportTree)">@MessageHelper.trim{@reportTree.message.text}</span>
@@ -8,7 +6,7 @@
   <ul class="magenta-reporttree">
 }
 @reportTree.children.map{ child =>
-    @snippets.reportTree(child, verbose)
+    @snippets.reportTree(child)
 }
 @if(!reportTree.children.isEmpty) {
   </ul>

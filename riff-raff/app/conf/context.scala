@@ -6,6 +6,7 @@ import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{ Management => PlayManagement }
 import com.gu.conf.ConfigurationFactory
+import sbt.IO
 import java.io.File
 
 

@@ -25,7 +25,8 @@ object Menu {
     MenuItem("Home", routes.Application.index, false),
     MenuItem("Deployment Info", routes.Application.deployInfo(stage = ""), true),
     MenuItem("Frontend-Article CODE", routes.Deployment.frontendArticleCode(), true),
-    MenuItem("Deploy Anything\u2122", routes.Deployment.deploy(), true)
+    MenuItem("Deploy Anything\u2122", routes.Deployment.deploy(), true),
+    MenuItem("Deploy History", routes.Deployment.history(), true)
   )
 
   lazy val loginMenuItem = MenuItem("Login", routes.Login.login, false)

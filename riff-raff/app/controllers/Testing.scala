@@ -19,17 +19,20 @@ import magenta.Deploy
 import magenta.Deployer
 import magenta.Stage
 import magenta.Build
-import deployment.DeployRecord
+import deployment.{Task, DeployRecord}
 import java.util.UUID
+import tasks.Task
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
     val task1 = new Task {
+      def taskHosts = Nil
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
     val task2 = new Task {
+      def taskHosts = Nil
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
@@ -84,7 +87,7 @@ object Testing extends Controller with Logging {
         Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))
     )
 
-    val report = DeployRecord(UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), KeyRing(null, Nil), input.toList)
+    val report = DeployRecord(Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), KeyRing(null, Nil), input.toList)
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }

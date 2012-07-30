@@ -13,7 +13,7 @@ object MessageBroker {
   private val messageStack = new DynamicVariable[List[Message]](Nil)
   private val uuidContext = new DynamicVariable[UUID](null)
 
-  def withUUID[T](uuid:UUID)(block: => T) {
+  def withUUID[T](uuid:UUID)(block: => T): T = {
     uuidContext.withValue(uuid){ block }
   }
 
@@ -22,27 +22,28 @@ object MessageBroker {
     listeners foreach(_.message(uuidContext.value, stack))
   }
 
-  def sendContext[T](message: Message)(block: => T) {
+  def sendContext[T](message: Message)(block: => T): T = {
     send(StartContext(message))
-    try
+    val result: T = try {
       messageStack.withValue(message :: messageStack.value) {
         try
           block
         catch {
           case f:FailException => throw f
-          case t => fail("Unhandled exception in %s" format message.toString, Some(t))
+          case t => throw failException("Unhandled exception in %s" format message.toString, t)
         }
       }
-    catch {
+    } catch {
       case f:FailException =>
         val t = if (messageStack.value.size == 0 && f.getCause != null) f.getCause else f
         send(FailContext(message, t))
         throw t
     }
     send(FinishContext(message))
+    result
   }
 
-  def deployContext[T](parameters: DeployParameters)(block: => T) {
+  def deployContext[T](parameters: DeployParameters)(block: => T): T = {
     if (messageStack.value.size == 0)
       sendContext(Deploy(parameters))(block)
     else if (messageStack.value.last == Deploy(parameters))
@@ -51,7 +52,7 @@ object MessageBroker {
       throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (parameters,messageStack.value))
   }
 
-  def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T) {
+  def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T): T = {
     withUUID(uuid) { deployContext(parameters) { block } }
   }
 
@@ -62,10 +63,14 @@ object MessageBroker {
   def commandOutput(message: String) { send(CommandOutput(message)) }
   def commandError(message: String) { send(CommandError(message)) }
   def verbose(message: String) { send(Verbose(message)) }
-  def fail(message: String, e: Option[Throwable] = None) {
+  def failException(message: String, e: Option[Throwable] = None): FailException = {
     send(Fail(message, e.getOrElse(new RuntimeException(message))))
-    throw new FailException(message, e.getOrElse(null))
+    new FailException(message, e.getOrElse(null))
   }
+  def fail(message: String, e: Option[Throwable] = None) {
+    throw failException(message, e)
+  }
+  def failException(message: String, e: Throwable): FailException = { failException(message,Some(e)) }
   def fail(message: String, e: Throwable) { fail(message,Some(e)) }
 }
 

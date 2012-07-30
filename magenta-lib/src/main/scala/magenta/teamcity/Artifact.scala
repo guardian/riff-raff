@@ -9,7 +9,14 @@ import sbt.IO
 object Artifact {
 
   implicit def build2download(build:Build) = new {
+    def download(): File = {
+      val dir = IO.createTemporaryDirectory
+      download(dir)
+      dir
+    }
+
     def download(dir: File) {
+      MessageBroker.info("Downloading artifact")
       val http = new Http {
         override def make_logger = new Logger {
           def info(msg: String, items: Any*) { MessageBroker.verbose("http: " + msg.format(items:_*)) }

@@ -1,0 +1,63 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
+
+@defining(record.report.cascadeState) { state =>
+@state match {
+case RunState.Failed => {
+<div class="alert alert-error">
+    <h4 class="alert-heading">Deploy failed</h4>
+    @record.report.failureMessage.map{ fail =>
+    <strong>@fail.exception.getMessage</strong>
+    <pre>@fail.exception.getStackTraceString</pre>
+    }
+</div>
+}
+case _ => {}
+} }
+
+@record.context.map{ context =>
+  <div class="alert alert-success">
+    <h3>Preview of hosts affected and tasks that will be executed</h3>
+  <div>
+    <ul class="magenta-list">
+        @if(context.hostNames.isEmpty) {
+          <li>No hosts found</li>
+        }
+        @context.hostNames.map { host =>
+        <li><span class="preview-host">@host</span></li>
+        }
+    </ul>
+  </div>
+  <div>
+    <ul class="magenta-list">
+        @if(context.tasks.isEmpty) {
+        <li>No tasks generated</li>
+        }
+        @context.tasks.map { task =>
+        <li><span class="preview-task">@task.fullDescription</span></li>
+        }
+    </ul>
+  </div>
+      @helper.form(action=routes.Deployment.processForm) {
+      <input type="hidden" name="project" value="@record.buildName"/>
+      <input type="hidden" name="build" value="@record.buildId"/>
+      <input type="hidden" name="stage" value="@record.stage.name"/>
+
+      <div class="actions">
+          <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button>
+          <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+      </div>
+      }
+  </div>
+}
+
+<ul class="magenta-reporttree">
+    @snippets.reportTree(record.report)
+</ul>
+
+<!-- @record.report.render.mkString("\n") -->
+
+@if(record.context.isDefined){
+<script type="text/javascript">
+    this.ajaxRefresh.disable();
+</script>
+}

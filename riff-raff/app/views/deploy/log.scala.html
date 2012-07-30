@@ -1,6 +1,6 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord, verbose: Boolean = false)
 
-@main("Deployment report for "+record.project, request) {
+@main("Deployment report for "+record.buildName, request) {
 @if(!verbose) {
 <style>
 span.message-verbose {
@@ -8,10 +8,10 @@ span.message-verbose {
 }
 </style>
 }
-<h2>Deploying @record.project build @record.build in @record.stage</h2>
+<h2>Deploying @record.buildName build @record.buildId in @record.stage</h2>
 <hr/>
 <div class="content" data-ajax-refresh="@routes.Deployment.deployLogContent(record.uuid.toString)">
-@deploy.logContent(request, record, verbose)
+@deploy.logContent(request, record)
 </div>
 <script>
   $(function() { ajaxRefresh.enable(); });

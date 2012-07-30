@@ -45,6 +45,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   case class StubTask(description: String) extends Task {
+    def taskHosts = Nil
     def execute(keyRing: KeyRing) { }
     def verbose = "stub(%s)" format description
   }

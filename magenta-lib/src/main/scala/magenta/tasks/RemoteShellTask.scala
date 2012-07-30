@@ -6,6 +6,7 @@ import com.decodified.scalassh.PublicKeyLogin.DefaultKeyLocations
 
 trait RemoteShellTask extends ShellTask {
   def host: Host
+  def taskHosts = List(host)
 
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 

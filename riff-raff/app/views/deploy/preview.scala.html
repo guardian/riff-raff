@@ -1,0 +1,19 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord, verbose: Boolean = false)
+
+@main("Preview for "+record.buildName, request) {
+@if(!verbose) {
+<style>
+    span.message-verbose {
+        display:none;
+    }
+</style>
+}
+<h2>Preview of deploy for @record.buildName build @record.buildId in @record.stage</h2>
+<hr/>
+<div class="content" data-ajax-refresh="@routes.Deployment.previewContent(record.uuid.toString)">
+    @deploy.previewContent(request, record)
+</div>
+<script>
+    $(function() { ajaxRefresh.enable(); });
+</script>
+}

@@ -6,7 +6,7 @@ import tasks.Task
 object Resolver {
 
   def resolve( context: DeployContext ): List[Task] = {
-    resolve(context.project, context.recipe, context.relevantHosts, context.stage)
+    resolve(context.project, context.recipe, context.stageHosts, context.stage)
   }
 
   def resolve( project: Project, recipeName: String, hosts: List[Host], stage: Stage): List[Task] = {

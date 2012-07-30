@@ -25,7 +25,7 @@ import magenta.Stage
 
 object DeployLibrary extends Logging {
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) { update(uuid, _ + stack) }
+    def message(uuid: UUID, stack: MessageStack) { update(uuid){_ + stack} }
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
@@ -34,13 +34,19 @@ object DeployLibrary extends Logging {
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def create(params: DeployParameters, keyRing: KeyRing): UUID = {
+  def create(recordType: Task.Type, params: DeployParameters, keyRing: KeyRing): UUID = {
     val uuid = java.util.UUID.randomUUID()
-    library send { _ + (uuid -> Agent(DeployRecord(uuid, params, keyRing))) }
+    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params, keyRing))) }
     uuid
   }
 
-  def update(uuid:UUID, transform: DeployRecord => DeployRecord) { library()(uuid) send transform }
+  def update(uuid:UUID)(transform: DeployRecord => DeployRecord) {
+    library()(uuid) send { record =>
+      record.loggingContext(transform(record))
+    }
+  }
+
+  def get(): List[DeployRecord] = { library().values.map{ _() }.toList }
 
   def get(uuid: UUID): DeployRecord = { library()(uuid)() }
 
@@ -57,13 +63,15 @@ object Deployment extends Controller with Logging {
     mapping(
       "project" -> nonEmptyText,
       "build" -> nonEmptyText,
-      "stage" -> nonEmptyText
-    )(DeployParameterForm.apply)(DeployParameterForm.unapply)
+      "stage" -> nonEmptyText,
+      "action" -> nonEmptyText
+    )(DeployParameterForm.apply)
+     (DeployParameterForm.unapply)
   )
 
   def frontendArticleCode = TimedAction {
     AuthAction { request =>
-      val parameters = DeployParameterForm("frontend::article","","CODE")
+      val parameters = DeployParameterForm("frontend::article","","CODE","")
       Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
     }
   }
@@ -74,7 +82,7 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def doDeploy = TimedAction {
+  def processForm = TimedAction {
     AuthAction { implicit request =>
       deployForm.bindFromRequest().fold(
         errors => BadRequest(views.html.deploy.form(request,errors)),
@@ -88,14 +96,46 @@ object Deployment extends Controller with Logging {
             Build(form.project,form.build.toString),
             Stage(form.stage))
 
-          val uuid = DeployLibrary.create(context, keyRing)
-
-          import deployment.DeployActor.Deploy
-          deployActor ! Deploy(uuid)
-
-          Redirect(routes.Deployment.deployLog(uuid.toString))
+          // distinguish between preview and go do it here
+          import deployment.DeployActor.Resolve
+          import deployment.DeployActor.Execute
+          form.action match {
+            case "preview" =>
+              val uuid = DeployLibrary.create(Task.Preview, context, keyRing)
+              deployActor ! Resolve(uuid)
+              Redirect(routes.Deployment.previewLog(uuid.toString))
+            case "deploy" =>
+              val uuid = DeployLibrary.create(Task.Deploy, context, keyRing)
+              deployActor ! Execute(uuid)
+              Redirect(routes.Deployment.deployLog(uuid.toString))
+            case _ => throw new RuntimeException("Unknown action")
+          }
         }
       )
+    }
+  }
+
+  def viewUUID(uuid: String) = TimedAction {
+    AuthAction { implicit request =>
+      val record = DeployLibrary.get(UUID.fromString(uuid))
+      record.taskType match {
+        case Task.Deploy => Redirect(routes.Deployment.deployLog(uuid))
+        case Task.Preview => Redirect(routes.Deployment.previewLog(uuid))
+      }
+    }
+  }
+
+  def previewLog(uuid: String, verbose: Boolean) = TimedAction {
+    AuthAction { implicit request =>
+      val record = DeployLibrary.get(UUID.fromString(uuid))
+      Ok(views.html.deploy.preview(request,record,verbose))
+    }
+  }
+
+  def previewContent(uuid: String) = TimedAction {
+    AuthAction { implicit request =>
+      val record = DeployLibrary.get(UUID.fromString(uuid))
+      Ok(views.html.deploy.previewContent(request,record))
     }
   }
 
@@ -107,11 +147,19 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def deployLogContent(uuid: String, verbose: Boolean) = TimedAction {
+  def deployLogContent(uuid: String) = TimedAction {
     AuthAction { implicit request =>
       val record = DeployLibrary.get(UUID.fromString(uuid))
 
-      Ok(views.html.deploy.logContent(request, record, verbose))
+      Ok(views.html.deploy.logContent(request, record))
+    }
+  }
+
+  def history() = TimedAction {
+    AuthAction { implicit request =>
+      val records = DeployLibrary.get()
+
+      Ok(views.html.deploy.history(request, records))
     }
   }
 }

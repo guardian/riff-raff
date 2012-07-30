@@ -3,7 +3,7 @@ import Keys._
 import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
-import PlayProject.{SCALA,dist}
+import PlayProject.{SCALA,templatesImport}
 import com.gu.deploy.PlayArtifact._
 import org.sbtidea.SbtIdeaPlugin._
 
@@ -29,7 +29,11 @@ object MagentaBuild extends Build {
       jarName in assembly := "%s.jar" format name,
       excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
         cp filter {_.data.getName == "io_2.9.1-0.11.2.jar"}
-      }
+      },
+      templatesImport ++= Seq(
+        "magenta._",
+        "views.html.helper.magenta._"
+      )
   )
 
 

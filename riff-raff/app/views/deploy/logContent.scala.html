@@ -1,5 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord, verbose:Boolean)
-@import magenta._
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
 
 @defining(record.report.cascadeState) { state =>
     @state match {
@@ -17,7 +16,7 @@
 } }
 
 <ul class="magenta-reporttree">
-    @snippets.reportTree(record.report,verbose)
+    @snippets.reportTree(record.report)
 </ul>
 
 <!-- @record.report.render.mkString("\n") -->

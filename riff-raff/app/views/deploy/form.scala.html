@@ -22,7 +22,7 @@
 
 <h3>Provide deploy details</h3>
 
-@helper.form(action=routes.Deployment.doDeploy) {
+@helper.form(action=routes.Deployment.processForm) {
 @helper.inputText(deployForm("project"))
 @helper.inputText(deployForm("build"))
 @helper.select(
@@ -34,8 +34,9 @@ options = helper.options(deployment.Stages.list),
 )
 
 <div class="actions">
-    <input type="submit" value="Deploy" class="btn btn-danger"> or
-    <a href="@routes.Application.index()" class="btn">Cancel</a>
+    <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or
+    <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button> or
+    <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
 }
 

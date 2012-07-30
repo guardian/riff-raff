@@ -10,10 +10,16 @@ GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
 
 # Deployment pages
 GET     /deployment/CODE/frontend-article   controllers.Deployment.frontendArticleCode
-GET     /deployment/log  controllers.Deployment.deployLog(uuid:String, verbose:Boolean=false)
-GET     /deployment/log/update  controllers.Deployment.deployLogContent(uuid:String, verbose:Boolean=false)
+GET     /deployment/log/:uuid  controllers.Deployment.deployLog(uuid:String, verbose:Boolean=false)
+GET     /deployment/log/update/:uuid  controllers.Deployment.deployLogContent(uuid:String)
 GET     /deployment/request controllers.Deployment.deploy
-POST    /deployment/request controllers.Deployment.doDeploy
+POST    /deployment/request controllers.Deployment.processForm
+GET     /deployment/preview/:uuid controllers.Deployment.previewLog(uuid:String, verbose:Boolean=false)
+GET     /deployment/preview/update/:uuid controllers.Deployment.previewContent(uuid:String)
+
+GET     /deployment/history controllers.Deployment.history()
+
+GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String)
 
 # authentication endpoints
 GET     /profile                    controllers.Login.profile

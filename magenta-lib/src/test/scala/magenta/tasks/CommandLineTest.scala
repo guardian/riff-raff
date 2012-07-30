@@ -61,6 +61,7 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
   val CODE = Stage("CODE")
 
   case class StubTask(description: String) extends Task {
+    def taskHosts = Nil
     def execute(keyRing: KeyRing) { }
     def verbose = "stub(%s)" format description
   }
