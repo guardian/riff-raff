@@ -36,7 +36,7 @@ case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParam
     this.copy(context = Some(parameters.toDeployContext(project,DeployInfo.hostList)))
   }
   def loggingContext[T](block: => T): T = {
-    MessageBroker.withUUID(uuid) { block }
+    MessageBroker.deployContext(uuid, parameters) { block }
   }
   def withDownload[T](block: File => T): T = {
     parameters.build.withDownload(block)
