@@ -90,7 +90,7 @@ case class MessageStack(messages: List[Message]) {
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
 
 sealed trait Message {
-  def time = new Date()
+  val time = new Date()
   def text: String
   def deployParameters: Option[DeployParameters] = None
 }
