@@ -89,7 +89,7 @@ object Login extends Controller with Logging {
             LoginCounter.recordCount(1)
             Redirect(url)
           }
-          case Thrown(t) => Redirect(routes.Login.login)
+          case Thrown(t) => Redirect(routes.Login.login).flashing(("error" -> "Unknown error: %s ".format(t.getMessage)))
         })
     )
   }
