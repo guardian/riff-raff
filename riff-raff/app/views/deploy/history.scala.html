@@ -10,7 +10,9 @@
     } else {
     <ul class=magenta-list>
     @records.map{ record =>
-      <li><span><strong>@record.report.startTime</strong> <a href="@routes.Deployment.viewUUID(record.uuid.toString)">@record.buildName @record.buildId @record.stage.name</a>
+      <li><span><strong>@record.report.startTime</strong>
+          <span class="label">@record.deployerName</span>
+          <a href="@routes.Deployment.viewUUID(record.uuid.toString)"> @record.buildName @record.buildId @record.stage.name</a>
       @record.taskType match {
           case Task.Deploy => {
             @defining(record.report.cascadeState) { state =>
@@ -22,7 +24,8 @@
             }
           }
           case Task.Preview => { <span class="label label-inverse">Preview</span> }
-      }</span></li>
+      }
+      </span></li>
     }
     </ul>
     }

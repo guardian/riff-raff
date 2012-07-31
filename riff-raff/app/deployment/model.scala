@@ -26,6 +26,7 @@ case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParam
   lazy val report:ReportTree = DeployReport(messages, "Deployment Report")
   lazy val buildName = parameters.build.name
   lazy val buildId = parameters.build.id
+  lazy val deployerName = parameters.deployer.name
   lazy val stage = parameters.stage
   lazy val isRunning = report.isRunning
 
