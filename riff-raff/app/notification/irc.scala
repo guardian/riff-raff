@@ -72,7 +72,10 @@ class IrcClient extends Actor with Logging {
   log.info(ircBot.toString)
   sendToChannel("riff-raff (build %s) started" format ManagementBuildInfo.version)
 
-  def sendToChannel(message:String) { ircBot.sendMessage(Configuration.irc.channel.get, message) }
+  def sendToChannel(message:String) {
+    log.info("Sending: %s" format message)
+    ircBot.sendMessage(Configuration.irc.channel.get, message)
+  }
 
   def receive = {
     case Notify(message) => {
