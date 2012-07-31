@@ -1,0 +1,20 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], testForm: Form[controllers.Testing.TestForm])
+@import helper.twitterBootstrap._
+
+@main("Test form", request) {
+
+<h2>Test form</h2>
+
+@helper.form(action=routes.Testing.formPost) {
+@helper.inputText(testForm("project"))
+<input type="checkbox" name="hosts[0]" value="bob" checked="true"/>bob</span>
+<input type="checkbox" name="hosts[1]" value="larry" checked="true"/>larry</span>
+
+<div class="actions">
+    <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or
+    <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button> or
+    <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+</div>
+}
+
+}

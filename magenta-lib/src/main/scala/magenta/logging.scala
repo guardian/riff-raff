@@ -13,6 +13,13 @@ object MessageBroker {
   private val messageStack = new DynamicVariable[List[Message]](Nil)
   private val uuidContext = new DynamicVariable[UUID](null)
 
+  def peekContext(): (UUID,List[Message]) = (uuidContext.value, messageStack.value)
+  def pushContext[T](tempContext: (UUID,List[Message]))(block: => T): T = {
+    uuidContext.withValue(tempContext._1){
+      messageStack.withValue(tempContext._2){ block }
+    }
+  }
+
   def withUUID[T](uuid:UUID)(block: => T): T = {
     uuidContext.withValue(uuid){ block }
   }

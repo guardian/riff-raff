@@ -22,6 +22,8 @@ import magenta.Build
 import deployment.{Task, DeployRecord}
 import java.util.UUID
 import tasks.Task
+import play.api.data.Form
+import play.api.data.Forms._
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -92,5 +94,31 @@ object Testing extends Controller with Logging {
     Ok(views.html.test.reportTest(request,report,verbose))
   }
 
+  case class TestForm(project:String, action:String, hosts: List[String])
+
+  lazy val testForm = Form[TestForm](
+    mapping(
+      "project" -> text,
+      "action" -> nonEmptyText,
+      "hosts" -> list(text)
+    )(TestForm.apply)
+      (TestForm.unapply)
+  )
+
+  def form() =
+    AuthAction { implicit request =>
+      Ok(views.html.test.form(request, testForm))
+    }
+
+  def formPost() =
+    AuthAction { implicit request =>
+      testForm.bindFromRequest().fold(
+        errors => BadRequest(views.html.test.form(request,errors)),
+        form => {
+          log.info("Form post: %s" format form.toString)
+          Redirect(routes.Testing.form)
+        }
+      )
+    }
 
 }

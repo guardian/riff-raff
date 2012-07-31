@@ -17,13 +17,15 @@ case _ => {}
 @record.context.map{ context =>
   <div class="alert alert-success">
     <h3>Preview of hosts affected and tasks that will be executed</h3>
-  <div>
+      @helper.form(action=routes.Deployment.processForm) {
+      <div>
     <ul class="magenta-list">
         @if(context.hostNames.isEmpty) {
           <li>No hosts found</li>
         }
-        @context.hostNames.map { host =>
-        <li><span class="preview-host">@host</span></li>
+        @context.hostNames.zipWithIndex.map { hostTuple =>
+        <li><span class="preview-host"><input type="checkbox" name="hosts[@hostTuple._2]" value="@hostTuple._1" checked="true"/>@hostTuple._1</span></li>
+
         }
     </ul>
   </div>
@@ -37,7 +39,7 @@ case _ => {}
         }
     </ul>
   </div>
-      @helper.form(action=routes.Deployment.processForm) {
+
       <input type="hidden" name="project" value="@record.buildName"/>
       <input type="hidden" name="build" value="@record.buildId"/>
       <input type="hidden" name="stage" value="@record.stage.name"/>

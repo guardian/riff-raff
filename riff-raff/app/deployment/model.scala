@@ -8,7 +8,7 @@ import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
 
-case class DeployParameterForm(project:String, build:String, stage:String, action: String)
+case class DeployParameterForm(project:String, build:String, stage:String, action: String, hosts: List[String])
 
 case class DeploymentKey(stage:String, project:String, build:String, recipe:String = "default")
 

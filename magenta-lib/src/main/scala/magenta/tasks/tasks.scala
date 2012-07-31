@@ -9,6 +9,7 @@ import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
+import java.net.URL
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -87,7 +88,17 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   def verbose = "Check that [%s] returns a 200" format(paths)
 
   def execute(keyRing: KeyRing) {
-    for (path <- paths) check { Source.fromURL("http://%s:%s%s" format (host.connectStr, port, path))  }
+    for (path <- paths) check {
+      val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
+      try {
+        val connection = url.openConnection()
+        connection.setConnectTimeout( 2000 )
+        connection.setReadTimeout( 5000 )
+        Source.fromInputStream( connection.getInputStream )
+      } catch {
+        case e => throw new IOException("Exception whilst trying to check %s" format url.toString, e)
+      }
+    }
   }
 }
 

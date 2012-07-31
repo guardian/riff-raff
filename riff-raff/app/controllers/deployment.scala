@@ -42,7 +42,15 @@ object DeployLibrary extends Logging {
 
   def update(uuid:UUID)(transform: DeployRecord => DeployRecord) {
     library()(uuid) send { record =>
-      record.loggingContext(transform(record))
+      MessageBroker.withUUID(uuid)(transform(record))
+    }
+  }
+
+  def updateWithContext()(transform: DeployRecord => DeployRecord) {
+    val mainThreadContext = MessageBroker.peekContext()
+    val uuid = mainThreadContext._1
+    library()(uuid) send { record =>
+      MessageBroker.pushContext(mainThreadContext)(transform(record))
     }
   }
 
@@ -64,14 +72,15 @@ object Deployment extends Controller with Logging {
       "project" -> nonEmptyText,
       "build" -> nonEmptyText,
       "stage" -> nonEmptyText,
-      "action" -> nonEmptyText
+      "action" -> nonEmptyText,
+      "hosts" -> list(text)
     )(DeployParameterForm.apply)
      (DeployParameterForm.unapply)
   )
 
   def frontendArticleCode = TimedAction {
     AuthAction { request =>
-      val parameters = DeployParameterForm("frontend::article","","CODE","")
+      val parameters = DeployParameterForm("frontend::article","","CODE","",Nil)
       Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
     }
   }
@@ -92,9 +101,11 @@ object Deployment extends Controller with Logging {
           val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
           val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
 
+          log.info("Host list: %s" format form.hosts)
           val context = new DeployParameters(Deployer(request.identity.get.fullName),
             Build(form.project,form.build.toString),
-            Stage(form.stage))
+            Stage(form.stage),
+            hostList = form.hosts)
 
           // distinguish between preview and go do it here
           import deployment.DeployActor.Resolve

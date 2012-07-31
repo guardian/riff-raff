@@ -80,8 +80,9 @@ case class RecipeName(name:String)
 
 case class Deployer(name: String)
 
-case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default")) {
+case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default"), hostList: List[String] = Nil) {
   def toDeployContext(project: Project, hosts:HostList): DeployContext = {
-    DeployContext(this,project,hosts)
+    val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
+    DeployContext(this,project,filteredHosts)
   }
 }

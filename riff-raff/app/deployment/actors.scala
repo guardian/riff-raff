@@ -60,8 +60,7 @@ class DeployActor(val projectName: String, val stage: Stage) extends Actor with 
     log.info("Reading deploy.json")
     MessageBroker.info("Reading deploy.json")
     val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-    DeployLibrary.update(record.uuid) {
-      record =>
+    DeployLibrary.updateWithContext() { record =>
         val updatedRecord = record.attachContext(project)
         updatedRecord.context.foreach(_.tasks)
         updatedRecord
