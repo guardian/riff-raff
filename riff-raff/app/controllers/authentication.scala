@@ -132,7 +132,10 @@ object Login extends Controller with Logging {
 
   def profile = TimedAction {
     AuthAction { request =>
-      Ok(views.html.auth.profile(request))
+      val deployerRecords = DeployLibrary.get.filter { record =>
+        request.identity.map(_.fullName == record.deployerName).getOrElse(false)
+      }.reverse
+      Ok(views.html.auth.profile(request, deployerRecords))
     }
   }
 }

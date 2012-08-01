@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent])
+@(request: controllers.AuthenticatedRequest[AnyContent], deployerRecords: List[deployment.DeployRecord])
 
 @main("Profile", request) {
 
@@ -9,6 +9,6 @@
 </ul>
 
 <h3>This is a list of deploys that you have recently done</h3>
-<p>No recent deploys</p>
+@snippets.recordTable(deployerRecords)
 
 }

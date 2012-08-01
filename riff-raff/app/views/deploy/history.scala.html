@@ -1,33 +1,9 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], records: List[deployment.DeployRecord])
-@import deployment._
 
 @main("Deployment history", request) {
 <h2>Recent deploys</h2>
 <hr/>
 <div class="content">
-    @if(records.isEmpty) {
-    <div class="alert alert-warning"><strong>There have been no deploys since riff-raff was last restarted.</strong></div>
-    } else {
-    <ul class=magenta-list>
-    @records.map{ record =>
-      <li><span><strong>@record.report.startTime</strong>
-          <span class="label">@record.deployerName</span>
-          <a href="@routes.Deployment.viewUUID(record.uuid.toString)"> @record.buildName @record.buildId @record.stage.name</a>
-      @record.taskType match {
-          case Task.Deploy => {
-            @defining(record.report.cascadeState) { state =>
-                @state match {
-                    case RunState.Completed => { <span class="label label-success">Completed</span> }
-                    case RunState.Failed => { <span class="label label-important">Failed</span> }
-                    case _ => {<span class="label label-info">Running</span>}
-                }
-            }
-          }
-          case Task.Preview => { <span class="label label-inverse">Preview</span> }
-      }
-      </span></li>
-    }
-    </ul>
-    }
+      @snippets.recordTable(records)
 </div>
 }

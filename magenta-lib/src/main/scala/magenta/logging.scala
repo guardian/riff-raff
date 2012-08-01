@@ -4,6 +4,7 @@ import java.util.{UUID, Date}
 import magenta.tasks.Task
 import util.DynamicVariable
 import collection.mutable
+import org.joda.time.DateTime
 
 object MessageBroker {
   private val listeners = mutable.Buffer[MessageSink]()
@@ -97,7 +98,7 @@ case class MessageStack(messages: List[Message]) {
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
 
 sealed trait Message {
-  val time = new Date()
+  val time = new DateTime()
   def text: String
   def deployParameters: Option[DeployParameters] = None
 }

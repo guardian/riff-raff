@@ -54,7 +54,7 @@ object DeployLibrary extends Logging {
     }
   }
 
-  def get(): List[DeployRecord] = { library().values.map{ _() }.toList }
+  def get: List[DeployRecord] = { library().values.map{ _() }.toList.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis } }
 
   def get(uuid: UUID): DeployRecord = { library()(uuid)() }
 
@@ -167,7 +167,7 @@ object Deployment extends Controller with Logging {
 
   def history() = TimedAction {
     AuthAction { implicit request =>
-      val records = DeployLibrary.get()
+      val records = DeployLibrary.get.reverse
 
       Ok(views.html.deploy.history(request, records))
     }
