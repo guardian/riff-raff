@@ -38,7 +38,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", List(), 20 seconds),
+      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 20 seconds),
       UnblockFirewall(host as "jetty")
     ))
   }
@@ -155,7 +155,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", List(), 20 seconds),
+      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 20 seconds),
       UnblockFirewall(host as "resin")
     ))
   }

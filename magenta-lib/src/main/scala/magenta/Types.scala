@@ -76,6 +76,11 @@ abstract class WebappPackageType extends PackageType {
   lazy val bucket = pkg.stringData("bucket")
   lazy val waitDuration = pkg.intData("waitseconds").toLong.seconds
   lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
+  lazy val healthCheckPaths = {
+    val paths = pkg.arrayStringData("healthcheck_paths")
+    if (paths.isEmpty) List("/%s/management/healthcheck" format serviceName)
+    else paths
+  }
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
@@ -85,7 +90,7 @@ abstract class WebappPackageType extends PackageType {
         CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
         WaitForPort(host, port, waitDuration),
-        CheckUrls(host, port, pkg.arrayStringData("healthcheck_paths"), checkDuration),
+        CheckUrls(host, port, healthCheckPaths, checkDuration),
         UnblockFirewall(host as user))
       }
     }
