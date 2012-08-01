@@ -103,10 +103,10 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
 }
 
 trait RepeatedPollingCheck {
-  def MAX_CONNECTION_ATTEMPTS: Int = 10
   def duration: Long
 
   def check(action: => Unit) {
+    val expiry = System.currentTimeMillis() + duration
     def checkAttempt(currentAttempt: Int) {
       try action
       catch {
@@ -114,15 +114,16 @@ trait RepeatedPollingCheck {
           MessageBroker.fail("404 Not Found", e)
         }
         case e: IOException => {
-          if (currentAttempt >= MAX_CONNECTION_ATTEMPTS)
-            MessageBroker.fail("Check failed %s times - aborting" format currentAttempt, e)
+          if (System.currentTimeMillis() > expiry)
+            MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt), e)
           MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
-          Thread.sleep(duration/MAX_CONNECTION_ATTEMPTS)
+          val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
+          Thread.sleep(sleepyTime)
           checkAttempt(currentAttempt + 1)
         }
       }
     }
-    checkAttempt(0)
+    checkAttempt(1)
   }
 }
 

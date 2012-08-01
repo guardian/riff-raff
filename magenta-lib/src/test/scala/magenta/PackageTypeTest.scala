@@ -38,7 +38,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 20 seconds),
+      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 2 minutes),
       UnblockFirewall(host as "jetty")
     ))
   }
@@ -73,7 +73,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", urls, 20 seconds),
+      CheckUrls(host, "8080", urls, 2 minutes),
       UnblockFirewall(host as "jetty")
     ))
 
@@ -155,7 +155,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 20 seconds),
+      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 2 minutes),
       UnblockFirewall(host as "resin")
     ))
   }
@@ -190,7 +190,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", urls, 20 seconds),
+      CheckUrls(host, "8080", urls, 2 minutes),
       UnblockFirewall(host as "resin")
     ))
   }
@@ -199,7 +199,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     val basic = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
     val resinBasic = new ResinWebappPackageType(basic)
     resinBasic.waitDuration should be(60 seconds)
-    resinBasic.checkDuration should be(20 seconds)
+    resinBasic.checkDuration should be(120 seconds)
 
     val overridden = Package("webapp", Set.empty, Map("waitseconds" -> 120, "checkseconds" -> 60), "resin-webapp", new File("/tmp/packages/webapp"))
     val resinOverridden = new ResinWebappPackageType(overridden)

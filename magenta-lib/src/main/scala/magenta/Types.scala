@@ -66,7 +66,7 @@ abstract class WebappPackageType extends PackageType {
     "user" -> containerName,
     "servicename" -> pkg.name,
     "waitseconds" -> 60,
-    "checkseconds" -> 20
+    "checkseconds" -> 120
   )
 
   lazy val user: String = pkg.stringData("user")
