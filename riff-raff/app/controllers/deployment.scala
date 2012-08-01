@@ -97,7 +97,6 @@ object Deployment extends Controller with Logging {
         errors => BadRequest(views.html.deploy.form(request,errors)),
         form => {
           log.info("Form submitted")
-          val deployActor = DeployActor(form.project, Stage(form.stage))
           val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
           val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
 
@@ -113,11 +112,11 @@ object Deployment extends Controller with Logging {
           form.action match {
             case "preview" =>
               val uuid = DeployLibrary.create(Task.Preview, context, keyRing)
-              deployActor ! Resolve(uuid)
+              DeployActor(uuid) ! Resolve(uuid)
               Redirect(routes.Deployment.previewLog(uuid.toString))
             case "deploy" =>
               val uuid = DeployLibrary.create(Task.Deploy, context, keyRing)
-              deployActor ! Execute(uuid)
+              DeployActor(uuid) ! Execute(uuid)
               Redirect(routes.Deployment.deployLog(uuid.toString))
             case _ => throw new RuntimeException("Unknown action")
           }

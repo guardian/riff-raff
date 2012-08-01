@@ -16,20 +16,12 @@ object DeployActor {
 
   lazy val system = ActorSystem("deploy")
 
-  var deployActors = Map.empty[(String, Stage), ActorRef]
-
-  def apply(project: String, stage: Stage): ActorRef = {
-    synchronized {
-      deployActors.get((project, stage)).getOrElse {
-        val actor = system.actorOf(Props(new DeployActor(project, stage)), "deploy-%s-%s" format (project.replace(" ", "_"), stage.name))
-        deployActors += (project, stage) -> actor
-        actor
-      }
-    }
+  def apply(uuid:UUID): ActorRef = {
+    system.actorOf(Props[DeployActor],"deploy-%s" format uuid.toString)
   }
 }
 
-class DeployActor(val projectName: String, val stage: Stage) extends Actor with Logging {
+class DeployActor() extends Actor with Logging {
   import DeployActor._
 
   def receive = {
