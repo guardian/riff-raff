@@ -1,16 +1,10 @@
 package controllers
 
-import play.api.data._
-import play.api.data.Forms._
-
 import play.api.mvc._
 import deployment._
 
 import play.api.Logger
-import conf.{TimedAction, Configuration}
-import magenta._
-import collection.mutable.ArrayBuffer
-import tasks.Task
+import conf.TimedAction
 
 trait Logging {
   implicit val log = Logger(getClass)
@@ -51,15 +45,7 @@ object Application extends Controller with Logging {
 
   def deployInfo(stage: String) = TimedAction {
     AuthAction { request =>
-      val stageAppHosts = DeployInfo.hostList filter { host =>
-        host.stage == stage || stage == ""
-      } groupBy { _.stage } mapValues { hostList =>
-        hostList.groupBy {
-          _.apps
-        }
-      }
-
-      Ok(views.html.deploy.hostInfo(request, stageAppHosts))
+      Ok(views.html.deploy.hostInfo(request))
     }
   }
 

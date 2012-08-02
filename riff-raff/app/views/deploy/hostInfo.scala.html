@@ -1,22 +1,64 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], stageAppHosts: Map[String,Map[Set[magenta.App],List[magenta.Host]]])
-
+@(request: controllers.AuthenticatedRequest[AnyContent])
+@import deployment.DeployInfoManager._
 
 @main("Deployment Information", request) {
 
 <h2>Deployment Information</h2>
 
-<p>This is a list of nodes that we know about:</p>
+<h3>Keys</h3>
+<hr/>
 
-@for((stage,appsHosts) <- stageAppHosts) {
-    <h3>@stage</h3>
-    @for((appList,hosts) <- appsHosts) {
-        <h4>@appList</h4>
-        <ul>
-            @for( host <- hosts ) {
-             <li>@host.name</li>
+<table class="table">
+    <thead><tr>
+        <th>App</th>
+        @deployInfo.knownKeyStages.map{ stage => <th>@stage.toString</th> }
+    </tr></thead>
+    <tbody>
+    @deployInfo.knownKeyApps.map { app =>
+    <tr>
+        <td><strong>@app.toString</strong></td>
+        @deployInfo.knownKeyStages.map{ stage =>
+        <td>
+            @if(deployInfo.stageAppToKeyMap.contains((stage,app))) {
+            <ul>
+                @deployInfo.stageAppToKeyMap((stage,app)).map { key => <li>@key.key @key.comment.map{ c => (@c) }</li> }
+            </ul>
+            } else {
+            -
             }
-        </ul>
+        </td>
+        }
+    </tr>
     }
+    </tbody>
+</table>
+
+<h3>Hosts</h3>
+<hr/>
+
+<table class="table">
+    <thead><tr>
+        <th>App</th>
+        @deployInfo.knownHostStages.map{ stage => <th>@stage</th> }
+    </tr></thead>
+    <tbody>
+@deployInfo.knownHostApps.map { appSet =>
+    <tr>
+    <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
+        @deployInfo.knownHostStages.map{ stage =>
+        <td>
+        @if(deployInfo.stageAppToHostMap.contains((stage,appSet))) {
+        <ul>
+            @deployInfo.stageAppToHostMap((stage,appSet)).map { host => <li>@host.name</li> }
+        </ul>
+            } else {
+            -
+            }
+        </td>
+        }
+    </tr>
 }
+    </tbody>
+</table>
 
 }

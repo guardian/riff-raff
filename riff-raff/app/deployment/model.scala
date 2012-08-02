@@ -22,7 +22,7 @@ object Task extends Enumeration {
   val Preview = Value("Preview")
 }
 
-case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParameters, keyRing:KeyRing, messages: List[MessageStack] = Nil, context:Option[DeployContext] = None) {
+case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParameters, messages: List[MessageStack] = Nil, context:Option[DeployContext] = None) {
   lazy val report:ReportTree = DeployReport(messages, "Deployment Report")
   lazy val buildName = parameters.build.name
   lazy val buildId = parameters.build.id
@@ -34,7 +34,7 @@ case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParam
     this.copy(messages = messages ++ List(message))
   }
   def attachContext(project:Project): DeployRecord = {
-    this.copy(context = Some(parameters.toDeployContext(project,DeployInfo.hostList)))
+    this.copy(context = Some(parameters.toDeployContext(project,DeployInfoManager.hostList)))
   }
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }

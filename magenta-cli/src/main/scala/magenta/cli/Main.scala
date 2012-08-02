@@ -47,11 +47,11 @@ object Main extends scala.App {
     var keyLocation: Option[File] = None
     var jvmSsh = false
 
-    var deployInfo = "/opt/bin/deployinfo.json"
+    var deployInfoExecutable = "/opt/bin/deployinfo.json"
 
-    lazy val parsedDeployInfo = {
+    lazy val deployInfo = {
       import sys.process._
-      DeployInfoJsonReader.parse(deployInfo.!!)
+      DeployInfoJsonReader.parse(deployInfoExecutable.!!)
     }
 
     private var _localArtifactDir: Option[File] = None
@@ -90,7 +90,7 @@ object Main extends scala.App {
     separator("\n  Advanced options:")
     opt("local-artifact", "Path to local artifact directory (overrides <project> and <build>)",
       { dir => Config.localArtifactDir = Some(new File(dir)) })
-    opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfo = deployinfo })
+    opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfoExecutable = deployinfo })
     opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
     opt("i", "keyLocation", "specify location of SSH key file", {keyLocation => Config.keyLocation = Some(validFile(keyLocation))})
     opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
@@ -129,7 +129,7 @@ object Main extends scala.App {
           val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
 
           MessageBroker.verbose("Loaded: " + project)
-          val hostsInStage = Config.parsedDeployInfo.filter(_.stage == Config.stage)
+          val hostsInStage = Config.deployInfo.hosts.filter(_.stage == Config.stage)
           val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
 
           val context = DeployContext(parameters,project,hosts)
