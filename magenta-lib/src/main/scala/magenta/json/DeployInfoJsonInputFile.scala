@@ -6,7 +6,8 @@ import io.Source
 import java.io.File
 
 case class DeployInfoJsonInputFile(
-  hosts: List[DeployInfoHost]
+  hosts: List[DeployInfoHost],
+  keys: List[DeployInfoKey]
 )
 
 
@@ -17,17 +18,22 @@ case class DeployInfoHost(
   stage: String
 )
 
+case class DeployInfoKey(
+  app: String,
+  stage: String,
+  accesskey: String,
+  comment: Option[String]
+)
+
 
 object DeployInfoJsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File):  List[Host] = parse(Source.fromFile(f).mkString)
+  def parse(f: File): DeployInfo = parse(Source.fromFile(f).mkString)
 
-  def parse(inputFile: DeployInfoJsonInputFile): List[Host] = {
-    inputFile.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
-  }
+  def parse(inputFile: DeployInfoJsonInputFile): DeployInfo = DeployInfo(inputFile)
 
-  def parse(s: String): List[Host] = {
+  def parse(s: String): DeployInfo = {
     parse(Extraction.extract[DeployInfoJsonInputFile](JsonParser.parse(s)))
   }
 

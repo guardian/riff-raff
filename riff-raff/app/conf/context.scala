@@ -6,8 +6,8 @@ import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{ Management => PlayManagement }
 import com.gu.conf.ConfigurationFactory
-import sbt.IO
 import java.io.File
+import magenta.S3Credentials
 
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") {
@@ -31,8 +31,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object s3 {
-    lazy val accessKey = configuration.getStringProperty("s3.accessKey").getOrException("No S3 access key configured")
-    lazy val secretAccessKey = configuration.getStringProperty("s3.secretAccessKey").getOrException("No S3 secret access key configured")
+    def credentials(accessKey: String) = {
+      val secretKey = configuration.getStringProperty("s3.secretAccessKey.%s" format accessKey).getOrException("No S3 secret access key configured for %s" format accessKey)
+      S3Credentials(accessKey,secretKey)
+    }
   }
 
   object irc {

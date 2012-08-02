@@ -16,7 +16,7 @@
     <tbody>
     @records.map{ record =>
     <tr>
-        <td>@record.report.startTime</td>
+        <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(record.report.startTime)</td>
         <td><span class="label">@record.deployerName</span></td>
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)"> @record.buildName @record.buildId @record.stage.name</a></td>
         <td>

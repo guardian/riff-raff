@@ -12,14 +12,10 @@ import akka.agent.Agent
 import akka.util.Timeout
 import akka.util.duration._
 import deployment.DeployRecord
-import magenta.S3Credentials
 import deployment.DeployParameterForm
-import magenta.KeyRing
 import magenta.MessageStack
-import scala.Some
 import magenta.Build
 import magenta.DeployParameters
-import magenta.SystemUser
 import magenta.Deployer
 import magenta.Stage
 
@@ -34,9 +30,9 @@ object DeployLibrary extends Logging {
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def create(recordType: Task.Type, params: DeployParameters, keyRing: KeyRing): UUID = {
+  def create(recordType: Task.Type, params: DeployParameters): UUID = {
     val uuid = java.util.UUID.randomUUID()
-    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params, keyRing))) }
+    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params))) }
     uuid
   }
 
@@ -96,10 +92,6 @@ object Deployment extends Controller with Logging {
       deployForm.bindFromRequest().fold(
         errors => BadRequest(views.html.deploy.form(request,errors)),
         form => {
-          log.info("Form submitted")
-          val s3Creds = S3Credentials(Configuration.s3.accessKey,Configuration.s3.secretAccessKey)
-          val keyRing = KeyRing(SystemUser(keyFile = Some(Configuration.sshKey.file)), List(s3Creds))
-
           log.info("Host list: %s" format form.hosts)
           val context = new DeployParameters(Deployer(request.identity.get.fullName),
             Build(form.project,form.build.toString),
@@ -111,11 +103,11 @@ object Deployment extends Controller with Logging {
           import deployment.DeployActor.Execute
           form.action match {
             case "preview" =>
-              val uuid = DeployLibrary.create(Task.Preview, context, keyRing)
+              val uuid = DeployLibrary.create(Task.Preview, context)
               DeployActor(uuid) ! Resolve(uuid)
               Redirect(routes.Deployment.previewLog(uuid.toString))
             case "deploy" =>
-              val uuid = DeployLibrary.create(Task.Deploy, context, keyRing)
+              val uuid = DeployLibrary.create(Task.Deploy, context)
               DeployActor(uuid) ! Execute(uuid)
               Redirect(routes.Deployment.deployLog(uuid.toString))
             case _ => throw new RuntimeException("Unknown action")
