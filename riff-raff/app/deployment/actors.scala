@@ -41,7 +41,8 @@ class DeployActor() extends Actor with Logging {
           resolveContext(artifactDir, record)
           DeployLibrary.await(uuid).context.foreach { realContext =>
             log.info("Executing deployContext")
-            realContext.execute(record.keyRing)
+            val keyRing = DeployInfoManager.keyRing(realContext)
+            realContext.execute(keyRing)
           }
         }
       }
