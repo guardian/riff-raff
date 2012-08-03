@@ -1,25 +1,14 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
 
-@defining(record.report.cascadeState) { state =>
-    @state match {
-    case RunState.Completed => { <div class="alert alert-success">Deploy completed</div> }
-    case RunState.Failed => {
-<div class="alert alert-error">
-    <h4 class="alert-heading">Deploy failed</h4>
-    @record.report.failureMessage.map{ fail =>
-      <strong>@fail.exception.getMessage</strong>
-      <pre>@fail.exception.getStackTraceString</pre>
-    }
-</div>
-}
-    case _ => {}
-} }
+@logSummary(record)
 
 <ul class="magenta-reporttree">
     @snippets.reportTree(record.report)
 </ul>
 
 <!-- @record.report.render.mkString("\n") -->
+
+@logSummary(record)
 
 @if(!record.isRunning){
     <script type="text/javascript">
