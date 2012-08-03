@@ -8,13 +8,7 @@ import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
 
-case class DeployParameterForm(project:String, build:String, stage:String, action: String, hosts: List[String])
-
 case class DeploymentKey(stage:String, project:String, build:String, recipe:String = "default")
-
-object Stages {
-  lazy val list = List("CODE","DEV","QA","RELEASE","PROD","STAGE","TEST","INFRA").sorted
-}
 
 object Task extends Enumeration {
   type Type = Value

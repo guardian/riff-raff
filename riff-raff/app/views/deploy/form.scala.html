@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[deployment.DeployParameterForm])
+@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
 @import helper.twitterBootstrap._
 
 @main("Deploy request", request) {
@@ -27,7 +27,7 @@
 @helper.inputText(deployForm("build"))
 @helper.select(
 deployForm("stage"),
-options = helper.options(deployment.Stages.list),
+options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
 '_default -> "--- Choose a stage ---",
 '_label -> "stage",
 '_error -> deployForm("stage").error.map(_.withMessage("Please select deployment stage"))

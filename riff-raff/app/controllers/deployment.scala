@@ -12,7 +12,6 @@ import akka.agent.Agent
 import akka.util.Timeout
 import akka.util.duration._
 import deployment.DeployRecord
-import deployment.DeployParameterForm
 import magenta.MessageStack
 import magenta.Build
 import magenta.DeployParameters
@@ -60,6 +59,7 @@ object DeployLibrary extends Logging {
   }
 }
 
+case class DeployParameterForm(project:String, build:String, stage:String, action: String, hosts: List[String])
 
 object Deployment extends Controller with Logging {
 
