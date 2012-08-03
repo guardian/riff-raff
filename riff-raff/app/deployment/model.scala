@@ -8,8 +8,6 @@ import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
 
-case class DeploymentKey(stage:String, project:String, build:String, recipe:String = "default")
-
 object Task extends Enumeration {
   type Type = Value
   val Deploy = Value("Deploy")
