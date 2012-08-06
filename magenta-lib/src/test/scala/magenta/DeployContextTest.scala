@@ -23,7 +23,6 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   it should ("send a Info and TaskList message when resolving tasks") in {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
-    val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
 
     val sink = new MessageSink {
       val messages = Buffer[Message]()
@@ -32,7 +31,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
 
     MessageBroker.deployContext(parameters) {
-      val tasks = context.tasks
+      val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
     }
 
     sink.messages.filter(_.getClass == classOf[Info]) should have size (1)
@@ -46,6 +45,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     context.execute(keyRing)
     val task = context.tasks.head
 
+    verify(task, times(1)).taskHosts
     verify(task, times(1)).execute(keyRing)
     verifyNoMoreInteractions(task)
   }
@@ -122,11 +122,19 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   }
 
   case class MockStubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = mock[Task] :: Nil
+    def resolve(host: Host) = {
+      val task = mock[Task]
+      when(task.taskHosts).thenReturn(List(host))
+      task :: Nil
+    }
   }
 
   case class MockStubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(stage: Stage) = mock[Task] :: Nil
+    def resolve(stage: Stage) = {
+      val task = mock[Task]
+      when(task.taskHosts).thenReturn(Nil)
+      task :: Nil
+    }
   }
 
   val app1 = App("the_role")

@@ -1,27 +1,35 @@
 package magenta
 
+import tasks.Task
 
-case class DeployContext(parameters: DeployParameters, project: Project, hosts: HostList) {
+object DeployContext {
+  def apply(parameters: DeployParameters, project: Project, allHosts: HostList): DeployContext = {
+    val stageHosts = {
+      val stageHosts = allHosts.filterByStage(parameters.stage)
+      MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
+      stageHosts
+    }
+    val tasks = {
+      MessageBroker.info("Resolving tasks...")
+      val taskList = Resolver.resolve(project, parameters.recipe.name, stageHosts, parameters.stage)
+      MessageBroker.taskList(taskList)
+      taskList
+    }
+    DeployContext(parameters, project, stageHosts, tasks)
+  }
+}
+
+case class DeployContext(parameters: DeployParameters, project: Project, stageHosts: HostList, tasks: List[Task]) {
   val deployer = parameters.deployer
   val buildName = parameters.build.name
   val buildId = parameters.build.id
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  lazy val stageHosts = {
-    val stageHosts = hosts.filterByStage(parameters.stage)
-    MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
-    stageHosts
-  }
-
-  lazy val hostNames = tasks.flatMap(_.taskHosts).map(_.name).distinct
-
-  lazy val tasks = {
-    MessageBroker.info("Resolving tasks...")
-    val taskList = Resolver.resolve(project, parameters.recipe.name, stageHosts, parameters.stage)
-    MessageBroker.taskList(taskList)
-    taskList
-  }
+  val hostNames = tasks
+    .flatMap(_.taskHosts)
+    .map(_.name)
+    .distinct
 
   def execute(keyRing: KeyRing) {
     MessageBroker.deployContext(parameters) {

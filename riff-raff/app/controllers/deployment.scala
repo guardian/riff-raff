@@ -34,7 +34,7 @@ object DeployLibrary extends Logging {
 
   def create(recordType: Task.Type, params: DeployParameters): UUID = {
     val uuid = java.util.UUID.randomUUID()
-    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params))) }
+    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params, DeployInfoManager.deployInfo))) }
     uuid
   }
 

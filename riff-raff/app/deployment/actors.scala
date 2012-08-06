@@ -38,25 +38,24 @@ class DeployActor() extends Actor with Logging {
       val record = DeployLibrary.await(uuid)
       record.loggingContext {
         record.withDownload { artifactDir =>
-          resolveContext(artifactDir, record)
-          DeployLibrary.await(uuid).context.foreach { realContext =>
-            log.info("Executing deployContext")
-            val keyRing = DeployInfoManager.keyRing(realContext)
-            realContext.execute(keyRing)
-          }
+          val context = resolveContext(artifactDir, record)
+          log.info("Executing deployContext")
+          val keyRing = DeployInfoManager.keyRing(context)
+          context.execute(keyRing)
         }
       }
     }
   }
 
-  def resolveContext(artifactDir: File, record: DeployRecord) {
+  def resolveContext(artifactDir: File, record: DeployRecord): DeployContext = {
     log.info("Reading deploy.json")
     MessageBroker.info("Reading deploy.json")
     val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
+    val context = record.parameters.toDeployContext(project,record.deployInfo.hosts)
+    context.tasks
     DeployLibrary.updateWithContext() { record =>
-        val updatedRecord = record.attachContext(project)
-        updatedRecord.context.foreach(_.tasks)
-        updatedRecord
+      record.attachContext(context)
     }
+    context
   }
 }
