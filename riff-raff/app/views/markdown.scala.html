@@ -1,0 +1,5 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], title: String, markDown: String)
+
+@main(title, request) {
+    docs.MarkDown.toHtml(markDown)
+}

@@ -1,10 +1,10 @@
 package controllers
 
 import play.api.mvc._
-import deployment._
 
 import play.api.Logger
 import conf.TimedAction
+import io.Source
 
 trait Logging {
   implicit val log = Logger(getClass)
@@ -46,6 +46,17 @@ object Application extends Controller with Logging {
   def deployInfo(stage: String) = TimedAction {
     AuthAction { request =>
       Ok(views.html.deploy.hostInfo(request))
+    }
+  }
+
+  def documentation(resource: String) = TimedAction {
+    AuthAction { request =>
+      try {
+        val markDown = Source.fromURL(getClass.getResource("docs/%s.md" format resource)).mkString
+        Ok(views.html.markdown(request, "Documentation for %s" format resource, markDown))
+      } catch {
+        case e => NotFound("No documentation found for %s" format resource)
+      }
     }
   }
 

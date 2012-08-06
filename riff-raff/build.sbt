@@ -7,7 +7,8 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-logback" % "5.15",
   "com.gu" %% "configuration" % "3.6",
   "org.pircbotx" % "pircbotx" % "1.7",
-  "com.typesafe.akka" % "akka-agent" % "2.0.2"
+  "com.typesafe.akka" % "akka-agent" % "2.0.2",
+  "org.clapper" %% "markwrap" % "0.5.4"
 )
 
 ivyXML :=

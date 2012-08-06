@@ -8,6 +8,9 @@ GET     /                           controllers.Application.index
 GET     /deployinfo                 controllers.Application.deployInfo(stage="")
 GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
 
+# Docs
+GET     /docs/*resource             controllers.Application.documentation(resource)
+
 # Deployment pages
 GET     /deployment/CODE/frontend-article   controllers.Deployment.frontendArticleCode
 GET     /deployment/log/:uuid  controllers.Deployment.deployLog(uuid:String, verbose:Boolean?=false)
