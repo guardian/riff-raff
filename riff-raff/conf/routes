@@ -21,6 +21,8 @@ GET     /deployment/history controllers.Deployment.history()
 
 GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String)
 
+GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)
+
 # authentication endpoints
 GET     /profile                    controllers.Login.profile
 GET     /login                      controllers.Login.login

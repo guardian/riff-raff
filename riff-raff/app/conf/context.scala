@@ -8,6 +8,7 @@ import com.gu.management.play.{ Management => PlayManagement }
 import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta.S3Credentials
+import java.net.URL
 
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") {
@@ -42,6 +43,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val name = configuration.getStringProperty("irc.name")
     lazy val host = configuration.getStringProperty("irc.host")
     lazy val channel = configuration.getStringProperty("irc.channel")
+  }
+
+  object teamcity {
+    lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
   override def toString(): String = configuration.toString

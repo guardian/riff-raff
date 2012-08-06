@@ -1,5 +1,6 @@
 package controllers
 
+import teamcity.TeamCity
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
@@ -17,6 +18,7 @@ import magenta.Build
 import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
+import play.api.libs.json.Json
 
 object DeployLibrary extends Logging {
   val sink = new MessageSink {
@@ -163,5 +165,10 @@ object Deployment extends Controller with Logging {
 
       Ok(views.html.deploy.history(request, records))
     }
+  }
+
+  def autoCompleteProject(term: String) = AuthAction {
+    val possibleProjects = TeamCity.retrieveBuildTypes.toList.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).sorted.take(10)
+    Ok(Json.toJson(possibleProjects))
   }
 }
