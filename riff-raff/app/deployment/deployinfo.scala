@@ -32,7 +32,7 @@ object DeployInfoManager extends Logging {
   def keyList = deployInfo.keys
 
   def credentials(stage:String,apps:Set[App]) : List[Credentials] = {
-    apps.toList.flatMap(app => deployInfo.firstMatchingKey(app,stage)).map(k => Configuration.s3.credentials(k.key))
+    apps.toList.flatMap(app => deployInfo.firstMatchingKey(app,stage)).map(k => Configuration.s3.credentials(k.key)).distinct
   }
 
   def keyRing(context:DeployContext): KeyRing = {
