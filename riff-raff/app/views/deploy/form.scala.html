@@ -23,7 +23,7 @@
 <h3>Provide deploy details</h3>
 
 @helper.form(action=routes.Deployment.processForm) {
-@helper.inputText(deployForm("project"), 'class -> "autocomplete", Symbol("data-url") -> "/deployment/request/autoComplete/project")
+@helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project")
 @helper.inputText(deployForm("build"))
 @helper.select(
 deployForm("stage"),
@@ -41,7 +41,7 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
 }
 
 <script type="text/javascript">
-    $('input.autocomplete').each( function() {
+    $('#projectInput').each( function() {
         var $input = $(this);
         var serverUrl = $input.data('url');
         $input.autocomplete({ source:serverUrl, minLength:2 });
