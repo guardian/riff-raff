@@ -18,8 +18,18 @@ case class Identity(openid: String, email: String, firstName: String, lastName: 
 }
 
 object Identity {
+  val KEY = "identity"
   implicit val formats = Serialization.formats(NoTypeHints)
   def readJson(json: String) = read[Identity](json)
+  def apply(request: Request[Any]): Option[Identity] = {
+    request.session.get(KEY).map(credentials => Identity.readJson(credentials))
+  }
+}
+
+object AuthenticatedRequest {
+  def apply[A](request: Request[A]) = {
+    new AuthenticatedRequest(Identity(request), request)
+  }
 }
 
 class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request) {
@@ -29,10 +39,7 @@ class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A
 object NonAuthAction {
 
   def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result) = {
-    Action(p) { implicit request =>
-      val identity = request.session.get("identity").map(credentials => Identity.readJson(credentials))
-      f(new AuthenticatedRequest(identity, request))
-    }
+    Action(p) { implicit request => f(AuthenticatedRequest(request)) }
   }
 
   def apply(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] = {
@@ -49,7 +56,7 @@ object AuthAction {
 
   def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result) = {
     Action(p) { implicit request =>
-      request.session.get("identity").map(credentials => Identity.readJson(credentials)).map { identity =>
+      Identity(request).map { identity =>
         f(new AuthenticatedRequest(Some(identity), request))
       }.getOrElse(Redirect(routes.Login.login).withSession {
         request.session + ("loginFromUrl", request.uri)
@@ -106,13 +113,13 @@ object Login extends Controller with Logging {
           )
           if (credentials.emailDomain == "guardian.co.uk") {
             Redirect(session.get("loginFromUrl").getOrElse("/")).withSession {
-              session + ("identity" -> credentials.writeJson) - "loginFromUrl"
+              session + (Identity.KEY -> credentials.writeJson) - "loginFromUrl"
             }
           } else {
             FailedLoginCounter.recordCount(1)
             Redirect(routes.Login.login).flashing(
               ("error" -> "I'm afraid you can only log into Riff-Raff using your Guardian Google Account")
-            ).withSession(session - "identity")
+            ).withSession(session - Identity.KEY)
           }
         }
         case Thrown(t) => {
@@ -126,7 +133,7 @@ object Login extends Controller with Logging {
 
   def logout = Action { implicit request =>
     Redirect("/").withSession {
-      session - "identity"
+      session - Identity.KEY
     }
   }
 
