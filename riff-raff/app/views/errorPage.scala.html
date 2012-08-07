@@ -1,0 +1,29 @@
+@(error: Throwable)
+@import conf.Configuration._
+
+@page("Error"){
+<div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container-fluid">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <a class="brand" href="#">Riff Raff</a>
+            <!--/.nav-collapse -->
+        </div>
+    </div>
+</div>
+}{
+
+<h2>Dammit! Janet!</h2>
+
+<p>I love you, but something has gone terribly wrong and I just don't feel at all well.</p>
+
+<div class="alert alert-error">
+    <h4 class="alert-heading">@error.getMessage</h4>
+    <pre>@error.getStackTraceString</pre>
+</div>
+
+}
