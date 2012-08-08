@@ -72,8 +72,7 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
                     term: request.term.split( /,\s*/).pop()
                 }, response )
             },
-            minLength:0,
-            autoFocus: true
+            minLength:0
         });
     });
     $('#buildInput').focus( function(e) {
