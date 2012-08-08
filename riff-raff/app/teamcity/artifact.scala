@@ -48,23 +48,24 @@ object TeamCity extends BuildServer with Logging {
     val buildList = "/guestAuth/app/rest/builds/?locator=buildType:%s"
   }
 
-  val buildTypeAgent = ScheduledAgent[Seq[BuildType]](1 second, 1 minute)(getRetrieveBuildTypes)
-  val buildAgent = ScheduledAgent[Map[BuildType,Seq[Build]]](20 seconds, 1 minute){
-    log.info("Updating successful TeamCity builds")
-    val result = getSuccessfulBuildMap(retrieveBuildTypes)
-    log.info("Finished updating successful builds (found %d builds)" format result.values.map(_.size).reduce(_+_))
+  private val buildAgent = ScheduledAgent[Map[BuildType,List[Build]]](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ _ =>
+    log.info("Querying TC for build types")
+    val buildTypes = getRetrieveBuildTypes
+    log.info("Querying TC for all successful builds")
+    val result = getSuccessfulBuildMap(buildTypes)
+    log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).reduce(_+_)))
     result
   }
 
-  def retrieveBuildTypes = buildTypeAgent()
-  def successfulBuilds(projectName: String): List[Build] = retrieveBuildTypes.filter(_.name == projectName).headOption
-    .map(successfulBuildMap(_).toList).getOrElse(Nil)
+  def buildMap = buildAgent()
+  def buildTypes = buildMap.keys.toList
 
-  def successfulBuildMap = buildAgent()
+  def successfulBuilds(projectName: String): List[Build] = buildTypes.filter(_.name == projectName).headOption
+    .flatMap(buildMap.get(_)).getOrElse(Nil)
 
-  private def getRetrieveBuildTypes: Seq[BuildType] = {
+  private def getRetrieveBuildTypes: List[BuildType] = {
     val projectElements = XML.load(new URL(tcURL,api.projectList))
-    (projectElements \ "project").flatMap { project =>
+    (projectElements \ "project").toList.flatMap { project =>
       val buildTypeElements = XML.load(new URL(tcURL,(project \ "@href").text))
       (buildTypeElements \\ "buildType").map { buildType =>
         TeamCityBuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
@@ -72,15 +73,15 @@ object TeamCity extends BuildServer with Logging {
     }
   }
 
-  private def getSuccessfulBuildMap(buildTypes: Seq[BuildType]): Map[BuildType,Seq[Build]] = {
+  private def getSuccessfulBuildMap(buildTypes: List[BuildType]): Map[BuildType,List[Build]] = {
     buildTypes.map(buildType => buildType -> getSuccessfulBuilds(buildType)).toMap
   }
 
-  private def getSuccessfulBuilds(buildType: BuildType): Seq[Build] = {
+  private def getSuccessfulBuilds(buildType: BuildType): List[Build] = {
     val url = new URL(tcURL, api.buildList format buildType.id)
     log.debug("Getting %s" format url.toString)
     val buildElements = XML.load(url)
-    (buildElements \ "build") filter { build => (build \ "@status").text == "SUCCESS" } map { build =>
+    (buildElements \ "build").toList filter { build => (build \ "@status").text == "SUCCESS" } map { build =>
       TeamCityBuild(buildType.name, build \ "@number" text, build \ "@startDate" text)
     }
   }

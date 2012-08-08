@@ -9,7 +9,11 @@ object ScheduledAgent {
   val scheduleSystem = ActorSystem("scheduled-agent")
 
   def apply[T](initialDelay: Duration, frequency: Duration)(block: => T): ScheduledAgent[T] = {
-    new ScheduledAgent(initialDelay, frequency, block, scheduleSystem)
+    new ScheduledAgent(initialDelay, frequency, block, _ => block, scheduleSystem)
+  }
+
+  def apply[T](initialDelay: Duration, frequency: Duration, initialValue: T)(block: T => T): ScheduledAgent[T] = {
+    new ScheduledAgent(initialDelay, frequency, initialValue, block, scheduleSystem)
   }
 
   def shutdown() {
@@ -17,31 +21,16 @@ object ScheduledAgent {
   }
 }
 
-class ScheduledAgent[T](initialDelay: Duration, frequency: Duration, block: => T, system: ActorSystem) extends Logging {
+class ScheduledAgent[T](initialDelay: Duration, frequency: Duration, initialValue: T, block: T => T, system: ActorSystem) extends Logging {
 
-  var updateCalled = false
-  val agent = Agent[Option[T]](None)(system)
+  val agent = Agent[T](initialValue)(system)
 
   val agentSchedule = system.scheduler.schedule(initialDelay, frequency) {
-    update()
+    agent sendOff(block)
   }
 
-  def update() {
-    agent update(Some(block))
-    updateCalled = true
-  }
-
-  def get(): T =
-    if (agent().isDefined) agent().get
-    else {
-      if (!updateCalled) {
-        update()
-      }
-      val timeout = Timeout(frequency)
-      agent.await(timeout).get
-    }
-
-  def apply(): T = get
+  def get(): T = agent()
+  def apply(): T = get()
 
   def shutdown() {
     agentSchedule.cancel()
