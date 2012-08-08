@@ -169,7 +169,7 @@ object Deployment extends Controller with Logging {
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = TeamCity.retrieveBuildTypes.toList.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).sorted.take(10)
+    val possibleProjects = TeamCity.buildTypes.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
