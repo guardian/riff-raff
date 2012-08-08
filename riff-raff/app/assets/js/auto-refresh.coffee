@@ -9,8 +9,7 @@ enableRefresh = ->
     ), 1000
 
 disableRefresh = ->
-  if (intervalId != null)
-    clearInterval(intervalId)
+  clearInterval(intervalId) if intervalId?
 
 @ajaxRefresh = {
   enable : enableRefresh

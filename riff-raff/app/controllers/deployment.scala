@@ -19,6 +19,7 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import play.api.libs.json.Json
+import org.joda.time.format.DateTimeFormat
 
 object DeployLibrary extends Logging {
   val sink = new MessageSink {
@@ -171,4 +172,14 @@ object Deployment extends Controller with Logging {
     val possibleProjects = TeamCity.retrieveBuildTypes.toList.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
+
+  def autoCompleteBuild(project: String, term: String) = AuthAction {
+    val possibleProjects = TeamCity.successfulBuilds(project).filter(_.number.contains(term)).map { build =>
+      val formatter = DateTimeFormat.forPattern("HH:mm d MMMM yyyy")
+      val label = "%s (%s)" format (build.number, formatter.print(build.startDate))
+      Map("label" -> label, "value" -> build.number)
+    }
+    Ok(Json.toJson(possibleProjects))
+  }
+
 }

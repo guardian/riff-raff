@@ -24,7 +24,7 @@
 
 @helper.form(action=routes.Deployment.processForm) {
 @helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project")
-@helper.inputText(deployForm("build"))
+@helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build")
 @helper.select(
 deployForm("stage"),
 options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
@@ -39,12 +39,45 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
 }
-
+<style>
+    .ui-autocomplete {
+        max-height: 150px;
+        overflow-y: auto;
+        /* prevent horizontal scrollbar */
+        overflow-x: hidden;
+        /* add padding to account for vertical scrollbar */
+        padding-right: 20px;
+    }
+</style>
 <script type="text/javascript">
+    var selectedProject = ''
     $('#projectInput').each( function() {
         var $input = $(this);
+        var $project = ''
         var serverUrl = $input.data('url');
-        $input.autocomplete({ source:serverUrl, minLength:2 });
+        $input.autocomplete({
+            source:serverUrl,
+            minLength:0
+        });
+    });
+    $('#projectInput').blur( function(e) {
+        selectedProject = encodeURIComponent($(e.target).val())
+    })
+    $('#buildInput').each( function() {
+        var $input = $(this);
+        var serverUrl = $input.data('url');
+        $input.autocomplete({
+            source: function( request, response ) {
+                $.getJSON( serverUrl+'/'+selectedProject, {
+                    term: request.term.split( /,\s*/).pop()
+                }, response )
+            },
+            minLength:0,
+            autoFocus: true
+        });
+    });
+    $('#buildInput').focus( function(e) {
+        $(e.target).autocomplete("search");
     });
 </script>
 
