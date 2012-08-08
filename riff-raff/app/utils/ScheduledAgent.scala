@@ -23,6 +23,10 @@ class ScheduledAgent[T](initialDelay: Duration, frequency: Duration, block: => T
   val agent = Agent[Option[T]](None)(system)
 
   val agentSchedule = system.scheduler.schedule(initialDelay, frequency) {
+    update()
+  }
+
+  def update() {
     agent update(Some(block))
     updateCalled = true
   }
@@ -31,7 +35,7 @@ class ScheduledAgent[T](initialDelay: Duration, frequency: Duration, block: => T
     if (agent().isDefined) agent().get
     else {
       if (!updateCalled) {
-        agent.update(Some(block))
+        update()
       }
       val timeout = Timeout(frequency)
       agent.await(timeout).get
