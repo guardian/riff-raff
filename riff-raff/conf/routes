@@ -38,6 +38,7 @@ GET     /logout                     controllers.Login.logout
 GET     /deployment/reportTestPartial  controllers.Testing.reportTestPartial(verbose:Boolean ?= false)
 GET     /testing/form   controllers.Testing.form
 POST    /testing/formPost  controllers.Testing.formPost
+GET     /teamcity       controllers.Deployment.teamcity
 
 
 # Map static resources from the /public folder to the /assets URL path

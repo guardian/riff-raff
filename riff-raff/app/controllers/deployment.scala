@@ -182,4 +182,13 @@ object Deployment extends Controller with Logging {
     Ok(Json.toJson(possibleProjects))
   }
 
+  def teamcity = AuthAction {
+    val header = Seq("Build Type Name", "Build Number", "Build Type ID", "Build ID")
+    val data =
+      for((buildType, builds) <- TeamCity.buildMap;
+          build <- builds)
+        yield Seq(buildType.name,build.number,buildType.id,build.buildId)
+
+    Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
+  }
 }
