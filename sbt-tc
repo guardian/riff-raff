@@ -6,6 +6,8 @@ if [ ! -d "$SBT_BOOT_DIR" ]; then
   mkdir -p $SBT_BOOT_DIR
 fi
 
+/usr/bin/printenv
+
 cat /dev/null | java -Xmx1G -XX:MaxPermSize=250m -XX:+UseCompressedOops \
     -Dsbt.log.noformat=true \
     -Dbuild.configuation.name="$TEAMCITY_BUILDCONF_NAME" \
