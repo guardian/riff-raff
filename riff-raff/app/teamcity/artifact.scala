@@ -9,7 +9,20 @@ import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import controllers.Logging
 import math.max
+import scala.Predef._
+import collection.mutable
 
+object `package` {
+  type BuildTypeMap = Map[BuildType,List[Build]]
+
+  implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: BuildTypeMap) = new {
+    def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
+  }
+}
+
+trait BuildWatcher {
+  def change(previous: BuildTypeMap, current: BuildTypeMap)
+}
 
 case class BuildType(id: String, name: String)
 
@@ -34,9 +47,9 @@ object Build {
 case class Build(buildId: Int, name: String, number: String, startDate: DateTime)
 
 object TeamCity extends Logging {
-  implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: Map[BuildType,List[Build]]) = new {
-    def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
-  }
+  private val listeners = mutable.Buffer[BuildWatcher]()
+  def subscribe(sink: BuildWatcher) { listeners += sink }
+  def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
   val tcURL = Configuration.teamcity.serverURL
   object api {
@@ -45,11 +58,12 @@ object TeamCity extends Logging {
     def buildSince(buildId:Int) = "/guestAuth/app/rest/builds/?locator=sinceBuild:%d" format buildId
   }
 
-  private val buildAgent = ScheduledAgent[Map[BuildType,List[Build]]](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ currentBuildMap =>
+  private val buildAgent = ScheduledAgent[BuildTypeMap](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ currentBuildMap =>
     if (currentBuildMap.isEmpty || !getBuildsSince(currentBuildMap.latestBuildId()).isEmpty) {
       val buildTypes = getRetrieveBuildTypes
       val result = getSuccessfulBuildMap(buildTypes)
       log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).reduce(_+_)))
+      listeners.foreach(_.change(currentBuildMap,result))
       result
     } else currentBuildMap
   }
@@ -71,7 +85,7 @@ object TeamCity extends Logging {
     }
   }
 
-  private def getSuccessfulBuildMap(buildTypes: List[BuildType]): Map[BuildType,List[Build]] = {
+  private def getSuccessfulBuildMap(buildTypes: List[BuildType]): BuildTypeMap = {
     log.info("Querying TC for all successful builds")
     buildTypes.map(buildType => buildType -> getSuccessfulBuilds(buildType)).toMap
   }

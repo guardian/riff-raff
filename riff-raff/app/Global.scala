@@ -3,7 +3,7 @@ import notification.IrcClient
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
-import teamcity.TeamCity
+import teamcity.{ContinuousDeployment, TeamCity}
 import utils.ScheduledAgent
 import play.api.mvc.Results.InternalServerError
 
@@ -12,12 +12,14 @@ class Global extends GlobalSettings with Logging {
     // initialise message sinks
     IrcClient.init()
     DeployController.init()
+    ContinuousDeployment.init()
     log.info("Starting TeamCity poller on %s" format TeamCity.tcURL.toString)
   }
 
   override def onStop(app: Application) {
     IrcClient.shutdown()
     DeployController.shutdown()
+    ContinuousDeployment.init()
     ScheduledAgent.shutdown()
   }
 

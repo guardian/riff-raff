@@ -49,6 +49,18 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
+  object continuousDeployment {
+    private lazy val ProjectToStageRe = """^(.+)->(.+)$""".r
+    lazy val configLine = configuration.getStringProperty("continuous.deployment", "")
+    lazy val buildToStageMap = configLine.split("\\s").flatMap{ entry =>
+        entry match {
+          case ProjectToStageRe(project, stageList) =>  Some(project -> stageList.split(",").toList)
+          case _ => None
+        }
+    }.toMap
+    lazy val enabled = configuration.getStringProperty("continuous.deployment.enabled", "false") == "true"
+  }
+
   override def toString(): String = configuration.toString
 }
 

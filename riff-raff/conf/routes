@@ -27,6 +27,10 @@ GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String)
 GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)
 GET     /deployment/request/autoComplete/build/:project   controllers.Deployment.autoCompleteBuild(project:String,term:String)
 
+GET     /deployment/continuous-deployment      controllers.Deployment.continuousDeployment
+POST    /deployment/continuous-deployment/update      controllers.Deployment.continuousState
+POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.continuousStateGlobal
+
 # authentication endpoints
 GET     /profile                    controllers.Login.profile
 GET     /login                      controllers.Login.login

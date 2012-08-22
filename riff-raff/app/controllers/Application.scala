@@ -10,17 +10,17 @@ trait Logging {
   implicit val log = Logger(getClass)
 }
 
-case class MenuItem(title: String, target: Call, identityRequired: Boolean) {
+case class MenuItem(title: String, target: Call, identityRequired: Boolean = true) {
   def isActive(request: AuthenticatedRequest[AnyContent]) = target.url == request.path
 }
 
 object Menu {
   lazy val menuItems = Seq(
     MenuItem("Home", routes.Application.index, false),
-    MenuItem("Deployment Info", routes.Application.deployInfo(stage = ""), true),
-    MenuItem("Frontend-Article CODE", routes.Deployment.frontendArticleCode(), true),
-    MenuItem("Deploy Anything\u2122", routes.Deployment.deploy(), true),
-    MenuItem("Deploy History", routes.Deployment.history(), true)
+    MenuItem("Deployment Info", routes.Application.deployInfo(stage = "")),
+    MenuItem("Deploy Anything\u2122", routes.Deployment.deploy()),
+    MenuItem("Deploy History", routes.Deployment.history()),
+    MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment())
   )
 
   lazy val loginMenuItem = MenuItem("Login", routes.Login.login, false)

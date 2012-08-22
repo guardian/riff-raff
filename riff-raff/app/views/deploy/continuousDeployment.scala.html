@@ -1,0 +1,44 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], status: Map[String,List[(String,Boolean)]])
+
+@main("Continuous Deployment", request) {
+<h2>Continuous Deployment Command</h2>
+<hr/>
+<div class="alert alert-block">
+    <h4 class="alert-heading">Warning!</h4>
+    <p/>
+    <p>Go ahead and disable stuff here, but be warned that this will be reset to everything on when riff-raff is restarted
+        or a new version is deployed.
+    </p>
+    <p>This configuration is in the riff-raff.properties file. The continuous.deployment property should be a space
+        separated list of teamcity project names to stages that should be automatically deployed to.  e.g.</p>
+    <pre>continuous.deployment=frontend::article->CODE,PROD frontend::tag->CODE</pre>
+</div>
+<div class="content">
+    @helper.form(action=routes.Deployment.continuousStateGlobal) {
+    <button name="enabled" type="submit" value="false" class="btn btn-inverse">Disable All</button>
+    <button name="enabled" type="submit" value="true" class="btn btn-success">Enable All</button>
+    }
+  @status.map { case(projectName, stageStateList) =>
+    <dl>
+      <dt>@projectName</dt>
+      <dd>
+          @stageStateList.map { case(stage, state) =>
+            <ol class="unstyled">
+                <li>@helper.form(action=routes.Deployment.continuousState) {
+                        <input type="hidden" name="projectName" value="@projectName"/>
+                        <input type="hidden" name="stage" value="@stage"/>
+                    @stage
+                        @if(state) {
+                            Enabled <button name="enabled" type="submit" value="false" class="btn btn-inverse btn-mini">Disable</button>
+                        } else {
+                            Disabled <button name="enabled" type="submit" value="true" class="btn btn-success btn-mini">Enable</button>
+                        }
+                    }
+                </li>
+            </ol>
+          }
+      </dd>
+    </dl>
+  }
+</div>
+}
