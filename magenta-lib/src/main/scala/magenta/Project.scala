@@ -106,7 +106,7 @@ case class Project(
 }
 
 case class Stage(name: String)
-case class Build(name:String, id:String)
+case class Build(projectName:String, id:String)
 case class RecipeName(name:String)
 
 case class Deployer(name: String)

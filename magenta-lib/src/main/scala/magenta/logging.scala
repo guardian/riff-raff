@@ -109,7 +109,7 @@ sealed trait ContextMessage extends Message {
 }
 
 case class Deploy(parameters: DeployParameters) extends Message {
-  lazy val text = "deploy for %s" format parameters.build.name
+  lazy val text = "deploy for %s" format parameters.build.projectName
   override lazy val deployParameters = Some(parameters)
 }
 

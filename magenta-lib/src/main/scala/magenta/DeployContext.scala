@@ -21,7 +21,7 @@ object DeployContext {
 
 case class DeployContext(parameters: DeployParameters, project: Project, stageHosts: HostList, tasks: List[Task]) {
   val deployer = parameters.deployer
-  val buildName = parameters.build.name
+  val buildName = parameters.build.projectName
   val buildId = parameters.build.id
   val recipe = parameters.recipe.name
   val stage = parameters.stage

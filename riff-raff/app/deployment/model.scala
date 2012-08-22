@@ -16,7 +16,7 @@ object Task extends Enumeration {
 
 case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParameters, deployInfo: DeployInfo, messages: List[MessageStack] = Nil, context:Option[DeployContext] = None) {
   lazy val report:ReportTree = DeployReport(messages, "Deployment Report")
-  lazy val buildName = parameters.build.name
+  lazy val buildName = parameters.build.projectName
   lazy val buildId = parameters.build.id
   lazy val deployerName = parameters.deployer.name
   lazy val stage = parameters.stage

@@ -25,14 +25,14 @@ object IrcClient {
       stack.top match {
         case StartContext(Deploy(parameters)) =>
           sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
         case FailContext(Deploy(parameters), exception) =>
           sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
           sendMessage("[%s] FAILED: %s" format (parameters.deployer.name, exception.toString))
         case FinishContext(Deploy(parameters)) =>
           sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.name, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
         case _ =>
       }
     }

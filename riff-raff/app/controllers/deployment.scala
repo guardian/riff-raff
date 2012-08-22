@@ -21,7 +21,7 @@ import magenta.Stage
 import play.api.libs.json.Json
 import org.joda.time.format.DateTimeFormat
 
-object DeployLibrary extends Logging {
+object DeployController extends Logging {
   val sink = new MessageSink {
     def message(uuid: UUID, stack: MessageStack) { update(uuid){_ + stack} }
   }
@@ -50,6 +50,20 @@ object DeployLibrary extends Logging {
     library()(uuid) send { record =>
       MessageBroker.pushContext(mainThreadContext)(transform(record))
     }
+  }
+
+  def preview(params: DeployParameters): UUID = {
+    import deployment.DeployActor.Resolve
+    val uuid = DeployController.create(Task.Preview, params)
+    DeployActor(params.build.projectName,params.stage) ! Resolve(uuid)
+    uuid
+  }
+
+  def deploy(params: DeployParameters): UUID = {
+    import deployment.DeployActor.Execute
+    val uuid = DeployController.create(Task.Deploy, params)
+    DeployActor(params.build.projectName,params.stage) ! Execute(uuid)
+    uuid
   }
 
   def get: List[DeployRecord] = { library().values.map{ _() }.toList.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis } }
@@ -106,12 +120,10 @@ object Deployment extends Controller with Logging {
           import deployment.DeployActor.Execute
           form.action match {
             case "preview" =>
-              val uuid = DeployLibrary.create(Task.Preview, context)
-              DeployActor(uuid) ! Resolve(uuid)
+              val uuid = DeployController.preview(context)
               Redirect(routes.Deployment.previewLog(uuid.toString))
             case "deploy" =>
-              val uuid = DeployLibrary.create(Task.Deploy, context)
-              DeployActor(uuid) ! Execute(uuid)
+              val uuid = DeployController.deploy(context)
               Redirect(routes.Deployment.deployLog(uuid.toString))
             case _ => throw new RuntimeException("Unknown action")
           }
@@ -122,7 +134,7 @@ object Deployment extends Controller with Logging {
 
   def viewUUID(uuid: String) = TimedAction {
     AuthAction { implicit request =>
-      val record = DeployLibrary.get(UUID.fromString(uuid))
+      val record = DeployController.get(UUID.fromString(uuid))
       record.taskType match {
         case Task.Deploy => Redirect(routes.Deployment.deployLog(uuid))
         case Task.Preview => Redirect(routes.Deployment.previewLog(uuid))
@@ -132,21 +144,21 @@ object Deployment extends Controller with Logging {
 
   def previewLog(uuid: String, verbose: Boolean) = TimedAction {
     AuthAction { implicit request =>
-      val record = DeployLibrary.get(UUID.fromString(uuid))
+      val record = DeployController.get(UUID.fromString(uuid))
       Ok(views.html.deploy.preview(request,record,verbose))
     }
   }
 
   def previewContent(uuid: String) = TimedAction {
     AuthAction { implicit request =>
-      val record = DeployLibrary.get(UUID.fromString(uuid))
+      val record = DeployController.get(UUID.fromString(uuid))
       Ok(views.html.deploy.previewContent(request,record))
     }
   }
 
   def deployLog(uuid: String, verbose:Boolean) = TimedAction {
     AuthAction { implicit request =>
-      val record = DeployLibrary.get(UUID.fromString(uuid))
+      val record = DeployController.get(UUID.fromString(uuid))
 
       Ok(views.html.deploy.log(request, record, verbose))
     }
@@ -154,7 +166,7 @@ object Deployment extends Controller with Logging {
 
   def deployLogContent(uuid: String) = TimedAction {
     AuthAction { implicit request =>
-      val record = DeployLibrary.get(UUID.fromString(uuid))
+      val record = DeployController.get(UUID.fromString(uuid))
 
       Ok(views.html.deploy.logContent(request, record))
     }
@@ -162,7 +174,7 @@ object Deployment extends Controller with Logging {
 
   def history() = TimedAction {
     AuthAction { implicit request =>
-      val records = DeployLibrary.get.reverse
+      val records = DeployController.get.reverse
 
       Ok(views.html.deploy.history(request, records))
     }

@@ -3,21 +3,33 @@ package deployment
 import magenta.json.JsonReader
 import java.io.File
 import magenta._
-import akka.actor.{Actor, Props, ActorRef, ActorSystem}
-import controllers.{DeployLibrary, Logging}
-import magenta.teamcity.Artifact.build2download
+import akka.actor._
+import controllers.{DeployController, Logging}
 import java.util.UUID
+import magenta.Stage
+import akka.agent.Agent
 
 object DeployActor {
   trait Event
-  case class Deploy(uuid: UUID) extends Event
   case class Resolve(uuid: UUID) extends Event
   case class Execute(uuid: UUID) extends Event
 
   lazy val system = ActorSystem("deploy")
 
-  def apply(uuid:UUID): ActorRef = {
-    system.actorOf(Props[DeployActor],"deploy-%s" format uuid.toString)
+  lazy val agent = Agent(Map.empty[String,UUID])(system)
+
+  def apply(project:String, stage:Stage): ActorRef = {
+    val actorName = "deploy-%s-%s" format (project.replace(" ", "_"), stage.name)
+    val actor = agent().get(actorName).flatMap{ uuid =>
+      val actorLookup = system.actorFor("%s-%s" format (actorName,uuid.toString))
+      if (actorLookup != system.deadLetters) Some(actorLookup) else None
+    }
+    actor.getOrElse{
+      val newUUID = UUID.randomUUID
+      val newActor = system.actorOf(Props[DeployActor],"deploy-%s-%s-%s" format (project.replace(" ", "_"), stage.name, newUUID.toString))
+      agent.send( _ + (actorName -> newUUID) )
+      newActor
+    }
   }
 }
 
@@ -26,7 +38,7 @@ class DeployActor() extends Actor with Logging {
 
   def receive = {
     case Resolve(uuid) => {
-      val record = DeployLibrary.await(uuid)
+      val record = DeployController.await(uuid)
       record.loggingContext {
         record.withDownload { artifactDir =>
           resolveContext(artifactDir, record)
@@ -35,7 +47,7 @@ class DeployActor() extends Actor with Logging {
     }
 
     case Execute(uuid) => {
-      val record = DeployLibrary.await(uuid)
+      val record = DeployController.await(uuid)
       record.loggingContext {
         record.withDownload { artifactDir =>
           val context = resolveContext(artifactDir, record)
@@ -53,7 +65,7 @@ class DeployActor() extends Actor with Logging {
     val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
     val context = record.parameters.toDeployContext(project,record.deployInfo.hosts)
     context.tasks
-    DeployLibrary.updateWithContext() { record =>
+    DeployController.updateWithContext() { record =>
       record.attachContext(context)
     }
     context
