@@ -10,50 +10,30 @@ import org.joda.time.format.DateTimeFormat
 import controllers.Logging
 import math.max
 
-trait Artifact {
-  def location: URL
-  def build: Build
-}
 
-trait BuildType {
-  def name: String
-  def id: String
-}
+case class BuildType(id: String, name: String)
 
-trait BuildServer {
-
-}
-
-trait Build {
-  def buildId: Int
-  def name: String
-  def number: String
-  def startDate: DateTime
-}
-
-case class TeamCityBuildType(id: String, name: String) extends BuildType
-
-object TeamCityBuild {
+object Build {
   val dateTimeParser = DateTimeFormat.forPattern("yyyyMMdd'T'HHmmssZ")
 
-  def apply(buildId: Int, name: String, number: String, startDate: String): TeamCityBuild = {
+  def apply(buildId: Int, name: String, number: String, startDate: String): Build = {
     val parsedStartDate: DateTime = dateTimeParser.parseDateTime(startDate)
     apply(buildId: Int, name, number, parsedStartDate)
   }
 
-  def apply(build: Node): TeamCityBuild = {
+  def apply(build: Node): Build = {
     apply((build \ "@id" text).toInt, build \ "@buildTypeId" text, build \ "@number" text, build \ "@startDate" text)
   }
 
-  def apply(buildElements: Elem): List[TeamCityBuild] = {
+  def apply(buildElements: Elem): List[Build] = {
     (buildElements \ "build").toList filter {
       build => (build \ "@status").text == "SUCCESS"
     } map { apply(_) }
   }
 }
-case class TeamCityBuild(buildId: Int, name: String, number: String, startDate: DateTime) extends Build
+case class Build(buildId: Int, name: String, number: String, startDate: DateTime)
 
-object TeamCity extends BuildServer with Logging {
+object TeamCity extends Logging {
   implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: Map[BuildType,List[Build]]) = new {
     def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
   }
@@ -86,7 +66,7 @@ object TeamCity extends BuildServer with Logging {
     (projectElements \ "project").toList.flatMap { project =>
       val buildTypeElements = XML.load(new URL(tcURL,(project \ "@href").text))
       (buildTypeElements \\ "buildType").map { buildType =>
-        TeamCityBuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
+        BuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
       }
     }
   }
@@ -100,7 +80,7 @@ object TeamCity extends BuildServer with Logging {
     val url = new URL(tcURL, api.buildList(buildType.id))
     log.debug("Getting %s" format url.toString)
     val buildElements = XML.load(url)
-    TeamCityBuild(buildElements)
+    Build(buildElements)
   }
 
   private def getBuildsSince(buildId:Int): List[Build] = {
@@ -108,7 +88,7 @@ object TeamCity extends BuildServer with Logging {
     val url = new URL(tcURL, api.buildSince(buildId))
     log.debug("Getting %s" format url.toString)
     val buildElements = XML.load(url)
-    val builds = TeamCityBuild(buildElements)
+    val builds = Build(buildElements)
     log.info("Found %d builds since %d" format (builds.size, buildId))
     builds
   }
