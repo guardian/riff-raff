@@ -63,7 +63,12 @@ object TeamCity extends Logging {
       val buildTypes = getRetrieveBuildTypes
       val result = getSuccessfulBuildMap(buildTypes)
       log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).reduce(_+_)))
-      listeners.foreach(_.change(currentBuildMap,result))
+      listeners.foreach{ listener =>
+        try listener.change(currentBuildMap,result)
+        catch {
+          case e:Exception => log.error("Listener threw an exception", e)
+        }
+      }
       result
     } else currentBuildMap
   }
