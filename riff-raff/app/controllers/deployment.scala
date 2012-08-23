@@ -32,10 +32,11 @@ object DeployController extends Logging {
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def create(recordType: Task.Type, params: DeployParameters): UUID = {
+  def create(recordType: Task.Type, params: DeployParameters): DeployRecord = {
     val uuid = java.util.UUID.randomUUID()
-    library send { _ + (uuid -> Agent(DeployRecord(recordType, uuid, params, DeployInfoManager.deployInfo))) }
-    uuid
+    val record = DeployRecord(recordType, uuid, params, DeployInfoManager.deployInfo)
+    library send { _ + (uuid -> Agent(record)) }
+    await(uuid)
   }
 
   def update(uuid:UUID)(transform: DeployRecord => DeployRecord) {
@@ -53,17 +54,15 @@ object DeployController extends Logging {
   }
 
   def preview(params: DeployParameters): UUID = {
-    import deployment.DeployActor.Resolve
-    val uuid = DeployController.create(Task.Preview, params)
-    DeployActor(params.build.projectName,params.stage) ! Resolve(uuid)
-    uuid
+    val record = DeployController.create(Task.Preview, params)
+    DeployControlActor.deploy(record)
+    record.uuid
   }
 
   def deploy(params: DeployParameters): UUID = {
-    import deployment.DeployActor.Execute
-    val uuid = DeployController.create(Task.Deploy, params)
-    DeployActor(params.build.projectName,params.stage) ! Execute(uuid)
-    uuid
+    val record = DeployController.create(Task.Deploy, params)
+    DeployControlActor.deploy(record)
+    record.uuid
   }
 
   def get: List[DeployRecord] = { library().values.map{ _() }.toList.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis } }
@@ -71,7 +70,7 @@ object DeployController extends Logging {
   def get(uuid: UUID): DeployRecord = { library()(uuid)() }
 
   def await(uuid: UUID): DeployRecord = {
-    val timeout = Timeout(1 second)
+    val timeout = Timeout(5 second)
     library.await(timeout)(uuid).await(timeout)
   }
 }
@@ -115,9 +114,6 @@ object Deployment extends Controller with Logging {
             Stage(form.stage),
             hostList = form.hosts)
 
-          // distinguish between preview and go do it here
-          import deployment.DeployActor.Resolve
-          import deployment.DeployActor.Execute
           form.action match {
             case "preview" =>
               val uuid = DeployController.preview(context)

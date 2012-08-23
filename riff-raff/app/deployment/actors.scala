@@ -5,55 +5,87 @@ import java.io.File
 import magenta._
 import akka.actor._
 import controllers.{DeployController, Logging}
-import java.util.UUID
-import magenta.Stage
-import akka.agent.Agent
+import akka.util.duration._
+import akka.actor.SupervisorStrategy.Restart
 
-object DeployActor {
+object DeployControlActor extends Logging {
   trait Event
-  case class Resolve(uuid: UUID) extends Event
-  case class Execute(uuid: UUID) extends Event
+  case class Deploy(record: DeployRecord) extends Event
 
   lazy val system = ActorSystem("deploy")
 
-  lazy val agent = Agent(Map.empty[String,UUID])(system)
+  lazy val deployController = system.actorOf(Props[DeployControlActor])
 
-  def apply(project:String, stage:Stage): ActorRef = {
-    val actorName = "deploy-%s-%s" format (project.replace(" ", "_"), stage.name)
-    val actor = agent().get(actorName).flatMap{ uuid =>
-      val actorLookup = system.actorFor("%s-%s" format (actorName,uuid.toString))
-      if (actorLookup != system.deadLetters) Some(actorLookup) else None
+  def deploy(record: DeployRecord){
+    deployController ! Deploy(record)
+  }
+}
+
+class DeployControlActor() extends Actor with Logging {
+  import DeployControlActor._
+
+  var deployActors = Map.empty[(String, String), ActorRef]
+
+  override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 1000, withinTimeRange = 1 minute ) {
+    case _ => Restart
+  }
+
+  def receive = {
+    case Deploy(record) => {
+      try {
+        val project = record.parameters.build.projectName
+        val stage = record.parameters.stage.name
+        val actor = deployActors.get(project, stage).getOrElse {
+          log.info("Created new actor for %s %s" format (project, stage))
+          val newActor = context.actorOf(Props[DeployActor],"deploy-%s-%s" format (project.replace(" ", "_"), stage))
+          context.watch(newActor)
+          deployActors += ((project,stage) -> newActor)
+          newActor
+        }
+        actor ! DeployActor.Deploy(record)
+      } catch {
+        case e:Throwable => {
+          log.error("Exception whilst dispatching deploy event", e)
+        }
+      }
     }
-    actor.getOrElse{
-      val newUUID = UUID.randomUUID
-      val newActor = system.actorOf(Props[DeployActor],"deploy-%s-%s-%s" format (project.replace(" ", "_"), stage.name, newUUID.toString))
-      agent.send( _ + (actorName -> newUUID) )
-      newActor
+    case Terminated(actor) => {
+      log.warn("Received terminate from %s " format actor.path)
+      deployActors.find(_._2 == actor).map { case(key,value) =>
+        deployActors -= key
+      }
     }
   }
+
+  override def postStop() {
+    log.info("I've been stopped")
+  }
+}
+
+object DeployActor {
+  trait Event
+  case class Deploy(record: DeployRecord) extends Event
 }
 
 class DeployActor() extends Actor with Logging {
   import DeployActor._
 
-  def receive = {
-    case Resolve(uuid) => {
-      val record = DeployController.await(uuid)
-      record.loggingContext {
-        record.withDownload { artifactDir =>
-          resolveContext(artifactDir, record)
-        }
-      }
-    }
+  override def preRestart(reason: Throwable, message: Option[Any]) {
+    log.warn("Deploy actor has been restarted", reason)
+  }
 
-    case Execute(uuid) => {
-      val record = DeployController.await(uuid)
+  def receive = {
+    case Deploy(record) => {
       record.loggingContext {
         record.withDownload { artifactDir =>
           val context = resolveContext(artifactDir, record)
-          log.info("Executing deployContext")
-          val keyRing = DeployInfoManager.keyRing(context)
-          context.execute(keyRing)
+          record.taskType match {
+            case Task.Preview => { }
+            case Task.Deploy =>
+              log.info("Executing deployContext")
+              val keyRing = DeployInfoManager.keyRing(context)
+              context.execute(keyRing)
+          }
         }
       }
     }
@@ -69,5 +101,9 @@ class DeployActor() extends Actor with Logging {
       record.attachContext(context)
     }
     context
+  }
+
+  override def postStop() {
+    log.info("I've been stopped")
   }
 }
