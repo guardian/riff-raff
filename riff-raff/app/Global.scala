@@ -25,6 +25,7 @@ class Global extends GlobalSettings with Logging {
 
   override def onError(request: RequestHeader, t: Throwable) = {
     log.error("Error whilst trying to serve request", t)
-    new Result() { def getWrappedResult = InternalServerError(views.html.errorPage(t)) }
+    val reportException = if (t.getCause != null) t.getCause else t
+    new Result() { def getWrappedResult = InternalServerError(views.html.errorPage(reportException)) }
   }
 }
