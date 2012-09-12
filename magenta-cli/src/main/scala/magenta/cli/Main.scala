@@ -114,7 +114,7 @@ object Main extends scala.App {
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe)
         MessageBroker.deployContext(UUID.randomUUID(), parameters) {
 
-          MessageBroker.info("%s build %s" format (programName, programVersion))
+          MessageBroker.info("[using %s build %s]" format (programName, programVersion))
 
           MessageBroker.info("Locating artifact...")
 
