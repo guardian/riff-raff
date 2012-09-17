@@ -104,11 +104,11 @@ case class ReportTree(messageState: MessageState, children: List[ReportTree] = N
     allMessages.filter(_.message.getClass == classOf[Fail]).map(_.message).headOption.asInstanceOf[Option[Fail]]
   }
 
-  lazy val startTime = messageState.message.time
+  lazy val startTime = allMessages.head.message.time
 
-  new RuntimeException().getStackTraceString
-
-  lazy val allMessages: Seq[MessageState] = messageState :: children.flatMap(_.allMessages)
+  lazy val allMessages: Seq[MessageState] = (messageState :: children.flatMap(_.allMessages)).sortWith{ (left, right) =>
+    left.message.time.getMillis < right.message.time.getMillis
+  }
 
   def appendChild(newChild: Message): ReportTree = {
     ReportTree(messageState, children ::: List(ReportTree(MessageState(newChild))))

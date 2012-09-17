@@ -97,13 +97,13 @@ case class MessageStack(messages: List[Message]) {
 
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
 
-sealed trait Message {
+trait Message {
   val time = new DateTime()
   def text: String
   def deployParameters: Option[DeployParameters] = None
 }
 
-sealed trait ContextMessage extends Message {
+trait ContextMessage extends Message {
   def originalMessage: Message
   override def deployParameters: Option[DeployParameters] = originalMessage.deployParameters
 }

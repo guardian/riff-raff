@@ -1,8 +1,8 @@
 package magenta
-package tasks
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
+import org.joda.time.DateTime
 
 class ReportingTest extends FlatSpec with ShouldMatchers {
 
@@ -88,6 +88,17 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     ))
     report.isRunning should be (false)
     report.cascadeState should be(RunState.Failed)
+  }
+
+  it should "calculate the start time correctly (earliest message)" in {
+    case class MyInfo(text: String) extends Message {
+      override val time = deploy.time.minusMinutes(2)
+    }
+    val earlierInfoMessage = MyInfo("bobbins")
+    val stacks = stack(startDeploy) :: stack(earlierInfoMessage, deploy) :: stack(finishDep) :: Nil
+    val report = DeployReport(stacks)
+
+    report.startTime should be (earlierInfoMessage.time)
   }
 
   def stack( messages: Message * ): MessageStack = {
