@@ -109,6 +109,7 @@ object TeamCity extends Logging {
     val buildElements = XML.load(url)
     val builds = Build(buildElements)
     log.info("Found %d builds since %d" format (builds.size, buildId))
+    log.info("Discovered builds: \n%s" format builds.mkString("\n"))
     builds
   }
 }
