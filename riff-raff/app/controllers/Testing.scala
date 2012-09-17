@@ -89,7 +89,7 @@ object Testing extends Controller with Logging {
         Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))
     )
 
-    val report = DeployRecord(Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), DeployInfo(Nil, Nil), input.toList)
+    val report = DeployRecord(Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), DeployInfo(Nil, Map.empty), input.toList)
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }

@@ -15,7 +15,7 @@ object DeployInfoManager extends Logging {
       import sys.process._
       log.info("Populating deployinfo hosts...")
       val deployInfo = DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
-      log.info("Successfully retrieved deployinfo (%d hosts and %d keys found)" format(deployInfo.hosts.size, deployInfo.keys.size))
+      log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format(deployInfo.hosts.size, deployInfo.data.values.map(_.size).reduce(_+_)))
       deployInfo
     } catch {
       case e => log.error("Couldn't gather deployment information", e)
@@ -29,10 +29,10 @@ object DeployInfoManager extends Logging {
   def deployInfo = agent()
 
   def hostList = deployInfo.hosts
-  def keyList = deployInfo.keys
+  def dataList = deployInfo.data
 
   def credentials(stage:String,apps:Set[App]) : List[Credentials] = {
-    apps.toList.flatMap(app => deployInfo.firstMatchingKey(app,stage)).map(k => Configuration.s3.credentials(k.key)).distinct
+    apps.toList.flatMap(app => deployInfo.firstMatchingData("aws-keys",app,stage)).map(k => Configuration.s3.credentials(k.value)).distinct
   }
 
   def keyRing(context:DeployContext): KeyRing = {

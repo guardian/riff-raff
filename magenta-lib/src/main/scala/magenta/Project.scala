@@ -7,20 +7,29 @@ import collection.SortedSet
 object DeployInfo {
   def apply(jsonData: DeployInfoJsonInputFile): DeployInfo = {
     val magentaHosts = jsonData.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
-    val magentaKeys = jsonData.keys map { key => Key(key.app, key.stage, key.accesskey, key.comment) }
-    DeployInfo(magentaHosts, magentaKeys)
+    val magentaData = jsonData.data mapValues { dataList =>
+      dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
+    }
+    DeployInfo(magentaHosts, magentaData)
   }
 }
 
-case class DeployInfo(hosts: List[Host], keys: List[Key]) {
+case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]]) {
   def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
-  def knownKeyStages: List[String] =  keys.map(_.stage).distinct.sortWith(_.toString < _.toString)
-  def knownKeyApps: List[String] = keys.map(_.app).distinct.sortWith(_.toString < _.toString)
+
+  def knownKeys: List[String] = data.keys.toList.sorted
+
+  def dataForKey(key: String): List[Data] = data.get(key).getOrElse(List.empty)
+  def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
+  def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
+
   def stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage,host.apps))
-  def stageAppToKeyMap: Map[(String,String),List[Key]] = keys.groupBy(key => (key.stage,key.app))
-  def firstMatchingKey(app:App, stage:String): Option[Key] = {
-    keys.find(key => key.appRegex.findFirstMatchIn(app.name).isDefined && key.stageRegex.findFirstMatchIn(stage).isDefined)
+  def stageAppToDataMap(key: String): Map[(String,String),List[Data]] = data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
+
+  def firstMatchingData(key: String, app:App, stage:String): Option[Data] = {
+    val matchingList = data.getOrElse(key, List.empty)
+    matchingList.find(data => data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined)
   }
 }
 
@@ -41,10 +50,10 @@ case class Host(
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 }
 
-case class Key(
+case class Data(
   app: String,
   stage: String,
-  key: String,
+  value: String,
   comment: Option[String]
 ) {
   lazy val appRegex = ("^%s$" format app).r

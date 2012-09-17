@@ -7,9 +7,9 @@ import java.io.File
 
 case class DeployInfoJsonInputFile(
   hosts: List[DeployInfoHost],
-  keys: List[DeployInfoKey]
+  keys: Option[List[DeployInfoKey]],
+  data: Map[String,List[DeployInfoData]]
 )
-
 
 case class DeployInfoHost(
   hostname: String,
@@ -25,6 +25,12 @@ case class DeployInfoKey(
   comment: Option[String]
 )
 
+case class DeployInfoData(
+  app: String,
+  stage: String,
+  value: String,
+  comment: Option[String]
+)
 
 object DeployInfoJsonReader {
   private implicit val formats = DefaultFormats

@@ -5,33 +5,34 @@
 
 <h2>Deployment Information</h2>
 
-<h3>Keys</h3>
+<h3>Data</h3>
 <hr/>
+<p>The deployinfo file contains the following key-value data sets (this is evaluated by matching the stage and environment regular expressions in this order)</p>
+
+@deployInfo.knownKeys.map{ dataKey =>
+<hr/>
+<h4>Data for key: <em>@dataKey</em></h4>
 
 <table class="table">
     <thead><tr>
         <th>App</th>
-        @deployInfo.knownKeyStages.map{ stage => <th>@stage.toString</th> }
+        <th>Stage</th>
+        <th>Value</th>
+        <th>Comment</th>
     </tr></thead>
     <tbody>
-    @deployInfo.knownKeyApps.map { app =>
+    @deployInfo.dataForKey(dataKey).map { data =>
     <tr>
-        <td><strong>@app.toString</strong></td>
-        @deployInfo.knownKeyStages.map{ stage =>
-        <td>
-            @if(deployInfo.stageAppToKeyMap.contains((stage,app))) {
-            <ul>
-                @deployInfo.stageAppToKeyMap((stage,app)).map { key => <li>@key.key @key.comment.map{ c => (@c) }</li> }
-            </ul>
-            } else {
-            -
-            }
-        </td>
-        }
+        <td>@data.app.toString</td>
+        <td>@data.stage.toString</td>
+        <td>@data.value</td>
+        <td>@data.comment</td>
     </tr>
     }
     </tbody>
 </table>
+
+}
 
 <h3>Hosts</h3>
 <hr/>
