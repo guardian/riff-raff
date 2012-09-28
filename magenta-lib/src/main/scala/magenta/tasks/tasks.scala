@@ -156,6 +156,28 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
 }
 
+case class Puppet(
+  host: Host, modulePath: String, fileserverConfiguration: String,
+  templateDirectory: String, manifest: String
+) extends RemoteShellTask {
+  lazy val command = List("sudo",
+    "/usr/bin/puppet",
+    "apply",
+    "--detailed-exitcodes",
+    "--debug",
+    "--modulepath=" + modulePath,
+    "--fileserverconfig=" + fileserverConfiguration,
+    "--templatedir=" + templateDirectory,
+    manifest
+  )
+
+  def commandLine = CommandLine(command, successCodes = List(0,2))
+}
+
+case class Unzip(host: Host, path: String, to: String) extends RemoteShellTask {
+  def commandLine = List("/usr/bin/unzip", "-d", to, path)
+}
+
 trait S3 {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
