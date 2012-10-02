@@ -174,6 +174,7 @@ case class PuppetPackageType(pkg: Package) extends PackageType {
       val artifact_remote = "%s/%s".format(artifact_remote_directory, artifact)
 
       List(
+        Mkdir(host as user, artifact_remote_directory),
         CopyFile(host as user, artifact_local, artifact_remote),
         Unzip(host as user, artifact_remote, artifact_remote_directory),
         Link(host as user, artifact_remote_directory + "/puppet", link),
