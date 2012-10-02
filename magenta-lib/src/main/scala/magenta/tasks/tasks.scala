@@ -178,6 +178,10 @@ case class Unzip(host: Host, path: String, to: String) extends RemoteShellTask {
   def commandLine = List("/usr/bin/unzip", "-d", to, path)
 }
 
+case class Mkdir(host: Host, path: String) extends RemoteShellTask {
+	def commandLine = List("/bin/mkdir", "-p", path)
+}
+
 trait S3 {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
