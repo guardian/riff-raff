@@ -15,7 +15,10 @@ trait RemoteShellTask extends ShellTask {
 
   protected def remoteCommandLine(credentials: Option[SshCredentials]): CommandLine = {
     val keyFileArgs = credentials.flatMap(_.keyFile).toList.flatMap("-i" :: _.getPath :: Nil)
-    CommandLine("ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil)
+    CommandLine(
+      "ssh" :: "-qtt" :: noHostKeyChecking ::: keyFileArgs ::: host.connectStr :: commandLine.quoted :: Nil,
+      commandLine.successCodes
+    )
   }
 
   override def execute(keyRing: KeyRing) { keyRing.sshCredentials match {
