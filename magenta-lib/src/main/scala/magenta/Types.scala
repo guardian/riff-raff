@@ -156,7 +156,7 @@ case class PuppetPackageType(pkg: Package) extends PackageType {
 
   override def defaultData = super.defaultData ++ Seq[(String, JValue)](
     ("user" -> "puppet"),
-    ("path" -> "/home/puppet"),
+    ("path" -> "/var/lib/puppet/deploy"),
     ("link" -> "/etc/puppet/site")
   )
 
