@@ -7,7 +7,6 @@ import net.liftweb.json.Implicits._
 import java.io.File
 import scala.PartialFunction
 
-
 trait PackageType {
   def name: String
   def pkg: Package
@@ -50,6 +49,22 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
       List(
         S3Upload(stage, bucket, new File(staticDir), Some(cacheControl))
       )
+  }
+}
+
+case class AutoScalingWithELB(pkg: Package) extends PackageType {
+  val name = "auto-scaling-with-ELB"
+
+  lazy val bucket = pkg.stringData("bucket")
+  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+
+  override val perAppActions: AppActionDefinition = {
+    case "deploy" => stage => {
+      List(
+        S3Upload(stage, bucket, new File(packageArtifactDir)),
+        DoubleSize(pkg.name, stage)
+      )
+    }
   }
 }
 
