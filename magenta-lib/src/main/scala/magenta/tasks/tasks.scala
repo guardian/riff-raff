@@ -79,8 +79,12 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
 
   def execute(keyRing: KeyRing) {
     check {
-      new Socket(host.name, port.toInt).close()
-      true
+      try {
+        new Socket(host.name, port.toInt).close()
+        true
+      } catch {
+        case e: IOException => false
+      }
     }
   }
 }
@@ -100,7 +104,11 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
         Source.fromInputStream( connection.getInputStream )
         true
       } catch {
-        case e => throw new IOException("Exception whilst trying to check %s" format url.toString, e)
+        // Note that MessageBroker.fail will always throw a runtime exception, so we
+        // won't ever need to return false from this branch, but it's necessary for
+        // type checks to pass
+        case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e); false
+        case e => false
       }
     }
   }
@@ -112,20 +120,10 @@ trait RepeatedPollingCheck {
   def check(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
     def checkAttempt(currentAttempt: Int) {
-      try {
-        if (!theCheck) retry
-      }
-      catch {
-        case e: FileNotFoundException => {
-          MessageBroker.fail("404 Not Found", e)
+      if (!theCheck) {
+        if (System.currentTimeMillis() > expiry) {
+          MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
         }
-        case e: IOException => {
-          if (System.currentTimeMillis() > expiry)
-          MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt), e)
-          retry
-        }
-      }
-      def retry {
         MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
         val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
         Thread.sleep(sleepyTime)
