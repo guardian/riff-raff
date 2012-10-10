@@ -26,7 +26,25 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     autoscaling.perAppActions("deploy")(Stage("PROD")) should be (List(
       S3Upload(Stage("PROD"), "asg-bucket", new File("/tmp/packages/webapp/")),
-      DoubleSize("app", Stage("PROD"))
+      DoubleSize("app", Stage("PROD")),
+      WaitTillUpAndInELB("app", Stage("PROD"), 5 * 60 * 1000)
+    ))
+  }
+
+  "seconds to wait" should "be overridable" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "asg-bucket",
+      "secondsToWait" -> 3 * 60
+    )
+
+    val p = Package("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+
+    val autoscaling = new AutoScalingWithELB(p)
+
+    autoscaling.perAppActions("deploy")(Stage("PROD")) should be (List(
+      S3Upload(Stage("PROD"), "asg-bucket", new File("/tmp/packages/webapp/")),
+      DoubleSize("app", Stage("PROD")),
+      WaitTillUpAndInELB("app", Stage("PROD"), 3 * 60 * 1000)
     ))
   }
 }

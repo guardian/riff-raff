@@ -55,6 +55,8 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
 case class AutoScalingWithELB(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
+  override val defaultData = Map[String, JValue]("secondsToWait" -> 5 * 60)
+
   lazy val bucket = pkg.stringData("bucket")
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
 
@@ -62,7 +64,8 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
     case "deploy" => stage => {
       List(
         S3Upload(stage, bucket, new File(packageArtifactDir)),
-        DoubleSize(pkg.name, stage)
+        DoubleSize(pkg.name, stage),
+        WaitTillUpAndInELB("app", Stage("PROD"), pkg.intData("secondsToWait").toInt * 1000)
       )
     }
   }
