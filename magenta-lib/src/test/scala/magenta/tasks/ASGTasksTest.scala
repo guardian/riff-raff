@@ -16,8 +16,8 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val asgClientMock = mock[AmazonAutoScalingClient]
 
     val task = new DoubleSize("app", Stage("PROD")) {
-      override def asgClient(implicit keyRing: KeyRing) = asgClientMock
-      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = asg
+      override def client(implicit keyRing: KeyRing) = asgClientMock
+      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = Some(asg)
     }
 
     task.execute(fakeKeyRing)
@@ -32,8 +32,8 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val asgClientMock = mock[AmazonAutoScalingClient]
 
     val task = new DoubleSize("app", Stage("PROD")) {
-      override def asgClient(implicit keyRing: KeyRing) = asgClientMock
-      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = asg
+      override def client(implicit keyRing: KeyRing) = asgClientMock
+      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = Some(asg)
     }
 
     task.execute(fakeKeyRing)

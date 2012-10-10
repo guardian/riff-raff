@@ -15,7 +15,7 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   it should "find the matching auto-scaling group" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
     val asg = new ASG {
-      override def asgClient(implicit keyRing: KeyRing) = asgClientMock
+      override def client(implicit keyRing: KeyRing) = asgClientMock
     }
 
     val desiredGroup = AutoScalingGroup(("App" -> "example"), ("Stage" -> "PROD"))
@@ -28,7 +28,7 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
       ))
     )
 
-    asg.withPackageAndStage("example", Stage("PROD")) should be (desiredGroup)
+    asg.withPackageAndStage("example", Stage("PROD")) should be (Some(desiredGroup))
   }
 
   object AutoScalingGroup {

@@ -10,6 +10,8 @@ import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model._
 
 import collection.JavaConversions._
+import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
+import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, LoadBalancerDescription, DescribeLoadBalancersRequest}
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
@@ -22,27 +24,36 @@ trait S3 extends AWS {
 }
 
 trait ASG extends AWS {
-  def asgClient(implicit keyRing: KeyRing) = {
+  def client(implicit keyRing: KeyRing) = {
     val client = new AmazonAutoScalingClient(credentials(keyRing))
     client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
     client
   }
 
   def desiredCapacity(name: String, capacity: Int)(implicit keyRing: KeyRing) =
-    asgClient.setDesiredCapacity(
+    client.setDesiredCapacity(
       new SetDesiredCapacityRequest().withAutoScalingGroupName(name).withDesiredCapacity(capacity)
     )
 
   def maxCapacity(name: String, capacity: Int)(implicit keyRing: KeyRing) =
-    asgClient.updateAutoScalingGroup(
+    client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def apply(name: String)(implicit keyRing: KeyRing) =
-    asgClient.describeAutoScalingGroups(
-      new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(name)
+  def atDesiredCapacity(asg: AutoScalingGroup) =
+    asg.getDesiredCapacity == asg.getInstances.size
+
+  def allInELB(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
+    val elbName = asg.getLoadBalancerNames.head
+    val elb = ELB(elbName).get
+    ELB.instanceHealth(elb).forall( instance => instance.getState == "InService")
+  }
+
+  def refresh(asg: AutoScalingGroup)(implicit keyRing: KeyRing) =
+    client.describeAutoScalingGroups(
+      new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
     ).getAutoScalingGroups.head
 
-  def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing): AutoScalingGroup = {
+  def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing): Option[AutoScalingGroup] = {
     def hasTags(keyValues: (String,String)*) = (asg: AutoScalingGroup) => {
       keyValues.forall { case (key, value) =>
         asg.getTags exists { tag =>
@@ -51,17 +62,28 @@ trait ASG extends AWS {
       }
     }
 
-    asgClient.describeAutoScalingGroups().getAutoScalingGroups.toList.filter {
+    client.describeAutoScalingGroups().getAutoScalingGroups.toList.filter {
       hasTags(("Stage" -> stage.name),("App" -> packageName))
-    }.headOption.getOrElse(
-      throw new NoKnownAutoScalingGroupException(packageName, stage))
+    }.headOption
   }
 }
-object ASG extends ASG
 
-class NoKnownAutoScalingGroupException(pkgName: String, stage: Stage) extends Exception(
-  "No autoscaling group found with tags: App -> %s, Stage -> %s" format (pkgName, stage.name)
-)
+trait ELB extends AWS {
+  def client(implicit keyRing: KeyRing) = {
+    val client = new AmazonElasticLoadBalancingClient(credentials(keyRing))
+    client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
+    client
+  }
+
+  def instanceHealth(elb: LoadBalancerDescription)(implicit keyRing: KeyRing) =
+    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elb.getLoadBalancerName)).getInstanceStates
+
+  def apply(name: String)(implicit keyRing: KeyRing) =
+    client.describeLoadBalancers(new DescribeLoadBalancersRequest().withLoadBalancerNames(name))
+      .getLoadBalancerDescriptions.headOption
+}
+
+object ELB extends ELB
 
 trait AWS {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{

@@ -78,7 +78,10 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
   def execute(keyRing: KeyRing) {
-    check { new Socket(host.name, port.toInt).close() }
+    check {
+      new Socket(host.name, port.toInt).close()
+      true
+    }
   }
 }
 
@@ -95,6 +98,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
         connection.setConnectTimeout( 2000 )
         connection.setReadTimeout( 5000 )
         Source.fromInputStream( connection.getInputStream )
+        true
       } catch {
         case e => throw new IOException("Exception whilst trying to check %s" format url.toString, e)
       }
@@ -105,22 +109,27 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
 trait RepeatedPollingCheck {
   def duration: Long
 
-  def check(action: => Unit) {
+  def check(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
     def checkAttempt(currentAttempt: Int) {
-      try action
+      try {
+        if (!theCheck) retry
+      }
       catch {
         case e: FileNotFoundException => {
           MessageBroker.fail("404 Not Found", e)
         }
         case e: IOException => {
           if (System.currentTimeMillis() > expiry)
-            MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt), e)
-          MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
-          val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
-          Thread.sleep(sleepyTime)
-          checkAttempt(currentAttempt + 1)
+          MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt), e)
+          retry
         }
+      }
+      def retry {
+        MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
+        val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
+        Thread.sleep(sleepyTime)
+        checkAttempt(currentAttempt + 1)
       }
     }
     checkAttempt(1)
