@@ -9,7 +9,7 @@ import magenta.FinishContext
 import magenta.StartContext
 import com.rabbitmq.client.{ConnectionFactory, Connection}
 import akka.actor.{Props, ActorSystem, Actor}
-import controllers.Logging
+import controllers.{routes, Logging}
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
@@ -23,7 +23,10 @@ object MessageQueue {
   case class Notify(event: AlertaEvent) extends Event
 
   lazy val system = ActorSystem("notify")
-  val actor = if (Configuration.mq.isConfigured) Some(system.actorOf(Props[MessageQueueClient], "mq-client")) else None
+  val actor =
+    if (Configuration.mq.isConfigured)
+      try { Some(system.actorOf(Props[MessageQueueClient], "mq-client")) } catch { case t:Throwable => None }
+    else None
 
   def sendMessage(event: AlertaEvent) {
     actor foreach (_ ! Notify(event))
@@ -33,11 +36,11 @@ object MessageQueue {
     def message(uuid: UUID, stack: MessageStack) {
       stack.top match {
         case StartContext(Deploy(parameters)) =>
-          sendMessage(AlertaEvent(DeployEvent.Start, parameters))
+          sendMessage(AlertaEvent(DeployEvent.Start, uuid, parameters))
         case FailContext(Deploy(parameters), exception) =>
-          sendMessage(AlertaEvent(DeployEvent.Fail, parameters))
+          sendMessage(AlertaEvent(DeployEvent.Fail, uuid, parameters))
         case FinishContext(Deploy(parameters)) =>
-          sendMessage(AlertaEvent(DeployEvent.Complete, parameters))
+          sendMessage(AlertaEvent(DeployEvent.Complete, uuid, parameters))
         case _ =>
       }
     }
@@ -51,11 +54,6 @@ object MessageQueue {
     MessageBroker.unsubscribe(sink)
     actor foreach(system.stop)
   }
-
-  lazy val testEvent = {
-    val params = DeployParameters(Deployer("Simon Hildrew"),Build("GroupName::Project", "234"),Stage("CODE"))
-    AlertaEvent(DeployEvent.Start, params)
-  }
 }
 
 
@@ -63,8 +61,6 @@ object MessageQueue {
 
 class MessageQueueClient extends Actor with Logging {
   import MessageQueue._
-
-  val queueName = "alerts"
 
   val channel = try {
     val factory = new ConnectionFactory()
@@ -78,13 +74,13 @@ class MessageQueueClient extends Actor with Logging {
       throw e
   }
 
-  channel.queueDeclare(queueName, true, false, false, null)
+  channel.queueDeclare(Configuration.mq.queueName, true, false, false, null)
 
   log.info("Initialisation complete")
 
   def sendToMQ(event:AlertaEvent) {
     log.info("Sending: %s" format event)
-    channel.basicPublish("",queueName, null, event.toJson.getBytes)
+    channel.basicPublish("",Configuration.mq.queueName, null, event.toJson.getBytes)
     log.info("Sent")
   }
 
@@ -102,13 +98,13 @@ class MessageQueueClient extends Actor with Logging {
 }
 
 object DeployEvent extends Enumeration {
-  val Start = Value("DeployStart")
-  val Complete = Value("DeployComplete")
-  val Fail = Value("DeployFail")
+  val Start = Value("DeployStarted")
+  val Complete = Value("DeployCompleted")
+  val Fail = Value("DeployFailed")
 }
 
 object AlertaEvent {
-  def apply(event:DeployEvent.Value, params:DeployParameters): AlertaEvent = {
+  def apply(event:DeployEvent.Value, uuid:UUID, params:DeployParameters): AlertaEvent = {
     val environment = params.stage.name
     val project = params.build.projectName
     val build = params.build.id
@@ -132,7 +128,7 @@ object AlertaEvent {
       List(environment),
       severityMap(event).code,
       86400,
-      params.build.projectName,
+      project,
       DeployEvent.values.map(_.toString).toList,
       "%s - INFORM %s of %s build %s" format (environment, event, project, build),
       "n/a",
@@ -160,7 +156,8 @@ case class AlertaEvent(
   summary: String,
   thresholdInfo: String,
   `type`: String,
-  id: String
+  id: String,
+  moreInfo: String = ""
 ) {
   def toJson: String = {
     implicit val formats = Serialization.formats(NoTypeHints)
