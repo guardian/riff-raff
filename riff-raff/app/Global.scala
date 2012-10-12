@@ -1,5 +1,5 @@
 import controllers.{Logging, DeployController}
-import notification.IrcClient
+import notification.{MessageQueue, IrcClient}
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
@@ -11,6 +11,7 @@ class Global extends GlobalSettings with Logging {
   override def onStart(app: Application) {
     // initialise message sinks
     IrcClient.init()
+    MessageQueue.init()
     DeployController.init()
     ContinuousDeployment.init()
     log.info("Starting TeamCity poller on %s" format TeamCity.tcURL.toString)
@@ -18,8 +19,9 @@ class Global extends GlobalSettings with Logging {
 
   override def onStop(app: Application) {
     IrcClient.shutdown()
+    MessageQueue.shutdown()
     DeployController.shutdown()
-    ContinuousDeployment.init()
+    ContinuousDeployment.shutdown()
     ScheduledAgent.shutdown()
   }
 

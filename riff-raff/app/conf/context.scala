@@ -45,6 +45,13 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val channel = configuration.getStringProperty("irc.channel")
   }
 
+  object mq {
+    lazy val isConfigured = hostname.isDefined && port.isDefined
+    lazy val hostname = configuration.getStringProperty("mq.hostname")
+    lazy val port = configuration.getIntegerProperty("mq.port")
+    lazy val queueName = configuration.getStringProperty("mq.queueName", "DeployEvents")
+  }
+
   object teamcity {
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
