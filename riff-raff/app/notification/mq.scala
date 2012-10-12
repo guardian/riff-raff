@@ -133,7 +133,8 @@ object AlertaEvent {
       "%s - INFORM %s of %s build %s" format (environment, event, project, build),
       "n/a",
       "deployAlert",
-      UUID.randomUUID().toString
+      UUID.randomUUID().toString,
+      "https://riffraff.gudev.gnl/deployment/log/%s" format uuid.toString // TODO : resolve this URL properly
     )
   }
 }
