@@ -9,9 +9,10 @@ import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta.S3Credentials
 import java.net.URL
+import controllers.Logging
 
 
-class Configuration(val application: String, val webappConfDirectory: String = "env") {
+class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
 
   implicit def option2getOrException[T](option: Option[T]) = new {
@@ -20,6 +21,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
         throw new IllegalStateException(exceptionMessage)
       }
     }
+  }
+
+  object urls {
+    lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
 
   object sshKey {
@@ -46,10 +51,20 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object mq {
-    lazy val isConfigured = hostname.isDefined && port.isDefined
-    lazy val hostname = configuration.getStringProperty("mq.hostname")
-    lazy val port = configuration.getIntegerProperty("mq.port")
-    lazy val queueName = configuration.getStringProperty("mq.queueName", "DeployEvents")
+    lazy val isConfigured = !queueTargets.isEmpty
+
+    case class QueueDetails(hostname:String, port:Int, queueName:String)
+    object QueueDetails {
+      private lazy val QueueTarget = """^(.+):(.+)/(.+)$""".r
+      def apply(server:String): Option[QueueDetails] = { server match {
+        case QueueTarget(hostname, port, queueName) => Some(QueueDetails(hostname, port.toInt, queueName))
+        case _ =>
+          log.warn("Couldn't parse queue target: %s" format server)
+          None
+      } }
+    }
+
+    lazy val queueTargets: List[QueueDetails] = configuration.getStringPropertiesSplitByComma("mq.queueTargets").flatMap(QueueDetails(_))
   }
 
   object teamcity {

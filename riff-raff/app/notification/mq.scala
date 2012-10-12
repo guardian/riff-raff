@@ -13,6 +13,7 @@ import controllers.{routes, Logging}
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
+import conf.Configuration.mq.QueueDetails
 
 /*
  Send deploy events to graphite
@@ -24,9 +25,9 @@ object MessageQueue {
 
   lazy val system = ActorSystem("notify")
   val actor =
-    if (Configuration.mq.isConfigured)
-      try { Some(system.actorOf(Props[MessageQueueClient], "mq-client")) } catch { case t:Throwable => None }
-    else None
+    Configuration.mq.queueTargets.flatMap{ queueTarget =>
+      try { Some(system.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client")) } catch { case t:Throwable => None }
+    }
 
   def sendMessage(event: AlertaEvent) {
     actor foreach (_ ! Notify(event))
@@ -59,29 +60,28 @@ object MessageQueue {
 
 
 
-class MessageQueueClient extends Actor with Logging {
+class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
   import MessageQueue._
 
   val channel = try {
     val factory = new ConnectionFactory()
-    factory.setHost(Configuration.mq.hostname.get)
-    factory.setPort(Configuration.mq.port.get)
+    factory.setHost(queueDetails.hostname)
+    factory.setPort(queueDetails.port)
     val conn = factory.newConnection()
     conn.createChannel()
   } catch {
     case e =>
-      log.error(e.toString)
+      log.error("Error initialising %s" format queueDetails,e)
       throw e
   }
 
-  channel.queueDeclare(Configuration.mq.queueName, true, false, false, null)
+  channel.queueDeclare(queueDetails.queueName, true, false, false, null)
 
-  log.info("Initialisation complete")
+  log.info("Initialisation complete to %s" format queueDetails)
 
   def sendToMQ(event:AlertaEvent) {
-    log.info("Sending: %s" format event)
-    channel.basicPublish("",Configuration.mq.queueName, null, event.toJson.getBytes)
-    log.info("Sent")
+    log.info("Sending following message to %s: %s" format (queueDetails, event))
+    channel.basicPublish("",queueDetails.queueName, null, event.toJson.getBytes)
   }
 
   def receive = {
@@ -134,7 +134,7 @@ object AlertaEvent {
       "n/a",
       "deployAlert",
       UUID.randomUUID().toString,
-      "https://riffraff.gudev.gnl/deployment/log/%s" format uuid.toString // TODO : resolve this URL properly
+      "%s%s" format (Configuration.urls.publicPrefix, routes.Deployment.deployLog(uuid.toString).url)
     )
   }
 }
