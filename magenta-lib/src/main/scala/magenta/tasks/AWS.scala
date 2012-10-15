@@ -11,7 +11,10 @@ import com.amazonaws.services.autoscaling.model._
 
 import collection.JavaConversions._
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
-import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, LoadBalancerDescription, DescribeLoadBalancersRequest}
+import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, DescribeLoadBalancersRequest, DeregisterInstancesFromLoadBalancerRequest, LoadBalancerDescription, DescribeInstanceHealthRequest}
+import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance}
+import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.ec2.model.DescribeInstancesRequest
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
@@ -43,9 +46,18 @@ trait ASG extends AWS {
     asg.getDesiredCapacity == asg.getInstances.size
 
   def allInELB(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
-    val elbName = asg.getLoadBalancerNames.head
-    val elb = ELB(elbName).get
-    ELB.instanceHealth(elb).forall( instance => instance.getState == "InService")
+    ELB.instanceHealth(elbName(asg)).forall( instance => instance.getState == "InService")
+  }
+
+  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.head
+
+  def cull(asg: AutoScalingGroup, instance: Instance)(implicit keyRing: KeyRing) = {
+     ELB.deregister(elbName(asg), instance)
+
+    client.terminateInstanceInAutoScalingGroup(
+      new TerminateInstanceInAutoScalingGroupRequest()
+        .withInstanceId(instance.getInstanceId).withShouldDecrementDesiredCapacity(true)
+    )
   }
 
   def refresh(asg: AutoScalingGroup)(implicit keyRing: KeyRing) =
@@ -71,19 +83,33 @@ trait ASG extends AWS {
 trait ELB extends AWS {
   def client(implicit keyRing: KeyRing) = {
     val client = new AmazonElasticLoadBalancingClient(credentials(keyRing))
-    client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
+    client.setEndpoint("elasticloadbalancing.eu-west-1.amazonaws.com")
     client
   }
 
-  def instanceHealth(elb: LoadBalancerDescription)(implicit keyRing: KeyRing) =
-    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elb.getLoadBalancerName)).getInstanceStates
+  def instanceHealth(elbName: String)(implicit keyRing: KeyRing) =
+    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates
 
-  def apply(name: String)(implicit keyRing: KeyRing) =
-    client.describeLoadBalancers(new DescribeLoadBalancersRequest().withLoadBalancerNames(name))
-      .getLoadBalancerDescriptions.headOption
+  def deregister(elbName: String, instance: Instance)(implicit keyRing: KeyRing) =
+    client.deregisterInstancesFromLoadBalancer(
+      new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
+        .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
 }
 
 object ELB extends ELB
+
+trait EC2 extends AWS {
+  def client(implicit keyRing: KeyRing) = {
+    val client = new AmazonEC2Client(credentials(keyRing))
+    client.setEndpoint("ec2.eu-west-1.amazonaws.com")
+    client
+  }
+}
+
+object EC2 extends EC2 {
+  def apply(instance: Instance)(implicit keyRing: KeyRing) = client.describeInstances(
+    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
+}
 
 trait AWS {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
