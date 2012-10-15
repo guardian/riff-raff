@@ -24,10 +24,11 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val autoscaling = new AutoScalingWithELB(p)
 
-    autoscaling.perAppActions("deploy")(Stage("PROD")) should be (List(
+    autoscaling.perAppActions("deploy")(parameters()) should be (List(
       S3Upload(Stage("PROD"), "asg-bucket", new File("/tmp/packages/webapp/")),
       DoubleSize("app", Stage("PROD")),
-      WaitTillUpAndInELB("app", Stage("PROD"), 5 * 60 * 1000)
+      WaitTillUpAndInELB("app", PROD, 5 * 60 * 1000),
+      CullInstancesWithoutVersion("app", PROD, Build("project", "version"))
     ))
   }
 
@@ -41,10 +42,15 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val autoscaling = new AutoScalingWithELB(p)
 
-    autoscaling.perAppActions("deploy")(Stage("PROD")) should be (List(
+    autoscaling.perAppActions("deploy")(parameters()) should be (List(
       S3Upload(Stage("PROD"), "asg-bucket", new File("/tmp/packages/webapp/")),
-      DoubleSize("app", Stage("PROD")),
-      WaitTillUpAndInELB("app", Stage("PROD"), 3 * 60 * 1000)
+      DoubleSize("app", PROD),
+      WaitTillUpAndInELB("app", PROD, 3 * 60 * 1000),
+      CullInstancesWithoutVersion("app", PROD, Build("project", "version"))
     ))
   }
+
+  val PROD = Stage("PROD")
+  def parameters(stage: Stage = PROD, version: String = "version") =
+    DeployParameters(Deployer("tester"), Build("project", version), stage)
 }

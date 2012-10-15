@@ -11,7 +11,7 @@ object DeployContext {
     }
     val tasks = {
       MessageBroker.info("Resolving tasks...")
-      val taskList = Resolver.resolve(project, parameters.recipe.name, stageHosts, parameters.stage)
+      val taskList = Resolver.resolve(project, stageHosts, parameters)
       MessageBroker.taskList(taskList)
       taskList
     }

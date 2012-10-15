@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, Stage, KeyRing}
+import magenta.{Build, MessageBroker, Stage, KeyRing}
 import com.amazonaws.services.autoscaling.model.{Instance, AutoScalingGroup}
 import dispatch.{Http, :/}
 import collection.JavaConversions._
@@ -31,12 +31,12 @@ case class WaitTillUpAndInELB(packageName: String, stage: Stage, duration: Long)
   def description: String = "Check all hosts in an ASG are up and in ELB"
 }
 
-case class CullInstancesWithoutVersion(packageName: String, stage: Stage, desiredVersion: String) extends ASGTask {
+case class CullInstancesWithoutVersion(packageName: String, stage: Stage, desiredBuild: Build) extends ASGTask {
 
 
   override def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
-      if (versionOf(instance) != desiredVersion) {
+      if (versionOf(instance) != desiredBuild.id) {
         cull(asg, instance)
       }
     }

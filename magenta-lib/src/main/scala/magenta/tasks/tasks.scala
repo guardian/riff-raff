@@ -119,6 +119,7 @@ trait RepeatedPollingCheck {
 
   def check(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
+
     def checkAttempt(currentAttempt: Int) {
       if (!theCheck) {
         if (System.currentTimeMillis() < expiry) {

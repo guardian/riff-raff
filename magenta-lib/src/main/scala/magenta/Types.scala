@@ -20,7 +20,7 @@ trait PackageType {
 
     else if (perAppActions.isDefinedAt(actionName))
       new PackageAction(pkg, actionName) with PerAppAction {
-        def resolve( stage: Stage) = perAppActions(actionName)(stage)
+        def resolve( parameters: DeployParameters) = perAppActions(actionName)(parameters)
       }
 
     else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
@@ -29,7 +29,7 @@ trait PackageType {
   type HostActionDefinition = PartialFunction[String, Host => List[Task]]
   def perHostActions: HostActionDefinition = Map.empty
 
-  type AppActionDefinition = PartialFunction[String, Stage => List[Task]]
+  type AppActionDefinition = PartialFunction[String, DeployParameters => List[Task]]
   def perAppActions: AppActionDefinition = Map.empty
 
   def defaultData: Map[String, JValue] = Map.empty
@@ -45,9 +45,9 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   lazy val cacheControl = pkg.stringData("cacheControl")
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadStaticFiles" => stage =>
+    case "uploadStaticFiles" => parameters =>
       List(
-        S3Upload(stage, bucket, new File(staticDir), Some(cacheControl))
+        S3Upload(parameters.stage, bucket, new File(staticDir), Some(cacheControl))
       )
   }
 }
@@ -60,11 +60,12 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
 
   override val perAppActions: AppActionDefinition = {
-    case "deploy" => stage => {
+    case "deploy" => parameters => {
       List(
-        S3Upload(stage, pkg.stringData("bucket"), new File(packageArtifactDir)),
-        DoubleSize(pkg.name, stage),
-        WaitTillUpAndInELB("app", Stage("PROD"), pkg.intData("secondsToWait").toInt * 1000)
+        S3Upload(parameters.stage, pkg.stringData("bucket"), new File(packageArtifactDir)),
+        DoubleSize(pkg.name, parameters.stage),
+        WaitTillUpAndInELB(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        CullInstancesWithoutVersion(pkg.name, parameters.stage, parameters.build)
       )
     }
   }
@@ -114,9 +115,9 @@ abstract class WebappPackageType extends PackageType {
   }
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadArtifacts" => stage =>
+    case "uploadArtifacts" => parameters =>
       List(
-        S3Upload(stage, bucket, new File(packageArtifactDir))
+        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
       )
   }
 }
@@ -206,9 +207,9 @@ case class PuppetPackageType(pkg: Package) extends PackageType {
   }
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadArtifacts" => stage =>
+    case "uploadArtifacts" => parameters =>
       List(
-        S3Upload(stage, bucket, new File(pkg.srcDir.getPath + "/"))
+        S3Upload(parameters.stage, bucket, new File(pkg.srcDir.getPath + "/"))
       )
   }
 }

@@ -118,7 +118,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   }
 
   case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(stage: Stage) = StubTask(description + " per app task") :: Nil
+    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
   }
 
   case class MockStubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
@@ -130,7 +130,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   }
 
   case class MockStubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(stage: Stage) = {
+    def resolve(parameters: DeployParameters) = {
       val task = mock[Task]
       when(task.taskHosts).thenReturn(Nil)
       task :: Nil
