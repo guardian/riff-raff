@@ -42,11 +42,9 @@ trait ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def atDesiredCapacity(asg: AutoScalingGroup) =
-    asg.getDesiredCapacity == asg.getInstances.size
-
   def allInELB(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
-    ELB.instanceHealth(elbName(asg)).forall( instance => instance.getState == "InService")
+    val elbHealth = ELB.instanceHealth(elbName(asg))
+    elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
   }
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.head

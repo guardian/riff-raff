@@ -24,7 +24,7 @@ case class WaitTillUpAndInELB(packageName: String, stage: Stage, duration: Long)
   def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     check {
       val updatedAsg = refresh(asg)
-      atDesiredCapacity(updatedAsg) && allInELB(updatedAsg)
+      allInELB(updatedAsg)
     }
   }
 
