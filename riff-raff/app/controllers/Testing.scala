@@ -24,6 +24,7 @@ import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
+import org.joda.time.DateTime
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -89,7 +90,7 @@ object Testing extends Controller with Logging {
         Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))
     )
 
-    val report = DeployRecord(Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), DeployInfo(Nil, Map.empty), input.toList)
+    val report = DeployRecord(new DateTime(), Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), input.toList)
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }

@@ -28,7 +28,7 @@ object MagentaBuild extends Build {
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
       excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-        cp filter {_.data.getName == "io_2.9.1-0.11.2.jar"}
+        cp filter {jar => List("io_2.9.1-0.11.2.jar","specs_2.9.0-1-1.6.8.jar").contains(jar.data.getName)}
       },
       templatesImport ++= Seq(
         "magenta._",

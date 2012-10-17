@@ -6,6 +6,14 @@ import util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
 
+case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
+object ThrowableDetail {
+  implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
+  def apply(t:Throwable): ThrowableDetail = {
+    ThrowableDetail(t.getClass.getName, t.getMessage, t.getStackTraceString, Option(t.getCause).map(ThrowableDetail(_)))
+  }
+}
+
 object MessageBroker {
   private val listeners = mutable.Buffer[MessageSink]()
   def subscribe(sink: MessageSink) { listeners += sink }
@@ -54,10 +62,16 @@ object MessageBroker {
   def deployContext[T](parameters: DeployParameters)(block: => T): T = {
     if (messageStack.value.size == 0)
       sendContext(Deploy(parameters))(block)
-    else if (messageStack.value.last == Deploy(parameters))
-      block
-    else
-      throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (parameters,messageStack.value))
+    else {
+      val existingParams = messageStack.value.last match {
+        case Deploy(params) => Some(params)
+        case _ => None
+      }
+      if (existingParams.isDefined && existingParams.get == parameters)
+        block
+      else
+        throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (parameters,messageStack.value))
+    }
   }
 
   def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T): T = {
@@ -72,7 +86,8 @@ object MessageBroker {
   def commandError(message: String) { send(CommandError(message)) }
   def verbose(message: String) { send(Verbose(message)) }
   def failException(message: String, e: Option[Throwable] = None): FailException = {
-    send(Fail(message, e.getOrElse(new RuntimeException(message))))
+    val exception = e.getOrElse(new RuntimeException(message))
+    send(Fail(message, exception))
     new FailException(message, e.getOrElse(null))
   }
   def fail(message: String, e: Option[Throwable] = None) {
@@ -90,7 +105,7 @@ class MessageSinkFilter(messageSink: MessageSink, filter: MessageStack => Boolea
   def message(uuid: UUID, stack: MessageStack) { if (filter(stack)) messageSink.message(uuid, stack) }
 }
 
-case class MessageStack(messages: List[Message]) {
+case class MessageStack(messages: List[Message], time:DateTime = new DateTime()) {
   lazy val top = messages.head
   lazy val deployParameters: Option[DeployParameters] = { messages.filter(_.deployParameters.isDefined).lastOption.flatMap(_.deployParameters) }
 }
@@ -98,7 +113,6 @@ case class MessageStack(messages: List[Message]) {
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
 
 trait Message {
-  val time = new DateTime()
   def text: String
   def deployParameters: Option[DeployParameters] = None
 }
@@ -119,8 +133,8 @@ case class Info(text: String) extends Message
 case class CommandOutput(text: String) extends Message
 case class CommandError(text: String) extends Message
 case class Verbose(text: String) extends Message
-case class Fail(text: String, exception: Throwable) extends Message
+case class Fail(text: String, detail: ThrowableDetail) extends Message
 
 case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = "Starting %s" format originalMessage.text }
-case class FailContext(originalMessage: Message, exception: Throwable) extends ContextMessage { lazy val text = "Failed during %s" format originalMessage.text }
+case class FailContext(originalMessage: Message, detail: ThrowableDetail) extends ContextMessage { lazy val text = "Failed during %s" format originalMessage.text }
 case class FinishContext(originalMessage: Message) extends ContextMessage { lazy val text = "Successfully completed %s" format originalMessage.text}

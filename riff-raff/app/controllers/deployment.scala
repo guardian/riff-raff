@@ -5,7 +5,7 @@ import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
 import play.api.data.Forms._
-import conf.{TimedAction, Configuration}
+import conf.TimedAction
 import java.util.UUID
 import akka.actor.ActorSystem
 import magenta._
@@ -20,10 +20,12 @@ import magenta.Deployer
 import magenta.Stage
 import play.api.libs.json.Json
 import org.joda.time.format.DateTimeFormat
+import datastore.DataStore
+import lifecycle.LifecycleWithoutApp
 
-object DeployController extends Logging {
+object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) { update(uuid){_ + stack} }
+    def message(uuid: UUID, stack: MessageStack) { update(uuid, stack) }
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
@@ -32,25 +34,19 @@ object DeployController extends Logging {
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def create(recordType: Task.Type, params: DeployParameters): DeployRecord = {
+  def create(recordType: Task.Value, params: DeployParameters): DeployRecord = {
     val uuid = java.util.UUID.randomUUID()
-    val record = DeployRecord(recordType, uuid, params, DeployInfoManager.deployInfo)
+    val record = DeployRecord(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
+    DataStore.createDeploy(record)
     await(uuid)
   }
 
-  def update(uuid:UUID)(transform: DeployRecord => DeployRecord) {
+  def update(uuid:UUID, stack: MessageStack) {
     library()(uuid) send { record =>
-      MessageBroker.withUUID(uuid)(transform(record))
+      MessageBroker.withUUID(uuid)(record + stack)
     }
-  }
-
-  def updateWithContext()(transform: DeployRecord => DeployRecord) {
-    val mainThreadContext = MessageBroker.peekContext()
-    val uuid = mainThreadContext._1
-    library()(uuid) send { record =>
-      MessageBroker.pushContext(mainThreadContext)(transform(record))
-    }
+    DataStore.updateDeploy(uuid, stack)
   }
 
   def preview(params: DeployParameters): UUID = {
@@ -65,9 +61,20 @@ object DeployController extends Logging {
     record.uuid
   }
 
-  def get: List[DeployRecord] = { library().values.map{ _() }.toList.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis } }
+  def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }
+  def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = DataStore.getDeploys(limit)
 
-  def get(uuid: UUID): DeployRecord = { library()(uuid)() }
+  def getDeploys(limit:Int = 20): List[DeployRecord] = {
+    val combinedRecords = (getDatastoreDeploys(limit).toList ::: getControllerDeploys.toList).distinct
+    combinedRecords.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis }.take(limit)
+  }
+
+  def get(uuid: UUID): DeployRecord = {
+    val agent = library().get(uuid)
+    agent.map(_()).getOrElse {
+      DataStore.getDeploy(uuid).get
+    }
+  }
 
   def await(uuid: UUID): DeployRecord = {
     val timeout = Timeout(5 second)
@@ -170,7 +177,7 @@ object Deployment extends Controller with Logging {
 
   def history() = TimedAction {
     AuthAction { implicit request =>
-      val records = DeployController.get.reverse
+      val records = DeployController.getDeploys().reverse
 
       Ok(views.html.deploy.history(request, records))
     }
