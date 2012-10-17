@@ -95,11 +95,7 @@ class DeployActor() extends Actor with Logging {
     log.info("Reading deploy.json")
     MessageBroker.info("Reading deploy.json")
     val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-    val context = record.parameters.toDeployContext(project,record.deployInfo.hosts)
-    context.tasks
-    DeployController.updateWithContext() { record =>
-      record.attachContext(context)
-    }
+    val context = record.parameters.toDeployContext(project, DeployInfoManager.deployInfo.hosts)
     context
   }
 

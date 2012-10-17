@@ -14,12 +14,13 @@ import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
 import conf.Configuration.mq.QueueDetails
+import lifecycle.LifecycleWithoutApp
 
 /*
  Send deploy events to graphite
  */
 
-object MessageQueue {
+object MessageQueue extends LifecycleWithoutApp {
   trait Event
   case class Notify(event: AlertaEvent) extends Event
 

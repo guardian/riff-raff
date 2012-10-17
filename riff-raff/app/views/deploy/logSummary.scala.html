@@ -7,8 +7,8 @@ case RunState.Failed => {
 <div class="alert alert-error">
     <h4 class="alert-heading">Deploy failed</h4>
     @record.report.failureMessage.map{ fail =>
-    <strong>@fail.exception.getMessage</strong>
-    <pre>@fail.exception.getStackTraceString</pre>
+    <strong>@fail.detail.message</strong>
+    <pre>@fail.detail.stackTrace</pre>
     }
 </div>
 }

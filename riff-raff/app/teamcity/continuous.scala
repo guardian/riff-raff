@@ -5,8 +5,9 @@ import magenta.{Stage, Build => MagentaBuild, Deployer, DeployParameters}
 import controllers.{Logging, DeployController}
 import akka.agent.Agent
 import akka.actor.ActorSystem
+import lifecycle.LifecycleWithoutApp
 
-object ContinuousDeployment extends Logging {
+object ContinuousDeployment extends Logging with LifecycleWithoutApp {
 
   val system = ActorSystem("continuous")
   val buildToStageMap = Agent(continuousDeployment.buildToStageMap)(system)
