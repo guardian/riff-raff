@@ -28,8 +28,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object sshKey {
-    lazy val path: String = configuration.getStringProperty("sshKey.path").getOrException("No private SSH key configured")
-    lazy val file: File = new File(path)
+    lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
+    lazy val file: Option[File] = path map (new File(_))
   }
 
   object logging {

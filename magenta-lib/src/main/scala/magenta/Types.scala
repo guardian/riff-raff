@@ -58,16 +58,20 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
   override val defaultData = Map[String, JValue]("secondsToWait" -> 5 * 60)
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val bucket = pkg.stringData("bucket")
 
   override val perAppActions: AppActionDefinition = {
     case "deploy" => parameters => {
       List(
-        S3Upload(parameters.stage, pkg.stringData("bucket"), new File(packageArtifactDir)),
         DoubleSize(pkg.name, parameters.stage),
         WaitTillUpAndInELB(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         CullInstancesWithoutVersion(pkg.name, parameters.stage, parameters.build)
       )
     }
+    case "uploadArtifacts" => parameters =>
+      List(
+        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
+      )
   }
 }
 

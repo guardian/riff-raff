@@ -94,6 +94,7 @@ object Deployment extends Controller with Logging {
           DeployParameterForm(project, build, stage, action, hosts)
         case (project, build, None, Some(manualStage), action, hosts) =>
           DeployParameterForm(project, build, manualStage, action, hosts)
+        case _ => throw new Error("Should have failed validation")
       },
       form => (form.project, form.build, Some(form.stage), None, form.action, form.hosts )
     )

@@ -46,7 +46,7 @@ object DeployInfoManager extends Logging {
   }
 
   def keyRing(context:DeployContext): KeyRing = {
-    KeyRing( SystemUser(keyFile = Some(Configuration.sshKey.file)),
+    KeyRing( SystemUser(keyFile = Configuration.sshKey.file),
                 credentials(context.stage.name, context.project.applications))
   }
 
