@@ -31,7 +31,8 @@ case class WaitTillUpAndInELB(packageName: String, stage: Stage, duration: Long)
   def description: String = "Check all hosts in an ASG are up and in ELB"
 }
 
-case class CullInstancesWithoutVersion(packageName: String, stage: Stage, desiredBuild: Build) extends ASGTask {
+case class CullInstancesWithoutVersion
+  (packageName: String, stage: Stage, desiredBuild: Build, port: Int, manifestPath: String) extends ASGTask {
 
 
   override def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
@@ -41,7 +42,7 @@ case class CullInstancesWithoutVersion(packageName: String, stage: Stage, desire
       }
     }
 
-    def versionOf(instance: Instance) = Http(:/ (EC2(instance).getPublicDnsName, 9000) / "management/manifest" >- {
+    def versionOf(instance: Instance) = Http(:/ (EC2(instance).getPublicDnsName, port) / manifestPath >- {
       body => {
         def keyValMap(properties: String): Map[String, String] = body.lines.map(_.split(':').map(_.trim)).collect
           { case Array(k, v) => k -> v }.toMap
