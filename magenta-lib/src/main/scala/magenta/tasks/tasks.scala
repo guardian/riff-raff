@@ -78,7 +78,14 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
   def execute(keyRing: KeyRing) {
-    check { new Socket(host.name, port.toInt).close() }
+    check {
+      try {
+        new Socket(host.name, port.toInt).close()
+        true
+      } catch {
+        case e: IOException => false
+      }
+    }
   }
 }
 
@@ -95,8 +102,13 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
         connection.setConnectTimeout( 2000 )
         connection.setReadTimeout( 5000 )
         Source.fromInputStream( connection.getInputStream )
+        true
       } catch {
-        case e => throw new IOException("Exception whilst trying to check %s" format url.toString, e)
+        // Note that MessageBroker.fail will always throw a runtime exception, so we
+        // won't ever need to return false from this branch, but it's necessary for
+        // type checks to pass
+        case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e); false
+        case e => false
       }
     }
   }
@@ -105,21 +117,18 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
 trait RepeatedPollingCheck {
   def duration: Long
 
-  def check(action: => Unit) {
+  def check(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
+
     def checkAttempt(currentAttempt: Int) {
-      try action
-      catch {
-        case e: FileNotFoundException => {
-          MessageBroker.fail("404 Not Found", e)
-        }
-        case e: IOException => {
-          if (System.currentTimeMillis() > expiry)
-            MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt), e)
+      if (!theCheck) {
+        if (System.currentTimeMillis() < expiry) {
           MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
           val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
           Thread.sleep(sleepyTime)
           checkAttempt(currentAttempt + 1)
+        } else {
+          MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
         }
       }
     }
@@ -182,25 +191,4 @@ case class Mkdir(host: Host, path: String) extends RemoteShellTask {
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
-trait S3 {
-  lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
-    sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
-  }
-  lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
-    sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
-  }
 
-  lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
-
-  def credentials(keyRing: KeyRing): BasicAWSCredentials = {
-    keyRing.s3Credentials.map{ c => new BasicAWSCredentials(c.accessKey,c.secretAccessKey) }.getOrElse{ envCredentials }
-  }
-
-  def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
-
-  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File, cacheControlHeader: Option[String]) = {
-    val metaData = new ObjectMetadata
-    cacheControlHeader foreach { metaData.setCacheControl(_) }
-    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead).withMetadata(metaData)
-  }
-}

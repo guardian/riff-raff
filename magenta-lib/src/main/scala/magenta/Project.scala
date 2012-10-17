@@ -95,7 +95,7 @@ trait PerHostAction extends Action {
 }
 
 trait PerAppAction extends Action {
-  def resolve(stage: Stage): List[Task]
+  def resolve(parameters: DeployParameters): List[Task]
 }
 
 case class App(name: String)

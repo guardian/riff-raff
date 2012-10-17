@@ -30,8 +30,13 @@ deployForm("stage"),
 options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
 '_default -> "--- Choose a stage ---",
 '_label -> "stage",
-'_error -> deployForm("stage").error.map(_.withMessage("Please select deployment stage"))
+'_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage"))
 )
+<a data-toggle="collapse" href="#advanced">+</a>
+<div id="advanced" class="collapse">
+@helper.inputText(deployForm("manualStage"))
+</div>
+
 
 <div class="actions">
     <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or

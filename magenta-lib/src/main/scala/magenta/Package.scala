@@ -14,6 +14,7 @@ case class Package(
   def mkAction(name: String): Action = pkgType.mkAction(name)
 
   lazy val pkgType = pkgTypeName match {
+    case "asg-elb" => AutoScalingWithELB(this)
     case "jetty-webapp" => JettyWebappPackageType(this)
     case "resin-webapp" => ResinWebappPackageType(this)
     case "django-webapp" => DjangoWebappPackageType(this)

@@ -16,6 +16,8 @@ import scala._
 import scala.Predef._
 import org.mockito.Matchers.any
 import magenta.Host
+import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -265,7 +267,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rv /source foo.com:/dest""")
   }
-  
+
   private def createTempDir() = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
