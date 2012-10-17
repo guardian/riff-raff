@@ -1,28 +1,45 @@
-import controllers.{Logging, DeployController}
+import controllers.Logging
+import datastore.MongoDatastore
+import lifecycle.Lifecycle
 import notification.{MessageQueue, IrcClient}
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
-import teamcity.{ContinuousDeployment, TeamCity}
-import utils.ScheduledAgent
 import play.api.mvc.Results.InternalServerError
+import scala.collection.JavaConversions._
+import controllers.DeployController
+import teamcity.ContinuousDeployment
+import utils.ScheduledAgent
 
 class Global extends GlobalSettings with Logging {
+  // list of singletons that should be lifecycled
+  val lifecycleSingletons: List[Lifecycle] = List(
+    DeployController,
+    IrcClient,
+    MessageQueue,
+    MongoDatastore,
+    ScheduledAgent,
+    ContinuousDeployment
+  )
+
   override def onStart(app: Application) {
-    // initialise message sinks
-    IrcClient.init()
-    MessageQueue.init()
-    DeployController.init()
-    ContinuousDeployment.init()
-    log.info("Starting TeamCity poller on %s" format TeamCity.tcURL.toString)
+    lifecycleSingletons foreach { singleton =>
+      try {
+        singleton.init(app)
+      } catch {
+        case t:Throwable => log.error("Caught unhandled exception whilst calling init() on Lifecycle singleton", t)
+      }
+    }
   }
 
   override def onStop(app: Application) {
-    IrcClient.shutdown()
-    MessageQueue.shutdown()
-    DeployController.shutdown()
-    ContinuousDeployment.shutdown()
-    ScheduledAgent.shutdown()
+    lifecycleSingletons foreach { singleton =>
+      try {
+        singleton.shutdown(app)
+      } catch {
+        case t:Throwable => log.error("Caught unhandled exception whilst calling shutdown() on Lifecycle singleton", t)
+      }
+    }
   }
 
   override def onError(request: RequestHeader, t: Throwable) = {

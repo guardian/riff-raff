@@ -6,6 +6,7 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % "5.15",
   "com.gu" %% "management-logback" % "5.15",
   "com.gu" %% "configuration" % "3.6",
+  "com.novus" %% "salat" % "1.9.0",
   "org.pircbotx" % "pircbotx" % "1.7",
   "com.typesafe.akka" % "akka-agent" % "2.0.2",
   "org.clapper" %% "markwrap" % "0.5.4",

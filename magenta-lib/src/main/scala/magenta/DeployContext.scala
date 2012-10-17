@@ -26,11 +26,6 @@ case class DeployContext(parameters: DeployParameters, project: Project, stageHo
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  val hostNames = tasks
-    .flatMap(_.taskHosts)
-    .map(_.name)
-    .distinct
-
   def execute(keyRing: KeyRing) {
     MessageBroker.deployContext(parameters) {
       if (tasks.isEmpty) MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
