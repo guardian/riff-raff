@@ -1,3 +1,4 @@
+import collection.mutable
 import controllers.Logging
 import datastore.MongoDatastore
 import lifecycle.Lifecycle
@@ -12,17 +13,20 @@ import teamcity.ContinuousDeployment
 import utils.ScheduledAgent
 
 class Global extends GlobalSettings with Logging {
-  // list of singletons that should be lifecycled
-  val lifecycleSingletons: List[Lifecycle] = List(
-    DeployController,
-    IrcClient,
-    MessageQueue,
-    MongoDatastore,
-    ScheduledAgent,
-    ContinuousDeployment
-  )
+  val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
   override def onStart(app: Application) {
+    // list of singletons - note these are inside onStart() to ensure logging has fully initialised
+    lifecycleSingletons ++= List(
+      DeployController,
+      IrcClient,
+      MessageQueue,
+      MongoDatastore,
+      ScheduledAgent,
+      ContinuousDeployment
+    )
+
+    log.info("Calling init() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
     lifecycleSingletons foreach { singleton =>
       try {
         singleton.init(app)
@@ -33,6 +37,7 @@ class Global extends GlobalSettings with Logging {
   }
 
   override def onStop(app: Application) {
+    log.info("Calling shutdown() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
     lifecycleSingletons foreach { singleton =>
       try {
         singleton.shutdown(app)
