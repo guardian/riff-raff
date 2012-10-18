@@ -185,9 +185,9 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def history() = TimedAction {
+  def history(count:Int) = TimedAction {
     AuthAction { implicit request =>
-      val records = DeployController.getDeploys().reverse
+      val records = DeployController.getDeploys(count).reverse
 
       Ok(views.html.deploy.history(request, records))
     }

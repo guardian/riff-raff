@@ -20,7 +20,7 @@ POST    /deployment/request controllers.Deployment.processForm
 GET     /deployment/preview/:uuid controllers.Deployment.previewLog(uuid:String, verbose:Boolean?=false)
 GET     /deployment/preview/update/:uuid controllers.Deployment.previewContent(uuid:String)
 
-GET     /deployment/history controllers.Deployment.history()
+GET     /deployment/history controllers.Deployment.history(count:Int?=20)
 
 GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String)
 
