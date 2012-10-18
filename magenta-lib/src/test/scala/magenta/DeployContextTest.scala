@@ -45,7 +45,6 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     context.execute(keyRing)
     val task = context.tasks.head
 
-    verify(task, times(1)).taskHosts
     verify(task, times(1)).execute(keyRing)
     verifyNoMoreInteractions(task)
   }

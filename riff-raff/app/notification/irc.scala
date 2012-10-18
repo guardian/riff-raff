@@ -8,8 +8,9 @@ import com.gu.management.ManagementBuildInfo
 import magenta._
 import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 import java.util.UUID
+import lifecycle.LifecycleWithoutApp
 
-object IrcClient {
+object IrcClient extends LifecycleWithoutApp {
   trait Event
   case class Notify(message: String) extends Event
 
@@ -38,9 +39,8 @@ object IrcClient {
     }
   }
 
-  def init(): Option[ActorRef] = {
+  def init() {
     MessageBroker.subscribe(sink)
-    actor
   }
 
   def shutdown() {

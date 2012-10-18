@@ -7,15 +7,27 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
+import org.joda.time.DateTime
 
 object Task extends Enumeration {
-  type Type = Value
   val Deploy = Value("Deploy")
   val Preview = Value("Preview")
 }
 
-case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParameters, deployInfo: DeployInfo, messages: List[MessageStack] = Nil, context:Option[DeployContext] = None) {
-  lazy val report:ReportTree = DeployReport(messages, "Deployment Report")
+object DeployRecord {
+  def apply(taskType: Task.Value,
+            uuid: UUID,
+            parameters: DeployParameters ): DeployRecord = {
+    DeployRecord(new DateTime(), taskType, uuid, parameters)
+  }
+}
+
+case class DeployRecord(time: DateTime,
+                        taskType: Task.Value,
+                        uuid: UUID,
+                        parameters: DeployParameters,
+                        messageStacks: List[MessageStack] = Nil) {
+  lazy val report:ReportTree = DeployReport(messageStacks, "Deployment Report")
   lazy val buildName = parameters.build.projectName
   lazy val buildId = parameters.build.id
   lazy val deployerName = parameters.deployer.name
@@ -23,10 +35,7 @@ case class DeployRecord(taskType: Task.Type, uuid: UUID, parameters: DeployParam
   lazy val isRunning = report.isRunning
 
   def +(message: MessageStack): DeployRecord = {
-    this.copy(messages = messages ++ List(message))
-  }
-  def attachContext(newContext: DeployContext): DeployRecord = {
-    this.copy(context = Some(newContext))
+    this.copy(messageStacks = messageStacks ++ List(message))
   }
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }
