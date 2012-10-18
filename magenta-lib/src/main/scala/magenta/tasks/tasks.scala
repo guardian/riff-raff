@@ -166,7 +166,8 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
 }
 
 case class Puppet(
-  host: Host, modulePath: String, templateDirectory: String, manifest: String
+  host: Host, modulePath: String, fileserverConfiguration: String,
+  templateDirectory: String, manifest: String
 ) extends RemoteShellTask {
   lazy val command = List("sudo",
     "/usr/bin/puppet",
@@ -174,6 +175,7 @@ case class Puppet(
     "--detailed-exitcodes",
     "--debug",
     "--modulepath=" + modulePath,
+    "--fileserverconfig=" + fileserverConfiguration,
     "--templatedir=" + templateDirectory,
     manifest
   )

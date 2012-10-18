@@ -207,6 +207,7 @@ case class PuppetPackageType(pkg: Package) extends PackageType {
         Link(host as user, artifact_remote_directory + "/puppet", link),
         Puppet(host as user,
           modulePath = link + "/modules",
+          fileserverConfiguration = link + "/fileserver.conf",
           templateDirectory = link + "/templates",
           manifest = link + "/site.pp"
         )

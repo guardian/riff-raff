@@ -1,8 +1,6 @@
 .idea*/
 dist/
 target/
-.target/
-bin/
 logs/
 log/
 readme.html
