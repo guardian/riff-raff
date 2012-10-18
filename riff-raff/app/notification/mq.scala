@@ -8,30 +8,28 @@ import magenta.Deploy
 import magenta.FinishContext
 import magenta.StartContext
 import com.rabbitmq.client.{ConnectionFactory, Connection}
-import akka.actor.{Props, ActorSystem, Actor}
+import akka.actor.{ActorRef, Props, ActorSystem, Actor}
 import controllers.{routes, Logging}
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
 import conf.Configuration.mq.QueueDetails
 import lifecycle.LifecycleWithoutApp
+import scala.collection.mutable
 
 /*
  Send deploy events to graphite
  */
 
-object MessageQueue extends LifecycleWithoutApp {
+object MessageQueue extends LifecycleWithoutApp with Logging {
   trait Event
   case class Notify(event: AlertaEvent) extends Event
 
   lazy val system = ActorSystem("notify")
-  val actor =
-    Configuration.mq.queueTargets.flatMap{ queueTarget =>
-      try { Some(system.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client")) } catch { case t:Throwable => None }
-    }
+  val actors = mutable.Buffer[ActorRef]()
 
   def sendMessage(event: AlertaEvent) {
-    actor foreach (_ ! Notify(event))
+    actors foreach (_ ! Notify(event))
   }
 
   val sink = new MessageSink {
@@ -49,20 +47,35 @@ object MessageQueue extends LifecycleWithoutApp {
   }
 
   def init() {
+    val targets: List[QueueDetails] = Configuration.mq.queueTargets
+    if (targets.isEmpty)
+      log.info("No message queue targets to initialise")
+    else
+      log.info("Initialising message queue notifications to: %s" format targets.mkString(", "))
+
+    actors ++= targets.flatMap { queueTarget =>
+      try {
+        Some(system.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client-%s" format queueTarget.name.replace("/","-")))
+      } catch {
+        case t: Throwable => None
+      }
+    }
+
+    log.info("Message queue targets initialised")
     MessageBroker.subscribe(sink)
   }
 
   def shutdown() {
     MessageBroker.unsubscribe(sink)
-    actor foreach(system.stop)
+    actors foreach(system.stop)
+    actors.clear()
   }
 }
 
-
-
-
 class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
   import MessageQueue._
+
+  log.info("Initialising %s" format queueDetails)
 
   val channel = try {
     val factory = new ConnectionFactory()
@@ -87,7 +100,12 @@ class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
 
   def receive = {
     case Notify(event) => {
-      sendToMQ(event)
+      try {
+        sendToMQ(event)
+      } catch {
+        case t:Throwable => log.error("Error sending message to %s: %s" format(queueDetails, event))
+        throw t
+      }
     }
   }
 

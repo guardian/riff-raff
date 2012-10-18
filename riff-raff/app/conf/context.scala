@@ -59,11 +59,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object mq {
     lazy val isConfigured = !queueTargets.isEmpty
 
-    case class QueueDetails(hostname:String, port:Int, queueName:String)
+    case class QueueDetails(name: String, hostname:String, port:Int, queueName:String)
     object QueueDetails {
       private lazy val QueueTarget = """^(.+):(.+)/(.+)$""".r
       def apply(server:String): Option[QueueDetails] = { server match {
-        case QueueTarget(hostname, port, queueName) => Some(QueueDetails(hostname, port.toInt, queueName))
+        case QueueTarget(hostname, port, queueName) => Some(QueueDetails(server, hostname, port.toInt, queueName))
         case _ =>
           log.warn("Couldn't parse queue target: %s" format server)
           None
