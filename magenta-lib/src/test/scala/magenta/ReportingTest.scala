@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 class ReportingTest extends FlatSpec with ShouldMatchers {
 
   "Deploy Report" should "build an empty report from an empty list" in {
-    val report = DeployReport(Nil)
+    val report = DeployReport(Nil, titleTime = Some(testTime))
     report.isRunning should be (false)
     report should be (tree(""))
   }
@@ -20,8 +20,6 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "build a one-op deploy report" in {
-    val deploy = Deploy(parameters)
-
     val stacks = stack(startDeploy) :: stack(infoMsg, deploy) :: stack(finishDep) :: Nil
     val report = DeployReport(stacks)
 
@@ -67,7 +65,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     val title = "Deploy report for my test"
     val report = DeployReport(messageStacks, title)
 
-    report.message should be(Info(title))
+    report.message.text should be(title)
   }
 
   it should "render a report as text" in {
@@ -90,33 +88,36 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     report.cascadeState should be(RunState.Failed)
   }
 
-  it should "calculate the start time correctly (earliest message)" in {
-    case class MyInfo(text: String) extends Message {
-      override val time = deploy.time.minusMinutes(2)
-    }
-    val earlierInfoMessage = MyInfo("bobbins")
-    val stacks = stack(startDeploy) :: stack(earlierInfoMessage, deploy) :: stack(finishDep) :: Nil
+  it should "calculate the start time correctly (earliest stack)" in {
+    val earlierTime: DateTime = testTime.minusMinutes(2)
+    val stacks = stack(startDeploy) :: stack(earlierTime, infoMsg, deploy) :: stack(finishDep) :: Nil
     val report = DeployReport(stacks)
 
-    report.startTime should be (earlierInfoMessage.time)
+    report.startTime should be (earlierTime)
   }
 
+  val testTime = new DateTime()
+
   def stack( messages: Message * ): MessageStack = {
-    MessageStack(messages.toList)
+    stack(testTime, messages: _*)
+  }
+
+  def stack( time: DateTime, messages: Message * ): MessageStack = {
+    MessageStack(messages.toList, time)
   }
 
   def tree( title: String, trees: ReportTree * ): ReportTree = {
-    ReportTree( Report(title), trees.toList )
+    ReportTree( Report(title, testTime), trees.toList )
   }
 
   def tree( message: Message, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(message), trees.toList )
+    ReportTree( MessageState(message, testTime), trees.toList )
   }
   def tree( startMessage: StartContext, finishMessage: FinishContext, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(startMessage, finishMessage), trees.toList )
+    ReportTree( MessageState(startMessage, finishMessage, testTime), trees.toList )
   }
   def tree( startMessage: StartContext, failMessage: FailContext, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(startMessage, failMessage), trees.toList )
+    ReportTree( MessageState(startMessage, failMessage, testTime), trees.toList )
   }
 
   val parameters = DeployParameters(Deployer("Test reports"),Build("test-project","1"),Stage("CODE"))
