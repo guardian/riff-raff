@@ -71,7 +71,7 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
   }
 
   case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(stage: Stage) = StubTask(description + " per app task") :: Nil
+    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
   }
 
   val app1 = App("the_role")

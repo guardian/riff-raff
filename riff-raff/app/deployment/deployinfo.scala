@@ -8,20 +8,30 @@ import controllers.Logging
 import magenta.App
 import conf.Configuration
 import utils.ScheduledAgent
+import java.io.File
 
 object DeployInfoManager extends Logging {
   private def getDeployInfo = {
     try {
       import sys.process._
       log.info("Populating deployinfo hosts...")
-      val deployInfo = DeployInfoJsonReader.parse("/opt/bin/deployinfo.json".!!)
-      log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format(deployInfo.hosts.size, deployInfo.data.values.map(_.size).reduce(_+_)))
+      val deployInfo = if (new File(deployInfoLocation).exists)
+        DeployInfoJsonReader.parse(deployInfoLocation.!!)
+      else {
+        log.warn("No file found at '%s', defaulting to empty DeployInfo" format (deployInfoLocation))
+        DeployInfo(List(), Map())
+      }
+
+      log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
+        deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
       deployInfo
     } catch {
       case e => log.error("Couldn't gather deployment information", e)
       throw e
     }
   }
+  // Should be configurable
+  val deployInfoLocation = "/opt/bin/deployinfo.json"
 
   val system = ActorSystem("deploy")
   val agent = ScheduledAgent[DeployInfo](1 minute, 1 minute)(getDeployInfo)
@@ -36,7 +46,7 @@ object DeployInfoManager extends Logging {
   }
 
   def keyRing(context:DeployContext): KeyRing = {
-    KeyRing( SystemUser(keyFile = Some(Configuration.sshKey.file)),
+    KeyRing( SystemUser(keyFile = Configuration.sshKey.file),
                 credentials(context.stage.name, context.project.applications))
   }
 

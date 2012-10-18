@@ -22,7 +22,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val deploy = AmazonWebServicesS3(p)
 
-    deploy.perAppActions("uploadStaticFiles")(Stage("CODE")) should be (
+    deploy.perAppActions("uploadStaticFiles")(parameters(Stage("CODE"))) should be (
       List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),Some("no-cache")))
     )
   }
@@ -69,4 +69,5 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
+  def parameters(stage: Stage) = DeployParameters(Deployer("tester"), Build("project", "version"), stage)
 }

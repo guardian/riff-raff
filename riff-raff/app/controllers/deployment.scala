@@ -80,14 +80,24 @@ case class DeployParameterForm(project:String, build:String, stage:String, actio
 object Deployment extends Controller with Logging {
 
   lazy val deployForm = Form[DeployParameterForm](
-    mapping(
+    tuple(
       "project" -> nonEmptyText,
       "build" -> nonEmptyText,
-      "stage" -> nonEmptyText,
+      "stage" -> optional(text),
+      "manualStage" -> optional(text),
       "action" -> nonEmptyText,
       "hosts" -> list(text)
-    )(DeployParameterForm.apply)
-     (DeployParameterForm.unapply)
+    ).verifying("no.stage.specified", _ match {
+      case(_,_, stage, manualStage, _,_) => !stage.isEmpty || !manualStage.isEmpty}
+    ).transform[DeployParameterForm]({
+        case (project, build, Some(stage), _, action, hosts) =>
+          DeployParameterForm(project, build, stage, action, hosts)
+        case (project, build, None, Some(manualStage), action, hosts) =>
+          DeployParameterForm(project, build, manualStage, action, hosts)
+        case _ => throw new Error("Should have failed validation")
+      },
+      form => (form.project, form.build, Some(form.stage), None, form.action, form.hosts )
+    )
   )
 
   def frontendArticleCode = TimedAction {
