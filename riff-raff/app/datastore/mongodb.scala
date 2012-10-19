@@ -21,13 +21,15 @@ import magenta.Build
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 
 object MongoDatastore extends Lifecycle with Logging {
+
+  val MESSAGE_STACKS = "messageStacks"
+
   def buildDatastore(app:Application) = try {
     if (Configuration.mongo.isConfigured) {
       val uri = MongoURI(Configuration.mongo.uri.get)
       val mongoConn = MongoConnection(uri)
       val mongoDB = mongoConn(uri.database.getOrElse(Configuration.mongo.database))
       if (mongoDB.authenticate(uri.username.get,new String(uri.password.get))) {
-        RegisterJodaTimeConversionHelpers()
         Some(new MongoDatastore(mongoDB, app.classloader()))
       } else {
         log.error("Authentication to mongoDB failed")
@@ -53,7 +55,9 @@ object MongoDatastore extends Lifecycle with Logging {
   val testStack2 = MessageStack(List(Info("Test info message"),Deploy(testParams)))
 }
 
-class MongoDatastore(database: MongoDB, loader: ClassLoader) extends DataStore {
+trait RiffRaffGraters {
+  RegisterJodaTimeConversionHelpers()
+  def loader:ClassLoader
   implicit val context = {
     val context = new Context {
       val name = "global"
@@ -63,9 +67,11 @@ class MongoDatastore(database: MongoDB, loader: ClassLoader) extends DataStore {
     context.registerPerClassKeyOverride(classOf[DeployRecord], remapThis = "uuid", toThisInstead = "_id")
     context
   }
-
   val recordGrater = grater[DeployRecord]
   val stackGrater = grater[MessageStack]
+}
+
+class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataStore with RiffRaffGraters {
   val deployCollection = database("deploys")
 
   def createDeploy(record: DeployRecord) {
@@ -74,7 +80,7 @@ class MongoDatastore(database: MongoDB, loader: ClassLoader) extends DataStore {
   }
   def updateDeploy(uuid: UUID, stack: MessageStack) {
     val newMessageStack = stackGrater.asDBObject(stack)
-    deployCollection.update(MongoDBObject("_id" -> uuid), $push("messageStacks" -> newMessageStack))
+    deployCollection.update(MongoDBObject("_id" -> uuid), $push(MongoDatastore.MESSAGE_STACKS -> newMessageStack))
   }
   def getDeploy(uuid: UUID): Option[DeployRecord] = {
     val deploy = deployCollection.findOneByID(uuid)

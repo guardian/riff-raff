@@ -10,7 +10,8 @@ libraryDependencies ++= Seq(
   "org.pircbotx" % "pircbotx" % "1.7",
   "com.typesafe.akka" % "akka-agent" % "2.0.2",
   "org.clapper" %% "markwrap" % "0.5.4",
-  "com.rabbitmq" % "amqp-client" % "2.8.7"
+  "com.rabbitmq" % "amqp-client" % "2.8.7",
+  "org.scalatest" %% "scalatest" % "1.6.1" % "test"
 )
 
 ivyXML :=

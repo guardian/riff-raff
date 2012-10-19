@@ -46,7 +46,6 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val task = context.tasks.head
 
     verify(task, times(1)).execute(keyRing)
-    verifyNoMoreInteractions(task)
   }
 
   it should ("send taskStart and taskFinish messages for each task") in {

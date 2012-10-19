@@ -5,12 +5,24 @@ import magenta.tasks.Task
 import util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
+import java.util
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
   implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
   def apply(t:Throwable): ThrowableDetail = {
     ThrowableDetail(t.getClass.getName, t.getMessage, t.getStackTraceString, Option(t.getCause).map(ThrowableDetail(_)))
+  }
+}
+
+case class TaskDetail(override val name: String, description:String, verbose:String, taskHosts: List[Host]) extends Task {
+  def execute(sshCredentials:KeyRing) { throw new IllegalStateException("A TaskDetail should never end up being executed") }
+}
+object TaskDetail {
+  implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
+  implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
+  def apply(t:Task): TaskDetail = {
+    TaskDetail(t.name, t.description, t.verbose, t.taskHosts)
   }
 }
 
@@ -127,8 +139,8 @@ case class Deploy(parameters: DeployParameters) extends Message {
   override lazy val deployParameters = Some(parameters)
 }
 
-case class TaskList(taskList: List[Task]) extends Message { lazy val text = "Tasks for deploy:\n%s" format taskList.mkString("\n")}
-case class TaskRun(task: Task) extends Message { lazy val text = "task %s" format task.fullDescription }
+case class TaskList(taskList: List[TaskDetail]) extends Message { lazy val text = "Tasks for deploy:\n%s" format taskList.mkString("\n")}
+case class TaskRun(task: TaskDetail) extends Message { lazy val text = "task %s" format task.fullDescription }
 case class Info(text: String) extends Message
 case class CommandOutput(text: String) extends Message
 case class CommandError(text: String) extends Message
