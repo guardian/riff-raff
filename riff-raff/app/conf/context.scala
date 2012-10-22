@@ -1,16 +1,22 @@
 package conf
 
 import play.api.Play
-import play.api.mvc.{Action, Result, AnyContent, Request}
 import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{ Management => PlayManagement }
 import com.gu.conf.ConfigurationFactory
 import java.io.File
-import magenta.S3Credentials
+import magenta._
 import java.net.URL
 import controllers.Logging
-
+import lifecycle.LifecycleWithoutApp
+import java.util.UUID
+import magenta.S3Credentials
+import magenta.MessageStack
+import magenta.Deploy
+import scala.Some
+import magenta.FailContext
+import magenta.StartContext
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -106,35 +112,64 @@ object Management extends PlayManagement {
   )
 }
 
-class TimingAction(group: String, name: String, title: String, description: String, master: Option[Metric] = None)
-  extends TimingMetric(group, name, title, description, master) {
+object RequestMetrics {
+  object RequestTimingMetric extends TimingMetric(
+    "performance",
+    "requests",
+    "Client requests",
+    "incoming requests to the application"
+  )
 
-  def apply(f: Request[AnyContent] => Result): Action[AnyContent] = {
-    Action {
-      request =>
-        measure {
-          f(request)
-        }
-    }
-  }
-  def apply(f: => Result): Action[AnyContent] = {
-    Action {
-      measure {
-        f
+  object DatastoreRequest extends TimingMetric(
+    "performance",
+    "database_requests",
+    "Database requests",
+    "outgoing requests to the database",
+    Some(RequestTimingMetric)
+  )
+
+  object Request200s extends CountMetric("request-status", "200_ok", "200 Ok", "number of pages that responded 200")
+  object Request50xs extends CountMetric("request-status", "50x_error", "50x Error", "number of pages that responded 50x")
+  object Request404s extends CountMetric("request-status", "404_not_found", "404 Not found", "number of pages that responded 404")
+  object Request30xs extends CountMetric("request-status", "30x_redirect", "30x Redirect", "number of pages that responded with a redirect")
+  object RequestOther extends CountMetric("request-status", "other", "Other", "number of pages that responded with an unexpected status code")
+
+  val all = Seq(RequestTimingMetric, DatastoreRequest, Request200s, Request50xs, Request404s, RequestOther, Request30xs)
+}
+
+object DeployMetrics extends LifecycleWithoutApp {
+  object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
+  object DeployComplete extends CountMetric("riffraff", "complete_deploy", "Complete deploy", "Number of deploys that completed", Some(DeployStart))
+  object DeployFail extends CountMetric("riffraff", "fail_deploy", "Complete deploy", "Number of deploys that failed", Some(DeployStart))
+
+  val all = Seq(DeployStart, DeployComplete, DeployFail)
+
+  val sink = new MessageSink {
+    def message(uuid: UUID, stack: MessageStack) {
+      stack.top match {
+        case StartContext(Deploy(parameters)) => DeployStart.recordCount(1)
+        case FailContext(Deploy(parameters), exception) => DeployFail.recordCount(1)
+        case FinishContext(Deploy(parameters)) => DeployComplete.recordCount(1)
+        case _ =>
       }
     }
   }
+
+  def init() { MessageBroker.subscribe(sink) }
+  def shutdown() { MessageBroker.unsubscribe(sink) }
 }
 
-object TimedAction extends TimingAction("webapp",
-  "requests",
-  "Requests",
-  "Count and response time of requests")
+object MessageMetrics {
+  object IRCMessages extends TimingMetric(
+    "messages", "irc_messages", "IRC messages", "messages sent to the IRC channel"
+  )
+  object MQMessages extends TimingMetric(
+    "messages", "mq_messages", "MQ messages", "messages sent to the message queue"
+  )
 
-object TimedCometAction extends TimingAction("webapp",
-  "comet_requests",
-  "Comet Requests",
-  "Count and response time of comet requests")
+  val all = Seq(IRCMessages,MQMessages)
+
+}
 
 object LoginCounter extends CountMetric("webapp",
   "login_attempts",
@@ -147,7 +182,11 @@ object FailedLoginCounter extends CountMetric("webapp",
   "Number of failed logins")
 
 object Metrics {
-  val all: Seq[Metric] = Seq(TimedAction, TimedCometAction, LoginCounter, FailedLoginCounter)
+  val all: Seq[Metric] =
+    magenta.metrics.MagentaMetrics.all ++
+    Seq(LoginCounter, FailedLoginCounter) ++
+    RequestMetrics.all ++
+    DeployMetrics.all
 }
 
 object Switches {

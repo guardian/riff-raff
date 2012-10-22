@@ -3,7 +3,6 @@ package controllers
 import play.api.mvc._
 
 import play.api.Logger
-import conf.TimedAction
 import io.Source
 
 trait Logging {
@@ -36,27 +35,21 @@ object Menu {
 
 object Application extends Controller with Logging {
 
-  def index = TimedAction {
-    NonAuthAction { implicit request =>
-      request.identity.isDefined
-      Ok(views.html.index(request))
-    }
+  def index = NonAuthAction { implicit request =>
+    request.identity.isDefined
+    Ok(views.html.index(request))
   }
 
-  def deployInfo(stage: String) = TimedAction {
-    AuthAction { request =>
-      Ok(views.html.deploy.hostInfo(request))
-    }
+  def deployInfo(stage: String) = AuthAction { request =>
+    Ok(views.html.deploy.hostInfo(request))
   }
 
-  def documentation(resource: String) = TimedAction {
-    AuthAction { request =>
-      try {
-        val markDown = Source.fromURL(getClass.getResource("docs/%s.md" format resource)).mkString
-        Ok(views.html.markdown(request, "Documentation for %s" format resource, markDown))
-      } catch {
-        case e => NotFound("No documentation found for %s" format resource)
-      }
+  def documentation(resource: String) = AuthAction { request =>
+    try {
+      val markDown = Source.fromURL(getClass.getResource("docs/%s.md" format resource)).mkString
+      Ok(views.html.markdown(request, "Documentation for %s" format resource, markDown))
+    } catch {
+      case e => NotFound("No documentation found for %s" format resource)
     }
   }
 

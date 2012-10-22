@@ -4,6 +4,7 @@ import java.util.UUID
 import deployment.DeployRecord
 import magenta.MessageStack
 import controllers.Logging
+import conf.RequestMetrics.DatastoreRequest
 
 trait DataStore {
   def getDeploys(limit: Int): Iterable[DeployRecord]
@@ -34,23 +35,31 @@ object DataStore extends DataStore with Logging {
   }
 
   def createDeploy(record:DeployRecord) {
-    logAndSquashExceptions[Unit]() {
-      datastore.foreach(_.createDeploy(record))
+    DatastoreRequest.measure {
+      logAndSquashExceptions[Unit]() {
+        datastore.foreach(_.createDeploy(record))
+      }
     }
   }
 
   def updateDeploy(uuid: UUID, stack: MessageStack) {
-    logAndSquashExceptions[Unit]() {
-      datastore.foreach(_.updateDeploy(uuid,stack))
+    DatastoreRequest.measure {
+      logAndSquashExceptions[Unit]() {
+        datastore.foreach(_.updateDeploy(uuid,stack))
+      }
     }
   }
 
   def getDeploy(uuid: UUID): Option[DeployRecord] = logAndSquashExceptions[Option[DeployRecord]](None) {
-    datastore.flatMap(_.getDeploy(uuid))
+    DatastoreRequest.measure {
+      datastore.flatMap(_.getDeploy(uuid))
+    }
   }
 
   def getDeploys(limit: Int): Iterable[DeployRecord] = logAndSquashExceptions[Iterable[DeployRecord]](Nil) {
-    datastore.map(_.getDeploys(limit)).getOrElse(Nil)
+    DatastoreRequest.measure {
+      datastore.map(_.getDeploys(limit)).getOrElse(Nil)
+    }
   }
 }
 

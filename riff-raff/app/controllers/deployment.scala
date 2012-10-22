@@ -5,7 +5,6 @@ import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
 import play.api.data.Forms._
-import conf.TimedAction
 import java.util.UUID
 import akka.actor.ActorSystem
 import magenta._
@@ -107,90 +106,69 @@ object Deployment extends Controller with Logging {
     )
   )
 
-  def frontendArticleCode = TimedAction {
-    AuthAction { request =>
-      val parameters = DeployParameterForm("frontend::article","","CODE","",Nil)
-      Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
-    }
+  def frontendArticleCode = AuthAction { request =>
+    val parameters = DeployParameterForm("frontend::article","","CODE","",Nil)
+    Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
   }
 
-  def deploy = TimedAction {
-    AuthAction { implicit request =>
-      Ok(views.html.deploy.form(request, deployForm))
-    }
+  def deploy = AuthAction { implicit request =>
+    Ok(views.html.deploy.form(request, deployForm))
   }
 
-  def processForm = TimedAction {
-    AuthAction { implicit request =>
-      deployForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.deploy.form(request,errors)),
-        form => {
-          log.info("Host list: %s" format form.hosts)
-          val context = new DeployParameters(Deployer(request.identity.get.fullName),
-            Build(form.project,form.build.toString),
-            Stage(form.stage),
-            hostList = form.hosts)
+  def processForm = AuthAction { implicit request =>
+    deployForm.bindFromRequest().fold(
+      errors => BadRequest(views.html.deploy.form(request,errors)),
+      form => {
+        log.info("Host list: %s" format form.hosts)
+        val context = new DeployParameters(Deployer(request.identity.get.fullName),
+          Build(form.project,form.build.toString),
+          Stage(form.stage),
+          hostList = form.hosts)
 
-          form.action match {
-            case "preview" =>
-              val uuid = DeployController.preview(context)
-              Redirect(routes.Deployment.previewLog(uuid.toString))
-            case "deploy" =>
-              val uuid = DeployController.deploy(context)
-              Redirect(routes.Deployment.deployLog(uuid.toString))
-            case _ => throw new RuntimeException("Unknown action")
-          }
+        form.action match {
+          case "preview" =>
+            val uuid = DeployController.preview(context)
+            Redirect(routes.Deployment.previewLog(uuid.toString))
+          case "deploy" =>
+            val uuid = DeployController.deploy(context)
+            Redirect(routes.Deployment.deployLog(uuid.toString))
+          case _ => throw new RuntimeException("Unknown action")
         }
-      )
-    }
-  }
-
-  def viewUUID(uuid: String) = TimedAction {
-    AuthAction { implicit request =>
-      val record = DeployController.get(UUID.fromString(uuid))
-      record.taskType match {
-        case Task.Deploy => Redirect(routes.Deployment.deployLog(uuid))
-        case Task.Preview => Redirect(routes.Deployment.previewLog(uuid))
       }
+    )
+  }
+
+  def viewUUID(uuid: String) = AuthAction { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid))
+    record.taskType match {
+      case Task.Deploy => Redirect(routes.Deployment.deployLog(uuid))
+      case Task.Preview => Redirect(routes.Deployment.previewLog(uuid))
     }
   }
 
-  def previewLog(uuid: String, verbose: Boolean) = TimedAction {
-    AuthAction { implicit request =>
-      val record = DeployController.get(UUID.fromString(uuid))
-      Ok(views.html.deploy.preview(request,record,verbose))
-    }
+  def previewLog(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid))
+    Ok(views.html.deploy.preview(request,record,verbose))
   }
 
-  def previewContent(uuid: String) = TimedAction {
-    AuthAction { implicit request =>
-      val record = DeployController.get(UUID.fromString(uuid))
-      Ok(views.html.deploy.previewContent(request,record))
-    }
+  def previewContent(uuid: String) = AuthAction { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid))
+    Ok(views.html.deploy.previewContent(request,record))
   }
 
-  def deployLog(uuid: String, verbose:Boolean) = TimedAction {
-    AuthAction { implicit request =>
-      val record = DeployController.get(UUID.fromString(uuid))
-
-      Ok(views.html.deploy.log(request, record, verbose))
-    }
+  def deployLog(uuid: String, verbose:Boolean) = AuthAction { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid))
+    Ok(views.html.deploy.log(request, record, verbose))
   }
 
-  def deployLogContent(uuid: String) = TimedAction {
-    AuthAction { implicit request =>
-      val record = DeployController.get(UUID.fromString(uuid))
-
-      Ok(views.html.deploy.logContent(request, record))
-    }
+  def deployLogContent(uuid: String) = AuthAction { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid))
+    Ok(views.html.deploy.logContent(request, record))
   }
 
-  def history(count:Int) = TimedAction {
-    AuthAction { implicit request =>
-      val records = DeployController.getDeploys(count).reverse
-
-      Ok(views.html.deploy.history(request, records))
-    }
+  def history(count:Int) = AuthAction { implicit request =>
+    val records = DeployController.getDeploys(count).reverse
+    Ok(views.html.deploy.history(request, records))
   }
 
   def autoCompleteProject(term: String) = AuthAction {

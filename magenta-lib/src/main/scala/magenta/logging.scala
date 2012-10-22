@@ -2,6 +2,7 @@ package magenta
 
 import java.util.{UUID, Date}
 import magenta.tasks.Task
+import metrics.MagentaMetrics
 import util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
@@ -47,7 +48,9 @@ object MessageBroker {
 
   def send(message: Message) {
     val stack = MessageStack(message :: messageStack.value)
-    listeners foreach(_.message(uuidContext.value, stack))
+    MagentaMetrics.MessageBrokerMessages.measure {
+      listeners foreach(_.message(uuidContext.value, stack))
+    }
   }
 
   def sendContext[T](message: Message)(block: => T): T = {

@@ -1,4 +1,5 @@
 import collection.mutable
+import com.gu.management.play.{StatusCounters, RequestTimer}
 import controllers.Logging
 import datastore.MongoDatastore
 import lifecycle.Lifecycle
@@ -11,8 +12,17 @@ import scala.collection.JavaConversions._
 import controllers.DeployController
 import teamcity.ContinuousDeployment
 import utils.ScheduledAgent
+import conf.{DeployMetrics, RequestMetrics}
 
-class Global extends GlobalSettings with Logging {
+class Global extends GlobalSettings with Logging with RequestTimer with StatusCounters {
+
+  import RequestMetrics._
+  override val requestTimer = RequestTimingMetric
+  override val okCounter = Request200s
+  override val errorCounter = Request50xs
+  override val notFoundCounter = Request404s
+  override val redirectCounter = Request30xs
+
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
   override def onStart(app: Application) {
@@ -23,7 +33,8 @@ class Global extends GlobalSettings with Logging {
       MessageQueue,
       MongoDatastore,
       ScheduledAgent,
-      ContinuousDeployment
+      ContinuousDeployment,
+      DeployMetrics
     )
 
     log.info("Calling init() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
