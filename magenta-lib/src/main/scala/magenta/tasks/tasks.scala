@@ -173,7 +173,6 @@ case class Puppet(
     "/usr/bin/puppet",
     "apply",
     "--detailed-exitcodes",
-    "--debug",
     "--modulepath=" + modulePath,
     "--fileserverconfig=" + fileserverConfiguration,
     "--templatedir=" + templateDirectory,
@@ -184,7 +183,7 @@ case class Puppet(
 }
 
 case class Unzip(host: Host, path: String, to: String) extends RemoteShellTask {
-  def commandLine = List("/usr/bin/unzip", "-d", to, path)
+  def commandLine = List("/usr/bin/unzip", "-qd", to, path)
 }
 
 case class Mkdir(host: Host, path: String) extends RemoteShellTask {
