@@ -34,7 +34,7 @@ POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.
 # authentication endpoints
 GET     /profile                    controllers.Login.profile
 GET     /login                      controllers.Login.login
-POST    /login                      controllers.Login.loginPost
+GET     /loginAction                controllers.Login.loginAction
 GET     /openIDCallback             controllers.Login.openIDCallback
 GET     /logout                     controllers.Login.logout
 

@@ -58,7 +58,7 @@ object AuthAction {
     Action(p) { implicit request =>
       Identity(request).map { identity =>
         f(new AuthenticatedRequest(Some(identity), request))
-      }.getOrElse(Redirect(routes.Login.login).withSession {
+      }.getOrElse(Redirect(routes.Login.loginAction).withSession {
         request.session + ("loginFromUrl", request.uri)
       })
     }
@@ -87,7 +87,7 @@ object Login extends Controller with Logging {
     Ok(views.html.auth.login(request, error))
   }
 
-  def loginPost = Action { implicit request =>
+  def loginAction = Action { implicit request =>
     AsyncResult(
       OpenID
         .redirectURL(googleOpenIdUrl, routes.Login.openIDCallback.absoluteURL(), openIdAttributes)

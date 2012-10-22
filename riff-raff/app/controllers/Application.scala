@@ -22,7 +22,7 @@ object Menu {
     MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment())
   )
 
-  lazy val loginMenuItem = MenuItem("Login", routes.Login.login, false)
+  lazy val loginMenuItem = MenuItem("Login", routes.Login.loginAction, false)
 
   def items(request: AuthenticatedRequest[AnyContent]) = {
     val loggedIn = request.identity.isDefined
