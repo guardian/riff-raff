@@ -35,6 +35,7 @@ object DataStore extends DataStore with Logging {
   }
 
   def createDeploy(record:DeployRecord) {
+    log.debug("Creating record for %s" format record)
     DatastoreRequest.measure {
       logAndSquashExceptions[Unit]() {
         datastore.foreach(_.createDeploy(record))
@@ -43,6 +44,7 @@ object DataStore extends DataStore with Logging {
   }
 
   def updateDeploy(uuid: UUID, stack: MessageStack) {
+    log.debug("Updating record with UUID %s with stack %s" format (uuid,stack))
     DatastoreRequest.measure {
       logAndSquashExceptions[Unit]() {
         datastore.foreach(_.updateDeploy(uuid,stack))
@@ -51,12 +53,14 @@ object DataStore extends DataStore with Logging {
   }
 
   def getDeploy(uuid: UUID): Option[DeployRecord] = logAndSquashExceptions[Option[DeployRecord]](None) {
+    log.debug("Requesting record with UUID %s" format uuid)
     DatastoreRequest.measure {
       datastore.flatMap(_.getDeploy(uuid))
     }
   }
 
   def getDeploys(limit: Int): Iterable[DeployRecord] = logAndSquashExceptions[Iterable[DeployRecord]](Nil) {
+    log.debug("Requesting last %d deploys" format limit)
     DatastoreRequest.measure {
       datastore.map(_.getDeploys(limit)).getOrElse(Nil)
     }
