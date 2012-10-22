@@ -1,6 +1,7 @@
 package magenta
 
 import org.joda.time.DateTime
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
 object RunState extends Enumeration {
   type State = Value
@@ -27,7 +28,9 @@ object MessageState {
 }
 
 trait MessageState {
+  val timeOfDayFormatter=DateTimeFormat.mediumTime()
   def time:DateTime
+  def timeOfDay() = timeOfDayFormatter.print(time)
   def message:Message
   def startContext:StartContext
   def finished:Option[Message]
