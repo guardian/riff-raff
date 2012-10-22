@@ -10,10 +10,12 @@ span.message-verbose {
 }
 <h2>Deploying @record.buildName build @record.buildId in @record.stage</h2>
 <hr/>
-<div class="content" data-ajax-refresh="@routes.Deployment.deployLogContent(record.uuid.toString)">
+<div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
 @deploy.logContent(request, record)
 </div>
+@if(record.report.isRunning){
 <script>
-  $(function() { ajaxRefresh.enable(); });
+    $(function() { ajaxRefresh.enable(); });
 </script>
+}
 }

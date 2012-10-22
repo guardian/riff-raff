@@ -128,42 +128,30 @@ object Deployment extends Controller with Logging {
         form.action match {
           case "preview" =>
             val uuid = DeployController.preview(context)
-            Redirect(routes.Deployment.previewLog(uuid.toString))
+            Redirect(routes.Deployment.viewUUID(uuid.toString))
           case "deploy" =>
             val uuid = DeployController.deploy(context)
-            Redirect(routes.Deployment.deployLog(uuid.toString))
+            Redirect(routes.Deployment.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }
       }
     )
   }
 
-  def viewUUID(uuid: String) = AuthAction { implicit request =>
+  def viewUUID(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
     record.taskType match {
-      case Task.Deploy => Redirect(routes.Deployment.deployLog(uuid))
-      case Task.Preview => Redirect(routes.Deployment.previewLog(uuid))
+      case Task.Deploy => Ok(views.html.deploy.log(request, record, verbose))
+      case Task.Preview => Ok(views.html.deploy.preview(request,record,verbose))
     }
   }
 
-  def previewLog(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
+  def updatesUUID(uuid: String) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.preview(request,record,verbose))
-  }
-
-  def previewContent(uuid: String) = AuthAction { implicit request =>
-    val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.previewContent(request,record))
-  }
-
-  def deployLog(uuid: String, verbose:Boolean) = AuthAction { implicit request =>
-    val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.log(request, record, verbose))
-  }
-
-  def deployLogContent(uuid: String) = AuthAction { implicit request =>
-    val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.logContent(request, record))
+    record.taskType match {
+      case Task.Deploy => Ok(views.html.deploy.logContent(request, record))
+      case Task.Preview => Ok(views.html.deploy.previewContent(request,record))
+    }
   }
 
   def history(count:Int) = AuthAction { implicit request =>

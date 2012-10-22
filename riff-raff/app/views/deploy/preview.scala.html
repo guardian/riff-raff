@@ -10,10 +10,13 @@
 }
 <h2>Preview of deploy for @record.buildName build @record.buildId in @record.stage</h2>
 <hr/>
-<div class="content" data-ajax-refresh="@routes.Deployment.previewContent(record.uuid.toString)">
+<div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
     @deploy.previewContent(request, record)
 </div>
+@if(record.report.isRunning){
 <script>
     $(function() { ajaxRefresh.enable(); });
 </script>
+}
+
 }

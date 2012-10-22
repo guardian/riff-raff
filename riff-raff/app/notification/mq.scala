@@ -153,7 +153,7 @@ object AlertaEvent {
       "n/a",
       "deployAlert",
       UUID.randomUUID().toString,
-      "%s%s" format (Configuration.urls.publicPrefix, routes.Deployment.deployLog(uuid.toString).url)
+      "%s%s" format (Configuration.urls.publicPrefix, routes.Deployment.viewUUID(uuid.toString).url)
     )
   }
 }
