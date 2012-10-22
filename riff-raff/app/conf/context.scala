@@ -52,7 +52,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object mongo {
     lazy val isConfigured = uri.isDefined
     lazy val uri = configuration.getStringProperty("mongo.uri")
-    lazy val database = configuration.getStringProperty("mongo.database","riffraff")
+    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
   }
 
   object irc {

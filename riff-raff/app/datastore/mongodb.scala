@@ -28,7 +28,7 @@ object MongoDatastore extends Lifecycle with Logging {
     if (Configuration.mongo.isConfigured) {
       val uri = MongoURI(Configuration.mongo.uri.get)
       val mongoConn = MongoConnection(uri)
-      val mongoDB = mongoConn(uri.database.getOrElse(Configuration.mongo.database))
+      val mongoDB = mongoConn(uri.database.get)
       if (mongoDB.authenticate(uri.username.get,new String(uri.password.get))) {
         Some(new MongoDatastore(mongoDB, app.classloader()))
       } else {
@@ -72,7 +72,7 @@ trait RiffRaffGraters {
 }
 
 class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataStore with RiffRaffGraters {
-  val deployCollection = database("deploys")
+  val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
 
   def createDeploy(record: DeployRecord) {
     val dbObject = recordGrater.asDBObject(record)
