@@ -30,7 +30,7 @@ object IrcClient extends LifecycleWithoutApp {
         case FailContext(Deploy(parameters), exception) =>
           sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
             (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-          sendMessage("[%s] FAILED: %s" format (parameters.deployer.name, exception.toString))
+          sendMessage("[%s] FAILED: %s %s" format (parameters.deployer.name, exception.name, exception.message))
         case FinishContext(Deploy(parameters)) =>
           sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
             (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
