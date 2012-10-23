@@ -19,6 +19,7 @@ import magenta.Deployer
 import scala.Some
 import magenta.Build
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
+import com.gu.management.Metric
 
 object MongoDatastore extends Lifecycle with Logging {
 
@@ -74,6 +75,10 @@ trait RiffRaffGraters {
 class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataStore with RiffRaffGraters {
   val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
 
+  private def stats = deployCollection.stats
+  def dataSize = stats.getLong("size", 0L)
+  def storageSize = stats.getLong("storageSize", 0L)
+
   def createDeploy(record: DeployRecord) {
     val dbObject = recordGrater.asDBObject(record)
     deployCollection insert dbObject
@@ -91,4 +96,5 @@ class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataSto
     val deploys = deployCollection.find().sort(MongoDBObject("time" -> -1)).limit(limit)
     deploys.toIterable.map(recordGrater.asObject(_))
   }
+
 }

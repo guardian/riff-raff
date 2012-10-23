@@ -5,8 +5,12 @@ import deployment.DeployRecord
 import magenta.MessageStack
 import controllers.Logging
 import conf.RequestMetrics.DatastoreRequest
+import com.gu.management.Metric
 
 trait DataStore {
+  def dataSize:Long
+  def storageSize:Long
+
   def getDeploys(limit: Int): Iterable[DeployRecord]
 
   def createDeploy(record:DeployRecord)
@@ -65,6 +69,9 @@ object DataStore extends DataStore with Logging {
       datastore.map(_.getDeploys(limit)).getOrElse(Nil)
     }
   }
+
+  def dataSize = DatastoreRequest.measure { datastore.map(_.dataSize).getOrElse(0) }
+  def storageSize = DatastoreRequest.measure { datastore.map(_.storageSize).getOrElse(0) }
 }
 
 

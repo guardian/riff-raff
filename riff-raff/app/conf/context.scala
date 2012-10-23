@@ -18,6 +18,7 @@ import scala.Some
 import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
+import datastore.DataStore
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -179,7 +180,11 @@ object MessageMetrics {
   )
 
   val all = Seq(IRCMessages,MQMessages)
+}
 
+object DatastoreMetrics {
+  object MongoDataSize extends GaugeMetric("mongo", "mongo_data_size", "MongoDB data size", "The size of the data held in mongo collections", () => DataStore.dataSize)
+  object MongoStorageSize extends GaugeMetric("mongo", "mongo_storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => DataStore.storageSize)
 }
 
 object LoginCounter extends CountMetric("webapp",
