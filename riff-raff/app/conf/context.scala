@@ -17,6 +17,7 @@ import magenta.Deploy
 import scala.Some
 import magenta.FailContext
 import magenta.StartContext
+import collection.mutable
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -138,18 +139,28 @@ object RequestMetrics {
 }
 
 object DeployMetrics extends LifecycleWithoutApp {
+  val runningDeploys = mutable.Buffer[UUID]()
+
   object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
   object DeployComplete extends CountMetric("riffraff", "complete_deploy", "Complete deploy", "Number of deploys that completed", Some(DeployStart))
   object DeployFail extends CountMetric("riffraff", "fail_deploy", "Complete deploy", "Number of deploys that failed", Some(DeployStart))
 
-  val all = Seq(DeployStart, DeployComplete, DeployFail)
+  object DeployRunning extends GaugeMetric("riffraff", "running_deploys", "Running deploys", "Number of currently running deploys", () => runningDeploys.length)
+
+  val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
   val sink = new MessageSink {
     def message(uuid: UUID, stack: MessageStack) {
       stack.top match {
-        case StartContext(Deploy(parameters)) => DeployStart.recordCount(1)
-        case FailContext(Deploy(parameters), exception) => DeployFail.recordCount(1)
-        case FinishContext(Deploy(parameters)) => DeployComplete.recordCount(1)
+        case StartContext(Deploy(parameters)) =>
+          DeployStart.recordCount(1)
+          runningDeploys += uuid
+        case FailContext(Deploy(parameters), exception) =>
+          DeployFail.recordCount(1)
+          runningDeploys -= uuid
+        case FinishContext(Deploy(parameters)) =>
+          DeployComplete.recordCount(1)
+          runningDeploys -= uuid
         case _ =>
       }
     }
