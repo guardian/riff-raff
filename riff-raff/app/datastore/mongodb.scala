@@ -25,13 +25,13 @@ object MongoDatastore extends Lifecycle with Logging {
 
   val MESSAGE_STACKS = "messageStacks"
 
-  def buildDatastore(app:Application) = try {
+  def buildDatastore(app:Option[Application]) = try {
     if (Configuration.mongo.isConfigured) {
       val uri = MongoURI(Configuration.mongo.uri.get)
       val mongoConn = MongoConnection(uri)
       val mongoDB = mongoConn(uri.database.get)
       if (mongoDB.authenticate(uri.username.get,new String(uri.password.get))) {
-        Some(new MongoDatastore(mongoDB, app.classloader()))
+        Some(new MongoDatastore(mongoDB, app.map(_.classloader())))
       } else {
         log.error("Authentication to mongoDB failed")
         None
@@ -44,7 +44,7 @@ object MongoDatastore extends Lifecycle with Logging {
   }
 
   def init(app:Application) {
-    val datastore = buildDatastore(app)
+    val datastore = buildDatastore(Option(app))
     datastore.foreach(DataStore.register(_))
   }
   def shutdown(app:Application) { DataStore.unregisterAll() }
@@ -58,13 +58,13 @@ object MongoDatastore extends Lifecycle with Logging {
 
 trait RiffRaffGraters {
   RegisterJodaTimeConversionHelpers()
-  def loader:ClassLoader
+  def loader:Option[ClassLoader]
   implicit val context = {
     val context = new Context {
       val name = "global"
       override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.Always)
     }
-    context.registerClassLoader(loader)
+    loader.foreach(context.registerClassLoader(_))
     context.registerPerClassKeyOverride(classOf[DeployRecord], remapThis = "uuid", toThisInstead = "_id")
     context
   }
@@ -72,12 +72,13 @@ trait RiffRaffGraters {
   val stackGrater = grater[MessageStack]
 }
 
-class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataStore with RiffRaffGraters {
+class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with RiffRaffGraters {
   val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
 
   private def stats = deployCollection.stats
   def dataSize = stats.getLong("size", 0L)
   def storageSize = stats.getLong("storageSize", 0L)
+  def documentCount = deployCollection.count
 
   def createDeploy(record: DeployRecord) {
     val dbObject = recordGrater.asDBObject(record)
@@ -94,7 +95,23 @@ class MongoDatastore(database: MongoDB, val loader: ClassLoader) extends DataSto
 
   def getDeploys(limit: Int): Iterable[DeployRecord] = {
     val deploys = deployCollection.find().sort(MongoDBObject("time" -> -1)).limit(limit)
-    deploys.toIterable.map(recordGrater.asObject(_))
+    deploys.toIterable.map{ deployDbObject =>
+      try {
+        recordGrater.asObject(deployDbObject)
+      } catch {
+        case t:Throwable =>
+          val uuid = deployDbObject.getAs[UUID]("_id")
+          throw new RuntimeException("Failed to reconstituting deploy %s" format uuid, t)
+      }
+    }
   }
 
+  def getDeployUUIDs = {
+    val uuidObjects = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1)).sort(MongoDBObject("time" -> -1))
+    uuidObjects.toIterable.flatMap(_.getAs[UUID]("_id"))
+  }
+
+  def deleteDeployLog(uuid: UUID) {
+    deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
+  }
 }

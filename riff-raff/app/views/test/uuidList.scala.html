@@ -1,0 +1,19 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], uuidList:Iterable[String])
+@import helper.twitterBootstrap._
+
+@main("UUID list", request) {
+
+  <h2>UUID list</h2>
+
+ <p>This page is to help troubleshoot database problems when it isn't possible to use normal pages
+ for troubleshooting.  The list below is the set of UUIDs in the deploy collection - individual deploys can be deleted.</p>
+
+@helper.form(action=routes.Testing.deleteUUID) {
+  <ul>
+  @uuidList.map { uuid =>
+    <li><a href="@routes.Deployment.viewUUID(uuid)">@uuid</a> - <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Delete</button></li>
+  }
+  </ul>
+}
+
+}

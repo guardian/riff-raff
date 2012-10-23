@@ -183,8 +183,10 @@ object MessageMetrics {
 }
 
 object DatastoreMetrics {
-  object MongoDataSize extends GaugeMetric("mongo", "mongo_data_size", "MongoDB data size", "The size of the data held in mongo collections", () => DataStore.dataSize)
-  object MongoStorageSize extends GaugeMetric("mongo", "mongo_storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => DataStore.storageSize)
+  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => DataStore.dataSize)
+  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => DataStore.storageSize)
+  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => DataStore.documentCount)
+  val all = Seq(MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 
 object LoginCounter extends CountMetric("webapp",
@@ -202,7 +204,8 @@ object Metrics {
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
     RequestMetrics.all ++
-    DeployMetrics.all
+    DeployMetrics.all ++
+    DatastoreMetrics.all
 }
 
 object Switches {

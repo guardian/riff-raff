@@ -10,12 +10,16 @@ import com.gu.management.Metric
 trait DataStore {
   def dataSize:Long
   def storageSize:Long
+  def documentCount:Long
 
   def getDeploys(limit: Int): Iterable[DeployRecord]
 
   def createDeploy(record:DeployRecord)
   def updateDeploy(uuid:UUID, stack: MessageStack)
   def getDeploy(uuid:UUID):Option[DeployRecord]
+
+  def getDeployUUIDs:Iterable[UUID]
+  def deleteDeployLog(uuid:UUID)
 }
 
 object DataStore extends DataStore with Logging {
@@ -72,6 +76,14 @@ object DataStore extends DataStore with Logging {
 
   def dataSize = DatastoreRequest.measure { datastore.map(_.dataSize).getOrElse(0) }
   def storageSize = DatastoreRequest.measure { datastore.map(_.storageSize).getOrElse(0) }
+  def documentCount = DatastoreRequest.measure { datastore.map(_.documentCount).getOrElse(0) }
+
+  def getDeployUUIDs() = DatastoreRequest.measure { datastore.map(_.getDeployUUIDs).getOrElse(Nil) }
+
+  def deleteDeployLog(uuid: UUID) { DatastoreRequest.measure {
+    datastore.foreach(_.deleteDeployLog(uuid))
+  } }
+
 }
 
 

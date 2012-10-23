@@ -25,6 +25,7 @@ import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
+import datastore.DataStore
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -106,12 +107,12 @@ object Testing extends Controller with Logging {
       (TestForm.unapply)
   )
 
-  def form() =
+  def form =
     AuthAction { implicit request =>
       Ok(views.html.test.form(request, testForm))
     }
 
-  def formPost() =
+  def formPost =
     AuthAction { implicit request =>
       testForm.bindFromRequest().fold(
         errors => BadRequest(views.html.test.form(request,errors)),
@@ -121,5 +122,30 @@ object Testing extends Controller with Logging {
         }
       )
     }
+
+  def uuidList = AuthAction { implicit request =>
+    val uuidList = DataStore.getDeployUUIDs().map(_.toString)
+    Ok(views.html.test.uuidList(request,uuidList))
+  }
+
+  case class UuidDeleteForm(uuid:String)
+
+  lazy val uuidDeletionForm = Form[UuidDeleteForm](
+    mapping(
+      "uuid" -> text(36,36)
+    )(UuidDeleteForm.apply)
+      (UuidDeleteForm.unapply)
+  )
+
+  def deleteUUID = AuthAction { implicit request =>
+    uuidDeletionForm.bindFromRequest().fold(
+      errors => Redirect(routes.Testing.uuidList()),
+      form => {
+        log.info("Deleting deploy with UUID %s" format form.uuid)
+        DataStore.deleteDeployLog(UUID.fromString(form.uuid))
+        Redirect(routes.Testing.uuidList())
+      }
+    )
+  }
 
 }
