@@ -21,15 +21,15 @@ object Main extends scala.App {
         case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
         case TaskList(tasks) =>
           taskList = tasks
-          MessageBroker.infoContext("Tasks to execute: ") {
-            tasks.zipWithIndex.foreach { case (task, idx) =>
-              MessageBroker.info("%d. %s" format (idx + 1, task.fullDescription))
-              MessageBroker.verbose(task.verbose)
-            }
+          Console.out.println(indent+"Tasks to execute: ")
+          tasks.zipWithIndex.foreach { case (task, idx) =>
+            Console.out.println(indent + "  %d. %s" format (idx + 1, task.fullDescription))
+            if (Config.verbose) Console.out.println(indent + "  " + task.verbose)
           }
+          Console.out.println()
         case StartContext(Info(message)) => { Console.out.println(indent + message) }
         case FinishContext(original) => {}
-        case StartContext(TaskRun(task)) => { Console.out.println("%s[%d/%d] %s" format (indent, taskList.indexOf(task)+1, taskList.length, stack.top.text)) }
+        case StartContext(TaskRun(task)) => { Console.out.println("%sStarting task %d of %d: %s" format (indent, taskList.indexOf(task)+1, taskList.length, task.fullDescription)) }
         case _ => Console.out.println("%s%s" format (indent, stack.top.text))
       }
     }
