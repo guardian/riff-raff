@@ -64,7 +64,10 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = DataStore.getDeploys(limit)
 
   def getDeploys(limit:Int = 20): List[DeployRecord] = {
-    val combinedRecords = (getDatastoreDeploys(limit).toList ::: getControllerDeploys.toList).distinct
+    val controllerDeploys = getControllerDeploys.toList
+    val datastoreDeploys = getDatastoreDeploys(limit).toList
+    val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
+    val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
     combinedRecords.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis }.takeRight(limit)
   }
 
