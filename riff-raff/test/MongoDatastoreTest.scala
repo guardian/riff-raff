@@ -38,7 +38,7 @@ class MongoDatastoreTest extends FlatSpec with ShouldMatchers {
   }
 
   val graters = new RiffRaffGraters {
-    def loader = getClass.getClassLoader
+    def loader = Some(getClass.getClassLoader)
   }
 
   "RiffRaffGrater" should "serialise a simple DeployRecord" in {
