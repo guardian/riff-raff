@@ -13,11 +13,14 @@ import java.util.UUID
 object Main extends scala.App {
 
   val sink = new MessageSink {
+    var taskList: List[TaskDetail] = _
+
     def message(uuid: UUID, stack: MessageStack) {
       val indent = "  " * (stack.messages.size - 1)
       stack.top match {
         case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
         case TaskList(tasks) =>
+          taskList = tasks
           MessageBroker.infoContext("Tasks to execute: ") {
             tasks.zipWithIndex.foreach { case (task, idx) =>
               MessageBroker.info("%d. %s" format (idx + 1, task.fullDescription))
@@ -26,7 +29,8 @@ object Main extends scala.App {
           }
         case StartContext(Info(message)) => { Console.out.println(indent + message) }
         case FinishContext(original) => {}
-        case _ => Console.out.println(indent + stack.top.text)
+        case StartContext(TaskRun(task)) => { Console.out.println("%s[%d/%d] %s" format (indent, taskList.indexOf(task)+1, taskList.length, stack.top.text)) }
+        case _ => Console.out.println("%s%s" format (indent, stack.top.text))
       }
     }
   }
