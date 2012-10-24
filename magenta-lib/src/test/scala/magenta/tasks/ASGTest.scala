@@ -12,7 +12,7 @@ import collection.JavaConversions._
 import com.amazonaws.services.autoscaling.model.TagDescription
 
 class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
-  it should "find the matching auto-scaling group" in {
+  it should "find the matching auto-scaling group with App tagging" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
     val asg = new ASG {
       override def client(implicit keyRing: KeyRing) = asgClientMock
@@ -25,6 +25,25 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         desiredGroup,
         AutoScalingGroup(("App" -> "other"), ("Stage" -> "PROD")),
         AutoScalingGroup(("App" -> "example"), ("Stage" -> "TEST"))
+      ))
+    )
+
+    asg.withPackageAndStage("example", Stage("PROD")) should be (Some(desiredGroup))
+  }
+
+  it should "find the matching auto-scaling group with Role tagging" in {
+    val asgClientMock = mock[AmazonAutoScalingClient]
+    val asg = new ASG {
+      override def client(implicit keyRing: KeyRing) = asgClientMock
+    }
+
+    val desiredGroup = AutoScalingGroup(("Role" -> "example"), ("Stage" -> "PROD"))
+
+    when (asgClientMock.describeAutoScalingGroups) thenReturn (
+      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
+        desiredGroup,
+        AutoScalingGroup(("Role" -> "other"), ("Stage" -> "PROD")),
+        AutoScalingGroup(("Role" -> "example"), ("Stage" -> "TEST"))
       ))
     )
 

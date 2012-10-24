@@ -64,17 +64,20 @@ trait ASG extends AWS {
     ).getAutoScalingGroups.head
 
   def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing): Option[AutoScalingGroup] = {
-    def hasTags(keyValues: (String,String)*) = (asg: AutoScalingGroup) => {
-      keyValues.forall { case (key, value) =>
-        asg.getTags exists { tag =>
+    implicit def autoscalingGroup2HasTag(asg: AutoScalingGroup) = new {
+      def hasTag(key: String, value: String) = asg.getTags exists { tag =>
           tag.getKey == key && tag.getValue == value
         }
-      }
     }
 
-    client.describeAutoScalingGroups().getAutoScalingGroups.toList.filter {
-      hasTags(("Stage" -> stage.name),("App" -> packageName))
-    }.headOption
+    val groups = client.describeAutoScalingGroups().getAutoScalingGroups.toList
+    val filteredByPackageAndStage = groups filter {
+      _.hasTag("Stage", stage.name)
+    } filter { group =>
+      group.hasTag("App", packageName) || group.hasTag("Role", packageName)
+    }
+
+    filteredByPackageAndStage.headOption
   }
 }
 
