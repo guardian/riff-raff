@@ -9,6 +9,8 @@ import tasks.CommandLocator
 import sbt.IO
 import magenta.teamcity.Artifact._
 import java.util.UUID
+import org.joda.time.format.DateTimeFormat
+import org.joda.time.DateTime
 
 object Main extends scala.App {
 
@@ -29,7 +31,10 @@ object Main extends scala.App {
           Console.out.println()
         case StartContext(Info(message)) => { Console.out.println(indent + message) }
         case FinishContext(original) => {}
-        case StartContext(TaskRun(task)) => { Console.out.println("%sStarting task %d of %d: %s" format (indent, taskList.indexOf(task)+1, taskList.length, task.fullDescription)) }
+        case StartContext(TaskRun(task)) => {
+          val timestamp = DateTimeFormat.mediumTime().print(new DateTime())
+          Console.out.println("%s[%s] Starting task %d of %d: %s" format (indent, timestamp, taskList.indexOf(task)+1, taskList.length, task.fullDescription))
+        }
         case _ => Console.out.println("%s%s" format (indent, stack.top.text))
       }
     }
