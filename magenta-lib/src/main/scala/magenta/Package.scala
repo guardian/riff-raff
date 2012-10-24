@@ -23,6 +23,7 @@ case class Package(
     case "puppet" => PuppetPackageType(this)
     case "demo" => DemoPackageType(this)
     case "aws-s3" => AmazonWebServicesS3(this)
+    case UnzipToDocrootPackageType.name => UnzipToDocrootPackageType(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 
