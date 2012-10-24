@@ -178,51 +178,6 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   }
 }
 
-case class PuppetPackageType(pkg: Package) extends PackageType {
-  lazy val name = "puppet"
-
-  override def defaultData = super.defaultData ++ Seq[(String, JValue)](
-    ("user" -> "puppet"),
-    ("path" -> "/var/lib/puppet/deploy"),
-    ("link" -> "/etc/puppet/site")
-  )
-
-  lazy val artifact = pkg.stringData("artifact")
-  lazy val bucket = pkg.stringData("bucket")
-
-  lazy val user: String = pkg.stringData("user")
-  lazy val path: String = pkg.stringData("path")
-  lazy val link: String = pkg.stringData("link")
-
-  override val perHostActions: HostActionDefinition = {
-    case "applyPuppet" => host => {
-      val artifact_local = "%s/%s".format(pkg.srcDir.getPath, artifact)
-      val artifact_remote_directory = "%s/%s".format(path, System.currentTimeMillis)
-      val artifact_remote = "%s/%s".format(artifact_remote_directory, artifact)
-
-      List(
-        Mkdir(host as user, artifact_remote_directory),
-        CopyFile(host as user, artifact_local, artifact_remote),
-        Unzip(host as user, artifact_remote, artifact_remote_directory),
-        Link(host as user, artifact_remote_directory + "/puppet", link),
-        Puppet(host as user,
-          modulePath = link + "/modules",
-          fileserverConfiguration = link + "/fileserver.conf",
-          templateDirectory = link + "/templates",
-          manifest = link + "/site.pp"
-        )
-      )
-    }
-  }
-
-  override val perAppActions: AppActionDefinition = {
-    case "uploadArtifacts" => parameters =>
-      List(
-        S3Upload(parameters.stage, bucket, new File(pkg.srcDir.getPath + "/"))
-      )
-  }
-}
-
 case class DemoPackageType(pkg: Package) extends PackageType {
   val name = "demo"
 

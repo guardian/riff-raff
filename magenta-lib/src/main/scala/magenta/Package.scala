@@ -20,7 +20,6 @@ case class Package(
     case "django-webapp" => DjangoWebappPackageType(this)
     case "executable-jar-webapp" => ExecutableJarWebappPackageType(this)
     case "file" => FilePackageType(this)
-    case "puppet" => PuppetPackageType(this)
     case "demo" => DemoPackageType(this)
     case "aws-s3" => AmazonWebServicesS3(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
