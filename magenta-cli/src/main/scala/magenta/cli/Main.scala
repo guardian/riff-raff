@@ -146,13 +146,7 @@ object Main extends scala.App {
           if (Config.dryRun) {
 
             val tasks = context.tasks
-            MessageBroker.info("Tasks to execute: ")
-            tasks.zipWithIndex.foreach { case (task, idx) =>
-              MessageBroker.info("%d. %s" format (idx + 1, task.fullDescription))
-              MessageBroker.verbose(task.verbose)
-            }
-
-            MessageBroker.info("Dry run requested. Not executing.")
+            MessageBroker.info("Dry run requested. Not executing %d tasks." format tasks.size)
 
           } else {
 
