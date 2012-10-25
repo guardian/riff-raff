@@ -150,7 +150,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     actionsPerHost = MockStubPerHostAction("action_one", Set(app1)) :: Nil,
     dependsOn = Nil)
 
-  val deployinfoSingleHost = List(Host("the_host", stage=CODE.name).app(app1))
+  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 

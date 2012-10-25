@@ -34,7 +34,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val deployRecipe = parsed.recipes("htmlapp-only")
 
     val host = Host("host1").app("apache")
-    val deployinfo = host :: Nil
+    val deployinfo = DeployInfo(host :: Nil)
 
     val tasks = Resolver.resolve(project(deployRecipe), deployinfo, parameters(deployRecipe))
 
@@ -73,13 +73,13 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       StubPerHostAction("action_three", Set(app2)) :: Nil,
     dependsOn = Nil)
 
-  val deployinfoSingleHost = List(Host("the_host").app(app1))
+  val deployinfoSingleHost = DeployInfo(List(Host("the_host").app(app1)))
 
   val deployinfoTwoHosts =
-    List(Host("host_one").app(app1), Host("host_two").app(app1))
+    DeployInfo(List(Host("host_one").app(app1), Host("host_two").app(app1)))
 
   val deployInfoMultiHost =
-    List(Host("host_one").app(app1), Host("host_two").app(app2))
+    DeployInfo(List(Host("host_one").app(app1), Host("host_two").app(app2)))
 
 
   it should "generate the tasks from the actions supplied" in {
@@ -91,7 +91,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      Host("other_host").app("other_app") :: deployinfoSingleHost, parameters(baseRecipe)) should be (List(
+      DeployInfo(Host("other_host").app("other_app") :: deployinfoSingleHost.hosts), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host")
     ))
@@ -160,7 +160,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "throw an exception if no hosts found and actions require some" in {
     intercept[NoHostsFoundException] {
-      Resolver.resolve(project(baseRecipe), List(), parameters(baseRecipe))
+      Resolver.resolve(project(baseRecipe), DeployInfo(List()), parameters(baseRecipe))
     }
   }
 
@@ -169,7 +169,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
       dependsOn = Nil)
 
-    Resolver.resolve(project(nonHostRecipe), List(), parameters(nonHostRecipe))
+    Resolver.resolve(project(nonHostRecipe), DeployInfo(List()), parameters(nonHostRecipe))
   }
 
 

@@ -5,10 +5,18 @@ import tasks.Task
 
 object Resolver {
 
-  def resolve( project: Project, hosts: List[Host], parameters: DeployParameters): List[Task] = {
+  def resolve( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[Task] = {
 
     def resolveRecipe(recipeName: String): List[Task] = {
       val recipe = project.recipes(recipeName)
+
+      val hosts = deployInfo.hosts
+//      val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
+//val stageHosts = {
+//  val stageHosts = allHosts.filterByStage(parameters.stage)
+//  MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
+//  stageHosts
+//}
 
       val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolveRecipe(_) }
 

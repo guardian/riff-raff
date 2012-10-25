@@ -14,7 +14,7 @@ object DeployInfo {
   }
 }
 
-case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]]) {
+case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
   def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
@@ -121,8 +121,7 @@ case class RecipeName(name:String)
 case class Deployer(name: String)
 
 case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default"), hostList: List[String] = Nil) {
-  def toDeployContext(project: Project, hosts:HostList): DeployContext = {
-    val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
-    DeployContext(this,project,filteredHosts)
+  def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = {
+    DeployContext(this,project, deployInfo)
   }
 }
