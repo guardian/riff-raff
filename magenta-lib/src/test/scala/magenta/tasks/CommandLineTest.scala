@@ -1,6 +1,7 @@
 package magenta
 package tasks
 
+import fixtures.{StubPerAppAction, StubPerHostAction}
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import collection.mutable.ListBuffer
@@ -60,19 +61,6 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
 
   val CODE = Stage("CODE")
 
-  case class StubTask(description: String) extends Task {
-    def taskHosts = Nil
-    def execute(keyRing: KeyRing) { }
-    def verbose = "stub(%s)" format description
-  }
-
-  case class StubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
-  }
-
-  case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
-  }
 
   val app1 = App("the_role")
   val app2 = App("the_2nd_role")

@@ -16,14 +16,14 @@ object ThrowableDetail {
   }
 }
 
-case class TaskDetail(override val name: String, description:String, verbose:String, taskHosts: List[Host]) extends Task {
+case class TaskDetail(override val name: String, description:String, verbose:String, override val taskHost: Option[Host]) extends Task {
   def execute(sshCredentials:KeyRing) { throw new IllegalStateException("A TaskDetail should never end up being executed") }
 }
 object TaskDetail {
   implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
   implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
   def apply(t:Task): TaskDetail = {
-    TaskDetail(t.name, t.description, t.verbose, t.taskHosts)
+    TaskDetail(t.name, t.description, t.verbose, t.taskHost)
   }
 }
 

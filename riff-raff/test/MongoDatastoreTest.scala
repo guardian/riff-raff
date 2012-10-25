@@ -16,7 +16,7 @@ case class UnserialisableTask(unserialisableFile:File) extends Task {
   def execute(sshCredentials: KeyRing) {}
   val description = "A naughty and unserialisable task"
   val verbose = "Can't serialise me!"
-  val taskHosts = List(Host("respub01"))
+  override val taskHost = Some(Host("respub01"))
 }
 
 class MongoDatastoreTest extends FlatSpec with ShouldMatchers {

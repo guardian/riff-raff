@@ -1,5 +1,6 @@
 package magenta
 
+import fixtures.{StubTask, StubPerHostAction, StubPerAppAction}
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks.Task
@@ -16,7 +17,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.deployContext(parameters) {
       context.tasks should be(List(
         StubTask("init_action_one per app task"),
-        StubTask("action_one per host task on the_host")
+        StubTask("action_one per host task on the_host", deployinfoSingleHost.hosts.headOption)
       ))
     }
   }
@@ -105,32 +106,18 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   val CODE = Stage("CODE")
 
-  case class StubTask(description: String) extends Task {
-    def taskHosts = Nil
-    def execute(keyRing: KeyRing) { }
-    def verbose = "stub(%s)" format description
-  }
-
-  case class StubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
-  }
-
-  case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
-  }
-
-  case class MockStubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = {
+  case class MockStubPerHostAction(description: String, apps: Set[App]) extends Action {
+    def resolve(deployInfo: DeployInfo, params: DeployParameters) = {
       val task = mock[Task]
-      when(task.taskHosts).thenReturn(List(host))
+      when(task.taskHost).thenReturn(Some(deployInfo.hosts.head))
       task :: Nil
     }
   }
 
-  case class MockStubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = {
+  case class MockStubPerAppAction(description: String, apps: Set[App]) extends Action {
+    def resolve(deployInfo: DeployInfo, params: DeployParameters) = {
       val task = mock[Task]
-      when(task.taskHosts).thenReturn(Nil)
+      when(task.taskHost).thenReturn(None)
       task :: Nil
     }
   }

@@ -88,14 +88,7 @@ object HostList {
 trait Action {
   def apps: Set[App]
   def description: String
-}
-
-trait PerHostAction extends Action {
-  def resolve(host: Host): List[Task]
-}
-
-trait PerAppAction extends Action {
-  def resolve(parameters: DeployParameters): List[Task]
+  def resolve(deployInfo: DeployInfo, params: DeployParameters): List[Task]
 }
 
 case class App(name: String)

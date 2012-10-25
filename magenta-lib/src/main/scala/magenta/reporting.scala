@@ -129,7 +129,7 @@ case class ReportTree(messageState: MessageState, children: List[ReportTree] = N
     }
   }
 
-  lazy val hostNames = tasks.flatMap(_.taskHosts).map(_.name).distinct
+  lazy val hostNames = tasks.flatMap(_.taskHost).map(_.name).distinct
 
   def appendChild(newChild: MessageState): ReportTree = {
     ReportTree(messageState, children ::: List(ReportTree(newChild)))
