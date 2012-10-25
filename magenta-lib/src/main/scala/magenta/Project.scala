@@ -15,6 +15,9 @@ object DeployInfo {
 }
 
 case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
+  import HostList._
+  def hostsFor(stage: Stage) = hosts.filterByStage(stage).hosts
+
   def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
@@ -77,7 +80,7 @@ case class HostList(hosts: List[Host]) {
   def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
 }
 object HostList {
-  implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
+  implicit def listOfHostsAsHostList(hosts: List[Host]): HostList = new HostList(hosts)
   implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 

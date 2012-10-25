@@ -64,4 +64,9 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     di.firstMatchingData("aws-keys",App("microapp-cache-again"),"CODE") should be(None)
   }
 
+  it should "provide a filtered list of hosts" in {
+    val di = DeployInfoJsonReader.parse(deployInfoSample)
+
+    di.hostsFor(Stage("QA")) should be(List(Host("machost01.dc-qa.gnl",Set(App("microapp-cache")),"QA",None)))
+  }
 }
