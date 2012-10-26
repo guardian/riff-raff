@@ -11,21 +11,14 @@ object Resolver {
     def resolveRecipe(recipeName: String): List[Task] = {
       val recipe = project.recipes(recipeName)
 
-//      val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
-//val stageHosts = {
-//  val stageHosts = allHosts.filterByStage(parameters.stage)
-//  MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
-//  stageHosts
-//}
-
       val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolveRecipe(_) }
 
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { resolveTasks(_, parameters, deployInfo) }
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { _.resolve(deployInfo, parameters) }
 
       val perHostTasks = {
         for {
           action <- recipe.actionsPerHost
-          tasks <- resolveTasks(action, parameters, deployInfo.forStage(parameters.stage))
+          tasks <- action.resolve(deployInfo.forParams(parameters), parameters)
         } yield {
           tasks
         }
@@ -39,17 +32,7 @@ object Resolver {
 
     resolveRecipe(parameters.recipe.name)
   }
-  
-  private def resolveTasks(action : Action, parameters: DeployParameters,  deployInfo: DeployInfo) = {
-      action.resolve(deployInfo, parameters)
 
-//    (hostOption, action) match {
-//      case (Some(host), perHostAction: PerHostAction) => perHostAction.resolve(host)
-//      case (None, perAppAction: PerAppAction) => perAppAction.resolve(parameters)
-//      case _ => sys.error("There is no sensible task for combination of %s and %s" format (hostOption, action))
-//    }
-  }
-  
   def possibleApps(project: Project, recipeName: String): String = {
     val recipe = project.recipes(recipeName)
     val appNames = for {

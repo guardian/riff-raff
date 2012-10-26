@@ -21,3 +21,11 @@ case class StubPerAppAction(description: String, apps: Set[App]) extends Action 
   def resolve(deployInfo: DeployInfo, params: DeployParameters) =
     StubTask(description + " per app task") :: Nil
 }
+
+object TestParams {
+  def apply() = DeployParameters(
+      Deployer("default deployer"),
+      Build("default project", "default version"),
+      Stage("test stage")
+  )
+}

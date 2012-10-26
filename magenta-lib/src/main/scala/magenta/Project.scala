@@ -16,7 +16,16 @@ object DeployInfo {
 
 case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
   import HostList._
-  def forStage(stage: Stage) = DeployInfo(hosts.filterByStage(stage).hosts, data)
+  def forParams(params: DeployParameters) = {
+    val hostsFilteredByStage = hosts.filterByStage(params.stage).hosts
+    val hostsForParams =
+      if (params.hostList.isEmpty)
+        hostsFilteredByStage
+      else
+        hosts.filter(params.hostList contains _.name)
+
+    DeployInfo(hostsForParams, data)
+  }
 
   def knownHostStages: List[String] = hosts.map(_.stage.name).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
