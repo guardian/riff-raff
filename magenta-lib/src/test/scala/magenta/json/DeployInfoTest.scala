@@ -26,7 +26,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     parsed.data.values.map(_.size).reduce(_+_) should be (5)
 
     val host = parsed.hosts(0)
-    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), "CODE"))
+    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), Stage("CODE")))
 //
 //     host.group should be ("a")
 //     host.hostname should be ("machost01.dc-code.gnl")
@@ -67,6 +67,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   it should "provide a filtered list of hosts" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
-    di.hostsFor(Stage("QA")) should be(List(Host("machost01.dc-qa.gnl",Set(App("microapp-cache")),"QA",None)))
+    di.forStage(Stage("QA")).hosts should be(
+      List(Host("machost01.dc-qa.gnl",Set(App("microapp-cache")), Stage("QA"),None)))
   }
 }

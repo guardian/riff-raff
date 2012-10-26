@@ -70,7 +70,7 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
     actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
     dependsOn = Nil)
 
-  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
+  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE).app(app1)))
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 

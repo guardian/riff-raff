@@ -33,7 +33,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val host = Host("host1").app("apache")
+    val host = Host("host1", stage = CODE).app("apache")
     val deployinfo = DeployInfo(host :: Nil)
 
     val tasks = Resolver.resolve(project(deployRecipe), deployinfo, parameters(deployRecipe))
@@ -59,12 +59,12 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       StubPerHostAction("action_three", Set(app2)) :: Nil,
     dependsOn = Nil)
 
-  val host = Host("the_host").app(app1)
+  val host = Host("the_host", stage = CODE).app(app1)
   val deployinfoSingleHost = DeployInfo(List(host))
 
-  val host1 = Host("host1").app(app1)
-  val host2 = Host("host2").app(app1)
-  val host2WithApp2 = Host("host2").app(app2)
+  val host1 = Host("host1", stage = CODE).app(app1)
+  val host2 = Host("host2", stage = CODE).app(app1)
+  val host2WithApp2 = Host("host2", stage = CODE).app(app2)
 
   val deployinfoTwoHosts =
     DeployInfo(List(host1, host2))
@@ -161,6 +161,17 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       dependsOn = Nil)
 
     Resolver.resolve(project(nonHostRecipe), DeployInfo(List()), parameters(nonHostRecipe))
+  }
+
+  it should "only resolve tasks on hosts in the correct stage" in {
+    Resolver.resolve(
+      project(baseRecipe),
+      DeployInfo(List(host, Host("host_in_other_stage", Set(app1), Stage("other_stage")))),
+      parameters(baseRecipe)
+    ) should be (List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on the_host", Some(host))
+    ))
   }
 
 

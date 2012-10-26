@@ -11,7 +11,6 @@ object Resolver {
     def resolveRecipe(recipeName: String): List[Task] = {
       val recipe = project.recipes(recipeName)
 
-      val hosts = deployInfo.hosts
 //      val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
 //val stageHosts = {
 //  val stageHosts = allHosts.filterByStage(parameters.stage)
@@ -24,15 +23,15 @@ object Resolver {
       val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { resolveTasks(_, parameters, deployInfo) }
 
       val perHostTasks = {
-        if (!recipe.actionsPerHost.isEmpty && hosts.isEmpty) throw new NoHostsFoundException
-
         for {
           action <- recipe.actionsPerHost
-          tasks <- resolveTasks(action, parameters, deployInfo)
+          tasks <- resolveTasks(action, parameters, deployInfo.forStage(parameters.stage))
         } yield {
           tasks
         }
       }
+      if (!recipe.actionsPerHost.isEmpty && perHostTasks.isEmpty) throw new NoHostsFoundException
+
       val sortedPerHostTasks = perHostTasks.toSeq.sortBy(t => t.taskHost.map(_.name).getOrElse(""))
 
       dependenciesFromOtherRecipes ++ tasksToRunBeforeApp ++ sortedPerHostTasks

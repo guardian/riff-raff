@@ -138,7 +138,7 @@ object Main extends scala.App {
           val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
 
           MessageBroker.verbose("Loaded: " + project)
-          val hostsInStage = Config.deployInfo.hosts.filter(_.stage == Config.stage)
+          val hostsInStage = Config.deployInfo.hosts.filter(_.stage == Stage(Config.stage))
           val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
 
           val context = DeployContext(parameters,project,Config.deployInfo)
