@@ -53,36 +53,23 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   val app1 = App("the_role")
   val app2 = App("the_2nd_role")
 
-  val basePackageType = StubPackageType(
-    perAppActions = {
-      case "init_action_one" => params => List(StubTask("init_action_one per app task"))
-    },
-    perHostActions = {
-      case "action_one" => host => List(StubTask("action_one per host task on " + host.name, Some(host)))
-    },
-    pkg = StubPackage().copy(pkgApps = Set(app1))
-  )
+  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
+  val doubleAppPackageType = stubPackageType(
+    Seq("init_action_one"), Seq("action_two"), Set(app1, app2))
+  val appTwoPackageType = stubPackageType(Seq(), Seq("action_three"), Set(app2))
 
   val baseRecipe = Recipe("one",
     actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
     actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
     dependsOn = Nil)
 
-  val multiRolePackageType = StubPackageType(
-    perAppActions = {
-      case "init_action_one" => params => List(StubTask("init_action_one per app task"))
-    },
-    perHostActions = {
-      case "action_one" => host => List(StubTask("action_one per host task on " + host.name, Some(host)))
-    },
-    pkg = StubPackage().copy(pkgApps = Set(app1))
-  )
+  val multiRolePackageType = stubPackageType(Seq("init_action_one"),Seq("action_one"), Set(app1))
 
   val multiRoleRecipe = Recipe("two",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1, app2)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) ::
-      StubPerHostAction("action_two", Set(app1, app2)) ::
-      StubPerHostAction("action_three", Set(app2)) :: Nil,
+    actionsBeforeApp = doubleAppPackageType.mkAction("init_action_one") :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one") ::
+      doubleAppPackageType.mkAction("action_two") ::
+      appTwoPackageType.mkAction("action_three") :: Nil,
     dependsOn = Nil)
 
   val host = Host("the_host", stage = CODE).app(app1)
