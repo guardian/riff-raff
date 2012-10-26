@@ -1,12 +1,18 @@
 package magenta
 
 
-import fixtures.{StubTask, StubPerHostAction, StubPerAppAction}
+import fixtures._
+import fixtures.StubPackageType
+import fixtures.StubPerAppAction
+import fixtures.StubPerHostAction
+import fixtures.StubTask
 import json._
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import tasks._
 import java.io.File
+import scala.Some
+import tasks.{Task, CopyFile}
+
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
 
@@ -47,10 +53,30 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   val app1 = App("the_role")
   val app2 = App("the_2nd_role")
 
+  val basePackageType = StubPackageType(
+    perAppActions = {
+      case "init_action_one" => params => List(StubTask("init_action_one per app task"))
+    },
+    perHostActions = {
+      case "action_one" => host => List(StubTask("action_one per host task on " + host.name, Some(host)))
+    },
+    pkg = StubPackage().copy(pkgApps = Set(app1))
+  )
+
   val baseRecipe = Recipe("one",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
+    actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
     dependsOn = Nil)
+
+  val multiRolePackageType = StubPackageType(
+    perAppActions = {
+      case "init_action_one" => params => List(StubTask("init_action_one per app task"))
+    },
+    perHostActions = {
+      case "action_one" => host => List(StubTask("action_one per host task on " + host.name, Some(host)))
+    },
+    pkg = StubPackage().copy(pkgApps = Set(app1))
+  )
 
   val multiRoleRecipe = Recipe("two",
     actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1, app2)) :: Nil,

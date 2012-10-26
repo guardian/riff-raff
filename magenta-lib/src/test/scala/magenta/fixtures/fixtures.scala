@@ -29,3 +29,13 @@ object TestParams {
       Stage("test stage")
   )
 }
+
+case class StubPackageType(override val perHostActions: PartialFunction[String, Host => List[Task]] = Map.empty,
+                           override val perAppActions: PartialFunction[String, DeployParameters => List[Task]] = Map.empty,
+                           pkg: Package=StubPackage()) extends PackageType {
+  def name = "stub-package-type"
+}
+
+object StubPackage{
+  def apply() = Package("stub project", Set(), Map(), "stub-package-type", null)
+}
