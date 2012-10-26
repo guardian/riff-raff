@@ -89,7 +89,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object sharding {
     lazy val enabled = configuration.getStringProperty("sharding.enabled", "false") == "true"
     lazy val identity = configuration.getStringProperty("sharding.identity", java.net.InetAddress.getLocalHost.getHostName)
-    lazy val nodes = configuration.getPropertyNames.filter(_.startsWith("sharding.")).map(_.split(".")(1))
+    lazy val nodes = configuration.getPropertyNames.filter(_.startsWith("sharding.")).flatMap{ property =>
+      val elements = property.split('.')
+      if (elements.size > 2) Some(elements(1)) else None
+    }
     lazy val shards = {
       nodes.map{ nodeName =>
         val regex = configuration.getStringProperty("sharding.%s.responsibility.stage.regex" format nodeName, "^$")
