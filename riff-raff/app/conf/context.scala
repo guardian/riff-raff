@@ -19,6 +19,7 @@ import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
 import datastore.DataStore
+import deployment.Shard
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -83,6 +84,20 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object teamcity {
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
+  }
+
+  object sharding {
+    lazy val enabled = configuration.getStringProperty("sharding.enabled", "false") == "true"
+    lazy val identity = configuration.getStringProperty("sharding.identity", java.net.InetAddress.getLocalHost.getHostName)
+    lazy val nodes = configuration.getPropertyNames.filter(_.startsWith("sharding.")).map(_.split(".")(1))
+    lazy val shards = {
+      nodes.map{ nodeName =>
+        val regex = configuration.getStringProperty("sharding.%s.responsibility.stage.regex" format nodeName, "^$")
+        val invertRegex = configuration.getStringProperty("sharding.%s.responsibility.stage.invertRegex" format nodeName, "false") == "true"
+        val urlPrefix = configuration.getStringProperty("sharding.%s.urlPrefix" format nodeName, nodeName)
+        Shard(nodeName, urlPrefix, regex.r, invertRegex)
+      }
+    }
   }
 
   object continuousDeployment {

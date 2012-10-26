@@ -4,6 +4,7 @@ import teamcity._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
+import deployment.Sharding._
 import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
@@ -18,6 +19,7 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import play.api.libs.json.Json
+import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
 import datastore.DataStore
 import lifecycle.LifecycleWithoutApp
@@ -48,14 +50,11 @@ object DeployController extends Logging with LifecycleWithoutApp {
     DataStore.updateDeploy(uuid, stack)
   }
 
-  def preview(params: DeployParameters): UUID = {
-    val record = DeployController.create(Task.Preview, params)
-    DeployControlActor.deploy(record)
-    record.uuid
-  }
-
-  def deploy(params: DeployParameters): UUID = {
-    val record = DeployController.create(Task.Deploy, params)
+  def preview(params: DeployParameters): UUID = run(params, Task.Preview)
+  def deploy(params: DeployParameters): UUID = run(params, Task.Deploy)
+  def run(params: DeployParameters, mode: Task.Value): UUID = {
+    Sharding.assertResponsibleFor(params)
+    val record = DeployController.create(mode, params)
     DeployControlActor.deploy(record)
     record.uuid
   }
@@ -123,19 +122,25 @@ object Deployment extends Controller with Logging {
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
         log.info("Host list: %s" format form.hosts)
-        val context = new DeployParameters(Deployer(request.identity.get.fullName),
+        val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
           hostList = form.hosts)
 
-        form.action match {
-          case "preview" =>
-            val uuid = DeployController.preview(context)
-            Redirect(routes.Deployment.viewUUID(uuid.toString))
-          case "deploy" =>
-            val uuid = DeployController.deploy(context)
-            Redirect(routes.Deployment.viewUUID(uuid.toString))
-          case _ => throw new RuntimeException("Unknown action")
+        responsibleFor(parameters) match {
+          case LocalAction() =>
+            form.action match {
+              case "preview" =>
+                val uuid = DeployController.preview(parameters)
+                Redirect(routes.Deployment.viewUUID(uuid.toString))
+              case "deploy" =>
+                val uuid = DeployController.deploy(parameters)
+                Redirect(routes.Deployment.viewUUID(uuid.toString))
+              case _ => throw new RuntimeException("Unknown action")
+            }
+          case RemoteAction(urlPrefix) =>
+            val call = routes.Deployment.deployConfirmation(generate(form))
+            Redirect(urlPrefix+call.url)
         }
       }
     )
@@ -237,6 +242,9 @@ object Deployment extends Controller with Logging {
     Ok(views.html.deploy.continuousDeployment(request, status))
   }
 
-
+  def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
+    val parametersJson = Json.parse(deployFormJson)
+    Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
+  }
 
 }
