@@ -165,27 +165,6 @@ case class ApacheStart(host: Host) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
 }
 
-case class Puppet(
-  host: Host, modulePath: String, fileserverConfiguration: String,
-  templateDirectory: String, manifest: String
-) extends RemoteShellTask {
-  lazy val command = List("sudo",
-    "/usr/bin/puppet",
-    "apply",
-    "--detailed-exitcodes",
-    "--modulepath=" + modulePath,
-    "--fileserverconfig=" + fileserverConfiguration,
-    "--templatedir=" + templateDirectory,
-    manifest
-  )
-
-  def commandLine = CommandLine(command, successCodes = List(0,2))
-}
-
-case class Unzip(host: Host, path: String, to: String) extends RemoteShellTask {
-  def commandLine = List("/usr/bin/unzip", "-qd", to, path)
-}
-
 case class Mkdir(host: Host, path: String) extends RemoteShellTask {
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
