@@ -105,7 +105,7 @@ object MessageBroker {
     send(Fail(message, exception))
     new FailException(message, e.getOrElse(null))
   }
-  def fail(message: String, e: Option[Throwable] = None) {
+  def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw failException(message, e)
   }
   def failException(message: String, e: Throwable): FailException = { failException(message,Some(e)) }

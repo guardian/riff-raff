@@ -27,7 +27,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     parsed.data.values.map(_.size).reduce(_+_) should be (5)
 
     val host = parsed.hosts(0)
-    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), Stage("CODE")))
+    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE))
 //
 //     host.group should be ("a")
 //     host.hostname should be ("machost01.dc-code.gnl")

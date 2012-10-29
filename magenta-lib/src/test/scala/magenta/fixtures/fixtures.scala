@@ -16,8 +16,10 @@ case class StubPerAppAction(description: String, apps: Set[App]) extends Action 
   def resolve(deployInfo: DeployInfo, params: DeployParameters) = throw new UnsupportedOperationException
 }
 
-case class StubPackageType(override val perHostActions: PartialFunction[String, Host => List[Task]] = Map.empty,
-                           override val perAppActions: PartialFunction[String, DeployParameters => List[Task]] = Map.empty,
+case class StubPackageType(override val perHostActions:
+                            PartialFunction[String, Host => List[Task]] = Map.empty,
+                           override val perAppActions:
+                            PartialFunction[String, (DeployInfo, DeployParameters) => List[Task]] = Map.empty,
                            pkg: Package=stubPackage()) extends PackageType {
   def name = "stub-package-type"
 }

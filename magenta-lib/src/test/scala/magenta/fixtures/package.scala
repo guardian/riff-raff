@@ -2,6 +2,7 @@ package magenta
 
 package object fixtures {
   val CODE = Stage("CODE")
+  val PROD = Stage("PROD")
 
   val app1 = App("the_role")
 
@@ -21,7 +22,7 @@ package object fixtures {
   def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String],
                       apps: Set[App]) = StubPackageType(
     perAppActions = {
-      case name if (perAppActionNames.contains(name)) => params => List(StubTask(name + " per app task"))
+      case name if (perAppActionNames.contains(name)) => (_,_) => List(StubTask(name + " per app task"))
     },
     perHostActions = {
       case name if (perHostActionNames.contains(name))=> host =>
@@ -35,4 +36,7 @@ package object fixtures {
     Build("default project", "default version"),
     Stage("test stage")
   )
+
+  def parameters(stage: Stage = PROD, version: String = "version") =
+    DeployParameters(Deployer("tester"), Build("project", version), stage)
 }
