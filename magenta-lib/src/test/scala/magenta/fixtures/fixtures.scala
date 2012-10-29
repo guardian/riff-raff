@@ -9,8 +9,6 @@ case class StubTask(description: String, override val taskHost: Option[Host] = N
 }
 
 case class StubPerHostAction(description: String, apps: Set[App]) extends Action {
-  def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
-
   def resolve(deployInfo: DeployInfo, parameters: DeployParameters) = {
     val hostsForApps = deployInfo.hosts.filter(h => (h.apps intersect apps).nonEmpty)
     hostsForApps map (host => StubTask(description + " per host task on " + host.name, Some(host)))
