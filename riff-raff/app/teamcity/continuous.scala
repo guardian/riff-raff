@@ -11,6 +11,8 @@ object ContinuousDeployment extends Logging with LifecycleWithoutApp {
 
   val system = ActorSystem("continuous")
   val buildToStageMap = Agent(continuousDeployment.buildToStageMap)(system)
+
+  log.info("Continuous deployment is %s" format (if (continuousDeployment.enabled) "enabled" else "disabled"))
   buildToStageMap().foreach{ case (project, stageList) =>
     log.info("%s configured for continuous deployment to %s" format (project, stageList.mkString(", ")))
   }

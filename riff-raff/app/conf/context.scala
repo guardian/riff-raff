@@ -19,7 +19,7 @@ import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
 import datastore.DataStore
-import deployment.Shard
+import deployment.{Sharding, GuShardingConfiguration}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -86,29 +86,23 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
-  object sharding {
-    lazy val enabled = configuration.getStringProperty("sharding.enabled", "false") == "true"
-    lazy val identity = configuration.getStringProperty("sharding.identity", java.net.InetAddress.getLocalHost.getHostName)
-    lazy val nodes = configuration.getPropertyNames.filter(_.startsWith("sharding.")).flatMap{ property =>
-      val elements = property.split('.')
-      if (elements.size > 2) Some(elements(1)) else None
-    }
-    lazy val shards = {
-      nodes.map{ nodeName =>
-        val regex = configuration.getStringProperty("sharding.%s.responsibility.stage.regex" format nodeName, "^$")
-        val invertRegex = configuration.getStringProperty("sharding.%s.responsibility.stage.invertRegex" format nodeName, "false") == "true"
-        val urlPrefix = configuration.getStringProperty("sharding.%s.urlPrefix" format nodeName, nodeName)
-        Shard(nodeName, urlPrefix, regex.r, invertRegex)
-      }
-    }
-  }
+  lazy val sharding = GuShardingConfiguration(configuration, "sharding")
 
   object continuousDeployment {
     private lazy val ProjectToStageRe = """^(.+)->(.+)$""".r
     lazy val configLine = configuration.getStringProperty("continuous.deployment", "")
     lazy val buildToStageMap = configLine.split("\\s").flatMap{ entry =>
         entry match {
-          case ProjectToStageRe(project, stageList) =>  Some(project -> stageList.split(",").toList)
+          case ProjectToStageRe(project, stageList) =>
+            val stages = stageList.split(",").toList
+            val filteredStages = stages.filter { stage =>
+              val params = DeployParameters(Deployer("n/a"), Build(project,"n/a"), Stage(stage))
+              Sharding.responsibleFor(params) == Sharding.Local()
+            }
+            if (filteredStages.isEmpty)
+              None
+            else
+              Some(project -> filteredStages)
           case _ => None
         }
     }.toMap

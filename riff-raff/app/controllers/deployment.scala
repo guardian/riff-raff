@@ -128,7 +128,7 @@ object Deployment extends Controller with Logging {
           hostList = form.hosts)
 
         responsibleFor(parameters) match {
-          case LocalAction() =>
+          case Local() =>
             form.action match {
               case "preview" =>
                 val uuid = DeployController.preview(parameters)
@@ -138,7 +138,7 @@ object Deployment extends Controller with Logging {
                 Redirect(routes.Deployment.viewUUID(uuid.toString))
               case _ => throw new RuntimeException("Unknown action")
             }
-          case RemoteAction(urlPrefix) =>
+          case Remote(urlPrefix) =>
             val call = routes.Deployment.deployConfirmation(generate(form))
             Redirect(urlPrefix+call.url)
         }
