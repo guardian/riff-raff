@@ -1,7 +1,7 @@
 package magenta
 package tasks
 
-import fixtures.{StubPerAppAction, StubPerHostAction}
+import fixtures._
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import collection.mutable.ListBuffer
@@ -59,23 +59,9 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
     } should produce [FailException]
   }
 
-  val CODE = Stage("CODE")
-
-
-  val app1 = App("the_role")
   val app2 = App("the_2nd_role")
-
-  val baseRecipe = Recipe("one",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
-    dependsOn = Nil)
-
-  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE).app(app1)))
-
-  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), CODE, RecipeName(baseRecipe.name))
   val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
-
 
 }

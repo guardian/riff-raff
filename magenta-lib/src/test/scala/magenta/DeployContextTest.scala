@@ -1,6 +1,7 @@
 package magenta
 
-import fixtures.{StubTask, StubPerHostAction, StubPerAppAction}
+import fixtures._
+import fixtures.StubTask
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks.Task
@@ -8,6 +9,8 @@ import collection.mutable.Buffer
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
 import java.util.UUID
+import scala.Some
+
 
 class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
@@ -127,9 +130,11 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   val oneRecipeName = RecipeName("one")
 
+  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
+
   val baseRecipe = Recipe("one",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
+    actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
     dependsOn = Nil)
 
   val baseMockRecipe = Recipe("one",

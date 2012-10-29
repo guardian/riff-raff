@@ -68,7 +68,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   it should "provide a list of hosts filtered by stage" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
-    di.forParams(TestParams().copy(stage = Stage("CODE"))).hosts should be(
+    di.forParams(testParams().copy(stage = Stage("CODE"))).hosts should be(
       List(
         Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE,None),
         Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE,None)
@@ -79,9 +79,8 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   it should "provide a list of hosts with only those explicitly specified" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
-    di.forParams(TestParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
+    di.forParams(testParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
       List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE,None)))
   }
 
-  val CODE = Stage("CODE")
 }
