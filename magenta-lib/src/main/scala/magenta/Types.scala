@@ -67,10 +67,10 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
   override val perAppActions: AppActionDefinition = {
     case "deploy" => parameters => {
       List(
+        TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
-        WaitTillUpAndInELB(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
-        CullInstancesWithoutVersion(
-          pkg.name, parameters.stage, parameters.build, pkg.intData("port").toInt, pkg.stringData("manifestPath"))
+        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        CullInstancesWithTerminationTag(pkg.name, parameters.stage)
       )
     }
     case "uploadArtifacts" => parameters =>

@@ -25,9 +25,10 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
     val autoscaling = new AutoScalingWithELB(p)
 
     autoscaling.perAppActions("deploy")(parameters()) should be (List(
+      TagCurrentInstancesWithTerminationTag("app", Stage("PROD")),
       DoubleSize("app", Stage("PROD")),
-      WaitTillUpAndInELB("app", PROD, 5 * 60 * 1000),
-      CullInstancesWithoutVersion("app", PROD, Build("project", "version"), 8080, "management/manifest")
+      WaitForStabilization("app", PROD, 5 * 60 * 1000),
+      CullInstancesWithTerminationTag("app", PROD)
     ))
   }
 
@@ -42,9 +43,10 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
     val autoscaling = new AutoScalingWithELB(p)
 
     autoscaling.perAppActions("deploy")(parameters()) should be (List(
+      TagCurrentInstancesWithTerminationTag("app", Stage("PROD")),
       DoubleSize("app", PROD),
-      WaitTillUpAndInELB("app", PROD, 3 * 60 * 1000),
-      CullInstancesWithoutVersion("app", PROD, Build("project", "version"), 8080, "management/manifest")
+      WaitForStabilization("app", PROD, 3 * 60 * 1000),
+      CullInstancesWithTerminationTag("app", PROD)
     ))
   }
 

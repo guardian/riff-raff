@@ -1,20 +1,18 @@
 package magenta.tasks
 
 import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.s3.AmazonS3Client
-import java.io.File
-import com.amazonaws.services.s3.model.{PutObjectRequest, ObjectMetadata}
-import com.amazonaws.services.s3.model.CannedAccessControlList._
-import magenta.{Stage, KeyRing}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import com.amazonaws.services.autoscaling.model._
-
-import collection.JavaConversions._
-import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
-import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, DescribeLoadBalancersRequest, DeregisterInstancesFromLoadBalancerRequest, LoadBalancerDescription, DescribeInstanceHealthRequest}
-import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance}
+import com.amazonaws.services.autoscaling.model.{ Instance => ASGInstance, _ }
 import com.amazonaws.services.ec2.AmazonEC2Client
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest
+import com.amazonaws.services.ec2.model.{ Tag => EC2Tag, _ }
+import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
+import com.amazonaws.services.elasticloadbalancing.model.{ Instance => ELBInstance, _ }
+import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
+import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
+import java.io.File
+import magenta.{ Stage, KeyRing }
+import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
@@ -42,15 +40,15 @@ trait ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def allInELB(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
+  def isStablized(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
     val elbHealth = ELB.instanceHealth(elbName(asg))
     elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
   }
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.head
 
-  def cull(asg: AutoScalingGroup, instance: Instance)(implicit keyRing: KeyRing) = {
-     ELB.deregister(elbName(asg), instance)
+  def cull(asg: AutoScalingGroup, instance: ASGInstance)(implicit keyRing: KeyRing) = {
+    ELB.deregister(elbName(asg), instance)
 
     client.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
@@ -91,7 +89,7 @@ trait ELB extends AWS {
   def instanceHealth(elbName: String)(implicit keyRing: KeyRing) =
     client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates
 
-  def deregister(elbName: String, instance: Instance)(implicit keyRing: KeyRing) =
+  def deregister(elbName: String, instance: ASGInstance)(implicit keyRing: KeyRing) =
     client.deregisterInstancesFromLoadBalancer(
       new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
         .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
@@ -105,11 +103,27 @@ trait EC2 extends AWS {
     client.setEndpoint("ec2.eu-west-1.amazonaws.com")
     client
   }
+
+  def setTag(instances: List[ASGInstance], key: String, value: String)(implicit keyRing: KeyRing) {
+    val request = new CreateTagsRequest().
+      withResources(instances map { _.getInstanceId }).
+      withTags(new EC2Tag(key, value))
+
+    client.createTags(request)
+  }
+  
+  def hasTag(instance: ASGInstance, key: String, value: String)(implicit keyRing: KeyRing): Boolean = {
+    describe(instance).getTags() exists { tag =>
+      tag.getKey() == key && tag.getValue() == value
+    }
+  }
+
+  def describe(instance: ASGInstance)(implicit keyRing: KeyRing) = client.describeInstances(
+    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
 }
 
 object EC2 extends EC2 {
-  def apply(instance: Instance)(implicit keyRing: KeyRing) = client.describeInstances(
-    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
+  def apply(instance: ASGInstance)(implicit keyRing: KeyRing) = describe(instance)
 }
 
 trait AWS {
