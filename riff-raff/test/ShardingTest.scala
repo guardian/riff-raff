@@ -3,13 +3,12 @@ package test
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import com.gu.conf.Configuration
-import deployment.{Shard, Sharding, GuShardingConfiguration}
+import deployment.{Shard, Sharding, GuShardingConfiguration, ShardingAction}
 import magenta.{Stage, Deployer, Build, DeployParameters}
 
-class ShardingTest extends FlatSpec with ShouldMatchers {
-
-  def testShardConfiguration(properties: Map[String,String], prefix: Option[String] = None): GuShardingConfiguration = {
-    lazy val prefixedProperties = prefix.map(prefix => properties.map(e => ("%s.%s" format (prefix, e._1), e._2))).getOrElse(properties)
+trait ShardingTestHelper {
+  def testShardConfiguration(properties: Map[String, String], prefix: Option[String] = None): GuShardingConfiguration = {
+    lazy val prefixedProperties = prefix.map(prefix => properties.map(e => ("%s.%s" format(prefix, e._1), e._2))).getOrElse(properties)
     lazy val guConfig = new Configuration {
       def getPropertyNames = prefixedProperties.keySet
       def getStringProperty(propertyName: String) = prefixedProperties.get(propertyName)
@@ -17,7 +16,9 @@ class ShardingTest extends FlatSpec with ShouldMatchers {
     }
     GuShardingConfiguration(guConfig, prefix.getOrElse("sharding"))
   }
+}
 
+class ShardingTest extends FlatSpec with ShouldMatchers with ShardingTestHelper {
   val basicConfigProperties = Map(
     "sharding.enabled" -> "true",
     "sharding.identity" -> "test1",
@@ -61,14 +62,13 @@ class ShardingTest extends FlatSpec with ShouldMatchers {
     val config = testShardConfiguration(basicConfigProperties)
     val shard = new Sharding(config)
     val action = shard.responsibleFor(DeployParameters(Deployer("test"), Build("test", "test"), Stage("PROD")))
-    action should be(Sharding.Local())
+    action should be(ShardingAction.Local())
   }
 
   it should "use remote action if not responsible for stage" in {
-    import Sharding._
     val config = testShardConfiguration(basicConfigProperties)
     val shard = new Sharding(config)
     val action = shard.responsibleFor(DeployParameters(Deployer("test"), Build("test", "test"), Stage("TEST")))
-    action should be(Remote("https://test2"))
+    action should be(ShardingAction.Remote("https://test2"))
   }
 }

@@ -1,13 +1,44 @@
 package teamcity
 
-import conf.Configuration.continuousDeployment
-import magenta.{Stage, Build => MagentaBuild, Deployer, DeployParameters}
+import magenta.{Build => MagentaBuild, Stage, Deployer, DeployParameters}
 import controllers.{Logging, DeployController}
 import akka.agent.Agent
 import akka.actor.ActorSystem
 import lifecycle.LifecycleWithoutApp
+import com.gu.conf.{Configuration => GuConfiguration}
+import deployment.{ShardingResponsibility, ShardingAction}
+
+trait ContinuousDeploymentConfig {
+  val enabled: Boolean
+  val buildToStageMap: Map[String, Set[String]]
+}
+
+case class GuContinuousDeploymentConfig(config: GuConfiguration, sharding: ShardingResponsibility) extends ContinuousDeploymentConfig {
+  lazy val enabled = config.getStringProperty("continuous.deployment.enabled", "false") == "true"
+  lazy val configLine = config.getStringProperty("continuous.deployment", "")
+
+  private lazy val ProjectToStageRe = """^(.+)->(.+)$""".r
+  lazy val buildToStageMap = configLine.split("\\|").flatMap{ entry =>
+    entry match {
+      case ProjectToStageRe(project, stageList) =>
+        val stages = stageList.split(",").toList
+        val filteredStages = stages.filter { stage =>
+          val params = DeployParameters(Deployer("n/a"), MagentaBuild(project,"n/a"), Stage(stage))
+          sharding.responsibleFor(params) == ShardingAction.Local()
+        }
+        if (filteredStages.isEmpty)
+          None
+        else
+          Some(project -> filteredStages.toSet)
+      case _ => None
+    }
+  }.toMap
+
+}
 
 object ContinuousDeployment extends Logging with LifecycleWithoutApp {
+
+  import conf.Configuration.continuousDeployment
 
   val system = ActorSystem("continuous")
   val buildToStageMap = Agent(continuousDeployment.buildToStageMap)(system)
@@ -21,12 +52,12 @@ object ContinuousDeployment extends Logging with LifecycleWithoutApp {
     buildToStageMap.send { continuousDeployment.buildToStageMap }
   }
   def disableAll() {
-    buildToStageMap.send { _.mapValues(_ => List()) }
+    buildToStageMap.send { _.mapValues(_ => Set()) }
   }
 
   def enable(projectName:String,stage:String) {
     buildToStageMap.send { old =>
-      val newStageList = (stage :: old(projectName)).distinct.sorted
+      val newStageList = (old(projectName) + stage)
       old + (projectName -> newStageList)
     }
   }
@@ -41,8 +72,8 @@ object ContinuousDeployment extends Logging with LifecycleWithoutApp {
   def status(): Map[String,List[(String,Boolean)]] = {
     val allKnown=continuousDeployment.buildToStageMap
     val allEnabled=buildToStageMap()
-    allKnown.map{ case(projectName, stageList) =>
-      projectName -> stageList.map{ stage => (stage, allEnabled(projectName).contains(stage)) }
+    allKnown.map{ case(projectName, stageSet) =>
+      projectName -> stageSet.toList.sorted.map{ stage => (stage, allEnabled(projectName).contains(stage)) }
     }.toMap
   }
 

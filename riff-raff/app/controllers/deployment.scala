@@ -4,7 +4,8 @@ import teamcity._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
-import deployment.Sharding._
+import deployment.Sharding.responsibleFor
+import deployment.ShardingAction._
 import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem

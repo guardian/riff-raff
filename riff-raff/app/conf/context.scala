@@ -1,5 +1,6 @@
 package conf
 
+import teamcity.GuContinuousDeploymentConfig
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
@@ -86,28 +87,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
-  lazy val sharding = GuShardingConfiguration(configuration, "sharding")
-
-  object continuousDeployment {
-    private lazy val ProjectToStageRe = """^(.+)->(.+)$""".r
-    lazy val configLine = configuration.getStringProperty("continuous.deployment", "")
-    lazy val buildToStageMap = configLine.split("\\s").flatMap{ entry =>
-        entry match {
-          case ProjectToStageRe(project, stageList) =>
-            val stages = stageList.split(",").toList
-            val filteredStages = stages.filter { stage =>
-              val params = DeployParameters(Deployer("n/a"), Build(project,"n/a"), Stage(stage))
-              Sharding.responsibleFor(params) == Sharding.Local()
-            }
-            if (filteredStages.isEmpty)
-              None
-            else
-              Some(project -> filteredStages)
-          case _ => None
-        }
-    }.toMap
-    lazy val enabled = configuration.getStringProperty("continuous.deployment.enabled", "false") == "true"
-  }
+  lazy val sharding = GuShardingConfiguration(configuration, prefix = "sharding")
+  lazy val continuousDeployment = GuContinuousDeploymentConfig(configuration, Sharding)
 
   override def toString(): String = configuration.toString
 }

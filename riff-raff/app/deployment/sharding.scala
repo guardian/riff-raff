@@ -2,7 +2,6 @@ package deployment
 
 import magenta.{Stage, DeployParameters}
 import conf.Configuration
-import util.matching.Regex
 import controllers.Logging
 import com.gu.conf.{Configuration => GuConfiguration}
 
@@ -61,8 +60,15 @@ case class GuShardingConfiguration(configuration: GuConfiguration, prefix: Strin
     }
 }
 
-class Sharding(conf: ShardingConfiguration) extends Logging {
-  import Sharding._
+object ShardingAction {
+  trait Action
+  case class Local() extends Action
+  case class Remote(urlPrefix: String) extends Action
+}
+
+trait ShardingResponsibility extends Logging {
+  import ShardingAction._
+  def conf: ShardingConfiguration
 
   def assertResponsibleFor(params: DeployParameters) {
     if (!conf.identity.matchStage(params.stage))
@@ -84,9 +90,7 @@ class Sharding(conf: ShardingConfiguration) extends Logging {
   }
 }
 
-object Sharding extends Sharding(Configuration.sharding) {
-  trait Action
-  case class Local() extends Action
-  case class Remote(urlPrefix: String) extends Action
-}
+class Sharding(val conf: ShardingConfiguration) extends ShardingResponsibility
+
+object Sharding extends Sharding(Configuration.sharding)
 
