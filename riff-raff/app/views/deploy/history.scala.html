@@ -1,9 +1,12 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], records: List[deployment.DeployRecord])
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], count: Int)
 
 @main("Deployment history", request) {
 <h2>Recent deploys</h2>
 <hr/>
-<div class="content">
-      @snippets.recordTable(records)
+<div class="content" data-ajax-refresh="@routes.Deployment.historyContent(count)">
+    @historyContent(request, count)
 </div>
+<script>
+    $(function() { ajaxRefresh.enable(60*1000); });
+</script>
 }

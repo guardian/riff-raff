@@ -1,0 +1,3 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], count: Int)
+
+@snippets.recordTable(DeployController.getDeploys(count).reverse)

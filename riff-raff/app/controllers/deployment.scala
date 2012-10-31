@@ -165,8 +165,12 @@ object Deployment extends Controller with Logging {
   }
 
   def history(count:Int) = AuthAction { implicit request =>
+    Ok(views.html.deploy.history(request, count))
+  }
+
+  def historyContent(count:Int) = AuthAction { implicit request =>
     val records = DeployController.getDeploys(count).reverse
-    Ok(views.html.deploy.history(request, records))
+    Ok(views.html.deploy.historyContent(request, count))
   }
 
   def autoCompleteProject(term: String) = AuthAction {
