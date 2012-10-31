@@ -1,5 +1,7 @@
 package magenta
 
+import fixtures._
+import fixtures.StubTask
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import tasks.Task
@@ -7,6 +9,8 @@ import collection.mutable.Buffer
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
 import java.util.UUID
+import scala.Some
+
 
 class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
@@ -16,7 +20,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.deployContext(parameters) {
       context.tasks should be(List(
         StubTask("init_action_one per app task"),
-        StubTask("action_one per host task on the_host")
+        StubTask("action_one per host task on the_host", deployinfoSingleHost.hosts.headOption)
       ))
     }
   }
@@ -105,32 +109,18 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   val CODE = Stage("CODE")
 
-  case class StubTask(description: String) extends Task {
-    def taskHosts = Nil
-    def execute(keyRing: KeyRing) { }
-    def verbose = "stub(%s)" format description
-  }
-
-  case class StubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
-  }
-
-  case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
-  }
-
-  case class MockStubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = {
+  case class MockStubPerHostAction(description: String, apps: Set[App]) extends Action {
+    def resolve(deployInfo: DeployInfo, params: DeployParameters) = {
       val task = mock[Task]
-      when(task.taskHosts).thenReturn(List(host))
+      when(task.taskHost).thenReturn(Some(deployInfo.hosts.head))
       task :: Nil
     }
   }
 
-  case class MockStubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = {
+  case class MockStubPerAppAction(description: String, apps: Set[App]) extends Action {
+    def resolve(deployInfo: DeployInfo, params: DeployParameters) = {
       val task = mock[Task]
-      when(task.taskHosts).thenReturn(Nil)
+      when(task.taskHost).thenReturn(None)
       task :: Nil
     }
   }
@@ -140,17 +130,17 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   val oneRecipeName = RecipeName("one")
 
+  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
+
   val baseRecipe = Recipe("one",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
+    actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
     dependsOn = Nil)
 
   val baseMockRecipe = Recipe("one",
     actionsBeforeApp = MockStubPerAppAction("init_action_one", Set(app1)) :: Nil,
     actionsPerHost = MockStubPerHostAction("action_one", Set(app1)) :: Nil,
     dependsOn = Nil)
-
-  val deployinfoSingleHost = List(Host("the_host", stage=CODE.name).app(app1))
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 

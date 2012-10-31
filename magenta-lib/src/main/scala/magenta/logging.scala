@@ -16,14 +16,14 @@ object ThrowableDetail {
   }
 }
 
-case class TaskDetail(override val name: String, description:String, verbose:String, taskHosts: List[Host]) extends Task {
-  def execute(sshCredentials:KeyRing) { throw new IllegalStateException("A TaskDetail should never end up being executed") }
+case class TaskDetail(val name: String, description:String, verbose:String, val taskHosts: List[Host]) {
+  def fullDescription = name + " " + description
 }
 object TaskDetail {
   implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
   implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
   def apply(t:Task): TaskDetail = {
-    TaskDetail(t.name, t.description, t.verbose, t.taskHosts)
+    TaskDetail(t.name, t.description, t.verbose, t.taskHost.toList)
   }
 }
 
@@ -105,7 +105,7 @@ object MessageBroker {
     send(Fail(message, exception))
     new FailException(message, e.getOrElse(null))
   }
-  def fail(message: String, e: Option[Throwable] = None) {
+  def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw failException(message, e)
   }
   def failException(message: String, e: Throwable): FailException = { failException(message,Some(e)) }

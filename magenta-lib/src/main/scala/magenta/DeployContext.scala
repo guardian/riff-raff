@@ -3,23 +3,18 @@ package magenta
 import tasks.Task
 
 object DeployContext {
-  def apply(parameters: DeployParameters, project: Project, allHosts: HostList): DeployContext = {
-    val stageHosts = {
-      val stageHosts = allHosts.filterByStage(parameters.stage)
-      MessageBroker.verbose("All possible hosts in stage:\n" + stageHosts.dump)
-      stageHosts
-    }
+  def apply(parameters: DeployParameters, project: Project, deployInfo: DeployInfo): DeployContext = {
     val tasks = {
       MessageBroker.info("Resolving tasks...")
-      val taskList = Resolver.resolve(project, stageHosts, parameters)
+      val taskList = Resolver.resolve(project, deployInfo, parameters)
       MessageBroker.taskList(taskList)
       taskList
     }
-    DeployContext(parameters, project, stageHosts, tasks)
+    DeployContext(parameters, project, tasks)
   }
 }
 
-case class DeployContext(parameters: DeployParameters, project: Project, stageHosts: HostList, tasks: List[Task]) {
+case class DeployContext(parameters: DeployParameters, project: Project, tasks: List[Task]) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id

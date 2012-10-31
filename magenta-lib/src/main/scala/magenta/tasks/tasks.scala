@@ -17,7 +17,7 @@ object CommandLocator {
 }
 
 case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
-  val taskHosts = List(host)
+  override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
   def commandLine = List("rsync", "-rv", source, "%s:%s" format(host.connectStr, dest))
@@ -35,8 +35,6 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
 }
 
 case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader: Option[String] = None) extends Task with S3 {
-  val taskHosts = Nil
-
   private val base = file.getParent + "/"
 
   private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
@@ -73,7 +71,7 @@ case class UnblockFirewall(host: Host) extends RemoteShellTask {
 }
 
 case class WaitForPort(host: Host, port: String, duration: Long) extends Task with RepeatedPollingCheck {
-  def taskHosts = List(host)
+  override def taskHost = Some(host)
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
@@ -90,7 +88,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
 }
 
 case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task with RepeatedPollingCheck {
-  def taskHosts = List(host)
+  override def taskHost = Some(host)
   def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
@@ -138,7 +136,7 @@ trait RepeatedPollingCheck {
 
 
 case class SayHello(host: Host) extends Task {
-  def taskHosts = List(host)
+  override def taskHost = Some(host)
   def execute(keyRing: KeyRing) {
     MessageBroker.info("Hello to " + host.name + "!")
   }
@@ -148,7 +146,7 @@ case class SayHello(host: Host) extends Task {
 }
 
 case class EchoHello(host: Host) extends ShellTask {
-  def taskHosts = List(host)
+  override def taskHost = Some(host)
   def commandLine = List("echo", "hello to " + host.name)
   def description = "to " + host.name
 }
