@@ -5,12 +5,12 @@ import conf.Configuration
 import controllers.Logging
 import com.gu.conf.{Configuration => GuConfiguration}
 
-object Shard {
-  lazy val matchAll = Shard("matchAll", "matchAll", """^.*$""", invertRegex = false)
-  lazy val matchNone = Shard("matchNone", "matchNone", """^.*$""", invertRegex = true)
+object Domain {
+  lazy val matchAll = Domain("matchAll", "matchAll", """^.*$""", invertRegex = false)
+  lazy val matchNone = Domain("matchNone", "matchNone", """^.*$""", invertRegex = true)
 }
 
-case class Shard(name: String, urlPrefix: String, regexString: String, invertRegex: Boolean) {
+case class Domain(name: String, urlPrefix: String, regexString: String, invertRegex: Boolean) {
   lazy val regex = regexString.r
   def matchStage(stage:Stage): Boolean = {
     val matchRegex = regex.pattern.matcher(stage.name).matches()
@@ -18,57 +18,57 @@ case class Shard(name: String, urlPrefix: String, regexString: String, invertReg
   }
 }
 
-trait ShardingConfiguration {
+trait DomainsConfiguration {
   def enabled: Boolean
-  def identity: Shard
-  def shards: Iterable[Shard]
+  def identity: Domain
+  def domains: Iterable[Domain]
 }
 
-case class GuShardingConfiguration(configuration: GuConfiguration, prefix: String) extends ShardingConfiguration with Logging {
+case class GuDomainsConfiguration(configuration: GuConfiguration, prefix: String) extends DomainsConfiguration with Logging {
 
   lazy val enabled = configuration.getStringProperty("%s.enabled" format prefix, "false") == "true"
   lazy val identityName = configuration.getStringProperty("%s.identity" format prefix, java.net.InetAddress.getLocalHost.getHostName)
   lazy val nodes = findNodeNames
-  lazy val shards = nodes.map( parseNode(_) )
+  lazy val domains = nodes.map( parseNode(_) )
 
   def findNodeNames = configuration.getPropertyNames.filter(_.startsWith("%s." format prefix)).flatMap{ property =>
     val elements = property.split('.')
     if (elements.size > 2) Some(elements(1)) else None
   }
 
-  def parseNode(nodeName: String): Shard = {
+  def parseNode(nodeName: String): Domain = {
     val regex = configuration.getStringProperty("%s.%s.responsibility.stage.regex" format (prefix, nodeName), "^$")
     val invertRegex = configuration.getStringProperty("%s.%s.responsibility.stage.invertRegex" format (prefix, nodeName), "false") == "true"
     val urlPrefix = configuration.getStringProperty("%s.%s.urlPrefix" format (prefix, nodeName), nodeName)
-    Shard(nodeName, urlPrefix, regex, invertRegex)
+    Domain(nodeName, urlPrefix, regex, invertRegex)
   }
 
-  lazy val identity:Shard =
+  lazy val identity:Domain =
     if (!enabled)
-      Shard.matchAll
+      Domain.matchAll
     else {
-      val candidates = shards.filter(_.name == identityName)
+      val candidates = domains.filter(_.name == identityName)
       candidates.size match {
         case 0 =>
-          log.warn("No shard configuration for this node (%s)" format identityName)
-          Shard.matchNone
+          log.warn("No domain configuration for this node (%s)" format identityName)
+          Domain.matchNone
         case 1 =>
           candidates.head
         case _ =>
-          throw new IllegalStateException("Multiple shard configurations match this node (%s): %s" format (identityName, candidates.mkString(",")))
+          throw new IllegalStateException("Multiple domain configurations match this node (%s): %s" format (identityName, candidates.mkString(",")))
       }
     }
 }
 
-object ShardingAction {
+object DomainAction {
   trait Action
   case class Local() extends Action
   case class Remote(urlPrefix: String) extends Action
 }
 
-trait ShardingResponsibility extends Logging {
-  import ShardingAction._
-  def conf: ShardingConfiguration
+trait DomainResponsibility extends Logging {
+  import DomainAction._
+  def conf: DomainsConfiguration
 
   def assertResponsibleFor(params: DeployParameters) {
     if (!conf.identity.matchStage(params.stage))
@@ -79,18 +79,18 @@ trait ShardingResponsibility extends Logging {
     if (conf.identity.matchStage(params.stage))
       Local()
     else {
-      val matches = conf.shards.filter(_.matchStage(params.stage))
+      val matches = conf.domains.filter(_.matchStage(params.stage))
       matches.size match {
-        case 0 => throw new IllegalStateException("No shard found to handle stage %s" format params.stage)
+        case 0 => throw new IllegalStateException("No domain found to handle stage %s" format params.stage)
         case n:Int =>
-          if (n>1) log.warn("Multiple shards match for stage ")
+          if (n>1) log.warn("Multiple domains match for stage ")
           Remote(matches.head.urlPrefix)
       }
     }
   }
 }
 
-class Sharding(val conf: ShardingConfiguration) extends ShardingResponsibility
+class Domains(val conf: DomainsConfiguration) extends DomainResponsibility
 
-object Sharding extends Sharding(Configuration.sharding)
+object Domains extends Domains(Configuration.domains)
 

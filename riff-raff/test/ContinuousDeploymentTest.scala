@@ -4,9 +4,9 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import com.gu.conf.Configuration
 import teamcity.GuContinuousDeploymentConfig
-import deployment.Sharding
+import deployment.Domains
 
-class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with ShardingTestHelper {
+class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with DomainsTestHelper {
 
   def createTestConfig(properties: Map[String,String]): GuContinuousDeploymentConfig = {
     lazy val guConfig = new Configuration {
@@ -14,7 +14,7 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Shardin
       def getStringProperty(propertyName: String) = properties.get(propertyName)
       def getIdentifier = "test"
     }
-    GuContinuousDeploymentConfig(guConfig, new Sharding(testShardConfiguration(properties)))
+    GuContinuousDeploymentConfig(guConfig, new Domains(testDomainsConfiguration(properties)))
   }
 
   "continuous deployment config" should "correctly parse the enabled flag" in {
@@ -48,16 +48,16 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Shardin
     )
   }
 
-  it should "filter stages according to the sharding configuration" in {
+  it should "filter stages according to the domains configuration" in {
     val config = createTestConfig(Map(
       "continuous.deployment" -> "frontend::article->CODE,PROD|frontend::front->CODE,TEST,PROD",
-      "sharding.enabled" -> "true",
-      "sharding.identity" -> "test2",
-      "sharding.test1.responsibility.stage.regex" -> "^PROD$",
-      "sharding.test1.urlPrefix" -> "https://test1",
-      "sharding.test2.responsibility.stage.regex" -> "^PROD$",
-      "sharding.test2.responsibility.stage.invertRegex" -> "true",
-      "sharding.test2.urlPrefix" -> "https://test2"
+      "domains.enabled" -> "true",
+      "domains.identity" -> "test2",
+      "domains.test1.responsibility.stage.regex" -> "^PROD$",
+      "domains.test1.urlPrefix" -> "https://test1",
+      "domains.test2.responsibility.stage.regex" -> "^PROD$",
+      "domains.test2.responsibility.stage.invertRegex" -> "true",
+      "domains.test2.urlPrefix" -> "https://test2"
     ))
     config.buildToStageMap should be(
       Map(

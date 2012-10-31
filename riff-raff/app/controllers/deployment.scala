@@ -4,8 +4,8 @@ import teamcity._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
-import deployment.Sharding.responsibleFor
-import deployment.ShardingAction._
+import deployment.Domains.responsibleFor
+import deployment.DomainAction._
 import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
@@ -54,7 +54,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def preview(params: DeployParameters): UUID = run(params, Task.Preview)
   def deploy(params: DeployParameters): UUID = run(params, Task.Deploy)
   def run(params: DeployParameters, mode: Task.Value): UUID = {
-    Sharding.assertResponsibleFor(params)
+    Domains.assertResponsibleFor(params)
     val record = DeployController.create(mode, params)
     DeployControlActor.deploy(record)
     record.uuid

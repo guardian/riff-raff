@@ -6,14 +6,14 @@ import akka.agent.Agent
 import akka.actor.ActorSystem
 import lifecycle.LifecycleWithoutApp
 import com.gu.conf.{Configuration => GuConfiguration}
-import deployment.{ShardingResponsibility, ShardingAction}
+import deployment.{DomainResponsibility, DomainAction}
 
 trait ContinuousDeploymentConfig {
   val enabled: Boolean
   val buildToStageMap: Map[String, Set[String]]
 }
 
-case class GuContinuousDeploymentConfig(config: GuConfiguration, sharding: ShardingResponsibility) extends ContinuousDeploymentConfig {
+case class GuContinuousDeploymentConfig(config: GuConfiguration, domains: DomainResponsibility) extends ContinuousDeploymentConfig {
   lazy val enabled = config.getStringProperty("continuous.deployment.enabled", "false") == "true"
   lazy val configLine = config.getStringProperty("continuous.deployment", "")
 
@@ -24,7 +24,7 @@ case class GuContinuousDeploymentConfig(config: GuConfiguration, sharding: Shard
         val stages = stageList.split(",").toList
         val filteredStages = stages.filter { stage =>
           val params = DeployParameters(Deployer("n/a"), MagentaBuild(project,"n/a"), Stage(stage))
-          sharding.responsibleFor(params) == ShardingAction.Local()
+          domains.responsibleFor(params) == DomainAction.Local()
         }
         if (filteredStages.isEmpty)
           None

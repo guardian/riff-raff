@@ -20,7 +20,7 @@ import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
 import datastore.DataStore
-import deployment.{Sharding, GuShardingConfiguration}
+import deployment.{Domains, GuDomainsConfiguration}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -87,8 +87,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
-  lazy val sharding = GuShardingConfiguration(configuration, prefix = "sharding")
-  lazy val continuousDeployment = GuContinuousDeploymentConfig(configuration, Sharding)
+  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
+  lazy val continuousDeployment = GuContinuousDeploymentConfig(configuration, Domains)
 
   override def toString(): String = configuration.toString
 }
