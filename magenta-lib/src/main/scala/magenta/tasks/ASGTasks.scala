@@ -2,14 +2,22 @@ package magenta.tasks
 
 import magenta.{Build, MessageBroker, Stage, KeyRing}
 import com.amazonaws.services.autoscaling.model.{Instance, AutoScalingGroup}
-import dispatch.{Http, :/}
 import collection.JavaConversions._
+
+case class TagCurrentInstancesWithTerminationTag(packageName: String, stage: Stage) extends ASGTask {
+  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+    EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate")
+  }
+
+  lazy val description = "Tag existing instances of the auto-scaling group for termination"
+}
 
 case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     val doubleCapacity = asg.getDesiredCapacity * 2
-    if (asg.getMaxSize < doubleCapacity)
+    if (asg.getMaxSize < doubleCapacity) {
       maxCapacity(asg.getAutoScalingGroupName, doubleCapacity)
+    }
 
     desiredCapacity(asg.getAutoScalingGroupName, doubleCapacity)
   }
@@ -18,41 +26,28 @@ case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
     packageName, stage.name)
 }
 
-case class WaitTillUpAndInELB(packageName: String, stage: Stage, duration: Long) extends ASGTask
+case class WaitForStabilization(packageName: String, stage: Stage, duration: Long) extends ASGTask
     with RepeatedPollingCheck {
 
   def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     check {
-      val updatedAsg = refresh(asg)
-      allInELB(updatedAsg)
+      isStablized(refresh(asg))
     }
   }
 
-  def description: String = "Check all hosts in an ASG are up and in ELB"
+  lazy val description: String = "Check the desired number of hosts in ASG are up and in ELB"
 }
 
-case class CullInstancesWithoutVersion
-  (packageName: String, stage: Stage, desiredBuild: Build, port: Int, manifestPath: String) extends ASGTask {
-
-
-  override def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) extends ASGTask {
+  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
-      if (versionOf(instance) != desiredBuild.id) {
+      if (EC2.hasTag(instance, "Magenta", "Terminate")) {
         cull(asg, instance)
       }
     }
-
-    def versionOf(instance: Instance) = Http(:/ (EC2(instance).getPublicDnsName, port) / manifestPath >- {
-      body => {
-        def keyValMap(properties: String): Map[String, String] = body.lines.map(_.split(':').map(_.trim)).collect
-          { case Array(k, v) => k -> v }.toMap
-
-        keyValMap(body)("Build")
-      }
-    })
   }
 
-  def description: String = "Terminate instances without the version specified for this deploy"
+  lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
 trait ASGTask extends Task with ASG {
