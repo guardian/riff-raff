@@ -15,7 +15,8 @@ case class JsonInputFile(
 case class JsonPackage(
   `type`: String,
   apps: List[String],
-  data: Option[Map[String, JValue]] = None
+  data: Option[Map[String, JValue]] = None,
+  fileName: Option[String] = None
 ) {
   def safeData = data getOrElse Map.empty
 }
@@ -79,7 +80,7 @@ object JsonReader {
       },
       jsonPackage.safeData,
       jsonPackage.`type`,
-      new File(artifactSrcDir, "/packages/%s" format(name))
+      new File(artifactSrcDir, "/packages/%s" format(jsonPackage.fileName.getOrElse(name)))
     )
 
 }
