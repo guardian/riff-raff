@@ -7,6 +7,7 @@ import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST.JValue
+import fixtures._
 
 
 class PackageTypeTest extends FlatSpec with ShouldMatchers {
@@ -22,7 +23,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val deploy = AmazonWebServicesS3(p)
 
-    deploy.perAppActions("uploadStaticFiles")(parameters(Stage("CODE"))) should be (
+    deploy.perAppActions("uploadStaticFiles")(deployinfoSingleHost, parameters(Stage("CODE"))) should be (
       List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),Some("no-cache")))
     )
   }

@@ -26,7 +26,7 @@ case class Package(
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 
-  val data = pkgType.defaultData ++ pkgSpecificData
+  lazy val data = pkgType.defaultData ++ pkgSpecificData
   def stringData(key: String): String = data(key) match { case JString(s) => s case _ => throw new NoSuchElementException() }
   def intData(key: String): BigInt = data(key) match { case JInt(i) => i case _ => throw new NoSuchElementException() }
   def arrayStringData(key: String) = data.getOrElse(key, List.empty) match {
