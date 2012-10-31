@@ -1,5 +1,6 @@
 package conf
 
+import teamcity.GuContinuousDeploymentConfig
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
@@ -19,6 +20,7 @@ import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
 import datastore.DataStore
+import deployment.{Domains, GuDomainsConfiguration}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -85,17 +87,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
   }
 
-  object continuousDeployment {
-    private lazy val ProjectToStageRe = """^(.+)->(.+)$""".r
-    lazy val configLine = configuration.getStringProperty("continuous.deployment", "")
-    lazy val buildToStageMap = configLine.split("\\s").flatMap{ entry =>
-        entry match {
-          case ProjectToStageRe(project, stageList) =>  Some(project -> stageList.split(",").toList)
-          case _ => None
-        }
-    }.toMap
-    lazy val enabled = configuration.getStringProperty("continuous.deployment.enabled", "false") == "true"
-  }
+  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
+  lazy val continuousDeployment = GuContinuousDeploymentConfig(configuration, Domains)
 
   override def toString(): String = configuration.toString
 }
