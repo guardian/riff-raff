@@ -9,9 +9,9 @@
     <p>Go ahead and disable stuff here, but be warned that this will be reset to everything on when riff-raff is restarted
         or a new version is deployed.
     </p>
-    <p>This configuration is in the riff-raff.properties file. The continuous.deployment property should be a space
+    <p>This configuration is in the riff-raff.properties file. The continuous.deployment property should be a pipe
         separated list of teamcity project names to stages that should be automatically deployed to.  e.g.</p>
-    <pre>continuous.deployment=frontend::article->CODE,PROD frontend::tag->CODE</pre>
+    <pre>continuous.deployment=frontend::article->CODE,PROD|frontend::tag->CODE</pre>
 </div>
 <div class="content">
     @helper.form(action=routes.Deployment.continuousStateGlobal) {
