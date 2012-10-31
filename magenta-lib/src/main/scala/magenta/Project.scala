@@ -6,7 +6,7 @@ import collection.SortedSet
 
 object DeployInfo {
   def apply(jsonData: DeployInfoJsonInputFile): DeployInfo = {
-    val magentaHosts = jsonData.hosts map { host => Host(host.hostname, Set(App(host.app)), Stage(host.stage)) }
+    val magentaHosts = jsonData.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
     val magentaData = jsonData.data mapValues { dataList =>
       dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
     }
@@ -27,7 +27,7 @@ case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
     DeployInfo(hostsForParams, data)
   }
 
-  def knownHostStages: List[String] = hosts.map(_.stage.name).distinct.sorted
+  def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
   def knownKeys: List[String] = data.keys.toList.sorted
@@ -36,7 +36,7 @@ case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
   def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
   def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
 
-  def stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage.name,host.apps))
+  def stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage,host.apps))
   def stageAppToDataMap(key: String): Map[(String,String),List[Data]] = data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
 
   def firstMatchingData(key: String, app:App, stage:String): Option[Data] = {
@@ -48,7 +48,7 @@ case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
 case class Host(
     name: String,
     apps: Set[App] = Set.empty,
-    stage: Stage = Stage("NO_STAGE"),
+    stage: String = "NO_STAGE",
     connectAs: Option[String] = None)
 {
   def app(name: String) = this.copy(apps = apps + App(name))
@@ -86,7 +86,7 @@ case class HostList(hosts: List[Host]) {
     .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
     .mkString("\n")
 
-  def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage))
+  def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
 }
 object HostList {
   implicit def listOfHostsAsHostList(hosts: List[Host]): HostList = new HostList(hosts)

@@ -6,7 +6,7 @@ package object fixtures {
 
   val app1 = App("the_role")
 
-  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE).app(app1)))
+  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
 
   val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
 

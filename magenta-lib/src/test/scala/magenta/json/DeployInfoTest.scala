@@ -27,7 +27,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     parsed.data.values.map(_.size).reduce(_+_) should be (5)
 
     val host = parsed.hosts(0)
-    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE))
+    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE.name))
 //
 //     host.group should be ("a")
 //     host.hostname should be ("machost01.dc-code.gnl")
@@ -70,8 +70,8 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
     di.forParams(testParams().copy(stage = Stage("CODE"))).hosts should be(
       List(
-        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE,None),
-        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE,None)
+        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None),
+        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None)
       )
     )
   }
@@ -80,7 +80,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
     di.forParams(testParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
-      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE,None)))
+      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None)))
   }
 
 }
