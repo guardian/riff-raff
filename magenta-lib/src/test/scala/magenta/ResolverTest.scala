@@ -1,16 +1,20 @@
 package magenta
 
 
+import fixtures._
+import fixtures.StubPackageType
+import fixtures.StubPerAppAction
+import fixtures.StubPerHostAction
+import fixtures.StubTask
 import json._
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import tasks._
 import java.io.File
-import com.decodified.scalassh.PublicKeyLogin
+import scala.Some
+import tasks.{Task, CopyFile}
+
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
-
-  val CODE = Stage("CODE")
 
   val simpleExample = """
   {
@@ -33,8 +37,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val host = Host("host1").app("apache")
-    val deployinfo = host :: Nil
+    val host = Host("host1", stage = CODE.name).app("apache")
+    val deployinfo = DeployInfo(host :: Nil)
 
     val tasks = Resolver.resolve(project(deployRecipe), deployinfo, parameters(deployRecipe))
 
@@ -44,110 +48,98 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  case class StubTask(description: String) extends Task {
-    def taskHosts = Nil
-    def execute(keyRing: KeyRing) { }
-    def verbose = "stub(%s)" format description
-  }
-
-  case class StubPerHostAction(description: String, apps: Set[App]) extends PerHostAction {
-    def resolve(host: Host) = StubTask(description + " per host task on " + host.name) :: Nil
-  }
-
-  case class StubPerAppAction(description: String, apps: Set[App]) extends PerAppAction {
-    def resolve(parameters: DeployParameters) = StubTask(description + " per app task") :: Nil
-  }
-
-  val app1 = App("the_role")
   val app2 = App("the_2nd_role")
 
-  val baseRecipe = Recipe("one",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) :: Nil,
-    dependsOn = Nil)
+  val doubleAppPackageType = stubPackageType(
+    Seq("init_action_one"), Seq("action_two"), Set(app1, app2))
+  val appTwoPackageType = stubPackageType(Seq(), Seq("action_three"), Set(app2))
+
+  val multiRolePackageType = stubPackageType(Seq("init_action_one"),Seq("action_one"), Set(app1))
 
   val multiRoleRecipe = Recipe("two",
-    actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1, app2)) :: Nil,
-    actionsPerHost = StubPerHostAction("action_one", Set(app1)) ::
-      StubPerHostAction("action_two", Set(app1, app2)) ::
-      StubPerHostAction("action_three", Set(app2)) :: Nil,
+    actionsBeforeApp = doubleAppPackageType.mkAction("init_action_one") :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one") ::
+      doubleAppPackageType.mkAction("action_two") ::
+      appTwoPackageType.mkAction("action_three") :: Nil,
     dependsOn = Nil)
 
-  val deployinfoSingleHost = List(Host("the_host").app(app1))
+  val host = Host("the_host", stage = CODE.name).app(app1)
+
+  val host1 = Host("host1", stage = CODE.name).app(app1)
+  val host2 = Host("host2", stage = CODE.name).app(app1)
+  val host2WithApp2 = Host("host2", stage = CODE.name).app(app2)
 
   val deployinfoTwoHosts =
-    List(Host("host_one").app(app1), Host("host_two").app(app1))
+    DeployInfo(List(host1, host2))
 
   val deployInfoMultiHost =
-    List(Host("host_one").app(app1), Host("host_two").app(app2))
+    DeployInfo(List(host1, host2WithApp2))
 
 
   it should "generate the tasks from the actions supplied" in {
     Resolver.resolve(project(baseRecipe), deployinfoSingleHost, parameters(baseRecipe)) should be (List(
       StubTask("init_action_one per app task"),
-      StubTask("action_one per host task on the_host")
+      StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      Host("other_host").app("other_app") :: deployinfoSingleHost, parameters(baseRecipe)) should be (List(
+      DeployInfo(Host("other_host").app("other_app") :: deployinfoSingleHost.hosts), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
-        StubTask("action_one per host task on the_host")
+        StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "generate tasks for all hosts with app" in {
     Resolver.resolve(project(baseRecipe), deployinfoTwoHosts, parameters(baseRecipe)) should be (List(
       StubTask("init_action_one per app task"),
-      StubTask("action_one per host task on host_one"),
-      StubTask("action_one per host task on host_two")
+      StubTask("action_one per host task on host1", Some(host1)),
+      StubTask("action_one per host task on host2", Some(host2))
     ))
   }
 
   it should "generate tasks only for hosts with app per action" in {
     Resolver.resolve(project(multiRoleRecipe), deployInfoMultiHost, parameters(multiRoleRecipe)) should be (List(
       StubTask("init_action_one per app task"),
-      StubTask("action_one per host task on host_one"),
-      StubTask("action_two per host task on host_one"),
-      StubTask("action_two per host task on host_two"),
-      StubTask("action_three per host task on host_two")
+      StubTask("action_one per host task on host1", Some(host1)),
+      StubTask("action_two per host task on host1", Some(host1)),
+      StubTask("action_two per host task on host2", Some(host2WithApp2)),
+      StubTask("action_three per host task on host2", Some(host2WithApp2))
     ))
   }
 
   it should "resolve all actions for a given host before moving on to the next host" in {
-    val recipe = Recipe("multi-action",
-      actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-      actionsPerHost =
-        StubPerHostAction("action_one", Set(app1)) ::
-        StubPerHostAction("action_two", Set(app1)) ::
-        Nil
-    )
+    val allOnAllPackageType = stubPackageType(
+      Seq("init_action_one"), Seq("action_one", "action_two"), Set(app1, app2))
+    val recipe = Recipe("all",
+      actionsBeforeApp = allOnAllPackageType.mkAction("init_action_one") :: Nil,
+      actionsPerHost = allOnAllPackageType.mkAction("action_one") ::
+        allOnAllPackageType.mkAction("action_two") :: Nil,
+      dependsOn = Nil)
 
     Resolver.resolve(project(recipe), deployinfoTwoHosts, parameters(recipe)) should be (List(
       StubTask("init_action_one per app task"),
-      StubTask("action_one per host task on host_one"),
-      StubTask("action_two per host task on host_one"),
-      StubTask("action_one per host task on host_two"),
-      StubTask("action_two per host task on host_two")
+      StubTask("action_one per host task on host1", Some(host1)),
+      StubTask("action_two per host task on host1", Some(host1)),
+      StubTask("action_one per host task on host2", Some(host2)),
+      StubTask("action_two per host task on host2", Some(host2))
     ))
   }
 
   it should "prepare dependsOn actions correctly" in {
-    val prereq = Recipe("prereq",
-      actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
-      actionsPerHost = StubPerHostAction("prereq_action", Set(app1)) :: Nil)
+    val basePackageType = stubPackageType(Seq("main_init_action"), Seq("main_action"), Set(app1))
 
     val mainRecipe = Recipe("main",
-      actionsBeforeApp = StubPerAppAction("main_init_action", Set(app1)) :: Nil,
-      actionsPerHost = StubPerHostAction("main_action", Set(app1)) :: Nil,
-      dependsOn = List("prereq"))
+      actionsBeforeApp = basePackageType.mkAction("main_init_action") :: Nil,
+      actionsPerHost = basePackageType.mkAction("main_action") :: Nil,
+      dependsOn = List("one"))
 
-    Resolver.resolve(project(mainRecipe, prereq), deployinfoSingleHost, parameters(mainRecipe)) should be (List(
+    Resolver.resolve(project(mainRecipe, baseRecipe), deployinfoSingleHost, parameters(mainRecipe)) should be (List(
       StubTask("init_action_one per app task"),
-      StubTask("prereq_action per host task on the_host"),
+      StubTask("action_one per host task on the_host", Some(host)),
       StubTask("main_init_action per app task"),
-      StubTask("main_action per host task on the_host")
+      StubTask("main_action per host task on the_host", Some(host))
     ))
 
   }
@@ -160,20 +152,28 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "throw an exception if no hosts found and actions require some" in {
     intercept[NoHostsFoundException] {
-      Resolver.resolve(project(baseRecipe), List(), parameters(baseRecipe))
+      Resolver.resolve(project(baseRecipe), DeployInfo(List()), parameters(baseRecipe))
     }
   }
 
   it should "not throw an exception if no hosts found and only whole app recipes" in {
     val nonHostRecipe = Recipe("nonHostRecipe",
-      actionsBeforeApp = StubPerAppAction("init_action_one", Set(app1)) :: Nil,
+      actionsBeforeApp =  basePackageType.mkAction("init_action_one") :: Nil,
       dependsOn = Nil)
 
-    Resolver.resolve(project(nonHostRecipe), List(), parameters(nonHostRecipe))
+    Resolver.resolve(project(nonHostRecipe), DeployInfo(List()), parameters(nonHostRecipe))
   }
 
-
-  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
+  it should "only resolve tasks on hosts in the correct stage" in {
+    Resolver.resolve(
+      project(baseRecipe),
+      DeployInfo(List(host, Host("host_in_other_stage", Set(app1), "other_stage"))),
+      parameters(baseRecipe)
+    ) should be (List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on the_host", Some(host))
+    ))
+  }
 
   def parameters(recipe: Recipe) =
     DeployParameters(Deployer("Tester"), Build("project", "build"), CODE, RecipeName(recipe.name))

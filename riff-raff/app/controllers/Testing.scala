@@ -30,13 +30,11 @@ import datastore.DataStore
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
     val task1 = new Task {
-      def taskHosts = Nil
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
     val task2 = new Task {
-      def taskHosts = Nil
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"

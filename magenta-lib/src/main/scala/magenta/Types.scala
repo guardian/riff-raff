@@ -14,13 +14,17 @@ trait PackageType {
   def mkAction(actionName: String): Action = {
 
     if (perHostActions.isDefinedAt(actionName))
-      new PackageAction(pkg, actionName) with PerHostAction {
-        def resolve(host: Host) = perHostActions(actionName)(host)
+      new PackageAction(pkg, actionName)  {
+        def resolve(deployInfo: DeployInfo, parameters: DeployParameters) = {
+          val hostsForApps = deployInfo.hosts.filter(h => (h.apps intersect apps).nonEmpty)
+          hostsForApps flatMap (perHostActions(actionName)(_))
+        }
       }
 
     else if (perAppActions.isDefinedAt(actionName))
-      new PackageAction(pkg, actionName) with PerAppAction {
-        def resolve( parameters: DeployParameters) = perAppActions(actionName)(parameters)
+      new PackageAction(pkg, actionName) {
+        def resolve(deployInfo: DeployInfo, parameters: DeployParameters) =
+          perAppActions(actionName)(deployInfo, parameters)
       }
 
     else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
@@ -29,10 +33,15 @@ trait PackageType {
   type HostActionDefinition = PartialFunction[String, Host => List[Task]]
   def perHostActions: HostActionDefinition = Map.empty
 
-  type AppActionDefinition = PartialFunction[String, DeployParameters => List[Task]]
+  type AppActionDefinition = PartialFunction[String, (DeployInfo, DeployParameters) => List[Task]]
   def perAppActions: AppActionDefinition = Map.empty
 
   def defaultData: Map[String, JValue] = Map.empty
+}
+
+private abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
+  def apps = pkg.apps
+  def description = pkg.name + "." + actionName
 }
 
 case class AmazonWebServicesS3(pkg: Package) extends PackageType {
@@ -45,10 +54,10 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   lazy val cacheControl = pkg.stringData("cacheControl")
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadStaticFiles" => parameters =>
+    case "uploadStaticFiles" => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket, new File(staticDir), Some(cacheControl))
-      )
+      S3Upload(parameters.stage, bucket, new File(staticDir), Some(cacheControl))
+    )
   }
 }
 
@@ -56,16 +65,16 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
-    "secondsToWait" -> 5 * 60,
-    "port" -> 8080,
-    "manifestPath" -> "management/manifest"
+  "secondsToWait" -> 5 * 60,
+  "port" -> 8080,
+  "manifestPath" -> "management/manifest"
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
   lazy val bucket = pkg.stringData("bucket")
 
   override val perAppActions: AppActionDefinition = {
-    case "deploy" => parameters => {
+    case "deploy" => (_, parameters) => {
       List(
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
@@ -73,16 +82,11 @@ case class AutoScalingWithELB(pkg: Package) extends PackageType {
         CullInstancesWithTerminationTag(pkg.name, parameters.stage)
       )
     }
-    case "uploadArtifacts" => parameters =>
+    case "uploadArtifacts" => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
-      )
+      S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
+    )
   }
-}
-
-private abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
-  def apps = pkg.apps
-  def description = pkg.name + "." + actionName
 }
 
 abstract class WebappPackageType extends PackageType {
@@ -124,7 +128,7 @@ abstract class WebappPackageType extends PackageType {
   }
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadArtifacts" => parameters =>
+    case "uploadArtifacts" => (_, parameters) =>
       List(
         S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
       )

@@ -2,15 +2,9 @@ package magenta
 
 import java.io.File
 import tasks._
-import net.liftweb.util.TimeHelpers._
+import fixtures._
 import net.liftweb.json.Implicits._
-import tasks.BlockFirewall
-import tasks.CheckUrls
-import tasks.CopyFile
-import tasks.Restart
-import tasks.UnblockFirewall
 import net.liftweb.json.JsonAST.{JValue, JString, JArray}
-import tasks.WaitForPort
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
@@ -24,7 +18,7 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val autoscaling = new AutoScalingWithELB(p)
 
-    autoscaling.perAppActions("deploy")(parameters()) should be (List(
+    autoscaling.perAppActions("deploy")(DeployInfo(Nil), parameters()) should be (List(
       TagCurrentInstancesWithTerminationTag("app", Stage("PROD")),
       DoubleSize("app", Stage("PROD")),
       WaitForStabilization("app", PROD, 5 * 60 * 1000),
@@ -42,15 +36,11 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val autoscaling = new AutoScalingWithELB(p)
 
-    autoscaling.perAppActions("deploy")(parameters()) should be (List(
+    autoscaling.perAppActions("deploy")(DeployInfo(Nil), parameters()) should be (List(
       TagCurrentInstancesWithTerminationTag("app", Stage("PROD")),
       DoubleSize("app", PROD),
       WaitForStabilization("app", PROD, 3 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD)
     ))
   }
-
-  val PROD = Stage("PROD")
-  def parameters(stage: Stage = PROD, version: String = "version") =
-    DeployParameters(Deployer("tester"), Build("project", version), stage)
 }

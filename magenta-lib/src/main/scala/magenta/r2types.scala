@@ -17,12 +17,14 @@ case class UnzipToDocrootPackageType(pkg: Package) extends PackageType {
   lazy val docrootType = pkg.stringData("docrootType")
   lazy val locationInDocroot = pkg.stringData("locationInDocroot")
 
-  override def perHostActions: HostActionDefinition = {
+  override def perAppActions: AppActionDefinition = {
 
-    case "deploy" => host => {
+    case "deploy" => (deployInfo, params) => {
+      val host = Host(deployInfo.firstMatchingData("ddm", App("r2"), params.stage.name).
+        getOrElse(MessageBroker.fail("no data found for ddm in " + params.stage.name)).value)
       List(
         CopyFile(host as user, zipLocation, "/tmp"),
-        ExtractToDocroots(host, docrootType, locationInDocroot)
+        ExtractToDocroots(host as user, docrootType, locationInDocroot)
       )
     }
   }

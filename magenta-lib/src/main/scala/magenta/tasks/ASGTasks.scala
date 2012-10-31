@@ -67,6 +67,4 @@ trait ASGTask extends Task with ASG {
   }
 
   def verbose = description
-
-  val taskHosts = Nil
 }

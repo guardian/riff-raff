@@ -120,7 +120,7 @@ object Main extends scala.App {
     try {
       IO.withTemporaryDirectory { tmpDir =>
         val build = Build(Config.project.get, Config.build.get)
-        val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe)
+        val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Config.host.toList)
         MessageBroker.deployContext(UUID.randomUUID(), parameters) {
 
           MessageBroker.info("[using %s build %s]" format (programName, programVersion))
@@ -138,10 +138,8 @@ object Main extends scala.App {
           val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
 
           MessageBroker.verbose("Loaded: " + project)
-          val hostsInStage = Config.deployInfo.hosts.filter(_.stage == Config.stage)
-          val hosts = Config.host map { h => hostsInStage.filter(_.name == h) } getOrElse hostsInStage
 
-          val context = DeployContext(parameters,project,hosts)
+          val context = DeployContext(parameters,project,Config.deployInfo)
 
           if (Config.dryRun) {
 

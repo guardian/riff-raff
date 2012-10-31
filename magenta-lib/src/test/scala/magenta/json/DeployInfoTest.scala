@@ -3,6 +3,7 @@ package json
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
+import fixtures._
 
 
 class DeployInfoTest  extends FlatSpec with ShouldMatchers {
@@ -26,7 +27,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     parsed.data.values.map(_.size).reduce(_+_) should be (5)
 
     val host = parsed.hosts(0)
-    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), "CODE"))
+    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE.name))
 //
 //     host.group should be ("a")
 //     host.hostname should be ("machost01.dc-code.gnl")
@@ -62,6 +63,24 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     di.firstMatchingData("aws-keys",App("frontend-article"),"NEWCODE") should be(None)
     di.firstMatchingData("aws-keys",App("new-microapp-cache"),"CODE") should be(None)
     di.firstMatchingData("aws-keys",App("microapp-cache-again"),"CODE") should be(None)
+  }
+
+  it should "provide a list of hosts filtered by stage" in {
+    val di = DeployInfoJsonReader.parse(deployInfoSample)
+
+    di.forParams(testParams().copy(stage = Stage("CODE"))).hosts should be(
+      List(
+        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None),
+        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None)
+      )
+    )
+  }
+
+  it should "provide a list of hosts with only those explicitly specified" in {
+    val di = DeployInfoJsonReader.parse(deployInfoSample)
+
+    di.forParams(testParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
+      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None)))
   }
 
 }

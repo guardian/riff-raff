@@ -14,7 +14,19 @@ object DeployInfo {
   }
 }
 
-case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]]) {
+case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
+  import HostList._
+  def forParams(params: DeployParameters) = {
+    val hostsFilteredByStage = hosts.filterByStage(params.stage).hosts
+    val hostsForParams =
+      if (params.hostList.isEmpty)
+        hostsFilteredByStage
+      else
+        hosts.filter(params.hostList contains _.name)
+
+    DeployInfo(hostsForParams, data)
+  }
+
   def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
@@ -77,7 +89,7 @@ case class HostList(hosts: List[Host]) {
   def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
 }
 object HostList {
-  implicit def listOfHostsAsHostList(hosts: List[Host]) = new HostList(hosts)
+  implicit def listOfHostsAsHostList(hosts: List[Host]): HostList = new HostList(hosts)
   implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 
@@ -88,14 +100,7 @@ object HostList {
 trait Action {
   def apps: Set[App]
   def description: String
-}
-
-trait PerHostAction extends Action {
-  def resolve(host: Host): List[Task]
-}
-
-trait PerAppAction extends Action {
-  def resolve(parameters: DeployParameters): List[Task]
+  def resolve(deployInfo: DeployInfo, params: DeployParameters): List[Task]
 }
 
 case class App(name: String)
@@ -121,8 +126,7 @@ case class RecipeName(name:String)
 case class Deployer(name: String)
 
 case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default"), hostList: List[String] = Nil) {
-  def toDeployContext(project: Project, hosts:HostList): DeployContext = {
-    val filteredHosts:HostList = if (hostList.isEmpty) hosts else hosts.filter(hostList contains _.name)
-    DeployContext(this,project,filteredHosts)
+  def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = {
+    DeployContext(this,project, deployInfo)
   }
 }
