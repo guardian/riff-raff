@@ -1,0 +1,39 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
+@import helper.twitterBootstrap._
+
+@main("Deploy confirmation", request) {
+
+<h2>Deploy confirmation</h2>
+
+<div class="alert alert-warning alert-block">
+    <h4 class="alert-heading">External deployment request</h4>
+    <p/>
+    <p>The deploy below has been requested, please confirm that this should go ahead.</p>
+    <p>(You are probably seeing this message as you tried to deploy on a different riff-raff node that wasn't in the
+        correct location on the network to reach the required hosts).</p>
+</div>
+
+    @defining(deployForm.mapping.mappings.map(_.key).filterNot(_.isEmpty)) { fields =>
+        <table>
+            @fields.map { fieldName =>
+                <tr>
+                <td>@fieldName</td>
+                <td>@deployForm(fieldName).value</td>
+                </tr>
+            }
+        </table>
+
+        @helper.form(action=routes.Deployment.processForm) {
+
+            @fields.map { fieldName =>
+                @snippets.inputHidden(deployForm(fieldName))
+            }
+
+            <div class="actions">
+                <button name="confirmation" type="submit" value="confirm" class="btn btn-primary">Confirm</button> or
+                <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+            </div>
+        }
+    }
+
+}

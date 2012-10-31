@@ -1,0 +1,2 @@
+@(field: play.api.data.Field, args: (Symbol,Any)*)
+<input type="hidden" id="@args.toMap.get('id).map(_.toString).getOrElse(field.id)" name="@field.name" value="@field.value" @toHtmlArgs(args.toMap)>
