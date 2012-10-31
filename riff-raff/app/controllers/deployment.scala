@@ -141,6 +141,8 @@ object Deployment extends Controller with Logging {
           case Remote(urlPrefix) =>
             val call = routes.Deployment.deployConfirmation(generate(form))
             Redirect(urlPrefix+call.url)
+          case Noop() =>
+            throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")
         }
       }
     )

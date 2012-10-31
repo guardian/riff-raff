@@ -64,6 +64,7 @@ object DomainAction {
   trait Action
   case class Local() extends Action
   case class Remote(urlPrefix: String) extends Action
+  case class Noop() extends Action
 }
 
 trait DomainResponsibility extends Logging {
@@ -81,7 +82,9 @@ trait DomainResponsibility extends Logging {
     else {
       val matches = conf.domains.filter(_.matchStage(params.stage))
       matches.size match {
-        case 0 => throw new IllegalStateException("No domain found to handle stage %s" format params.stage)
+        case 0 =>
+          log.warn("No domain found to handle stage %s" format params.stage)
+          Noop()
         case n:Int =>
           if (n>1) log.warn("Multiple domains match for stage ")
           Remote(matches.head.urlPrefix)
