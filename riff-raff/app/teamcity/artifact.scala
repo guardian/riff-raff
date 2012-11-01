@@ -29,13 +29,13 @@ case class BuildType(id: String, name: String)
 object Build {
   val dateTimeParser = DateTimeFormat.forPattern("yyyyMMdd'T'HHmmssZ")
 
-  def apply(buildId: Int, name: String, number: String, startDate: String): Build = {
+  def apply(buildId: Int, name: String, number: String, startDate: String, branch: String): Build = {
     val parsedStartDate: DateTime = dateTimeParser.parseDateTime(startDate)
-    apply(buildId: Int, name, number, parsedStartDate)
+    apply(buildId: Int, name, number, parsedStartDate, branch)
   }
 
   def apply(build: Node): Build = {
-    apply((build \ "@id" text).toInt, build \ "@buildTypeId" text, build \ "@number" text, build \ "@startDate" text)
+    apply((build \ "@id" text).toInt, build \ "@buildTypeId" text, build \ "@number" text, build \ "@startDate" text, (build \ "@branchName").headOption.map(_.text).getOrElse("default"))
   }
 
   def apply(buildElements: Elem): List[Build] = {
@@ -44,7 +44,7 @@ object Build {
     } map { apply(_) }
   }
 }
-case class Build(buildId: Int, name: String, number: String, startDate: DateTime)
+case class Build(buildId: Int, name: String, number: String, startDate: DateTime, branch: String)
 
 object TeamCity extends Logging {
   private val listeners = mutable.Buffer[BuildWatcher]()
@@ -54,8 +54,8 @@ object TeamCity extends Logging {
   val tcURL = Configuration.teamcity.serverURL
   object api {
     val projectList = "/guestAuth/app/rest/projects"
-    def buildList(buildTypeId: String) = "/guestAuth/app/rest/builds/?locator=buildType:%s" format buildTypeId
-    def buildSince(buildId:Int) = "/guestAuth/app/rest/builds/?locator=sinceBuild:%d" format buildId
+    def buildList(buildTypeId: String) = "/guestAuth/app/rest/builds/?locator=buildType:%s,branch:branched:any" format buildTypeId
+    def buildSince(buildId:Int) = "/guestAuth/app/rest/builds/?locator=sinceBuild:%d,branch:branched:any" format buildId
   }
 
   private val buildAgent = ScheduledAgent[BuildTypeMap](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ currentBuildMap =>

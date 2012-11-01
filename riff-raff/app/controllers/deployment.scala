@@ -179,20 +179,20 @@ object Deployment extends Controller with Logging {
   }
 
   def autoCompleteBuild(project: String, term: String) = AuthAction {
-    val possibleProjects = TeamCity.successfulBuilds(project).filter(_.number.contains(term)).map { build =>
-      val formatter = DateTimeFormat.forPattern("HH:mm d MMMM yyyy")
-      val label = "%s (%s)" format (build.number, formatter.print(build.startDate))
+    val possibleProjects = TeamCity.successfulBuilds(project).filter(p => p.number.contains(term) || p.branch.contains(term)).map { build =>
+      val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
+      val label = "%s [%s] (%s)" format (build.number, build.branch, formatter.print(build.startDate))
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
   }
 
   def teamcity = AuthAction {
-    val header = Seq("Build Type Name", "Build Number", "Build Type ID", "Build ID")
+    val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
       for((buildType, builds) <- TeamCity.buildMap;
           build <- builds)
-        yield Seq(buildType.name,build.number,buildType.id,build.buildId)
+        yield Seq(buildType.name,build.number,build.branch,buildType.id,build.buildId)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }
