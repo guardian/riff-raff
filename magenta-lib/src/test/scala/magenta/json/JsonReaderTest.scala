@@ -111,4 +111,27 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     recipes.size should be(1)
     recipes("default") should be (Recipe("default", actionsPerHost = parsed.packages.values.map(_.mkAction("deploy"))))
   }
+
+  "json parser" should "default to using the package name for the file name" in {
+    val parsed = JsonReader.parse(minimalExample, new File("/tmp/abc"))
+
+    parsed.packages("dinky").srcDir should be(new File("/tmp/abc", "/packages/dinky"))
+  }
+
+  val withExplicitFileName = """
+{
+  "packages": {
+    "dinky": {
+      "type": "jetty-webapp",
+      "fileName": "awkward"
+    }
+  }
+}
+"""
+
+  "json parser" should "use override file name if specified" in {
+    val parsed = JsonReader.parse(withExplicitFileName, new File("/tmp/abc"))
+
+    parsed.packages("dinky").srcDir should be(new File("/tmp/abc", "/packages/awkward"))
+  }
 }
