@@ -28,7 +28,7 @@ class UnzipToDocrootPackageTypeTest extends FunSuite with ShouldMatchers{
 
     packType.perAppActions("deploy")(DeployInfo(Nil, diData), parameters()) should be (List(
       CopyFile(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/packages/webapp/files.zip", "/tmp"),
-      ExtractToDocroots(Host("ddm.domain", connectAs = Some("ddm-user")), "static", "the-app/static")
+      ExtractToDocroots(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/files.zip", "static", "the-app/static")
     ))
   }
 

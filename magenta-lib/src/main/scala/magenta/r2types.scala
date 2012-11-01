@@ -24,7 +24,7 @@ case class UnzipToDocrootPackageType(pkg: Package) extends PackageType {
         getOrElse(MessageBroker.fail("no data found for ddm in " + params.stage.name)).value)
       List(
         CopyFile(host as user, zipLocation, "/tmp"),
-        ExtractToDocroots(host as user, docrootType, locationInDocroot)
+        ExtractToDocroots(host as user, "/tmp/" + zipInPkg, docrootType, locationInDocroot)
       )
     }
   }
