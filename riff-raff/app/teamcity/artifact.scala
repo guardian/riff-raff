@@ -80,11 +80,15 @@ object TeamCity extends Logging {
     .flatMap(buildMap.get(_)).getOrElse(Nil)
 
   private def getRetrieveBuildTypes: List[BuildType] = {
-    log.info("Querying TC for build types")
-    val projectElements = XML.load(new URL(tcURL,api.projectList))
+    val url: URL = new URL(tcURL, api.projectList)
+    log.info("Querying TC for build types: %s" format url)
+    val projectElements = XML.load(url)
     (projectElements \ "project").toList.flatMap { project =>
-      val buildTypeElements = XML.load(new URL(tcURL,(project \ "@href").text))
-      (buildTypeElements \\ "buildType").map { buildType =>
+      val btUrl: URL = new URL(tcURL, (project \ "@href").text)
+      log.debug("Getting: %s" format btUrl)
+      val buildTypeElements = XML.load(btUrl)
+      (buildTypeElements \ "buildTypes" \ "buildType").map { buildType =>
+        log.debug("found %s" format (buildType \ "@id"))
         BuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
       }
     }
