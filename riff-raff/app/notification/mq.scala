@@ -7,15 +7,19 @@ import magenta.FailContext
 import magenta.Deploy
 import magenta.FinishContext
 import magenta.StartContext
-import com.rabbitmq.client.{ConnectionFactory, Connection}
-import akka.actor.{ActorRef, Props, ActorSystem, Actor}
+import com.rabbitmq.client.{Channel, ConnectionFactory}
+import akka.actor._
 import controllers.{routes, Logging}
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
 import conf.Configuration.mq.QueueDetails
 import lifecycle.LifecycleWithoutApp
-import scala.collection.mutable
+import akka.actor.SupervisorStrategy.Restart
+import scala.Some
+import akka.actor.OneForOneStrategy
+import magenta.DeployParameters
+import akka.util.duration._
 
 /*
  Send deploy events to graphite
@@ -24,78 +28,122 @@ import scala.collection.mutable
 object MessageQueue extends LifecycleWithoutApp with Logging {
   trait Event
   case class Notify(event: AlertaEvent) extends Event
+  case class Init(queueDetailList: List[QueueDetails]) extends Event
+  case class Shutdown() extends Event
 
-  lazy val system = ActorSystem("notify")
-  val actors = mutable.Buffer[ActorRef]()
+  private lazy val system = ActorSystem("notify")
+  val actor = try {
+      Some(system.actorOf(Props[MessageQueueController], "mq-controller"))
+    } catch {
+      case t:Throwable =>
+        log.error("Couldn't start MQ controller", t)
+        None
+    }
 
-  def sendMessage(event: AlertaEvent) {
-    actors foreach (_ ! Notify(event))
+  def sendMessage(event: Event) {
+    actor.foreach(_ ! event)
   }
 
-  val sink = new MessageSink {
+  lazy val sink = new MessageSink {
     def message(uuid: UUID, stack: MessageStack) {
       stack.top match {
         case StartContext(Deploy(parameters)) =>
-          sendMessage(AlertaEvent(DeployEvent.Start, uuid, parameters))
+          sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
         case FailContext(Deploy(parameters), exception) =>
-          sendMessage(AlertaEvent(DeployEvent.Fail, uuid, parameters))
+          sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters)))
         case FinishContext(Deploy(parameters)) =>
-          sendMessage(AlertaEvent(DeployEvent.Complete, uuid, parameters))
+          sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters)))
         case _ =>
       }
     }
   }
 
   def init() {
-    val targets: List[QueueDetails] = Configuration.mq.queueTargets
+    val targets = Configuration.mq.queueTargets
     if (targets.isEmpty)
       log.info("No message queue targets to initialise")
-    else
-      log.info("Initialising message queue notifications to: %s" format targets.mkString(", "))
-
-    actors ++= targets.flatMap { queueTarget =>
-      try {
-        Some(system.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client-%s" format queueTarget.name.replace("/","-")))
-      } catch {
-        case t: Throwable => None
-      }
+    else {
+      sendMessage(Init(targets))
+      MessageBroker.subscribe(sink)
     }
-
-    log.info("Message queue targets initialised")
-    MessageBroker.subscribe(sink)
   }
 
   def shutdown() {
+    sendMessage(Shutdown())
     MessageBroker.unsubscribe(sink)
-    actors foreach(system.stop)
-    actors.clear()
+  }
+}
+
+class MessageQueueController extends Actor with Logging {
+  import MessageQueue._
+  var mqClients = Map.empty[QueueDetails, ActorRef]
+
+  override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 10, withinTimeRange = 1 minute ) {
+    case _ => Restart
+  }
+
+  def receive = {
+    case Init(queueDetailList) => {
+      mqClients ++= queueDetailList.flatMap { queueTarget =>
+        try {
+          val actor = context.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client-%s" format queueTarget.name.replace("/","-"))
+          context.watch(actor)
+          Some(queueTarget -> actor)
+        } catch {
+          case t: Throwable => None
+        }
+      }
+      log.info("Message queue targets initialised")
+    }
+    case Shutdown() => {
+      mqClients.values.foreach(context.stop)
+      mqClients = Map.empty
+    }
+    case Notify(event) => {
+      try {
+        mqClients.values.foreach(_ ! Notify(event))
+      } catch {
+        case e:Throwable => log.error("Exception whilst dispatching event", e)
+      }
+    }
+    case Terminated(actor) => {
+      log.warn("Received terminate from %s " format actor.path)
+      mqClients.find(_._2 == actor).map { case(key,value) =>
+        mqClients -= key
+      }
+    }
+  }
+
+  override def postStop() {
+    log.info("I've been stopped")
   }
 }
 
 class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
   import MessageQueue._
 
-  log.info("Initialising %s" format queueDetails)
+  var channel: Option[Channel] = None
 
-  val channel = try {
-    val factory = new ConnectionFactory()
-    factory.setHost(queueDetails.hostname)
-    factory.setPort(queueDetails.port)
-    val conn = factory.newConnection()
-    conn.createChannel()
-  } catch {
-    case e =>
-      log.error("Error initialising %s" format queueDetails,e)
-      throw e
+  override def preStart() {
+    log.info("Initialising %s" format queueDetails)
+    channel = try {
+      val factory = new ConnectionFactory()
+      factory.setHost(queueDetails.hostname)
+      factory.setPort(queueDetails.port)
+      val conn = factory.newConnection()
+      Some(conn.createChannel())
+    } catch {
+      case e =>
+        log.error("Error initialising %s" format queueDetails,e)
+        throw e
+    }
+    channel.foreach(_.queueDeclare(queueDetails.queueName, true, false, false, null))
+    log.info("Initialisation complete to %s" format queueDetails)
   }
-
-  channel.queueDeclare(queueDetails.queueName, true, false, false, null)
-
-  log.info("Initialisation complete to %s" format queueDetails)
 
   def sendToMQ(event:AlertaEvent) {
     log.info("Sending following message to %s: %s" format (queueDetails, event))
-    channel.basicPublish("",queueDetails.queueName, null, event.toJson.getBytes)
+    channel.foreach(_.basicPublish("",queueDetails.queueName, null, event.toJson.getBytes))
   }
 
   def receive = {
@@ -110,9 +158,11 @@ class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
   }
 
   override def postStop() {
-    val conn = channel.getConnection
-    channel.close()
-    conn.close()
+    channel.foreach{ realChannel =>
+      val conn = realChannel.getConnection
+      realChannel.close()
+      conn.close()
+    }
   }
 }
 
