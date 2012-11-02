@@ -13,7 +13,7 @@
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
     @deploy.previewContent(request, record)
 </div>
-@if(record.report.isRunning){
+@if(!record.isDone){
 <script>
     $(function() { ajaxRefresh.enable(); });
 </script>
