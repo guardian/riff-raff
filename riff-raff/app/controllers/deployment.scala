@@ -83,7 +83,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 }
 
-case class DeployParameterForm(project:String, build:String, stage:String, action: String, hosts: List[String])
+case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String])
 
 object Deployment extends Controller with Logging {
 
@@ -93,23 +93,24 @@ object Deployment extends Controller with Logging {
       "build" -> nonEmptyText,
       "stage" -> optional(text),
       "manualStage" -> optional(text),
+      "recipe" -> optional(text),
       "action" -> nonEmptyText,
       "hosts" -> list(text)
     ).verifying("no.stage.specified", _ match {
-      case(_,_, stage, manualStage, _,_) => !stage.isEmpty || !manualStage.isEmpty}
+      case(_,_, stage, manualStage, _, _,_) => !stage.isEmpty || !manualStage.isEmpty}
     ).transform[DeployParameterForm]({
-        case (project, build, Some(stage), _, action, hosts) =>
-          DeployParameterForm(project, build, stage, action, hosts)
-        case (project, build, None, Some(manualStage), action, hosts) =>
-          DeployParameterForm(project, build, manualStage, action, hosts)
+        case (project, build, Some(stage), _, recipe, action, hosts) =>
+          DeployParameterForm(project, build, stage, recipe, action, hosts)
+        case (project, build, None, Some(manualStage), recipe, action, hosts) =>
+          DeployParameterForm(project, build, manualStage, recipe, action, hosts)
         case _ => throw new Error("Should have failed validation")
       },
-      form => (form.project, form.build, Some(form.stage), None, form.action, form.hosts )
+      form => (form.project, form.build, Some(form.stage), None, None, form.action, form.hosts )
     )
   )
 
   def frontendArticleCode = AuthAction { request =>
-    val parameters = DeployParameterForm("frontend::article","","CODE","",Nil)
+    val parameters = DeployParameterForm("frontend::article","","CODE", None, "", Nil)
     Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
   }
 
@@ -125,6 +126,7 @@ object Deployment extends Controller with Logging {
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
+          recipe = form.recipe.map(RecipeName(_)).getOrElse(DefaultRecipe()),
           hostList = form.hosts)
 
         responsibleFor(parameters) match {

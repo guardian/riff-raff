@@ -23,6 +23,7 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
 )
 <a data-toggle="collapse" href="#advanced">+</a>
 <div id="advanced" class="collapse">
+@helper.inputText(deployForm("recipe"))
 @helper.inputText(deployForm("manualStage"))
 </div>
 

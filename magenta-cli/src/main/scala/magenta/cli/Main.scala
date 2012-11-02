@@ -49,7 +49,7 @@ object Main extends scala.App {
     var host: Option[String] = None
     var deployer: Deployer = Deployer("unknown")
     var stage = ""
-    var recipe = RecipeName("default")
+    var recipe = DefaultRecipe()
     var verbose = false
     var dryRun = false
 
