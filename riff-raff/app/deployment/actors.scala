@@ -37,7 +37,7 @@ class DeployControlActor() extends Actor with Logging {
         val stage = record.parameters.stage.name
         val actor = deployActors.get(project, stage).getOrElse {
           log.info("Created new actor for %s %s" format (project, stage))
-          val newActor = context.actorOf(Props[DeployActor],"deploy-%s-%s" format (project.replace(" ", "_"), stage))
+          val newActor = context.actorOf(Props[DeployActor],"deploy-%s-%s" format (project.replace(" ", "_").replace("/","_"), stage))
           context.watch(newActor)
           deployActors += ((project,stage) -> newActor)
           newActor
