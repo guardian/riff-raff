@@ -8,7 +8,6 @@ import magenta.CommandOutput
 import magenta.Info
 import magenta.CommandError
 import magenta.FinishContext
-import magenta.RecipeName
 import magenta.DeployParameters
 import magenta.StartContext
 import magenta.TaskRun
@@ -41,55 +40,55 @@ object Testing extends Controller with Logging {
     }
     val input = ArrayBuffer(
       MessageStack(List(
-        StartContext(Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))),
+        StartContext(Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()))))),
       MessageStack(List(
         Info("Downloading artifact"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         Verbose("Downloading from http://teamcity.gudev.gnl:8111/guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip to /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15..."),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         Verbose("http: teamcity.gudev.gnl GET /guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip HTTP/1.1"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         Verbose("""downloaded:
       /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/deploy.json
     /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/packages/riff-raff/riff-raff.jar"""),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         Info("Reading deploy.json"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         StartContext(TaskRun(task1)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         FinishContext(TaskRun(task1)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         StartContext(TaskRun(task2)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         StartContext(Info("$ command line action")),
         TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         CommandOutput("Some command output from command line action"),
         Info("$ command line action"),
         TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         CommandError("Some command error from command line action"),
         Info("$ command line action"),
         TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default"))))),
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
       MessageStack(List(
         CommandOutput("Some more command output from command line action"),
         Info("$ command line action"),
         TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")))))
+        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()))))
     )
 
-    val report = DeployRecord(new DateTime(), Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),RecipeName("default")), input.toList)
+    val report = DeployRecord(new DateTime(), Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()), input.toList)
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }
