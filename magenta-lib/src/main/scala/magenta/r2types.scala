@@ -14,7 +14,7 @@ case class UnzipToDocrootPackageType(pkg: Package) extends PackageType {
 
   lazy val user = pkg.stringData("user")
   lazy val zipInPkg = pkg.stringData("zip")
-  lazy val zipLocation = new File(pkg.srcDir.getPath, zipInPkg)
+  lazy val zipLocation = new File(pkg.srcDir, zipInPkg)
   lazy val docrootType = pkg.stringData("docrootType")
   lazy val locationInDocroot = pkg.stringData("locationInDocroot")
 
