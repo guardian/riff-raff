@@ -8,9 +8,9 @@ import akka.util.duration._
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import controllers.Logging
-import math.max
 import scala.Predef._
 import collection.mutable
+import magenta.DeployParameters
 
 object `package` {
   type BuildTypeMap = Map[BuildType,List[Build]]
@@ -78,6 +78,17 @@ object TeamCity extends Logging {
 
   def successfulBuilds(projectName: String): List[Build] = buildTypes.filter(_.name == projectName).headOption
     .flatMap(buildMap.get(_)).getOrElse(Nil)
+
+  def transformLastSuccessful(params: DeployParameters): DeployParameters = {
+    if (params.build.id != "lastSuccessful")
+      params
+    else {
+      val builds = successfulBuilds(params.build.projectName)
+      builds.headOption.map{ latestBuild =>
+        params.copy(build = params.build.copy(id = latestBuild.number))
+      }.getOrElse(params)
+    }
+  }
 
   private def getRetrieveBuildTypes: List[BuildType] = {
     val url: URL = new URL(tcURL, api.projectList)

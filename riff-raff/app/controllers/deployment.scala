@@ -52,7 +52,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
-  def deploy(params: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
+  def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
+    val params = TeamCity.transformLastSuccessful(requestedParams)
     Domains.assertResponsibleFor(params)
     val record = DeployController.create(mode, params)
     DeployControlActor.deploy(record)
