@@ -122,10 +122,13 @@ case class Project(
 case class Stage(name: String)
 case class Build(projectName:String, id:String)
 case class RecipeName(name:String)
+object DefaultRecipe {
+  def apply() = RecipeName("default")
+}
 
 case class Deployer(name: String)
 
-case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = RecipeName("default"), hostList: List[String] = Nil) {
+case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = DefaultRecipe(), hostList: List[String] = Nil) {
   def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = {
     DeployContext(this,project, deployInfo)
   }
