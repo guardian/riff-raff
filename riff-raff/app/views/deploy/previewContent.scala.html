@@ -57,7 +57,7 @@ case _ => {}
 
 <!-- @record.report.render.mkString("\n") -->
 
-@if(!record.report.isRunning){
+@if(record.isDone){
 <script type="text/javascript">
     this.ajaxRefresh.disable();
 </script>
