@@ -28,6 +28,7 @@
             @state match {
             case RunState.Completed => { <span class="label label-success">Completed</span> }
             case RunState.Failed => { <span class="label label-important">Failed</span> }
+            case RunState.NotRunning => { <span class="label">Waiting</span> }
             case _ => {<span class="label label-info">Running</span>}
             }
             }

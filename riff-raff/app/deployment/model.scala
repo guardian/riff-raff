@@ -33,6 +33,7 @@ case class DeployRecord(time: DateTime,
   lazy val deployerName = parameters.deployer.name
   lazy val stage = parameters.stage
   lazy val isRunning = report.isRunning
+  lazy val isDone = !isRunning && report.size > 1
 
   def +(message: MessageStack): DeployRecord = {
     this.copy(messageStacks = messageStacks ++ List(message))
