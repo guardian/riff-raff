@@ -6,7 +6,10 @@
     <h2>Welcome to the Guardian deployment tool.</h2>
 
     @if(request.isAuthenticated && irc.isConfigured) {
-        <p>Deployment information can also be seen in the @irc.channel IRC channel on @irc.host</p>
+        <div class="alert alert-info">Deployment information can also be seen in the @irc.channel IRC channel on @irc.host</div>
+
     }
+
+    Documentation is <a href='@routes.Application.documentation(resource="")'>here</a>.
     
 }

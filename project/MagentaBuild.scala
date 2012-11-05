@@ -3,6 +3,7 @@ import Keys._
 import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
+import PlayKeys._
 import PlayProject.{SCALA,templatesImport}
 import com.gu.deploy.PlayArtifact._
 import org.sbtidea.SbtIdeaPlugin._
@@ -34,8 +35,17 @@ object MagentaBuild extends Build {
         "magenta._",
         "views.html.helper.magenta._"
       )
-  )
-
+    )
+    .settings(
+      playExternalAssets <++= (baseDirectory) { base =>
+        val mdPathFinder = (root:File) => root ** "*.md"
+        val docsPrefix: String = "docs"
+        Seq(
+           (base / "app" / "docs", mdPathFinder, docsPrefix),
+           (base / ".." / "magenta-lib" / "docs", mdPathFinder, docsPrefix)
+        )
+      }
+    )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
     scalaVersion := "2.9.1",
