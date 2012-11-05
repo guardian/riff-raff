@@ -20,9 +20,11 @@
         <td><span class="label">@record.deployerName</span></td>
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)"> @record.buildName @record.buildId @record.stage.name</a></td>
         <td>
-            @record.taskType match {
-            case Task.Deploy => { }
-            case Task.Preview => { <span class="label label-inverse">Preview</span> }
+            @defining(record.taskType) { taskType =>
+                @taskType match {
+                    case Task.Deploy => { }
+                    case Task.Preview => { <span class="label label-inverse">Preview</span> }
+                }
             }
             @defining(record.report.cascadeState) { state =>
             @state match {
