@@ -9,20 +9,26 @@ trait Logging {
   implicit val log = Logger(getClass)
 }
 
-case class MenuItem(title: String, target: Call, identityRequired: Boolean = true) {
-  def isActive(request: AuthenticatedRequest[AnyContent]) = target.url == request.path
+case class MenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) {
+  def isActive(request: AuthenticatedRequest[AnyContent]) = {
+    if (activeInSubPaths)
+      request.path.startsWith(target.url)
+    else
+      request.path == target.url
+  }
 }
 
 object Menu {
   lazy val menuItems = Seq(
-    MenuItem("Home", routes.Application.index, false),
+    MenuItem("Home", routes.Application.index(), identityRequired = false),
+    MenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true),
     MenuItem("Deployment Info", routes.Application.deployInfo(stage = "")),
-    MenuItem("Deploy Anything\u2122", routes.Deployment.deploy()),
-    MenuItem("Deploy History", routes.Deployment.history()),
+    MenuItem("Deploy", routes.Deployment.deploy()),
+    MenuItem("History", routes.Deployment.history()),
     MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment())
   )
 
-  lazy val loginMenuItem = MenuItem("Login", routes.Login.loginAction, false)
+  lazy val loginMenuItem = MenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 
   def items(request: AuthenticatedRequest[AnyContent]) = {
     val loggedIn = request.identity.isDefined
@@ -44,12 +50,16 @@ object Application extends Controller with Logging {
     Ok(views.html.deploy.hostInfo(request))
   }
 
-  def documentation(resource: String) = AuthAction { request =>
+  def documentation(resource: String) = NonAuthAction { request =>
     try {
-      val markDown = Source.fromURL(getClass.getResource("docs/%s.md" format resource)).mkString
-      Ok(views.html.markdown(request, "Documentation for %s" format resource, markDown))
+      val realResource = if (resource.isEmpty || resource.last == '/') "%sindex" format resource else resource
+      log.info("Getting page for %s" format realResource)
+      val url = getClass.getResource("/docs/%s.md" format realResource)
+      log.info("Resolved URL %s" format url)
+      val markDown = Source.fromURL(url).mkString
+      Ok(views.html.markdown(request, "Documentation for %s" format realResource, markDown))
     } catch {
-      case e => NotFound("No documentation found for %s" format resource)
+      case e:Throwable => NotFound(views.html.notFound(request,"No documentation found for %s" format resource,Some(e)))
     }
   }
 

@@ -1,0 +1,28 @@
+@(request: AuthenticatedRequest[AnyContent])
+
+@menubar{
+            @if(request.identity.isDefined) {
+            <div class="btn-group pull-right">
+                <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+                    <i class="icon-user"></i> @request.identity.get.fullName
+                    <span class="caret"></span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><a href="@routes.Login.profile()">Profile</a></li>
+                    <li class="divider"></li>
+                    <li><a href="@routes.Login.logout()">Sign Out</a></li>
+                </ul>
+            </div>
+            } else {
+            <ul class="nav pull-right">
+                <a class="btn btn-primary" href="@Menu.loginMenuItem.target">@Menu.loginMenuItem.title</a>
+            </ul>
+            }
+            <div class="nav-collapse">
+                <ul class="nav">
+                    @for(item <- Menu.items(request)) {
+                    @menubaritem(request,item)
+                    }
+                </ul>
+            </div><!--/.nav-collapse -->
+}

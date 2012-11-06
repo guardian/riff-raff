@@ -1,0 +1,16 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], message:String, throwable:Option[Throwable]=None)
+@import conf.Configuration._
+
+@main("Not found", request){
+<h2>Master, Rocky has broken his chain and vanished</h2>
+
+<p>@message</p>
+
+@throwable.map{ error =>
+<div class="alert alert-error">
+    <h4 class="alert-heading">@error.toString</h4>
+    <pre>@error.getStackTraceString</pre>
+</div>
+}
+
+}
