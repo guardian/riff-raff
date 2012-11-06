@@ -110,11 +110,6 @@ object Deployment extends Controller with Logging {
     )
   )
 
-  def frontendArticleCode = AuthAction { request =>
-    val parameters = DeployParameterForm("frontend::article","","CODE", None, "", Nil)
-    Ok(views.html.frontendarticle(request, deployForm.fill(parameters)))
-  }
-
   def deploy = AuthAction { implicit request =>
     Ok(views.html.deploy.form(request, deployForm))
   }

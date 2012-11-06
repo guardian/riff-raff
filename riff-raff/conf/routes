@@ -9,10 +9,10 @@ GET     /deployinfo                 controllers.Application.deployInfo(stage="")
 GET     /deployinfo/:stage          controllers.Application.deployInfo(stage)
 
 # Docs
+GET     /docs/                      controllers.Application.documentation(resource="")
 GET     /docs/*resource             controllers.Application.documentation(resource)
 
 # Deployment pages
-GET     /deployment/CODE/frontend-article   controllers.Deployment.frontendArticleCode
 GET     /deployment/request controllers.Deployment.deploy
 POST    /deployment/request controllers.Deployment.processForm
 GET     /deployment/confirm controllers.Deployment.deployConfirmation(parametersJson:String)
