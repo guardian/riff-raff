@@ -1,7 +1,6 @@
 package controllers
 
 import play.api.mvc.Controller
-import magenta.tasks.Task
 import magenta._
 import collection.mutable.ArrayBuffer
 import magenta.CommandOutput
@@ -24,7 +23,7 @@ import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import datastore.DataStore
+import persistence.Persistence
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -121,7 +120,7 @@ object Testing extends Controller with Logging {
     }
 
   def uuidList = AuthAction { implicit request =>
-    val uuidList = DataStore.getDeployUUIDs().map(_.toString)
+    val uuidList = Persistence.store.getDeployUUIDs.map(_.toString)
     Ok(views.html.test.uuidList(request,uuidList))
   }
 
@@ -139,7 +138,7 @@ object Testing extends Controller with Logging {
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         log.info("Deleting deploy with UUID %s" format form.uuid)
-        DataStore.deleteDeployLog(UUID.fromString(form.uuid))
+        Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
         Redirect(routes.Testing.uuidList())
       }
     )
