@@ -39,6 +39,7 @@ case RunState.Completed => {
         <input type="hidden" name="project" value="@record.buildName"/>
         <input type="hidden" name="build" value="@record.buildId"/>
         <input type="hidden" name="stage" value="@record.stage.name"/>
+        <input type="hidden" name="recipe" value="@record.recipe.name"/>
 
         <div class="actions">
             <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button>
