@@ -254,14 +254,9 @@ object Deployment extends Controller with Logging {
 }
 
 object Hooks extends Controller with Logging {
-  def list = AuthAction { implicit request =>
-    //val hookList = Persistence.store.getPostDeployHooks
-    TODO
-  }
-  def form = AuthAction { implicit request =>
-    TODO
-  }
-  def edit(projectName: String, stage: String) = AuthAction { implicit request =>
-    TODO
-  }
+  def list = TODO
+  def form = TODO
+  def edit(projectName: String, stage: String) = TODO
+  def update(projectName: String, stage: String) = TODO
+  def delete(projectName: String, stage: String) = TODO
 }

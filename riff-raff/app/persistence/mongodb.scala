@@ -16,7 +16,7 @@ import magenta.Deployer
 import scala.Some
 import magenta.Build
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import notification.HookCriteria
+import notification.{HookAction, HookCriteria}
 import java.net.URL
 
 object MongoDatastore extends Logging {
@@ -121,10 +121,33 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getPostDeployHooks = Map.empty
-  override def getPostDeployHookURL(criteria: HookCriteria) =
-    logAndSquashExceptions[Option[URL]](Some("Requesting post deploy hook for %s" format criteria),None) {
-      None
+  override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
+    val criteria = HookCriteria(dbo.as[String]("_id.projectName"), Stage(dbo.as[String]("_id.stageName")))
+    val action = HookAction(dbo.as[String]("_id.url"),dbo.as[Boolean]("enabled"))
+    criteria -> action
+  }.toMap
+
+  override def getPostDeployHook(criteria: HookCriteria) =
+    logAndSquashExceptions[Option[HookAction]](Some("Requesting post deploy hook for %s" format criteria),None) {
+      hooksCollection.find(criteria.dbObject).map(HookAction(_)).toSeq.headOption
     }
-  override def setPostDeployHook(criteria: HookCriteria, url: Option[URL]) {  }
+
+  override def setPostDeployHook(criteria: HookCriteria, action: HookAction) {
+    logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
+      hooksCollection.findAndModify(
+        query = criteria.dbObject,
+        update = criteria.dbObject ++ action.dbObject,
+        upsert = true, fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew=false
+      )
+    }
+  }
+
+  override def deletePostDeployHook(criteria: HookCriteria) {
+    logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
+      hooksCollection.findAndRemove(criteria.dbObject)
+    }
+  }
 }

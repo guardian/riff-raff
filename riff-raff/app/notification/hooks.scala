@@ -25,16 +25,41 @@ import java.util.UUID
 import lifecycle.LifecycleWithoutApp
 import persistence.Persistence
 import deployment.Task
+import java.net.{URI, HttpURLConnection, URL}
+import com.mongodb.casbah.commons.MongoDBObject
+import magenta.FinishContext
+import magenta.DeployParameters
+import magenta.MessageStack
+import magenta.Deploy
+import magenta.Stage
+import scala.Some
+import play.libs.WS
 
-case class HookCriteria(projectName: String, stage: Stage)
+case class HookCriteria(projectName: String, stage: Stage) {
+  lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage.name))
+}
 object HookCriteria {
   def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage)
+}
+
+case class HookAction(url: String, enabled: Boolean) extends Logging {
+  lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
+  def act() {
+    log.info("Calling %s")
+    val response = WS.url(url).get().get(5000)
+    log.info("HTTP status code %d, body %s" format (response.getStatus, response.getBody))
+  }
+}
+object HookAction {
+  def apply(dbo: MongoDBObject): HookAction = {
+    HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled"))
+  }
 }
 
 
 object HooksClient extends LifecycleWithoutApp {
   trait Event
-  case class Finished(parameters: DeployParameters)
+  case class Finished(criteria: HookCriteria)
 
   lazy val system = ActorSystem("notify")
   val actor = try {
@@ -42,7 +67,7 @@ object HooksClient extends LifecycleWithoutApp {
   } catch { case t:Throwable => None }
 
   def finishedBuild(parameters: DeployParameters) {
-    actor.foreach(_ ! Finished(parameters))
+    actor.foreach(_ ! Finished(HookCriteria(parameters)))
   }
 
   val sink = new MessageSink {
@@ -70,11 +95,12 @@ class HooksClient extends Actor with Logging {
   import HooksClient._
 
   def receive = {
-    case Finished(parameters) =>
-      // call mongo to resolve required action
-      val action = Persistence.store.getPostDeployHookURL(HookCriteria(parameters))
-      // if an action exists then call TeamCity
-
+    case Finished(criteria) =>
+      try {
+        Persistence.store.getPostDeployHook(criteria).foreach{ _.act() }
+      } catch {
+        case t:Throwable =>
+          log.warn("Exception caught whilst calling any post deploy hooks for %s" format criteria, t)
+      }
   }
 }
-

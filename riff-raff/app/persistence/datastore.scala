@@ -5,7 +5,7 @@ import deployment.DeployRecord
 import magenta.MessageStack
 import conf.RequestMetrics.DatastoreRequest
 import java.net.URL
-import notification.HookCriteria
+import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.Logging
@@ -40,9 +40,10 @@ trait DataStore {
   def getDeployUUIDs:Iterable[UUID] = Nil
   def deleteDeployLog(uuid:UUID) {}
 
-  def getPostDeployHooks:Map[HookCriteria,URL] = Map.empty
-  def setPostDeployHook(criteria: HookCriteria, url: Option[URL]) {}
-  def getPostDeployHookURL(criteria: HookCriteria):Option[URL] = None
+  def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty
+  def setPostDeployHook(criteria: HookCriteria, action: HookAction) {}
+  def getPostDeployHook(criteria: HookCriteria):Option[HookAction] = None
+  def deletePostDeployHook(criteria: HookCriteria) {}
 }
 
 object Persistence extends Logging {
