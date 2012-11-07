@@ -30,6 +30,13 @@ GET     /deployment/continuous-deployment      controllers.Deployment.continuous
 POST    /deployment/continuous-deployment/update      controllers.Deployment.continuousState
 POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.continuousStateGlobal
 
+# Post deploy hooks
+GET     /deployment/hooks                           controllers.Hooks.list
+GET     /deployment/hooks/new                       controllers.Hooks.form
+GET     /deployment/hooks/:project/:stage/          controllers.Hooks.edit(project:String, stage:String)
+POST    /deployment/hooks/:project/:stage/          controllers.Hooks.update(project:String, stage:String)
+POST    /deployment/hooks/:project/:stage/delete    controllers.Hooks.delete(project:String, stage:String)
+
 # authentication endpoints
 GET     /profile                    controllers.Login.profile
 GET     /login                      controllers.Login.login
