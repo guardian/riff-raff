@@ -1,9 +1,28 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent])
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], hooks: Map[notification.HookCriteria, notification.HookAction])
 
 @main("Post Deploy Hooks", request) {
 <h2>Post Deploy Hooks</h2>
 <hr/>
 <div class="content">
-
+    <table>
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Stage</th>
+                <th>URL</th>
+                <th>Enabled</th>
+            </tr>
+        </thead>
+        <tbody>
+          @for((criteria, action) <- hooks) {
+            <tr>
+                <td>criteria.projectName</td>
+                <td>criteria.stage.name</td>
+                <td>action.url</td>
+                <td>action.enabled</td>
+            </tr>
+          }
+        </tbody>
+    </table>
 </div>
 }

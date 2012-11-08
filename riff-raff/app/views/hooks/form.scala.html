@@ -1,0 +1,61 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], hookForm: Form[controllers.HookForm])
+@import helper.twitterBootstrap._
+
+@main("Create Post Deploy Hook", request) {
+
+<h2>Create Post Deploy Hook</h2>
+
+@helper.form(action=routes.Hooks.save) {
+@helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project")
+@helper.select(
+hookForm("stage"),
+options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
+'_default -> "--- Choose a stage ---",
+'_label -> "stage",
+'_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage"))
+)
+@helper.inputText(hookForm("url"))
+@helper.inputOption(hookForm("enabled"))
+<a data-toggle="collapse" href="#advanced">+</a>
+<div id="advanced" class="collapse">
+    @helper.inputText(deployForm("recipe"))
+    @helper.inputText(deployForm("manualStage"))
+</div>
+
+
+<div class="actions">
+    <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or
+    <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button> or
+    <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+</div>
+}
+<style>
+    .ui-autocomplete {
+        max-height: 150px;
+        overflow-y: auto;
+        /* prevent horizontal scrollbar */
+        overflow-x: hidden;
+        /* add padding to account for vertical scrollbar */
+        padding-right: 20px;
+    }
+    input[type=text] {
+        width: 400px;
+    }
+</style>
+<script type="text/javascript">
+    var selectedProject = ''
+    $('#projectInput').each( function() {
+        var $input = $(this);
+        var $project = ''
+        var serverUrl = $input.data('url');
+        $input.autocomplete({
+            source:serverUrl,
+            minLength:0
+        });
+    });
+    $('#projectInput').blur( function(e) {
+        selectedProject = encodeURIComponent($(e.target).val())
+    })
+</script>
+
+}

@@ -24,6 +24,8 @@ import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
 import persistence.Persistence
 import lifecycle.LifecycleWithoutApp
+import java.net.{URL, MalformedURLException}
+import notification.HookCriteria
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -253,10 +255,36 @@ object Deployment extends Controller with Logging {
 
 }
 
+case class HookForm(projectName: String, stage: Stage, url: String, enabled: Boolean)
+
 object Hooks extends Controller with Logging {
-  def list = TODO
-  def form = TODO
+
+  lazy val hookForm = Form[HookForm](
+    tuple(
+      "projectName" -> nonEmptyText,
+      "stage" -> nonEmptyText,
+      "url" -> nonEmptyText,
+      "enabled" -> boolean
+    ).verifying("valid.url", _ match {
+      case(_,_, url, _) => try { new URL(url); true } catch { case e:MalformedURLException => false }
+    })(HookForm.apply)
+      (HookForm.unapply)
+  )
+
+  def list = AuthAction { implicit request =>
+    val hooks = Persistence.store.getPostDeployHooks
+    Ok(views.html.hooks.list(request, hooks))
+  }
+  def form = AuthAction { implicit request =>
+    Ok(views.html.hooks.form(request,hookForm))
+  }
+  def update = AuthAction { implicit request =>
+    // extract and save values
+    Redirect(routes.Hooks.list())
+  }
   def edit(projectName: String, stage: String) = TODO
-  def update(projectName: String, stage: String) = TODO
-  def delete(projectName: String, stage: String) = TODO
+  def delete(projectName: String, stage: String) = AuthAction { implicit request =>
+    Persistence.store.deletePostDeployHook(HookCriteria(projectName, Stage(stage)))
+    Redirect(routes.Hooks.list())
+  }
 }

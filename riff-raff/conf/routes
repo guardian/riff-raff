@@ -33,8 +33,8 @@ POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.
 # Post deploy hooks
 GET     /deployment/hooks                           controllers.Hooks.list
 GET     /deployment/hooks/new                       controllers.Hooks.form
+POST    /deployment/hooks/save                      controllers.Hooks.update
 GET     /deployment/hooks/:project/:stage/          controllers.Hooks.edit(project:String, stage:String)
-POST    /deployment/hooks/:project/:stage/          controllers.Hooks.update(project:String, stage:String)
 POST    /deployment/hooks/:project/:stage/delete    controllers.Hooks.delete(project:String, stage:String)
 
 # authentication endpoints
