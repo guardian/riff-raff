@@ -122,8 +122,11 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
-    val criteria = HookCriteria(dbo.as[String]("_id.projectName"), Stage(dbo.as[String]("_id.stageName")))
-    val action = HookAction(dbo.as[String]("_id.url"),dbo.as[Boolean]("enabled"))
+    val criteria = {
+      val id = dbo.as[DBObject]("_id")
+      HookCriteria(id.as[String]("projectName"), id.as[String]("stageName"))
+    }
+    val action = HookAction(dbo.as[String]("url"),dbo.as[Boolean]("enabled"))
     criteria -> action
   }.toMap
 

@@ -35,11 +35,11 @@ import magenta.Stage
 import scala.Some
 import play.libs.WS
 
-case class HookCriteria(projectName: String, stage: Stage) {
-  lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage.name))
+case class HookCriteria(projectName: String, stage: String) {
+  lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage))
 }
 object HookCriteria {
-  def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage)
+  def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
 }
 
 case class HookAction(url: String, enabled: Boolean) extends Logging {

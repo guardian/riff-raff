@@ -4,29 +4,38 @@
 @main("Create Post Deploy Hook", request) {
 
 <h2>Create Post Deploy Hook</h2>
+<hr/>
 
 @helper.form(action=routes.Hooks.save) {
-@helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project")
+
+@if(hookForm("criteria.projectName").value.get.isEmpty) {
+    @helper.inputText(hookForm("criteria.projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+} else {
+    <p>
+    @snippets.inputHidden(hookForm("criteria.projectName"))
+    <strong>Project Name</strong>: @hookForm("criteria.projectName").value.get
+    </p>
+}
+@if(hookForm("criteria.stage").value.get.isEmpty) {
 @helper.select(
-hookForm("stage"),
+hookForm("criteria.stage"),
 options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
 '_default -> "--- Choose a stage ---",
-'_label -> "stage",
-'_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage"))
+'_label -> "Stage",
+'_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
 )
-@helper.inputText(hookForm("url"))
-@helper.inputOption(hookForm("enabled"))
-<a data-toggle="collapse" href="#advanced">+</a>
-<div id="advanced" class="collapse">
-    @helper.inputText(deployForm("recipe"))
-    @helper.inputText(deployForm("manualStage"))
-</div>
-
+} else {
+    <p>
+    @snippets.inputHidden(hookForm("criteria.stage"))
+    <strong>Stage</strong>: @hookForm("criteria.stage").value.get
+    </p>
+}
+@helper.inputText(hookForm("action.url"), '_label -> "Hook target URL (GET)")
+@helper.checkbox(hookForm("action.enabled"), '_label -> "Hook Enabled")
 
 <div class="actions">
-    <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or
-    <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button> or
-    <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+    <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+    <a href="@routes.Hooks.list()" class="btn btn-inverse">Cancel</a>
 </div>
 }
 <style>

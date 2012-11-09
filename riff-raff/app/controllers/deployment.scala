@@ -2,7 +2,7 @@ package controllers
 
 import teamcity._
 import play.api.mvc.Controller
-import play.api.data.Form
+import play.api.data.{Mapping, ObjectMapping2, Form}
 import deployment._
 import deployment.Domains.responsibleFor
 import deployment.DomainAction._
@@ -25,7 +25,7 @@ import org.joda.time.format.DateTimeFormat
 import persistence.Persistence
 import lifecycle.LifecycleWithoutApp
 import java.net.{URL, MalformedURLException}
-import notification.HookCriteria
+import notification.{HookAction, HookCriteria}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -118,7 +118,7 @@ object Deployment extends Controller with Logging {
 
   def processForm = AuthAction { implicit request =>
     deployForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.deploy.form(request,errors)),
+      errors => Ok(views.html.deploy.form(request,errors)),
       form => {
         log.info("Host list: %s" format form.hosts)
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
@@ -255,36 +255,57 @@ object Deployment extends Controller with Logging {
 
 }
 
-case class HookForm(projectName: String, stage: Stage, url: String, enabled: Boolean)
+case class HookForm(criteria: HookCriteria, action: HookAction)
 
 object Hooks extends Controller with Logging {
 
+  lazy val hookCriteriaMapping = mapping[HookCriteria,String,String]( "projectName" -> nonEmptyText,
+    "stage" -> nonEmptyText
+    )( HookCriteria.apply )( HookCriteria.unapply )
+
+  lazy val hookCriteriaForm = Form[HookCriteria](
+    hookCriteriaMapping
+  )
+
   lazy val hookForm = Form[HookForm](
-    tuple(
-      "projectName" -> nonEmptyText,
-      "stage" -> nonEmptyText,
-      "url" -> nonEmptyText,
-      "enabled" -> boolean
-    ).verifying("valid.url", _ match {
-      case(_,_, url, _) => try { new URL(url); true } catch { case e:MalformedURLException => false }
-    })(HookForm.apply)
-      (HookForm.unapply)
+    mapping(
+      "criteria" -> hookCriteriaMapping,
+      "action" -> mapping(
+        "url" -> nonEmptyText,
+        "enabled" -> boolean
+      )(HookAction.apply)(HookAction.unapply)
+    )( HookForm.apply)(HookForm.unapply ).verifying(
+      "URL is invalid", form => try { new URL(form.action.url); true } catch { case e:MalformedURLException => false }
+    )
   )
 
   def list = AuthAction { implicit request =>
-    val hooks = Persistence.store.getPostDeployHooks
+    val hooks = Persistence.store.getPostDeployHooks.toSeq.sortBy(q => (q._1.projectName, q._1.stage))
     Ok(views.html.hooks.list(request, hooks))
   }
   def form = AuthAction { implicit request =>
-    Ok(views.html.hooks.form(request,hookForm))
+    Ok(views.html.hooks.form(request,hookForm.fill(HookForm(HookCriteria("", ""), HookAction("",true)))))
   }
-  def update = AuthAction { implicit request =>
-    // extract and save values
-    Redirect(routes.Hooks.list())
+  def save = AuthAction { implicit request =>
+    hookForm.bindFromRequest().fold(
+      formWithErrors => Ok(views.html.hooks.form(request,formWithErrors)),
+      form => {
+        Persistence.store.setPostDeployHook(form.criteria, form.action)
+        Redirect(routes.Hooks.list())
+      }
+    )
   }
-  def edit(projectName: String, stage: String) = TODO
-  def delete(projectName: String, stage: String) = AuthAction { implicit request =>
-    Persistence.store.deletePostDeployHook(HookCriteria(projectName, Stage(stage)))
+  def edit(projectName: String, stage: String) = AuthAction { implicit request =>
+    val criteria = HookCriteria(projectName, stage)
+    Persistence.store.getPostDeployHook(criteria).map{ action =>
+      Ok(views.html.hooks.form(request,hookForm.fill(HookForm(criteria,action))))
+    }.getOrElse(Redirect(routes.Hooks.list()))
+  }
+  def delete = AuthAction { implicit request =>
+    hookCriteriaForm.bindFromRequest().fold(
+      errors => {},
+      deleteCriteria => { Persistence.store.deletePostDeployHook(deleteCriteria) }
+    )
     Redirect(routes.Hooks.list())
   }
 }

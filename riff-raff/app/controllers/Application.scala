@@ -9,12 +9,11 @@ trait Logging {
   implicit val log = Logger(getClass)
 }
 
-case class MenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) {
-  def isActive(request: AuthenticatedRequest[AnyContent]) = {
-    if (activeInSubPaths)
-      request.path.startsWith(target.url)
-    else
-      request.path == target.url
+case class MenuItem(title: String, target: Call, nestedItems: Seq[MenuItem] = Nil, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) {
+  def isActive(request: AuthenticatedRequest[AnyContent]): Boolean = {
+    nestedItems.map(_.isActive(request)).fold(false)(_ || _) ||
+    activeInSubPaths && request.path.startsWith(target.url) ||
+    request.path == target.url
   }
 }
 
@@ -25,7 +24,10 @@ object Menu {
     MenuItem("Deployment Info", routes.Application.deployInfo(stage = "")),
     MenuItem("Deploy", routes.Deployment.deploy()),
     MenuItem("History", routes.Deployment.history()),
-    MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment())
+    MenuItem("Configuration", Call("GET","#"), Seq(
+      MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment()),
+      MenuItem("Hooks", routes.Hooks.list())
+    ))
   )
 
   lazy val loginMenuItem = MenuItem("Login", routes.Login.loginAction(), identityRequired = false)
