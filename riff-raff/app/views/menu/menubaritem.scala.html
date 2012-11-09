@@ -1,14 +1,17 @@
 @(request: AuthenticatedRequest[AnyContent], item: MenuItem)
 
-@if(item.nestedItems.isEmpty) {
-<li@if(item.isActive(request)){ class="active"}><a href="@item.target">@item.title</a></li>
-} else {
-<li class="dropdown@if(item.isActive(request)){ active}">
-    <a class="dropdown-toggle" id="@item.hashCode" data-toggle="dropdown" data-target="@item.target">@item.title</a>
-    <ul class="dropdown-menu" role="menu" aria-labelledby="@item.hashCode">
-        @item.nestedItems.map { subItem =>
-            @menubaritem(request, subItem)
-        }
-    </ul>
-</li>
+@item match {
+    case si:SingleMenuItem => {
+        <li@if(si.isActive(request)){ class="active"}><a href="@si.target">@si.title</a></li>
+    }
+    case ddi:DropDownMenuItem => {
+        <li class="dropdown@if(ddi.isActive(request)){ active}">
+            <a class="dropdown-toggle" id="@ddi.hashCode" data-toggle="dropdown" data-target="@ddi.target">@ddi.title</a>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="@ddi.hashCode">
+            @ddi.items.map { subItem =>
+                @menubaritem(request, subItem)
+            }
+            </ul>
+        </li>
+    }
 }
