@@ -1,6 +1,6 @@
 package notification
 
-import controllers.Logging
+import controllers.{DeployController, Logging}
 import conf.Configuration
 import org.pircbotx.PircBotX
 import scala.collection.JavaConversions._
@@ -9,6 +9,7 @@ import magenta._
 import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 import java.util.UUID
 import lifecycle.LifecycleWithoutApp
+import deployment.Task
 
 object IrcClient extends LifecycleWithoutApp {
   trait Event
@@ -23,19 +24,20 @@ object IrcClient extends LifecycleWithoutApp {
 
   val sink = new MessageSink {
     def message(uuid: UUID, stack: MessageStack) {
-      stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case FailContext(Deploy(parameters), exception) =>
-          sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-          sendMessage("[%s] FAILED: %s %s" format (parameters.deployer.name, exception.name, exception.message))
-        case FinishContext(Deploy(parameters)) =>
-          sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case _ =>
-      }
+      if (DeployController.get(uuid).taskType == Task.Deploy)
+        stack.top match {
+          case StartContext(Deploy(parameters)) =>
+            sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
+              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+          case FailContext(Deploy(parameters), exception) =>
+            sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
+              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+            sendMessage("[%s] FAILED: %s %s" format (parameters.deployer.name, exception.name, exception.message))
+          case FinishContext(Deploy(parameters)) =>
+            sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
+              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+          case _ =>
+        }
     }
   }
 

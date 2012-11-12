@@ -9,7 +9,7 @@ import magenta.FinishContext
 import magenta.StartContext
 import com.rabbitmq.client.{Channel, ConnectionFactory}
 import akka.actor._
-import controllers.{routes, Logging}
+import controllers.{DeployController, routes, Logging}
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 import conf.Configuration
@@ -20,6 +20,7 @@ import scala.Some
 import akka.actor.OneForOneStrategy
 import magenta.DeployParameters
 import akka.util.duration._
+import deployment.Task
 
 /*
  Send deploy events to graphite
@@ -46,15 +47,16 @@ object MessageQueue extends LifecycleWithoutApp with Logging {
 
   lazy val sink = new MessageSink {
     def message(uuid: UUID, stack: MessageStack) {
-      stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
-        case FailContext(Deploy(parameters), exception) =>
-          sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters)))
-        case FinishContext(Deploy(parameters)) =>
-          sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters)))
-        case _ =>
-      }
+      if (DeployController.get(uuid).taskType == Task.Deploy)
+        stack.top match {
+          case StartContext(Deploy(parameters)) =>
+            sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
+          case FailContext(Deploy(parameters), exception) =>
+            sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters)))
+          case FinishContext(Deploy(parameters)) =>
+            sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters)))
+          case _ =>
+        }
     }
   }
 
