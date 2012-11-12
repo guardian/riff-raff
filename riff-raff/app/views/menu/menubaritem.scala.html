@@ -1,3 +1,17 @@
 @(request: AuthenticatedRequest[AnyContent], item: MenuItem)
 
-<li@if(item.isActive(request)){ class="active"}><a href="@item.target">@item.title</a></li>
+@item match {
+    case si:SingleMenuItem => {
+        <li@if(si.isActive(request)){ class="active"}><a href="@si.target">@si.title</a></li>
+    }
+    case ddi:DropDownMenuItem => {
+        <li class="dropdown@if(ddi.isActive(request)){ active}">
+            <a class="dropdown-toggle" id="@ddi.hashCode" data-toggle="dropdown" data-target="@ddi.target">@ddi.title</a>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="@ddi.hashCode">
+            @ddi.items.map { subItem =>
+                @menubaritem(request, subItem)
+            }
+            </ul>
+        </li>
+    }
+}

@@ -2,7 +2,7 @@ package controllers
 
 import teamcity._
 import play.api.mvc.Controller
-import play.api.data.Form
+import play.api.data.{Mapping, ObjectMapping2, Form}
 import deployment._
 import deployment.Domains.responsibleFor
 import deployment.DomainAction._
@@ -22,8 +22,10 @@ import magenta.Stage
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
-import datastore.DataStore
+import persistence.Persistence
 import lifecycle.LifecycleWithoutApp
+import java.net.{URL, MalformedURLException}
+import notification.{HookAction, HookCriteria}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -40,7 +42,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     val uuid = java.util.UUID.randomUUID()
     val record = DeployRecord(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
-    DataStore.createDeploy(record)
+    Persistence.store.createDeploy(record)
     await(uuid)
   }
 
@@ -48,7 +50,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     library()(uuid) send { record =>
       MessageBroker.withUUID(uuid)(record + stack)
     }
-    DataStore.updateDeploy(uuid, stack)
+    Persistence.store.updateDeploy(uuid, stack)
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
@@ -61,7 +63,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = DataStore.getDeploys(limit)
+  def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = Persistence.store.getDeploys(limit)
 
   def getDeploys(limit:Int = 20): List[DeployRecord] = {
     val controllerDeploys = getControllerDeploys.toList
@@ -74,7 +76,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def get(uuid: UUID): DeployRecord = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      DataStore.getDeploy(uuid).get
+      Persistence.store.getDeploy(uuid).get
     }
   }
 

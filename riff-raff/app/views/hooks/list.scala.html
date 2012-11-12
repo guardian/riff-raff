@@ -1,0 +1,45 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], hooks: Seq[(notification.HookCriteria, notification.HookAction)])
+
+@main("Post Deploy Hooks", request) {
+<h2>Post Deploy Hooks</h2>
+<hr/>
+<p><a class="btn btn-inverse" href="@routes.Hooks.form()"><i class="icon-plus icon-white"></i> Add new hook</a></p>
+<div class="content">
+    @if(hooks.isEmpty) {
+        <div class="alert alert-warning"><strong>No deploy hooks.</strong></div>
+    } else {
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Stage</th>
+                <th>URL</th>
+                <th>Enabled</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+          @for((criteria, action) <- hooks) {
+            <tr>
+                <td>@criteria.projectName</td>
+                <td>@criteria.stage</td>
+                <td>@action.url</td>
+                <td>@action.enabled</td>
+                <td>
+                    <a class="btn btn-mini" href="@routes.Hooks.edit(criteria.projectName,criteria.stage)"><i class="icon-edit"></i> Edit</a>
+                </td>
+                <td>
+                    @helper.form(action=routes.Hooks.delete) {
+                        <input type="hidden" name="projectName" value="@criteria.projectName"/>
+                        <input type="hidden" name="stage" value="@criteria.stage"/>
+                        <button class="btn btn-mini btn-danger" name="delete" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
+                    }
+                </td>
+            </tr>
+          }
+        </tbody>
+    </table>
+    }
+</div>
+}

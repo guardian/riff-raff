@@ -9,33 +9,42 @@ trait Logging {
   implicit val log = Logger(getClass)
 }
 
-case class MenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) {
-  def isActive(request: AuthenticatedRequest[AnyContent]) = {
-    if (activeInSubPaths)
-      request.path.startsWith(target.url)
-    else
-      request.path == target.url
+trait MenuItem {
+  def title:String
+  def target:Call
+  def isActive(request:AuthenticatedRequest[AnyContent]):Boolean
+  def isVisible(request:AuthenticatedRequest[AnyContent]):Boolean
+}
+
+case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) extends MenuItem{
+  def isActive(request: AuthenticatedRequest[AnyContent]): Boolean = {
+    activeInSubPaths && request.path.startsWith(target.url) || request.path == target.url
   }
+  def isVisible(request: AuthenticatedRequest[AnyContent]): Boolean = !identityRequired || request.identity.isDefined
+}
+
+case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#")) extends MenuItem {
+  def isActive(request: AuthenticatedRequest[AnyContent]) = items.exists(_.isActive(request))
+  def isVisible(request: AuthenticatedRequest[AnyContent]) = items.exists(_.isVisible(request))
 }
 
 object Menu {
   lazy val menuItems = Seq(
-    MenuItem("Home", routes.Application.index(), identityRequired = false),
-    MenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true),
-    MenuItem("Deployment Info", routes.Application.deployInfo(stage = "")),
-    MenuItem("Deploy", routes.Deployment.deploy()),
-    MenuItem("History", routes.Deployment.history()),
-    MenuItem("Continuous Deployment", routes.Deployment.continuousDeployment())
+    SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
+    SingleMenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true),
+    SingleMenuItem("Deployment Info", routes.Application.deployInfo(stage = "")),
+    SingleMenuItem("Deploy", routes.Deployment.deploy()),
+    SingleMenuItem("History", routes.Deployment.history()),
+    DropDownMenuItem("Configuration", Seq(
+      SingleMenuItem("Continuous Deployment", routes.Deployment.continuousDeployment()),
+      SingleMenuItem("Hooks", routes.Hooks.list())
+    ))
   )
 
-  lazy val loginMenuItem = MenuItem("Login", routes.Login.loginAction(), identityRequired = false)
+  lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 
   def items(request: AuthenticatedRequest[AnyContent]) = {
-    val loggedIn = request.identity.isDefined
-    menuItems.filter { item =>
-      !item.identityRequired ||
-        (item.identityRequired && loggedIn)
-    }
+    menuItems.filter(_.isVisible(request))
   }
 }
 
