@@ -7,15 +7,16 @@ import java.util.UUID
 import lifecycle.LifecycleWithoutApp
 import persistence.{MongoSerialisable, Persistence}
 import deployment.Task
-import java.net.{URI, HttpURLConnection, URL}
+import java.net.URL
 import com.mongodb.casbah.commons.MongoDBObject
 import magenta.FinishContext
 import magenta.DeployParameters
 import magenta.MessageStack
 import magenta.Deploy
-import magenta.Stage
 import scala.Some
-import play.libs.WS
+import play.api.libs.ws.WS
+import com.ning.http.client.Realm.AuthScheme
+
 
 case class HookCriteria(projectName: String, stage: String) extends MongoSerialisable {
   lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage))
@@ -24,13 +25,27 @@ object HookCriteria {
   def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
 }
 
+case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
+
 case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable {
   lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
   def act() {
     if (enabled) {
-      log.info("Calling %s")
-      val response = WS.url(url).get().get(5000)
-      log.info("HTTP status code %d, body %s" format (response.getStatus, response.getBody))
+      log.info("Calling %s" format url)
+      val userInfo = Option(new URL(url).getUserInfo).flatMap { ui =>
+        val elements = ui.split(':')
+        if (elements.length == 2)
+          Some(Auth(elements(0), elements(1)))
+        else
+          None
+      }
+
+      val request = userInfo.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
+
+      request.get().map { response =>
+        log.info("HTTP status code %d" format response.status)
+        log.debug("HTTP response body %s" format response.body)
+      }
     } else {
       log.info("Hook disabled")
     }
