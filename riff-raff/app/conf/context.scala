@@ -9,7 +9,7 @@ import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
 import java.net.URL
-import controllers.Logging
+import controllers.{DeployController, Logging}
 import lifecycle.LifecycleWithoutApp
 import java.util.UUID
 import magenta.S3Credentials
@@ -203,6 +203,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = List(Healthcheck.switch)
+  val all: Seq[Switchable] = List(Healthcheck.switch, DeployController.enableDeploysSwitch)
 }
 

@@ -2,7 +2,7 @@ package controllers
 
 import teamcity._
 import play.api.mvc.Controller
-import play.api.data.{Mapping, ObjectMapping2, Form}
+import play.api.data.Form
 import deployment._
 import deployment.Domains.responsibleFor
 import deployment.DomainAction._
@@ -24,8 +24,7 @@ import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
 import persistence.Persistence
 import lifecycle.LifecycleWithoutApp
-import java.net.{URL, MalformedURLException}
-import notification.{HookAction, HookCriteria}
+import com.gu.management.DefaultSwitch
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -33,6 +32,18 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
+
+  val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run builds", true) {
+    private def runningDeploys: Boolean = getControllerDeploys.exists(!_.isDone)
+    override def switchOff() {
+      if (runningDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+      super.switchOff()
+      if (runningDeploys) {
+        super.switchOn()
+        throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+      }
+    }
+  }
 
   implicit val system = ActorSystem("deploy")
 
@@ -55,11 +66,14 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
   def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
-    val params = TeamCity.transformLastSuccessful(requestedParams)
-    Domains.assertResponsibleFor(params)
-    val record = DeployController.create(mode, params)
-    DeployControlActor.deploy(record)
-    record.uuid
+    if (enableDeploysSwitch.isSwitchedOn) {
+      val params = TeamCity.transformLastSuccessful(requestedParams)
+      Domains.assertResponsibleFor(params)
+      val record = DeployController.create(mode, params)
+      DeployControlActor.deploy(record)
+      record.uuid
+    } else
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
   }
 
   def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }
