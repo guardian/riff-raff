@@ -5,7 +5,7 @@ import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
 import java.util.UUID
 import lifecycle.LifecycleWithoutApp
-import persistence.Persistence
+import persistence.{MongoSerialisable, Persistence}
 import deployment.Task
 import java.net.{URI, HttpURLConnection, URL}
 import com.mongodb.casbah.commons.MongoDBObject
@@ -17,14 +17,14 @@ import magenta.Stage
 import scala.Some
 import play.libs.WS
 
-case class HookCriteria(projectName: String, stage: String) {
+case class HookCriteria(projectName: String, stage: String) extends MongoSerialisable {
   lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage))
 }
 object HookCriteria {
   def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
 }
 
-case class HookAction(url: String, enabled: Boolean) extends Logging {
+case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable {
   lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
   def act() {
     log.info("Calling %s")

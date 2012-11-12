@@ -19,6 +19,10 @@ import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHe
 import notification.{HookAction, HookCriteria}
 import java.net.URL
 
+trait MongoSerialisable {
+  def dbObject: MongoDBObject
+}
+
 object MongoDatastore extends Logging {
 
   val MESSAGE_STACKS = "messageStacks"
