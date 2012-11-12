@@ -33,7 +33,9 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
 
-  val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run builds", true) {
+  lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
+
+  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run builds.  This switch can only be turned off if no build are running.", true) {
     private def runningDeploys: Boolean = getControllerDeploys.exists(!_.isDone)
     override def switchOff() {
       if (runningDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
@@ -44,6 +46,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
       }
     }
   }
+
+  lazy val enableQueueingSwitch = new DefaultSwitch("enable-deploy-queuing", "Enable riff-raff to queue builds.  Turning this off will prevent anyone queueing a new build, although running builds will continue.", true)
 
   implicit val system = ActorSystem("deploy")
 
@@ -66,14 +70,16 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
   def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
-    if (enableDeploysSwitch.isSwitchedOn) {
+    if (enableSwitches.forall(_.isSwitchedOn)) {
       val params = TeamCity.transformLastSuccessful(requestedParams)
       Domains.assertResponsibleFor(params)
       val record = DeployController.create(mode, params)
       DeployControlActor.deploy(record)
       record.uuid
-    } else
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
+    } else {
+      val switchToBlame = enableSwitches.filter(_.isSwitchedOff).map(_.name).mkString(", ")
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format switchToBlame)
+    }
   }
 
   def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }

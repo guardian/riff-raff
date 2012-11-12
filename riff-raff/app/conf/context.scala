@@ -203,6 +203,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = List(Healthcheck.switch, DeployController.enableDeploysSwitch)
+  val all: Seq[Switchable] = Healthcheck.switch :: DeployController.enableSwitches
 }
 
