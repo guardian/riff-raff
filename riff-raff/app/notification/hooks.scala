@@ -1,23 +1,5 @@
 package notification
 
-// send events after a deploy is complete
-
-/*
-configuration looks like
-
-app / stage -> URL???
-
-Initial requirement is to trigger teamcity build:
-  When "frontend::article" is deployed to CODE then call a fixed URL
-
-  Similar config to deployinfo?? Regex?
-
-  Make super simple for now?
-
-  Even constrain to only doing build triggering?
-
-  When "frontend::article" is deployed to CODE then start build btNNN
-*/
 import controllers.{DeployController, Logging}
 import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
