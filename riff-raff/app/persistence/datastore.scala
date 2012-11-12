@@ -4,7 +4,6 @@ import java.util.UUID
 import deployment.DeployRecord
 import magenta.MessageStack
 import conf.RequestMetrics.DatastoreRequest
-import java.net.URL
 import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
