@@ -27,9 +27,13 @@ object HookCriteria {
 case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable {
   lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
   def act() {
-    log.info("Calling %s")
-    val response = WS.url(url).get().get(5000)
-    log.info("HTTP status code %d, body %s" format (response.getStatus, response.getBody))
+    if (enabled) {
+      log.info("Calling %s")
+      val response = WS.url(url).get().get(5000)
+      log.info("HTTP status code %d, body %s" format (response.getStatus, response.getBody))
+    } else {
+      log.info("Hook disabled")
+    }
   }
 }
 object HookAction {
