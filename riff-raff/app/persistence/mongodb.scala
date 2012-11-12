@@ -20,7 +20,7 @@ import notification.{HookAction, HookCriteria}
 import java.net.URL
 
 trait MongoSerialisable {
-  def dbObject: MongoDBObject
+  def dbObject: DBObject
 }
 
 object MongoDatastore extends Logging {
