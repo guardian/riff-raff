@@ -118,7 +118,7 @@ object Deployment extends Controller with Logging {
 
   def processForm = AuthAction { implicit request =>
     deployForm.bindFromRequest().fold(
-      errors => Ok(views.html.deploy.form(request,errors)),
+      errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
         log.info("Host list: %s" format form.hosts)
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
