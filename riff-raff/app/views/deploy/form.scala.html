@@ -48,6 +48,8 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
     $('#projectInput').blur( function(e) {
         selectedProject = encodeURIComponent($(e.target).val())
     })
+
+    var menuOpen = false
     $('#buildInput').each( function() {
         var $input = $(this);
         var serverUrl = $input.data('url');
@@ -57,11 +59,16 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
                     term: request.term.split( /,\s*/).pop()
                 }, response )
             },
+            open: function( event, ui ) { menuOpen = true },
+            close: function ( event, ui ) { menuOpen = false },
             minLength:0
         });
     });
+
     $('#buildInput').focus( function(e) {
-        $(e.target).autocomplete("search");
+        if (!menuOpen) {
+            $(e.target).autocomplete("search");
+        }
     });
 </script>
 
