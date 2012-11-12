@@ -40,12 +40,6 @@ object MongoDatastore extends Logging {
       log.error("Couldn't initialise MongoDB connection", e)
       None
   }
-
-  val testUUID = UUID.randomUUID()
-  val testParams = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "182"), Stage("DEV"))
-  val testRecord = DeployRecord(Task.Deploy, testUUID, testParams)
-  val testStack1 = MessageStack(List(Deploy(testParams)))
-  val testStack2 = MessageStack(List(Info("Test info message"),Deploy(testParams)))
 }
 
 trait RiffRaffGraters {
