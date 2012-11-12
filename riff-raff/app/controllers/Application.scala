@@ -24,8 +24,8 @@ case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean
 }
 
 case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#")) extends MenuItem {
-  def isActive(request: AuthenticatedRequest[AnyContent]) = items.map(_.isActive(request)).fold(false)(_ || _)
-  def isVisible(request: AuthenticatedRequest[AnyContent]) = items.map(_.isVisible(request)).fold(false)(_ || _)
+  def isActive(request: AuthenticatedRequest[AnyContent]) = items.exists(_.isActive(request))
+  def isVisible(request: AuthenticatedRequest[AnyContent]) = items.exists(_.isVisible(request))
 }
 
 object Menu {
