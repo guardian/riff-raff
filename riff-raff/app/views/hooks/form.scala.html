@@ -9,7 +9,7 @@
 @helper.form(action=routes.Hooks.save) {
 
 @if(hookForm("criteria.projectName").value.get.isEmpty) {
-    @helper.inputText(hookForm("criteria.projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+    @helper.inputText(hookForm("criteria.projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
 } else {
     <p>
     @snippets.inputHidden(hookForm("criteria.projectName"))
@@ -30,7 +30,7 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
     <strong>Stage</strong>: @hookForm("criteria.stage").value.get
     </p>
 }
-@helper.inputText(hookForm("action.url"), '_label -> "Hook target URL (GET)")
+@helper.inputText(hookForm("action.url"), '_label -> "Hook target URL (GET)", 'class -> "buildForm")
 @helper.checkbox(hookForm("action.enabled"), '_label -> "Hook Enabled")
 
 <div class="actions">
@@ -38,19 +38,6 @@ options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages
     <a href="@routes.Hooks.list()" class="btn btn-inverse">Cancel</a>
 </div>
 }
-<style>
-    .ui-autocomplete {
-        max-height: 150px;
-        overflow-y: auto;
-        /* prevent horizontal scrollbar */
-        overflow-x: hidden;
-        /* add padding to account for vertical scrollbar */
-        padding-right: 20px;
-    }
-    input[type=text] {
-        width: 400px;
-    }
-</style>
 <script type="text/javascript">
     var selectedProject = ''
     $('#projectInput').each( function() {
