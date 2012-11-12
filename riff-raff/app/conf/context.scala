@@ -19,7 +19,7 @@ import scala.Some
 import magenta.FailContext
 import magenta.StartContext
 import collection.mutable
-import datastore.DataStore
+import persistence.Persistence
 import deployment.{Domains, GuDomainsConfiguration}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
@@ -176,9 +176,9 @@ object MessageMetrics {
 }
 
 object DatastoreMetrics {
-  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => DataStore.dataSize)
-  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => DataStore.storageSize)
-  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => DataStore.documentCount)
+  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => Persistence.store.dataSize)
+  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => Persistence.store.storageSize)
+  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => Persistence.store.documentCount)
   val all = Seq(MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 

@@ -1,14 +1,12 @@
 import collection.mutable
 import com.gu.management.play.{StatusCounters, RequestTimer}
 import controllers.Logging
-import datastore.MongoDatastore
 import lifecycle.Lifecycle
 import notification.{MessageQueue, IrcClient}
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
 import play.api.mvc.Results.InternalServerError
-import scala.collection.JavaConversions._
 import controllers.DeployController
 import teamcity.ContinuousDeployment
 import utils.ScheduledAgent
@@ -31,7 +29,6 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
       DeployController,
       IrcClient,
       MessageQueue,
-      MongoDatastore,
       ScheduledAgent,
       ContinuousDeployment,
       DeployMetrics

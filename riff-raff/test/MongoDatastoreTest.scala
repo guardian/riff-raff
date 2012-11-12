@@ -2,8 +2,8 @@ package test
 
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
-import deployment.{Task, DeployRecord}
-import datastore.{RiffRaffGraters, MongoDatastore}
+import deployment.DeployRecord
+import persistence.{RiffRaffGraters, MongoDatastore}
 import magenta._
 import java.util.UUID
 import org.joda.time.DateTime
@@ -12,7 +12,6 @@ import deployment.Task
 import java.io.File
 import org.bson.BasicBSONEncoder
 import com.mongodb.util.JSON
-import com.mongodb.casbah.commons.ValidBSONType.DBObject
 import com.mongodb.DBObject
 import com.mongodb.casbah.commons.MongoDBObject
 import net.liftweb.json.{Diff,parse,render,JValue,JNothing,compact}
