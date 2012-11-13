@@ -3,8 +3,8 @@ resolvers += "Guardian Github Snapshots" at "http://guardian.github.com/maven/re
 resolvers += Resolver.url("Typesafe Ivy Releases", url("http://repo.typesafe.com/typesafe/ivy-releases"))(Resolver.ivyStylePatterns)
 
 libraryDependencies ++= Seq(
-  "com.gu" %% "management-play" % "5.15",
-  "com.gu" %% "management-logback" % "5.15",
+  "com.gu" %% "management-play" % "5.18",
+  "com.gu" %% "management-logback" % "5.18",
   "com.gu" %% "configuration" % "3.6",
   "com.novus" %% "salat" % "1.9.0",
   "org.pircbotx" % "pircbotx" % "1.7",
