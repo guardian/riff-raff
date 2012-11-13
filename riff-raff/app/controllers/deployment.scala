@@ -35,7 +35,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
 
-  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run builds.  This switch can only be turned off if no build are running.", true) {
+  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", true) {
     private def runningDeploys: Boolean = getControllerDeploys.exists(!_.isDone)
     override def switchOff() {
       if (runningDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
@@ -47,7 +47,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  lazy val enableQueueingSwitch = new DefaultSwitch("enable-deploy-queuing", "Enable riff-raff to queue builds.  Turning this off will prevent anyone queueing a new build, although running builds will continue.", true)
+  lazy val enableQueueingSwitch = new DefaultSwitch("enable-deploy-queuing", "Enable riff-raff to queue deploys.  Turning this off will prevent anyone queueing a new deploy, although running deploys will continue.", true)
 
   implicit val system = ActorSystem("deploy")
 
