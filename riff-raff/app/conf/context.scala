@@ -21,6 +21,7 @@ import magenta.StartContext
 import collection.mutable
 import persistence.Persistence
 import deployment.{Domains, GuDomainsConfiguration}
+import akka.util.{Switch => AkkaSwitch}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -199,6 +200,31 @@ object Metrics {
     RequestMetrics.all ++
     DeployMetrics.all ++
     DatastoreMetrics.all
+}
+
+case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean = true) extends Switchable with Loggable {
+  val delegate = new AkkaSwitch(initiallyOn)
+
+  def isSwitchedOn = delegate.isOn
+
+  def switchOn() = switchOn({})
+  def switchOn( action: => Unit ): Boolean =
+    delegate.switchOn {
+      logger.info("Switching on " + name)
+      action
+    }
+
+  def switchOff() = switchOff({})
+  def switchOff( action: => Unit ): Boolean =
+    delegate.switchOff {
+      logger.info("Switching off " + name)
+      action
+    }
+
+  def whileOn( action: => Unit ): Boolean = delegate.whileOn(action)
+  def whileOff( action: => Unit ): Boolean = delegate.whileOff(action)
+  def whileOnYield[T]( action: T ): Option[T] = delegate.whileOnYield( action )
+  def whileOffYield[T]( action: T ): Option[T] = delegate.whileOffYield( action )
 }
 
 object Switches {

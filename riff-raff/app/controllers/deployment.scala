@@ -25,6 +25,7 @@ import org.joda.time.format.DateTimeFormat
 import persistence.Persistence
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
+import conf.AtomicSwitch
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -35,14 +36,11 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
 
-  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", true) {
-    private def runningDeploys: Boolean = getControllerDeploys.exists(!_.isDone)
+  lazy val enableDeploysSwitch = new AtomicSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", true) {
     override def switchOff() {
-      if (runningDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
-      super.switchOff()
-      if (runningDeploys) {
-        super.switchOn()
-        throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+      super.switchOff {
+        if (getControllerDeploys.exists(!_.isDone))
+          throw new IllegalStateException("Cannot turn switch off as builds are currently running")
       }
     }
   }
@@ -69,16 +67,20 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
+
   def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
-    if (enableSwitches.forall(_.isSwitchedOn)) {
-      val params = TeamCity.transformLastSuccessful(requestedParams)
-      Domains.assertResponsibleFor(params)
+    if (enableQueueingSwitch.isSwitchedOff)
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
+
+    val params = TeamCity.transformLastSuccessful(requestedParams)
+    Domains.assertResponsibleFor(params)
+
+    enableDeploysSwitch.whileOnYield {
       val record = DeployController.create(mode, params)
       DeployControlActor.deploy(record)
       record.uuid
-    } else {
-      val switchToBlame = enableSwitches.filter(_.isSwitchedOff).map(_.name).mkString(", ")
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format switchToBlame)
+    } getOrElse {
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
     }
   }
 
