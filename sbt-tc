@@ -12,7 +12,7 @@ cat /dev/null | java -Xmx1G -XX:MaxPermSize=250m -XX:+UseCompressedOops \
     -Dbuild.number="$BUILD_NUMBER" \
     -Dbuild.vcs.number="$BUILD_VCS_NUMBER" \
     -Dsbt.boot.directory=$SBT_BOOT_DIR \
-    -Dhttp.proxyHost=devscreen.gudev.gnl\
+    -Dhttp.proxyHost=devproxy.gul3.gnl\
     -Dhttp.proxyPort=3128 \
     -jar sbt-launch-0.11.3.jar "$@"
 
