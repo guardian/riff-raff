@@ -1,5 +1,6 @@
 resolvers ++= Seq(
     Classpaths.typesafeResolver,
+    "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
     "spray repo" at "http://repo.spray.cc",
     "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-releases"
 )
