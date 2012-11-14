@@ -44,6 +44,11 @@ GET     /loginAction                controllers.Login.loginAction
 GET     /openIDCallback             controllers.Login.openIDCallback
 GET     /logout                     controllers.Login.logout
 
+GET     /auth/list                  controllers.Login.authList
+GET     /auth/new                   controllers.Login.authForm
+POST    /auth/delete                controllers.Login.authDelete
+POST    /auth/save                  controllers.Login.authSave
+
 # Testing pages (for changing styling without running deploys)
 GET     /deployment/reportTestPartial  controllers.Testing.reportTestPartial(verbose:Boolean ?= false)
 GET     /testing/form   controllers.Testing.form
