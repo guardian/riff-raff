@@ -175,6 +175,14 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
+  it should "observe ordering of hosts in deployInfo" in {
+    Resolver.resolve(project(baseRecipe), DeployInfo(List(host2, host1)), parameters(baseRecipe)) should be (List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on host2", Some(host2)),
+      StubTask("action_one per host task on host1", Some(host1))
+    ))
+  }
+
   def parameters(recipe: Recipe) =
     DeployParameters(Deployer("Tester"), Build("project", "build"), CODE, RecipeName(recipe.name))
 }
