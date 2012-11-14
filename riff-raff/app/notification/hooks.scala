@@ -19,29 +19,31 @@ import com.ning.http.client.Realm.AuthScheme
 
 
 case class HookCriteria(projectName: String, stage: String) extends MongoSerialisable {
-  lazy val dbObject = MongoDBObject("_id" -> MongoDBObject("projectName" -> projectName, "stageName" -> stage))
+  lazy val dbObject = MongoDBObject("projectName" -> projectName, "stageName" -> stage)
 }
 object HookCriteria {
   def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
+  def apply(dbo: MongoDBObject): HookCriteria = HookCriteria(dbo.as[String]("projectName"), dbo.as[String]("stageName"))
 }
 
 case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
 case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable {
   lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
+  lazy val request = {
+    val userInfo = Option(new URL(url).getUserInfo).flatMap { ui =>
+      val elements = ui.split(':')
+      if (elements.length == 2)
+        Some(Auth(elements(0), elements(1)))
+      else
+        None
+    }
+    userInfo.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
+  }
+
   def act() {
     if (enabled) {
       log.info("Calling %s" format url)
-      val userInfo = Option(new URL(url).getUserInfo).flatMap { ui =>
-        val elements = ui.split(':')
-        if (elements.length == 2)
-          Some(Auth(elements(0), elements(1)))
-        else
-          None
-      }
-
-      val request = userInfo.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
-
       request.get().map { response =>
         log.info("HTTP status code %d" format response.status)
         log.debug("HTTP response body %s" format response.body)
@@ -52,9 +54,7 @@ case class HookAction(url: String, enabled: Boolean) extends Logging with MongoS
   }
 }
 object HookAction {
-  def apply(dbo: MongoDBObject): HookAction = {
-    HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled"))
-  }
+  def apply(dbo: MongoDBObject): HookAction = HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled"))
 }
 
 

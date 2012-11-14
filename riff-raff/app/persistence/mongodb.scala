@@ -1,8 +1,6 @@
 package persistence
 
 import java.util.UUID
-import deployment.Task
-import magenta._
 import com.mongodb.casbah.{MongoURI, MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
@@ -10,14 +8,11 @@ import controllers.Logging
 import com.novus.salat._
 import play.api.Application
 import deployment.DeployRecord
-import magenta.DeployParameters
 import magenta.MessageStack
-import magenta.Deployer
 import scala.Some
-import magenta.Build
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookAction, HookCriteria}
-import java.net.URL
+import com.mongodb.casbah.commons.MongoDBObject
 
 trait MongoSerialisable {
   def dbObject: DBObject
@@ -120,24 +115,22 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
-    val criteria = {
-      val id = dbo.as[DBObject]("_id")
-      HookCriteria(id.as[String]("projectName"), id.as[String]("stageName"))
-    }
+    val criteria = HookCriteria(dbo.as[DBObject]("_id"))
     val action = HookAction(dbo.as[String]("url"),dbo.as[Boolean]("enabled"))
     criteria -> action
   }.toMap
 
   override def getPostDeployHook(criteria: HookCriteria) =
     logAndSquashExceptions[Option[HookAction]](Some("Requesting post deploy hook for %s" format criteria),None) {
-      hooksCollection.find(criteria.dbObject).map(HookAction(_)).toSeq.headOption
+      hooksCollection.find(MongoDBObject("_id" -> criteria.dbObject)).map(HookAction(_)).toSeq.headOption
     }
 
   override def setPostDeployHook(criteria: HookCriteria, action: HookAction) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
+      val criteriaId = MongoDBObject("_id" -> criteria.dbObject)
       hooksCollection.findAndModify(
-        query = criteria.dbObject,
-        update = criteria.dbObject ++ action.dbObject,
+        query = criteriaId,
+        update = criteriaId ++ action.dbObject,
         upsert = true, fields = MongoDBObject(),
         sort = MongoDBObject(),
         remove = false,
@@ -148,7 +141,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def deletePostDeployHook(criteria: HookCriteria) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
-      hooksCollection.findAndRemove(criteria.dbObject)
+      hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.dbObject))
     }
   }
 }
