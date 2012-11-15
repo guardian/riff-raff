@@ -110,9 +110,11 @@ object Login extends Controller with Logging {
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
     def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
-    def emailWhitelistContains(email: String) =
-      auth.whitelist.addresses.exists(_.equalsIgnoreCase(email)) ||
-        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(email).isDefined)
+    def emailWhitelistContains(email: String) = {
+      val lowerCaseEmail = email.toLowerCase
+      auth.whitelist.addresses.contains(lowerCaseEmail) ||
+        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).isDefined)
+    }
   }
 
   val openIdAttributes = Seq(
@@ -171,9 +173,7 @@ object Login extends Controller with Logging {
   }
 
   def logout = Action { implicit request =>
-    Redirect("/").withSession {
-      session - Identity.KEY
-    }
+    Redirect("/").withNewSession
   }
 
   def profile = AuthAction { request =>
