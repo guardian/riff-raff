@@ -16,11 +16,11 @@ trait MenuItem {
   def isVisible(request:AuthenticatedRequest[AnyContent]):Boolean
 }
 
-case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false) extends MenuItem{
+case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false, enabled: Boolean = true) extends MenuItem{
   def isActive(request: AuthenticatedRequest[AnyContent]): Boolean = {
     activeInSubPaths && request.path.startsWith(target.url) || request.path == target.url
   }
-  def isVisible(request: AuthenticatedRequest[AnyContent]): Boolean = !identityRequired || request.identity.isDefined
+  def isVisible(request: AuthenticatedRequest[AnyContent]): Boolean = enabled && (!identityRequired || request.identity.isDefined)
 }
 
 case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#")) extends MenuItem {
@@ -37,15 +37,12 @@ object Menu {
     SingleMenuItem("History", routes.Deployment.history()),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.Deployment.continuousDeployment()),
-      SingleMenuItem("Hooks", routes.Hooks.list())
+      SingleMenuItem("Hooks", routes.Hooks.list()),
+      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase)
     ))
   )
 
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
-
-  def items(request: AuthenticatedRequest[AnyContent]) = {
-    menuItems.filter(_.isVisible(request))
-  }
 }
 
 object Application extends Controller with Logging {

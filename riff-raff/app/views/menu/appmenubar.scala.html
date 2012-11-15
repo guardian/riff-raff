@@ -20,7 +20,7 @@
             }
             <div class="nav-collapse">
                 <ul class="nav">
-                    @for(item <- Menu.items(request)) {
+                    @for(item <- Menu.menuItems) {
                     @menubaritem(request,item)
                     }
                 </ul>
