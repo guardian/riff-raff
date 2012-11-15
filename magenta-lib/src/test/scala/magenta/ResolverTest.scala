@@ -115,8 +115,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val recipe = Recipe("all",
       actionsBeforeApp = allOnAllPackageType.mkAction("init_action_one") :: Nil,
       actionsPerHost = allOnAllPackageType.mkAction("action_one") ::
-        allOnAllPackageType.mkAction("action_two") :: Nil,
-      dependsOn = Nil)
+        allOnAllPackageType.mkAction("action_two") :: Nil
+    )
 
     Resolver.resolve(project(recipe), deployinfoTwoHosts, parameters(recipe)) should be (List(
       StubTask("init_action_one per app task"),
@@ -172,6 +172,32 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
+    ))
+  }
+
+  it should "observe ordering of hosts in deployInfo" in {
+    Resolver.resolve(project(baseRecipe), DeployInfo(List(host2, host1)), parameters(baseRecipe)) should be (List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on host2", Some(host2)),
+      StubTask("action_one per host task on host1", Some(host1))
+    ))
+  }
+
+  it should "observe ordering of hosts in deployInfo irrespective of connection user" in {
+    val pkgTypeWithUser = StubPackageType(
+      perHostActions = {
+        case "deploy" => host => List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
+      },
+      pkg = stubPackage().copy(pkgApps = Set(app1, app2))
+    )
+    val recipe = Recipe("with-user",
+      actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")))
+
+    Resolver.resolve(project(recipe), DeployInfo(List(host2, host1)), parameters(recipe)) should be (List(
+      StubTask("with conn", Some(host2 as "user")),
+      StubTask("without conn", Some(host2)),
+      StubTask("with conn", Some(host1 as "user")),
+      StubTask("without conn", Some(host1))
     ))
   }
 
