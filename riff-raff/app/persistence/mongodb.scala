@@ -147,7 +147,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def setAuthorisation(auth: AuthorisationRecord) {
-    log.info("got here")
     logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
       val criteriaId = MongoDBObject("_id" -> auth.email)
       authCollection.findAndModify(

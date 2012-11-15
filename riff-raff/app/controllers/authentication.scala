@@ -207,7 +207,7 @@ object Login extends Controller with Logging {
   def authDelete = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
       log.info("%s deleted authorisation for %s" format (request.identity.get.fullName, email))
-      Persistence.store.deleteAuthorisation(_)
+      Persistence.store.deleteAuthorisation(email)
     } )
     Redirect(routes.Login.authList())
   }
