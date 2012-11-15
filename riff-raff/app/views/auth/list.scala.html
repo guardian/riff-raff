@@ -24,7 +24,7 @@
                     <td>@auth.email</td>
                     <td><span class="label">@auth.approvedBy</span></td>
                     <td>
-                    @helper.form(action=routes.Login.authDelete()) {
+                    @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
                         <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="icon-trash icon-white"></i> Delete</button>
                     }
                     </td>

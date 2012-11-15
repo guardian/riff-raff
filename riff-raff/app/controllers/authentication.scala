@@ -111,7 +111,7 @@ object Login extends Controller with Logging {
     def emailDomainWhitelist = auth.domains
     def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
     def emailWhitelistContains(email: String) =
-      auth.whitelist.addresses.contains(email) ||
+      auth.whitelist.addresses.exists(_.equalsIgnoreCase(email)) ||
         (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(email).isDefined)
   }
 
@@ -186,7 +186,7 @@ object Login extends Controller with Logging {
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = AuthAction { request =>
-    Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList))
+    Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
   }
 
   def authForm = AuthAction { request =>
@@ -197,7 +197,7 @@ object Login extends Controller with Logging {
     authorisationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.auth.form(request, errors)),
       email => {
-        val auth = AuthorisationRecord(email, request.identity.get.fullName, new DateTime())
+        val auth = AuthorisationRecord(email.toLowerCase, request.identity.get.fullName, new DateTime())
         Persistence.store.setAuthorisation(auth)
         Redirect(routes.Login.authList())
       }
