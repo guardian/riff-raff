@@ -4,7 +4,7 @@ import java.util.UUID
 import com.mongodb.casbah.{MongoURI, MongoDB, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
-import controllers.Logging
+import controllers.{AuthorisationRecord, Logging}
 import com.novus.salat._
 import play.api.Application
 import deployment.DeployRecord
@@ -60,6 +60,7 @@ trait RiffRaffGraters {
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with RiffRaffGraters with Logging {
   val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
+  val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
 
   private def stats = deployCollection.stats
   override def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
@@ -126,7 +127,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
 
   override def setPostDeployHook(criteria: HookCriteria, action: HookAction) {
-    logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
+    logAndSquashExceptions(Some("Creating post deploy hook %s" format criteria),()) {
       val criteriaId = MongoDBObject("_id" -> criteria.dbObject)
       hooksCollection.findAndModify(
         query = criteriaId,
@@ -142,6 +143,36 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deletePostDeployHook(criteria: HookCriteria) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
       hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.dbObject))
+    }
+  }
+
+  override def setAuthorisation(auth: AuthorisationRecord) {
+    logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
+      val criteriaId = MongoDBObject("_id" -> auth.email)
+      authCollection.findAndModify(
+        query = criteriaId,
+        update = auth.dbObject,
+        upsert = true, fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew=false
+      )
+    }
+  }
+
+  override def getAuthorisation(email: String): Option[AuthorisationRecord] =
+    logAndSquashExceptions[Option[AuthorisationRecord]](Some("Requesting authorisation object for %s" format email),None) {
+      authCollection.find(MongoDBObject("_id" -> email)).map(AuthorisationRecord(_)).toSeq.headOption
+    }
+
+  override def getAuthorisationList: List[AuthorisationRecord] =
+    logAndSquashExceptions[List[AuthorisationRecord]](Some("Requesting list of authorisation objects"), Nil) {
+      authCollection.find().map(AuthorisationRecord(_)).toList
+    }
+
+  override def deleteAuthorisation(email: String) {
+    logAndSquashExceptions(Some("Deleting authorisation object for %s" format email),()) {
+      authCollection.findAndRemove(MongoDBObject("_id" -> email))
     }
   }
 }

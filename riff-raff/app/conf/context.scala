@@ -34,6 +34,15 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object auth {
+    lazy val openIdUrl: String = configuration.getStringProperty("auth.openIdUrl").getOrException("No authentication URL configured")
+    lazy val domains: List[String] = configuration.getStringPropertiesSplitByComma("auth.domains")
+    object whitelist {
+      lazy val useDatabase: Boolean = configuration.getStringProperty("auth.whitelist.useDatabase", "false") == "true"
+      lazy val addresses: List[String] = configuration.getStringPropertiesSplitByComma("auth.whitelist.addresses")
+    }
+  }
+
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }

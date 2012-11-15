@@ -1,0 +1,37 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], authList: Seq[controllers.AuthorisationRecord])
+
+@main("Authorisation List", request) {
+    <h2>Authorisation List</h2>
+    <hr/>
+    <p><a class="btn btn-inverse" href="@routes.Login.authForm()"><i class="icon-plus icon-white"></i> Add authorisation</a></p>
+    <div class="content">
+    @if(authList.isEmpty) {
+        <div class="alert alert-warning"><strong>No authorisations.</strong></div>
+    } else {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date added</th>
+                    <th>Authorised E-mail</th>
+                    <th>Approver</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @authList.map { auth =>
+                <tr>
+                    <td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(auth.approvedDate)</td>
+                    <td>@auth.email</td>
+                    <td><span class="label">@auth.approvedBy</span></td>
+                    <td>
+                    @helper.form(action=routes.Login.authDelete()) {
+                        <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="icon-trash icon-white"></i> Delete</button>
+                    }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    </div>
+}

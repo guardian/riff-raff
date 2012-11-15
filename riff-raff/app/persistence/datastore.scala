@@ -7,7 +7,7 @@ import conf.RequestMetrics.DatastoreRequest
 import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
-import controllers.Logging
+import controllers.{AuthorisationRecord, Logging}
 
 trait DataStore {
   def log: Logger
@@ -43,6 +43,11 @@ trait DataStore {
   def setPostDeployHook(criteria: HookCriteria, action: HookAction) {}
   def getPostDeployHook(criteria: HookCriteria):Option[HookAction] = None
   def deletePostDeployHook(criteria: HookCriteria) {}
+
+  def getAuthorisation(email: String): Option[AuthorisationRecord] = None
+  def getAuthorisationList:List[AuthorisationRecord] = Nil
+  def setAuthorisation(auth: AuthorisationRecord) {}
+  def deleteAuthorisation(email: String) {}
 }
 
 object Persistence extends Logging {
