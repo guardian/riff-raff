@@ -25,9 +25,7 @@ object Resolver {
       }
       if (!recipe.actionsPerHost.isEmpty && perHostTasks.isEmpty) throw new NoHostsFoundException
 
-      val sortedPerHostTasks = perHostTasks.toSeq.sortBy(t =>
-        t.taskHost.map(deployInfo.hosts.indexOf(_)).getOrElse(-1)
-      )
+      val sortedPerHostTasks = perHostTasks.toSeq.sortBy(t => t.taskHost.map(_.name).getOrElse(""))
 
       dependenciesFromOtherRecipes ++ tasksToRunBeforeApp ++ sortedPerHostTasks
     }
