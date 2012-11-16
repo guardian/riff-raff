@@ -22,6 +22,7 @@
     </appender>
 
     <logger name="com.amazonaws.request" level="WARN" />
+    <logger name="com.novus.salat" level="TRACE" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>

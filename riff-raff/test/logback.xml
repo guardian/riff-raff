@@ -1,0 +1,19 @@
+<configuration>
+
+    <contextName>riff-raff-test</contextName>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date [%thread] %-5level %logger{20} - %msg%n%xException{3}</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="persistence.RiffRaffGraters" level="WARN" />
+    <logger name="persistence.DocumentGraters" level="WARN" />
+    <logger name="com.novus.salat" level="TRACE" />
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

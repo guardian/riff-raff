@@ -35,6 +35,12 @@ case class DeployRecord(time: DateTime,
   lazy val recipe = parameters.recipe
   lazy val isRunning = report.isRunning
   lazy val isDone = !isRunning && report.size > 1
+  lazy val state = {
+    report.cascadeState match {
+      case RunState.ChildRunning => RunState.Running
+      case other => other
+    }
+  }
 
   def +(message: MessageStack): DeployRecord = {
     this.copy(messageStacks = messageStacks ++ List(message))

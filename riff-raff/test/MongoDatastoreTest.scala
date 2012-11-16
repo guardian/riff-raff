@@ -23,7 +23,7 @@ case class UnserialisableTask(unserialisableFile:File) extends Task {
   override val taskHost = Some(Host("respub01"))
 }
 
-class MongoDatastoreTest extends FlatSpec with ShouldMatchers {
+class MongoDatastoreTest extends FlatSpec with ShouldMatchers with Utilities {
 
   val testTime = new DateTime()
   def stack( messages: Message * ): MessageStack = {
@@ -75,21 +75,6 @@ class MongoDatastoreTest extends FlatSpec with ShouldMatchers {
     val bytes = encoder.encode(dbObject)
     bytes should not be null
   }
-
-  case class RenderDiff(diff: Diff) {
-    lazy val attributes = Map("changed" -> diff.changed, "added" -> diff.added, "deleted" -> diff.deleted)
-    lazy val isEmpty = !attributes.values.exists(_ != JNothing)
-
-    def renderJV(json: JValue): Option[String] = if (json == JNothing) None else Some(compact(render(json)))
-    override def toString: String = {
-      val jsonMap = attributes.mapValues(renderJV(_))
-      jsonMap.flatMap { case (key: String, rendered: Option[String]) =>
-        rendered.map{r => "%s: %s" format (key,r)}
-      } mkString("\n")
-    }
-  }
-
-  def compareJson(from: String, to: String): RenderDiff = { RenderDiff(Diff.diff(parse(from), parse(to))) }
 
   "Serialised case classes" should "not change" in {
     // if this test fails then you have made a breaking change to the database model - don't just fix this!

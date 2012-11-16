@@ -1,14 +1,14 @@
 package persistence
 
 import java.util.UUID
-import com.mongodb.casbah.{MongoURI, MongoDB, MongoConnection}
+import com.mongodb.casbah.{MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
 import controllers.{AuthorisationRecord, Logging}
 import com.novus.salat._
 import play.api.Application
 import deployment.DeployRecord
-import magenta.MessageStack
+import magenta.{RunState, MessageStack}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookAction, HookCriteria}
@@ -44,7 +44,7 @@ object MongoDatastore extends Logging {
 trait RiffRaffGraters {
   RegisterJodaTimeConversionHelpers()
   def loader:Option[ClassLoader]
-  implicit val context = {
+  val riffRaffContext = {
     val context = new Context {
       val name = "global"
       override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.Always)
@@ -53,12 +53,20 @@ trait RiffRaffGraters {
     context.registerPerClassKeyOverride(classOf[DeployRecord], remapThis = "uuid", toThisInstead = "_id")
     context
   }
-  val recordGrater = grater[DeployRecord]
-  val stackGrater = grater[MessageStack]
+  val recordGrater = {
+    implicit val context = riffRaffContext
+    grater[DeployRecord]
+  }
+  val stackGrater = {
+    implicit val context = riffRaffContext
+    grater[MessageStack]
+  }
 }
 
-class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with RiffRaffGraters with Logging {
+class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with RiffRaffGraters with DocumentGraters with Logging {
   val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
+  val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
+  val deployV2LogCollection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
 
@@ -175,4 +183,43 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
     }
   }
+
+  def writeDeploy(deploy: DeployRecordDocument) {
+    logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
+      val gratedDeploy = deployGrater.asDBObject(deploy)
+      deployV2Collection.insert(gratedDeploy)
+    }
+  }
+
+  def updateStatus(uuid: UUID, status: RunState.Value) {
+    logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
+      val criteria = MongoDBObject("_id" -> uuid)
+      deployV2Collection.findAndModify(
+        query = criteria,
+        update = MongoDBObject("status" -> status.toString),
+        upsert = true,
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew=false
+      )
+    }
+  }
+
+  def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
+    logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
+      deployV2Collection.findOneByID(uuid).map(deployGrater.asObject(_))
+    }
+
+  def writeLog(log: LogDocument) {
+    logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
+      deployV2LogCollection.insert(logDocumentGrater.asDBObject(log))
+    }
+  }
+
+  def readLogs(uuid: UUID): Iterable[LogDocument] =
+    logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
+      val criteria = MongoDBObject("deploy" -> uuid)
+      deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))
+    }
 }
