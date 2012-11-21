@@ -61,7 +61,7 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   }
 }
 
-case class AutoScalingWithELB(pkg: Package) extends PackageType {
+case class AutoScaling(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
