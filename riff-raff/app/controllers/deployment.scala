@@ -22,7 +22,7 @@ import magenta.Stage
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
-import persistence.Persistence
+import persistence.{DocumentStoreConverter, Persistence}
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch

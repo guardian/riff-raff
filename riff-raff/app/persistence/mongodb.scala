@@ -1,6 +1,6 @@
 package persistence
 
-import java.util.UUID
+import java.util.{Date, UUID}
 import com.mongodb.casbah.{MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
@@ -13,6 +13,8 @@ import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
+import org.joda.time.DateTime
+import controllers.SimpleDeployDetail
 
 trait MongoSerialisable {
   def dbObject: DBObject
@@ -114,9 +116,9 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       }
     }
 
-  override def getDeployUUIDs = logAndSquashExceptions[Iterable[UUID]](None,Nil){
-    val uuidObjects = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1)).sort(MongoDBObject("time" -> -1))
-    uuidObjects.toIterable.flatMap(_.getAs[UUID]("_id"))
+  override def getDeployUUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val uuidObjects = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "time" -> 1)).sort(MongoDBObject("time" -> -1))
+    uuidObjects.toIterable.map(dbo => SimpleDeployDetail(dbo.getAs[UUID]("_id").get, dbo.getAs[DateTime]("time").get))
   }
 
   override def deleteDeployLog(uuid: UUID) {
@@ -224,4 +226,20 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       val criteria = MongoDBObject("deploy" -> uuid)
       deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))
     }
+
+  override def getDeployV2UUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val uuidObjects = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("time" -> -1))
+    uuidObjects.toIterable.map { dbo =>
+      val uuid = dbo.getAs[UUID]("_id").get
+      val dateTime = dbo.getAs[DateTime]("startTime").get
+      SimpleDeployDetail(uuid, dateTime)
+    }
+  }
+
+  override def deleteDeployLogV2(uuid: UUID) {
+    logAndSquashExceptions(None,()) {
+      deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))
+      deployV2LogCollection.findAndRemove(MongoDBObject("deploy" -> uuid))
+    }
+  }
 }

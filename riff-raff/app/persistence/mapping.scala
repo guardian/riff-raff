@@ -10,6 +10,7 @@ import controllers.Logging
 import deployment.DeployRecord
 import magenta._
 import akka.actor.ActorSystem
+import controllers.SimpleDeployDetail
 
 trait DocumentGraters {
   RegisterJodaTimeConversionHelpers()
@@ -149,6 +150,8 @@ trait DocumentStore {
   def updateStatus(uuid: UUID, status: RunState.Value) {}
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
+  def getDeployV2UUIDs: Iterable[SimpleDeployDetail] = Nil
+  def deleteDeployLogV2(uuid: UUID) {}
 }
 
 case class DocumentStoreConverter(documentStore: DocumentStore) {

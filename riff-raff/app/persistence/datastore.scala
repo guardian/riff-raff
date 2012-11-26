@@ -8,6 +8,7 @@ import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{AuthorisationRecord, Logging}
+import controllers.SimpleDeployDetail
 
 trait DataStore extends DocumentStore {
   def log: Logger
@@ -36,7 +37,7 @@ trait DataStore extends DocumentStore {
   def updateDeploy(uuid:UUID, stack: MessageStack) {}
   def getDeploy(uuid:UUID):Option[DeployRecord] = None
 
-  def getDeployUUIDs:Iterable[UUID] = Nil
+  def getDeployUUIDs:Iterable[SimpleDeployDetail] = Nil
   def deleteDeployLog(uuid:UUID) {}
 
   def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty

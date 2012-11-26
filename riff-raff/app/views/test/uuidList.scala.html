@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], uuidList:Iterable[String])
+@(request: controllers.AuthenticatedRequest[AnyContent], deploys:Seq[controllers.SimpleDeployDetail], v1: Set[SimpleDeployDetail], v2: Set[SimpleDeployDetail])
 @import helper.twitterBootstrap._
 
 @main("UUID list", request) {
@@ -8,20 +8,39 @@
  <p>This page is to help troubleshoot database problems when it isn't possible to use normal pages
  for troubleshooting.  The list below is the set of UUIDs in the deploy collection - individual deploys can be deleted.</p>
 
-
-  <ul>
-  @uuidList.map { uuid =>
-    <li>
-      <a href="@routes.Deployment.viewUUID(uuid)">@uuid</a> -
-        @helper.form(action=routes.Testing.deleteUUID(), 'class -> "modal-form") {
-            <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Delete</button>
-        }
-        @helper.form(action=routes.Testing.migrateUUID(), 'class -> "modal-form") {
-            <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Migrate</button>
-        }
-    </li>
-  }
-  </ul>
-
+  <table class="table table-condensed">
+      <thead>
+          <tr>
+              <th>Date/Time</th>
+              <th>UUID</th>
+              <th>View</th>
+              <th>Location</th>
+              <th>Actions</th>
+          </tr>
+      </thead>
+      <tbody>
+          @deploys.map { deploy =>
+            <tr>
+              <td>@deploy.time</td>
+              <td>@deploy.uuid</td>
+              <td>
+                @if(v1.contains(deploy)) { <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V1 Log</a> }
+                @if(v2.contains(deploy)) { <a href="@routes.Testing.viewUUIDv2(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V2 Log</a> }
+              </td>
+              <td>@if(v1.contains(deploy)) { V1 } @if(v2.contains(deploy)) { V2 }</td>
+              <td>
+                <span>
+                @helper.form(action=routes.Testing.actionUUID(), 'class -> "modal-form") {
+                    <input type="hidden" name="uuid" value="@deploy.uuid"/>
+                    @if(v1.contains(deploy)) { <button name="action" type="submit" value="deleteV1" class="btn btn-danger btn-mini"><i class="icon-trash icon-white"></i> V1</button> }
+                    @if(v2.contains(deploy)) { <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-mini"><i class="icon-trash icon-white"></i> V2</button> }
+                    @if(v1.contains(deploy) && !v2.contains(deploy)) { <button name="action" type="submit" value="migrate" class="btn btn-primary btn-mini"><i class="icon-share icon-white"></i> Migrate to V2</button> }
+                }
+                </span>
+              </td>
+            </tr>
+          }
+      </tbody>
+  </table>
 
 }
