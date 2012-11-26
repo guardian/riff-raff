@@ -6,3 +6,4 @@ Riff-raff documentation
  - [Post deploy hooks](hooks)
  - [Authentication and Authorisation](auth)
  - [Riff-Raff configuration](properties)
+ - [R2 deployments](r2)
