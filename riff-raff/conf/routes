@@ -55,6 +55,7 @@ GET     /testing/form   controllers.Testing.form
 POST    /testing/formPost  controllers.Testing.formPost
 GET     /testing/uuidList   controllers.Testing.uuidList
 POST    /testing/deleteUUID   controllers.Testing.deleteUUID
+POST    /testing/migrateUUID   controllers.Testing.migrateUUID
 GET     /teamcity       controllers.Deployment.teamcity
 
 

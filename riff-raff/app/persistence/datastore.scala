@@ -9,7 +9,7 @@ import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{AuthorisationRecord, Logging}
 
-trait DataStore {
+trait DataStore extends DocumentStore {
   def log: Logger
 
   def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T = {

@@ -8,12 +8,20 @@
  <p>This page is to help troubleshoot database problems when it isn't possible to use normal pages
  for troubleshooting.  The list below is the set of UUIDs in the deploy collection - individual deploys can be deleted.</p>
 
-@helper.form(action=routes.Testing.deleteUUID) {
+
   <ul>
   @uuidList.map { uuid =>
-    <li><a href="@routes.Deployment.viewUUID(uuid)">@uuid</a> - <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Delete</button></li>
+    <li>
+      <a href="@routes.Deployment.viewUUID(uuid)">@uuid</a> -
+        @helper.form(action=routes.Testing.deleteUUID(), 'class -> "modal-form") {
+            <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Delete</button>
+        }
+        @helper.form(action=routes.Testing.migrateUUID(), 'class -> "modal-form") {
+            <button name="uuid" type="submit" value="@uuid" class="btn btn-danger btn-mini">Migrate</button>
+        }
+    </li>
   }
   </ul>
-}
+
 
 }

@@ -4,9 +4,11 @@ import java.util.UUID
 import org.joda.time.DateTime
 import com.novus.salat.annotations.raw.Salat
 import magenta._
-import deployment.DeployRecord
+import deployment.{Task, DeployRecord}
 
-case class DeployRecordDocument(uuid:UUID, startTime: DateTime, parameters: ParametersDocument, status: RunState.Value)
+case class DeployRecordDocument(uuid:UUID, startTime: DateTime, parameters: ParametersDocument, status: RunState.Value) {
+  lazy val deployTypeEnum = Task.withName(parameters.deployType)
+}
 object DeployRecordDocument {
   def apply(record: DeployRecord): DeployRecordDocument = {
     val sourceParams = record.parameters
@@ -56,33 +58,47 @@ case class LogDocumentTree(documents: Seq[LogDocument]) {
 
   def parentOf(child: LogDocument): Option[LogDocument] = child.parent.flatMap(idMap.get)
   def childrenOf(parent: LogDocument): Seq[LogDocument] = parentMap(parent.id)
-}
 
-@Salat
-trait MessageDocument
-
-case class DeployDocument() extends MessageDocument {
-  def getMessage(context: DeployRecordDocument) = {
-    val params = DeployParameters(
-      Deployer(context.parameters.deployer),
-      Build(context.parameters.projectName, context.parameters.buildId),
-      Stage(context.parameters.stage),
-      RecipeName(context.parameters.recipe),
-      context.parameters.hostList
-    )
-    Deploy(params)
+  def traverseTree(root: LogDocument): Seq[LogDocument] = {
+    root :: childrenOf(root).flatMap(traverseTree).toList
   }
 }
 
-case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument
-case class TaskRunDocument(task: TaskDetail) extends MessageDocument
-case class InfoDocument(text: String) extends MessageDocument
-case class CommandOutputDocument(text: String) extends MessageDocument
-case class CommandErrorDocument(text: String) extends MessageDocument
-case class VerboseDocument(text: String) extends MessageDocument
-case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument
-case class FinishContextDocument() extends MessageDocument
-case class FailContextDocument(detail: ThrowableDetail) extends MessageDocument
+@Salat
+trait MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message] = None): Message
+}
+
+case class DeployDocument() extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Deploy(params)
+}
+case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
+}
+case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
+}
+case class InfoDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
+}
+case class CommandOutputDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
+}
+case class CommandErrorDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
+}
+case class VerboseDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
+}
+case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
+}
+case class FinishContextDocument() extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
+}
+case class FailContextDocument(detail: ThrowableDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get, detail)
+}
 
 object MessageDocument {
   def apply(from: Message): MessageDocument = {

@@ -66,7 +66,7 @@ trait RiffRaffGraters {
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with RiffRaffGraters with DocumentGraters with Logging {
   val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
-  val deployV2LogCollection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
+  val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
 
@@ -77,6 +77,8 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   // ensure indexes
   deployCollection.ensureIndex("time")
+  deployV2Collection.ensureIndex("startTime")
+  deployV2LogCollection.ensureIndex("deploy")
 
   override def createDeploy(record: DeployRecord) {
     logAndSquashExceptions(Some("Creating record for %s" format record),()) {
@@ -184,14 +186,14 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  def writeDeploy(deploy: DeployRecordDocument) {
+  override def writeDeploy(deploy: DeployRecordDocument) {
     logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
       val gratedDeploy = deployGrater.asDBObject(deploy)
       deployV2Collection.insert(gratedDeploy)
     }
   }
 
-  def updateStatus(uuid: UUID, status: RunState.Value) {
+  override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
       val criteria = MongoDBObject("_id" -> uuid)
       deployV2Collection.findAndModify(
@@ -206,18 +208,18 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
+  override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
       deployV2Collection.findOneByID(uuid).map(deployGrater.asObject(_))
     }
 
-  def writeLog(log: LogDocument) {
+  override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
       deployV2LogCollection.insert(logDocumentGrater.asDBObject(log))
     }
   }
 
-  def readLogs(uuid: UUID): Iterable[LogDocument] =
+  override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
       val criteria = MongoDBObject("deploy" -> uuid)
       deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))

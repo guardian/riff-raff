@@ -1,10 +1,25 @@
 package persistence
 
 import magenta._
+import scala.util.MurmurHash
 
 object `package` {
   implicit def messageStack2id(stack: MessageStack) = new {
-    def id: String = "%08x" format stack.hashCode
+    val messages = stack.messages.flatMap{ message =>
+      if (message.isInstanceOf[ContextMessage])
+        Seq(message, message.asInstanceOf[ContextMessage].originalMessage)
+      else
+        Seq(message)
+    }
+    val messagesAndNames = messages.flatMap(message => Seq(message.getClass.getName, message))
+    var hash = MurmurHash.arrayHash(messagesAndNames.toArray)
+    def id: String = {
+      "%08x" format hash
+    }
+  }
+
+  implicit def int2asHex(int: Int) = new {
+    def asHex: String = "%08x" format int
   }
 
   implicit def message2contextInfo(message: Message) = new {

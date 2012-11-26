@@ -23,7 +23,7 @@ import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import persistence.Persistence
+import persistence.{RecordConverter, Persistence}
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -124,21 +124,37 @@ object Testing extends Controller with Logging {
     Ok(views.html.test.uuidList(request,uuidList))
   }
 
-  case class UuidDeleteForm(uuid:String)
+  case class UuidForm(uuid:String)
 
-  lazy val uuidDeletionForm = Form[UuidDeleteForm](
+  lazy val uuidForm = Form[UuidForm](
     mapping(
       "uuid" -> text(36,36)
-    )(UuidDeleteForm.apply)
-      (UuidDeleteForm.unapply)
+    )(UuidForm.apply)
+      (UuidForm.unapply)
   )
 
   def deleteUUID = AuthAction { implicit request =>
-    uuidDeletionForm.bindFromRequest().fold(
+    uuidForm.bindFromRequest().fold(
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         log.info("Deleting deploy with UUID %s" format form.uuid)
         Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+        Redirect(routes.Testing.uuidList())
+      }
+    )
+  }
+
+  def migrateUUID = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
+      errors => Redirect(routes.Testing.uuidList()),
+      form => {
+        log.info("Migrating deploy with UUID %s" format form.uuid)
+        val deployRecord = Persistence.store.getDeploy(UUID.fromString(form.uuid))
+        deployRecord.foreach{ deploy =>
+          val conversion = RecordConverter(deploy)
+          Persistence.store.writeDeploy(conversion.deployDocument)
+          conversion.logDocuments.foreach(Persistence.store.writeLog(_))
+        }
         Redirect(routes.Testing.uuidList())
       }
     )

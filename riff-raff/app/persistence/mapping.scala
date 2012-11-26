@@ -33,9 +33,9 @@ trait DocumentGraters {
   }
 }
 
-case class Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messageStacks:List[MessageStack] = Nil) extends Logging {
-  def +(newStack: MessageStack): Converter = copy(messageStacks = messageStacks ::: List(newStack))
-  def +(newStatus: RunState.Value): Converter = copy(status = newStatus)
+case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messageStacks:List[MessageStack] = Nil) extends Logging {
+  def +(newStack: MessageStack): RecordConverter = copy(messageStacks = messageStacks ::: List(newStack))
+  def +(newStatus: RunState.Value): RecordConverter = copy(status = newStatus)
 
   def apply(stack: MessageStack): Option[LogDocument] = {
     val stackId=stack.id
@@ -48,8 +48,10 @@ case class Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, 
     messageStack.top match {
       case StartContext(message) => {
         val thisNode = LogDocument(uuid, messageStack.id, parent.map(_.id), message.asMessageDocument, messageStack.time)
+
         // find children
-        val childStacks = messageStacks.filter(_.messages.tail == messageStack.messages).filterNot(_.top.isEndContext)
+        val expectedTail = message :: messageStack.messages.tail
+        val childStacks = messageStacks.filter(_.messages.tail == expectedTail).filterNot(_.top.isEndContext)
         val children = childStacks.flatMap(childStack => buildLogDocuments(childStack, Some(thisNode)))
 
         // find end node: parent nodes match, is a FinishContext or FailContext for 'message'
@@ -81,9 +83,8 @@ case class Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, 
   }
 }
 
-
-object Converter {
-  def apply(record: DeployRecord): Converter = {
+object RecordConverter {
+  def apply(record: DeployRecord): RecordConverter = {
     val sourceParams = record.parameters
     val params = ParametersDocument(
       deployer = sourceParams.deployer.name,
@@ -95,28 +96,71 @@ object Converter {
       buildDescription = None,
       deployType = record.taskType.toString
     )
-    Converter(record.uuid, record.time, params, record.state, record.messageStacks)
+    RecordConverter(record.uuid, record.time, params, record.state, record.messageStacks)
+  }
+}
+
+case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument]) {
+
+  lazy val parameters = DeployParameters(
+    Deployer(deploy.parameters.deployer),
+    Build(deploy.parameters.projectName, deploy.parameters.buildId),
+    Stage(deploy.parameters.stage),
+    RecipeName(deploy.parameters.recipe),
+    deploy.parameters.hostList
+  )
+
+  lazy val deployRecord =
+    DeployRecord(
+      deploy.startTime,
+      deploy.deployTypeEnum,
+      deploy.uuid,
+      parameters,
+      messageStacks
+    )
+
+  lazy val messageStacks: List[MessageStack] = {
+    convertToMessageStacks(LogDocumentTree(logs))
+  }
+
+  def convertToMessageStacks(tree: LogDocumentTree): List[MessageStack] = convertToMessageStacks(tree, tree.roots.head)
+
+  def convertToMessageStacks(tree: LogDocumentTree, log: LogDocument, messagesTail: List[Message] = Nil): List[MessageStack] = {
+    val children = tree.childrenOf(log).toList
+    log.document match {
+      case FinishContextDocument() =>
+        List(MessageStack(FinishContext(messagesTail.head) :: messagesTail.tail, log.time))
+      case FailContextDocument(detail) =>
+        List(MessageStack(FailContext(messagesTail.head, detail) :: messagesTail.tail, log.time))
+      case leaf if children.isEmpty =>
+        List(MessageStack(leaf.asMessage(parameters, messagesTail.headOption) :: messagesTail, log.time))
+      case node => {
+        val message:Message = node.asMessage(parameters)
+        MessageStack(StartContext(message) :: messagesTail, log.time) ::
+          children.flatMap(child => convertToMessageStacks(tree, child, message :: messagesTail))
+      }
+    }
   }
 }
 
 trait DocumentStore {
-  def writeDeploy(deploy: DeployRecordDocument)
-  def writeLog(log: LogDocument)
-  def updateStatus(uuid: UUID, status: RunState.Value)
-  def readDeploy(uuid: UUID): Option[DeployRecordDocument]
-  def readLogs(uuid: UUID): Iterable[LogDocument]
+  def writeDeploy(deploy: DeployRecordDocument) {}
+  def writeLog(log: LogDocument) {}
+  def updateStatus(uuid: UUID, status: RunState.Value) {}
+  def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
+  def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
 }
 
 case class DocumentStoreConverter(documentStore: DocumentStore) {
   implicit val actorSystem = ActorSystem("document-store")
 
   val deployConverterMap =
-    Agent(Map.empty[UUID,Agent[Converter]].withDefault{key =>
+    Agent(Map.empty[UUID,Agent[RecordConverter]].withDefault{key =>
       throw new IllegalArgumentException("Don't know deploy ID %s" format key.toString)})
 
   def newDeploy(record: DeployRecord)(block: DeployRecordDocument => Unit) {
     if (!record.messageStacks.isEmpty) throw new IllegalArgumentException
-    val converter = Converter(record)
+    val converter = RecordConverter(record)
     documentStore.writeDeploy(converter.deployDocument)
     deployConverterMap.send { _ + (record.uuid -> Agent(converter)) }
   }
@@ -133,6 +177,14 @@ case class DocumentStoreConverter(documentStore: DocumentStore) {
     deployConverterMap()(record.uuid).send { converter =>
       documentStore.updateStatus(record.uuid, record.state)
       converter + record.state
+    }
+  }
+
+  def getDeploy(uuid:UUID): Option[DeployRecord] = {
+    val deployDocument = documentStore.readDeploy(uuid)
+    val logDocuments = documentStore.readLogs(uuid)
+    deployDocument.map { deploy =>
+      DocumentConverter(deploy, logDocuments.toSeq).deployRecord
     }
   }
 
