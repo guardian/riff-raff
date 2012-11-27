@@ -29,12 +29,15 @@ object MongoDatastore extends Logging {
       val uri = MongoURI(Configuration.mongo.uri.get)
       val mongoConn = MongoConnection(uri)
       val mongoDB = mongoConn(uri.database.get)
-      if (mongoDB.authenticate(uri.username.get,new String(uri.password.get))) {
+
+      if ( uri.username.isEmpty || uri.password.isEmpty ||
+             mongoDB.authenticate(uri.username.get,new String(uri.password.get)) ) {
         Some(new MongoDatastore(mongoDB, app.map(_.classloader)))
       } else {
         log.error("Authentication to mongoDB failed")
         None
       }
+
     } else None
   } catch {
     case e:Throwable =>
