@@ -23,7 +23,7 @@ import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import persistence.{DocumentStoreConverter, RecordConverter, Persistence}
+import persistence.{DocumentConverter, DocumentStoreConverter, RecordConverter, Persistence}
 
 case class SimpleDeployDetail(uuid: UUID, time: DateTime)
 
@@ -177,6 +177,62 @@ object Testing extends Controller with Logging {
       case Task.Deploy => Ok(views.html.deploy.log(request, record, verbose))
       case Task.Preview => Ok(views.html.deploy.preview(request,record,verbose))
     }
+  }
+
+  case class ComparisonCriteria(name: String, f: DeployRecord => Iterable[Any], diff: (DeployRecord, DeployRecord) => Iterable[Any] = (v1,v2) => Nil)
+
+  case class Comparison(name: String, v1: Iterable[Any], v2: Iterable[Any], equality: Boolean, diff: Iterable[Any]) {
+    lazy val cssClass = if (equality) "success" else "error"
+  }
+
+  def compareV1V2(uuid: String) = AuthAction { implicit request =>
+    // v1
+    val v1Record = Persistence.store.getDeploy(UUID.fromString(uuid)).get
+
+    // v2
+    val converter = DocumentStoreConverter(Persistence.store)
+    val v2Record = converter.getDeploy(UUID.fromString(uuid)).get
+
+    val comparisonCriteria: List[ComparisonCriteria] = List(
+      ComparisonCriteria("UUID", r => List(r.uuid)),
+      ComparisonCriteria("TaskType", r => List(r.taskType)),
+      ComparisonCriteria("Parameters", r => List(r.parameters)),
+      ComparisonCriteria("Number of stacks", r => List(r.messageStacks.size)),
+      ComparisonCriteria("Number of unique stacks", r => List(r.messageStacks.toSet.size))
+      //ComparisonCriteria("Stacks", _.messageStacks, (v1,v2) => (v1.messageStacks.toSet - v2.messageStacks.toSet))
+    )
+
+    val comparisons = comparisonCriteria.map { criteria =>
+      val v1 = criteria.f(v1Record)
+      val v2 = criteria.f(v2Record)
+      Comparison(criteria.name, v1, v2, v1==v2, criteria.diff(v1Record,v2Record))
+    }
+
+    val stackComparisons = v1Record.messageStacks.zip(v2Record.messageStacks).map{ case (v1Stack, v2Stack) =>
+      Comparison("Stack Item", List(v1Stack), List(v2Stack), v1Stack == v2Stack, Nil)
+    }
+
+    Ok(views.html.test.compare(request, comparisons ::: stackComparisons))
+  }
+
+  lazy val v1Record = Persistence.store.getDeploy(UUID.fromString("d10f036a-239d-4897-bc82-c79cb96611f5")).get
+  lazy val v2Deploy = RecordConverter(v1Record).deployDocument
+  lazy val v2Logs = RecordConverter(v1Record).logDocuments
+  lazy val v2Record = {
+    DocumentConverter(v2Deploy, v2Logs).deployRecord
+  }
+
+  lazy val checkMigrationIntegrity = {
+    Persistence.store.getDeployUUIDs.map { uuid =>
+      val v1Record = Persistence.store.getDeploy(uuid.uuid).get
+      try {
+        val converter = RecordConverter(v1Record)
+        val v2Record = DocumentConverter(converter.deployDocument, converter.logDocuments).deployRecord
+        uuid -> Some((v1Record == v2Record))
+      } catch {
+        case e:Exception => uuid -> None
+      }
+    }.toMap
   }
 
 }

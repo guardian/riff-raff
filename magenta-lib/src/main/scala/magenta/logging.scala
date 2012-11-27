@@ -27,6 +27,8 @@ object TaskDetail {
   }
 }
 
+object MessageContext
+
 object MessageBroker {
   private val listeners = mutable.Buffer[MessageSink]()
   def subscribe(sink: MessageSink) { listeners += sink }

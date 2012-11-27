@@ -50,20 +50,26 @@ case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocu
       case StartContext(message) => {
         val thisNode = LogDocument(uuid, messageStack.id, parent.map(_.id), message.asMessageDocument, messageStack.time)
 
-        // find children
-        val expectedTail = message :: messageStack.messages.tail
-        val childStacks = messageStacks.filter(_.messages.tail == expectedTail).filterNot(_.top.isEndContext)
-        val children = childStacks.flatMap(childStack => buildLogDocuments(childStack, Some(thisNode)))
-
         // find end node: parent nodes match, is a FinishContext or FailContext for 'message'
-        val endNodes = messageStacks.filter { stack =>
+        val endNodes = messageStacks.dropWhile(_ != messageStack).filter { stack =>
           stack.top match {
             case FinishContext(finishMessage) if message==finishMessage => true
             case FailContext(failMessage, _) if message==failMessage => true
             case _ => false
           }
         }
-        if (endNodes.length > 1) throw new IllegalStateException("Found more than one matching end statement for a message")
+
+        // find relevant section of messages
+        val possibleChildStacks = messageStacks.dropWhile(_ != messageStack).takeWhile(_ != endNodes.head)
+
+        // find children
+        val expectedTail = message :: messageStack.messages.tail
+        val childStacks = possibleChildStacks.filter(_.messages.tail == expectedTail).filterNot(_.top.isEndContext)
+        val children = childStacks.flatMap(childStack => buildLogDocuments(childStack, Some(thisNode)))
+
+        if (endNodes.length > 1) {
+          log.warn("Found more than one matching end statement for stack %s\nUsing %s" format (messageStack, endNodes.head))
+        }
         val endDocument = endNodes.headOption.map(stack => LogDocument(uuid, stack.id, Some(thisNode.id), stack.top.asMessageDocument, stack.time))
 
         thisNode :: children.toList ::: endDocument.toList

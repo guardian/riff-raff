@@ -1,0 +1,35 @@
+@(request:AuthenticatedRequest[AnyContent], comparisons: List[controllers.Testing.Comparison])
+
+@main("Comparison report", request) {
+    <table class="table table-condensed">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Equal?</th>
+                <th>V1</th>
+                <th>V2</th>
+                <th>Diff</th>
+            </tr>
+        </thead>
+        <tbody>
+            @comparisons.map { comparison =>
+                <tr class="@comparison.cssClass">
+                    <td>@comparison.name</td>
+                    <td>@comparison.equality</td>
+                    <td>@comparison.v1.map{ thing =>
+                        @thing
+                    <br/>
+                    }</td>
+                    <td>@comparison.v2.map{ thing =>
+                        @thing
+                    <br/>
+                    }</td>
+                    <td>@comparison.diff.map{ thing =>
+                        @thing
+                        <br/>
+                    }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

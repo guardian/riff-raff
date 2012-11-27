@@ -11,7 +11,7 @@ object `package` {
       else
         Seq(message)
     }
-    val messagesAndNames = messages.flatMap(message => Seq(message.getClass.getName, message))
+    val messagesAndNames = stack.time :: messages.flatMap(message => Seq(message.getClass.getName, message))
     var hash = MurmurHash.arrayHash(messagesAndNames.toArray)
     def id: String = {
       "%08x" format hash
