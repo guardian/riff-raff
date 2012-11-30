@@ -4,13 +4,13 @@ import java.util.UUID
 import org.joda.time.DateTime
 import com.novus.salat.annotations.raw.Salat
 import magenta._
-import deployment.{Task, DeployRecord}
+import deployment.{Record, Task, DeployRecord}
 
 case class DeployRecordDocument(uuid:UUID, startTime: DateTime, parameters: ParametersDocument, status: RunState.Value) {
   lazy val deployTypeEnum = Task.withName(parameters.deployType)
 }
 object DeployRecordDocument {
-  def apply(record: DeployRecord): DeployRecordDocument = {
+  def apply(record: Record): DeployRecordDocument = {
     val sourceParams = record.parameters
     val params = ParametersDocument(
       deployer = sourceParams.deployer.name,
@@ -39,14 +39,18 @@ case class ParametersDocument(
 
 case class LogDocument(
   deploy: UUID,
-  id: String,
-  parent: Option[String],
+  id: UUID,
+  parent: Option[UUID],
   document: MessageDocument,
   time: DateTime
 )
 object LogDocument {
-  def apply(deploy: UUID, id: String, parent: Option[String], document: Message, time: DateTime): LogDocument = {
-    LogDocument(deploy, id, parent, document.asMessageDocument, time)
+  def apply(deploy: UUID, id: UUID, parent: Option[UUID], document: Message, time: DateTime): LogDocument = {
+    val messageDocument = document match {
+        case StartContext(message) => message
+        case other => other
+      }
+    LogDocument(deploy, id, parent, messageDocument.asMessageDocument, time)
   }
 }
 

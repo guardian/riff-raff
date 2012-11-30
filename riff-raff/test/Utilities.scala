@@ -6,8 +6,8 @@ import net.liftweb.json.Diff
 import org.joda.time.DateTime
 import java.util.UUID
 import magenta._
-import deployment.{Task, DeployRecord}
-import persistence.DeployRecordDocument
+import deployment.{DeployV2Record, Task, DeployRecord}
+import persistence.{LogDocument, DeployRecordDocument}
 import java.io.File
 
 case class RenderDiff(diff: Diff) {
@@ -30,9 +30,10 @@ trait Utilities {
 trait PersistenceTestInstances {
   val testTime = new DateTime()
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
-  lazy val testParams = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
-  lazy val testParamsWithHosts = testParams.copy(hostList=List("host1", "host2"))
-  lazy val testRecord = DeployRecord(testTime, Task.Deploy, testUUID, testParams, messageStacks)
+  lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
+  lazy val testParamsWithHosts = parameters.copy(hostList=List("host1", "host2"))
+  lazy val testRecord = DeployRecord(testTime, Task.Deploy, testUUID, parameters, messageStacks)
+  lazy val testRecordV2 = DeployV2Record(testTime, Task.Deploy, testUUID, parameters, messageWrappers)
   lazy val testDocument = DeployRecordDocument(testRecord)
 
   lazy val comprehensiveDeployRecord = {
@@ -65,7 +66,9 @@ trait PersistenceTestInstances {
     MessageStack(messages.toList, time)
   }
 
-  val deploy = Deploy(testParams)
+
+
+  val deploy = Deploy(parameters)
   val startDeploy = StartContext(deploy)
   val infoMsg = Info("$ echo hello")
   val startInfo = StartContext(infoMsg)
@@ -83,4 +86,31 @@ trait PersistenceTestInstances {
       stack(finishInfo, deploy) ::
       stack(finishDep) ::
       Nil
+
+  val deployMessageId = UUID.randomUUID()
+  val infoMessageId = UUID.randomUUID()
+
+  def wrapper( id: UUID, parentId: Option[UUID], stack: MessageStack ): MessageWrapper = {
+    MessageWrapper(MessageContext(testUUID, parameters, parentId), id, stack)
+  }
+
+  def wrapper( parentId: Option[UUID], stack: MessageStack ): MessageWrapper = {
+    MessageWrapper(MessageContext(testUUID, parameters, parentId), UUID.randomUUID(), stack)
+  }
+
+  val startDeployWrapper = wrapper(deployMessageId, None, stack(startDeploy))
+  val finishDeployWrapper = wrapper(UUID.randomUUID(), Some(deployMessageId), stack(finishDep, deploy))
+
+  val messageWrappers: List[MessageWrapper] =
+    startDeployWrapper ::
+      wrapper(infoMessageId, Some(deployMessageId), stack(startInfo, deploy)) ::
+      wrapper(Some(infoMessageId), stack(cmdOut, infoMsg, deploy)) ::
+      wrapper(Some(infoMessageId), stack(verbose, infoMsg, deploy)) ::
+      wrapper(Some(infoMessageId), stack(finishInfo, infoMsg, deploy)) ::
+      finishDeployWrapper ::
+      Nil
+
+  val logDocuments: List[LogDocument] = messageWrappers.map{wrapper =>
+    LogDocument(wrapper.context.deployId, wrapper.messageId, wrapper.context.parentId, wrapper.stack.top, wrapper.stack.time)
+  }
 }

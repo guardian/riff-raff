@@ -23,9 +23,9 @@ object IrcClient extends LifecycleWithoutApp {
   }
 
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) {
-      if (DeployController.get(uuid).taskType == Task.Deploy)
-        stack.top match {
+    def message(message: MessageWrapper) {
+      if (DeployController.get(message.context.deployId).taskType == Task.Deploy)
+        message.stack.top match {
           case StartContext(Deploy(parameters)) =>
             sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
               (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))

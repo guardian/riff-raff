@@ -24,9 +24,8 @@
               <td>@deploy.time</td>
               <td>@deploy.uuid</td>
               <td>
-                @if(v1.contains(deploy)) { <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V1 Log</a> }
-                @if(v2.contains(deploy)) { <a href="@routes.Testing.viewUUIDv2(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V2 Log</a> }
-                @if(v1.contains(deploy) && v2.contains(deploy)) { <a href="@routes.Testing.compareV1V2(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-resize-horizontal"></i> Compare</a> }
+                @if(v1.contains(deploy)) { <a href="@routes.Testing.viewUUIDv1(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V1 Log</a> }
+                @if(v2.contains(deploy)) { <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V2 Log</a> }
               </td>
               <td>@if(v1.contains(deploy)) { V1 } @if(v2.contains(deploy)) { V2 }</td>
               <td>

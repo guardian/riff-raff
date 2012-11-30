@@ -72,10 +72,10 @@ object HooksClient extends LifecycleWithoutApp {
   }
 
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) {
-      stack.top match {
+    def message(message: MessageWrapper) {
+      message.stack.top match {
         case FinishContext(Deploy(parameters)) =>
-          if (DeployController.get(uuid).taskType == Task.Deploy)
+          if (DeployController.get(message.context.deployId).taskType == Task.Deploy)
             finishedBuild(parameters)
         case _ =>
       }

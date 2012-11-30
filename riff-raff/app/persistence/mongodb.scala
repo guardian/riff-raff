@@ -200,16 +200,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
-      val criteria = MongoDBObject("_id" -> uuid)
-      deployV2Collection.findAndModify(
-        query = criteria,
-        update = MongoDBObject("status" -> status.toString),
-        upsert = true,
-        fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew=false
-      )
+      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString))
     }
   }
 
@@ -230,9 +221,10 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))
     }
 
-  override def getDeployV2UUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    val uuidObjects = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("time" -> -1))
-    uuidObjects.toIterable.map { dbo =>
+  override def getDeployV2UUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val cursor = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("time" -> -1))
+    val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
+    limitedCursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
       val dateTime = dbo.getAs[DateTime]("startTime").get
       SimpleDeployDetail(uuid, dateTime)
@@ -242,7 +234,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deleteDeployLogV2(uuid: UUID) {
     logAndSquashExceptions(None,()) {
       deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))
-      deployV2LogCollection.findAndRemove(MongoDBObject("deploy" -> uuid))
+      deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
 }

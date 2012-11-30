@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record)
 
 @defining(record.report.cascadeState) { state =>
 @state match {

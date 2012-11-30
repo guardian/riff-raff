@@ -154,17 +154,17 @@ object DeployMetrics extends LifecycleWithoutApp {
   val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) {
-      stack.top match {
+    def message(message: MessageWrapper) {
+      message.stack.top match {
         case StartContext(Deploy(parameters)) =>
           DeployStart.recordCount(1)
-          runningDeploys += uuid
+          runningDeploys += message.context.deployId
         case FailContext(Deploy(parameters), exception) =>
           DeployFail.recordCount(1)
-          runningDeploys -= uuid
+          runningDeploys -= message.context.deployId
         case FinishContext(Deploy(parameters)) =>
           DeployComplete.recordCount(1)
-          runningDeploys -= uuid
+          runningDeploys -= message.context.deployId
         case _ =>
       }
     }

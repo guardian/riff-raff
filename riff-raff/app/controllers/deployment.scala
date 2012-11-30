@@ -29,7 +29,7 @@ import conf.AtomicSwitch
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) { update(uuid, stack) }
+    def message(message: MessageWrapper) { update(message) }
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
@@ -49,21 +49,24 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   implicit val system = ActorSystem("deploy")
 
-  val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
+  val library = Agent(Map.empty[UUID,Agent[DeployV2Record]])
+  val converter = DocumentStoreConverter(Persistence.store)
 
-  def create(recordType: Task.Value, params: DeployParameters): DeployRecord = {
+  def create(recordType: Task.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val record = DeployRecord(recordType, uuid, params)
+    val record = DeployV2Record(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
-    Persistence.store.createDeploy(record)
+    converter.newDeploy(record)
     await(uuid)
   }
 
-  def update(uuid:UUID, stack: MessageStack) {
-    library()(uuid) send { record =>
-      MessageBroker.withUUID(uuid)(record + stack)
+  def update(wrapper: MessageWrapper) {
+    library()(wrapper.context.deployId) send { record =>
+      val updated = record + wrapper
+      converter.newMessage(wrapper.context.deployId,wrapper)
+      converter.updateDeployStatus(updated)
+      updated
     }
-    Persistence.store.updateDeploy(uuid, stack)
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
@@ -84,25 +87,25 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = Persistence.store.getDeploys(limit)
+  def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
+  def getDatastoreDeploys(limit:Int): Iterable[Record] = converter.getDeployList(limit)
 
-  def getDeploys(limit:Int = 20): List[DeployRecord] = {
+  def getDeploys(limit:Int = 20): List[Record] = {
     val controllerDeploys = getControllerDeploys.toList
     val datastoreDeploys = getDatastoreDeploys(limit).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
-    combinedRecords.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis }.takeRight(limit)
+    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(limit)
   }
 
-  def get(uuid: UUID): DeployRecord = {
+  def get(uuid: UUID): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      Persistence.store.getDeploy(uuid).get
+      converter.getDeploy(uuid).get
     }
   }
 
-  def await(uuid: UUID): DeployRecord = {
+  def await(uuid: UUID): Record = {
     val timeout = Timeout(5 second)
     library.await(timeout)(uuid).await(timeout)
   }
