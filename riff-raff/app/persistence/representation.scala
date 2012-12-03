@@ -100,8 +100,8 @@ case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDo
 case class FinishContextDocument() extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
 }
-case class FailContextDocument(detail: ThrowableDetail) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get, detail)
+case class FailContextDocument() extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get, ThrowableDetail("","",""))
 }
 
 object MessageDocument {
@@ -116,7 +116,7 @@ object MessageDocument {
       case Verbose(text) => VerboseDocument(text)
       case Fail(text, detail) => FailDocument(text,detail)
       case FinishContext(message) => FinishContextDocument()
-      case FailContext(message,detail) => FailContextDocument(detail)
+      case FailContext(message,detail) => FailContextDocument()
       case _ =>
         throw new IllegalArgumentException("Don't know how to serialise Message of type %s" format from.getClass.getName)
     }
