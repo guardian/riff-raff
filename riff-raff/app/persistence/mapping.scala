@@ -163,7 +163,7 @@ trait DocumentStore {
   def deleteDeployLogV2(uuid: UUID) {}
 }
 
-case class DocumentStoreConverter(documentStore: DocumentStore) {
+case class DocumentStoreConverter(documentStore: DocumentStore) extends Logging {
   implicit val actorSystem = ActorSystem("document-store")
 
   val deployConverterMap =
@@ -193,10 +193,16 @@ case class DocumentStoreConverter(documentStore: DocumentStore) {
   }
 
   def getDeploy(uuid:UUID): Option[DeployV2Record] = {
-    val deployDocument = documentStore.readDeploy(uuid)
-    val logDocuments = documentStore.readLogs(uuid)
-    deployDocument.map { deploy =>
-      DocumentConverter(deploy, logDocuments.toSeq).deployRecord
+    try {
+      val deployDocument = documentStore.readDeploy(uuid)
+      val logDocuments = documentStore.readLogs(uuid)
+      deployDocument.map { deploy =>
+        DocumentConverter(deploy, logDocuments.toSeq).deployRecord
+      }
+    } catch {
+      case e:Exception =>
+        log.error("Couldn't get DeployV2Record for %s" format uuid, e)
+        None
     }
   }
 
