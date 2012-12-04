@@ -22,7 +22,8 @@
     </appender>
 
     <logger name="com.amazonaws.request" level="WARN" />
-    <logger name="com.novus.salat" level="TRACE" />
+    <logger name="controllers.DeployController" level="DEBUG" />
+    <logger name="com.novus.salat.util.BestAvailableConstructor$" level="ERROR" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>

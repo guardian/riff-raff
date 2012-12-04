@@ -13,12 +13,6 @@ import magenta._
 import akka.agent.Agent
 import akka.util.Timeout
 import akka.util.duration._
-import deployment.DeployRecord
-import magenta.MessageStack
-import magenta.Build
-import magenta.DeployParameters
-import magenta.Deployer
-import magenta.Stage
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
@@ -65,8 +59,15 @@ object DeployController extends Logging with LifecycleWithoutApp {
       val updated = record + wrapper
       converter.newMessage(wrapper.context.deployId,wrapper)
       converter.updateDeployStatus(updated)
+      if (updated.isDone) cleanup(wrapper.context.deployId)
       updated
     }
+  }
+
+  def cleanup(uuid: UUID) {
+    log.debug("Removing deploy record %s from internal caches" format uuid)
+    library send { _ - uuid }
+    converter.close(uuid)
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
@@ -95,6 +96,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     val datastoreDeploys = getDatastoreDeploys(limit).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
+    log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
     combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(limit)
   }
 
