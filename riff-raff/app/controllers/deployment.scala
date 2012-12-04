@@ -60,15 +60,23 @@ object DeployController extends Logging with LifecycleWithoutApp {
       val updated = record + wrapper
       converter.newMessage(wrapper.context.deployId,wrapper)
       converter.updateDeployStatus(updated)
-      if (updated.isDone) cleanup(wrapper.context.deployId)
       updated
+    }
+    wrapper.stack.messages match {
+      case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
+      case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
     }
   }
 
   def cleanup(uuid: UUID) {
     log.debug("Removing deploy record %s from internal caches" format uuid)
-    library send { _ - uuid }
+    library sendOff { allDeploys =>
+      val timeout = Timeout(10 seconds)
+      val record = allDeploys(uuid).await(timeout)
+      allDeploys - record.uuid
+    }
     converter.close(uuid)
+    log.debug("Done removing deploy record %s from internal caches" format uuid)
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)

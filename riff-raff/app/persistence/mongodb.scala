@@ -200,7 +200,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
-      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString))
+      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
     }
   }
 
@@ -211,7 +211,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
-      deployV2LogCollection.insert(logDocumentGrater.asDBObject(log))
+      deployV2LogCollection.insert(logDocumentGrater.asDBObject(log), WriteConcern.Safe)
     }
   }
 
