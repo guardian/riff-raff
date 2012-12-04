@@ -16,9 +16,11 @@ trait DataStore extends DocumentStore {
   def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T = {
     try {
       message.foreach(log.debug(_))
-      DatastoreRequest.measure {
+      val value = DatastoreRequest.measure {
         block
       }
+      message.foreach(m => log.debug("Completed: %s" format m))
+      value
     } catch {
       case t:Throwable =>
         val errorMessage = "Squashing uncaught exception%s" format message.map("whilst %s" format _).getOrElse("")
