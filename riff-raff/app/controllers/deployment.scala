@@ -65,6 +65,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     wrapper.stack.messages match {
       case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
       case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
+      case _ =>
     }
   }
 
