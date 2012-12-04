@@ -60,7 +60,7 @@ case class LogDocumentTree(documents: Seq[LogDocument]) {
   lazy val roots = documents.filter(_.parent.isEmpty)
 
   def parentOf(child: LogDocument): Option[LogDocument] = child.parent.flatMap(idMap.get)
-  def childrenOf(parent: LogDocument): Seq[LogDocument] = parentMap(parent.id)
+  def childrenOf(parent: LogDocument): Seq[LogDocument] = parentMap(parent.id).sortBy(_.time.getMillis)
 
   def traverseTree(root: LogDocument): Seq[LogDocument] = {
     root :: childrenOf(root).flatMap(traverseTree).toList
