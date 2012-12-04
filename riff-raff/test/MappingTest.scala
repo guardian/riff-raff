@@ -17,7 +17,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
       DeployRecordDocument(
         testUUID,
         testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", None, "CODE", "test-recipe", Nil),
+        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
         RunState.Completed
       )
     )
@@ -28,7 +28,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
       DeployRecordDocument(
         testUUID,
         testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", None, "CODE", "test-recipe", Nil),
+        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
         RunState.Completed
       )
     )
@@ -87,7 +87,6 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
         "Deploy",
         "testProject",
         "test",
-        None,
         "TEST",
         "default",
         Nil
@@ -111,7 +110,6 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
         "Deploy",
         "testProject",
         "test",
-        None,
         "TEST",
         "default",
         Nil

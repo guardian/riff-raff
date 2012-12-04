@@ -19,7 +19,6 @@ object DeployRecordDocument {
       stage = sourceParams.stage.name,
       recipe = sourceParams.recipe.name,
       hostList = sourceParams.hostList,
-      buildDescription = None,
       deployType = record.taskType.toString
     )
     DeployRecordDocument(record.uuid, record.time, params, record.state)
@@ -31,10 +30,10 @@ case class ParametersDocument(
   deployType: String,
   projectName: String,
   buildId: String,
-  buildDescription: Option[String],
   stage: String,
   recipe: String,
-  hostList: List[String]
+  hostList: List[String],
+  tags: Map[String,String] = Map.empty
 )
 
 case class LogDocument(

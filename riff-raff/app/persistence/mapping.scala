@@ -89,7 +89,6 @@ object RecordConverter {
       stage = sourceParams.stage.name,
       recipe = sourceParams.recipe.name,
       hostList = sourceParams.hostList,
-      buildDescription = None,
       deployType = record.taskType.toString
     )
     RecordV1Converter(record.uuid, record.time, params, record.state, record.messageStacks)
@@ -104,7 +103,6 @@ object RecordConverter {
       stage = sourceParams.stage.name,
       recipe = sourceParams.recipe.name,
       hostList = sourceParams.hostList,
-      buildDescription = None,
       deployType = record.taskType.toString
     )
     RecordV2Converter(record.uuid, record.time, params, record.state, record.messages)
