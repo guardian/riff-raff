@@ -169,6 +169,20 @@ object Testing extends Controller with Logging {
     )
   }
 
+  def migrateAllV1 = AuthAction { implicit request =>
+    val v1Set = Persistence.store.getDeployUUIDs.toSet
+    val v2Set = Persistence.store.getDeployV2UUIDs().toSet
+    val v1Only = v1Set -- v2Set
+    v1Only.foreach { deployToMigrate =>
+      val deployRecord = Persistence.store.getDeploy(deployToMigrate.uuid)
+      deployRecord.foreach{ deploy =>
+        val conversion = RecordConverter(deploy)
+        Persistence.store.writeDeploy(conversion.deployDocument)
+      }
+    }
+    Redirect(routes.Testing.uuidList())
+  }
+
   def viewUUIDv1(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
     val record = Persistence.store.getDeploy(UUID.fromString(uuid)).get
     record.taskType match {

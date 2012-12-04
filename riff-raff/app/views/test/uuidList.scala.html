@@ -8,6 +8,10 @@
  <p>This page is to help troubleshoot database problems when it isn't possible to use normal pages
  for troubleshooting.  The list below is the set of UUIDs in the deploy collection - individual deploys can be deleted.</p>
 
+    @helper.form(action=routes.Testing.migrateAllV1()) {
+        <button name="action" type="submit" value="migrateAll" class="btn btn-danger"><i class="icon-share icon-white"></i> Migrate all V1 to V2</button>
+    }
+
   <table class="table table-condensed">
       <thead>
           <tr>
