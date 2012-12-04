@@ -1,5 +1,8 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record)
 
+@if(record.isSummarised) {
+ @logSummary(record)
+} else {
 @defining(record.report.cascadeState) { state =>
 @state match {
 case RunState.Failed => {
@@ -55,8 +58,7 @@ case _ => {}
 <ul class="magenta-reporttree">
     @snippets.reportTree(record.report)
 </ul>
-
-<!-- @record.report.render.mkString("\n") -->
+}
 
 @if(record.isDone){
 <script type="text/javascript">

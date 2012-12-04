@@ -222,7 +222,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
 
   override def getDeployV2UUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    val cursor = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("time" -> -1))
+    val cursor = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get

@@ -2,13 +2,11 @@
 
 @logSummary(record)
 
-@if(record.isSummarised) {
-    <p>This deployment has been summarised, the log is no longer available.</p>
-} else {
-<ul class="magenta-reporttree">
-    @snippets.reportTree(record.report)
-</ul>
-    @logSummary(record)
+@if(!record.isSummarised) {
+    <ul class="magenta-reporttree">
+        @snippets.reportTree(record.report)
+    </ul>
+        @logSummary(record)
 }
 
 

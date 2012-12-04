@@ -92,9 +92,9 @@ object DeployReport {
     ReportTree(messageState, children.map(wrapperToTree(_,all)))
   }
 
-  def v2(list: List[MessageWrapper], titleTime: Option[DateTime] = None): ReportTree = {
+  def v2(list: List[MessageWrapper], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
     val time = titleTime.getOrElse( list.headOption.map(_.stack.time).getOrElse( new DateTime() ))
-    ReportTree(Report("", time), list.headOption.map(root => List(wrapperToTree(root,list))).getOrElse(Nil))
+    ReportTree(Report(title, time), list.headOption.map(root => List(wrapperToTree(root,list))).getOrElse(Nil))
   }
 
   def apply(messageList: List[MessageStack], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {

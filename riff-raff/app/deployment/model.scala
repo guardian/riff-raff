@@ -62,7 +62,7 @@ case class DeployV2Record(time: DateTime,
                            parameters: DeployParameters,
                            messages: List[MessageWrapper] = Nil,
                            recordState: Option[RunState.Value] = None) extends Record {
-  lazy val report = DeployReport.v2(messages)
+  lazy val report = DeployReport.v2(messages, "Deployment Report")
 
   def +(message: MessageWrapper): DeployV2Record = {
     this.copy(messages = messages ++ List(message))
