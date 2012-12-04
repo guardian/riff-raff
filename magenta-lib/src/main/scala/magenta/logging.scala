@@ -1,12 +1,11 @@
 package magenta
 
-import java.util.{UUID, Date}
+import java.util.UUID
 import magenta.tasks.Task
 import metrics.MagentaMetrics
 import util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
-import java.util
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
@@ -81,12 +80,13 @@ object MessageBroker {
     if (contextDefined && !reentrant)
       throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (newContext, messageContext.value))
 
-    if (reentrant)
+    if (reentrant) {
       block
-    else
+    } else {
       messageContext.withValue(MessageContext(uuid, parameters, None)) {
         sendContext(Deploy(parameters))(block)
       }
+    }
   }
 
   def taskContext[T](task: Task)(block: => T) { sendContext(TaskRun(task))(block) }
