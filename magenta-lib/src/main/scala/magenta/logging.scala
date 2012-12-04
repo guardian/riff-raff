@@ -72,12 +72,21 @@ object MessageBroker {
 
   def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T): T = {
     val newContext = MessageContext(uuid, parameters, None)
-    if (Option(messageContext.value).isDefined)
+
+    val contextDefined = Option(messageContext.value).isDefined
+    val reentrant = contextDefined &&
+                    messageContext.value.deployId == uuid &&
+                    messageContext.value.parameters == parameters
+
+    if (contextDefined && !reentrant)
       throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (newContext, messageContext.value))
 
-    messageContext.withValue(MessageContext(uuid, parameters, None)) {
-      sendContext(Deploy(parameters))(block)
-    }
+    if (reentrant)
+      block
+    else
+      messageContext.withValue(MessageContext(uuid, parameters, None)) {
+        sendContext(Deploy(parameters))(block)
+      }
   }
 
   def taskContext[T](task: Task)(block: => T) { sendContext(TaskRun(task))(block) }
