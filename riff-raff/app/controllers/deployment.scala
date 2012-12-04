@@ -10,6 +10,7 @@ import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
 import magenta._
+import magenta.Build
 import akka.agent.Agent
 import akka.util.Timeout
 import akka.util.duration._
