@@ -3,6 +3,7 @@ package magenta
 import json.DeployInfoJsonInputFile
 import tasks.Task
 import collection.SortedSet
+import java.util.UUID
 
 object DeployInfo {
   def apply(jsonData: DeployInfoJsonInputFile): DeployInfo = {
@@ -129,7 +130,7 @@ object DefaultRecipe {
 case class Deployer(name: String)
 
 case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = DefaultRecipe(), hostList: List[String] = Nil) {
-  def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = {
-    DeployContext(this,project, deployInfo)
+  def toDeployContext(uuid: UUID, project: Project, deployInfo: DeployInfo): DeployContext = {
+    DeployContext(this,project, deployInfo, uuid)
   }
 }

@@ -18,6 +18,7 @@ import org.mockito.Matchers.any
 import magenta.Host
 import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
+import java.util.UUID
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -82,7 +83,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       server.accept().close()
       server.close()
     }
-    MessageBroker.deployContext(parameters) { task.execute(fakeKeyRing) }
+    MessageBroker.deployContext(UUID.randomUUID(), parameters) { task.execute(fakeKeyRing) }
   }
 
   it should "connect to an open port after a short time" in {

@@ -17,9 +17,9 @@ object Main extends scala.App {
   val sink = new MessageSink {
     var taskList: List[TaskDetail] = _
 
-    def message(uuid: UUID, stack: MessageStack) {
-      val indent = "  " * (stack.messages.size - 1)
-      stack.top match {
+    def message(wrapper: MessageWrapper) {
+      val indent = "  " * (wrapper.stack.messages.size - 1)
+      wrapper.stack.top match {
         case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
         case TaskList(tasks) =>
           taskList = tasks
@@ -35,7 +35,7 @@ object Main extends scala.App {
           val timestamp = DateTimeFormat.mediumTime().print(new DateTime())
           Console.out.println("%s[%s] Starting task %d of %d: %s" format (indent, timestamp, taskList.indexOf(task)+1, taskList.length, task.fullDescription))
         }
-        case _ => Console.out.println("%s%s" format (indent, stack.top.text))
+        case _ => Console.out.println("%s%s" format (indent, wrapper.stack.top.text))
       }
     }
   }

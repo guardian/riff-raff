@@ -2,6 +2,7 @@ package magenta
 
 import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
+import java.util.UUID
 
 object RunState extends Enumeration {
   type State = Value
@@ -23,8 +24,12 @@ object MessageState {
       case _ => SimpleMessageState(message, time)
     }
   }
-  def apply(message: StartContext, finish: FinishContext, time:DateTime): MessageState = FinishMessageState(message, finish, time)
-  def apply(message: StartContext, fail: FailContext, time:DateTime): MessageState = FailMessageState(message, fail, time)
+  def apply(message: StartContext, end: ContextMessage, time:DateTime): MessageState = {
+    end match {
+      case finish:FinishContext => FinishMessageState(message, finish, time)
+      case fail:FailContext => FailMessageState(message, fail, time)
+    }
+  }
 }
 
 trait MessageState {
@@ -36,40 +41,62 @@ trait MessageState {
   def finished:Option[Message]
   def state: RunState.State
   def isRunning:Boolean = state == RunState.Running
+  def messageId: Option[UUID]
 }
 
-case class Report(text: String, time: DateTime) extends MessageState {
+case class Report(text: String, time: DateTime, messageId: Option[UUID] = None) extends MessageState {
   lazy val message = Info(text)
   lazy val startContext = null
   lazy val finished = None
   lazy val state = RunState.NotRunning
 }
 
-case class SimpleMessageState(message: Message, time: DateTime) extends MessageState {
+case class SimpleMessageState(message: Message, time: DateTime, messageId: Option[UUID] = None) extends MessageState {
   lazy val startContext = null
   lazy val finished = None
   lazy val state = RunState.NotRunning
 }
 
-case class StartMessageState(startContext: StartContext, time: DateTime) extends MessageState {
+case class StartMessageState(startContext: StartContext, time: DateTime, messageId: Option[UUID] = None) extends MessageState {
   lazy val message = startContext.originalMessage
   lazy val finished = None
   lazy val state = RunState.Running
 }
 
-case class FinishMessageState(startContext: StartContext, finish: FinishContext, time: DateTime) extends MessageState {
+case class FinishMessageState(startContext: StartContext, finish: FinishContext, time: DateTime, messageId: Option[UUID] = None) extends MessageState {
   lazy val message = startContext.originalMessage
   lazy val finished = Some(finish)
   lazy val state = RunState.Completed
 }
 
-case class FailMessageState(startContext: StartContext, fail: FailContext, time: DateTime) extends MessageState {
+case class FailMessageState(startContext: StartContext, fail: FailContext, time: DateTime, messageId: Option[UUID] = None) extends MessageState {
   lazy val message = startContext.originalMessage
   lazy val finished = Some(fail)
   lazy val state = RunState.Failed
 }
 
 object DeployReport {
+  def wrapperToTree(node: MessageWrapper, all: List[MessageWrapper]): ReportTree = {
+    val allChildren = all.filter(_.context.parentId.map(_ == node.messageId).getOrElse(false))
+
+    val isEndContextMessage = (wrapper:MessageWrapper) => wrapper.stack.top.isInstanceOf[FinishContext] ||
+                                                          wrapper.stack.top.isInstanceOf[FailContext]
+
+    val endOption = allChildren.filter(isEndContextMessage).map(_.stack.top.asInstanceOf[ContextMessage]).headOption
+    val children = allChildren.filterNot(isEndContextMessage)
+
+    val messageState = endOption.map { end =>
+      MessageState(node.stack.top.asInstanceOf[StartContext], end, node.stack.time)
+    }.getOrElse(MessageState(node.stack.top, node.stack.time))
+
+    ReportTree(messageState, children.map(wrapperToTree(_,all)))
+  }
+
+  def v2(list: List[MessageWrapper], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
+    val time = titleTime.getOrElse( list.headOption.map(_.stack.time).getOrElse( new DateTime() ))
+    ReportTree(Report(title, time), list.headOption.map(root => List(wrapperToTree(root,list))).getOrElse(Nil))
+  }
+
   def apply(messageList: List[MessageStack], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
     val time = titleTime.getOrElse( messageList.headOption.map(_.time).getOrElse( new DateTime() ))
 

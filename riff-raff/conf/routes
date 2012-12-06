@@ -54,7 +54,9 @@ GET     /deployment/reportTestPartial  controllers.Testing.reportTestPartial(ver
 GET     /testing/form   controllers.Testing.form
 POST    /testing/formPost  controllers.Testing.formPost
 GET     /testing/uuidList   controllers.Testing.uuidList
-POST    /testing/deleteUUID   controllers.Testing.deleteUUID
+POST    /testing/actionUUID   controllers.Testing.actionUUID
+GET     /testing/deployment/view/:uuid  controllers.Testing.viewUUIDv1(uuid:String, verbose:Boolean?=false)
+POST    /testing/migrateAllV1   controllers.Testing.migrateAllV1
 GET     /teamcity       controllers.Deployment.teamcity
 
 

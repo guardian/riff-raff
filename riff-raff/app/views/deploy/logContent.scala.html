@@ -1,14 +1,14 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record)
 
 @logSummary(record)
 
-<ul class="magenta-reporttree">
-    @snippets.reportTree(record.report)
-</ul>
+@if(!record.isSummarised) {
+    <ul class="magenta-reporttree">
+        @snippets.reportTree(record.report)
+    </ul>
+        @logSummary(record)
+}
 
-<!-- @record.report.render.mkString("\n") -->
-
-@logSummary(record)
 
 @if(record.isDone){
     <script type="text/javascript">

@@ -17,7 +17,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   it should ("resolve a set of tasks") in {
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
-    MessageBroker.deployContext(parameters) {
+    MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       context.tasks should be(List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", deployinfoSingleHost.hosts.headOption)
@@ -30,11 +30,11 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val sink = new MessageSink {
       val messages = Buffer[Message]()
-      def message(uuid: UUID, stack: MessageStack) {messages += stack.top}
+      def message(wrapper: MessageWrapper) {messages += wrapper.stack.top}
     }
     MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
 
-    MessageBroker.deployContext(parameters) {
+    MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
     }
 
@@ -59,8 +59,8 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val sink = new MessageSink {
       val messages = Buffer[Message]()
       val finished = Buffer[Message]()
-      def message(uuid: UUID, stack: MessageStack) {
-        stack.top match {
+      def message(wrapper: MessageWrapper) {
+        wrapper.stack.top match {
           case FinishContext(finishMessage) => finished += finishMessage
           case StartContext(startMessage) => messages += startMessage
           case _ =>
@@ -70,9 +70,8 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
 
     val keyRing = mock[KeyRing]
-    MessageBroker.deployContext(parameters) {
-      context.execute(keyRing)
-    }
+
+    context.execute(keyRing)
 
     sink.messages.filter(_.getClass == classOf[Deploy]) should have size (1)
     sink.messages.filter(_.getClass == classOf[TaskRun]) should have size (2)
@@ -87,8 +86,8 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val sink = new MessageSink {
       val messages = Buffer[Message]()
       val finished = Buffer[Message]()
-      def message(uuid: UUID, stack: MessageStack) {
-        stack.top match {
+      def message(wrapper: MessageWrapper) {
+        wrapper.stack.top match {
           case FinishContext(finishMessage) => finished += finishMessage
           case StartContext(startMessage) => messages += startMessage
           case _ =>
@@ -98,9 +97,8 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
 
     val keyRing = mock[KeyRing]
-    MessageBroker.deployContext(parameters) {
-      context.execute(keyRing)
-    }
+
+    context.execute(keyRing)
 
     sink.messages.head.getClass should be(classOf[Deploy])
     sink.finished.last.getClass should be(classOf[Deploy])

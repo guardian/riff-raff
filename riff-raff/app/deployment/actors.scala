@@ -10,13 +10,13 @@ import akka.actor.SupervisorStrategy.Restart
 
 object DeployControlActor extends Logging {
   trait Event
-  case class Deploy(record: DeployRecord) extends Event
+  case class Deploy(record: Record) extends Event
 
   lazy val system = ActorSystem("deploy")
 
   lazy val deployController = system.actorOf(Props[DeployControlActor])
 
-  def deploy(record: DeployRecord){
+  def deploy(record: Record){
     deployController ! Deploy(record)
   }
 }
@@ -64,7 +64,7 @@ class DeployControlActor() extends Actor with Logging {
 
 object DeployActor {
   trait Event
-  case class Deploy(record: DeployRecord) extends Event
+  case class Deploy(record: Record) extends Event
 }
 
 class DeployActor() extends Actor with Logging {
@@ -91,11 +91,11 @@ class DeployActor() extends Actor with Logging {
     }
   }
 
-  def resolveContext(artifactDir: File, record: DeployRecord): DeployContext = {
+  def resolveContext(artifactDir: File, record: Record): DeployContext = {
     log.info("Reading deploy.json")
     MessageBroker.info("Reading deploy.json")
     val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-    val context = record.parameters.toDeployContext(project, DeployInfoManager.deployInfo)
+    val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
     context
   }
 

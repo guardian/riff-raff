@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord, verbose: Boolean = false)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
 
 @main("Deployment report for "+record.buildName, request) {
 @if(!verbose) {
