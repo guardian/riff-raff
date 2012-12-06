@@ -45,21 +45,20 @@ object DeployController extends Logging with LifecycleWithoutApp {
   implicit val system = ActorSystem("deploy")
 
   val library = Agent(Map.empty[UUID,Agent[DeployV2Record]])
-  val converter = DocumentStoreConverter(Persistence.store)
 
   def create(recordType: Task.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
     val record = DeployV2Record(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
-    converter.newDeploy(record)
+    DocumentStoreConverter.saveDeploy(record)
     await(uuid)
   }
 
   def update(wrapper: MessageWrapper) {
     library()(wrapper.context.deployId) send { record =>
       val updated = record + wrapper
-      converter.newMessage(wrapper.context.deployId,wrapper)
-      converter.updateDeployStatus(updated)
+      DocumentStoreConverter.saveMessage(wrapper)
+      if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
       updated
     }
     wrapper.stack.messages match {
@@ -70,14 +69,13 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def cleanup(uuid: UUID) {
-    log.debug("Removing deploy record %s from internal caches" format uuid)
+    log.debug("Queuing removal of deploy record %s from internal caches" format uuid)
     library sendOff { allDeploys =>
       val timeout = Timeout(10 seconds)
       val record = allDeploys(uuid).await(timeout)
+      log.debug("Done removing deploy record %s from internal caches" format uuid)
       allDeploys - record.uuid
     }
-    converter.close(uuid)
-    log.debug("Done removing deploy record %s from internal caches" format uuid)
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
@@ -99,7 +97,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int): Iterable[Record] = converter.getDeployList(limit)
+  def getDatastoreDeploys(limit:Int): Iterable[Record] = DocumentStoreConverter.getDeployList(limit)
 
   def getDeploys(limit:Int = 20): List[Record] = {
     val controllerDeploys = getControllerDeploys.toList
@@ -113,7 +111,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def get(uuid: UUID): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      converter.getDeploy(uuid).get
+      DocumentStoreConverter.getDeploy(uuid).get
     }
   }
 

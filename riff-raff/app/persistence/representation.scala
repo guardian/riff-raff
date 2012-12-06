@@ -44,6 +44,9 @@ case class LogDocument(
   time: DateTime
 )
 object LogDocument {
+  def apply(wrapper: MessageWrapper): LogDocument = {
+    LogDocument(wrapper.context.deployId, wrapper.messageId, wrapper.context.parentId, wrapper.stack.top, wrapper.stack.time)
+  }
   def apply(deploy: UUID, id: UUID, parent: Option[UUID], document: Message, time: DateTime): LogDocument = {
     val messageDocument = document match {
         case StartContext(message) => message

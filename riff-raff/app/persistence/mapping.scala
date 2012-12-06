@@ -65,14 +65,8 @@ case class RecordV2Converter(uuid:UUID, startTime:DateTime, params: ParametersDo
 
   def apply: (DeployRecordDocument, Seq[LogDocument]) = (deployDocument, logDocuments)
 
-  def buildLogDocuments(messages: List[MessageWrapper], parent:Option[LogDocument]): Seq[LogDocument] = {
-    messages.map { message =>
-      LogDocument(uuid, message.messageId, message.context.parentId, message.stack.top, message.stack.time)
-    }
-  }
-
   lazy val logDocuments = {
-    val logDocumentSeq: Seq[LogDocument] = buildLogDocuments(messages, None)
+    val logDocumentSeq: Seq[LogDocument] = messages.map(LogDocument(_))
     val ids = logDocumentSeq.map(_.id)
     if (ids.size != ids.toSet.size) log.error("Key collision detected in log of deploy %s" format uuid)
     logDocumentSeq
@@ -163,33 +157,22 @@ trait DocumentStore {
   def deleteDeployLogV2(uuid: UUID) {}
 }
 
-case class DocumentStoreConverter(documentStore: DocumentStore) extends Logging {
-  implicit val actorSystem = ActorSystem("document-store")
+object DocumentStoreConverter extends Logging {
+  val documentStore: DocumentStore = Persistence.store
 
-  val deployConverterMap =
-    Agent(Map.empty[UUID,Agent[RecordV2Converter]].withDefault{key =>
-      throw new IllegalArgumentException("Don't know deploy ID %s" format key.toString)})
-
-  def newDeploy(record: DeployV2Record) {
+  def saveDeploy(record: DeployV2Record) {
     if (!record.messages.isEmpty) throw new IllegalArgumentException
     val converter = RecordConverter(record)
     documentStore.writeDeploy(converter.deployDocument)
-    deployConverterMap.send { _ + (record.uuid -> Agent(converter)) }
+    converter.logDocuments.foreach(documentStore.writeLog)
   }
 
-  def newMessage(deployId: UUID, message: MessageWrapper) {
-    deployConverterMap()(deployId).send { converter =>
-      val newConverter = converter + message
-      newConverter(message).foreach(documentStore.writeLog)
-      newConverter
-    }
+  def saveMessage(message: MessageWrapper) {
+    documentStore.writeLog(LogDocument(message))
   }
 
   def updateDeployStatus(record: DeployV2Record) {
-    deployConverterMap()(record.uuid).send { converter =>
-      documentStore.updateStatus(record.uuid, record.state)
-      converter + record.state
-    }
+    documentStore.updateStatus(record.uuid, record.state)
   }
 
   def getDeploy(uuid:UUID): Option[DeployV2Record] = {
@@ -208,9 +191,5 @@ case class DocumentStoreConverter(documentStore: DocumentStore) extends Logging 
 
   def getDeployList(limit: Int): Seq[DeployV2Record] = {
     documentStore.getDeployV2UUIDs(limit).flatMap(info => getDeploy(info.uuid)).toSeq
-  }
-
-  def close(deployId:UUID) {
-    deployConverterMap.send( _ - deployId )
   }
 }
