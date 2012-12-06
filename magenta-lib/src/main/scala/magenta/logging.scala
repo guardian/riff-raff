@@ -105,7 +105,7 @@ object MessageBroker {
     throw failException(message, e)
   }
   def failException(message: String, e: Throwable): FailException = { failException(message,Some(e)) }
-  def fail(message: String, e: Throwable) { fail(message,Some(e)) }
+  def fail(message: String, e: Throwable): Nothing = { fail(message,Some(e)) }
 }
 
 case class MessageContext(deployId: UUID, parameters: DeployParameters, parentId: Option[UUID])

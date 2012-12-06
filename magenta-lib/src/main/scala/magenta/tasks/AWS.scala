@@ -25,6 +25,8 @@ trait S3 extends AWS {
 }
 
 trait ASG extends AWS {
+  def elb: ELB = ELB
+
   def client(implicit keyRing: KeyRing) = {
     val client = new AmazonAutoScalingClient(credentials(keyRing))
     client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
@@ -40,15 +42,24 @@ trait ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStablized(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
-    val elbHealth = ELB.instanceHealth(elbName(asg))
-    elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
+  def isStabilized(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
+    elbName(asg) match {
+      case Some(name) => {
+        val elbHealth = elb.instanceHealth(name)
+        elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
+      }
+      case None => {
+        val instances = asg.getInstances
+        instances.size == asg.getDesiredCapacity &&
+          instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString)
+      }
+    }
   }
 
-  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.head
+  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.headOption
 
   def cull(asg: AutoScalingGroup, instance: ASGInstance)(implicit keyRing: KeyRing) = {
-    ELB.deregister(elbName(asg), instance)
+    elbName(asg) foreach (ELB.deregister(_, instance))
 
     client.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()

@@ -61,13 +61,13 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   }
 }
 
-case class AutoScalingWithELB(pkg: Package) extends PackageType {
+case class AutoScaling(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
-  "secondsToWait" -> 5 * 60,
-  "port" -> 8080,
-  "manifestPath" -> "management/manifest"
+    "secondsToWait" -> 15 * 60,
+    "port" -> 8080,
+    "manifestPath" -> "management/manifest"
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"

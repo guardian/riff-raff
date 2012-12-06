@@ -102,10 +102,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
         Source.fromInputStream( connection.getInputStream )
         true
       } catch {
-        // Note that MessageBroker.fail will always throw a runtime exception, so we
-        // won't ever need to return false from this branch, but it's necessary for
-        // type checks to pass
-        case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e); false
+        case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e)
         case e => false
       }
     }

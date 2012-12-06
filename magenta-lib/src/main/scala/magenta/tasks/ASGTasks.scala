@@ -31,7 +31,7 @@ case class WaitForStabilization(packageName: String, stage: Stage, duration: Lon
 
   def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     check {
-      isStablized(refresh(asg))
+      isStabilized(refresh(asg))
     }
   }
 
