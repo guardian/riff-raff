@@ -97,21 +97,21 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int): Iterable[Record] = DocumentStoreConverter.getDeployList(limit)
+  def getDatastoreDeploys(limit:Int, fetchLogs: Boolean): Iterable[Record] = DocumentStoreConverter.getDeployList(limit, fetchLogs)
 
-  def getDeploys(limit:Int = 20): List[Record] = {
+  def getDeploys(limit:Int = 20, fetchLogs: Boolean = true): List[Record] = {
     val controllerDeploys = getControllerDeploys.toList
-    val datastoreDeploys = getDatastoreDeploys(limit).toList
+    val datastoreDeploys = getDatastoreDeploys(limit, fetchLogs).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
     log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
     combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(limit)
   }
 
-  def get(uuid: UUID): Record = {
+  def get(uuid: UUID, fetchLog: Boolean = true): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      DocumentStoreConverter.getDeploy(uuid).get
+      DocumentStoreConverter.getDeploy(uuid, fetchLog).get
     }
   }
 
@@ -204,7 +204,6 @@ object Deployment extends Controller with Logging {
   }
 
   def historyContent(count:Int) = AuthAction { implicit request =>
-    val records = DeployController.getDeploys(count).reverse
     Ok(views.html.deploy.historyContent(request, count))
   }
 

@@ -231,6 +231,12 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def getDeploysV2(limit: Int = 0) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
+    val cursor = deployV2Collection.find().sort(MongoDBObject("startTime" -> -1))
+    val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
+    limitedCursor.toIterable.map { deployGrater.asObject(_) }
+  }
+
   override def deleteDeployLogV2(uuid: UUID) {
     logAndSquashExceptions(None,()) {
       deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))

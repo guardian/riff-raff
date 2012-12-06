@@ -154,6 +154,7 @@ trait DocumentStore {
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployV2UUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
+  def getDeploysV2(limit: Int = 0): Iterable[DeployRecordDocument] = Nil
   def deleteDeployLogV2(uuid: UUID) {}
 }
 
@@ -175,10 +176,13 @@ object DocumentStoreConverter extends Logging {
     documentStore.updateStatus(record.uuid, record.state)
   }
 
-  def getDeploy(uuid:UUID): Option[DeployV2Record] = {
+  def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
+  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid)
+
+  def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployV2Record] = {
     try {
-      val deployDocument = documentStore.readDeploy(uuid)
-      val logDocuments = documentStore.readLogs(uuid)
+      val deployDocument = getDeployDocument(uuid)
+      val logDocuments = if (fetchLog) getDeployLogs(uuid) else Nil
       deployDocument.map { deploy =>
         DocumentConverter(deploy, logDocuments.toSeq).deployRecord
       }
@@ -189,7 +193,16 @@ object DocumentStoreConverter extends Logging {
     }
   }
 
-  def getDeployList(limit: Int): Seq[DeployV2Record] = {
-    documentStore.getDeployV2UUIDs(limit).flatMap(info => getDeploy(info.uuid)).toSeq
+  def getDeployList(limit: Int, fetchLog: Boolean = true): Seq[DeployV2Record] = {
+    documentStore.getDeploysV2(limit).toSeq.flatMap{ deployDocument =>
+      try {
+        val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
+        Some(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
+      } catch {
+        case e:Exception =>
+          log.error("Couldn't get DeployV2Record for %s" format deployDocument.uuid, e)
+          None
+      }
+    }
   }
 }
