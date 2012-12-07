@@ -186,6 +186,7 @@ object AlertaEvent {
     val inform = Severity("INFORM", 6)
     val minor = Severity("MINOR", 3)
     val severityMap = Map( DeployEvent.Complete -> inform, DeployEvent.Fail -> minor, DeployEvent.Start -> inform)
+    val adjectiveMap = Map( DeployEvent.Complete -> "completed", DeployEvent.Fail -> "failed", DeployEvent.Start -> "started")
 
     new AlertaEvent(
       "riffraff/%s" format java.net.InetAddress.getLocalHost.getHostName,
@@ -193,16 +194,16 @@ object AlertaEvent {
       severityMap(event).name,
       List(project.split(":").head),
       List("release:%s" format build, "user:%s" format user),
-      "Deploy of %s started" format project,
+      "Deploy of %s %s" format (project, adjectiveMap(event)),
       new Date(),
       "Release %s" format build,
       event.toString,
       List(environment),
       severityMap(event).code,
       86400,
-      project,
+      "%s-%s" format (environment,project),
       DeployEvent.values.map(_.toString).toList,
-      "%s - INFORM %s of %s build %s" format (environment, event, project, build),
+      "%s - %s %s of %s build %s" format (environment, severityMap(event).name, event, project, build),
       "n/a",
       "deployAlert",
       UUID.randomUUID().toString,
