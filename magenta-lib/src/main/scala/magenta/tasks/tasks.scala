@@ -118,8 +118,9 @@ trait RepeatedPollingCheck {
     def checkAttempt(currentAttempt: Int) {
       if (!theCheck) {
         if (System.currentTimeMillis() < expiry) {
-          MessageBroker.verbose("Check failed on attempt #"+currentAttempt +"- Retrying")
-          val sleepyTime = math.min(math.pow(2,currentAttempt).toLong*100, 10000)
+          val exponent = math.min(currentAttempt, 7)
+          val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 10000)
+          MessageBroker.verbose("Check failed on attempt #%d- Retrying after %dms" format (currentAttempt, sleepyTime))
           Thread.sleep(sleepyTime)
           checkAttempt(currentAttempt + 1)
         } else {
