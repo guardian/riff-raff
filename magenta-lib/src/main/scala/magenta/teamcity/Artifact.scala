@@ -31,7 +31,7 @@ object Artifact {
 
       try {
         val files = http(tcUrl >> { IO.unzipStream(_, dir) })
-        MessageBroker.verbose("downloaded:\n" + files.mkString("\n"))
+        MessageBroker.verbose("Extracted %d files" format files.size)
       } catch {
         case StatusCode(404, _) =>
           MessageBroker.fail("404 downloading %s\n - have you got the project name and build number correct?" format tcUrl.to_uri)
