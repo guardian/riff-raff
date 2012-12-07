@@ -46,9 +46,10 @@ object MessageQueue extends LifecycleWithoutApp with Logging {
   }
 
   lazy val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) {
+    def message(message: MessageWrapper) {
+      val uuid = message.context.deployId
       if (DeployController.get(uuid).taskType == Task.Deploy)
-        stack.top match {
+        message.stack.top match {
           case StartContext(Deploy(parameters)) =>
             sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
           case FailContext(Deploy(parameters), exception) =>

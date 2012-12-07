@@ -23,7 +23,9 @@ import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import persistence.Persistence
+import persistence.{DocumentConverter, DocumentStoreConverter, RecordConverter, Persistence}
+
+case class SimpleDeployDetail(uuid: UUID, time: DateTime)
 
 object Testing extends Controller with Logging {
   def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
@@ -119,29 +121,74 @@ object Testing extends Controller with Logging {
       )
     }
 
+
+
   def uuidList = AuthAction { implicit request =>
-    val uuidList = Persistence.store.getDeployUUIDs.map(_.toString)
-    Ok(views.html.test.uuidList(request,uuidList))
+    val v1Set = Persistence.store.getDeployUUIDs.toSet
+    val v2Set = Persistence.store.getDeployV2UUIDs().toSet
+    val allDeploys = (v1Set ++ v2Set).toSeq.sortBy(_.time.getMillis).reverse
+    Ok(views.html.test.uuidList(request, allDeploys, v1Set, v2Set))
   }
 
-  case class UuidDeleteForm(uuid:String)
+  case class UuidForm(uuid:String, action:String)
 
-  lazy val uuidDeletionForm = Form[UuidDeleteForm](
+  lazy val uuidForm = Form[UuidForm](
     mapping(
-      "uuid" -> text(36,36)
-    )(UuidDeleteForm.apply)
-      (UuidDeleteForm.unapply)
+      "uuid" -> text(36,36),
+      "action" -> nonEmptyText
+    )(UuidForm.apply)
+      (UuidForm.unapply)
   )
 
-  def deleteUUID = AuthAction { implicit request =>
-    uuidDeletionForm.bindFromRequest().fold(
+  def actionUUID = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
       errors => Redirect(routes.Testing.uuidList()),
       form => {
-        log.info("Deleting deploy with UUID %s" format form.uuid)
-        Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
-        Redirect(routes.Testing.uuidList())
+        form.action match {
+          case "deleteV1" => {
+            log.info("Deleting deploy in V1 with UUID %s" format form.uuid)
+            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "deleteV2" => {
+            log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
+            Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "migrate" => {
+            log.info("Migrating deploy with UUID %s" format form.uuid)
+            val deployRecord = Persistence.store.getDeploy(UUID.fromString(form.uuid))
+            deployRecord.foreach{ deploy =>
+              val conversion = RecordConverter(deploy)
+              Persistence.store.writeDeploy(conversion.deployDocument)
+            }
+            Redirect(routes.Testing.uuidList())
+          }
+        }
       }
     )
+  }
+
+  def migrateAllV1 = AuthAction { implicit request =>
+    val v1Set = Persistence.store.getDeployUUIDs.toSet
+    val v2Set = Persistence.store.getDeployV2UUIDs().toSet
+    val v1Only = v1Set -- v2Set
+    v1Only.foreach { deployToMigrate =>
+      val deployRecord = Persistence.store.getDeploy(deployToMigrate.uuid)
+      deployRecord.foreach{ deploy =>
+        val conversion = RecordConverter(deploy)
+        Persistence.store.writeDeploy(conversion.deployDocument)
+      }
+    }
+    Redirect(routes.Testing.uuidList())
+  }
+
+  def viewUUIDv1(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
+    val record = Persistence.store.getDeploy(UUID.fromString(uuid)).get
+    record.taskType match {
+      case Task.Deploy => Ok(views.html.deploy.log(request, record, verbose))
+      case Task.Preview => Ok(views.html.deploy.preview(request,record,verbose))
+    }
   }
 
 }

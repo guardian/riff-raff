@@ -1,12 +1,15 @@
-@(record: deployment.DeployRecord)
+@(record: deployment.Record)
 
-@defining(record.report.cascadeState) { state =>
+@if(record.isSummarised) {
+  <div class="alert">This @record.taskType.toString.toLowerCase has been summarised, the full details are no longer available.</div>
+}
+@defining(record.state) { state =>
 @state match {
 case RunState.NotRunning => { <div class="alert alert-info">Waiting to run</div> }
-case RunState.Completed => { <div class="alert alert-success">Deploy completed</div> }
+case RunState.Completed => { <div class="alert alert-success">@record.taskType completed</div> }
 case RunState.Failed => {
 <div class="alert alert-error">
-    <h4 class="alert-heading">Deploy failed</h4>
+    <h4 class="alert-heading">@record.taskType failed</h4>
     @defining(java.util.UUID.randomUUID.toString) { id =>
         @record.report.failureMessage.map{ fail =>
             <strong>@fail.detail.name</strong> @fail.detail.message <a data-toggle="collapse" href="#@id">Show exception details</a>

@@ -1,12 +1,11 @@
 package magenta
 
-import java.util.{UUID, Date}
+import java.util.UUID
 import magenta.tasks.Task
 import metrics.MagentaMetrics
 import util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
-import java.util
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
@@ -16,7 +15,7 @@ object ThrowableDetail {
   }
 }
 
-case class TaskDetail(val name: String, description:String, verbose:String, val taskHosts: List[Host]) {
+case class TaskDetail(name: String, description:String, verbose:String, taskHosts: List[Host]) {
   def fullDescription = name + " " + description
 }
 object TaskDetail {
@@ -33,64 +32,61 @@ object MessageBroker {
   def unsubscribe(sink: MessageSink) { listeners -= sink }
 
   private val messageStack = new DynamicVariable[List[Message]](Nil)
-  private val uuidContext = new DynamicVariable[UUID](null)
+  private val messageContext = new DynamicVariable[MessageContext](null)
 
-  def peekContext(): (UUID,List[Message]) = (uuidContext.value, messageStack.value)
-  def pushContext[T](tempContext: (UUID,List[Message]))(block: => T): T = {
-    uuidContext.withValue(tempContext._1){
-      messageStack.withValue(tempContext._2){ block }
-    }
-  }
-
-  def withUUID[T](uuid:UUID)(block: => T): T = {
-    uuidContext.withValue(uuid){ block }
-  }
-
-  def send(message: Message) {
+  def send(message: Message, messageUUID: UUID = UUID.randomUUID()) {
     val stack = MessageStack(message :: messageStack.value)
     MagentaMetrics.MessageBrokerMessages.measure {
-      listeners foreach(_.message(uuidContext.value, stack))
+      listeners foreach(_.message(MessageWrapper(messageContext.value, messageUUID, stack)))
     }
   }
 
   def sendContext[T](message: Message)(block: => T): T = {
-    send(StartContext(message))
-    val result: T = try {
-      messageStack.withValue(message :: messageStack.value) {
-        try
-          block
-        catch {
-          case f:FailException => throw f
-          case t => throw failException("Unhandled exception in %s" format message.toString, t)
+    val contextUUID = UUID.randomUUID()
+    send(StartContext(message), contextUUID)
+    try {
+      messageContext.withValue(messageContext.value.copy(parentId = Some(contextUUID))) {
+        messageStack.withValue(message :: messageStack.value) {
+          try {
+            val result: T = block
+            send(FinishContext(message))
+            result
+          } catch {
+            case f:FailException =>
+              send(FailContext(message, f))
+              throw f
+            case t =>
+              // build exception (and send fail message) first
+              val exception = failException("Unhandled exception in %s" format message.text, t)
+              send(FailContext(message, t))
+              throw exception
+          }
         }
       }
     } catch {
       case f:FailException =>
-        val t = if (messageStack.value.size == 0 && f.getCause != null) f.getCause else f
-        send(FailContext(message, t))
-        throw t
-    }
-    send(FinishContext(message))
-    result
-  }
-
-  def deployContext[T](parameters: DeployParameters)(block: => T): T = {
-    if (messageStack.value.size == 0)
-      sendContext(Deploy(parameters))(block)
-    else {
-      val existingParams = messageStack.value.last match {
-        case Deploy(params) => Some(params)
-        case _ => None
-      }
-      if (existingParams.isDefined && existingParams.get == parameters)
-        block
-      else
-        throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (parameters,messageStack.value))
+        throw if (messageContext.value.parentId.isEmpty && f.getCause != null) f.getCause else f
     }
   }
 
   def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T): T = {
-    withUUID(uuid) { deployContext(parameters) { block } }
+    val newContext = MessageContext(uuid, parameters, None)
+
+    val contextDefined = Option(messageContext.value).isDefined
+    val reentrant = contextDefined &&
+                    messageContext.value.deployId == uuid &&
+                    messageContext.value.parameters == parameters
+
+    if (contextDefined && !reentrant)
+      throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (newContext, messageContext.value))
+
+    if (reentrant) {
+      block
+    } else {
+      messageContext.withValue(MessageContext(uuid, parameters, None)) {
+        sendContext(Deploy(parameters))(block)
+      }
+    }
   }
 
   def taskContext[T](task: Task)(block: => T) { sendContext(TaskRun(task))(block) }
@@ -112,12 +108,18 @@ object MessageBroker {
   def fail(message: String, e: Throwable): Nothing = { fail(message,Some(e)) }
 }
 
+case class MessageContext(deployId: UUID, parameters: DeployParameters, parentId: Option[UUID])
+case class MessageWrapper(context: MessageContext, messageId: UUID, stack: MessageStack)
+
 trait MessageSink {
-  def message(uuid: UUID, stack: MessageStack)
+  def message(wrapper: MessageWrapper)
 }
 
 class MessageSinkFilter(messageSink: MessageSink, filter: MessageStack => Boolean) extends MessageSink {
-  def message(uuid: UUID, stack: MessageStack) { if (filter(stack)) messageSink.message(uuid, stack) }
+  def message(wrapper: MessageWrapper) {
+    if (filter(wrapper.stack))
+      messageSink.message(wrapper)
+  }
 }
 
 case class MessageStack(messages: List[Message], time:DateTime = new DateTime()) {

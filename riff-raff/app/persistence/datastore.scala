@@ -8,16 +8,19 @@ import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{AuthorisationRecord, Logging}
+import controllers.SimpleDeployDetail
 
-trait DataStore {
+trait DataStore extends DocumentStore {
   def log: Logger
 
   def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T = {
     try {
       message.foreach(log.debug(_))
-      DatastoreRequest.measure {
+      val value = DatastoreRequest.measure {
         block
       }
+      message.foreach(m => log.debug("Completed: %s" format m))
+      value
     } catch {
       case t:Throwable =>
         val errorMessage = "Squashing uncaught exception%s" format message.map("whilst %s" format _).getOrElse("")
@@ -36,7 +39,7 @@ trait DataStore {
   def updateDeploy(uuid:UUID, stack: MessageStack) {}
   def getDeploy(uuid:UUID):Option[DeployRecord] = None
 
-  def getDeployUUIDs:Iterable[UUID] = Nil
+  def getDeployUUIDs:Iterable[SimpleDeployDetail] = Nil
   def deleteDeployLog(uuid:UUID) {}
 
   def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty

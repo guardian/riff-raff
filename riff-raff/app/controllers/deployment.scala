@@ -10,26 +10,21 @@ import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
 import magenta._
+import magenta.Build
 import akka.agent.Agent
 import akka.util.Timeout
 import akka.util.duration._
-import deployment.DeployRecord
-import magenta.MessageStack
-import magenta.Build
-import magenta.DeployParameters
-import magenta.Deployer
-import magenta.Stage
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
-import persistence.Persistence
+import persistence.{DocumentStoreConverter, Persistence}
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
-    def message(uuid: UUID, stack: MessageStack) { update(uuid, stack) }
+    def message(message: MessageWrapper) { update(message) }
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
@@ -49,21 +44,38 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   implicit val system = ActorSystem("deploy")
 
-  val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
+  val library = Agent(Map.empty[UUID,Agent[DeployV2Record]])
 
-  def create(recordType: Task.Value, params: DeployParameters): DeployRecord = {
+  def create(recordType: Task.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val record = DeployRecord(recordType, uuid, params)
+    val record = DeployV2Record(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
-    Persistence.store.createDeploy(record)
+    DocumentStoreConverter.saveDeploy(record)
     await(uuid)
   }
 
-  def update(uuid:UUID, stack: MessageStack) {
-    library()(uuid) send { record =>
-      MessageBroker.withUUID(uuid)(record + stack)
+  def update(wrapper: MessageWrapper) {
+    library()(wrapper.context.deployId) send { record =>
+      val updated = record + wrapper
+      DocumentStoreConverter.saveMessage(wrapper)
+      if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
+      updated
     }
-    Persistence.store.updateDeploy(uuid, stack)
+    wrapper.stack.messages match {
+      case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
+      case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
+      case _ =>
+    }
+  }
+
+  def cleanup(uuid: UUID) {
+    log.debug("Queuing removal of deploy record %s from internal caches" format uuid)
+    library sendOff { allDeploys =>
+      val timeout = Timeout(10 seconds)
+      val record = allDeploys(uuid).await(timeout)
+      log.debug("Done removing deploy record %s from internal caches" format uuid)
+      allDeploys - record.uuid
+    }
   }
 
   def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
@@ -84,25 +96,26 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def getControllerDeploys: Iterable[DeployRecord] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int): Iterable[DeployRecord] = Persistence.store.getDeploys(limit)
+  def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
+  def getDatastoreDeploys(limit:Int, fetchLogs: Boolean): Iterable[Record] = DocumentStoreConverter.getDeployList(limit, fetchLogs)
 
-  def getDeploys(limit:Int = 20): List[DeployRecord] = {
+  def getDeploys(limit:Int = 20, fetchLogs: Boolean = true): List[Record] = {
     val controllerDeploys = getControllerDeploys.toList
-    val datastoreDeploys = getDatastoreDeploys(limit).toList
+    val datastoreDeploys = getDatastoreDeploys(limit, fetchLogs).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
-    combinedRecords.sortWith{ _.report.startTime.getMillis < _.report.startTime.getMillis }.takeRight(limit)
+    log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
+    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(limit)
   }
 
-  def get(uuid: UUID): DeployRecord = {
+  def get(uuid: UUID, fetchLog: Boolean = true): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      Persistence.store.getDeploy(uuid).get
+      DocumentStoreConverter.getDeploy(uuid, fetchLog).get
     }
   }
 
-  def await(uuid: UUID): DeployRecord = {
+  def await(uuid: UUID): Record = {
     val timeout = Timeout(5 second)
     library.await(timeout)(uuid).await(timeout)
   }
@@ -191,7 +204,6 @@ object Deployment extends Controller with Logging {
   }
 
   def historyContent(count:Int) = AuthAction { implicit request =>
-    val records = DeployController.getDeploys(count).reverse
     Ok(views.html.deploy.historyContent(request, count))
   }
 
