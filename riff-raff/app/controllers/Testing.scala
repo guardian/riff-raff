@@ -17,7 +17,7 @@ import magenta.Deploy
 import magenta.Deployer
 import magenta.Stage
 import magenta.Build
-import deployment.{Task, DeployRecord}
+import deployment.{DeployV2Record, Task, DeployRecord}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
@@ -28,68 +28,59 @@ import persistence.{DocumentConverter, DocumentStoreConverter, RecordConverter, 
 case class SimpleDeployDetail(uuid: UUID, time: DateTime)
 
 object Testing extends Controller with Logging {
-  def reportTestPartial(verbose: Boolean) = NonAuthAction { implicit request =>
-    val task1 = new Task {
+  def reportTestPartial(take: Int, verbose: Boolean) = NonAuthAction { implicit request =>
+    val logUUID = UUID.randomUUID()
+    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
+
+    val testTask1 = new Task {
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
-    val task2 = new Task {
+    val testTask2 = new Task {
       def execute(sshCredentials: KeyRing) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
+
+
+
+    def wrapper(parent: Option[UUID], id: UUID, messages: Message*): MessageWrapper = {
+      MessageWrapper(MessageContext(logUUID, parameters, parent), id, MessageStack(messages.toList))
+    }
+
+    object message {
+      val deploy = Deploy(parameters)
+      val deployUUID = UUID.randomUUID()
+      val task1 = TaskRun(testTask1)
+      val task1UUID = UUID.randomUUID()
+      val task2 = TaskRun(testTask2)
+      val task2UUID = UUID.randomUUID()
+      val info = Info("$ command line action")
+      val infoUUID = UUID.randomUUID()
+    }
+
     val input = ArrayBuffer(
-      MessageStack(List(
-        StartContext(Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()))))),
-      MessageStack(List(
-        Info("Downloading artifact"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        Verbose("Downloading from http://teamcity.gudev.gnl:8111/guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip to /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15..."),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        Verbose("http: teamcity.gudev.gnl GET /guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip HTTP/1.1"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        Verbose("""downloaded:
+      wrapper(None, message.deployUUID, StartContext(message.deploy)),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Info("Downloading artifact"),message.deploy),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Verbose("Downloading from http://teamcity.gudev.gnl:8111/guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip to /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15..."),message.deploy),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Verbose("http: teamcity.gudev.gnl GET /guestAuth/repository/download/tools%3A%3Adeploy/131/artifacts.zip HTTP/1.1"), message.deploy),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Verbose("""downloaded:
       /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/deploy.json
-    /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/packages/riff-raff/riff-raff.jar"""),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        Info("Reading deploy.json"),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        StartContext(TaskRun(task1)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        FinishContext(TaskRun(task1)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        StartContext(TaskRun(task2)),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        StartContext(Info("$ command line action")),
-        TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        CommandOutput("Some command output from command line action"),
-        Info("$ command line action"),
-        TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        CommandError("Some command error from command line action"),
-        Info("$ command line action"),
-        TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe())))),
-      MessageStack(List(
-        CommandOutput("Some more command output from command line action"),
-        Info("$ command line action"),
-        TaskRun(task2),
-        Deploy(DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()))))
+    /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/packages/riff-raff/riff-raff.jar"""), message.deploy),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Info("Reading deploy.json"), message.deploy),
+      wrapper(Some(message.deployUUID), message.task1UUID, StartContext(message.task1), message.deploy),
+      wrapper(Some(message.task1UUID), UUID.randomUUID(), FinishContext(message.task1), message.task1, message.deploy),
+      wrapper(Some(message.deployUUID), message.task2UUID, StartContext(message.task2), message.deploy),
+      wrapper(Some(message.task2UUID), message.infoUUID, StartContext(message.info), message.task2, message.deploy),
+
+      wrapper(Some(message.infoUUID), UUID.randomUUID(), CommandOutput("Some command output from command line action"), message.info, message.task2, message.deploy),
+      wrapper(Some(message.infoUUID), UUID.randomUUID(), CommandError("Some command error from command line action"), message.info, message.task2, message.deploy),
+      wrapper(Some(message.infoUUID), UUID.randomUUID(), CommandOutput("Some more command output from command line action"), message.info, message.task2, message.deploy)
     )
 
-    val report = DeployRecord(new DateTime(), Task.Deploy, UUID.randomUUID(), DeployParameters(Deployer("Simon Hildrew"),Build("tools::deploy","131"),Stage("DEV"),DefaultRecipe()), input.toList)
+
+    val report = DeployV2Record(new DateTime(), Task.Deploy, logUUID, parameters, input.toList.take(take))
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }
