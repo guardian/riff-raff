@@ -7,7 +7,11 @@ case class CommandLine(commandLine: List[String], successCodes: List[Int] = List
   lazy val quoted = (commandLine) map quoteIfNeeded mkString " "
   private def quoteIfNeeded(s: String) = if (s.contains(" ")) "\"" + s + "\"" else s
 
-  def suppressor(filteredOut: String => Unit) = { line:String => if (!line.startsWith("tcgetattr")) filteredOut(line) }
+  def suppressor(filteredOut: String => Unit) = { line:String =>
+    if ( !line.startsWith("tcgetattr") &&
+      !line.startsWith("Warning: Permanently added") )
+        filteredOut(line)
+  }
 
   def run() {
     import sys.process._
