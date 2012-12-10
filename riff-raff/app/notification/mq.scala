@@ -201,7 +201,7 @@ object AlertaEvent {
       List(environment),
       severityMap(event).code,
       86400,
-      "%s-%s" format (environment,project),
+      "%s" format project,
       DeployEvent.values.map(_.toString).toList,
       "%s - %s %s of %s build %s" format (environment, severityMap(event).name, event, project, build),
       "n/a",
