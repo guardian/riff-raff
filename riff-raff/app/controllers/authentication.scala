@@ -5,7 +5,6 @@ import play.api.mvc.Results._
 import play.api.mvc.BodyParsers._
 import net.liftweb.json.{ Serialization, NoTypeHints }
 import net.liftweb.json.Serialization.{ read, write }
-import play.api.libs.openid.OpenID
 import play.api.libs.concurrent.{ Thrown, Redeemed }
 import conf._
 import conf.Configuration.auth
@@ -16,7 +15,7 @@ import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import play.api.data._
 import play.api.data.Forms._
-
+import openid._
 
 case class Identity(openid: String, email: String, firstName: String, lastName: String) {
   implicit val formats = Serialization.formats(NoTypeHints)
@@ -166,7 +165,13 @@ object Login extends Controller with Logging {
         case Thrown(t) => {
           // Here you should look at the error, and give feedback to the user
           FailedLoginCounter.recordCount(1)
-          Redirect(routes.Login.login)
+          val message = t match {
+            case e:OpenIDError => "Failed to login (%s): %s" format (e.id, e.message)
+            case other => "Unknown login failure: %s" format t.toString
+          }
+          Redirect(routes.Login.login).flashing(
+            ("error" -> (message))
+          )
         }
       })
     )
