@@ -1,10 +1,10 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], count: Int)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], count: Int, page: Int)
 
 @main("Deployment history", request) {
 <h2>Recent deploys</h2>
 <hr/>
-<div class="content" data-ajax-refresh="@routes.Deployment.historyContent(count)">
-    @historyContent(request, count)
+<div class="content" data-ajax-refresh="@routes.Deployment.historyContent(count, page)">
+    @historyContent(request, count, page)
 </div>
 <script>
     $(function() { ajaxRefresh.enable(60*1000); });

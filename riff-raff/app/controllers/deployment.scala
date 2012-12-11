@@ -97,11 +97,11 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(limit:Int, fetchLogs: Boolean): Iterable[Record] = DocumentStoreConverter.getDeployList(limit, fetchLogs)
+  def getDatastoreDeploys(filter:Option[DeployFilter] = None, limit:Option[Int]=None, page: Int=1, fetchLogs: Boolean): Iterable[Record] = DocumentStoreConverter.getDeployList(filter, limit, page, fetchLogs)
 
-  def getDeploys(limit:Int = 20, fetchLogs: Boolean = true): List[Record] = {
-    val controllerDeploys = getControllerDeploys.toList
-    val datastoreDeploys = getDatastoreDeploys(limit, fetchLogs).toList
+  def getDeploys(filter:Option[DeployFilter] = None, limit:Int = 20, page:Int = 1, fetchLogs: Boolean = false): List[Record] = {
+    val controllerDeploys = if (filter.isEmpty) getControllerDeploys.toList else Nil
+    val datastoreDeploys = getDatastoreDeploys(filter, limit=Some(limit), page=page, fetchLogs=fetchLogs).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
     log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
@@ -199,12 +199,12 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def history(count:Int) = AuthAction { implicit request =>
-    Ok(views.html.deploy.history(request, count))
+  def history(count:Int, page:Int) = AuthAction { implicit request =>
+    Ok(views.html.deploy.history(request, count, page))
   }
 
-  def historyContent(count:Int) = AuthAction { implicit request =>
-    Ok(views.html.deploy.historyContent(request, count))
+  def historyContent(count:Int, page:Int) = AuthAction { implicit request =>
+    Ok(views.html.deploy.historyContent(request, count, page))
   }
 
   def autoCompleteProject(term: String) = AuthAction {

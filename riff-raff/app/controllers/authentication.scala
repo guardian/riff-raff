@@ -16,6 +16,7 @@ import com.mongodb.DBObject
 import play.api.data._
 import play.api.data.Forms._
 import openid._
+import deployment.DeployFilter
 
 case class Identity(openid: String, email: String, firstName: String, lastName: String) {
   implicit val formats = Serialization.formats(NoTypeHints)
@@ -182,10 +183,8 @@ object Login extends Controller with Logging {
   }
 
   def profile = AuthAction { request =>
-    val deployerRecords = DeployController.getDeploys(fetchLogs=false).filter { record =>
-      request.identity.map(_.fullName == record.deployerName).getOrElse(false)
-    }.reverse
-    Ok(views.html.auth.profile(request, deployerRecords))
+    val records = DeployController.getDeploys(request.identity.map(i => DeployFilter(deployer=Some(i.fullName)))).reverse
+    Ok(views.html.auth.profile(request, records))
   }
 
   val authorisationForm = Form( "email" -> nonEmptyText )
