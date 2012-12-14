@@ -34,6 +34,8 @@ object MessageBroker {
   private val messageStack = new DynamicVariable[List[Message]](Nil)
   private val messageContext = new DynamicVariable[MessageContext](null)
 
+  def deployID = Option(messageContext.value).map(_.deployId)
+
   def send(message: Message, messageUUID: UUID = UUID.randomUUID()) {
     val stack = MessageStack(message :: messageStack.value)
     MagentaMetrics.MessageBrokerMessages.measure {
