@@ -7,7 +7,7 @@ import conf.Configuration
 import controllers.{AuthorisationRecord, Logging}
 import com.novus.salat._
 import play.api.Application
-import deployment.{DeployFilter, DeployRecord}
+import deployment.{PaginationView, DeployFilter, DeployRecord}
 import magenta.{RunState, MessageStack}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
@@ -231,11 +231,10 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getDeploysV2(filter: Option[DeployFilter], limit: Option[Int] = None, page: Int = 1) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
+  override def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
-    val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1))
-    val limitedCursor = limit.map(l => cursor.skip(l*(page-1))limit(l)).getOrElse(cursor)
-    limitedCursor.toIterable.map { deployGrater.asObject(_) }
+    val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
+    cursor.toIterable.map { deployGrater.asObject(_) }
   }
 
   override def deleteDeployLogV2(uuid: UUID) {

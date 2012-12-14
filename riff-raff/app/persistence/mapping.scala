@@ -2,14 +2,12 @@ package persistence
 
 import java.util.UUID
 import org.joda.time.DateTime
-import akka.agent.Agent
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import com.novus.salat._
 import com.novus.salat.StringTypeHintStrategy
 import controllers.Logging
-import deployment.{DeployFilter, DeployV2Record, Record, DeployRecord}
+import deployment.{DeployFilter, DeployV2Record, PaginationView, DeployRecord}
 import magenta._
-import akka.actor.ActorSystem
 import controllers.SimpleDeployDetail
 
 trait DocumentGraters {
@@ -154,7 +152,7 @@ trait DocumentStore {
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployV2UUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploysV2(filter: Option[DeployFilter], limit: Option[Int] = None, page: Int = 1): Iterable[DeployRecordDocument] = Nil
+  def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
   def deleteDeployLogV2(uuid: UUID) {}
 }
 
@@ -193,8 +191,8 @@ object DocumentStoreConverter extends Logging {
     }
   }
 
-  def getDeployList(filter: Option[DeployFilter], limit: Option[Int], page: Int = 1, fetchLog: Boolean = true): Seq[DeployV2Record] = {
-    documentStore.getDeploysV2(filter, limit, page).toSeq.flatMap{ deployDocument =>
+  def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Seq[DeployV2Record] = {
+    documentStore.getDeploysV2(filter, pagination).toSeq.flatMap{ deployDocument =>
       try {
         val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
         Some(DocumentConverter(deployDocument, logs.toSeq).deployRecord)

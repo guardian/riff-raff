@@ -33,6 +33,8 @@ object MagentaBuild extends Build {
       },
       templatesImport ++= Seq(
         "magenta._",
+        "deployment._",
+        "controllers._",
         "views.html.helper.magenta._"
       )
     )

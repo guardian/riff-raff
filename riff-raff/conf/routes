@@ -17,8 +17,8 @@ GET     /deployment/request controllers.Deployment.deploy
 POST    /deployment/request controllers.Deployment.processForm
 GET     /deployment/confirm controllers.Deployment.deployConfirmation(parametersJson:String)
 
-GET     /deployment/history controllers.Deployment.history(count:Int?=20, page:Int ?= 1)
-GET     /deployment/history/update controllers.Deployment.historyContent(count:Int, page:Int)
+GET     /deployment/history controllers.Deployment.history
+GET     /deployment/history/update controllers.Deployment.historyContent
 
 GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
 GET     /deployment/updates/:uuid   controllers.Deployment.updatesUUID(uuid:String)

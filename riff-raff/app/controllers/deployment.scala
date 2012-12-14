@@ -97,15 +97,17 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(filter:Option[DeployFilter] = None, limit:Option[Int]=None, page: Int=1, fetchLogs: Boolean): Iterable[Record] = DocumentStoreConverter.getDeployList(filter, limit, page, fetchLogs)
+  def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =
+    DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)
 
-  def getDeploys(filter:Option[DeployFilter] = None, limit:Int = 20, page:Int = 1, fetchLogs: Boolean = false): List[Record] = {
+  def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): List[Record] = {
+    require(!fetchLogs || pagination.count.isDefined, "Too much effort required to fetch complete record with no pagination")
     val controllerDeploys = if (filter.isEmpty) getControllerDeploys.toList else Nil
-    val datastoreDeploys = getDatastoreDeploys(filter, limit=Some(limit), page=page, fetchLogs=fetchLogs).toList
+    val datastoreDeploys = getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
     log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
-    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(limit)
+    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(pagination.count.get)
   }
 
   def get(uuid: UUID, fetchLog: Boolean = true): Record = {
@@ -199,12 +201,12 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def history(count:Int, page:Int) = AuthAction { implicit request =>
-    Ok(views.html.deploy.history(request, count, page))
+  def history() = AuthAction { implicit request =>
+    Ok(views.html.deploy.history(request))
   }
 
-  def historyContent(count:Int, page:Int) = AuthAction { implicit request =>
-    Ok(views.html.deploy.historyContent(request, count, page))
+  def historyContent() = AuthAction { implicit request =>
+    Ok(views.html.deploy.historyContent(request))
   }
 
   def autoCompleteProject(term: String) = AuthAction {
