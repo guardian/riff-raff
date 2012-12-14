@@ -1,3 +1,3 @@
-@(implicit request: AuthenticatedRequest[AnyContent])
+@(implicit request: AuthenticatedRequest[AnyContent], records: List[deployment.Record])
 
-@snippets.recordTable(DeployController.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse)
+@snippets.recordTable(records)

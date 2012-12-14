@@ -206,7 +206,14 @@ object Deployment extends Controller with Logging {
   }
 
   def historyContent() = AuthAction { implicit request =>
-    Ok(views.html.deploy.historyContent(request))
+    val records = try {
+      DeployController.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
+    } catch {
+      case e:Exception =>
+        log.error("Exception whilst fetching records",e)
+        Nil
+    }
+    Ok(views.html.deploy.historyContent(request, records))
   }
 
   def autoCompleteProject(term: String) = AuthAction {
