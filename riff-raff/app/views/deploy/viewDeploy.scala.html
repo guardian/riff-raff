@@ -1,6 +1,6 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
 
-@main("%s for %s" format (record.taskType, record.buildName), request) {
+@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh")) {
 @if(!verbose) {
 <style>
     span.message-verbose {

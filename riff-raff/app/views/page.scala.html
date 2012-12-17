@@ -1,4 +1,4 @@
-@(title: String)(menuBar: Html)(content: Html)
+@(title: String, scripts: List[String] = Nil)(menuBar: Html)(content: Html)
 
 <!DOCTYPE html>
 
@@ -28,7 +28,11 @@
     <link rel="shortcut icon" type="image/png" href='@routes.Assets.at("images/favicon.png")'>
     <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js'></script>
     <script src='https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js'></script>
-    <script src='@routes.Assets.at("js/auto-refresh.min.js")'></script>
+
+    @for(script <- scripts) {
+        <script src='@routes.Assets.at("js/%s.min.js" format script)'></script>
+    }
+
 </head>
 <body>
 

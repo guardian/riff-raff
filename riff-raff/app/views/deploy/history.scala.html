@@ -1,6 +1,6 @@
 @(implicit request: AuthenticatedRequest[AnyContent])
 
-@main("Deployment history", request) {
+@main("Deployment history", request, List("auto-refresh")) {
 <h2>Recent deploys</h2>
 <hr/>
 <div class="content" data-ajax-refresh="@{routes.Deployment.historyContent()}?@request.rawQueryString">
