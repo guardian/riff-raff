@@ -1,17 +1,17 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
 
-@main("Deployment report for "+record.buildName, request) {
+@main("%s for %s" format (record.taskType, record.buildName), request) {
 @if(!verbose) {
 <style>
-span.message-verbose {
+    span.message-verbose {
     display:none;
-}
+    }
 </style>
 }
-<h2>Deploying @record.buildName build @record.buildId in @record.stage</h2>
+<h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
 <hr/>
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
-<p>Loading...</p>
+    <p>Loading...</p>
 </div>
 <script>
     $(function() { ajaxRefresh.enable(); });

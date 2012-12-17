@@ -176,10 +176,7 @@ object Testing extends Controller with Logging {
 
   def viewUUIDv1(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
     val record = Persistence.store.getDeploy(UUID.fromString(uuid)).get
-    record.taskType match {
-      case Task.Deploy => Ok(views.html.deploy.log(request, record, verbose))
-      case Task.Preview => Ok(views.html.deploy.preview(request,record,verbose))
-    }
+    Ok(views.html.deploy.viewDeploy(request, record, verbose))
   }
 
 }

@@ -187,10 +187,7 @@ object Deployment extends Controller with Logging {
 
   def viewUUID(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
-    record.taskType match {
-      case Task.Deploy => Ok(views.html.deploy.log(request, record, verbose))
-      case Task.Preview => Ok(views.html.deploy.preview(request,record,verbose))
-    }
+    Ok(views.html.deploy.viewDeploy(request, record, verbose))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
