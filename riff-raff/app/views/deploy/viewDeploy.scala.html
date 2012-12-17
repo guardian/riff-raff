@@ -1,19 +1,21 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
 
-@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh")) {
-@if(!verbose) {
+@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose")) {
 <style>
     span.message-verbose {
-    display:none;
+    display:@if(!verbose) {none} else {list-item};
     }
 </style>
-}
-<h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
+<span><h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage<label class="checkbox pull-right">
+    <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
+</label></h2></span>
+
 <hr/>
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
     <p>Loading...</p>
 </div>
 <script>
     $(function() { ajaxRefresh.enable(); });
+    $(function() { deployVerbose.init(); });
 </script>
 }
