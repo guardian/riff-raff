@@ -111,6 +111,10 @@ object DeployController extends Logging with LifecycleWithoutApp {
     combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(pagination.count.get)
   }
 
+  def markAsFailed(record: Record) {
+    DocumentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)
+  }
+
   def get(uuid: UUID, fetchLog: Boolean = true): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
@@ -125,6 +129,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 }
 
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String])
+case class UuidForm(uuid:String, action:String)
 
 object Deployment extends Controller with Logging {
 
@@ -133,6 +138,14 @@ object Deployment extends Controller with Logging {
     val now = new DateTime()
     if (freezeInterval.contains(now)) frozen else defrosted
   }
+
+  lazy val uuidForm = Form[UuidForm](
+    mapping(
+      "uuid" -> text(36,36),
+      "action" -> nonEmptyText
+    )(UuidForm.apply)
+      (UuidForm.unapply)
+  )
 
   lazy val deployForm = Form[DeployParameterForm](
     tuple(
@@ -298,6 +311,21 @@ object Deployment extends Controller with Logging {
   def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
     val parametersJson = Json.parse(deployFormJson)
     Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
+  }
+
+  def markAsFailed = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
+      errors => Redirect(routes.Testing.uuidList()),
+      form => {
+        form.action match {
+          case "markAsFailed" =>
+            val record = DeployController.get(UUID.fromString(form.uuid))
+            if (record.isStalled)
+              DeployController.markAsFailed(record)
+            Redirect(routes.Deployment.viewUUID(form.uuid))
+        }
+      }
+    )
   }
 
 }

@@ -1,4 +1,5 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
+@import magenta.RunState
 
 @main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose")) {
 <style>
@@ -6,9 +7,28 @@
     display:@if(!verbose) {none} else {list-item};
     }
 </style>
-<span><h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage<label class="checkbox pull-right">
+<div class="row-fluid">
+<div class="span8">
+<h2 class="pull-left">@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
+</div>
+<div class="span4">
+@if(record.isStalled) {
+    <div class="alert alert-error pull-left">
+    It looks like this deploy has stalled (no activity for at least 15 minutes).
+    It might be legitimately stuck and failing to time out on the current task.  Alternately, riff-raff might have
+    fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having
+    failed.
+    @helper.form(action=routes.Deployment.markAsFailed, 'class -> "form-make-inline pull-right") {
+        <input type="hidden" name="uuid" value="@record.uuid"/>
+        <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="icon-remove icon-white"></i> Mark as Failed</button>
+    }
+</div>
+}
+@if(!record.isSummarised){<label class="checkbox pull-right checkbox-fix">
     <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
-</label></h2></span>
+</label>}
+</div>
+</div>
 
 <hr/>
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">

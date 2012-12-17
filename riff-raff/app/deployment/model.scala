@@ -7,7 +7,7 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Duration}
 
 object Task extends Enumeration {
   val Deploy = Value("Deploy")
@@ -36,6 +36,18 @@ trait Record {
         case other => other
       }
     )
+  }
+  def lastActivityTime: DateTime
+
+  def isStalled: Boolean = {
+    recordState.map { state =>
+      state match {
+        case RunState.Running =>
+          val stalledThreshold = (new DateTime()).minus(new Duration(15*60*1000))
+          lastActivityTime.isBefore(stalledThreshold)
+        case _ => false
+      }
+    }.getOrElse(false)
   }
 
   def isSummarised: Boolean
@@ -69,6 +81,9 @@ case class DeployV2Record(time: DateTime,
   }
 
   def isSummarised = messages.isEmpty && recordState.isDefined
+
+  lazy val lastActivityTime = messages.lastOption.map(_.stack.time).getOrElse(time)
+
 }
 
 object DeployRecord {
@@ -93,4 +108,6 @@ case class DeployRecord(time: DateTime,
   lazy val recordState = None
 
   def isSummarised = false
+
+  lazy val lastActivityTime = messageStacks.lastOption.map(_.time).getOrElse(time)
 }

@@ -20,7 +20,8 @@ GET     /deployment/confirm controllers.Deployment.deployConfirmation(parameters
 GET     /deployment/history controllers.Deployment.history
 GET     /deployment/history/update controllers.Deployment.historyContent
 
-GET     /deployment/view/:uuid  controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
+GET     /deployment/view/:uuid      controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
+POST    /deployment/markAsFailed    controllers.Deployment.markAsFailed
 GET     /deployment/updates/:uuid   controllers.Deployment.updatesUUID(uuid:String)
 
 GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)

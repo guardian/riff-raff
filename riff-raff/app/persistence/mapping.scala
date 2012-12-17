@@ -171,7 +171,11 @@ object DocumentStoreConverter extends Logging {
   }
 
   def updateDeployStatus(record: DeployV2Record) {
-    documentStore.updateStatus(record.uuid, record.state)
+    updateDeployStatus(record.uuid, record.state)
+  }
+
+  def updateDeployStatus(uuid: UUID, state: RunState.Value) {
+    documentStore.updateStatus(uuid, state)
   }
 
   def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
