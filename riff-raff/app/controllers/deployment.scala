@@ -21,6 +21,7 @@ import persistence.{DocumentStoreConverter, Persistence}
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
+import org.joda.time.{Interval, DateTime}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -126,6 +127,12 @@ object DeployController extends Logging with LifecycleWithoutApp {
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String])
 
 object Deployment extends Controller with Logging {
+
+  def changeFreeze[A](defrosted: A, frozen: A):A = {
+    val freezeInterval = new Interval(new DateTime(2012,12,19,0,1,0), new DateTime(2013,1,7,0,0,0))
+    val now = new DateTime()
+    if (freezeInterval.contains(now)) frozen else defrosted
+  }
 
   lazy val deployForm = Form[DeployParameterForm](
     tuple(
