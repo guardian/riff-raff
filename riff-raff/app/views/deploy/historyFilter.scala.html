@@ -1,0 +1,45 @@
+@(filter: deployment.DeployFilter)
+@import deployment.Task
+@import magenta.RunState
+
+<div class="navbar">
+    <div class="navbar-inner">
+        <a class="brand" href="#">Filter</a>
+        <ul class="nav">
+            <li><a href="#"></a></li>
+            <li class="dropdown@if(filter.stage.isDefined){ active}">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Stage@filter.stage.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li@if(!filter.stage.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{filter.withStage(None).q}">All</a></li>
+                    <li class="divider"></li>
+                    @for(stage <- deployment.DeployInfoManager.deployInfo.knownHostStages) {
+                        <li @if(Some(stage)==filter.stage){class="active"}><a href="@{routes.Deployment.history()}?@{filter.withStage(Some(stage)).q}">@stage</a></li>
+                    }
+                </ul>
+            </li>
+            <li class="dropdown@if(filter.status.isDefined){ active}">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Status@filter.status.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li@if(!filter.status.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{filter.withStatus(None).q}">All</a></li>
+                    <li class="divider"></li>
+                    @for(status <- RunState.values.toList.filterNot(_==RunState.ChildRunning).sortBy(_.toString)) {
+                        <li @if(Some(status)==filter.status){class="active"}><a href="@{routes.Deployment.history()}?@{filter.withStatus(Some(status)).q}">@status</a></li>
+                    }
+                </ul>
+            </li>
+            <li class="dropdown@if(filter.task.isDefined){ active}">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Task@filter.task.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li@if(!filter.task.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{filter.withTask(None).q}">All</a></li>
+                    <li class="divider"></li>
+                    @for(task <- Task.values.toList.sortBy(_.toString)) {
+                        <li @if(Some(task)==filter.task){class="active"}><a href="@{routes.Deployment.history()}?@{filter.withTask(Some(task)).q}">@task</a></li>
+                    }
+                </ul>
+            </li>
+        </ul>
+        <ul class="nav pull-right">
+            <li><a href="@routes.Deployment.history()"><i class="icon-remove-sign"></i> Clear all</a></li>
+        </ul>
+    </div>
+</div>

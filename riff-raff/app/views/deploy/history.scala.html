@@ -1,8 +1,11 @@
 @(implicit request: AuthenticatedRequest[AnyContent])
+@import deployment.DeployFilter
 
 @main("Deployment history", request, List("auto-refresh")) {
 <h2>Recent deploys</h2>
-<hr/>
+
+@historyFilter(DeployFilter.fromRequest.getOrElse(DeployFilter()))
+
 <div class="content" data-ajax-refresh="@{routes.Deployment.historyContent()}?@request.rawQueryString">
     <p>Loading...</p>
 </div>

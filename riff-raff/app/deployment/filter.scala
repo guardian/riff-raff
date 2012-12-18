@@ -1,7 +1,7 @@
 package deployment
 
 import java.net.URLEncoder
-import play.api.mvc.RequestHeader
+import play.api.mvc.{Call, RequestHeader}
 import magenta.RunState
 
 trait QueryStringBuilder {
@@ -27,6 +27,12 @@ case class DeployFilter(
       status.map("status" -> _.toString) ++
       task.map("task" -> _.toString)
   }
+
+  def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)
+  def withStage(stage: Option[String]) = this.copy(stage=stage)
+  def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
+  def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
+  def withTask(task: Option[Task.Value]) = this.copy(task=task)
 }
 
 object DeployFilter {

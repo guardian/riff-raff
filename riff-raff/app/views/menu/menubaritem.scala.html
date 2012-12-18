@@ -7,7 +7,7 @@
         }
         case ddi:DropDownMenuItem => {
             <li class="dropdown@if(ddi.isActive(request)){ active}">
-                <a class="dropdown-toggle" id="@ddi.hashCode" data-toggle="dropdown" data-target="@ddi.target">@ddi.title</a>
+                <a class="dropdown-toggle" id="@ddi.hashCode" data-toggle="dropdown" data-target="@ddi.target">@ddi.title <b class="caret"></b></a>
                 <ul class="dropdown-menu" role="menu" aria-labelledby="@ddi.hashCode">
                 @ddi.items.map { subItem =>
                     @menubaritem(request, subItem)
