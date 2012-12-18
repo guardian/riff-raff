@@ -23,3 +23,9 @@ ivyXML :=
   </dependencies>
 
 unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
+
+lessEntryPoints <<= (sourceDirectory in Compile)(base => (
+  (base / "assets" / "stylesheets" / "bootstrap" / "bootstrap.less") +++
+  (base / "assets" / "stylesheets" / "bootstrap" / "responsive.less") +++
+  (base / "assets" / "stylesheets" * "*.less" )
+))
