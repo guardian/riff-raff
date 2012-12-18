@@ -4,12 +4,10 @@ import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import PlayKeys._
-import PlayProject.{SCALA,templatesImport}
 import com.gu.deploy.PlayArtifact._
-import org.sbtidea.SbtIdeaPlugin._
 
 object MagentaBuild extends Build {
-  lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff) settings (ideaSettings: _*)
+  lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
 
   lazy val lib = magentaProject("magenta-lib")
 
@@ -19,12 +17,11 @@ object MagentaBuild extends Build {
 
   val liftVersion = "2.4-M4"
 
-  def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings ++ ideaSettings)
+  def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
-  def magentaPlayProject(name: String) = PlayProject(name, magentaVersion, path=file(name), mainLang=SCALA)
+  def magentaPlayProject(name: String) = play.Project(name, magentaVersion, path=file(name))
     .settings( playArtifactDistSettings: _* )
     .settings( magentaSettings: _* )
-    .settings( ideaSettings: _* )
     .settings(
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
@@ -50,7 +47,7 @@ object MagentaBuild extends Build {
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
-    scalaVersion := "2.9.1",
+    scalaVersion := "2.10.0-RC5",
     scalacOptions ++= Seq("-deprecation"),
     version := magentaVersion
   )
