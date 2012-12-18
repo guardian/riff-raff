@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false, viewport: Boolean)
 @import magenta.RunState
 
 @main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose")) {
@@ -31,7 +31,7 @@
 </div>
 
 <hr/>
-<div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
+<div class="content@if(request.betaUser){ viewport-70}" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
     <p>Loading...</p>
 </div>
 <script>

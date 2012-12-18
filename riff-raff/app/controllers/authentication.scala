@@ -66,6 +66,7 @@ object AuthenticatedRequest {
 
 class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request) {
   lazy val isAuthenticated = identity.isDefined
+  lazy val betaUser = identity.map(_.fullName=="Simon Hildrew").getOrElse(false)
 }
 
 object NonAuthAction {
