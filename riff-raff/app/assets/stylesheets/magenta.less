@@ -1,0 +1,119 @@
+// variables and mixins stolen from bootstrap
+@grayDark:              #333;
+@baseFontSize:          14px;
+@baseLineHeight:        20px;
+@iconSpritePath:        "/assets/images/glyphicons-halflings.png";
+@monoFontFamily:        Monaco, Menlo, Consolas, "Courier New", monospace;
+#font {
+  #family {
+    .monospace() {
+      font-family: @monoFontFamily;
+    }
+  }
+}
+
+// custom classes start here
+
+.ui-autocomplete {
+  max-height: 150px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 20px;
+}
+
+input[type=text].buildForm {
+  width: 400px;
+}
+
+ul.magenta-reporttree,
+ul.magenta-list {
+    list-style: none;
+}
+
+.magenta-timestamp {
+  display:none
+}
+.message-taskrun .magenta-timestamp {
+  display:inline
+}
+
+.message-commandoutput,
+.message-commanderror {
+  padding: 0 3px;
+  margin: 0;
+  border: 0;
+  #font > #family > .monospace;
+  font-size: @baseFontSize - 1;
+  color: @grayDark;
+  display: block;
+  font-size: 12px;
+  line-height: @baseLineHeight;
+  background-color: #f5f5f5;
+  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-all;
+  word-wrap: break-word;
+}
+
+.message-commanderror {
+  font-weight: bold;
+}
+
+.message-fail {
+  font-weight: bold;
+}
+
+.preview-task,
+.message-taskrun {
+  font-weight: bold;
+  &:before {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    padding-right: 5px;
+    line-height: 14px;
+    vertical-align: text-top;
+    background-image: url(@iconSpritePath);
+    background-position: -432px 0;
+    background-repeat: no-repeat;
+  }
+}
+
+.message-tasklist {
+    display: none;
+}
+
+.state-running {
+  &:after {
+    content: url("/assets/images/ajax-loader.gif");
+    line-height: 16px;
+    padding-left: 10px;
+    vertical-align: middle;
+  }
+}
+
+.state-completed {
+    &:after {
+        content: "";
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        margin-left: 10px;
+        line-height: 14px;
+        vertical-align: text-top;
+        background-image: url(@iconSpritePath);
+        background-position: -288px 0;
+        background-repeat: no-repeat;
+    }
+}
+
+.form-make-inline {
+  display:inline;
+  margin-bottom:0;
+}
+
+.checkbox-fix {
+  margin-right: 18px;
+  margin-top: 5px;
+}
