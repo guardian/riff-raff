@@ -37,9 +37,19 @@
                     }
                 </ul>
             </li>
+            <li class="dropdown@if(filter.projectName.isDefined){ active}">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Project@filter.projectName.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
+                <div class="dropdown-menu floating-form">
+                    <div class="input-append floating-form">
+                        <input id="projectName" type="text" name="projectName" size="30" value="@filter.projectName.getOrElse("")"/>
+                        <button class="btn" id="projectNameGo"><i class="icon-filter"></i></button>
+                        <a class="btn" href="@{routes.Deployment.history()}?@{filter.withProjectName(None).q}"><i class="icon-remove"></i></a>
+                    </div>
+                </div>
+            </li>
         </ul>
         <ul class="nav pull-right">
-            <li><a href="@routes.Deployment.history()"><i class="icon-remove-sign"></i> Clear all</a></li>
+            <li><a href="@routes.Deployment.history()"><i class="icon-remove"></i> Clear all filters</a></li>
         </ul>
     </div>
 </div>

@@ -1,7 +1,7 @@
 @(implicit request: AuthenticatedRequest[AnyContent])
 @import deployment.DeployFilter
 
-@main("Deployment history", request, List("auto-refresh")) {
+@main("Deployment history", request, List("auto-refresh", "history-dropdown")) {
 <h2>Recent deploys</h2>
 
 @historyFilter(DeployFilter.fromRequest.getOrElse(DeployFilter()))
