@@ -315,7 +315,7 @@ object Deployment extends Controller with Logging {
 
   def markAsFailed = AuthAction { implicit request =>
     uuidForm.bindFromRequest().fold(
-      errors => Redirect(routes.Testing.uuidList()),
+      errors => Redirect(routes.Deployment.viewUUID(form.uuid)),
       form => {
         form.action match {
           case "markAsFailed" =>
