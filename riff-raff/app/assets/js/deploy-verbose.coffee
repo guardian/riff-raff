@@ -1,5 +1,15 @@
+testSameOrigin = (url) ->
+  if url == null
+    true
+  else
+    loc = window.location
+    a = document.createElement('a')
+    a.href = url
+    a.hostname == loc.hostname && a.port == loc.port && a.protocol == loc.protocol
+
 updateCSS = (selector, styles) ->
   for sheet in document.styleSheets
+    if testSameOrigin(sheet.href)
       for rule in sheet.cssRules || sheet.rules || []
         if rule.selectorText == selector
           for style, value of styles
