@@ -1,3 +1,6 @@
-@(implicit request: AuthenticatedRequest[AnyContent], records: List[deployment.Record])
+@(implicit request: AuthenticatedRequest[AnyContent], records: List[deployment.Record], pagination: DeployFilterPagination)
+@import deployment.DeployFilterPagination
 
 @snippets.recordTable(records)
+
+@snippets.pagination(request, pagination)

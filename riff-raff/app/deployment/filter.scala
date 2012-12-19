@@ -33,6 +33,8 @@ case class DeployFilter(
   def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
   def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
   def withTask(task: Option[Task.Value]) = this.copy(task=task)
+
+  lazy val default = this == DeployFilter()
 }
 
 object DeployFilter {
@@ -55,15 +57,53 @@ object DeployFilter {
   }
 }
 
+trait Pagination extends QueryStringBuilder {
+  def page: Int
+  def pageSize: Int
+  def itemCount: Option[Int]
+  def withPage(page: Int): Pagination
+
+  implicit def call2AddQueryParams(call: Call) = new {
+    def appendQueryParams(params: String): Call = {
+      val sep = if (call.url.contains("?")) "&" else "?"
+      Call(call.method, "%s%s%s" format (call.url, sep, params))
+    }
+  }
+
+  val DISABLED = Call("GET","#")
+
+  def pageList: List[Int] = (lowerBound to upperBound).toList
+  def lowerBound: Int = math.max(1, pageCount.map(pageCount => math.min(page-2,pageCount-4)).getOrElse(page-4))
+  def upperBound: Int = pageCount.map(pageCount => math.min(pageCount, math.max(page+2,5))).getOrElse(page)
+
+  def pageCount: Option[Int] = itemCount.map(itemCount => math.ceil(itemCount.toDouble / pageSize).toInt)
+
+  def hasPrevious = page != 1
+  def hasNext = true
+  def hasLast = pageCount.isDefined
+
+  def previous(base: Call) = if (hasPrevious) base.appendQueryParams(withPage(page - 1).q) else DISABLED
+  def next(base: Call) = if (hasNext) base.appendQueryParams(withPage(page + 1).q) else DISABLED
+
+  def first(base: Call) = toPage(base, 1)
+  def last(base: Call) = pageCount.map(toPage(base, _)).getOrElse(DISABLED)
+
+  def toPage(base: Call, newPage: Int) = base.appendQueryParams(withPage(newPage).q)
+}
+
 case class PaginationView(
-  count: Option[Int] = Some(20),
+  pageSize: Option[Int] = Some(20),
   page: Int = 1
 ) extends QueryStringBuilder {
-  lazy val queryStringParams: List[(String, String)] = List(
-    ("count" -> count.toString),
-    ("page" -> page.toString)
-  )
-  lazy val skip = count.map(_*(page-1))
+  lazy val queryStringParams: List[(String, String)] =
+    Nil ++
+      pageSize.map("pageSize" -> _.toString) ++
+      Some("page" -> page.toString)
+
+  lazy val skip = pageSize.map(_*(page-1))
+
+  def withPageSize(pageSize: Option[Int]) = this.copy(pageSize=pageSize)
+  def withPage(page: Int): PaginationView = this.copy(page=page)
 }
 
 object PaginationView {
@@ -72,8 +112,35 @@ object PaginationView {
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
     PaginationView(
-      count = param("count").map(_.toInt).orElse(Some(20)),
+      pageSize = param("pageSize").map(_.toInt).orElse(Some(20)),
       page = param("page").map(_.toInt).getOrElse(1)
     )
+  }
+}
+
+case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationView, itemCount:Option[Int] = None) extends QueryStringBuilder with Pagination {
+  lazy val queryStringParams = filter.queryStringParams ++ pagination.queryStringParams
+
+  def replaceFilter(f: DeployFilter => DeployFilter) = this.copy(filter=f(filter), pagination=pagination.withPage(1))
+  def replacePagination(f: PaginationView => PaginationView) = this.copy(pagination=f(pagination))
+
+  def withProjectName(projectName: Option[String]) = this.copy(filter=filter.withProjectName(projectName))
+  def withStage(stage: Option[String]) = this.copy(filter=filter.withStage(stage))
+  def withDeployer(deployer: Option[String]) = this.copy(filter=filter.withDeployer(deployer))
+  def withStatus(status: Option[RunState.Value]) = this.copy(filter=filter.withStatus(status))
+  def withTask(task: Option[Task.Value]) = this.copy(filter=filter.withTask(task))
+  def withPage(page: Int): DeployFilterPagination = this.copy(pagination=pagination.withPage(page))
+  def withPageSize(size: Option[Int]) = this.copy(pagination=pagination.withPageSize(size))
+
+  def withItemCount(count: Option[Int]) = this.copy(itemCount = count)
+
+  val page = pagination.page
+  val pageSize = pagination.pageSize.getOrElse(1)
+
+}
+
+object DeployFilterPagination {
+  def fromRequest(implicit r: RequestHeader):DeployFilterPagination = {
+    DeployFilterPagination(DeployFilter.fromRequest.getOrElse(DeployFilter()), PaginationView.fromRequest)
   }
 }

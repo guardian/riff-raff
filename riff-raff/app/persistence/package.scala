@@ -21,7 +21,7 @@ object `package` {
 
   implicit def mongoCursor2pagination(cursor: MongoCursor) = new {
     def pagination(p: PaginationView): MongoCursor = {
-      p.count.map(l => cursor.skip(p.skip.get).limit(l)).getOrElse(cursor)
+      p.pageSize.map(l => cursor.skip(p.skip.get).limit(l)).getOrElse(cursor)
     }
   }
 

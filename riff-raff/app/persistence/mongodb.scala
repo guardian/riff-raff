@@ -237,6 +237,11 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     cursor.toIterable.map { deployGrater.asObject(_) }
   }
 
+  override def countDeploysV2(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
+    val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
+    deployV2Collection.count(criteria).toInt
+  }
+
   override def deleteDeployLogV2(uuid: UUID) {
     logAndSquashExceptions(None,()) {
       deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))

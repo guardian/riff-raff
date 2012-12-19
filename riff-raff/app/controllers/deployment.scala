@@ -102,14 +102,16 @@ object DeployController extends Logging with LifecycleWithoutApp {
     DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)
 
   def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): List[Record] = {
-    require(!fetchLogs || pagination.count.isDefined, "Too much effort required to fetch complete record with no pagination")
+    require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
     val controllerDeploys = if (filter.isEmpty) getControllerDeploys.toList else Nil
     val datastoreDeploys = getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList
     val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
     val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
     log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
-    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(pagination.count.get)
+    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(pagination.pageSize.get)
   }
+
+  def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
 
   def markAsFailed(record: Record) {
     DocumentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)
@@ -230,7 +232,12 @@ object Deployment extends Controller with Logging {
         log.error("Exception whilst fetching records",e)
         Nil
     }
-    Ok(views.html.deploy.historyContent(request, records))
+    val count = try {
+      Some(DeployController.countDeploys(deployment.DeployFilter.fromRequest(request)))
+    } catch {
+      case e:Exception => None
+    }
+    Ok(views.html.deploy.historyContent(request, records, deployment.DeployFilterPagination.fromRequest.withItemCount(count)))
   }
 
   def autoCompleteProject(term: String) = AuthAction {

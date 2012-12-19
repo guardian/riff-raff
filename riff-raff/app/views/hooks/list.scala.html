@@ -8,7 +8,7 @@
     @if(hooks.isEmpty) {
         <div class="alert alert-warning"><strong>No deploy hooks.</strong></div>
     } else {
-    <table class="table">
+    <table class="table table-condensed table-striped">
         <thead>
             <tr>
                 <th>Project Name</th>
@@ -30,7 +30,7 @@
                     <a class="btn btn-mini" href="@routes.Hooks.edit(criteria.projectName,criteria.stage)"><i class="icon-edit"></i> Edit</a>
                 </td>
                 <td>
-                    @helper.form(action=routes.Hooks.delete) {
+                    @helper.form(action=routes.Hooks.delete, 'class -> "form-make-inline") {
                         <input type="hidden" name="projectName" value="@criteria.projectName"/>
                         <input type="hidden" name="stage" value="@criteria.stage"/>
                         <button class="btn btn-mini btn-danger" name="delete" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
