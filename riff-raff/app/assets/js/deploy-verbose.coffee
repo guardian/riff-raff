@@ -18,10 +18,11 @@ updateCSS = (selector, styles) ->
 updateOrAddParam = (url, param, value) ->
   re = new RegExp("([?|&])" + param + "=.*?(&|$)", "i")
   separator = if url.indexOf('?') != -1 then "&" else "?"
+  encodedValue=encodeURIComponent(value)
   if url.match(re)
-    url.replace(re,'$1'+param+'='+value+'$2')
+    url.replace(re,'$1'+param+'='+encodedValue+'$2')
   else
-    url + separator + param + '=' + value
+    url+separator+param+'='+encodedValue
 
 getParamOrElse = (url, param, defaultValue) ->
   re = new RegExp(param+"=(.+?)(&|$)")
