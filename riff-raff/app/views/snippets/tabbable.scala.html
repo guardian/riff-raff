@@ -1,0 +1,18 @@
+@(tabs: List[String], activeTab: Option[String] = None, pushParam:String="tab")(tabContent: String => Html)
+
+@defining(activeTab.filter(tabs.contains).getOrElse(tabs.head)) { active =>
+    <div class="tabbable tabs-left">
+    <ul class="nav nav-tabs" id="pushable" push-param="@pushParam">
+    @tabs.zipWithIndex.map{ case (tab,index) =>
+        <li @if(active==tab){class="active"}"><a href="#tab@index" data-toggle="tab" id="@tab">@tab</a></li>
+    }
+    </ul>
+    <div class="tab-content">
+    @tabs.zipWithIndex.map{ case (tab,index) =>
+        <div class="tab-pane @if(active==tab){active}" id="tab@index">
+            @tabContent(tab)
+        </div>
+    }
+    </div>
+    </div>
+}

@@ -1,0 +1,29 @@
+@(request: controllers.AuthenticatedRequest[AnyContent])
+@import deployment.DeployInfoManager._
+
+@main("Deployment Resources", request, List("deployinfo-app-tabs")) {
+
+<h2>Deployment Resources</h2>
+
+@snippets.tabbable(deployInfo.knownKeys, pushParam = "key"){ key =>
+    <table class="table table-striped">
+    <thead><tr>
+        <th>App</th>
+        <th>Stage</th>
+        <th>Value</th>
+        <th>Comment</th>
+    </tr></thead>
+    <tbody>
+        @deployInfo.dataForKey(key).map { data =>
+            <tr>
+                <td>@data.app.toString</td>
+                <td>@data.stage.toString</td>
+                <td>@data.value</td>
+                <td>@data.comment</td>
+            </tr>
+        }
+    </tbody>
+    </table>
+}
+
+}

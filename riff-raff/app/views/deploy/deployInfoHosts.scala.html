@@ -1,0 +1,28 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], filter: String)
+@import deployment.DeployInfoManager._
+
+@main("Deployment Hosts", request, List("deployinfo-app-tabs")) {
+
+<h2>Deployment Hosts</h2>
+
+@snippets.tabbable(deployInfo.knownHostStages.filter(s => deployInfo.knownHostApps(s).filter(_.exists(_.name.matches(filter)))), pushParam="stage"){ stage =>
+    <table class="table table-condensed table-striped">
+    <thead><tr>
+        <th>App</th>
+        <th>Hosts</th>
+    </tr></thead>
+    <tbody>
+        @deployInfo.knownHostApps(stage).filter(_.exists(_.name.matches(filter))).map { appSet =>
+            <tr>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
+            <td>
+            @deployInfo.stageAppToHostMap((stage,appSet)).map(_.name).zipWithIndex.map{ zipped =>
+                <div>@zipped._1</div>
+            }
+            </td>
+            </tr>
+        }
+    </tbody>
+    </table>
+}
+}

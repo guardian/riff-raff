@@ -31,6 +31,8 @@ case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
   def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
   def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
+  def knownHostApps(stage: String): List[Set[App]] = knownHostApps.filter(stageAppToHostMap.contains(stage, _))
+
   def knownKeys: List[String] = data.keys.toList.sorted
 
   def dataForKey(key: String): List[Data] = data.get(key).getOrElse(List.empty)
