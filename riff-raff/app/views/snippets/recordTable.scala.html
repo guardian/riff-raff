@@ -9,7 +9,11 @@
     <tr>
         <th>Time</th>
         <th>Deployer</th>
-        <th>Parameters</th>
+        <th>Project</th>
+        <th>Stage</th>
+        <th>Build</th>
+        <th>Recipe</th>
+        <th>Hosts</th>
         <th>Status</th>
     </tr>
     </thead>
@@ -18,7 +22,11 @@
     <tr>
         <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(record.time)</td>
         <td><span class="label">@record.deployerName</span></td>
-        <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)"> @record.buildName @record.buildId @record.stage.name</a></td>
+        <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)">@record.buildName</a></td>
+        <td>@record.stage.name</td>
+        <td>@record.buildId</td>
+        <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
+        <td>@Some(record.parameters.hostList.size).filter(_ != 0).getOrElse(Html(""))</td>
         <td>
             @defining(record.taskType) { taskType =>
                 @taskType match {
