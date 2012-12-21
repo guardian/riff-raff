@@ -13,11 +13,10 @@
         @snippets.reportTree(record.report)
     </ul>
         @logSummary(record)
+    <div class="ajax-refresh-scrollto"></div>
 }
 
 
 @if(record.isDone){
-    <script type="text/javascript">
-      this.ajaxRefresh.disable();
-    </script>
+    <div class="ajax-refresh-disabled pull-left"></div>
 }
