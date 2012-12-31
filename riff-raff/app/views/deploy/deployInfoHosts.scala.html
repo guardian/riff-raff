@@ -5,6 +5,10 @@
 
 <h2>Deployment Hosts</h2>
 
+@if(deployInfo.hosts.isEmpty) {
+    <div class="alert">No hosts specified in deployment information</div>
+} else {
+
 @snippets.tabbable(deployInfo.knownHostStages.filter(s => deployInfo.knownHostApps(s).filter(_.exists(_.name.matches(filter)))), pushParam="stage"){ stage =>
     <table class="table table-condensed table-striped">
     <thead><tr>
@@ -24,5 +28,6 @@
         }
     </tbody>
     </table>
+}
 }
 }

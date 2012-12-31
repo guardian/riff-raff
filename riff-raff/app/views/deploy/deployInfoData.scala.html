@@ -5,6 +5,10 @@
 
 <h2>Deployment Resources</h2>
 
+@if(deployInfo.knownKeys.isEmpty) {
+  <div class="alert">No data specified in deployment information</div>
+} else {
+
 @snippets.tabbable(deployInfo.knownKeys, pushParam = "key"){ key =>
     <table class="table table-striped">
     <thead><tr>
@@ -25,5 +29,5 @@
     </tbody>
     </table>
 }
-
+}
 }
