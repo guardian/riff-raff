@@ -9,11 +9,11 @@ import magenta.App
 import conf.{DeployInfoMode, Configuration}
 import utils.ScheduledAgent
 import java.io.{FileNotFoundException, File}
-import java.net.{URLConnection, Proxy, URL, URLStreamHandler}
-import play.api.libs.ws.WS
+import java.net.{URLConnection, URL, URLStreamHandler}
 import io.Source
+import lifecycle.LifecycleWithoutApp
 
-object DeployInfoManager extends Logging {
+object DeployInfoManager extends LifecycleWithoutApp with Logging {
   private val classpathHandler = new URLStreamHandler {
     val classloader = getClass.getClassLoader
     override def openConnection(u: URL): URLConnection = {
@@ -53,9 +53,13 @@ object DeployInfoManager extends Logging {
   }
 
   val system = ActorSystem("deploy")
-  val agent = ScheduledAgent[DeployInfo](1 second, 1 minute, DeployInfo(Nil, Map.empty))(_ => getDeployInfo)
+  var agent: Option[ScheduledAgent[DeployInfo]] = None
 
-  def deployInfo = agent()
+  def init() {
+    agent = Some(ScheduledAgent[DeployInfo](0 seconds, 1 minute, DeployInfo(Nil, Map.empty))(_ => getDeployInfo))
+  }
+
+  def deployInfo = agent.map(_()).getOrElse(DeployInfo(Nil, Map.empty))
 
   def hostList = deployInfo.hosts
   def dataList = deployInfo.data
@@ -70,6 +74,7 @@ object DeployInfoManager extends Logging {
   }
 
   def shutdown() {
-    agent.shutdown()
+    agent.foreach(_.shutdown())
+    agent = None
   }
 }

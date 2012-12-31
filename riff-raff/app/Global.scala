@@ -1,6 +1,7 @@
 import collection.mutable
 import com.gu.management.play.{StatusCounters, RequestTimer}
 import controllers.Logging
+import deployment.DeployInfoManager
 import lifecycle.Lifecycle
 import notification.{HooksClient, MessageQueue, IrcClient}
 import play.mvc.Http.RequestHeader
@@ -26,6 +27,7 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
   override def onStart(app: Application) {
     // list of singletons - note these are inside onStart() to ensure logging has fully initialised
     lifecycleSingletons ++= List(
+      DeployInfoManager,
       DeployController,
       IrcClient,
       MessageQueue,
