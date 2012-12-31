@@ -53,7 +53,6 @@ object DeployInfoManager extends Logging {
       deployInfo
     } catch {
       case e => log.error("Couldn't gather deployment information", e)
-      throw e
     }
   }
 
