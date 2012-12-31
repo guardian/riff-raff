@@ -25,35 +25,31 @@ object DeployInfoManager extends Logging {
   }
 
   private def getDeployInfo = {
-    try {
-      import sys.process._
-      log.info("Populating deployinfo hosts...")
-      val deployInfoJson: String = Configuration.deployinfo.mode match {
-        case DeployInfoMode.Execute =>
-          if (new File(Configuration.deployinfo.location).exists)
-            Configuration.deployinfo.location.!!
-          else {
-            log.warn("No file found at '%s', defaulting to empty DeployInfo" format (Configuration.deployinfo.location))
-            ""
-          }
-        case DeployInfoMode.URL =>
-          val url = Configuration.deployinfo.location match {
-            case classPathLocation if classPathLocation.startsWith("classpath:") => new URL(null, classPathLocation, classpathHandler)
-            case otherURL => new URL(otherURL)
-          }
-          log.info("URL: %s" format url)
-          Source.fromURL(url).getLines.mkString
-      }
-
-      val deployInfo = DeployInfoJsonReader.parse(deployInfoJson)
-
-      log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
-        deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
-
-      deployInfo
-    } catch {
-      case e => log.error("Couldn't gather deployment information", e)
+    import sys.process._
+    log.info("Populating deployinfo hosts...")
+    val deployInfoJson: String = Configuration.deployinfo.mode match {
+      case DeployInfoMode.Execute =>
+        if (new File(Configuration.deployinfo.location).exists)
+          Configuration.deployinfo.location.!!
+        else {
+          log.warn("No file found at '%s', defaulting to empty DeployInfo" format (Configuration.deployinfo.location))
+          ""
+        }
+      case DeployInfoMode.URL =>
+        val url = Configuration.deployinfo.location match {
+          case classPathLocation if classPathLocation.startsWith("classpath:") => new URL(null, classPathLocation, classpathHandler)
+          case otherURL => new URL(otherURL)
+        }
+        log.info("URL: %s" format url)
+        Source.fromURL(url).getLines.mkString
     }
+
+    val deployInfo = DeployInfoJsonReader.parse(deployInfoJson)
+
+    log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
+      deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
+
+    deployInfo
   }
 
   val system = ActorSystem("deploy")
