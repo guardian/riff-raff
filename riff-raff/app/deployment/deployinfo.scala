@@ -58,7 +58,7 @@ object DeployInfoManager extends Logging {
   }
 
   val system = ActorSystem("deploy")
-  val agent = ScheduledAgent[DeployInfo](1 minute, 1 minute)(getDeployInfo)
+  val agent = ScheduledAgent[DeployInfo](1 second, 1 minute, DeployInfo(Nil, Map.empty))(_ => getDeployInfo)
 
   def deployInfo = agent()
 
