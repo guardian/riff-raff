@@ -10,6 +10,14 @@ basics
 
  - `urls.publicPrefix` - The public URL prefix used to use when generating URLs in notifications
 
+deployment information
+----------------------
+
+ - `deployinfo.location`
+ - `deployinfo.mode` - How to interpret the location:
+    - `URL` will interpret it as a URL holding the JSON data (using classpath: as the protocol will resolve something on the classpath).
+    - `Execute` will interpret it as a local executable which will return JSON on stdout.
+
 auth
 ----
 
