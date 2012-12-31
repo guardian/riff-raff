@@ -43,6 +43,13 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object deployinfo {
+    lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
+    lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
+      DeployInfoMode.values.filter(_.toString.equalsIgnoreCase(name)).headOption
+    }.getOrElse(DeployInfoMode.URL)
+  }
+
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
@@ -104,6 +111,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 }
 
 object Configuration extends Configuration("riff-raff", webappConfDirectory = "env")
+
+object DeployInfoMode extends Enumeration {
+  val URL = Value("URL")
+  val Execute = Value("Execute")
+}
 
 object Management extends PlayManagement {
   val applicationName = Play.current.configuration.getString("application.name").get
