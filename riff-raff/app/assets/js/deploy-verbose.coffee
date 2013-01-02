@@ -59,10 +59,4 @@ popstate = (event) ->
 $ ->
   $(window).bind('popstate',popstate)
   $('#verbose-checkbox').click => updateAndPush()
-
-@deployVerbose = {
-enable : enableVerbose
-disable : disableVerbose
-set : setVerbose
-init : initialise
-}
+  setVerbose($('#verbose-checkbox').is(':checked'))
