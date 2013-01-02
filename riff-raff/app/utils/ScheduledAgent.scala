@@ -29,7 +29,15 @@ class ScheduledAgent[T](initialDelay: Duration, frequency: Duration, initialValu
   val agent = Agent[T](initialValue)(system)
 
   val agentSchedule = system.scheduler.schedule(initialDelay, frequency) {
-    agent sendOff(block)
+    agent sendOff{ lastValue =>
+      try {
+        block(lastValue)
+      } catch {
+        case t:Throwable =>
+          log.warn("Failed to update on schedule", t)
+          lastValue
+      }
+    }
   }
 
   def get(): T = agent()
