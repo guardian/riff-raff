@@ -1,9 +1,28 @@
 intervalId = null
 
-scroll = ->
-  if $(this).find(".ajax-refresh-scrollto").length == 1
-    console.log("scrolling to bottom")
-    $(this).find(".ajax-refresh-scrollto")[0].scrollIntoView()
+bottomInView = (element) ->
+  currentScroll = if (document.documentElement.scrollTop) then document.documentElement.scrollTop else document.body.scrollTop
+
+  elementHeight = element.offsetHeight
+  elementOffset = element.offsetTop
+  totalHeight = elementOffset + elementHeight
+  visibleHeight = document.documentElement.clientHeight
+
+  totalHeight - 80 <= currentScroll + visibleHeight
+
+scrollToBottom = (element) ->
+  elementHeight = element.offsetHeight
+  elementOffset = element.offsetTop
+  totalHeight = elementOffset + elementHeight
+  visibleHeight = document.documentElement.clientHeight
+
+  scrollTop = totalHeight - visibleHeight + 40
+
+  $('html, body').animate(
+    { scrollTop: scrollTop },
+    200,
+    "easeOutQuint"
+  )
 
 enableRefresh = (interval=1000) ->
   disableRefresh()
@@ -11,14 +30,21 @@ enableRefresh = (interval=1000) ->
     reload = ->
       $('[data-ajax-refresh]').each ->
         if $(".ajax-refresh-disabled").length == 0
-          $(this).load($(this).data("ajax-refresh"))
-          scroll()
+          divBottomWasInView = bottomInView($(this).get(-1))
+          $(this).load(
+            $(this).data("ajax-refresh"),
+            ->
+              if divBottomWasInView && $(this).data("ajax-autoscroll") == true
+                scrollToBottom($(this).get(-1))
+          )
 
     intervalId = setInterval reload, interval
 
     reload()
 
+disableRefresh = ->
+  clearInterval(intervalId) if intervalId?
+
 $ ->
   interval = if $('[data-ajax-interval]').length != 0 then $('[data-ajax-interval]').data("ajax-interval") else 1000
-  console.log("Interval of "+interval)
   enableRefresh(interval)

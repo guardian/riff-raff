@@ -31,14 +31,7 @@
 </div>
 
 <hr/>
-<div class="content" id="autoscroll-to" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)" data-ajax-interval="1000">
+<div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
     <p>Loading...</p>
 </div>
-@if(true){
-<div class="row-fluid">
-    <label class="checkbox checkbox-fix-right pull-right">
-        <input id="autoscroll" checked="checked" type="checkbox"/> Auto-scroll to bottom
-    </label>
-</div>
-}
 }
