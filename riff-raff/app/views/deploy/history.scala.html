@@ -6,10 +6,7 @@
 
 @historyFilter(DeployFilterPagination.fromRequest)
 
-<div class="content" data-ajax-refresh="@{routes.Deployment.historyContent()}?@request.rawQueryString">
+<div class="content" data-ajax-refresh="@{routes.Deployment.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
     <p>Loading...</p>
 </div>
-<script>
-    $(function() { ajaxRefresh.enable(60*1000); });
-</script>
 }

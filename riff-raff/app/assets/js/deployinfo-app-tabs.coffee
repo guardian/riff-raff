@@ -15,7 +15,6 @@ getParamOrElse = (url, param, defaultValue) ->
 pushParam='tab'
 
 updateAndPush = (event) ->
-  console.log(event)
   newStage=event.currentTarget.id
   newURL = updateOrAddParam(document.URL, pushParam, newStage)
   window.history.pushState(null,null,newURL)

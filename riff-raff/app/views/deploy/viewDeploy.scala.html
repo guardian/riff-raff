@@ -9,7 +9,7 @@
 </style>
 <div class="row-fluid">
 <div class="span8">
-<h2 class="pull-left">@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
+<h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
 </div>
 <div class="span4">
 @if(record.isStalled) {
@@ -24,18 +24,14 @@
     }
 </div>
 }
-@if(!record.isSummarised){<label class="checkbox pull-right checkbox-fix">
+@if(!record.isSummarised){<label class="checkbox pull-right checkbox-fix-top checkbox-fix-right">
     <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
 </label>}
 </div>
 </div>
 
 <hr/>
-<div class="content@if(request.betaUser){ viewport-70}" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)">
+<div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
     <p>Loading...</p>
 </div>
-<script>
-    $(function() { ajaxRefresh.enable(); });
-    $(function() { deployVerbose.init(); });
-</script>
 }
