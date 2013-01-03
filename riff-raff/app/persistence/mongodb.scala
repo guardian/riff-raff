@@ -1,13 +1,13 @@
 package persistence
 
-import java.util.{Date, UUID}
+import java.util.{UUID}
 import com.mongodb.casbah.{MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
 import controllers.{AuthorisationRecord, Logging}
 import com.novus.salat._
 import play.api.Application
-import deployment.{PaginationView, DeployFilter, DeployRecord}
+import deployment.{PaginationView, DeployFilter}
 import magenta.{RunState, MessageStack}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
@@ -15,9 +15,17 @@ import notification.{HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import controllers.SimpleDeployDetail
+import java.util
+import com.novus.salat.util
 
 trait MongoSerialisable {
   def dbObject: DBObject
+}
+
+trait CollectionStats {
+  def dataSize: Long
+  def storageSize: Long
+  def documentCount: Long
 }
 
 object MongoDatastore extends Logging {
@@ -55,12 +63,7 @@ trait RiffRaffGraters {
       override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.Always)
     }
     loader.foreach(context.registerClassLoader(_))
-    context.registerPerClassKeyOverride(classOf[DeployRecord], remapThis = "uuid", toThisInstead = "_id")
     context
-  }
-  val recordGrater = {
-    implicit val context = riffRaffContext
-    grater[DeployRecord]
   }
   val stackGrater = {
     implicit val context = riffRaffContext
@@ -69,66 +72,27 @@ trait RiffRaffGraters {
 }
 
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with RiffRaffGraters with DocumentGraters with Logging {
-  val deployCollection = database("%sdeploys" format Configuration.mongo.collectionPrefix)
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
 
-  private def stats = deployCollection.stats
-  override def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
-  override def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
-  override def documentCount = logAndSquashExceptions(None,0L){ deployCollection.count }
+  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection)
+
+  private def collectionStats(collection: MongoCollection): CollectionStats = {
+    val stats = collection.stats
+    new CollectionStats {
+      def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
+      def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
+      def documentCount = logAndSquashExceptions(None,0L){ collection.count }
+    }
+  }
+
+  override def collectionStats: Map[String, CollectionStats] = collections.map(coll => (coll.name, collectionStats(coll))).toMap
 
   // ensure indexes
-  deployCollection.ensureIndex("time")
   deployV2Collection.ensureIndex("startTime")
   deployV2LogCollection.ensureIndex("deploy")
-
-  override def createDeploy(record: DeployRecord) {
-    logAndSquashExceptions(Some("Creating record for %s" format record),()) {
-      val dbObject = recordGrater.asDBObject(record)
-      deployCollection insert dbObject
-    }
-  }
-
-  override def updateDeploy(uuid: UUID, stack: MessageStack) {
-    logAndSquashExceptions[Unit](Some("Updating record with UUID %s with stack %s" format (uuid,stack)),()) {
-      val newMessageStack = stackGrater.asDBObject(stack)
-      deployCollection.update(MongoDBObject("_id" -> uuid), $push(MongoDatastore.MESSAGE_STACKS -> newMessageStack))
-    }
-  }
-
-  override def getDeploy(uuid: UUID): Option[DeployRecord] =
-    logAndSquashExceptions[Option[DeployRecord]](Some("Requesting record with UUID %s" format uuid), None) {
-      val deploy = deployCollection.findOneByID(uuid)
-      deploy.map(recordGrater.asObject(_))
-    }
-
-  override def getDeploys(limit: Int): Iterable[DeployRecord] =
-    logAndSquashExceptions[Iterable[DeployRecord]](Some("Requesting last %d deploys" format limit), Nil) {
-      val deploys = deployCollection.find().sort(MongoDBObject("time" -> -1)).limit(limit)
-      deploys.toIterable.map{ deployDbObject =>
-        try {
-          recordGrater.asObject(deployDbObject)
-        } catch {
-          case t:Throwable =>
-            val uuid = deployDbObject.getAs[UUID]("_id")
-            throw new RuntimeException("Failed to reconstituting deploy %s" format uuid, t)
-        }
-      }
-    }
-
-  override def getDeployUUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    val uuidObjects = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "time" -> 1)).sort(MongoDBObject("time" -> -1))
-    uuidObjects.toIterable.map(dbo => SimpleDeployDetail(dbo.getAs[UUID]("_id").get, dbo.getAs[DateTime]("time").get))
-  }
-
-  override def deleteDeployLog(uuid: UUID) {
-    logAndSquashExceptions(None,()) {
-      deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
-    }
-  }
 
   override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
     val criteria = HookCriteria(dbo.as[DBObject]("_id"))

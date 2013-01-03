@@ -12,16 +12,13 @@ import java.net.URL
 import controllers.{DeployController, Logging}
 import lifecycle.LifecycleWithoutApp
 import java.util.UUID
-import magenta.S3Credentials
-import magenta.MessageStack
-import magenta.Deploy
 import scala.Some
-import magenta.FailContext
-import magenta.StartContext
 import collection.mutable
-import persistence.Persistence
+import persistence.{CollectionStats, Persistence}
 import deployment.{Domains, GuDomainsConfiguration}
 import akka.util.{Switch => AkkaSwitch}
+import utils.ScheduledAgent
+import akka.util.duration._
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -198,9 +195,13 @@ object MessageMetrics {
 }
 
 object DatastoreMetrics {
-  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => Persistence.store.dataSize)
-  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => Persistence.store.storageSize)
-  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => Persistence.store.documentCount)
+  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>  Persistence.store.collectionStats }
+  def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
+  def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
+  def deployCollectionCount: Long = collectionStats().get("%sdeployV2" format Configuration.mongo.collectionPrefix).map(_.documentCount).getOrElse(0L)
+  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
+  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
+  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
   val all = Seq(MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 

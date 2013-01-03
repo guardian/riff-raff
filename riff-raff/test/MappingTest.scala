@@ -12,17 +12,6 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
     def loader = Some(getClass.getClassLoader)
   }
 
-  "RecordConverter" should "transform a deploy record into a deploy document" in {
-    RecordConverter(testRecord).deployDocument should be(
-      DeployRecordDocument(
-        testUUID,
-        testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
-        RunState.Completed
-      )
-    )
-  }
-
   "RecordV2Converter" should "transform a deploy record into a deploy document" in {
     RecordConverter(testRecordV2).deployDocument should be(
       DeployRecordDocument(

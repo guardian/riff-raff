@@ -6,7 +6,7 @@ import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHe
 import com.novus.salat._
 import com.novus.salat.StringTypeHintStrategy
 import controllers.Logging
-import deployment.{DeployFilter, DeployV2Record, PaginationView, DeployRecord}
+import deployment.{DeployFilter, DeployV2Record, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
 
@@ -41,17 +41,6 @@ trait RecordConverter {
   def logDocuments:Seq[LogDocument]
 }
 
-case class RecordV1Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messageStacks:List[MessageStack] = Nil) extends RecordConverter with Logging {
-  def +(newStack: MessageStack): RecordConverter = copy(messageStacks = messageStacks ::: List(newStack))
-  def +(newStatus: RunState.Value): RecordConverter = copy(status = newStatus)
-
-  def apply(stack: MessageStack): Option[LogDocument] = None
-
-  def apply: (DeployRecordDocument, Seq[LogDocument]) = (deployDocument, logDocuments)
-
-  lazy val logDocuments = Nil
-}
-
 case class RecordV2Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends RecordConverter with Logging {
   def +(newWrapper: MessageWrapper): RecordV2Converter = copy(messages = messages ::: List(newWrapper))
   def +(newStatus: RunState.Value): RecordV2Converter = copy(status = newStatus)
@@ -72,20 +61,6 @@ case class RecordV2Converter(uuid:UUID, startTime:DateTime, params: ParametersDo
 }
 
 object RecordConverter {
-  def apply(record: DeployRecord): RecordConverter = {
-    val sourceParams = record.parameters
-    val params = ParametersDocument(
-      deployer = sourceParams.deployer.name,
-      projectName = sourceParams.build.projectName,
-      buildId = sourceParams.build.id,
-      stage = sourceParams.stage.name,
-      recipe = sourceParams.recipe.name,
-      hostList = sourceParams.hostList,
-      deployType = record.taskType.toString
-    )
-    RecordV1Converter(record.uuid, record.time, params, record.state, record.messageStacks)
-  }
-
   def apply(record: DeployV2Record): RecordV2Converter = {
     val sourceParams = record.parameters
     val params = ParametersDocument(
