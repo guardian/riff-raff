@@ -85,29 +85,3 @@ case class DeployV2Record(time: DateTime,
   lazy val lastActivityTime = messages.lastOption.map(_.stack.time).getOrElse(time)
 
 }
-
-object DeployRecord {
-  def apply(taskType: Task.Value,
-            uuid: UUID,
-            parameters: DeployParameters ): DeployRecord = {
-    DeployRecord(new DateTime(), taskType, uuid, parameters)
-  }
-}
-
-case class DeployRecord(time: DateTime,
-                        taskType: Task.Value,
-                        uuid: UUID,
-                        parameters: DeployParameters,
-                        messageStacks: List[MessageStack] = Nil) extends Record {
-  lazy val report:ReportTree = DeployReport(messageStacks, "Deployment Report")
-
-  def +(message: MessageStack): DeployRecord = {
-    this.copy(messageStacks = messageStacks ++ List(message))
-  }
-
-  lazy val recordState = None
-
-  def isSummarised = false
-
-  lazy val lastActivityTime = messageStacks.lastOption.map(_.time).getOrElse(time)
-}
