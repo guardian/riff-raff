@@ -15,9 +15,17 @@ import notification.{HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import controllers.SimpleDeployDetail
+import java.util
+import com.novus.salat.util
 
 trait MongoSerialisable {
   def dbObject: DBObject
+}
+
+trait CollectionStats {
+  def dataSize: Long
+  def storageSize: Long
+  def documentCount: Long
 }
 
 object MongoDatastore extends Logging {
@@ -69,11 +77,18 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
 
-  // TODO: Fix up to analyse all collections (using a ScheduledAgent refresh?)
-  private def stats = deployV2Collection.stats
-  override def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
-  override def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
-  override def documentCount = logAndSquashExceptions(None,0L){ deployV2Collection.count }
+  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection)
+
+  private def collectionStats(collection: MongoCollection): CollectionStats = {
+    val stats = collection.stats
+    new CollectionStats {
+      def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
+      def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
+      def documentCount = logAndSquashExceptions(None,0L){ collection.count }
+    }
+  }
+
+  override def collectionStats: Map[String, CollectionStats] = collections.map(coll => (coll.name, collectionStats(coll))).toMap
 
   // ensure indexes
   deployV2Collection.ensureIndex("startTime")

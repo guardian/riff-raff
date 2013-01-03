@@ -25,9 +25,7 @@ trait DataStore extends DocumentStore {
     }
   }
 
-  def dataSize:Long = 0
-  def storageSize:Long = 0
-  def documentCount:Long = 0
+  def collectionStats:Map[String, CollectionStats] = Map.empty
 
   def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty
   def setPostDeployHook(criteria: HookCriteria, action: HookAction) {}
