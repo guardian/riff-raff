@@ -4,7 +4,7 @@ import java.util.UUID
 import org.joda.time.DateTime
 import com.novus.salat.annotations.raw.Salat
 import magenta._
-import deployment.{Record, Task, DeployRecord}
+import deployment.{Record, Task}
 
 case class DeployRecordDocument(uuid:UUID, startTime: DateTime, parameters: ParametersDocument, status: RunState.Value) {
   lazy val deployTypeEnum = Task.withName(parameters.deployType)

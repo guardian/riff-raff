@@ -3,27 +3,13 @@ package controllers
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import magenta.CommandOutput
-import magenta.Info
-import magenta.CommandError
-import magenta.FinishContext
-import magenta.DeployParameters
-import magenta.StartContext
-import magenta.TaskRun
-import magenta.Verbose
-import magenta.KeyRing
-import magenta.MessageStack
-import magenta.Deploy
-import magenta.Deployer
-import magenta.Stage
-import magenta.Build
-import deployment.{DeployV2Record, Task, DeployRecord}
+import deployment.{DeployV2Record, Task}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import persistence.{DocumentConverter, DocumentStoreConverter, RecordConverter, Persistence}
+import persistence.Persistence
 
 case class SimpleDeployDetail(uuid: UUID, time: DateTime)
 
@@ -115,10 +101,9 @@ object Testing extends Controller with Logging {
 
 
   def uuidList = AuthAction { implicit request =>
-    val v1Set = Persistence.store.getDeployUUIDs.toSet
     val v2Set = Persistence.store.getDeployV2UUIDs().toSet
-    val allDeploys = (v1Set ++ v2Set).toSeq.sortBy(_.time.getMillis).reverse
-    Ok(views.html.test.uuidList(request, allDeploys, v1Set, v2Set))
+    val allDeploys = v2Set.toSeq.sortBy(_.time.getMillis).reverse
+    Ok(views.html.test.uuidList(request, allDeploys, v2Set))
   }
 
   case class UuidForm(uuid:String, action:String)
@@ -136,47 +121,14 @@ object Testing extends Controller with Logging {
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         form.action match {
-          case "deleteV1" => {
-            log.info("Deleting deploy in V1 with UUID %s" format form.uuid)
-            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
-            Redirect(routes.Testing.uuidList())
-          }
           case "deleteV2" => {
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
             Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           }
-          case "migrate" => {
-            log.info("Migrating deploy with UUID %s" format form.uuid)
-            val deployRecord = Persistence.store.getDeploy(UUID.fromString(form.uuid))
-            deployRecord.foreach{ deploy =>
-              val conversion = RecordConverter(deploy)
-              Persistence.store.writeDeploy(conversion.deployDocument)
-            }
-            Redirect(routes.Testing.uuidList())
-          }
         }
       }
     )
-  }
-
-  def migrateAllV1 = AuthAction { implicit request =>
-    val v1Set = Persistence.store.getDeployUUIDs.toSet
-    val v2Set = Persistence.store.getDeployV2UUIDs().toSet
-    val v1Only = v1Set -- v2Set
-    v1Only.foreach { deployToMigrate =>
-      val deployRecord = Persistence.store.getDeploy(deployToMigrate.uuid)
-      deployRecord.foreach{ deploy =>
-        val conversion = RecordConverter(deploy)
-        Persistence.store.writeDeploy(conversion.deployDocument)
-      }
-    }
-    Redirect(routes.Testing.uuidList())
-  }
-
-  def viewUUIDv1(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
-    val record = Persistence.store.getDeploy(UUID.fromString(uuid)).get
-    Ok(views.html.deploy.viewDeploy(request, record, verbose))
   }
 
 }

@@ -1,14 +1,10 @@
 package persistence
 
-import java.util.UUID
-import deployment.DeployRecord
-import magenta.MessageStack
 import conf.RequestMetrics.DatastoreRequest
 import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{AuthorisationRecord, Logging}
-import controllers.SimpleDeployDetail
 
 trait DataStore extends DocumentStore {
   def log: Logger
@@ -32,15 +28,6 @@ trait DataStore extends DocumentStore {
   def dataSize:Long = 0
   def storageSize:Long = 0
   def documentCount:Long = 0
-
-  def getDeploys(limit: Int): Iterable[DeployRecord] = Nil
-
-  def createDeploy(record:DeployRecord) {}
-  def updateDeploy(uuid:UUID, stack: MessageStack) {}
-  def getDeploy(uuid:UUID):Option[DeployRecord] = None
-
-  def getDeployUUIDs:Iterable[SimpleDeployDetail] = Nil
-  def deleteDeployLog(uuid:UUID) {}
 
   def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty
   def setPostDeployHook(criteria: HookCriteria, action: HookAction) {}
