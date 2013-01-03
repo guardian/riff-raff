@@ -143,6 +143,28 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
 
   }
+
+  it should "only include dependencies once" in {
+    val basePackageType = stubPackageType(Seq("main_init_action", "init_action_two"), Seq("main_action", "action_two"), Set(app1))
+
+    val indirectDependencyRecipe = Recipe("two",
+      actionsBeforeApp = basePackageType.mkAction("init_action_two") :: Nil,
+      actionsPerHost = basePackageType.mkAction("action_two") :: Nil,
+      dependsOn = List("one"))
+    val mainRecipe = Recipe("main",
+      actionsBeforeApp = basePackageType.mkAction("main_init_action") :: Nil,
+      actionsPerHost = basePackageType.mkAction("main_action") :: Nil,
+      dependsOn = List("two", "one"))
+
+    Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), deployinfoSingleHost, parameters(mainRecipe)) should be (List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on the_host", Some(host)),
+      StubTask("init_action_two per app task"),
+      StubTask("action_two per host task on the_host", Some(host)),
+      StubTask("main_init_action per app task"),
+      StubTask("main_action per host task on the_host", Some(host))
+    ))
+  }
   
   it should "provide a list of all apps for a recipe" in  {
     val recipe = Recipe("recipe", actionsPerHost = StubPerHostAction("action", Set(app1)) :: Nil)

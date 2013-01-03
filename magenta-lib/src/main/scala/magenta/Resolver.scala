@@ -8,12 +8,15 @@ object Resolver {
 
   def resolve( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[Task] = {
 
+    def resolveDependencies(recipeName: String): List[String] = {
+      val recipe = project.recipes(recipeName)
+      recipe.dependsOn.flatMap { resolveDependencies } :+ recipeName
+    }
+
     def resolveRecipe(recipeName: String): List[Task] = {
       val recipe = project.recipes(recipeName)
 
-      val dependenciesFromOtherRecipes = recipe.dependsOn.flatMap { resolveRecipe(_) }
-
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp flatMap { _.resolve(deployInfo, parameters) }
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(deployInfo, parameters) }
 
       val perHostTasks = {
         for {
@@ -29,10 +32,11 @@ object Resolver {
         t.taskHost.map(h => deployInfo.hosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
       )
 
-      dependenciesFromOtherRecipes ++ tasksToRunBeforeApp ++ sortedPerHostTasks
+      tasksToRunBeforeApp ++ sortedPerHostTasks
     }
 
-    resolveRecipe(parameters.recipe.name)
+    val dependencies = resolveDependencies(parameters.recipe.name)
+    dependencies.distinct.flatMap(resolveRecipe)
   }
 
   def possibleApps(project: Project, recipeName: String): String = {
