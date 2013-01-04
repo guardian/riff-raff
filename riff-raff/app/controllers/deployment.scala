@@ -17,7 +17,7 @@ import akka.util.duration._
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
-import persistence.{DocumentStoreConverter, Persistence}
+import persistence.{DocumentStoreConverter}
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
@@ -56,16 +56,18 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def update(wrapper: MessageWrapper) {
-    library()(wrapper.context.deployId) send { record =>
-      val updated = record + wrapper
-      DocumentStoreConverter.saveMessage(wrapper)
-      if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
-      updated
-    }
-    wrapper.stack.messages match {
-      case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
-      case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
-      case _ =>
+    Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
+      recordAgent send { record =>
+        val updated = record + wrapper
+        DocumentStoreConverter.saveMessage(wrapper)
+        if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
+        updated
+      }
+      wrapper.stack.messages match {
+        case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
+        case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
+        case _ =>
+      }
     }
   }
 
@@ -181,22 +183,21 @@ object Deployment extends Controller with Logging {
           recipe = form.recipe.map(RecipeName(_)).getOrElse(DefaultRecipe()),
           hostList = form.hosts)
 
-        responsibleFor(parameters) match {
-          case Local() =>
-            form.action match {
-              case "preview" =>
-                val uuid = DeployController.preview(parameters)
-                Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case "deploy" =>
+        form.action match {
+          case "preview" =>
+            Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
+          case "deploy" =>
+            responsibleFor(parameters) match {
+              case Local() =>
                 val uuid = DeployController.deploy(parameters)
                 Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case _ => throw new RuntimeException("Unknown action")
+              case Remote(urlPrefix) =>
+                val call = routes.Deployment.deployConfirmation(generate(form))
+                Redirect(urlPrefix+call.url)
+              case Noop() =>
+                throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")
             }
-          case Remote(urlPrefix) =>
-            val call = routes.Deployment.deployConfirmation(generate(form))
-            Redirect(urlPrefix+call.url)
-          case Noop() =>
-            throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")
+          case _ => throw new RuntimeException("Unknown action")
         }
       }
     )
@@ -213,6 +214,15 @@ object Deployment extends Controller with Logging {
       case Task.Deploy => Ok(views.html.deploy.logContent(request, record))
       case Task.Preview => Ok(views.html.deploy.previewContent(request,record))
     }
+  }
+
+  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
+    val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
+    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val project = Preview.getProject(parameters.build)
+
+    val tasks = Resolver.resolve(project, DeployInfoManager.deployInfo, parameters)
+    Ok(views.html.deploy.preview(request, parameters, tasks))
   }
 
   def history() = AuthAction { implicit request =>

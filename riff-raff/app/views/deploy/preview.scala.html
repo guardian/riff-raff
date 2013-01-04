@@ -1,0 +1,43 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], parameters: DeployParameters, tasks: List[magenta.tasks.Task])
+@import magenta.DeployParameters
+
+@main("Preview", request) {
+
+<h3>Preview of hosts affected and tasks that will be executed</h3>
+@helper.form(action=routes.Deployment.processForm) {
+    <div>
+        <ul class="magenta-list">
+            @defining(tasks.flatMap(_.taskHost).map(_.name).distinct) { hostNames =>
+                @if(hostNames.isEmpty) {
+                    <li>No hosts found</li>
+                }
+                @hostNames.zipWithIndex.map { hostTuple =>
+                    <li><span class="preview-host"><input type="checkbox" name="hosts[@hostTuple._2]" value="@hostTuple._1" checked="true"/>@hostTuple._1</span></li>
+                }
+            }
+        </ul>
+    </div>
+    <div>
+        <ul class="magenta-list">
+            @if(tasks.isEmpty) {
+                <li>No tasks generated</li>
+            }
+            @tasks.map { task =>
+                <li><span class="preview-task">@task.fullDescription</span></li>
+            }
+        </ul>
+    </div>
+
+    <input type="hidden" name="project" value="@parameters.build.projectName"/>
+    <input type="hidden" name="build" value="@parameters.build.id"/>
+    <input type="hidden" name="stage" value="@parameters.stage.name"/>
+    <input type="hidden" name="recipe" value="@parameters.recipe.name"/>
+
+    <div class="actions">
+        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
+        <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
+        <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+    </div>
+}
+
+}
