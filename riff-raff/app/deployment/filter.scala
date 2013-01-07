@@ -92,9 +92,11 @@ trait Pagination extends QueryStringBuilder {
 }
 
 case class PaginationView(
-  pageSize: Option[Int] = Some(20),
-  page: Int = 1
+  pageSize: Option[Int] = PaginationView.DEFAULT_PAGESIZE,
+  page: Int = PaginationView.DEFAULT_PAGE
 ) extends QueryStringBuilder {
+  def isDefault = pageSize == PaginationView.DEFAULT_PAGESIZE && page == PaginationView.DEFAULT_PAGE
+
   lazy val queryStringParams: List[(String, String)] =
     Nil ++
       pageSize.map("pageSize" -> _.toString) ++
@@ -107,13 +109,16 @@ case class PaginationView(
 }
 
 object PaginationView {
+  val DEFAULT_PAGESIZE = Some(20)
+  val DEFAULT_PAGE = 1
+
   def fromRequest(implicit r: RequestHeader):PaginationView = {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
     PaginationView(
-      pageSize = param("pageSize").map(_.toInt).orElse(Some(20)),
-      page = param("page").map(_.toInt).getOrElse(1)
+      pageSize = param("pageSize").map(_.toInt).orElse(DEFAULT_PAGESIZE),
+      page = param("page").map(_.toInt).getOrElse(DEFAULT_PAGE)
     )
   }
 }

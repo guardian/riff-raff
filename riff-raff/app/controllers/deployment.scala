@@ -103,12 +103,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): List[Record] = {
     require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
-    val controllerDeploys = if (filter.isEmpty) getControllerDeploys.toList else Nil
-    val datastoreDeploys = getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList
-    val uuidSet = Set(controllerDeploys.map(_.uuid): _*)
-    val combinedRecords = controllerDeploys ::: datastoreDeploys.filterNot(deploy => uuidSet.contains(deploy.uuid))
-    log.debug("getDeploys stats: controller %d datastore %d combined %d" format (controllerDeploys.size, datastoreDeploys.size, combinedRecords.size))
-    combinedRecords.sortWith{ _.time.getMillis < _.time.getMillis }.takeRight(pagination.pageSize.get)
+    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList
   }
 
   def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
