@@ -103,7 +103,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): List[Record] = {
     require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
-    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList
+    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList.sortWith{ _.time.getMillis < _.time.getMillis }
   }
 
   def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
