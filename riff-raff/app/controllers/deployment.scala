@@ -81,8 +81,6 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
-
   def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
@@ -219,10 +217,8 @@ object Deployment extends Controller with Logging {
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
-    val project = Preview.getProject(parameters.build)
-
-    val tasks = Resolver.resolve(project, DeployInfoManager.deployInfo, parameters)
-    Ok(views.html.deploy.preview(request, parameters, tasks))
+    val previewData = Preview(parameters)
+    Ok(views.html.deploy.preview(request, previewData))
   }
 
   def history() = AuthAction { implicit request =>
