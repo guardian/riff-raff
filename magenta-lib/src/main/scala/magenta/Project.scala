@@ -135,4 +135,5 @@ case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, reci
   def toDeployContext(uuid: UUID, project: Project, deployInfo: DeployInfo): DeployContext = {
     DeployContext(this,project, deployInfo, uuid)
   }
+  def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = DeployContext(this,project, deployInfo)
 }

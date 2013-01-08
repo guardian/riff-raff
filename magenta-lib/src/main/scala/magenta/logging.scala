@@ -37,9 +37,11 @@ object MessageBroker {
   def deployID = Option(messageContext.value).map(_.deployId)
 
   def send(message: Message, messageUUID: UUID = UUID.randomUUID()) {
-    val stack = MessageStack(message :: messageStack.value)
-    MagentaMetrics.MessageBrokerMessages.measure {
-      listeners foreach(_.message(MessageWrapper(messageContext.value, messageUUID, stack)))
+    Option(messageContext.value).foreach { context =>
+      val stack = MessageStack(message :: messageStack.value)
+      MagentaMetrics.MessageBrokerMessages.measure {
+        listeners foreach(_.message(MessageWrapper(context, messageUUID, stack)))
+      }
     }
   }
 

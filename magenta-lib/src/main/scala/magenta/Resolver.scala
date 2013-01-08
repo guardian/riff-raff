@@ -4,9 +4,14 @@ import tasks.Task
 import HostList._
 
 
+case class RecipeTasks(recipe: String, tasks: List[Task])
+
 object Resolver {
 
-  def resolve( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[Task] = {
+  def resolve( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[Task] =
+    resolveDetail(project, deployInfo, parameters).flatMap(_.tasks)
+
+  def resolveDetail( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[RecipeTasks] = {
 
     def resolveDependencies(recipeName: String): List[String] = {
       val recipe = project.recipes(recipeName)
@@ -36,7 +41,7 @@ object Resolver {
     }
 
     val dependencies = resolveDependencies(parameters.recipe.name)
-    dependencies.distinct.flatMap(resolveRecipe)
+    dependencies.distinct.map(recipeName => RecipeTasks(recipeName, resolveRecipe(recipeName)))
   }
 
   def possibleApps(project: Project, recipeName: String): String = {

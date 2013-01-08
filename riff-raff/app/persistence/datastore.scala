@@ -5,6 +5,7 @@ import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{AuthorisationRecord, Logging}
+import magenta.Build
 
 trait DataStore extends DocumentStore {
   def log: Logger
@@ -36,6 +37,9 @@ trait DataStore extends DocumentStore {
   def getAuthorisationList:List[AuthorisationRecord] = Nil
   def setAuthorisation(auth: AuthorisationRecord) {}
   def deleteAuthorisation(email: String) {}
+
+  def writeDeployJson(id: Build, json: String) {}
+  def getDeployJson(id: Build): Option[String] = None
 }
 
 object Persistence extends Logging {
