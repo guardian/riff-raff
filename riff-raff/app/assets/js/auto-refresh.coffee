@@ -1,5 +1,7 @@
 intervalId = null
 
+callbackList = $.Callbacks()
+
 bottomInView = (element) ->
   currentScroll = if (document.documentElement.scrollTop) then document.documentElement.scrollTop else document.body.scrollTop
 
@@ -34,6 +36,7 @@ enableRefresh = (interval=1000) ->
           $(this).load(
             $(this).data("ajax-refresh"),
             ->
+              callbackList.fire()
               if divBottomWasInView && $(this).data("ajax-autoscroll") == true
                 scrollToBottom($(this).get(-1))
           )
@@ -48,3 +51,10 @@ disableRefresh = ->
 $ ->
   interval = if $('[data-ajax-interval]').length != 0 then $('[data-ajax-interval]').data("ajax-interval") else 1000
   enableRefresh(interval)
+
+addPostRefreshCallback = (callback) ->
+  callbackList.add callback
+
+@autoRefresh = {
+  postRefresh : addPostRefreshCallback
+}
