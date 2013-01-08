@@ -172,10 +172,10 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     Resolver.possibleApps(project(recipe), recipe.name) should be (app1.name)
   }
 
-  it should "throw an exception if no hosts found and actions require some" in {
-    intercept[NoHostsFoundException] {
-      Resolver.resolve(project(baseRecipe), DeployInfo(List()), parameters(baseRecipe))
-    }
+  it should "disable the recipe if no hosts found and actions require some" in {
+    val recipeTasks = Resolver.resolveDetail(project(baseRecipe), DeployInfo(List()), parameters(baseRecipe))
+    recipeTasks.length should be(1)
+    recipeTasks.head.disabled should be(true)
   }
 
   it should "not throw an exception if no hosts found and only whole app recipes" in {
