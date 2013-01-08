@@ -7,11 +7,10 @@ import java.io.File
 import io.Source
 import magenta.json.JsonReader
 import controllers.routes
-import magenta.RecipeTasks
 import magenta.DeployParameters
 import magenta.Project
 import magenta.Build
-import tasks.Task
+import tasks.{ Task => MagentaTask }
 
 object Preview {
   /**
@@ -47,7 +46,7 @@ case class Preview(project: Project, parameters: DeployParameters) {
   lazy val recipeTasks = Resolver.resolveDetail(project, deployInfo, parameters)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
-  def taskHosts(taskList:List[Task]) = taskList.flatMap(_.taskHost).filter(deployInfo.hosts.contains).map(_.name).distinct
+  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(deployInfo.hosts.contains).map(_.name).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {

@@ -223,15 +223,26 @@ object Deployment extends Controller with Logging {
     val record = DeployController.get(UUID.fromString(uuid))
     record.taskType match {
       case Task.Deploy => Ok(views.html.deploy.logContent(request, record))
-      case Task.Preview => Ok(views.html.deploy.previewContent(request,record))
+      case Task.Preview => Ok(views.html.deploy.oldPreviewContent(request,record))
     }
   }
 
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
-    val previewData = Preview(parameters)
-    Ok(views.html.deploy.preview(request, previewData))
+    Ok(views.html.deploy.preview(request, parameters))
+  }
+
+  def previewContent(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
+    try {
+      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
+      val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+      val previewData = Preview(parameters)
+      Ok(views.html.deploy.previewContent(request, previewData))
+    } catch {
+      case e: Throwable =>
+        Ok(views.html.errorContent(e, "Couldn't resolve preview information."))
+    }
   }
 
   def history() = AuthAction { implicit request =>

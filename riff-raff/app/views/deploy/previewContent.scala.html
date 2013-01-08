@@ -1,65 +1,110 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], preview: deployment.Preview)
 
-@if(record.isSummarised) {
- @logSummary(record)
-} else {
-@defining(record.report.cascadeState) { state =>
-@state match {
-case RunState.Failed => {
-<div class="alert alert-error">
-    <h4 class="alert-heading">Deploy failed</h4>
-    @record.report.failureMessage.map{ fail =>
-    <strong>@fail.detail.message</strong>
-    <pre>@fail.detail.stackTrace</pre>
-    }
-</div>
-}
-case RunState.Completed => {
-    <div class="alert alert-success">
-        <h3>Preview of hosts affected and tasks that will be executed</h3>
-        @helper.form(action=routes.Deployment.processForm) {
-        <div>
-            <ul class="magenta-list">
-                @if(record.report.hostNames.isEmpty) {
-                    <li>No hosts found</li>
-                }
-                @record.report.hostNames.zipWithIndex.map { hostTuple =>
-                    <li><span class="preview-host"><input type="checkbox" name="hosts[@hostTuple._2]" value="@hostTuple._1" checked="true"/>@hostTuple._1</span></li>
-                }
-            </ul>
-        </div>
-        <div>
-            <ul class="magenta-list">
-                @if(record.report.tasks.isEmpty) {
-                <li>No tasks generated</li>
-                }
-                @record.report.tasks.map { task =>
-                <li><span class="preview-task">@task.fullDescription</span></li>
-                }
-            </ul>
-        </div>
+@helper.form(action=routes.Deployment.processForm) {
 
-        <input type="hidden" name="project" value="@record.buildName"/>
-        <input type="hidden" name="build" value="@record.buildId"/>
-        <input type="hidden" name="stage" value="@record.stage.name"/>
-        <input type="hidden" name="recipe" value="@record.recipe.name"/>
-
-        <div class="actions">
-            <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-            <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
-        </div>
+    <table class="table table-hover">
+        <tbody>
+        @preview.recipeTasks.filterNot(_.tasks.isEmpty).map { recipeTasks =>
+            <tr>
+                <td>@recipeTasks.recipe</td>
+                <td>
+                    @recipeTasks.tasks.flatMap(_.taskHost).map(_.name).distinct.map { hostName =>
+                        <div>@hostName</div>
+                    }
+                </td>
+                <td>
+                <ul class="magenta-list task-list">
+                    @if(recipeTasks.tasks.isEmpty) {
+                        <li><em>No tasks generated</em></li>
+                    }
+                    @recipeTasks.tasks.map { task =>
+                        <li><span class="preview-task">@task.fullDescription</span></li>
+                    }
+                </ul>
+                </td>
+            </tr>
         }
+        </tbody>
+    </table>
+
+    <h4>Use specific recipe</h4>
+
+    <div>
+        <table class="table table-condensed deployment-list">
+            <tr>
+            <td>Current recipe</td>
+            <td><ul><li><a class="btn btn-small btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
+            </tr>
+            @if(preview.recipes.size>1){
+            <tr>
+            <td>Dependent recipes</td>
+            <td><ul>@preview.recipes.filterNot(_==preview.recipe).map { recipe =>
+                <li><a class="btn btn-small btn-success" href="@preview.withRecipe(recipe)">@recipe</a></li>
+            }</ul></td>
+            </tr>
+            }
+            @if(preview.allRecipes.size > preview.recipes.size) {
+            <tr>
+            <td>Other recipes in artifact</td>
+            <td><ul>@preview.allRecipes.filterNot(preview.recipes.contains).map { recipe =>
+                <li><a class="btn btn-small" href="@preview.withRecipe(recipe)">@recipe</a></li>
+            }</ul></td>
+            </tr>
+            }
+        </table>
     </div>
-}
-case _ => {}
-} }
+
+    <h4>Select hosts</h4>
+    <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-inverse" id="checkbox-select-none">None</button>
+    <div>
+        <ul class="magenta-list deployment-list">
+            @if(preview.hosts.isEmpty) {
+                <li><em>No hosts found</em></li>
+            }
+            @preview.allHosts.zipWithIndex.map { hostTuple =>
+                <li><span class="preview-host"><input type="checkbox" class="checkbox-select" name="hosts[@hostTuple._2]" value="@hostTuple._1" @if(preview.hosts.contains(hostTuple._1)){checked="true"}/>@hostTuple._1</span></li>
+            }
+        </ul>
+    </div>
+
+    <!--<h4>Deploy to host</h4>
+
+    <div>
+        <ul class="magenta-list deployment-list">
+            @if(preview.hosts.isEmpty) {
+                <li><em>No hosts found</em></li>
+            }
+            @preview.hosts.zipWithIndex.map { hostTuple =>
+                <li><button>@hostTuple._1</button></li>
+            }
+        </ul>
+    </div>-->
 
 
-<ul class="magenta-reporttree">
-    @snippets.reportTree(record.report)
-</ul>
-}
 
-@if(record.isDone){
+    <input type="hidden" name="project" value="@preview.projectName"/>
+    <input type="hidden" name="build" value="@preview.build"/>
+    <input type="hidden" name="stage" value="@preview.stage"/>
+    <input type="hidden" name="recipe" value="@preview.recipe"/>
+
+        <hr/>
+
+    <div class="actions">
+        <div class="btn-group">
+            <button name="action" type="submit" value="preview" class="btn">Beta Preview...</button>
+            <button class="btn dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a id="new-preview-source" href="#">Crusty old preview...</a>
+                    <button id="new-preview-target" class="hidden" name="action" type="submit" value="previewOld"/>
+                </li>
+            </ul>
+        </div>
+        <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
+        <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+    </div>
+
     <div class="ajax-refresh-disabled pull-left"></div>
 }
