@@ -8,7 +8,7 @@ import controllers.{AuthorisationRecord, Logging}
 import com.novus.salat._
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
-import magenta.{RunState, MessageStack}
+import magenta.{Build, RunState, MessageStack}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookAction, HookCriteria}
@@ -17,6 +17,7 @@ import org.joda.time.DateTime
 import controllers.SimpleDeployDetail
 import java.util
 import com.novus.salat.util
+import com.mongodb.util.JSON
 
 trait MongoSerialisable {
   def dbObject: DBObject
@@ -76,8 +77,9 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
+  val deployJsonCollection = database("%sdeployJson" format Configuration.mongo.collectionPrefix)
 
-  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection)
+  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection, deployJsonCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
     val stats = collection.stats
@@ -210,6 +212,22 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     logAndSquashExceptions(None,()) {
       deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))
       deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
+    }
+  }
+
+  override def writeDeployJson(id: Build, json: String) {
+    logAndSquashExceptions(None,()) {
+      val key = MongoDBObject("projectName" -> id.projectName, "buildId" -> id.id)
+      deployJsonCollection.insert(MongoDBObject("_id" -> key, "json" -> JSON.parse(json)))
+    }
+  }
+
+  override def getDeployJson(id: Build) = {
+    logAndSquashExceptions[Option[String]](None,None) {
+      val key = MongoDBObject("projectName" -> id.projectName, "buildId" -> id.id)
+      deployJsonCollection.findOneByID(key).map{ result =>
+        JSON.serialize(result.get("json"))
+      }
     }
   }
 }

@@ -1,0 +1,8 @@
+@(error: Throwable, message: String)
+@import conf.Configuration._
+
+<p>@message</p>
+
+<div class="alert alert-error">
+@errorPageException(error)
+</div>
