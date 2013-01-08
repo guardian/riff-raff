@@ -37,16 +37,16 @@ object Preview {
 
 case class Preview(project: Project, parameters: DeployParameters) {
   lazy val deployInfo = DeployInfoManager.deployInfo
-  lazy val recipes = recipeTasks.map(_.recipe)
+  lazy val recipeNames = recipeTasks.map(_.recipe.name)
   lazy val allRecipes = project.recipes.values.map(_.name).toList.sorted
-  lazy val dependantRecipes = recipes.filterNot(_ == recipe)
-  def isDependantRecipe(r: String) = r != recipe && recipes.contains(r)
+  lazy val dependantRecipes = recipeNames.filterNot(_ == recipe)
+  def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
   lazy val recipeTasks = Resolver.resolveDetail(project, deployInfo, parameters)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
-  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(deployInfo.hosts.contains).map(_.name).distinct
+  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(deployInfo.hosts.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {

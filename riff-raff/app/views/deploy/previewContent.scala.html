@@ -4,13 +4,22 @@
 
     <table class="table table-hover">
         <tbody>
-        @preview.recipeTasks.filterNot(_.tasks.isEmpty).map { recipeTasks =>
+        @preview.recipeTasks.filterNot(rt => rt.recipe.actionsBeforeApp.isEmpty && rt.recipe.actionsPerHost.isEmpty).map { recipeTasks =>
             <tr>
-                <td><span class="no-hyphenation">@recipeTasks.recipe</span></td>
+                <td><span class="no-hyphenation">@recipeTasks.recipeName</span></td>
+                @if(recipeTasks.disabled) {
+                  <td colspan="2"><div><em>
+                      This recipe has been disabled.  This is because there are no valid hosts available for per-host
+                      tasks specified in this recipe or a recipe that depends on this.
+                  </em></div></td>
+                } else {
                 <td>
-                    @recipeTasks.tasks.flatMap(_.taskHost).map(_.name).distinct.map { hostName =>
-                        <div class="no-hyphenation">@hostName</div>
-                    }
+                        @if(recipeTasks.hosts.isEmpty) {
+                            <div><em>No hosts</em></div>
+                        }
+                        @recipeTasks.hosts.map { host =>
+                            <div class="no-hyphenation">@host.name</div>
+                        }
                 </td>
                 <td>
                 <ul class="magenta-list task-list">
@@ -22,6 +31,7 @@
                     }
                 </ul>
                 </td>
+                }
             </tr>
         }
         </tbody>
@@ -35,18 +45,18 @@
             <td>Current recipe</td>
             <td><ul><li><a class="btn btn-small btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
             </tr>
-            @if(preview.recipes.size>1){
+            @if(preview.recipeNames.size>1){
             <tr>
             <td>Dependent recipes</td>
-            <td><ul>@preview.recipes.filterNot(_==preview.recipe).map { recipe =>
+            <td><ul>@preview.recipeNames.filterNot(_==preview.recipe).map { recipe =>
                 <li><a class="btn btn-small btn-success" href="@preview.withRecipe(recipe)">@recipe</a></li>
             }</ul></td>
             </tr>
             }
-            @if(preview.allRecipes.size > preview.recipes.size) {
+            @if(preview.allRecipes.size > preview.recipeNames.size) {
             <tr>
             <td>Other recipes in artifact</td>
-            <td><ul>@preview.allRecipes.filterNot(preview.recipes.contains).map { recipe =>
+            <td><ul>@preview.allRecipes.filterNot(preview.recipeNames.contains).map { recipe =>
                 <li><a class="btn btn-small" href="@preview.withRecipe(recipe)">@recipe</a></li>
             }</ul></td>
             </tr>
@@ -55,17 +65,23 @@
     </div>
 
     <h4>Select hosts</h4>
+    @if(preview.hosts.isEmpty) {
+        <div><em>No hosts found</em></div>
+    } else {
     <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-inverse" id="checkbox-select-none">None</button>
     <div>
-        <ul class="magenta-list deployment-list">
-            @if(preview.hosts.isEmpty) {
-                <li><em>No hosts found</em></li>
-            }
-            @preview.allHosts.zipWithIndex.map { hostTuple =>
-                <li><span class="preview-host"><input type="checkbox" class="checkbox-select" name="hosts[@hostTuple._2]" value="@hostTuple._1" @if(preview.hosts.contains(hostTuple._1)){checked="true"}/>@hostTuple._1</span></li>
-            }
-        </ul>
+        @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.name).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
+            <div>
+                <ul class="magenta-list deployment-list">
+                    <li><span class="preview-host"><strong>@hostGroupEntry._1:</strong></span></li>
+                    @hostGroupEntry._2.map { hostTuple =>
+                    <li><span class="preview-host"><input type="checkbox" class="checkbox-select" name="hosts[@hostTuple._2]" value="@hostTuple._1.name" @if(preview.hosts.contains(hostTuple._1)){checked="true"}/>@hostTuple._1.name</span></li>
+                    }
+                </ul>
+            </div>
+        }
     </div>
+    }
 
     <!--<h4>Deploy to host</h4>
 
