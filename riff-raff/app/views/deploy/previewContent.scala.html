@@ -6,10 +6,10 @@
         <tbody>
         @preview.recipeTasks.filterNot(_.tasks.isEmpty).map { recipeTasks =>
             <tr>
-                <td>@recipeTasks.recipe</td>
+                <td><span class="no-hyphenation">@recipeTasks.recipe</span></td>
                 <td>
                     @recipeTasks.tasks.flatMap(_.taskHost).map(_.name).distinct.map { hostName =>
-                        <div>@hostName</div>
+                        <div class="no-hyphenation">@hostName</div>
                     }
                 </td>
                 <td>
