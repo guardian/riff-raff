@@ -1,6 +1,6 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], preview: deployment.Preview)
 
-@main("Preview", request, List("checkbox-selection")) {
+@main("Preview", request, List("checkbox-selection","preview-transition")) {
 
 <h3>Preview of recipes, hosts and tasks</h3>
 
@@ -94,7 +94,18 @@
         <hr/>
 
     <div class="actions">
-        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
+        <div class="btn-group">
+            <button name="action" type="submit" value="preview" class="btn">Beta Preview...</button>
+            <button class="btn dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a id="new-preview-source" href="#">Crusty old preview...</a>
+                    <button id="new-preview-target" class="hidden" name="action" type="submit" value="previewOld"/>
+                </li>
+            </ul>
+        </div>
         <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
         <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
     </div>

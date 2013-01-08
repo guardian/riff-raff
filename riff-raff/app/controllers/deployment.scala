@@ -81,6 +81,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
+  def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
+
   def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
@@ -184,6 +186,17 @@ object Deployment extends Controller with Logging {
         form.action match {
           case "preview" =>
             Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
+          case "previewOld" =>
+            responsibleFor(parameters) match {
+              case Local() =>
+                val uuid = DeployController.preview(parameters)
+                Redirect(routes.Deployment.viewUUID(uuid.toString))
+              case Remote(urlPrefix) =>
+                val call = routes.Deployment.deployConfirmation(generate(form))
+                Redirect(urlPrefix+call.url)
+              case Noop() =>
+                throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this preview")
+            }
           case "deploy" =>
             responsibleFor(parameters) match {
               case Local() =>

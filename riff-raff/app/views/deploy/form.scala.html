@@ -1,7 +1,7 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
 @import helper.twitterBootstrap._
 
-@main("Deploy request", request, Deployment.changeFreeze(Nil, List("modal-confirm"))) {
+@main("Deploy request", request, List("preview-transition")) {
 
 <h2>Deploy request</h2>
 
@@ -30,8 +30,19 @@ helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
 
 
 <div class="actions">
-    <button name="action" type="submit" value="preview" class="btn">Preview...</button> or
-    <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button> or
+    <div class="btn-group">
+        <button name="action" type="submit" value="previewOld" class="btn">Preview...</button>
+        <button class="btn dropdown-toggle" data-toggle="dropdown">
+            <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a id="new-preview-source" href="#">Shiny new preview...</a>
+            <button id="new-preview-target" class="hidden" name="action" type="submit" value="preview"/>
+            </li>
+        </ul>
+    </div>
+    <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
 }
