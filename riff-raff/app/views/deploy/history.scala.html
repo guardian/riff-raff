@@ -1,7 +1,7 @@
 @(implicit request: AuthenticatedRequest[AnyContent])
 @import deployment.DeployFilterPagination
 
-@main("Deployment history", request, List("auto-refresh", "history-dropdown")) {
+@main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink")) {
 <h2>Recent deploys</h2>
 
 @historyFilter(DeployFilterPagination.fromRequest)

@@ -17,12 +17,12 @@
         <th>Status</th>
     </tr>
     </thead>
-    <tbody>
+    <tbody class="rowlink" data-provides="rowlink">
     @records.map{ record =>
-    <tr>
+    <tr class="rowlink">
         <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(record.time)</td>
         <td><span class="label">@record.deployerName</span></td>
-        <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)">@record.buildName</a></td>
+        <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
