@@ -28,7 +28,7 @@ class JettyWebappPackageTypeTest  extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 2 minutes),
+      CheckUrls(host, "8080", List("/webapp/management/healthcheck"), 2 minutes, 5),
       UnblockFirewall(host as "jetty")
     ))
   }
@@ -63,7 +63,7 @@ class JettyWebappPackageTypeTest  extends FlatSpec with ShouldMatchers {
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, "8080", 1 minute),
-      CheckUrls(host, "8080", urls, 2 minutes),
+      CheckUrls(host, "8080", urls, 2 minutes, 5),
       UnblockFirewall(host as "jetty")
     ))
 
