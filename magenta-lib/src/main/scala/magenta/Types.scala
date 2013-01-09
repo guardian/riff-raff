@@ -97,7 +97,8 @@ abstract class WebappPackageType extends PackageType {
     "user" -> containerName,
     "servicename" -> pkg.name,
     "waitseconds" -> 60,
-    "checkseconds" -> 120
+    "checkseconds" -> 120,
+    "checkUrlReadTimeoutSeconds" -> 5
   )
 
   lazy val user: String = pkg.stringData("user")
@@ -112,6 +113,7 @@ abstract class WebappPackageType extends PackageType {
     if (paths.isEmpty) List("/%s/management/healthcheck" format serviceName)
     else paths
   }
+  lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
@@ -121,7 +123,7 @@ abstract class WebappPackageType extends PackageType {
         CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
         Restart(host as user, serviceName),
         WaitForPort(host, port, waitDuration),
-        CheckUrls(host, port, healthCheckPaths, checkDuration),
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
         UnblockFirewall(host as user))
       }
     }

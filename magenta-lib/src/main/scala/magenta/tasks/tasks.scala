@@ -87,23 +87,27 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   }
 }
 
-case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long) extends Task with RepeatedPollingCheck {
+case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
+    extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
   def execute(keyRing: KeyRing) {
-    for (path <- paths) check {
+    for (path <- paths) {
       val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
-      try {
-        val connection = url.openConnection()
-        connection.setConnectTimeout( 2000 )
-        connection.setReadTimeout( 5000 )
-        Source.fromInputStream( connection.getInputStream )
-        true
-      } catch {
-        case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e)
-        case e => false
+      MessageBroker.verbose("Checking %s" format url)
+      check {
+        try {
+          val connection = url.openConnection()
+          connection.setConnectTimeout( 2000 )
+          connection.setReadTimeout( checkUrlReadTimeoutSeconds * 1000 )
+          Source.fromInputStream( connection.getInputStream )
+          true
+        } catch {
+          case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e)
+          case e => false
+        }
       }
     }
   }
@@ -117,10 +121,11 @@ trait RepeatedPollingCheck {
 
     def checkAttempt(currentAttempt: Int) {
       if (!theCheck) {
-        if (System.currentTimeMillis() < expiry) {
-          val exponent = math.min(currentAttempt, 7)
-          val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 10000)
-          MessageBroker.verbose("Check failed on attempt #%d- Retrying after %dms" format (currentAttempt, sleepyTime))
+        val remainingTime = expiry - System.currentTimeMillis()
+        if (remainingTime > 0) {
+          val exponent = math.min(currentAttempt, 8)
+          val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 25000)
+          MessageBroker.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
           Thread.sleep(sleepyTime)
           checkAttempt(currentAttempt + 1)
         } else {
