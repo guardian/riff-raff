@@ -40,6 +40,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object concurrency {
+    lazy val maxDeploys = configuration.getIntegerProperty("concurrency.maxDeploys", 8)
+  }
+
   object deployinfo {
     lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
     lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
