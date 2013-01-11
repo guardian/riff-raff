@@ -27,3 +27,22 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
     }
   }
 }
+
+case class CullElasticSearchInstancesWithTerminationTag(packageName: String, stage: Stage, duration: Long)
+  extends ASGTask {
+
+  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+    for (instance <- asg.getInstances) {
+      if (EC2.hasTag(instance, "Magenta", "Terminate")) {
+        WaitForElasticSearchClusterGreen(packageName, stage, duration).execute(asg)
+        val http = new Http()
+        http((:/(EC2(instance).getPublicDnsName, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
+        cull(asg, instance)
+      }
+    }
+  }
+
+  lazy val description = "Terminate instances with the termination tag for this deploy"
+}
+
+
