@@ -345,6 +345,11 @@ object Deployment extends Controller with Logging {
     Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
   }
 
+  def deployConfirmationWithParameters = AuthAction { implicit request =>
+    val form = deployForm.bindFromRequest()
+    Ok(views.html.deploy.deployConfirmation(request, form))
+  }
+
   def markAsFailed = AuthAction { implicit request =>
     uuidForm.bindFromRequest().fold(
       errors => Redirect(routes.Deployment.history),

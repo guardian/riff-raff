@@ -17,6 +17,7 @@ GET     /docs/*resource             controllers.Application.documentation(resour
 GET     /deployment/request controllers.Deployment.deploy
 POST    /deployment/request controllers.Deployment.processForm
 GET     /deployment/confirm controllers.Deployment.deployConfirmation(parametersJson:String)
+GET     /deployment/externalRequest controllers.Deployment.deployConfirmationWithParameters
 
 GET     /deployment/history controllers.Deployment.history
 GET     /deployment/history/update controllers.Deployment.historyContent
