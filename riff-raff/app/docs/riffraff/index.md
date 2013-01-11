@@ -7,3 +7,4 @@ Riff-raff documentation
  - [Authentication and Authorisation](auth)
  - [Riff-Raff configuration](properties)
  - [R2 deployments](r2)
+ - [External deploy requests](externalRequest)
