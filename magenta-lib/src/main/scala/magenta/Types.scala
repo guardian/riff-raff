@@ -89,6 +89,29 @@ case class AutoScaling(pkg: Package) extends PackageType {
   }
 }
 
+case class ElasticSearch(pkg: Package) extends PackageType {
+  def name: String = "elastic-search"
+
+  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val bucket = pkg.stringData("bucket")
+
+  override val perAppActions: AppActionDefinition = {
+    case "deploy" => (_, parameters) => {
+      List(
+        TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
+        DoubleSize(pkg.name, parameters.stage),
+        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000)
+//        ,
+//        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage)
+      )
+    }
+    case "uploadArtifacts" => (_, parameters) =>
+      List(
+        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
+      )
+  }
+}
+
 abstract class WebappPackageType extends PackageType {
   def containerName: String
 
