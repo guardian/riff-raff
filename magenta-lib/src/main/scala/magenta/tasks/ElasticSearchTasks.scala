@@ -23,7 +23,10 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
     check {
       val http = new Http()
       http(:/(instance.getPublicDnsName, 9200) / "_cluster" / "health" >- {json =>
-        (parse(json) \ "status").extract[String]}) == "green"
+        val health = parse(json)
+        (health \ "number_of_data_nodes").extract[Int] == asg.getDesiredCapacity &&
+        (health \ "status").extract[String] == "green"
+      })
     }
   }
 }
