@@ -1,0 +1,29 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployV2Record)
+
+@main("Debug Viewer", request) {
+<h2>Table of messages for @record.uuid</h2>
+
+<table class="table table-condensed table-striped">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Message ID</th>
+            <th>Parent Message ID</th>
+            <th>Level</th>
+            <th>Message</th>
+        </tr>
+    </thead>
+    <tbody>
+  @record.messages.map { message =>
+    <tr>
+        <td>@message.stack.time</td>
+        <td>@message.messageId</td>
+        <td>@message.context.parentId</td>
+        <td>@message.stack.messages.size</td>
+        <td>@for( x <- 1 to message.stack.messages.size) { &nbsp; &nbsp; }
+        @message.stack.messages.head</td>
+    </tr>
+  }
+    </tbody>
+</table>
+}

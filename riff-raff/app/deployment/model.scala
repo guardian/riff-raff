@@ -9,14 +9,14 @@ import java.io.File
 import magenta.teamcity.Artifact.build2download
 import org.joda.time.{DateTime, Duration}
 
-object Task extends Enumeration {
+object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
   val Preview = Value("Preview")
 }
 
 trait Record {
   def time: DateTime
-  def taskType: Task.Value
+  def taskType: TaskType.Value
   def uuid: UUID
   def parameters: DeployParameters
   def report: ReportTree
@@ -61,7 +61,7 @@ trait Record {
 }
 
 object DeployV2Record {
-  def apply(taskType: Task.Value,
+  def apply(taskType: TaskType.Value,
             uuid: UUID,
             parameters: DeployParameters ): DeployV2Record = {
     DeployV2Record(new DateTime(), taskType, uuid, parameters)
@@ -69,7 +69,7 @@ object DeployV2Record {
 }
 
 case class DeployV2Record(time: DateTime,
-                          taskType: Task.Value,
+                          taskType: TaskType.Value,
                            uuid: UUID,
                            parameters: DeployParameters,
                            messages: List[MessageWrapper] = Nil,

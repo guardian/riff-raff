@@ -9,12 +9,25 @@
         @if(!record.parameters.hostList.isEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
     </div>
     }
+    @if(!record.isDone){
+    @helper.form(routes.Deployment.stop(record.uuid.toString), 'class -> "form-make-inline pull-right") {
+        <button name="action" type="submit" value="stop" class="btn btn-danger"><i class="icon-minus-sign icon-white"></i> Stop this Deploy</button>
+    }
+    <div class="clearfix"></div>
+    }
     <ul class="magenta-reporttree">
         @snippets.reportTree(record.report)
     </ul>
+
         @logSummary(record)
 }
 
+@if(!record.isDone){
+@helper.form(routes.Deployment.stop(record.uuid.toString), 'class -> "form-make-inline pull-right") {
+    <button name="action" type="submit" value="stop" class="btn btn-danger"><i class="icon-minus-sign icon-white"></i> Stop this Deploy</button>
+}
+<div class="clearfix"></div>
+}
 
 @if(record.isDone){
     <div class="ajax-refresh-disabled pull-left"></div>

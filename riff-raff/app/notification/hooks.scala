@@ -6,7 +6,7 @@ import akka.actor.{Actor, Props, ActorSystem}
 import java.util.UUID
 import lifecycle.LifecycleWithoutApp
 import persistence.{MongoSerialisable, Persistence}
-import deployment.Task
+import deployment.TaskType
 import java.net.URL
 import com.mongodb.casbah.commons.MongoDBObject
 import magenta.FinishContext
@@ -75,7 +75,7 @@ object HooksClient extends LifecycleWithoutApp {
     def message(message: MessageWrapper) {
       message.stack.top match {
         case FinishContext(Deploy(parameters)) =>
-          if (DeployController.get(message.context.deployId).taskType == Task.Deploy)
+          if (DeployController.get(message.context.deployId).taskType == TaskType.Deploy)
             finishedBuild(parameters)
         case _ =>
       }

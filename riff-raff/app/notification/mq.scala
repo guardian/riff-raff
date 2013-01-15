@@ -20,7 +20,7 @@ import scala.Some
 import akka.actor.OneForOneStrategy
 import magenta.DeployParameters
 import akka.util.duration._
-import deployment.Task
+import deployment.TaskType
 
 /*
  Send deploy events to graphite
@@ -48,11 +48,11 @@ object MessageQueue extends LifecycleWithoutApp with Logging {
   lazy val sink = new MessageSink {
     def message(message: MessageWrapper) {
       val uuid = message.context.deployId
-      if (DeployController.get(uuid).taskType == Task.Deploy)
+      if (DeployController.get(uuid).taskType == TaskType.Deploy)
         message.stack.top match {
           case StartContext(Deploy(parameters)) =>
             sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
-          case FailContext(Deploy(parameters), exception) =>
+          case FailContext(Deploy(parameters)) =>
             sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters)))
           case FinishContext(Deploy(parameters)) =>
             sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters)))

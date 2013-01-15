@@ -1,5 +1,5 @@
 @(view: deployment.DeployFilterPagination)
-@import deployment.Task
+@import deployment.TaskType
 @import magenta.RunState
 
 <div class="navbar">
@@ -30,7 +30,7 @@
                 <ul class="dropdown-menu">
                     <li@if(!view.filter.task.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withTask(None)).q}">All</a></li>
                     <li class="divider"></li>
-                    @for(task <- Task.values.toList.sortBy(_.toString)) {
+                    @for(task <- TaskType.values.toList.sortBy(_.toString)) {
                         <li @if(Some(task)==view.filter.task){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withTask(Some(task))).q}">@task</a></li>
                     }
                 </ul>

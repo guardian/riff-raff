@@ -32,7 +32,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
       val messages = Buffer[Message]()
       def message(wrapper: MessageWrapper) {messages += wrapper.stack.top}
     }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
+    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
 
     MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
@@ -67,7 +67,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         }
       }
     }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
+    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
 
     val keyRing = mock[KeyRing]
 
@@ -94,7 +94,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         }
       }
     }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.deployParameters == Some(parameters)))
+    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
 
     val keyRing = mock[KeyRing]
 

@@ -172,7 +172,7 @@ object DeployMetrics extends LifecycleWithoutApp {
         case StartContext(Deploy(parameters)) =>
           DeployStart.recordCount(1)
           runningDeploys += message.context.deployId
-        case FailContext(Deploy(parameters), exception) =>
+        case FailContext(Deploy(parameters)) =>
           DeployFail.recordCount(1)
           runningDeploys -= message.context.deployId
         case FinishContext(Deploy(parameters)) =>

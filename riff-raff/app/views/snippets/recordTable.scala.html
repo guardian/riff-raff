@@ -30,8 +30,8 @@
         <td>
             @defining(record.taskType) { taskType =>
                 @taskType match {
-                    case Task.Deploy => { }
-                    case Task.Preview => { <span class="label label-inverse">Preview</span> }
+                    case TaskType.Deploy => { }
+                    case TaskType.Preview => { <span class="label label-inverse">Preview</span> }
                 }
             }
             @defining(record.state) { state =>
