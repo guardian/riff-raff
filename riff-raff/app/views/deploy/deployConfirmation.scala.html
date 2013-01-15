@@ -9,12 +9,13 @@
     <h4 class="alert-heading">External deployment request</h4>
     <p/>
     <p>The deploy below has been requested, please confirm that this should go ahead.</p>
-    <p>(You are probably seeing this message as you tried to deploy on a different riff-raff node that wasn't in the
-        correct location on the network to reach the required hosts).</p>
+    <p>(You are seeing this message as an external system has requested this build or you tried to deploy on a
+        different riff-raff node that wasn't in the correct location on the network to reach the required hosts).</p>
 </div>
 
     @defining(deployForm.mapping.mappings.map(_.key).filterNot(_.isEmpty)) { fields =>
-        <table>
+        <div class="span6">
+        <table class="table">
             @fields.map { fieldName =>
                 <tr>
                 <td>@fieldName</td>
@@ -22,6 +23,8 @@
                 </tr>
             }
         </table>
+        </div>
+        <div class="clearfix"></div>
 
         @helper.form(action=routes.Deployment.processForm) {
 
