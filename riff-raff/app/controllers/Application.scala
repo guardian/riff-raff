@@ -2,7 +2,7 @@ package controllers
 
 import play.api.mvc._
 
-import play.api.Logger
+import play.api.{Routes, Logger}
 import io.Source
 
 trait Logging {
@@ -81,6 +81,15 @@ object Application extends Controller with Logging {
     } catch {
       case e:Throwable => NotFound(views.html.notFound(request,"No documentation found for %s" format resource,Some(e)))
     }
+  }
+
+  def javascriptRoutes = NonAuthAction { implicit request =>
+    import routes.javascript._
+    Ok{
+      Routes.javascriptRouter("jsRoutes"){
+        Deployment.stop
+      }
+    }.as("text/javascript")
   }
 
 }

@@ -1,7 +1,7 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
 @import magenta.RunState
 
-@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose")) {
+@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
 <style>
     span.message-verbose {
     display:@if(!verbose) {none} else {list-item};
@@ -31,7 +31,19 @@
 </div>
 
 <hr/>
+@if(!record.parameters.hostList.isEmpty || record.parameters.recipe.name != "default") {
+    <div class="alert alert-info">
+        @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
+        @if(!record.parameters.hostList.isEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
+    </div>
+}
+
+@stopDeployButton(record)
+
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
     <p>Loading...</p>
 </div>
+
+@stopDeployButton(record)
+
 }
