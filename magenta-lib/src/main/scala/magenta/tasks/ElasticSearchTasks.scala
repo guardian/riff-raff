@@ -15,12 +15,12 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     val instance = EC2(asg.getInstances().headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
     val node = ElasticSearchNode(instance.getPublicDnsName)
-    check {
+    check(stopFlag) {
       node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
     }
   }
@@ -29,11 +29,11 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
 case class CullElasticSearchInstancesWithTerminationTag(packageName: String, stage: Stage, duration: Long)
   extends ASGTask with RepeatedPollingCheck{
 
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
-        check {
+        check(stopFlag) {
           node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
         }
         node.shutdown()
