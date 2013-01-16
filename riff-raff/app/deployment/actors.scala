@@ -6,13 +6,16 @@ import magenta._
 import akka.actor._
 import controllers.Logging
 import akka.util.duration._
+import akka.util.Timeout
 import akka.actor.SupervisorStrategy.Restart
+import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
 import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
 import com.typesafe.config.ConfigFactory
+import akka.dispatch.Await
 
 object DeployControlActor extends Logging {
   trait Event
@@ -155,6 +158,7 @@ object DeployCoordinator {
   trait Message
   case class StartDeploy(record: Record, artifactDir: File, context: DeployContext, keyRing: KeyRing, loggingContext: MessageBrokerContext) extends Message
   case class StopDeploy(uuid: UUID, userName: String) extends Message
+  case class CheckStopFlag(uuid: UUID) extends Message
 }
 
 class DeployCoordinator extends Actor with Logging {
@@ -227,6 +231,15 @@ class DeployCoordinator extends Actor with Logging {
       log.info("Task failed")
       deployStateMap.get(record.uuid).foreach(cleanup)
 
+    case CheckStopFlag(uuid) =>
+      try {
+        val stopFlag = deployStateMap.get(uuid).map(_.stopFlag).getOrElse(false)
+        sender ! stopFlag
+      } catch {
+        case e:Exception =>
+          sender ! akka.actor.Status.Failure(e)
+      }
+
     case Terminated(actor) =>
       log.warn("Received terminate from %s " format actor.path)
   }
@@ -258,9 +271,14 @@ class TaskRunner extends Actor with Logging {
     case RunTask(record, keyring, task, loggingContext) => {
       log.info("Running task %d" format task.id)
       try {
+        def stopFlagAsker: Boolean = {
+          implicit val timeout = Timeout(200 milliseconds)
+          val stopFlag = sender ? DeployCoordinator.CheckStopFlag(record.uuid) mapTo manifest[Boolean]
+          Await.result(stopFlag, timeout.duration)
+        }
         MessageBroker.withContext(loggingContext) {
           MessageBroker.taskContext(task.task) {
-            task.task.execute(keyring)
+            task.task.execute(keyring, stopFlagAsker)
           }
         }
         log.info("Sending completed message")

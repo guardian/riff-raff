@@ -21,7 +21,7 @@ trait RemoteShellTask extends ShellTask {
     )
   }
 
-  override def execute(keyRing: KeyRing) { keyRing.sshCredentials match {
+  override def execute(keyRing: KeyRing, stopFlag: =>  Boolean) { keyRing.sshCredentials match {
     case PassphraseProvided(user, pass, keyFile) =>
       val publicKeyLogin =
         PublicKeyLogin(user, SimplePasswordProducer(pass), keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)

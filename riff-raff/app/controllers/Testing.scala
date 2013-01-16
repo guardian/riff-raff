@@ -19,12 +19,12 @@ object Testing extends Controller with Logging {
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
 
     val testTask1 = new Task {
-      def execute(sshCredentials: KeyRing) {}
+      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
     val testTask2 = new Task {
-      def execute(sshCredentials: KeyRing) {}
+      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }

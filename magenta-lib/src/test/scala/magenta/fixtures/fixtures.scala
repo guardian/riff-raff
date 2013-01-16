@@ -4,7 +4,7 @@ package fixtures
 import tasks.Task
 
 case class StubTask(description: String, override val taskHost: Option[Host] = None) extends Task {
-  def execute(keyRing: KeyRing) { }
+  def execute(keyRing: KeyRing, stopFlag: () =>  Boolean) { }
   def verbose = "stub(%s)" format description
 }
 

@@ -1,12 +1,10 @@
 package magenta
 package tasks
 
-import com.decodified.scalassh.PublicKeyLogin
-
-
 trait Task {
   // execute this task (should throw on failure)
-  def execute(sshCredentials: KeyRing)
+  def execute(sshCredentials: KeyRing, stopFlag: => Boolean)
+  def execute(sshCredentials: KeyRing) { execute(sshCredentials, false) }
 
   // name of this task: normally no need to override this method
   def name = getClass.getSimpleName
