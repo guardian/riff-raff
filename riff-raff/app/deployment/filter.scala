@@ -17,7 +17,7 @@ case class DeployFilter(
   stage: Option[String] = None,
   deployer: Option[String] = None,
   status: Option[RunState.Value] = None,
-  task: Option[Task.Value] = None ) extends QueryStringBuilder {
+  task: Option[TaskType.Value] = None ) extends QueryStringBuilder {
 
   lazy val queryStringParams: List[(String, String)] = {
     Nil ++
@@ -32,7 +32,7 @@ case class DeployFilter(
   def withStage(stage: Option[String]) = this.copy(stage=stage)
   def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
   def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
-  def withTask(task: Option[Task.Value]) = this.copy(task=task)
+  def withTask(task: Option[TaskType.Value]) = this.copy(task=task)
 
   lazy val default = this == DeployFilter()
 }
@@ -50,7 +50,7 @@ object DeployFilter {
       stage = param("stage"),
       deployer = param("deployer"),
       status = param("status").map(RunState.withName),
-      task = param("task").map(Task.withName)
+      task = param("task").map(TaskType.withName)
     )
 
     if (filter == DeployFilter()) None else Some(filter)
@@ -133,7 +133,7 @@ case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationVi
   def withStage(stage: Option[String]) = this.copy(filter=filter.withStage(stage))
   def withDeployer(deployer: Option[String]) = this.copy(filter=filter.withDeployer(deployer))
   def withStatus(status: Option[RunState.Value]) = this.copy(filter=filter.withStatus(status))
-  def withTask(task: Option[Task.Value]) = this.copy(filter=filter.withTask(task))
+  def withTask(task: Option[TaskType.Value]) = this.copy(filter=filter.withTask(task))
   def withPage(page: Int): DeployFilterPagination = this.copy(pagination=pagination.withPage(page))
   def withPageSize(size: Option[Int]) = this.copy(pagination=pagination.withPageSize(size))
 

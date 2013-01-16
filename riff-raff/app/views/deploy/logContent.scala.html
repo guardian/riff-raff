@@ -3,18 +3,12 @@
 @logSummary(record)
 
 @if(!record.isSummarised) {
-    @if(!record.parameters.hostList.isEmpty || record.parameters.recipe.name != "default") {
-    <div class="alert alert-info">
-        @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
-        @if(!record.parameters.hostList.isEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
-    </div>
-    }
     <ul class="magenta-reporttree">
         @snippets.reportTree(record.report)
     </ul>
+
         @logSummary(record)
 }
-
 
 @if(record.isDone){
     <div class="ajax-refresh-disabled pull-left"></div>

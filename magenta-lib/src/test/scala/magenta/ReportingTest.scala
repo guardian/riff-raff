@@ -78,7 +78,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "know it has failed" in {
-    val failStacks = messageStacks.take(4) ::: List(stack(failInfo, deploy), stack(failDep))
+    val failStacks = messageStacks.take(4) ::: List(stack(failMsg, failInfo, deploy), stack(failInfo, deploy), stack(failDep))
     val report = DeployReport(failStacks)
     report.size should be (5)
 
@@ -215,8 +215,9 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
   val verbose = Verbose("return value 0")
   val finishDep = FinishContext(deploy)
   val finishInfo = FinishContext(infoMsg)
-  val failInfo = FailContext(infoMsg, new RuntimeException("Failed"))
-  val failDep = FailContext(deploy, new RuntimeException("Failed"))
+  val failMsg = Fail("Failed", new RuntimeException("Failed"))
+  val failInfo = FailContext(infoMsg)
+  val failDep = FailContext(deploy)
   val messageStacks: List[MessageStack] =
     stack(startDeploy) ::
       stack(startInfo, deploy) ::

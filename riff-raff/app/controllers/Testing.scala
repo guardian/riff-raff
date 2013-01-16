@@ -3,13 +3,13 @@ package controllers
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import deployment.{DeployV2Record, Task}
+import deployment.{DeployV2Record, TaskType}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.DateTime
-import persistence.Persistence
+import persistence.{DocumentStoreConverter, Persistence}
 
 case class SimpleDeployDetail(uuid: UUID, time: DateTime)
 
@@ -19,12 +19,12 @@ object Testing extends Controller with Logging {
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
 
     val testTask1 = new Task {
-      def execute(sshCredentials: KeyRing) {}
+      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
     val testTask2 = new Task {
-      def execute(sshCredentials: KeyRing) {}
+      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
     }
@@ -66,7 +66,7 @@ object Testing extends Controller with Logging {
     )
 
 
-    val report = DeployV2Record(new DateTime(), Task.Deploy, logUUID, parameters, input.toList.take(take))
+    val report = DeployV2Record(new DateTime(), TaskType.Deploy, logUUID, parameters, input.toList.take(take))
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }
@@ -104,6 +104,11 @@ object Testing extends Controller with Logging {
     val v2Set = Persistence.store.getDeployV2UUIDs().toSet
     val allDeploys = v2Set.toSeq.sortBy(_.time.getMillis).reverse
     Ok(views.html.test.uuidList(request, allDeploys, v2Set))
+  }
+
+  def debugLogViewer(uuid: String) = AuthAction { implicit request =>
+    val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
+    deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
   case class UuidForm(uuid:String, action:String)

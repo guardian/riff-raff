@@ -47,7 +47,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   val library = Agent(Map.empty[UUID,Agent[DeployV2Record]])
 
-  def create(recordType: Task.Value, params: DeployParameters): Record = {
+  def create(recordType: TaskType.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
     val record = DeployV2Record(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
@@ -65,7 +65,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
       }
       wrapper.stack.messages match {
         case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
-        case List(FailContext(_, _),Deploy(_)) => cleanup(wrapper.context.deployId)
+        case List(FailContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
         case _ =>
       }
     }
@@ -81,9 +81,9 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def preview(params: DeployParameters): UUID = deploy(params, Task.Preview)
+  def preview(params: DeployParameters): UUID = deploy(params, TaskType.Preview)
 
-  def deploy(requestedParams: DeployParameters, mode: Task.Value = Task.Deploy): UUID = {
+  def deploy(requestedParams: DeployParameters, mode: TaskType.Value = TaskType.Deploy): UUID = {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
 
@@ -92,12 +92,18 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
     enableDeploysSwitch.whileOnYield {
       val record = DeployController.create(mode, params)
-      DeployControlActor.deploy(record)
+      DeployControlActor.interruptibleDeploy(record)
       record.uuid
     } getOrElse {
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
     }
   }
+
+  def stop(uuid: UUID, fullName: String) {
+    DeployControlActor.stopDeploy(uuid, fullName)
+  }
+
+  def getStopFlag(uuid: UUID) = DeployControlActor.getDeployStopFlag(uuid)
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =
@@ -214,16 +220,23 @@ object Deployment extends Controller with Logging {
     )
   }
 
-  def viewUUID(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
-    val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.viewDeploy(request, record, verbose))
+  def stop(uuid: String) = AuthAction { implicit request =>
+    DeployController.stop(UUID.fromString(uuid), request.identity.get.fullName)
+    Redirect(routes.Deployment.viewUUID(uuid))
+  }
+
+  def viewUUID(uuidString: String, verbose: Boolean) = AuthAction { implicit request =>
+    val uuid = UUID.fromString(uuidString)
+    val record = DeployController.get(uuid)
+    val stopFlag = DeployController.getStopFlag(uuid).getOrElse(false)
+    Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
     record.taskType match {
-      case Task.Deploy => Ok(views.html.deploy.logContent(request, record))
-      case Task.Preview => Ok(views.html.deploy.oldPreviewContent(request,record))
+      case TaskType.Deploy => Ok(views.html.deploy.logContent(request, record))
+      case TaskType.Preview => Ok(views.html.deploy.oldPreviewContent(request,record))
     }
   }
 

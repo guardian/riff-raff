@@ -5,7 +5,7 @@ import com.amazonaws.services.autoscaling.model.{Instance, AutoScalingGroup}
 import collection.JavaConversions._
 
 case class TagCurrentInstancesWithTerminationTag(packageName: String, stage: Stage) extends ASGTask {
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate")
   }
 
@@ -13,7 +13,7 @@ case class TagCurrentInstancesWithTerminationTag(packageName: String, stage: Sta
 }
 
 case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     val doubleCapacity = asg.getDesiredCapacity * 2
     if (asg.getMaxSize < doubleCapacity) {
       maxCapacity(asg.getAutoScalingGroupName, doubleCapacity)
@@ -29,8 +29,8 @@ case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
 case class WaitForStabilization(packageName: String, stage: Stage, duration: Long) extends ASGTask
     with RepeatedPollingCheck {
 
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
-    check {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+    check(stopFlag) {
       isStabilized(refresh(asg))
     }
   }
@@ -39,7 +39,7 @@ case class WaitForStabilization(packageName: String, stage: Stage, duration: Lon
 }
 
 case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) extends ASGTask {
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
         cull(asg, instance)
@@ -54,13 +54,13 @@ trait ASGTask extends Task with ASG {
   def packageName: String
   def stage: Stage
 
-  def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing)
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing)
 
-  override def execute(keyRing: KeyRing) {
+  override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
     implicit val key = keyRing
 
     withPackageAndStage(packageName, stage) match {
-      case Some(asg) => execute(asg)
+      case Some(asg) => execute(asg, stopFlag)
       case None => MessageBroker.fail(
         "No autoscaling group found with tags: App -> %s, Stage -> %s" format (packageName, stage.name))
     }

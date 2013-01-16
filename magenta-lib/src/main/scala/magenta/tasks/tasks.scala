@@ -29,7 +29,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 
-  override def execute(keyRing: KeyRing) {
+  override def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
     commandLine(keyRing).run()
   }
 }
@@ -41,7 +41,7 @@ case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader
   def description = describe
   def verbose = describe
 
-  def execute(keyRing: KeyRing)  {
+  def execute(keyRing: KeyRing, stopFlag: =>  Boolean)  {
     val client = s3client(keyRing)
     val filesToCopy = resolveFiles(file)
 
@@ -75,8 +75,8 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  def execute(keyRing: KeyRing) {
-    check {
+  def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
+    check(stopFlag) {
       try {
         new Socket(host.name, port.toInt).close()
         true
@@ -93,11 +93,11 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute(keyRing: KeyRing) {
+  def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
     for (path <- paths) {
       val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
       MessageBroker.verbose("Checking %s" format url)
-      check {
+      check(stopFlag) {
         try {
           val connection = url.openConnection()
           connection.setConnectTimeout( 2000 )
@@ -116,20 +116,24 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
 trait RepeatedPollingCheck {
   def duration: Long
 
-  def check(theCheck: => Boolean) {
+  def check(stopFlag: => Boolean)(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
 
     def checkAttempt(currentAttempt: Int) {
       if (!theCheck) {
-        val remainingTime = expiry - System.currentTimeMillis()
-        if (remainingTime > 0) {
-          val exponent = math.min(currentAttempt, 8)
-          val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 25000)
-          MessageBroker.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
-          Thread.sleep(sleepyTime)
-          checkAttempt(currentAttempt + 1)
+        if (stopFlag) {
+          MessageBroker.info("Abandoning remaining checks as stop flag has been set")
         } else {
-          MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
+          val remainingTime = expiry - System.currentTimeMillis()
+          if (remainingTime > 0) {
+            val exponent = math.min(currentAttempt, 8)
+            val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 25000)
+            MessageBroker.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
+            Thread.sleep(sleepyTime)
+            checkAttempt(currentAttempt + 1)
+          } else {
+            MessageBroker.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
+          }
         }
       }
     }
@@ -140,7 +144,7 @@ trait RepeatedPollingCheck {
 
 case class SayHello(host: Host) extends Task {
   override def taskHost = Some(host)
-  def execute(keyRing: KeyRing) {
+  def execute(keyRing: KeyRing, stopFlag: => Boolean) {
     MessageBroker.info("Hello to " + host.name + "!")
   }
 
