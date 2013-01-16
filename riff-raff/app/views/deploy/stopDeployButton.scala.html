@@ -1,9 +1,15 @@
-@(record: deployment.Record)
+@(record: deployment.Record, stopFlag: Boolean)
 @if(!record.isDone){
     @helper.form(routes.Deployment.stop(record.uuid.toString), 'class -> "form-make-inline pull-right stop-deploy-form") {
-        <button name="action" type="button" value="@record.uuid" class="stop-deploy-button btn btn-danger">
-            <i class="icon-minus-sign icon-white"></i> Stop this Deploy
-        </button>
+        @if(stopFlag) {
+            <button name="action" type="button" value="@record.uuid" class="stop-deploy-button btn btn-danger disabled">
+                Stopping Deploy...
+            </button>
+        } else {
+            <button name="action" type="button" value="@record.uuid" class="stop-deploy-button btn btn-danger">
+                <i class="icon-minus-sign icon-white"></i> Stop this Deploy
+            </button>
+        }
     }
     <div class="clearfix"></div>
 }

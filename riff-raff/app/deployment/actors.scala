@@ -33,7 +33,7 @@ object DeployControlActor extends Logging {
     deployController ! Deploy(record)
   }
 
-  import deployment.DeployCoordinator.{StopDeploy, StartDeploy}
+  import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
 
   def interruptibleDeploy(record: Record) {
     log.debug("Sending start deploy mesage to co-ordinator")
@@ -42,6 +42,16 @@ object DeployControlActor extends Logging {
 
   def stopDeploy(uuid: UUID, userName: String) {
     deployCoordinator ! StopDeploy(uuid, userName)
+  }
+
+  def getDeployStopFlag(uuid: UUID): Option[Boolean] = {
+    try {
+      implicit val timeout = Timeout(100 milliseconds)
+      val stopFlag = deployCoordinator ? CheckStopFlag(uuid) mapTo manifest[Boolean]
+      Some(Await.result(stopFlag, timeout.duration))
+    } catch {
+      case t:Throwable => None
+    }
   }
 }
 
@@ -313,9 +323,14 @@ class TaskRunner extends Actor with Logging {
       log.debug("Running task %d" format task.id)
       try {
         def stopFlagAsker: Boolean = {
-          implicit val timeout = Timeout(200 milliseconds)
-          val stopFlag = sender ? DeployCoordinator.CheckStopFlag(record.uuid) mapTo manifest[Boolean]
-          Await.result(stopFlag, timeout.duration)
+          try {
+            implicit val timeout = Timeout(200 milliseconds)
+            val stopFlag = sender ? DeployCoordinator.CheckStopFlag(record.uuid) mapTo manifest[Boolean]
+            Await.result(stopFlag, timeout.duration)
+          } catch {
+            // assume false if something goes wrong
+            case t:Throwable => false
+          }
         }
         MessageBroker.withContext(loggingContext) {
           MessageBroker.taskContext(task.task) {

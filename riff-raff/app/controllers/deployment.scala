@@ -103,6 +103,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
     DeployControlActor.stopDeploy(uuid, fullName)
   }
 
+  def getStopFlag(uuid: UUID) = DeployControlActor.getDeployStopFlag(uuid)
+
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =
     DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)
@@ -223,9 +225,11 @@ object Deployment extends Controller with Logging {
     Redirect(routes.Deployment.viewUUID(uuid))
   }
 
-  def viewUUID(uuid: String, verbose: Boolean) = AuthAction { implicit request =>
-    val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.viewDeploy(request, record, verbose))
+  def viewUUID(uuidString: String, verbose: Boolean) = AuthAction { implicit request =>
+    val uuid = UUID.fromString(uuidString)
+    val record = DeployController.get(uuid)
+    val stopFlag = DeployController.getStopFlag(uuid).getOrElse(false)
+    Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>

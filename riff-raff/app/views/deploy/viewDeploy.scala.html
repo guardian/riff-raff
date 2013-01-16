@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import magenta.RunState
 
 @main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
@@ -38,12 +38,12 @@
     </div>
 }
 
-@stopDeployButton(record)
+@stopDeployButton(record, stopFlag)
 
 <div class="content" data-ajax-refresh="@routes.Deployment.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
     <p>Loading...</p>
 </div>
 
-@stopDeployButton(record)
+@stopDeployButton(record, stopFlag)
 
 }
