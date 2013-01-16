@@ -8,7 +8,6 @@ import net.liftweb.json._
 
 case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, duration: Long)
   extends ASGTask with RepeatedPollingCheck {
-  implicit val format = DefaultFormats
 
   val description = "Wait for the elasticsearch cluster status to be green"
   override val verbose =
@@ -20,32 +19,44 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
     val instance = EC2(asg.getInstances().headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
+    val node = ElasticSearchNode(instance.getPublicDnsName)
     check {
-      val http = new Http()
-      http(:/(instance.getPublicDnsName, 9200) / "_cluster" / "health" >- {json =>
-        val health = parse(json)
-        (health \ "number_of_data_nodes").extract[Int] == asg.getDesiredCapacity &&
-        (health \ "status").extract[String] == "green"
-      })
+      node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
     }
   }
 }
 
 case class CullElasticSearchInstancesWithTerminationTag(packageName: String, stage: Stage, duration: Long)
-  extends ASGTask {
+  extends ASGTask with RepeatedPollingCheck{
 
   def execute(asg: AutoScalingGroup)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
-        WaitForElasticSearchClusterGreen(packageName, stage, duration).execute(asg)
-        val http = new Http()
-        http((:/(EC2(instance).getPublicDnsName, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
+        val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
+        check {
+          node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
+        }
+        node.shutdown()
         cull(asg, instance)
       }
     }
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
+}
+
+case class ElasticSearchNode(address: String) {
+  implicit val format = DefaultFormats
+
+  val http = new Http()
+  private def clusterHealth = http(:/(address, 9200) / "_cluster" / "health" >- {json =>
+    parse(json)
+  })
+
+  def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").extract[Int]
+  def clusterIsHealthy = (clusterHealth \ "status").extract[String] == "green"
+
+  def shutdown() = http((:/(address, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
 }
 
 
