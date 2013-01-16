@@ -4,10 +4,10 @@ import java.util.UUID
 import org.joda.time.DateTime
 import com.novus.salat.annotations.raw.Salat
 import magenta._
-import deployment.{Record, Task}
+import deployment.{Record, TaskType}
 
 case class DeployRecordDocument(uuid:UUID, startTime: DateTime, parameters: ParametersDocument, status: RunState.Value) {
-  lazy val deployTypeEnum = Task.withName(parameters.deployType)
+  lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
 }
 object DeployRecordDocument {
   def apply(record: Record): DeployRecordDocument = {
@@ -103,7 +103,7 @@ case class FinishContextDocument() extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
 }
 case class FailContextDocument() extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get, ThrowableDetail("","",""))
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get)
 }
 
 object MessageDocument {
@@ -118,7 +118,7 @@ object MessageDocument {
       case Verbose(text) => VerboseDocument(text)
       case Fail(text, detail) => FailDocument(text,detail)
       case FinishContext(message) => FinishContextDocument()
-      case FailContext(message,detail) => FailContextDocument()
+      case FailContext(message) => FailContextDocument()
       case _ =>
         throw new IllegalArgumentException("Don't know how to serialise Message of type %s" format from.getClass.getName)
     }

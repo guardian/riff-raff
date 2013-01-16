@@ -6,7 +6,7 @@ import net.liftweb.json.Diff
 import org.joda.time.DateTime
 import java.util.UUID
 import magenta._
-import deployment.{DeployV2Record, Task}
+import deployment.{DeployV2Record, TaskType}
 import persistence.{LogDocument, DeployRecordDocument}
 import java.io.File
 
@@ -32,29 +32,14 @@ trait PersistenceTestInstances {
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
   lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
   lazy val testParamsWithHosts = parameters.copy(hostList=List("host1", "host2"))
-  lazy val testRecordV2 = DeployV2Record(testTime, Task.Deploy, testUUID, parameters, messageWrappers)
+  lazy val testRecordV2 = DeployV2Record(testTime, TaskType.Deploy, testUUID, parameters, messageWrappers)
   lazy val testDocument = DeployRecordDocument(testRecordV2)
 
   lazy val comprehensiveDeployRecord = {
     val time = new DateTime(2012,11,8,17,20,00)
     val uuid = UUID.fromString("39320f5b-7837-4f47-85f7-bc2d780e19f6")
     val parameters = DeployParameters(Deployer("Tester"), Build("test::project", "1"), Stage("TEST"), RecipeName("test-recipe"), List("testhost1", "testhost2"))
-//    val testNestedDetail = ThrowableDetail("java.lang.RuntimeException", "Test nested exception", "Long string\n With new lines\n and line numbers:5\n etc etc etc")
-//    val testThrowableDetail = ThrowableDetail("java.lang.RuntimeException", "Test Exception", "Long string\n With new lines\n and line numbers:5\n etc etc etc", Some(testNestedDetail))
-//    val testTask = UnserialisableTask(new File("/tmp"))
-//    val messageStacks = List(
-//      MessageStack(List(StartContext(Deploy(parameters))), time),
-//      MessageStack(List(Info("An information message"), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(Verbose("A verbose message"), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(CommandOutput("Some command stdout"), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(CommandError("Some command stderr"), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(Fail("A failure", testThrowableDetail), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(TaskRun(testTask), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(TaskList(List(testTask)), StartContext(Deploy(parameters))), time),
-//      MessageStack(List(FailContext(Deploy(parameters), testThrowableDetail)), time),
-//      MessageStack(List(FinishContext(Deploy(parameters))), time)
-//    )
-    DeployV2Record(time, Task.Deploy, uuid, parameters, messageWrappers)
+    DeployV2Record(time, TaskType.Deploy, uuid, parameters, messageWrappers)
   }
 
   def stack( messages: Message * ): MessageStack = {
@@ -75,8 +60,8 @@ trait PersistenceTestInstances {
   val verbose = Verbose("return value 0")
   val finishDep = FinishContext(deploy)
   val finishInfo = FinishContext(infoMsg)
-  val failInfo = FailContext(infoMsg, new RuntimeException("Failed"))
-  val failDep = FailContext(deploy, new RuntimeException("Failed"))
+  val failInfo = FailContext(infoMsg)
+  val failDep = FailContext(deploy)
   val messageStacks: List[MessageStack] =
     stack(startDeploy) ::
       stack(startInfo, deploy) ::

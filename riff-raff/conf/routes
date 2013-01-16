@@ -16,6 +16,7 @@ GET     /docs/*resource             controllers.Application.documentation(resour
 # Deployment pages
 GET     /deployment/request controllers.Deployment.deploy
 POST    /deployment/request controllers.Deployment.processForm
+POST    /deployment/:uuid/stop    controllers.Deployment.stop(uuid)
 GET     /deployment/confirm controllers.Deployment.deployConfirmation(parametersJson:String)
 GET     /deployment/externalRequest controllers.Deployment.deployConfirmationWithParameters
 
@@ -61,9 +62,11 @@ GET     /testing/form   controllers.Testing.form
 POST    /testing/formPost  controllers.Testing.formPost
 GET     /testing/uuidList   controllers.Testing.uuidList
 POST    /testing/actionUUID   controllers.Testing.actionUUID
+GET     /testing/debugLogViewer/:uuid controllers.Testing.debugLogViewer(uuid)
 GET     /teamcity       controllers.Deployment.teamcity
 
-
+# Javascript routing
+GET     /assets/javascripts/routes          controllers.Application.javascriptRoutes
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

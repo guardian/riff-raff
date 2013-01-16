@@ -10,7 +10,7 @@ bottomInView = (element) ->
   totalHeight = elementOffset + elementHeight
   visibleHeight = document.documentElement.clientHeight
 
-  totalHeight - 80 <= currentScroll + visibleHeight
+  totalHeight - 60 <= currentScroll + visibleHeight
 
 scrollToBottom = (element) ->
   elementHeight = element.offsetHeight
@@ -18,7 +18,7 @@ scrollToBottom = (element) ->
   totalHeight = elementOffset + elementHeight
   visibleHeight = document.documentElement.clientHeight
 
-  scrollTop = totalHeight - visibleHeight + 40
+  scrollTop = totalHeight - visibleHeight + 60
 
   $('html, body').animate(
     { scrollTop: scrollTop },

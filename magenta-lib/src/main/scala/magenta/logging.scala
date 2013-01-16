@@ -26,6 +26,8 @@ object TaskDetail {
   }
 }
 
+case class MessageBrokerContext(messageStack: List[Message], messageContext: MessageContext, previousContext: Option[MessageBrokerContext] = None)
+
 object MessageBroker {
   private val listeners = mutable.Buffer[MessageSink]()
   def subscribe(sink: MessageSink) { listeners += sink }
@@ -45,31 +47,83 @@ object MessageBroker {
     }
   }
 
-  def sendContext[T](message: Message)(block: => T): T = {
-    val contextUUID = UUID.randomUUID()
-    send(StartContext(message), contextUUID)
+  def withMessageBrokerContext[T](context: MessageBrokerContext)(block: => T): T = {
+    messageContext.withValue(context.messageContext) {
+      messageStack.withValue(context.messageStack) {
+        block
+      }
+    }
+  }
+  def startDeployContext(uuid: UUID, parameters: DeployParameters): MessageBrokerContext = {
+    val initialContext = MessageBrokerContext(Nil, MessageContext(uuid, parameters, None))
+    pushContext(Deploy(parameters), initialContext)
+  }
+  def pushContext(message: Message, currentContext: MessageBrokerContext): MessageBrokerContext = {
+    withMessageBrokerContext(currentContext) {
+      val contextUUID = UUID.randomUUID()
+      send(StartContext(message), contextUUID)
+      MessageBrokerContext(message :: currentContext.messageStack, messageContext.value.copy(parentId = Some(contextUUID)), Some(currentContext))
+    }
+  }
+  def finishContext(currentContext: MessageBrokerContext): Option[MessageBrokerContext] = {
+    withMessageBrokerContext(currentContext) {
+      currentContext.messageStack.headOption.foreach(msg => send(FinishContext(msg)))
+      currentContext.previousContext
+    }
+  }
+  def finishAllContexts(currentContext: MessageBrokerContext) {
+    finishContext(currentContext).foreach(finishAllContexts)
+  }
+  def failContext(currentContext: MessageBrokerContext): Option[MessageBrokerContext] = {
+    withMessageBrokerContext(currentContext) {
+      currentContext.messageStack.headOption.foreach(msg => send(FailContext(msg)))
+      currentContext.previousContext
+    }
+  }
+  def failAllContexts(currentContext: MessageBrokerContext) {
+    def failAllContextsRec(currentContext: MessageBrokerContext) {
+      failContext(currentContext).foreach(failAllContextsRec)
+    }
+    failAllContextsRec(currentContext)
+  }
+  def failAllContexts(currentContext: MessageBrokerContext, message: String, reason: Throwable) {
+    withMessageBrokerContext(currentContext) {
+      send(Fail(message, reason))
+    }
+    failAllContexts(currentContext)
+  }
+
+
+  def withContext[T](context: MessageBrokerContext)(block: => T): T = {
     try {
-      messageContext.withValue(messageContext.value.copy(parentId = Some(contextUUID))) {
-        messageStack.withValue(message :: messageStack.value) {
-          try {
-            val result: T = block
-            send(FinishContext(message))
-            result
-          } catch {
-            case f:FailException =>
-              send(FailContext(message, f))
-              throw f
-            case t =>
-              // build exception (and send fail message) first
-              val exception = failException("Unhandled exception in %s" format message.text, t)
-              send(FailContext(message, t))
-              throw exception
-          }
+      withMessageBrokerContext(context) {
+        try {
+          block
+        } catch {
+          case f:FailException =>
+            send(FailContext(context.messageStack.head))
+            throw f
+          case t =>
+            // build exception (and send fail message) first
+            val message = context.messageStack.head
+            val exception = failException("Unhandled exception in %s" format message.text, t)
+            send(FailContext(message))
+            throw exception
         }
       }
     } catch {
       case f:FailException =>
-        throw if (messageContext.value.parentId.isEmpty && f.getCause != null) f.getCause else f
+        throw if (context.previousContext.isEmpty && f.getCause != null) f.getCause else f
+    }
+  }
+
+  def sendContext[T](message: Message)(block: => T): T = {
+    val contextUUID = UUID.randomUUID()
+    send(StartContext(message), contextUUID)
+    withContext(MessageBrokerContext(message :: messageStack.value, messageContext.value.copy(parentId = Some(contextUUID)))) {
+      val result = block
+      send(FinishContext(message))
+      result
     }
   }
 
@@ -87,7 +141,7 @@ object MessageBroker {
     if (reentrant) {
       block
     } else {
-      messageContext.withValue(MessageContext(uuid, parameters, None)) {
+      messageContext.withValue(newContext) {
         sendContext(Deploy(parameters))(block)
       }
     }
@@ -119,9 +173,9 @@ trait MessageSink {
   def message(wrapper: MessageWrapper)
 }
 
-class MessageSinkFilter(messageSink: MessageSink, filter: MessageStack => Boolean) extends MessageSink {
+class MessageSinkFilter(messageSink: MessageSink, filter: MessageWrapper => Boolean) extends MessageSink {
   def message(wrapper: MessageWrapper) {
-    if (filter(wrapper.stack))
+    if (filter(wrapper))
       messageSink.message(wrapper)
   }
 }
@@ -157,5 +211,5 @@ case class Verbose(text: String) extends Message
 case class Fail(text: String, detail: ThrowableDetail) extends Message
 
 case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = "Starting %s" format originalMessage.text }
-case class FailContext(originalMessage: Message, detail: ThrowableDetail) extends ContextMessage { lazy val text = "Failed during %s" format originalMessage.text }
+case class FailContext(originalMessage: Message) extends ContextMessage { lazy val text = "Failed during %s" format originalMessage.text }
 case class FinishContext(originalMessage: Message) extends ContextMessage { lazy val text = "Successfully completed %s" format originalMessage.text}
