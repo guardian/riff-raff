@@ -65,9 +65,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
-    "secondsToWait" -> 15 * 60,
-    "port" -> 8080,
-    "manifestPath" -> "management/manifest"
+    "secondsToWait" -> 15 * 60
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
@@ -86,6 +84,32 @@ case class AutoScaling(pkg: Package) extends PackageType {
       List(
       S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
     )
+  }
+}
+
+case class ElasticSearch(pkg: Package) extends PackageType {
+  val name = "elastic-search"
+
+  override val defaultData = Map[String, JValue](
+    "secondsToWait" -> 15 * 60
+  )
+
+  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val bucket = pkg.stringData("bucket")
+
+  override val perAppActions: AppActionDefinition = {
+    case "deploy" => (_, parameters) => {
+      List(
+        TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
+        DoubleSize(pkg.name, parameters.stage),
+        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000)
+      )
+    }
+    case "uploadArtifacts" => (_, parameters) =>
+      List(
+        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
+      )
   }
 }
 

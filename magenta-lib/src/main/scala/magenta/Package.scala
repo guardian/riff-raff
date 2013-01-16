@@ -16,6 +16,7 @@ case class Package(
   lazy val pkgType = pkgTypeName match {
     case "autoscaling" => AutoScaling(this)
     case "asg-elb" => AutoScaling(this)
+    case "elasticsearch" => ElasticSearch(this)
     case "jetty-webapp" => JettyWebappPackageType(this)
     case "resin-webapp" => ResinWebappPackageType(this)
     case "django-webapp" => DjangoWebappPackageType(this)
