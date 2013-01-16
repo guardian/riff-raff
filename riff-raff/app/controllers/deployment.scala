@@ -56,7 +56,6 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def update(wrapper: MessageWrapper) {
-    log.info("Update: %s" format wrapper.toString)
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
       recordAgent send { record =>
         val updated = record + wrapper
