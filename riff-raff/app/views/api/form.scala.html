@@ -1,0 +1,16 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], apiForm: Form[String])
+@import helper.twitterBootstrap._
+
+@main("Create new API key", request) {
+
+    <h2>Create new API key</h2>
+    <hr/>
+
+    @helper.form(action=routes.Api.createKey()) {
+        @helper.inputText(apiForm("application"), '_label -> "Application that will use this key", 'class -> "buildForm")
+        <div class="actions">
+            <button name="action" type="submit" value="save" class="btn btn-primary">Create</button> or
+            <a href="@routes.Api.listKeys()" class="btn btn-inverse">Cancel</a>
+        </div>
+    }
+}

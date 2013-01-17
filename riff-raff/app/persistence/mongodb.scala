@@ -4,7 +4,7 @@ import java.util.{UUID}
 import com.mongodb.casbah.{MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports._
 import conf.Configuration
-import controllers.{AuthorisationRecord, Logging}
+import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import com.novus.salat._
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
@@ -14,7 +14,6 @@ import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHe
 import notification.{HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
-import controllers.SimpleDeployDetail
 import java.util
 import com.novus.salat.util
 import com.mongodb.util.JSON
@@ -61,14 +60,15 @@ trait RiffRaffGraters {
   val riffRaffContext = {
     val context = new Context {
       val name = "global"
-      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.Always)
+      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
     }
     loader.foreach(context.registerClassLoader(_))
+    context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
     context
   }
-  val stackGrater = {
+  val apiGrater = {
     implicit val context = riffRaffContext
-    grater[MessageStack]
+    grater[ApiKey]
   }
 }
 
@@ -78,8 +78,9 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
   val deployJsonCollection = database("%sdeployJson" format Configuration.mongo.collectionPrefix)
+  val apiKeyCollection = database("%sapiKeys" format Configuration.mongo.collectionPrefix)
 
-  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection, deployJsonCollection)
+  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection, deployJsonCollection, apiKeyCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
     val stats = collection.stats
@@ -95,6 +96,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   // ensure indexes
   deployV2Collection.ensureIndex("startTime")
   deployV2LogCollection.ensureIndex("deploy")
+  apiKeyCollection.ensureIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
   override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
     val criteria = HookCriteria(dbo.as[DBObject]("_id"))
@@ -154,6 +156,34 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deleteAuthorisation(email: String) {
     logAndSquashExceptions(Some("Deleting authorisation object for %s" format email),()) {
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
+    }
+  }
+
+  override def createApiKey(newKey: ApiKey) {
+    logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
+      val dbo = apiGrater.asDBObject(newKey)
+      apiKeyCollection.insert(dbo)
+    }
+  }
+
+  override def getApiKeyList = logAndSquashExceptions[Iterable[ApiKey]](Some("Requesting list of API keys"), Nil) {
+    val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
+    keys.toIterable.map( apiGrater.asObject(_) )
+  }
+
+  override def getApiKey(key: String) =
+    logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for %s" format key),None) {
+      apiKeyCollection.findOneByID(key).map(apiGrater.asObject(_))
+    }
+
+  override def getApiKeyByApplication(application: String) =
+    logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for application %s" format application),None) {
+      apiKeyCollection.findOne(MongoDBObject("application" -> application)).map(apiGrater.asObject(_))
+    }
+
+  override def deleteApiKey(key: String) {
+    logAndSquashExceptions(Some("Deleting API key for %s" format key),()) {
+      apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
     }
   }
 
