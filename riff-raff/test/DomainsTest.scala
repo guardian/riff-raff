@@ -69,6 +69,6 @@ class DomainsTest extends FlatSpec with ShouldMatchers with DomainsTestHelper {
     val config = testDomainsConfiguration(basicConfigProperties)
     val domains = new Domains(config)
     val action = domains.responsibleFor(DeployParameters(Deployer("test"), Build("test", "test"), Stage("TEST")))
-    action should be(DomainAction.Remote("https://test2"))
+    action should be(DomainAction.Remote("test2","https://test2"))
   }
 }

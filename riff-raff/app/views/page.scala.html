@@ -31,6 +31,7 @@
     <script src='https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js'></script>
     <!-- routes used in AJAX functions -->
     <script src='@routes.Application.javascriptRoutes'></script>
+    <script src='@routes.Assets.at("js/tooltips.min.js")'></script>
     <!-- page specific scripts -->
     @for(script <- scripts) {
         <script src='@routes.Assets.at("js/%s.min.js" format script)'></script>

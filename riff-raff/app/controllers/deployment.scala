@@ -197,7 +197,7 @@ object Deployment extends Controller with Logging {
               case Local() =>
                 val uuid = DeployController.preview(parameters)
                 Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case Remote(urlPrefix) =>
+              case Remote(_, urlPrefix) =>
                 val call = routes.Deployment.deployConfirmation(generate(form))
                 Redirect(urlPrefix+call.url)
               case Noop() =>
@@ -208,7 +208,7 @@ object Deployment extends Controller with Logging {
               case Local() =>
                 val uuid = DeployController.deploy(parameters)
                 Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case Remote(urlPrefix) =>
+              case Remote(_, urlPrefix) =>
                 val call = routes.Deployment.deployConfirmation(generate(form))
                 Redirect(urlPrefix+call.url)
               case Noop() =>

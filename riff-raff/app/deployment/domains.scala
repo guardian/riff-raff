@@ -63,7 +63,7 @@ case class GuDomainsConfiguration(configuration: GuConfiguration, prefix: String
 object DomainAction {
   trait Action
   case class Local() extends Action
-  case class Remote(urlPrefix: String) extends Action
+  case class Remote(name: String, urlPrefix: String) extends Action
   case class Noop() extends Action
 }
 
@@ -87,7 +87,7 @@ trait DomainResponsibility extends Logging {
           Noop()
         case n:Int =>
           if (n>1) log.warn("Multiple domains match for stage ")
-          Remote(matches.head.urlPrefix)
+          Remote(matches.head.name, matches.head.urlPrefix)
       }
     }
   }

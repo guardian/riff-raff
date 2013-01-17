@@ -11,4 +11,4 @@ $ ->
   if (window.autoRefresh)
     window.autoRefresh.postRefresh ->
       if $(".ajax-refresh-disabled").length != 0
-        $(".stop-deploy-form").hide()
+        $(".stop-deploy-hide").hide()
