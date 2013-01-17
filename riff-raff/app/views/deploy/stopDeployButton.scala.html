@@ -20,7 +20,7 @@
         }
         case Remote(name, urlPrefix) => {
             <a rel="tooltip"
-                title="You can only stop the deploy on the server where the deploy was started (@name)."
+                title="Viewing the deploy on the server where it was started (@name) gives more options (e.g. the ability to stop the deploy)."
                 data-placement="left"
                 href="@urlPrefix@routes.Deployment.viewUUID(record.uuid.toString).url"
                 class="btn btn-primary pull-right stop-deploy-hide">
