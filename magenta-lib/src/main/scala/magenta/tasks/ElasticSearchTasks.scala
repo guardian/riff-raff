@@ -5,6 +5,7 @@ import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 import dispatch._
 import net.liftweb.json._
+import java.net.ConnectException
 
 case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, duration: Long)
   extends ASGTask with RepeatedPollingCheck {
@@ -21,7 +22,7 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
     })
     val node = ElasticSearchNode(instance.getPublicDnsName)
     check(stopFlag) {
-      node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
+      node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
     }
   }
 }
@@ -34,7 +35,7 @@ case class CullElasticSearchInstancesWithTerminationTag(packageName: String, sta
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
         check(stopFlag) {
-          node.clusterIsHealthy && node.dataNodesInCluster == refresh(asg).getDesiredCapacity
+          node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
         }
         node.shutdown()
         cull(asg, instance)
@@ -55,6 +56,13 @@ case class ElasticSearchNode(address: String) {
 
   def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").extract[Int]
   def clusterIsHealthy = (clusterHealth \ "status").extract[String] == "green"
+
+  def inHealthyClusterOfSize(desiredClusterSize: Int) =
+    try {
+      clusterIsHealthy && dataNodesInCluster == desiredClusterSize
+    } catch {
+      case e: ConnectException => false
+    }
 
   def shutdown() = http((:/(address, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
 }
