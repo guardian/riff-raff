@@ -62,6 +62,8 @@ GET     /apiKeys/create             controllers.Api.createKeyForm
 POST    /apiKeys/create             controllers.Api.createKey
 POST    /apiKeys/delete             controllers.Api.delete
 
+GET     /api/history                controllers.Api.history
+
 # Testing pages (for changing styling without running deploys)
 GET     /testing/reportTestPartial  controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)
 GET     /testing/form   controllers.Testing.form

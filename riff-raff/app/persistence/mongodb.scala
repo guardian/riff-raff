@@ -1,21 +1,20 @@
 package persistence
 
 import java.util.{UUID}
-import com.mongodb.casbah.{MongoURI, MongoConnection}
-import com.mongodb.casbah.Imports._
+import com.mongodb.casbah.{MongoCollection, MongoDB, MongoURI, MongoConnection}
+import com.mongodb.casbah.Imports.WriteConcern
 import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import com.novus.salat._
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
-import magenta.{Build, RunState, MessageStack}
+import magenta.{Build, RunState}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
-import java.util
-import com.novus.salat.util
+import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 
 trait MongoSerialisable {
@@ -175,6 +174,23 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for %s" format key),None) {
       apiKeyCollection.findOneByID(key).map(apiGrater.asObject(_))
     }
+
+  override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
+    val setLastUsed = $set("lastUsed" -> (new DateTime()))
+    val incCounter = counter.map(name => $inc(("callCounters.%s" format name) -> 1L)).getOrElse(MongoDBObject())
+    val update = setLastUsed ++ incCounter
+    logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key),None) {
+      apiKeyCollection.findAndModify(
+        query = MongoDBObject("_id" -> key),
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        update = update,
+        returnNew = true,
+        upsert = false
+      ).map(apiGrater.asObject(_))
+    }
+  }
 
   override def getApiKeyByApplication(application: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for application %s" format application),None) {

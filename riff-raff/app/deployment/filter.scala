@@ -3,6 +3,7 @@ package deployment
 import java.net.URLEncoder
 import play.api.mvc.{Call, RequestHeader}
 import magenta.RunState
+import com.codahale.jerkson.Json._
 
 trait QueryStringBuilder {
   def queryStringParams: List[(String,String)]
@@ -45,12 +46,20 @@ object DeployFilter {
     def listParam(s: String): List[String] =
       r.queryString.get(s).getOrElse(Nil).flatMap(_.split(",").map(_.trim).filter(!_.isEmpty)).toList
 
+    val statusType = try {
+      param("status").map(RunState.withName)
+    } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for status parameter")}
+
+    val taskType = try {
+      param("task").map(TaskType.withName)
+    } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for task parameter")}
+
     val filter = DeployFilter(
       projectName = param("projectName"),
       stage = param("stage"),
       deployer = param("deployer"),
-      status = param("status").map(RunState.withName),
-      task = param("task").map(TaskType.withName)
+      status = statusType,
+      task = taskType
     )
 
     if (filter == DeployFilter()) None else Some(filter)

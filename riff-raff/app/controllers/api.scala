@@ -7,6 +7,7 @@ import play.api.data._
 import play.api.data.Forms._
 import play.api.data.validation.Constraints._
 import java.security.SecureRandom
+import com.codahale.jerkson.Json._
 
 
 case class ApiKey(
@@ -80,6 +81,52 @@ object Api extends Controller with Logging {
         Redirect(routes.Api.listKeys())
       }
     )
+  }
+
+  def history = ApiAuthAction("history") { implicit request =>
+    try {
+      val filter = deployment.DeployFilter.fromRequest(request)
+      val count = DeployController.countDeploys(filter)
+      val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
+      val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
+
+      val deploys = deployList.map{ deploy =>
+        Map(
+          "time" -> deploy.time,
+          "uuid" -> deploy.uuid,
+          "taskType" -> deploy.taskType.toString,
+          "projectName" -> deploy.parameters.build.projectName,
+          "build" -> deploy.parameters.build.id,
+          "stage" -> deploy.parameters.stage.name,
+          "deployer" -> deploy.parameters.deployer.name,
+          "recipe" -> deploy.parameters.recipe.name,
+          "status" -> deploy.state.toString,
+          "logURL" -> routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL()
+        )
+      }
+      val response = Map(
+        "response" -> Map(
+          "status" -> "ok",
+          "total" -> pagination.itemCount,
+          "pageSize" -> pagination.pageSize,
+          "currentPage" -> pagination.page,
+          "pages" -> pagination.pageCount.get,
+          "filter" -> filter.map(_.queryStringParams.toMap).getOrElse(Map.empty),
+          "results" -> deploys
+        )
+      )
+      Ok(generate(response))
+    } catch {
+      case t:Throwable =>
+        val response = Map(
+          "response" -> Map(
+            "status" -> "error",
+            "message" -> t.getMessage,
+            "stacktrace" -> t.getStackTraceString.split("\n")
+          )
+        )
+        Ok(generate(response))
+    }
   }
 
 }

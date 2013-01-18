@@ -41,6 +41,7 @@ trait DataStore extends DocumentStore {
   def createApiKey(newKey: ApiKey) {}
   def getApiKeyList:Iterable[ApiKey] = Nil
   def getApiKey(key: String): Option[ApiKey] = None
+  def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
   def getApiKeyByApplication(application: String): Option[ApiKey] = None
   def deleteApiKey(key: String) {}
 

@@ -8,3 +8,4 @@ Riff-raff documentation
  - [Riff-Raff configuration](properties)
  - [R2 deployments](r2)
  - [External deploy requests](externalRequest)
+ - [API](api)
