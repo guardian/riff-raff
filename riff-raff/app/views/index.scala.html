@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent])
+@(request: controllers.AuthenticatedRequest[AnyContent], releaseNotes: String)
 @import conf.Configuration._
 
 @main("Welcome", request) {
@@ -11,5 +11,7 @@
     }
 
     Documentation is <a href='@routes.Application.documentation(resource="")'>here</a>.
-    
+
+    @docs.MarkDown.toHtml(releaseNotes)
+
 }

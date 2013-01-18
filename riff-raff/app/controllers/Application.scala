@@ -55,8 +55,9 @@ object Menu {
 object Application extends Controller with Logging {
 
   def index = NonAuthAction { implicit request =>
-    request.identity.isDefined
-    Ok(views.html.index(request))
+    val url = getClass.getResource("/docs/releases.md")
+    val markDown = Source.fromURL(url).mkString
+    Ok(views.html.index(request, markDown))
   }
 
   def deployInfoData = AuthAction { request =>
