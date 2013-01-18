@@ -1,0 +1,43 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], keyList: Iterable[controllers.ApiKey])
+
+@main("API keys", request) {
+    <h2>API keys</h2>
+    <hr/>
+    <p><a class="btn btn-inverse" href="@routes.Api.createKeyForm()"><i class="icon-plus icon-white"></i> Create new API key</a></p>
+    <div class="content">
+    @if(keyList.isEmpty) {
+        <div class="alert alert-warning"><strong>No API keys.</strong></div>
+    } else {
+        <table class="table table-condensed table-striped">
+            <thead>
+                <tr>
+                    <th>Date created</th>
+                    <th>Created by</th>
+                    <th>Application</th>
+                    <th>Key</th>
+                    <th>Last used</th>
+                    <th>Times used</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @keyList.map { key =>
+                <tr>
+                    <td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(key.created)</td>
+                    <td><span class="label">@key.issuedBy</span></td>
+                    <td>@key.application</td>
+                    <td>@key.key</td>
+                    <td>@key.lastUsed.map(org.joda.time.format.DateTimeFormat.shortDateTime.print).getOrElse("never")</td>
+                    <td>@key.totalCalls</td>
+                    <td>
+                    @helper.form(routes.Api.delete(), 'class -> "modal-form") {
+                        <button class="btn btn-mini btn-danger" name="key" value="@key.key"><i class="icon-trash icon-white"></i> Delete</button>
+                    }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+    </div>
+}

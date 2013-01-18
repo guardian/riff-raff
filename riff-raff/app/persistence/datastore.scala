@@ -4,7 +4,7 @@ import conf.RequestMetrics.DatastoreRequest
 import notification.{HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
-import controllers.{AuthorisationRecord, Logging}
+import controllers.{ApiKey, AuthorisationRecord, Logging}
 import magenta.Build
 
 trait DataStore extends DocumentStore {
@@ -37,6 +37,13 @@ trait DataStore extends DocumentStore {
   def getAuthorisationList:List[AuthorisationRecord] = Nil
   def setAuthorisation(auth: AuthorisationRecord) {}
   def deleteAuthorisation(email: String) {}
+
+  def createApiKey(newKey: ApiKey) {}
+  def getApiKeyList:Iterable[ApiKey] = Nil
+  def getApiKey(key: String): Option[ApiKey] = None
+  def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
+  def getApiKeyByApplication(application: String): Option[ApiKey] = None
+  def deleteApiKey(key: String) {}
 
   def writeDeployJson(id: Build, json: String) {}
   def getDeployJson(id: Build): Option[String] = None
