@@ -18,7 +18,11 @@ import play.api.data.Forms._
 import openid._
 import deployment.DeployFilter
 
-case class Identity(openid: String, email: String, firstName: String, lastName: String) {
+trait Identity {
+  def fullName: String
+}
+
+case class UserIdentity(openid: String, email: String, firstName: String, lastName: String) extends Identity {
   implicit val formats = Serialization.formats(NoTypeHints)
   def writeJson = write(this)
 
@@ -26,13 +30,17 @@ case class Identity(openid: String, email: String, firstName: String, lastName: 
   lazy val emailDomain = email.split("@").last
 }
 
-object Identity {
+object UserIdentity {
   val KEY = "identity"
   implicit val formats = Serialization.formats(NoTypeHints)
-  def readJson(json: String) = read[Identity](json)
-  def apply(request: Request[Any]): Option[Identity] = {
-    request.session.get(KEY).map(credentials => Identity.readJson(credentials))
+  def readJson(json: String) = read[UserIdentity](json)
+  def apply(request: Request[Any]): Option[UserIdentity] = {
+    request.session.get(KEY).map(credentials => UserIdentity.readJson(credentials))
   }
+}
+
+case class ApiIdentity(apiKey: ApiKey) extends Identity {
+  lazy val fullName = apiKey.application
 }
 
 case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) extends MongoSerialisable {
@@ -46,8 +54,8 @@ trait AuthorisationValidator {
   def emailDomainWhitelist: List[String]
   def emailWhitelistEnabled: Boolean
   def emailWhitelistContains(email:String): Boolean
-  def isAuthorised(id: Identity) = authorisationError(id).isEmpty
-  def authorisationError(id: Identity): Option[String] = {
+  def isAuthorised(id: UserIdentity) = authorisationError(id).isEmpty
+  def authorisationError(id: UserIdentity): Option[String] = {
     if (!emailDomainWhitelist.isEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
       Some("The e-mail address domain you used to login to Riff-Raff (%s) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator." format id.email)
     } else if (emailWhitelistEnabled && !emailWhitelistContains(id.email)) {
@@ -60,7 +68,7 @@ trait AuthorisationValidator {
 
 object AuthenticatedRequest {
   def apply[A](request: Request[A]) = {
-    new AuthenticatedRequest(Identity(request), request)
+    new AuthenticatedRequest(UserIdentity(request), request)
   }
 }
 
@@ -89,7 +97,7 @@ object AuthAction {
 
   def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result) = {
     Action(p) { implicit request =>
-      Identity(request).map { identity =>
+      UserIdentity(request).map { identity =>
         f(new AuthenticatedRequest(Some(identity), request))
       }.getOrElse(Redirect(routes.Login.loginAction).withSession {
         request.session + ("loginFromUrl", request.uri)
@@ -105,6 +113,33 @@ object AuthAction {
     this.apply(_ => block)
   }
 
+}
+
+object ApiAuthAction {
+
+  def apply[A](counter: Option[String], p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A]  = {
+    Action(p) { implicit request =>
+      val inputKey = request.queryString.get("key").flatMap(_.headOption)
+      val validatedIdentity = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter)).map(ApiIdentity)
+      assert(!(inputKey.isDefined ^ validatedIdentity.isDefined), "The ApiKey provided is not valid, please check and try again")
+      validatedIdentity.orElse(UserIdentity(request)).map { identity =>
+        f(new AuthenticatedRequest(Some(identity), request))
+      }.getOrElse(Redirect(routes.Login.loginAction).withSession {
+        request.session + ("loginFromUrl", request.uri)
+      })
+    }
+  }
+
+  def apply[A](counter: String, p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A]  =
+    this.apply(Some(counter), p)(f)
+  def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A] =
+    this.apply(None, p)(f)
+  def apply(counter: Option[String])(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+    this.apply(counter, parse.anyContent)(f)
+  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+    this.apply(Some(counter))(f)
+  def apply(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+    this.apply(None)(f)
 }
 
 object Login extends Controller with Logging {
@@ -147,7 +182,7 @@ object Login extends Controller with Logging {
     AsyncResult(
       OpenID.verifiedId.extend(_.value match {
         case Redeemed(info) => {
-          val credentials = Identity(
+          val credentials = UserIdentity(
             info.id,
             info.attributes.get("email").get,
             info.attributes.get("firstname").get,
@@ -155,13 +190,13 @@ object Login extends Controller with Logging {
           )
           if (validator.isAuthorised(credentials)) {
             Redirect(session.get("loginFromUrl").getOrElse("/")).withSession {
-              session + (Identity.KEY -> credentials.writeJson) - "loginFromUrl"
+              session + (UserIdentity.KEY -> credentials.writeJson) - "loginFromUrl"
             }
           } else {
             FailedLoginCounter.recordCount(1)
             Redirect(routes.Login.login).flashing(
               ("error" -> (validator.authorisationError(credentials).get))
-            ).withSession(session - Identity.KEY)
+            ).withSession(session - UserIdentity.KEY)
           }
         }
         case Thrown(t) => {
@@ -183,7 +218,7 @@ object Login extends Controller with Logging {
     Redirect("/").withNewSession
   }
 
-  def profile = AuthAction { request =>
+  def profile = ApiAuthAction("profile") { request =>
     val records = DeployController.getDeploys(request.identity.map(i => DeployFilter(deployer=Some(i.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
