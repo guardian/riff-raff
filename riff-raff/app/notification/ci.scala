@@ -16,13 +16,15 @@ import java.util.UUID
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
   val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
+  val pinStages = conf.Configuration.teamcity.pinStages
 
   val sink = if (!pinningEnabled) None else Some(new MessageSink {
     def message(message: MessageWrapper) {
       if (DeployController.get(message.context.deployId).taskType == TaskType.Deploy)
         message.stack.top match {
           case FinishContext(Deploy(parameters)) =>
-            pinBuild(message.context.deployId, parameters.build)
+            if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
+              pinBuild(message.context.deployId, parameters.build)
           case _ =>
         }
     }
