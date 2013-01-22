@@ -103,6 +103,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object teamcity {
     lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
+    lazy val useAuth = user.isDefined && password.isDefined
+    lazy val user = configuration.getStringProperty("teamcity.user")
+    lazy val password = configuration.getStringProperty("teamcity.password")
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
