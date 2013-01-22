@@ -1,5 +1,10 @@
 ### Release notes
 
+#### 22nd Jan 2013
+
+Riff-Raff can now pin builds in TeamCity automatically once the build has completed.  New properties under `teamcity`
+are used to configure this.
+
 #### 18th Jan 2013
 
 Added API endpoints to Riff-Raff, initially for searching the history but the groundwork has now been laid to
