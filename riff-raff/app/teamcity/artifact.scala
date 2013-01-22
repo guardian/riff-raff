@@ -60,7 +60,6 @@ object TeamCity extends Logging {
   def subscribe(sink: BuildWatcher) { listeners += sink }
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
-  lazy val tcURL = Configuration.teamcity.serverURL
   object api {
     val projectList = TeamCityWS.url("/app/rest/projects")
     def project(project: String) = TeamCityWS.url("/app/rest/projects/id:%s" format project)
