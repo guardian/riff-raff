@@ -1,8 +1,7 @@
 package teamcity
 
-import java.net.URL
 import conf.Configuration
-import xml.{Node, Elem, XML}
+import xml.{NodeSeq, Node, Elem}
 import utils.ScheduledAgent
 import akka.util.duration._
 import org.joda.time.DateTime
@@ -11,12 +10,22 @@ import controllers.Logging
 import scala.Predef._
 import collection.mutable
 import magenta.DeployParameters
+import play.api.libs.concurrent.Promise
 
 object `package` {
   type BuildTypeMap = Map[BuildType,List[Build]]
 
   implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: BuildTypeMap) = new {
     def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
+  }
+
+  implicit def promiseIterable2FlattenMap[A](promiseIterable: Promise[Iterable[A]]) = new {
+    def flatPromiseMap[B](p: A => Promise[Iterable[B]]):Promise[Iterable[B]] = {
+      promiseIterable.flatMap { iterable =>
+        val newPromises:Iterable[Promise[Iterable[B]]] = iterable.map(p)
+        Promise.sequence(newPromises).map(_.flatten)
+      }
+    }
   }
 }
 
@@ -51,26 +60,30 @@ object TeamCity extends Logging {
   def subscribe(sink: BuildWatcher) { listeners += sink }
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
-  lazy val tcURL = Configuration.teamcity.serverURL
   object api {
-    val projectList = "/guestAuth/app/rest/projects"
-    def buildList(buildTypeId: String) = "/guestAuth/app/rest/builds/?locator=buildType:%s,branch:branched:any" format buildTypeId
-    def buildSince(buildId:Int) = "/guestAuth/app/rest/builds/?locator=sinceBuild:%d,branch:branched:any" format buildId
+    val projectList = TeamCityWS.url("/app/rest/projects")
+    def project(project: String) = TeamCityWS.url("/app/rest/projects/id:%s" format project)
+    def buildList(buildTypeId: String) = TeamCityWS.url("/app/rest/builds/?locator=buildType:%s,branch:branched:any" format buildTypeId)
+    def buildSince(buildId:Int) = TeamCityWS.url("/app/rest/builds/?locator=sinceBuild:%d,branch:branched:any" format buildId)
   }
 
   private val buildAgent = ScheduledAgent[BuildTypeMap](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ currentBuildMap =>
-    if (currentBuildMap.isEmpty || !getBuildsSince(currentBuildMap.latestBuildId()).isEmpty) {
+    if (currentBuildMap.isEmpty || !getBuildsSince(currentBuildMap.latestBuildId()).await.get.isEmpty) {
       val buildTypes = getRetrieveBuildTypes
-      val result = getSuccessfulBuildMap(buildTypes)
-      log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).reduce(_+_)))
-      listeners.foreach{ listener =>
-        try listener.change(currentBuildMap,result)
-        catch {
-          case e:Exception => log.error("Listener threw an exception", e)
+      buildTypes.flatMap { fulfilledBuildTypes =>
+        log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
+        getSuccessfulBuildMap(fulfilledBuildTypes).map { result =>
+          log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).fold(0)(_+_)))
+          listeners.foreach{ listener =>
+            try listener.change(currentBuildMap,result)
+            catch {
+              case e:Exception => log.error("Listener threw an exception", e)
+            }
+          }
+          result
         }
       }
-      result
-    } else currentBuildMap
+    }.await((1 minute).toMillis).get else currentBuildMap
   }
 
   def buildMap = buildAgent()
@@ -90,42 +103,47 @@ object TeamCity extends Logging {
     }
   }
 
-  private def getRetrieveBuildTypes: List[BuildType] = {
-    val url: URL = new URL(tcURL, api.projectList)
-    log.info("Querying TC for build types: %s" format url)
-    val projectElements = XML.load(url)
-    (projectElements \ "project").toList.flatMap { project =>
-      val btUrl: URL = new URL(tcURL, (project \ "@href").text)
-      log.debug("Getting: %s" format btUrl)
-      val buildTypeElements = XML.load(btUrl)
-      (buildTypeElements \ "buildTypes" \ "buildType").map { buildType =>
+  private def getRetrieveBuildTypes: Promise[List[BuildType]] = {
+    val ws = api.projectList
+    log.debug("Querying TC for build types: %s" format ws.url)
+    val projectElement:Promise[NodeSeq] = ws.get().map(_.xml).map(_ \ "project")
+    val buildTypes = projectElement.flatPromiseMap(node => getProjectBuildTypes((node \ "@id").text))
+    buildTypes.map(_.toList)
+  }
+
+  private def getProjectBuildTypes(project: String): Promise[List[BuildType]] = {
+    val btWs = api.project(project)
+    log.debug("Getting: %s" format btWs.url)
+    btWs.get().map(_.xml).map{ buildTypeElements =>
+      val buildTypes = (buildTypeElements \ "buildTypes" \ "buildType").map { buildType =>
         log.debug("found %s" format (buildType \ "@id"))
         BuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
       }
+      buildTypes.toList
     }
   }
 
-  private def getSuccessfulBuildMap(buildTypes: List[BuildType]): BuildTypeMap = {
+  private def getSuccessfulBuildMap(buildTypes: List[BuildType]): Promise[BuildTypeMap] = {
     log.info("Querying TC for all successful builds")
-    buildTypes.map(buildType => buildType -> getSuccessfulBuilds(buildType)).toMap
+    Promise.sequence(buildTypes.map(getSuccessfulBuilds)).map(_.toMap)
   }
 
-  private def getSuccessfulBuilds(buildType: BuildType): List[Build] = {
-    val url = new URL(tcURL, api.buildList(buildType.id))
-    log.debug("Getting %s" format url.toString)
-    val buildElements = XML.load(url)
-    Build(buildElements)
+  private def getSuccessfulBuilds(buildType: BuildType): Promise[(BuildType,List[Build])] = {
+    val ws = api.buildList(buildType.id)
+    log.debug("Getting %s" format ws.url)
+    ws.get().map(_.xml).map { buildType -> Build(_) }
   }
 
-  private def getBuildsSince(buildId:Int): List[Build] = {
+  private def getBuildsSince(buildId:Int): Promise[List[Build]] = {
     log.info("Querying TC for all builds since %d" format buildId)
-    val url = new URL(tcURL, api.buildSince(buildId))
-    log.debug("Getting %s" format url.toString)
-    val buildElements = XML.load(url)
-    val builds = Build(buildElements)
-    log.info("Found %d builds since %d" format (builds.size, buildId))
-    log.info("Discovered builds: \n%s" format builds.mkString("\n"))
-    builds
+    val ws = api.buildSince(buildId)
+    log.debug("Getting %s" format ws.url)
+    ws.get().map(_.xml).map { buildElements =>
+      val builds = Build(buildElements)
+      log.info("Found %d builds since %d" format (builds.size, buildId))
+      log.info("Discovered builds: \n%s" format builds.mkString("\n"))
+      builds
+    }
   }
 }
 
