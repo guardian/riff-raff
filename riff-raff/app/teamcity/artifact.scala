@@ -1,8 +1,7 @@
 package teamcity
 
-import java.net.URL
 import conf.Configuration
-import xml.{Node, Elem, XML}
+import xml.{NodeSeq, Node, Elem}
 import utils.ScheduledAgent
 import akka.util.duration._
 import org.joda.time.DateTime
@@ -18,6 +17,15 @@ object `package` {
 
   implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: BuildTypeMap) = new {
     def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
+  }
+
+  implicit def promiseIterable2FlattenMap[A](promiseIterable: Promise[Iterable[A]]) = new {
+    def flatPromiseMap[B](p: A => Promise[Iterable[B]]):Promise[Iterable[B]] = {
+      promiseIterable.flatMap { iterable =>
+        val newPromises:Iterable[Promise[Iterable[B]]] = iterable.map(p)
+        Promise.sequence(newPromises).map(_.flatten)
+      }
+    }
   }
 }
 
@@ -55,6 +63,7 @@ object TeamCity extends Logging {
   lazy val tcURL = Configuration.teamcity.serverURL
   object api {
     val projectList = TeamCityWS.url("/app/rest/projects")
+    def project(project: String) = TeamCityWS.url("/app/rest/projects/id:%s" format project)
     def buildList(buildTypeId: String) = TeamCityWS.url("/app/rest/builds/?locator=buildType:%s,branch:branched:any" format buildTypeId)
     def buildSince(buildId:Int) = TeamCityWS.url("/app/rest/builds/?locator=sinceBuild:%d,branch:branched:any" format buildId)
   }
@@ -62,9 +71,10 @@ object TeamCity extends Logging {
   private val buildAgent = ScheduledAgent[BuildTypeMap](0 seconds, 1 minute, Map.empty[BuildType,List[Build]]){ currentBuildMap =>
     if (currentBuildMap.isEmpty || !getBuildsSince(currentBuildMap.latestBuildId()).await.get.isEmpty) {
       val buildTypes = getRetrieveBuildTypes
-      buildTypes.map { fulfilledBuildTypes =>
+      buildTypes.flatMap { fulfilledBuildTypes =>
+        log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
         getSuccessfulBuildMap(fulfilledBuildTypes).map { result =>
-          log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).reduce(_+_)))
+          log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(result.size, result.values.map(_.size).fold(0)(_+_)))
           listeners.foreach{ listener =>
             try listener.change(currentBuildMap,result)
             catch {
@@ -74,7 +84,7 @@ object TeamCity extends Logging {
           result
         }
       }
-    }.await((1 minute).toMillis).get.await((1 minute).toMillis).get else currentBuildMap
+    }.await((1 minute).toMillis).get else currentBuildMap
   }
 
   def buildMap = buildAgent()
@@ -96,17 +106,21 @@ object TeamCity extends Logging {
 
   private def getRetrieveBuildTypes: Promise[List[BuildType]] = {
     val ws = api.projectList
-    log.info("Querying TC for build types: %s" format ws.url)
-    ws.get().map(_.xml).map { projectElements =>
-      (projectElements \ "project").toList.flatMap { project =>
-        val btUrl: URL = new URL(tcURL, (project \ "@href").text)
-        log.debug("Getting: %s" format btUrl)
-        val buildTypeElements = XML.load(btUrl)
-        (buildTypeElements \ "buildTypes" \ "buildType").map { buildType =>
-          log.debug("found %s" format (buildType \ "@id"))
-          BuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
-        }
+    log.debug("Querying TC for build types: %s" format ws.url)
+    val projectElement:Promise[NodeSeq] = ws.get().map(_.xml).map(_ \ "project")
+    val buildTypes = projectElement.flatPromiseMap(node => getProjectBuildTypes((node \ "@id").text))
+    buildTypes.map(_.toList)
+  }
+
+  private def getProjectBuildTypes(project: String): Promise[List[BuildType]] = {
+    val btWs = api.project(project)
+    log.debug("Getting: %s" format btWs.url)
+    btWs.get().map(_.xml).map{ buildTypeElements =>
+      val buildTypes = (buildTypeElements \ "buildTypes" \ "buildType").map { buildType =>
+        log.debug("found %s" format (buildType \ "@id"))
+        BuildType(buildType \ "@id" text, "%s::%s" format(buildType \ "@projectName" text, buildType \ "@name" text))
       }
+      buildTypes.toList
     }
   }
 

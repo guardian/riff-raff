@@ -3,7 +3,7 @@ import com.gu.management.play.{StatusCounters, RequestTimer}
 import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
-import notification.{HooksClient, MessageQueue, IrcClient}
+import notification.{TeamCityBuildPinner, HooksClient, MessageQueue, IrcClient}
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
@@ -34,7 +34,8 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
       ScheduledAgent,
       ContinuousDeployment,
       DeployMetrics,
-      HooksClient
+      HooksClient,
+      TeamCityBuildPinner
     )
 
     log.info("Calling init() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
