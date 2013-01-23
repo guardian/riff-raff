@@ -101,9 +101,8 @@ object Testing extends Controller with Logging {
 
 
   def uuidList = AuthAction { implicit request =>
-    val v2Set = Persistence.store.getDeployV2UUIDs().toSet
-    val allDeploys = v2Set.toSeq.sortBy(_.time.getMillis).reverse
-    Ok(views.html.test.uuidList(request, allDeploys, v2Set))
+    val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.getMillis).reverse
+    Ok(views.html.test.uuidList(request, allDeploys))
   }
 
   def debugLogViewer(uuid: String) = AuthAction { implicit request =>
@@ -131,9 +130,20 @@ object Testing extends Controller with Logging {
             Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           }
+          case "addStringUUID" => {
+            log.info("Adding string UUID for %s" format form.uuid)
+            Persistence.store.addStringUUID(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
         }
       }
     )
+  }
+
+  def transferAllUUIDs = AuthAction { implicit request =>
+    val allDeploys = Persistence.store.getDeployV2UUIDsWithoutStringUUIDs
+    allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
+    Redirect(routes.Testing.uuidList())
   }
 
 }

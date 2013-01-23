@@ -37,7 +37,7 @@ trait RecordConverter {
   def startTime:DateTime
   def params: ParametersDocument
   def status:RunState.Value
-  lazy val deployDocument = DeployRecordDocument(uuid, startTime, params, status)
+  lazy val deployDocument = DeployRecordDocument(uuid, Some(uuid.toString), startTime, params, status)
   def logDocuments:Seq[LogDocument]
 }
 
@@ -130,6 +130,9 @@ trait DocumentStore {
   def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
   def countDeploysV2(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLogV2(uuid: UUID) {}
+  def getLastCompletedDeploy(projectName: String):Map[String,UUID] = Map.empty
+  def addStringUUID(uuid: UUID) {}
+  def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
 }
 
 object DocumentStoreConverter extends Logging {

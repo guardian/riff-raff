@@ -71,6 +71,7 @@ POST    /testing/formPost  controllers.Testing.formPost
 GET     /testing/uuidList   controllers.Testing.uuidList
 POST    /testing/actionUUID   controllers.Testing.actionUUID
 GET     /testing/debugLogViewer/:uuid controllers.Testing.debugLogViewer(uuid)
+GET     /testing/addStringUUID  controllers.Testing.transferAllUUIDs
 GET     /teamcity       controllers.Deployment.teamcity
 
 # Javascript routing

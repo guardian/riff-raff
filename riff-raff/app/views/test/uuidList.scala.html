@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deploys:Seq[controllers.SimpleDeployDetail], v2: Set[SimpleDeployDetail])
+@(request: controllers.AuthenticatedRequest[AnyContent], deploys:Seq[controllers.SimpleDeployDetail])
 @import helper.twitterBootstrap._
 
 @main("UUID list", request) {
@@ -24,17 +24,16 @@
               <td>@deploy.time</td>
               <td>@deploy.uuid</td>
               <td>
-                @if(v2.contains(deploy)) {
-                    <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V2 Log</a>
-                    <a href="@routes.Testing.debugLogViewer(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View V2 Debug Log</a>
-                }
+                    <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View Log</a>
+                    <a href="@routes.Testing.debugLogViewer(deploy.uuid.toString)" class="btn btn-mini"><i class="icon-search"></i> View Debug Log</a>
               </td>
               <td>V2</td>
               <td>
                 <span>
                 @helper.form(action=routes.Testing.actionUUID(), 'class -> "modal-form") {
                     <input type="hidden" name="uuid" value="@deploy.uuid"/>
-                    @if(v2.contains(deploy)) { <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-mini"><i class="icon-trash icon-white"></i> V2</button> }
+                    <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-mini"><i class="icon-trash icon-white"></i> V2</button>
+                    <button name="action" type="submit" value="addStringUUID" class="btn btn-danger btn-mini"><i class="icon-wrench icon-white"></i> Add String UUID</button>
                 }
                 </span>
               </td>
