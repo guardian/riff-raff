@@ -1,5 +1,9 @@
 ### Release notes
 
+#### 23rd Jan 2013
+
+Add [dashboard](docs/riffraff/dashboards) functionality for quickly seeing the last build deployed in different environments.
+
 #### 22nd Jan 2013
 
 Riff-Raff can now pin builds in TeamCity automatically once the build has completed.  New properties under `teamcity`
