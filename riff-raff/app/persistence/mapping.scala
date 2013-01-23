@@ -188,4 +188,7 @@ object DocumentStoreConverter extends Logging {
   }
 
   def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploysV2(filter)
+
+  def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployV2Record] =
+    documentStore.getLastCompletedDeploy(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
 }

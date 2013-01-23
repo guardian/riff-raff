@@ -33,6 +33,9 @@ GET     /deployment/request/autoComplete/build/:project   controllers.Deployment
 GET     /deployment/preview         controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
 GET     /deployment/preview/content  controllers.Deployment.previewContent(project:String,build:String,stage:String,recipe:String,hosts:String)
 
+GET     /deployment/dashboard       controllers.Deployment.dashboard(projects:String)
+
+# Continuous deployment
 GET     /deployment/continuous-deployment      controllers.Deployment.continuousDeployment
 POST    /deployment/continuous-deployment/update      controllers.Deployment.continuousState
 POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.continuousStateGlobal
