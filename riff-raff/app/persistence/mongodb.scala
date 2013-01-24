@@ -261,6 +261,12 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def summariseDeploy(uuid: UUID) {
+    logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
+      deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
+    }
+  }
+
   override def writeDeployJson(id: Build, json: String) {
     logAndSquashExceptions(None,()) {
       val key = MongoDBObject("projectName" -> id.projectName, "buildId" -> id.id)

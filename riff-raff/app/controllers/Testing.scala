@@ -126,6 +126,11 @@ object Testing extends Controller with Logging {
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         form.action match {
+          case "summarise" => {
+            log.info("Summarising deploy with UUID %s" format form.uuid)
+            Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
           case "deleteV2" => {
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
             Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))

@@ -130,6 +130,7 @@ trait DocumentStore {
   def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
   def countDeploysV2(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLogV2(uuid: UUID) {}
+  def summariseDeploy(uuid: UUID) {}
 }
 
 object DocumentStoreConverter extends Logging {
