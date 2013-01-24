@@ -10,7 +10,10 @@ $ ->
       minLength:0
 
   $('#projectInput').blur (e) ->
-    selectedProject = encodeURIComponent($(e.target).val())
+    selectedProject = $(e.target).val()
+    $('#deploy-info').load(
+      jsRoutes.controllers.Deployment.projectHistory(selectedProject).url
+    )
 
   $('#buildInput').each ->
     input = $(this)
@@ -18,7 +21,7 @@ $ ->
     input.autocomplete
       source: (request,response) ->
         $.getJSON(
-          serverUrl+'/'+selectedProject,
+          serverUrl+'/'+encodeURIComponent(selectedProject),
           term: request.term.split( /,\s*/).pop(),
           response
         )

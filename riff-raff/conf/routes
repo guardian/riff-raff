@@ -29,6 +29,7 @@ GET     /deployment/updates/:uuid   controllers.Deployment.updatesUUID(uuid:Stri
 
 GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)
 GET     /deployment/request/autoComplete/build/:project   controllers.Deployment.autoCompleteBuild(project:String,term:String)
+GET     /deployment/request/history/:project   controllers.Deployment.projectHistory(project:String)
 
 GET     /deployment/preview         controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
 GET     /deployment/preview/content  controllers.Deployment.previewContent(project:String,build:String,stage:String,recipe:String,hosts:String)

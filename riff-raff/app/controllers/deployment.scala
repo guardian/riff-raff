@@ -272,6 +272,11 @@ object Deployment extends Controller with Logging {
     Ok(Json.toJson(possibleProjects))
   }
 
+  def projectHistory(project: String) = AuthAction {
+    val buildMap = DeployController.getLastCompletedDeploys(project)
+    Ok(views.html.deploy.dashboardContent(List(project -> buildMap)))
+  }
+
   def teamcity = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =

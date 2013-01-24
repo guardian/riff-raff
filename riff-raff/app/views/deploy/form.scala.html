@@ -11,7 +11,7 @@ Riff-raff is now capable of deploying any magenta deployable - if you have any p
 
 <h3>Provide deploy details</h3>
 
-<div>
+<div class="span6">
 @helper.form(routes.Deployment.processForm, 'id -> "modalConfirm") {
 @helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "buildForm")
 @helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "buildForm")
@@ -32,4 +32,8 @@ helper.options(deployment.DeployInfoManager.stageList.reverse),
 
 }
 </div>
+
+<div class="span6" id="deploy-info"></div>
+
+<div class="clearfix"></div>
 }
