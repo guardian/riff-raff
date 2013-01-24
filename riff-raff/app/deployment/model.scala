@@ -7,7 +7,7 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
-import org.joda.time.{DateTime, Duration}
+import org.joda.time.{Period, Interval, DateTime, Duration}
 
 object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
@@ -58,6 +58,8 @@ trait Record {
   def withDownload[T](block: File => T): T = {
     parameters.build.withDownload(block)
   }
+
+  lazy val hoursAgo: Int = new Period(time, new DateTime()).toStandardHours.getHours
 }
 
 object DeployV2Record {

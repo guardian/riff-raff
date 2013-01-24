@@ -18,7 +18,10 @@
             @defining(stageRecordMap.get(stage)) { record =>
                 <td>
                 <div @record.map{ r => rel="tooltip" title="@org.joda.time.format.DateTimeFormat.shortDateTime.print(r.time) (recipe @r.parameters.recipe.name by @r.parameters.deployer.name)" data-placement="left"}>
-                    @record.map(_.buildId).getOrElse("")
+                    @record.map{ r =>
+                        @r.buildId
+                        @if(r.hoursAgo <=24) { <span class="label label-info">Recent</span> }
+                        }.getOrElse("")
                 </div>
                 </td>
                         }
