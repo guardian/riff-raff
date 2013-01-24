@@ -1,7 +1,7 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
 @import helper.twitterBootstrap._
 
-@main("Deploy request", request, List("preview-transition")) {
+@main("Deploy request", request, List("preview-transition", "form-autocomplete")) {
 
 <h2>Deploy request</h2>
 
@@ -46,42 +46,4 @@ helper.options(deployment.DeployInfoManager.stageList.reverse),
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
 }
-<script type="text/javascript">
-    var selectedProject = ''
-    $('#projectInput').each( function() {
-        var $input = $(this);
-        var $project = ''
-        var serverUrl = $input.data('url');
-        $input.autocomplete({
-            source:serverUrl,
-            minLength:0
-        });
-    });
-    $('#projectInput').blur( function(e) {
-        selectedProject = encodeURIComponent($(e.target).val())
-    })
-
-    var menuOpen = false
-    $('#buildInput').each( function() {
-        var $input = $(this);
-        var serverUrl = $input.data('url');
-        $input.autocomplete({
-            source: function( request, response ) {
-                $.getJSON( serverUrl+'/'+selectedProject, {
-                    term: request.term.split( /,\s*/).pop()
-                }, response )
-            },
-            open: function( event, ui ) { menuOpen = true },
-            close: function ( event, ui ) { menuOpen = false },
-            minLength:0
-        });
-    });
-
-    $('#buildInput').focus( function(e) {
-        if (!menuOpen) {
-            $(e.target).autocomplete("search");
-        }
-    });
-</script>
-
 }
