@@ -383,10 +383,14 @@ object Deployment extends Controller with Logging {
   }
 
   def dashboard(projects: String) = AuthAction { implicit request =>
+    Ok(views.html.deploy.dashboard(request, projects))
+  }
+
+  def dashboardContent(projects: String) = AuthAction { implicit request =>
     val deploys = projects.split(",").toList.filterNot(""==).map{ project =>
       project -> DeployController.getLastCompletedDeploys(project)
     }
-    Ok(views.html.deploy.dashboard(request, deploys))
+    Ok(views.html.deploy.dashboardContent(deploys))
   }
 
 }
