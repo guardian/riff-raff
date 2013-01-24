@@ -28,7 +28,7 @@ trait Record {
   lazy val stage = parameters.stage
   lazy val recipe = parameters.recipe
   lazy val isRunning = report.isRunning
-  lazy val isDone = !isRunning && report.size > 1
+  lazy val isDone = (!isRunning && report.size > 1) || isSummarised
   lazy val state = {
     recordState.getOrElse(
       report.cascadeState match {

@@ -133,6 +133,7 @@ trait DocumentStore {
   def getLastCompletedDeploy(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
   def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
+  def summariseDeploy(uuid: UUID) {}
 }
 
 object DocumentStoreConverter extends Logging {
