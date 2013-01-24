@@ -20,8 +20,10 @@
                 <td>@project</td>
                 @stages.map{ stage =>
                     @defining(stageRecordMap.get(stage)) { record =>
-                <td @record.map{ r => rel="tooltip" title="@org.joda.time.format.DateTimeFormat.shortDateTime.print(r.time) (recipe @r.parameters.recipe.name by @r.parameters.deployer.name)" data-placement="left"}>
-                    @record.map(_.buildId).getOrElse("")
+                <td>
+                    <div @record.map{ r => rel="tooltip" title="@org.joda.time.format.DateTimeFormat.shortDateTime.print(r.time) (recipe @r.parameters.recipe.name by @r.parameters.deployer.name)" data-placement="left"}>
+                        @record.map(_.buildId).getOrElse("")
+                    </div>
                 </td>
                     }
                 }
