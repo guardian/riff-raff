@@ -16,7 +16,7 @@ Riff-raff is now capable of deploying any magenta deployable - if you have any p
 @helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "buildForm")
 @helper.select(
 deployForm("stage"),
-helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
+helper.options(deployment.DeployInfoManager.stageList.reverse),
 '_default -> "--- Choose a stage ---",
 '_label -> "stage",
 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),

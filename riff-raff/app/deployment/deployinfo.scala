@@ -61,6 +61,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
 
   def deployInfo = agent.map(_()).getOrElse(DeployInfo(Nil, Map.empty))
 
+  def stageList = deployInfo.knownHostStages.sorted(conf.Configuration.stages.ordering)
   def hostList = deployInfo.hosts
   def dataList = deployInfo.data
 

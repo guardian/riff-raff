@@ -19,7 +19,7 @@
 @if(hookForm("criteria.stage").value.get.isEmpty) {
 @helper.select(
 hookForm("criteria.stage"),
-options = helper.options(deployment.DeployInfoManager.deployInfo.knownHostStages),
+options = helper.options(deployment.DeployInfoManager.stageList.reverse),
 '_default -> "--- Choose a stage ---",
 '_label -> "Stage",
 '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
