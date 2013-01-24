@@ -17,7 +17,7 @@ import collection.mutable
 import persistence.{CollectionStats, Persistence}
 import deployment.{Domains, GuDomainsConfiguration}
 import akka.util.{Switch => AkkaSwitch}
-import utils.ScheduledAgent
+import utils.{UnnaturalOrdering, ScheduledAgent}
 import akka.util.duration._
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
@@ -108,6 +108,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val password = configuration.getStringProperty("teamcity.password")
     lazy val pinSuccessfulDeploys = configuration.getStringProperty("teamcity.pinSuccessfulDeploys", "false") == "true"
     lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
+  }
+
+  object stages {
+    lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
+    lazy val ordering = UnnaturalOrdering(order, false)
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
