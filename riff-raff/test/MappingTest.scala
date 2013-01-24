@@ -16,6 +16,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
     RecordConverter(testRecordV2).deployDocument should be(
       DeployRecordDocument(
         testUUID,
+        Some(testUUID.toString),
         testTime,
         ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
         RunState.Completed
@@ -70,6 +71,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
   "DocumentConverter" should "create a skeleton record from just a DeployRecordDocument" in {
     val deployRecordDocument = DeployRecordDocument(
       testUUID,
+      Some(testUUID.toString),
       testTime,
       ParametersDocument(
         "test",
@@ -93,6 +95,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
     val id = UUID.randomUUID()
     val deployRecordDocument = DeployRecordDocument(
       testUUID,
+      Some(testUUID.toString),
       testTime,
       ParametersDocument(
         "test",
