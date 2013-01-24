@@ -282,4 +282,68 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       }
     }
   }
+
+  override def getLastCompletedDeploy(projectName: String):Map[String,UUID] = {
+    val pipeBuilder = MongoDBList.newBuilder
+    pipeBuilder += MongoDBObject("$match" ->
+      MongoDBObject(
+        "parameters.projectName" -> projectName,
+        "parameters.deployType" -> "Deploy",
+        "status" -> "Completed"
+      )
+    )
+    pipeBuilder += MongoDBObject("$sort" -> MongoDBObject("startTime" -> 1))
+    pipeBuilder += MongoDBObject("$group" ->
+      MongoDBObject(
+        "_id" -> MongoDBObject("projectName" -> "$parameters.projectName", "stage" -> "$parameters.stage"),
+        "uuid" -> MongoDBObject("$last" -> "$stringUUID")
+      )
+    )
+    val pipeline = pipeBuilder.result()
+    log.info(pipeline.toString())
+    val result = database.command(MongoDBObject("aggregate" -> deployV2Collection.name, "pipeline" -> pipeline))
+    val ok = result.as[Double]("ok")
+    ok match {
+      case 1.0 =>
+        log.info(result.toString)
+        result.get("result") match {
+          case results: BasicDBList => results.map { result =>
+            result match {
+              case dbo:BasicDBObject =>
+                dbo.as[BasicDBObject]("_id").as[String]("stage") -> UUID.fromString(dbo.as[String]("uuid"))
+            }
+          }.toMap
+          case _ =>
+            throw new IllegalArgumentException("Mongo query did not return valid result")
+        }
+      case 0.0 =>
+        val errorMessage = result.as[String]("errmsg")
+        throw new IllegalArgumentException("Failed to execute mongo query: %s" format errorMessage)
+    }
+  }
+
+  override def addStringUUID(uuid: UUID) {
+    val setStringUUID = $set("stringUUID" -> uuid.toString)
+    logAndSquashExceptions(Some("Updating stringUUID for %s" format uuid),()) {
+      deployV2Collection.findAndModify(
+        query = MongoDBObject("_id" -> uuid),
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        update = setStringUUID,
+        returnNew = false,
+        upsert = false
+      )
+    }
+  }
+
+  override def getDeployV2UUIDsWithoutStringUUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val cursor = deployV2Collection.find(MongoDBObject("stringUUID" -> MongoDBObject("$exists" -> false)), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
+    cursor.toIterable.map { dbo =>
+      val uuid = dbo.getAs[UUID]("_id").get
+      val dateTime = dbo.getAs[DateTime]("startTime").get
+      SimpleDeployDetail(uuid, dateTime)
+    }
+  }
+
 }

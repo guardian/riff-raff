@@ -114,6 +114,10 @@ object DeployController extends Logging with LifecycleWithoutApp {
     getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList.sortWith{ _.time.getMillis < _.time.getMillis }
   }
 
+  def getLastCompletedDeploys(project: String): Map[String, Record] = {
+    DocumentStoreConverter.getLastCompletedDeploys(project)
+  }
+
   def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
 
   def markAsFailed(record: Record) {
@@ -376,6 +380,13 @@ object Deployment extends Controller with Logging {
         }
       }
     )
+  }
+
+  def dashboard(projects: String) = AuthAction { implicit request =>
+    val deploys = projects.split(",").toList.filterNot(""==).map{ project =>
+      project -> DeployController.getLastCompletedDeploys(project)
+    }
+    Ok(views.html.deploy.dashboard(request, deploys))
   }
 
 }
