@@ -59,7 +59,7 @@ trait Record {
     parameters.build.withDownload(block)
   }
 
-  lazy val hoursAgo: Int = new Period(time, new DateTime()).toStandardHours.getHours
+  lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 }
 
 object DeployV2Record {
