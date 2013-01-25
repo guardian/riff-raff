@@ -14,11 +14,11 @@ $ ->
     $('#deploy-info').load(
       jsRoutes.controllers.Deployment.projectHistory(selectedProject).url,
       ->
-        console.log("setting up buttons")
         $(".promoteDeploy").click (e) ->
           (e).preventDefault()
           $('#buildInput').val($(this).data("build-id"))
           $('#stage').val($(this).data("stage"))
+        $("[rel='tooltip']").tooltip()
     )
 
   $('#buildInput').each ->
