@@ -1,17 +1,14 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
-@import helper.twitterBootstrap._
+@import helper.twitterBootstrap2._
 
-@main("Deploy request", request, List("preview-transition")) {
+@main("Deploy request", request, List("form-autocomplete")) {
 
-<h2>Deploy request</h2>
+<div class="clearfix"><p>&nbsp;</p></div>
 
-<div class="alert alert-info">
-Riff-raff is now capable of deploying any magenta deployable - if you have any problems please talk to <a href="mailto:simon.hildrew@@guardian.co.uk">Simon Hildrew</a>
-</div>
-
-<h3>Provide deploy details</h3>
-
-@helper.form(routes.Deployment.processForm, 'id -> "modalConfirm") {
+<div class="span6">
+@helper.form(routes.Deployment.processForm, 'id -> "modalConfirm", 'class -> "well") {
+    <fieldset>
+        <legend>What would you like to deploy?</legend>
 @helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "buildForm")
 @helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "buildForm")
 @helper.select(
@@ -22,66 +19,17 @@ helper.options(deployment.DeployInfoManager.stageList.reverse),
 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
 'id -> "stage"
 )
-<a data-toggle="collapse" href="#advanced">+ More options</a>
-<div id="advanced" class="collapse">
-@helper.inputText(deployForm("recipe"))
-@helper.inputText(deployForm("manualStage"))
-</div>
-
 
 <div class="actions">
-    <div class="btn-group">
-        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
-        <button class="btn dropdown-toggle" data-toggle="dropdown">
-            <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <a id="new-preview-source" href="#">Crusty old preview...</a>
-            <button id="new-preview-target" class="hidden" name="action" type="submit" value="previewOld"/>
-            </li>
-        </ul>
-    </div>
+    <button name="action" type="submit" value="preview" class="btn">Preview...</button>
     <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
+    </fieldset>
 }
-<script type="text/javascript">
-    var selectedProject = ''
-    $('#projectInput').each( function() {
-        var $input = $(this);
-        var $project = ''
-        var serverUrl = $input.data('url');
-        $input.autocomplete({
-            source:serverUrl,
-            minLength:0
-        });
-    });
-    $('#projectInput').blur( function(e) {
-        selectedProject = encodeURIComponent($(e.target).val())
-    })
+</div>
 
-    var menuOpen = false
-    $('#buildInput').each( function() {
-        var $input = $(this);
-        var serverUrl = $input.data('url');
-        $input.autocomplete({
-            source: function( request, response ) {
-                $.getJSON( serverUrl+'/'+selectedProject, {
-                    term: request.term.split( /,\s*/).pop()
-                }, response )
-            },
-            open: function( event, ui ) { menuOpen = true },
-            close: function ( event, ui ) { menuOpen = false },
-            minLength:0
-        });
-    });
+<div class="span6" id="deploy-info"></div>
 
-    $('#buildInput').focus( function(e) {
-        if (!menuOpen) {
-            $(e.target).autocomplete("search");
-        }
-    });
-</script>
-
+<div class="clearfix"></div>
 }

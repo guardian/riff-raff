@@ -1,7 +1,7 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], parameters: magenta.DeployParameters)
 @import views.html.helper.magenta.ParameterHelper._
 
-@main("Preview", request, List("auto-refresh","checkbox-selection","preview-transition")) {
+@main("Preview", request, List("auto-refresh","checkbox-selection")) {
 
     <h3>Preview of recipes, hosts and tasks</h3>
 

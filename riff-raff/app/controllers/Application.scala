@@ -88,9 +88,11 @@ object Application extends Controller with Logging {
   def javascriptRoutes = NonAuthAction { implicit request =>
     import routes.javascript._
     Ok{
-      Routes.javascriptRouter("jsRoutes"){
-        Deployment.stop
-      }
+      Routes.javascriptRouter("jsRoutes")(
+        Deployment.stop,
+        Deployment.projectHistory,
+        Deployment.dashboardContent
+      )
     }.as("text/javascript")
   }
 

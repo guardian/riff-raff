@@ -1,0 +1,43 @@
+@(projectName: String, stageDeployMap:Map[String,deployment.Record])
+@if(stageDeployMap.size > 0) {
+@defining(stageDeployMap.keySet.toList.sorted(conf.Configuration.stages.ordering)) { stages =>
+    <h4>Last deploys of <em>@projectName</em></h4>
+    <div class="alert alert-info">
+        <p>The details below are the last builds deployed in the various stages for @{projectName} by Riff Raff.</p>
+        <p>This could be misleading due to different recipes or host lists having been selected (hover over a build
+            for more details).  Alternately a deploy might have been done outside of Riff Raff.</p>
+        <p>Having said that, it's pretty likely to be right.</p>
+    </div>
+    <table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Stage</th>
+            <th>Build</th>
+            <th>Deploy to...</th>
+        </tr>
+    </thead>
+    <tbody>
+        @stages.map{ stage =>
+            @defining(stageDeployMap(stage)) { record =>
+                <tr>
+
+                <td>@stage</td>
+                <td>
+                <div class="build" rel="tooltip" title="@{org.joda.time.format.DateTimeFormat.shortDateTime.print(record.time)} (recipe @{record.parameters.recipe.name} by @{record.parameters.deployer.name})" data-placement="left">
+                    @record.buildId
+                        @if(record.hoursAgo <=24) { <span class="label label-info">Recent</span> }
+                </div>
+                </td>
+
+                <td>
+                    @promoteButtons(record, stages.filterNot(stage==))
+                </td>
+                </tr>
+            }
+        }                </tbody>
+                </table>
+
+}
+} else {
+    <div class="alert">Riff Raff has not been used to deploy @projectName</div>
+}
