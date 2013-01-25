@@ -81,8 +81,6 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def preview(params: DeployParameters): UUID = deploy(params, TaskType.Preview)
-
   def deploy(requestedParams: DeployParameters, mode: TaskType.Value = TaskType.Deploy): UUID = {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
@@ -157,25 +155,14 @@ object Deployment extends Controller with Logging {
   )
 
   lazy val deployForm = Form[DeployParameterForm](
-    tuple(
+    mapping(
       "project" -> nonEmptyText,
       "build" -> nonEmptyText,
-      "stage" -> optional(text),
-      "manualStage" -> optional(text),
+      "stage" -> text,
       "recipe" -> optional(text),
       "action" -> nonEmptyText,
       "hosts" -> list(text)
-    ).verifying("no.stage.specified", _ match {
-      case(_,_, stage, manualStage, _, _,_) => !stage.isEmpty || !manualStage.isEmpty}
-    ).transform[DeployParameterForm]({
-        case (project, build, Some(stage), _, recipe, action, hosts) =>
-          DeployParameterForm(project, build, stage, recipe, action, hosts)
-        case (project, build, None, Some(manualStage), recipe, action, hosts) =>
-          DeployParameterForm(project, build, manualStage, recipe, action, hosts)
-        case _ => throw new Error("Should have failed validation")
-      },
-      form => (form.project, form.build, Some(form.stage), None, None, form.action, form.hosts )
-    )
+    )(DeployParameterForm)(DeployParameterForm.unapply)
   )
 
   def deploy = AuthAction { implicit request =>
@@ -196,17 +183,6 @@ object Deployment extends Controller with Logging {
         form.action match {
           case "preview" =>
             Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
-          case "previewOld" =>
-            responsibleFor(parameters) match {
-              case Local() =>
-                val uuid = DeployController.preview(parameters)
-                Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case Remote(_, urlPrefix) =>
-                val call = routes.Deployment.deployConfirmation(generate(form))
-                Redirect(urlPrefix+call.url)
-              case Noop() =>
-                throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this preview")
-            }
           case "deploy" =>
             responsibleFor(parameters) match {
               case Local() =>
@@ -294,6 +270,11 @@ object Deployment extends Controller with Logging {
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
+  }
+
+  def projectHistory(project: String) = AuthAction {
+    val buildMap = DeployController.getLastCompletedDeploys(project)
+    Ok(views.html.deploy.projectHistory(project, buildMap))
   }
 
   def teamcity = AuthAction {

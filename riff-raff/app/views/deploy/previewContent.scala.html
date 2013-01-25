@@ -83,21 +83,6 @@
     </div>
     }
 
-    <!--<h4>Deploy to host</h4>
-
-    <div>
-        <ul class="magenta-list deployment-list">
-            @if(preview.hosts.isEmpty) {
-                <li><em>No hosts found</em></li>
-            }
-            @preview.hosts.zipWithIndex.map { hostTuple =>
-                <li><button>@hostTuple._1</button></li>
-            }
-        </ul>
-    </div>-->
-
-
-
     <input type="hidden" name="project" value="@preview.projectName"/>
     <input type="hidden" name="build" value="@preview.build"/>
     <input type="hidden" name="stage" value="@preview.stage"/>
@@ -106,18 +91,7 @@
         <hr/>
 
     <div class="actions">
-        <div class="btn-group">
-            <button name="action" type="submit" value="preview" class="btn">Preview...</button>
-            <button class="btn dropdown-toggle" data-toggle="dropdown">
-                <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li>
-                    <a id="new-preview-source" href="#">Crusty old preview...</a>
-                    <button id="new-preview-target" class="hidden" name="action" type="submit" value="previewOld"/>
-                </li>
-            </ul>
-        </div>
+        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
         <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
         <a href="@routes.Deployment.deploy()" class="btn btn-inverse">Cancel</a>
     </div>
