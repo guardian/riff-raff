@@ -274,7 +274,7 @@ object Deployment extends Controller with Logging {
 
   def projectHistory(project: String) = AuthAction {
     val buildMap = DeployController.getLastCompletedDeploys(project)
-    Ok(views.html.deploy.dashboardContent(List(project -> buildMap)))
+    Ok(views.html.deploy.projectHistory(project, buildMap))
   }
 
   def teamcity = AuthAction {

@@ -12,7 +12,13 @@ $ ->
   $('#projectInput').blur (e) ->
     selectedProject = $(e.target).val()
     $('#deploy-info').load(
-      jsRoutes.controllers.Deployment.projectHistory(selectedProject).url
+      jsRoutes.controllers.Deployment.projectHistory(selectedProject).url,
+      ->
+        console.log("setting up buttons")
+        $(".promoteDeploy").click (e) ->
+          (e).preventDefault()
+          $('#buildInput').val($(this).data("build-id"))
+          $('#stage').val($(this).data("stage"))
     )
 
   $('#buildInput').each ->

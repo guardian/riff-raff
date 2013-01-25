@@ -1,18 +1,14 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
-@import helper.twitterBootstrap._
+@import helper.twitterBootstrap2._
 
 @main("Deploy request", request, List("preview-transition", "form-autocomplete")) {
 
-<h2>Deploy request</h2>
-
-<div class="alert alert-info">
-Riff-raff is now capable of deploying any magenta deployable - if you have any problems please talk to <a href="mailto:simon.hildrew@@guardian.co.uk">Simon Hildrew</a>
-</div>
-
-<h3>Provide deploy details</h3>
+<div class="clearfix"><p>&nbsp;</p></div>
 
 <div class="span6">
-@helper.form(routes.Deployment.processForm, 'id -> "modalConfirm") {
+@helper.form(routes.Deployment.processForm, 'id -> "modalConfirm", 'class -> "well") {
+    <fieldset>
+        <legend>What would you like to deploy?</legend>
 @helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "buildForm")
 @helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "buildForm")
 @helper.select(
@@ -29,7 +25,7 @@ helper.options(deployment.DeployInfoManager.stageList.reverse),
     <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
-
+    </fieldset>
 }
 </div>
 

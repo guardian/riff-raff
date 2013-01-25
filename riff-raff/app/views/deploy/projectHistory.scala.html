@@ -1,0 +1,36 @@
+@(projectName: String, stageDeployMap:Map[String,deployment.Record])
+@defining(stageDeployMap.keySet.toList.sorted(conf.Configuration.stages.ordering)) { stages =>
+    <h4>Last deploys of <em>@projectName</em></h4>
+    <div class="alert alert-info">
+        <p>The details below are the last builds deployed in the various stages for @{projectName} by Riff Raff.</p>
+    </div>
+    <table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Stage</th>
+            <th>Build</th>
+            <th>Deploy to...</th>
+        </tr>
+    </thead>
+    <tbody>
+        @stages.map{ stage =>
+            @defining(stageDeployMap(stage)) { record =>
+                <tr>
+
+                <td>@stage</td>
+                <td>
+                <div class="build" data-build-id="@record.buildId">
+                        @record.buildId
+                        @if(record.hoursAgo <=24) { <span class="label label-info">Recent</span> }
+                </div>
+                </td>
+
+                <td>
+                    @promoteButtons(record, stages.filterNot(stage==))
+                </td>
+                </tr>
+            }
+        }                </tbody>
+                </table>
+
+}
