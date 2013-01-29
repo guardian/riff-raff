@@ -287,57 +287,6 @@ object Deployment extends Controller with Logging {
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }
 
-  def continuousState() = AuthAction { implicit request =>
-    case class ContinuousParameters(projectName:String, stage:String, enabled:Boolean)
-    lazy val continuousForm = Form[ContinuousParameters](
-      mapping(
-        "projectName" -> nonEmptyText,
-        "stage" -> nonEmptyText,
-        "enabled" -> boolean
-      )(ContinuousParameters.apply)
-        (ContinuousParameters.unapply)
-    )
-
-    continuousForm.bindFromRequest().fold(
-      errors => Redirect(routes.Deployment.continuousDeployment()),
-      form => {
-        log.info("request: %s" format form)
-        if (form.enabled)
-          ContinuousDeployment.enable(form.projectName,form.stage)
-        else
-          ContinuousDeployment.disable(form.projectName,form.stage)
-      }
-    )
-    Redirect(routes.Deployment.continuousDeployment())
-  }
-
-  def continuousStateGlobal() = AuthAction { implicit request =>
-    case class ContinuousParameters(enabled:Boolean)
-    lazy val continuousForm = Form[ContinuousParameters](
-      mapping(
-        "enabled" -> boolean
-      )(ContinuousParameters.apply)
-        (ContinuousParameters.unapply)
-    )
-
-    continuousForm.bindFromRequest().fold(
-      errors => Redirect(routes.Deployment.continuousDeployment()),
-      form => {
-        log.info("request: %s" format form)
-        if (form.enabled)
-          ContinuousDeployment.enableAll()
-        else
-          ContinuousDeployment.disableAll()
-      }
-    )
-    Redirect(routes.Deployment.continuousDeployment())
-  }
-
-  def continuousDeployment() = AuthAction { implicit request =>
-    val status = ContinuousDeployment.status()
-    Ok(views.html.deploy.continuousDeployment(request, status))
-  }
-
   def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
     val parametersJson = Json.parse(deployFormJson)
     Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
