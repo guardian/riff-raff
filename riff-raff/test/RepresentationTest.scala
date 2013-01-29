@@ -10,6 +10,7 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.commons.MongoDBObject
 import magenta._
 import java.util.UUID
+import controllers.ApiKey
 
 
 class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities with PersistenceTestInstances {
@@ -118,9 +119,33 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
     ungratedDeployDocument should be(deployDocument)
   }
 
+  "ApiKey" should "never change without careful thought and testing of migration" in {
+    val time = new DateTime(2012,11,8,17,20,00)
+    val lastTime = new DateTime(2013,1,8,17,20,00)
+
+    val apiKeyDump = """{ "application" : "test-application" , "_id" : "hfeklwb34uiopfnu34io2tr_-fffDS" , "issuedBy" : "Test User" , "created" : { "$date" : "2012-11-08T17:20:00.000Z"} , "lastUsed" : { "$date" : "2013-01-08T17:20:00.000Z"} , "callCounters" : { "counter1" : 34 , "counter2" : 2345}}"""
+
+    val apiKey = ApiKey("test-application", "hfeklwb34uiopfnu34io2tr_-fffDS", "Test User", time, Some(lastTime), Map("counter1" -> 34L, "counter2" -> 2345L))
+    val gratedApiKey = riffraffGraters.apiGrater.asDBObject(apiKey)
+
+    val jsonApiKey = JSON.serialize(gratedApiKey)
+    val diff = compareJson(apiKeyDump, jsonApiKey)
+    diff.toString should be("")
+    jsonApiKey should be(apiKeyDump)
+
+    val ungratedDBObject = JSON.parse(apiKeyDump).asInstanceOf[DBObject]
+    ungratedDBObject.toString should be(apiKeyDump)
+
+    val ungratedApiKey = riffraffGraters.apiGrater.asObject(new MongoDBObject(ungratedDBObject))
+    ungratedApiKey should be(apiKey)
+  }
+
   lazy val graters = new DocumentGraters {
     def loader = Some(getClass.getClassLoader)
   }
 
+  lazy val riffraffGraters = new RiffRaffGraters {
+    def loader = Some(getClass.getClassLoader)
+  }
 
 }
