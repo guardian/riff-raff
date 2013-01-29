@@ -16,6 +16,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
+import teamcity.ContinuousDeploymentConfig
 
 trait MongoSerialisable {
   def dbObject: DBObject
@@ -63,11 +64,16 @@ trait RiffRaffGraters {
     }
     loader.foreach(context.registerClassLoader(_))
     context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
+    context.registerPerClassKeyOverride(classOf[ContinuousDeploymentConfig], remapThis = "id", toThisInstead = "_id")
     context
   }
   val apiGrater = {
     implicit val context = riffRaffContext
     grater[ApiKey]
+  }
+  val continuousDeployConfigGrater = {
+    implicit val context = riffRaffContext
+    grater[ContinuousDeploymentConfig]
   }
 }
 
@@ -78,8 +84,10 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
   val deployJsonCollection = database("%sdeployJson" format Configuration.mongo.collectionPrefix)
   val apiKeyCollection = database("%sapiKeys" format Configuration.mongo.collectionPrefix)
+  val continuousDeployCollection = database("%scontinuousDeploy" format Configuration.mongo.collectionPrefix)
 
-  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection, authCollection, deployJsonCollection, apiKeyCollection)
+  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection,
+    authCollection, deployJsonCollection, apiKeyCollection, continuousDeployCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
     val stats = collection.stats
@@ -155,6 +163,34 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deleteAuthorisation(email: String) {
     logAndSquashExceptions(Some("Deleting authorisation object for %s" format email),()) {
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
+    }
+  }
+
+  override def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
+    logAndSquashExceptions[Option[ContinuousDeploymentConfig]](Some("Getting continuous deploy config for %s" format id), None) {
+      continuousDeployCollection.findOneByID(id).map(continuousDeployConfigGrater.asObject(_))
+    }
+  override def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] =
+    logAndSquashExceptions[Iterable[ContinuousDeploymentConfig]](Some("Getting all continuous deploy configs"), Nil) {
+      continuousDeployCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+        .toIterable.map(continuousDeployConfigGrater.asObject(_))
+    }
+  override def setContinuousDeployment(cd: ContinuousDeploymentConfig) {
+    logAndSquashExceptions(Some("Saving continuous integration config: %s" format cd),()) {
+      continuousDeployCollection.findAndModify(
+        query = MongoDBObject("_id" -> cd.id),
+        update = continuousDeployConfigGrater.asDBObject(cd),
+        upsert = true,
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew = false
+      )
+    }
+  }
+  override def deleteContinuousDeployment(id: UUID) {
+    logAndSquashExceptions(Some("Deleting continuous integration config for %s" format id),()) {
+      continuousDeployCollection.findAndRemove(MongoDBObject("_id" -> id))
     }
   }
 

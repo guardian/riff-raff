@@ -1,0 +1,30 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
+@import helper.twitterBootstrap2._
+
+@main("Continuous Deployment", request, List("form-autocomplete")) {
+
+<h2>Continuous Deployment Configuration</h2>
+<hr/>
+
+@helper.form(action=routes.ContinuousDeployController.save) {
+
+@snippets.inputHidden(configForm("id"))
+
+@helper.inputText(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
+@helper.select(
+configForm("stage"),
+options = helper.options(deployment.DeployInfoManager.stageList.reverse),
+'_default -> "--- Choose a stage ---",
+'_label -> "Stage",
+'_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+)
+@helper.inputText(configForm("recipe"), '_label -> "Recipe to Execute")
+@helper.inputText(configForm("branchMatcher"), '_label -> "Branch RegEx")
+@helper.checkbox(configForm("enabled"), '_label -> "Enabled")
+
+<div class="actions">
+    <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+    <a href="@routes.ContinuousDeployController.list()" class="btn btn-inverse">Cancel</a>
+</div>
+}
+}

@@ -15,8 +15,18 @@ import play.api.libs.concurrent.Promise
 object `package` {
   type BuildTypeMap = Map[BuildType,List[Build]]
 
-  implicit def buildTypeBuildsMap2latestBuildId(buildTypeMap: BuildTypeMap) = new {
+  implicit def buildTypeBuildsMap2helpers(buildTypeMap: BuildTypeMap) = new {
     def latestBuildId(): Int = buildTypeMap.values.flatMap(_.map(_.buildId)).max
+    def filterBuilds(buildTypeFilter: BuildType => Boolean, buildFinder: List[Build] => List[Build]): Map[BuildType,List[Build]] = {
+      val filteredBuildTypes = buildTypeMap.filterKeys(buildTypeFilter)
+      filteredBuildTypes.flatMap { case (buildType, builds) =>
+        val newBuildsForType = buildFinder(builds)
+        if (newBuildsForType.isEmpty)
+          None
+        else
+          Some(buildType -> newBuildsForType)
+      }
+    }
   }
 
   implicit def promiseIterable2FlattenMap[A](promiseIterable: Promise[Iterable[A]]) = new {
