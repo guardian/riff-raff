@@ -1,4 +1,5 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[_root_.teamcity.ContinuousDeploymentConfig])
+@import org.joda.time.format.DateTimeFormat._
 
 @main("Continuous Deployment Configurations", request) {
 <h2>Continuous Deployment Configurations</h2>
@@ -11,6 +12,7 @@
     <table class="table table-condensed table-striped">
         <thead>
             <tr>
+                <th>Last edited</th>
                 <th>Project Name</th>
                 <th>Branches</th>
                 <th>Target Stage</th>
@@ -23,6 +25,7 @@
         <tbody>
           @for(config <- configs) {
             <tr>
+                <td>@shortDateTime.print(config.lastEdited) by <span class="label">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.branchRE.toString()</td>
                 <td>@config.stage</td>

@@ -8,6 +8,7 @@ import java.util.UUID
 import teamcity.ContinuousDeploymentConfig
 import play.api.data.format.Formatter
 import play.api.data.format.Formats._
+import org.joda.time.DateTime
 
 object ContinuousDeployController extends Controller with Logging {
 
@@ -51,7 +52,9 @@ object ContinuousDeployController extends Controller with Logging {
     continuousDeploymentForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
       form => {
-        val config = ContinuousDeploymentConfig(form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, form.enabled)
+        val config = ContinuousDeploymentConfig(
+          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, form.enabled, request.identity.get.fullName, new DateTime()
+        )
         Persistence.store.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
       }

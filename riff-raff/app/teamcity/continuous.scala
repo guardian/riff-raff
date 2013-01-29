@@ -12,8 +12,18 @@ import scala.Some
 import persistence.Persistence
 import deployment.DomainAction.Local
 import deployment.Domains
+import org.joda.time.DateTime
 
-case class ContinuousDeploymentConfig(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], enabled: Boolean) {
+case class ContinuousDeploymentConfig(
+  id: UUID,
+  projectName: String,
+  stage: String,
+  recipe: String,
+  branchMatcher:Option[String],
+  enabled: Boolean,
+  user: String,
+  lastEdited: DateTime = new DateTime()
+) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   def findMatch(builds: List[Build]): Option[Build] = {
     builds.find(build => branchRE.findFirstMatchIn(build.branch).isDefined)

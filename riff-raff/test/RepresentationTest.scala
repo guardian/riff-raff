@@ -143,9 +143,10 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
 
   "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
     val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
-    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true}"""
+    val lastTime = new DateTime(2013,1,8,17,20,00)
+    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
 
-    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), true)
+    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), true, "Test user", lastTime)
     val gratedConfig = riffraffGraters.continuousDeployConfigGrater.asDBObject(config)
 
     val jsonConfig = JSON.serialize(gratedConfig)
