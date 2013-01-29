@@ -38,9 +38,11 @@ GET     /deployment/dashboard           controllers.Deployment.dashboard(project
 GET     /deployment/dashboard/content   controllers.Deployment.dashboardContent(projects:String)
 
 # Continuous deployment
-GET     /deployment/continuous-deployment      controllers.Deployment.continuousDeployment
-POST    /deployment/continuous-deployment/update      controllers.Deployment.continuousState
-POST    /deployment/continuous-deployment/updateAll      controllers.Deployment.continuousStateGlobal
+GET     /deployment/continuous              controllers.ContinuousDeployController.list
+GET     /deployment/continuous/new          controllers.ContinuousDeployController.form
+POST    /deployment/continuous/save     controllers.ContinuousDeployController.save
+GET     /deployment/continuous/:id/edit     controllers.ContinuousDeployController.edit(id)
+POST    /deployment/continuous/:id/delete   controllers.ContinuousDeployController.delete(id)
 
 # Post deploy hooks
 GET     /deployment/hooks           controllers.Hooks.list

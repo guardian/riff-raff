@@ -36,7 +36,7 @@ object Menu {
     SingleMenuItem("Deploy", routes.Deployment.deploy()),
     SingleMenuItem("History", routes.Deployment.history()),
     DropDownMenuItem("Configuration", Seq(
-      SingleMenuItem("Continuous Deployment", routes.Deployment.continuousDeployment()),
+      SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.Hooks.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys())

@@ -1,0 +1,45 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[_root_.teamcity.ContinuousDeploymentConfig])
+
+@main("Continuous Deployment Configurations", request) {
+<h2>Continuous Deployment Configurations</h2>
+<hr/>
+<p><a class="btn btn-inverse" href="@routes.ContinuousDeployController.form()"><i class="icon-plus icon-white"></i> Add new configuration</a></p>
+<div class="content">
+    @if(configs.isEmpty) {
+        <div class="alert alert-warning"><strong>No configurations.</strong></div>
+    } else {
+    <table class="table table-condensed table-striped">
+        <thead>
+            <tr>
+                <th>Project Name</th>
+                <th>Branches</th>
+                <th>Target Stage</th>
+                <th>Recipe to execute</th>
+                <th>Enabled</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+          @for(config <- configs) {
+            <tr>
+                <td>@config.projectName</td>
+                <td>@config.branchRE.toString()</td>
+                <td>@config.stage</td>
+                <td>@config.recipe</td>
+                <td>@config.enabled</td>
+                <td>
+                    <a class="btn btn-mini" href="@routes.ContinuousDeployController.edit(config.id.toString)"><i class="icon-edit"></i> Edit</a>
+                </td>
+                <td>
+                    @helper.form(action=routes.ContinuousDeployController.delete(config.id.toString), 'class -> "form-make-inline") {
+                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
+                    }
+                </td>
+            </tr>
+          }
+        </tbody>
+    </table>
+    }
+</div>
+}

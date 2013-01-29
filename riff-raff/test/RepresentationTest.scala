@@ -1,5 +1,6 @@
 package test
 
+import _root_.teamcity.ContinuousDeploymentConfig
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import persistence._
@@ -138,6 +139,25 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
 
     val ungratedApiKey = riffraffGraters.apiGrater.asObject(new MongoDBObject(ungratedDBObject))
     ungratedApiKey should be(apiKey)
+  }
+
+  "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
+    val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
+    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true}"""
+
+    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), true)
+    val gratedConfig = riffraffGraters.continuousDeployConfigGrater.asDBObject(config)
+
+    val jsonConfig = JSON.serialize(gratedConfig)
+    val diff = compareJson(configDump, jsonConfig)
+    diff.toString should be("")
+    jsonConfig should be(configDump)
+
+    val ungratedDBObject = JSON.parse(configDump).asInstanceOf[DBObject]
+    ungratedDBObject.toString should be(configDump)
+
+    val ungratedConfig = riffraffGraters.continuousDeployConfigGrater.asObject(new MongoDBObject(ungratedDBObject))
+    ungratedConfig should be(config)
   }
 
   lazy val graters = new DocumentGraters {

@@ -1,6 +1,5 @@
 package conf
 
-import teamcity.GuContinuousDeploymentConfig
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
@@ -15,7 +14,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{Domains, GuDomainsConfiguration}
+import deployment.GuDomainsConfiguration
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import akka.util.duration._
@@ -116,7 +115,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
-  lazy val continuousDeployment = GuContinuousDeploymentConfig(configuration, Domains)
+
+  object continuousDeployment {
+    lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "true") == "true"
+  }
 
   override def toString(): String = configuration.toString
 }

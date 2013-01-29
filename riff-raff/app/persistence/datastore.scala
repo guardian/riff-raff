@@ -6,6 +6,8 @@ import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import magenta.Build
+import java.util.UUID
+import teamcity.ContinuousDeploymentConfig
 
 trait DataStore extends DocumentStore {
   def log: Logger
@@ -37,6 +39,11 @@ trait DataStore extends DocumentStore {
   def getAuthorisationList:List[AuthorisationRecord] = Nil
   def setAuthorisation(auth: AuthorisationRecord) {}
   def deleteAuthorisation(email: String) {}
+
+  def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] = None
+  def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] = Nil
+  def setContinuousDeployment(cd: ContinuousDeploymentConfig) {}
+  def deleteContinuousDeployment(id: UUID) {}
 
   def createApiKey(newKey: ApiKey) {}
   def getApiKeyList:Iterable[ApiKey] = Nil
