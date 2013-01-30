@@ -15,16 +15,26 @@ import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
 import akka.dispatch.Await
-import play.api.Play
-import play.api.Play.current
 import com.typesafe.config.ConfigFactory
+import scala.collection.JavaConversions._
 
 object DeployControlActor extends Logging {
   trait Event
   case class Deploy(record: Record) extends Event
 
-  lazy val config = Play.configuration.underlying
-  lazy val system = ActorSystem("deploy", config.getConfig("riffraff").withFallback(ConfigFactory.load()))
+  val concurrentDeploys = conf.Configuration.concurrency.maxDeploys
+
+  lazy val dispatcherConfig = ConfigFactory.parseMap(
+    Map(
+      "akka.task-dispatcher.type" -> "BalancingDispatcher",
+      "akka.task-dispatcher.executor" -> "thread-pool-executor",
+      "akka.task-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
+      "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> "4.0",
+      "akka.task-dispatcher.thread-pool-executor.core-pool-size-max" -> ("%d" format concurrentDeploys * 2),
+      "akka.task-dispatcher.throughput" -> "100"
+    )
+  )
+  lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
 
   lazy val deployController = system.actorOf(Props[DeployControlActor])
   lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
