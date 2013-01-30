@@ -1,5 +1,23 @@
 ### Release notes
 
+#### 30th Jan 2013
+
+Fixed a bug which would throttle concurrent deploys to only two simultaneously running tasks across all deploys.
+
+Riff-Raff now stores the VCS branch name if available from TeamCity at the time of the deploy.  This is shown on the
+history page and the history API.
+
+#### 29th Jan 2013
+
+Continuous Deployment configuration is now done through a CRUD interface in the webapp rather than being configured
+in the properties file.  This update also added the ability to filter by a regex on the branch name (e.g. can filter
+so that only builds from the master branch are deployed)
+
+#### 25th Jan 2013
+
+Overhauled the deploy screen to display the most recent successful deployments of a project, once a project has been
+selected.
+
 #### 23rd Jan 2013
 
 Add [dashboard](docs/riffraff/dashboards) functionality for quickly seeing the last build deployed in different environments.
