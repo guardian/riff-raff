@@ -1,6 +1,6 @@
 package notification
 
-import teamcity.{TeamCityWS, TeamCity}
+import ci.{TeamCityWS, TeamCity}
 import lifecycle.LifecycleWithoutApp
 import magenta._
 import controllers.{routes, Logging, DeployController}

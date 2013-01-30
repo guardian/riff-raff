@@ -18,7 +18,7 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
+        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil, Map("branch"->"master")),
         RunState.Completed
       )
     )
@@ -80,7 +80,8 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
         "test",
         "TEST",
         "default",
-        Nil
+        Nil,
+        Map.empty
       ),
       RunState.Completed
     )
@@ -104,7 +105,8 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
         "test",
         "TEST",
         "default",
-        Nil
+        Nil,
+        Map.empty
       ),
       RunState.Completed
     )

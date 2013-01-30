@@ -7,7 +7,7 @@ import play.api.Logger
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import magenta.Build
 import java.util.UUID
-import teamcity.ContinuousDeploymentConfig
+import ci.ContinuousDeploymentConfig
 
 trait DataStore extends DocumentStore {
   def log: Logger

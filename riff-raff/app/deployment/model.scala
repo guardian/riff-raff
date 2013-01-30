@@ -2,12 +2,12 @@ package deployment
 
 import java.util.UUID
 import magenta._
-import magenta.MessageStack
 import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import magenta.teamcity.Artifact.build2download
-import org.joda.time.{Period, Interval, DateTime, Duration}
+import org.joda.time.{Interval, DateTime, Duration}
+import ci.ContinuousIntegration
 
 object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
@@ -19,6 +19,7 @@ trait Record {
   def taskType: TaskType.Value
   def uuid: UUID
   def parameters: DeployParameters
+  def metaData: Map[String, String]
   def report: ReportTree
   def recordState: Option[RunState.Value]
 
@@ -66,7 +67,8 @@ object DeployV2Record {
   def apply(taskType: TaskType.Value,
             uuid: UUID,
             parameters: DeployParameters ): DeployV2Record = {
-    DeployV2Record(new DateTime(), taskType, uuid, parameters)
+    val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
+    DeployV2Record(new DateTime(), taskType, uuid, parameters, metaData)
   }
 }
 
@@ -74,6 +76,7 @@ case class DeployV2Record(time: DateTime,
                           taskType: TaskType.Value,
                            uuid: UUID,
                            parameters: DeployParameters,
+                           metaData: Map[String, String] = Map.empty,
                            messages: List[MessageWrapper] = Nil,
                            recordState: Option[RunState.Value] = None) extends Record {
   lazy val report = DeployReport.v2(messages, "Deployment Report")

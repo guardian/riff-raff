@@ -10,19 +10,6 @@ case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime:
   lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
 }
 object DeployRecordDocument {
-  def apply(record: Record): DeployRecordDocument = {
-    val sourceParams = record.parameters
-    val params = ParametersDocument(
-      deployer = sourceParams.deployer.name,
-      projectName = sourceParams.build.projectName,
-      buildId = sourceParams.build.id,
-      stage = sourceParams.stage.name,
-      recipe = sourceParams.recipe.name,
-      hostList = sourceParams.hostList,
-      deployType = record.taskType.toString
-    )
-    DeployRecordDocument(record.uuid, Some(record.uuid.toString), record.time, params, record.state)
-  }
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
   }
@@ -36,7 +23,7 @@ case class ParametersDocument(
   stage: String,
   recipe: String,
   hostList: List[String],
-  tags: Map[String,String] = Map.empty
+  tags: Map[String,String]
 )
 
 case class LogDocument(

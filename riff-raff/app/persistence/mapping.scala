@@ -70,7 +70,8 @@ object RecordConverter {
       stage = sourceParams.stage.name,
       recipe = sourceParams.recipe.name,
       hostList = sourceParams.hostList,
-      deployType = record.taskType.toString
+      deployType = record.taskType.toString,
+      tags = record.metaData
     )
     RecordV2Converter(record.uuid, record.time, params, record.state, record.messages)
   }
@@ -92,6 +93,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
       deploy.deployTypeEnum,
       deploy.uuid,
       parameters,
+      deploy.parameters.tags,
       messageWrappers,
       Some(deploy.status)
     )

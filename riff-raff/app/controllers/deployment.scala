@@ -1,6 +1,6 @@
 package controllers
 
-import teamcity._
+import ci._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
@@ -17,7 +17,7 @@ import akka.util.duration._
 import play.api.libs.json.Json
 import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
-import persistence.{DocumentStoreConverter}
+import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
