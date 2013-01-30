@@ -13,7 +13,7 @@
         different riff-raff node that wasn't in the correct location on the network to reach the required hosts).</p>
 </div>
 
-    @defining(deployForm.mapping.mappings.map(_.key).filterNot(_.isEmpty)) { fields =>
+    @defining(deployForm.data.keys.toList.sorted) { fields =>
         <div class="span6">
         <table class="table">
             @fields.map { fieldName =>
