@@ -1,6 +1,5 @@
-package teamcity
+package ci
 
-import conf.Configuration
 import xml.{NodeSeq, Node, Elem}
 import utils.ScheduledAgent
 import akka.util.duration._
@@ -36,6 +35,16 @@ object `package` {
         Promise.sequence(newPromises).map(_.flatten)
       }
     }
+  }
+}
+
+object ContinuousIntegration {
+  def getMetaData(projectName: String, buildId: String): Map[String, String] = {
+    val projectNameBuilds = TeamCity.buildMap.find(_._1.name == projectName).map(_._2)
+    val build = projectNameBuilds.flatMap(builds => builds.find(_.number == buildId))
+    build.map { build => Map(
+      "branch" -> build.branch
+    )}.getOrElse(Map.empty)
   }
 }
 

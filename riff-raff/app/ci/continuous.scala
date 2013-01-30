@@ -1,4 +1,4 @@
-package teamcity
+package ci
 
 import controllers.{Logging, DeployController}
 import lifecycle.LifecycleWithoutApp

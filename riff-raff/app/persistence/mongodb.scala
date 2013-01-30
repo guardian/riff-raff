@@ -16,7 +16,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
-import teamcity.ContinuousDeploymentConfig
+import ci.ContinuousDeploymentConfig
 
 trait MongoSerialisable {
   def dbObject: DBObject

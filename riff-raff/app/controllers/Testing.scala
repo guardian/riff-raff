@@ -66,7 +66,7 @@ object Testing extends Controller with Logging {
     )
 
 
-    val report = DeployV2Record(new DateTime(), TaskType.Deploy, logUUID, parameters, input.toList.take(take))
+    val report = DeployV2Record(new DateTime(), TaskType.Deploy, logUUID, parameters, messages=input.toList.take(take))
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }

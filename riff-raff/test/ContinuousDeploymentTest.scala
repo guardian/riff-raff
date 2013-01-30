@@ -2,7 +2,7 @@ package test
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import _root_.teamcity.{ContinuousDeploymentConfig, Build, BuildType, ContinuousDeployment}
+import ci.{ContinuousDeploymentConfig, Build, BuildType, ContinuousDeployment}
 import deployment.Domains
 import java.util.UUID
 import magenta.{Build => MagentaBuild}

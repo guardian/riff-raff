@@ -1,6 +1,6 @@
 package test
 
-import _root_.teamcity.ContinuousDeploymentConfig
+import ci.ContinuousDeploymentConfig
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import persistence._
@@ -88,7 +88,7 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil),
+        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil, Map("branch"->"master")),
         RunState.Completed
       )
     )
@@ -103,9 +103,9 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
   }
 
   it should "never change without careful thought and testing of migration" in {
-    val dataModelDump = """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "deployType" : "Deploy" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "tags" : { }} , "status" : "Completed"}"""
+    val dataModelDump = """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "deployType" : "Deploy" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "tags" : { "branch" : "test"}} , "status" : "Completed"}"""
 
-    val deployDocument = DeployRecordDocument(comprehensiveDeployRecord)
+    val deployDocument = RecordConverter(comprehensiveDeployRecord).deployDocument
     val gratedDeployDocument = graters.deployGrater.asDBObject(deployDocument)
 
     val jsonDeployDocument = JSON.serialize(gratedDeployDocument)

@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[_root_.teamcity.ContinuousDeploymentConfig])
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[ci.ContinuousDeploymentConfig])
 @import org.joda.time.format.DateTimeFormat._
 
 @main("Continuous Deployment Configurations", request) {

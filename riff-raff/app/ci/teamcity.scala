@@ -1,4 +1,4 @@
-package teamcity
+package ci
 
 import play.api.libs.ws.WS
 import com.ning.http.client.Realm.AuthScheme
