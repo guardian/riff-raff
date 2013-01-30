@@ -5,7 +5,7 @@ import play.api.data.Forms._
 import play.api.data.{FormError, Mapping, Form}
 import persistence.Persistence
 import java.util.UUID
-import teamcity.ContinuousDeploymentConfig
+import ci.ContinuousDeploymentConfig
 import play.api.data.format.Formatter
 import play.api.data.format.Formats._
 import org.joda.time.DateTime

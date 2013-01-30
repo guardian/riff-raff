@@ -9,7 +9,7 @@ import play.mvc.Result
 import play.{Application, GlobalSettings}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
-import teamcity.ContinuousDeployment
+import ci.ContinuousDeployment
 import utils.ScheduledAgent
 import conf.{DeployMetrics, RequestMetrics}
 

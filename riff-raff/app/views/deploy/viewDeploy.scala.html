@@ -9,7 +9,7 @@
 </style>
 <div class="row-fluid">
 <div class="span8">
-<h2>@record.taskType of deploy for @record.buildName build @record.buildId in @record.stage</h2>
+<h2>@record.taskType of deploy for @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
 </div>
 <div class="span4">
 @if(record.isStalled) {
