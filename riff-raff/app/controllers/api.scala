@@ -101,7 +101,8 @@ object Api extends Controller with Logging {
           "deployer" -> deploy.parameters.deployer.name,
           "recipe" -> deploy.parameters.recipe.name,
           "status" -> deploy.state.toString,
-          "logURL" -> routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL()
+          "logURL" -> routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL(),
+          "tags" -> deploy.metaData
         )
       }
       val response = Map(

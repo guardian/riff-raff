@@ -12,6 +12,7 @@
         <th>Project</th>
         <th>Stage</th>
         <th>Build</th>
+        <th>Branch</th>
         <th>Recipe</th>
         <th>Hosts</th>
         <th>Status</th>
@@ -25,6 +26,7 @@
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
+        <td>@record.metaData.get("branch").getOrElse("")</td>
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
         <td>@Some(record.parameters.hostList.size).filter(_ != 0).getOrElse(Html(""))</td>
         <td>
