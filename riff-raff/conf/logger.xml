@@ -23,9 +23,9 @@
 
     <logger name="com.amazonaws.request" level="WARN" />
     <logger name="com.novus.salat.util.BestAvailableConstructor$" level="ERROR" />
-    <logger name="deployment.DeployCoordinator" level="DEBUG" />
-    <logger name="deployment.TaskRunner" level="DEBUG" />
-    <logger name="deployment.DeployControlActor$" level="DEBUG" />
+    <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
+    <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
+    <!--<logger name="deployment.DeployControlActor$" level="DEBUG" />-->
     <!--<logger name="ci.TeamCity$" level="DEBUG" />-->
 
     <root level="INFO">
