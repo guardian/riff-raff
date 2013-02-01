@@ -42,18 +42,21 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
 
   val updateCancellables = updates.map { update =>
     system.scheduler.schedule(update.initialDelay, update.frequency) {
-      agent sendOff{ lastValue =>
-        try {
-          update.block(lastValue)
-        } catch {
-          case t:Throwable =>
-            log.warn("Failed to update on schedule", t)
-            lastValue
-        }
-      }
+      queueUpdate(update)
     }
   }
 
+  def queueUpdate(update: ScheduledAgentUpdate[T]) {
+    agent sendOff{ lastValue =>
+      try {
+        update.block(lastValue)
+      } catch {
+        case t:Throwable =>
+          log.warn("Failed to update on schedule", t)
+          lastValue
+      }
+    }
+  }
 
   def get(): T = agent()
   def apply(): T = get()
