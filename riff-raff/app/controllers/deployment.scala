@@ -259,7 +259,7 @@ object Deployment extends Controller with Logging {
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = TeamCity.buildTypes.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).sorted.take(10)
+    val possibleProjects = TeamCity.buildTypes.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
@@ -280,9 +280,8 @@ object Deployment extends Controller with Logging {
   def teamcity = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
-      for((buildType, builds) <- TeamCity.buildMap;
-          build <- builds)
-        yield Seq(buildType.name,build.number,build.branch,buildType.id,build.buildId)
+      for(build <- TeamCity.builds.sortBy(_.buildType.name))
+        yield Seq(build.buildType.name,build.number,build.branch,build.buildType.id,build.buildId)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }
