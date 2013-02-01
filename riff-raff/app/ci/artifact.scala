@@ -73,6 +73,15 @@ object TeamCity extends LifecycleWithoutApp with Logging {
   def subscribe(sink: BuildWatcher) { listeners += sink }
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
+  def notifyListeners(newBuilds: List[Build]) {
+    listeners.foreach{ listener =>
+      try listener.newBuilds(newBuilds)
+      catch {
+        case e:Exception => log.error("BuildWatcher threw an exception", e)
+      }
+    }
+  }
+
   object api {
     val projectList = TeamCityWS.url("/app/rest/projects")
     def project(project: String) = TeamCityWS.url("/app/rest/projects/id:%s" format project)
@@ -82,7 +91,9 @@ object TeamCity extends LifecycleWithoutApp with Logging {
   }
 
   private val fullUpdate = ScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
-    getSuccessfulBuilds.await((1 minute).toMillis).get
+    val builds = getSuccessfulBuilds.await((1 minute).toMillis).get
+    if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
+    builds
   }
 
   private val incrementalUpdate = ScheduledAgentUpdate[List[Build]](1 minute, pollingPeriod) { currentBuilds =>
@@ -94,12 +105,7 @@ object TeamCity extends LifecycleWithoutApp with Logging {
         if (newBuilds.isEmpty)
           currentBuilds
         else {
-          listeners.foreach{ listener =>
-            try listener.newBuilds(newBuilds)
-            catch {
-              case e:Exception => log.error("BuildWatcher threw an exception", e)
-            }
-          }
+          notifyListeners(newBuilds)
           (currentBuilds ++ newBuilds).sortBy(-_.buildId)
         }
       }.await((pollingPeriod).toMillis).get
