@@ -49,14 +49,16 @@ object Build {
     apply(buildId: Int, buildType, number, parsedStartDate, branch)
   }
 
-  private def apply(buildTypes: String => BuildType, build: Node): Build = {
-    apply((build \ "@id" text).toInt, buildTypes(build \ "@buildTypeId" text), build \ "@number" text, build \ "@startDate" text, (build \ "@branchName").headOption.map(_.text).getOrElse("default"))
+  private def apply(buildTypes: String => Option[BuildType], build: Node): Option[Build] = {
+    buildTypes(build \ "@buildTypeId" text).map { bt =>
+      apply((build \ "@id" text).toInt, bt, build \ "@number" text, build \ "@startDate" text, (build \ "@branchName").headOption.map(_.text).getOrElse("default"))
+    }
   }
 
-  def apply(buildTypes: String => BuildType, buildElements: Elem): List[Build] = {
+  def apply(buildTypes: String => Option[BuildType], buildElements: Elem): List[Build] = {
     (buildElements \ "build").toList filter {
       build => (build \ "@status").text == "SUCCESS"
-    } map { apply(buildTypes, _) }
+    } flatMap { apply(buildTypes, _) }
   }
 }
 case class Build(buildId: Int, buildType: BuildType, number: String, startDate: DateTime, branch: String)
@@ -166,16 +168,17 @@ object TeamCity extends LifecycleWithoutApp with Logging {
   private def getSuccessfulBuilds(buildType: BuildType): Promise[List[Build]] = {
     val ws = api.buildList(buildType.id)
     log.debug("Getting %s" format ws.url)
-    ws.get().map(_.xml).map { Build(Map(buildType.id -> buildType), _) }
+    ws.get().map(_.xml).map { Build(Map(buildType.id -> Some(buildType)), _) }
   }
 
   private def getNewBuilds(currentBuilds: List[Build]): Promise[List[Build]] = {
     val knownBuilds = currentBuilds.map(_.buildId).toSet
     val buildTypeMap = currentBuilds.map(b => b.buildType.id -> b.buildType).toMap
     val getBuildType = (buildTypeId:String) => {
-      buildTypeMap.get(buildTypeId).getOrElse {
+      buildTypeMap.get(buildTypeId).orElse {
         buildAgent.foreach(_.queueUpdate(fullUpdate))
-        throw new IllegalStateException("Unknown build type %s, queuing complete refresh" format buildTypeId)
+        log.warn("Unknown build type %s, queuing complete refresh" format buildTypeId)
+        None
       }
     }
     val pollingWindowStart = (new DateTime()).minus(pollingWindow)
