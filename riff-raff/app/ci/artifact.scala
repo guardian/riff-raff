@@ -1,7 +1,7 @@
 package ci
 
 import xml.{NodeSeq, Node, Elem}
-import utils.ScheduledAgent
+import utils.{ScheduledAgentUpdate, ScheduledAgent}
 import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
 import org.joda.time.format.DateTimeFormat
@@ -11,6 +11,7 @@ import collection.mutable
 import magenta.DeployParameters
 import play.api.libs.concurrent.Promise
 import java.net.URLEncoder
+import lifecycle.LifecycleWithoutApp
 
 object `package` {
   implicit def listOfBuild2helpers(builds: List[Build]) = new {
@@ -60,10 +61,11 @@ object Build {
 }
 case class Build(buildId: Int, buildType: BuildType, number: String, startDate: DateTime, branch: String)
 
-object TeamCity extends Logging {
+object TeamCity extends LifecycleWithoutApp with Logging {
   val dateTimeFormat = DateTimeFormat.forPattern("yyyyMMdd'T'HHmmssZ")
   val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
+  val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
   private val listeners = mutable.Buffer[BuildWatcher]()
   def subscribe(sink: BuildWatcher) { listeners += sink }
@@ -77,10 +79,15 @@ object TeamCity extends Logging {
     def buildSince(startTime:DateTime) = TeamCityWS.url("/app/rest/builds/?locator=sinceDate:%s,branch:branched:any" format URLEncoder.encode(dateTimeFormat.print(startTime), "UTF-8"))
   }
 
-  private val buildAgent = ScheduledAgent[List[Build]](0 seconds, pollingPeriod, List.empty[Build]){ currentBuilds =>
-    val buildMapPromise = if (currentBuilds.isEmpty)
-      getSuccessfulBuilds
-    else {
+  private val fullUpdate = ScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
+    getSuccessfulBuilds.await((1 minute).toMillis).get
+  }
+
+  private val incrementalUpdate = ScheduledAgentUpdate[List[Build]](1 minute, pollingPeriod) { currentBuilds =>
+    if (currentBuilds.isEmpty) {
+      log.warn("No builds yet, aborting incremental update")
+      currentBuilds
+    } else {
       getNewBuilds(currentBuilds).map { newBuilds =>
         if (newBuilds.isEmpty)
           currentBuilds
@@ -93,13 +100,13 @@ object TeamCity extends Logging {
           }
           (currentBuilds ++ newBuilds).sortBy(-_.buildId)
         }
-      }
+      }.await((pollingPeriod).toMillis).get
     }
-
-    buildMapPromise.await((1 minute).toMillis).get
   }
 
-  def builds: List[Build] = buildAgent()
+  private var buildAgent:Option[ScheduledAgent[List[Build]]] = None
+
+  def builds: List[Build] = buildAgent.map(_.apply()).getOrElse(Nil)
   def buildTypes = builds.buildTypes
 
   def successfulBuilds(projectName: String): List[Build] = builds.filter(_.buildType.name == projectName)
@@ -114,6 +121,11 @@ object TeamCity extends Logging {
       }.getOrElse(params)
     }
   }
+
+
+  def init() { buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate)) }
+
+  def shutdown() { buildAgent.foreach(_.shutdown()) }
 
   private def getBuildTypes: Promise[List[BuildType]] = {
     val ws = api.projectList
@@ -165,7 +177,7 @@ object TeamCity extends Logging {
     log.debug("Getting %s" format ws.url)
     ws.get().map(_.xml).map { buildElements =>
       val builds = Build(currentBuilds.map(b => b.buildType.id -> b.buildType).toMap, buildElements)
-      log.info("Found %d builds since %s" format (builds.size, pollingWindowStart))
+      log.debug("Found %d builds since %s" format (builds.size, pollingWindowStart))
       val newBuilds = builds.filterNot(build => knownBuilds.contains(build.buildId))
       log.info("Discovered builds: \n%s" format newBuilds.mkString("\n"))
       newBuilds
