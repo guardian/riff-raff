@@ -1,5 +1,10 @@
 ### Release notes
 
+#### 1st Feb 2013
+
+Fixed a bug that missed builds for continuous deployment.  Also made incremental TeamCity build retrieval possible,
+meaning that updating the current build list is much less strain on TeamCity and so can be done more frequently.
+
 #### 30th Jan 2013
 
 Fixed a bug which would throttle concurrent deploys to only two simultaneously running tasks across all deploys.

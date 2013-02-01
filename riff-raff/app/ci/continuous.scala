@@ -26,7 +26,10 @@ case class ContinuousDeploymentConfig(
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   def findMatch(builds: List[Build]): Option[Build] = {
-    builds.find(build => branchRE.findFirstMatchIn(build.branch).isDefined)
+    builds.find{ build =>
+      build.buildType.name == projectName &&
+      branchRE.findFirstMatchIn(build.branch).isDefined
+    }
   }
 }
 
@@ -51,52 +54,31 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
 
-  def createContinuousDeploymentMap(configs: Iterable[ContinuousDeploymentConfig]): ProjectCdMap = {
-    configs.filter(_.enabled).groupBy(_.projectName).mapValues(_.toSet)
-  }
+  def getApplicableDeployParams(builds: List[Build], configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
+    val enabledConfigs = configs.filter(_.enabled)
+    val sortedBuilds = builds.sortBy(-_.buildId)
 
-  def getLatestNewBuilds(previousMap: BuildTypeMap, newMap: BuildTypeMap, cdMap: ProjectCdMap): Map[BuildType, List[Build]] = {
-    if (previousMap.isEmpty)
-      Map.empty
-    else {
-      val previousLatestBuild = previousMap.latestBuildId()
-
-      newMap.filterBuilds(
-        buildType => cdMap.get(buildType.name).isDefined,
-        builds => builds.filter( build => build.buildId > previousLatestBuild ).sortBy(_.buildId).reverse
-      )
+    val allParams = enabledConfigs.flatMap { config =>
+      config.findMatch(sortedBuilds).map { build =>
+        DeployParameters(
+          Deployer("Continuous Deployment"),
+          MagentaBuild(build.buildType.name,build.number),
+          Stage(config.stage),
+          RecipeName(config.recipe)
+        )
+      }
     }
-  }
-
-  def getApplicableDeployParams(buildMap: Map[BuildType,List[Build]], cdMap: ProjectCdMap): Iterable[DeployParameters] = {
-    buildMap.flatMap { case (buildType, builds) =>
-      val continuousDeployConfigs = cdMap(buildType.name)
-      continuousDeployConfigs.flatMap { continuousDeployConfig =>
-        continuousDeployConfig.findMatch(builds).map { build =>
-          DeployParameters(
-            Deployer("Continuous Deployment"),
-            MagentaBuild(buildType.name,build.number),
-            Stage(continuousDeployConfig.stage),
-            RecipeName(continuousDeployConfig.recipe)
-          )
-        }
-      }.filter { params =>
-        domains.responsibleFor(params) match {
-          case Local() => true
-          case _ => false
-        }
+    allParams.filter { params =>
+      domains.responsibleFor(params) match {
+        case Local() => true
+        case _ => false
       }
     }
   }
 
-  def change(previousMap: BuildTypeMap, currentMap: BuildTypeMap) {
-    log.info("Checking for any new builds to deploy")
-    val cdMap = createContinuousDeploymentMap(Persistence.store.getContinuousDeploymentList)
-
-    val newBuilds = getLatestNewBuilds(previousMap, currentMap, cdMap)
-    log.info("Filtered build map %s" format newBuilds)
-
-    val deploysToRun = getApplicableDeployParams(newBuilds, cdMap)
+  def newBuilds(newBuilds: List[Build]) {
+    log.info("New builds to consider for deployment %s" format newBuilds)
+    val deploysToRun = getApplicableDeployParams(newBuilds, Persistence.store.getContinuousDeploymentList)
 
     deploysToRun.foreach{ params =>
       if (conf.Configuration.continuousDeployment.enabled) {

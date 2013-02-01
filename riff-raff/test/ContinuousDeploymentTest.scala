@@ -13,22 +13,8 @@ import magenta.RecipeName
 
 class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with DomainsTestHelper {
 
-  "ContinuousDeployment" should "do nothing if the previous builds map is empty" in {
-    val newBuilds = continuousDeployment.getLatestNewBuilds( Map.empty, simpleBuildsMap, cdConfigMap )
-    newBuilds should be(Map.empty)
-  }
-
-  it should "work out the latest builds for each project" in {
-    val newBuilds = continuousDeployment.getLatestNewBuilds( Map(tdBT -> List(tdB70)), simpleBuildsMap, cdConfigMap )
-    newBuilds should be(Map(
-      tdBT -> List(tdB71),
-      td2BT -> List(td2B392, td2B391, td2B390)
-    ))
-  }
-
-  it should "create deploy parameters for a set of builds" in {
-    val newBuilds = continuousDeployment.getLatestNewBuilds( Map(tdBT -> List(tdB70)), simpleBuildsMap, cdConfigMap )
-    val params = continuousDeployment.getApplicableDeployParams(newBuilds, cdConfigMap).toSet
+  "Continuous Deployment" should "create deploy parameters for a set of builds" in {
+    val params = continuousDeployment.getApplicableDeployParams(newBuildsList, contDeployConfigs).toSet
     params.size should be(2)
     params should be(Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
@@ -37,8 +23,7 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   }
 
   it should "work out the latest build for different branches" in {
-    val newBuilds = continuousDeployment.getLatestNewBuilds( Map(tdBT -> List(tdB70)), simpleBuildsMap, cdConfigBranchMap )
-    val params = continuousDeployment.getApplicableDeployParams(newBuilds, cdConfigBranchMap).toSet
+    val params = continuousDeployment.getApplicableDeployParams(newBuildsList, contDeployBranchConfigs).toSet
     val expected = Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "391"), Stage("PROD"), RecipeName("default")),
@@ -48,27 +33,11 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
     params should be(expected)
   }
 
-  it should "only deploy projects that have new builds" in {
-    val newBuilds = continuousDeployment.getLatestNewBuilds( Map(tdBT -> List(tdB71)), simpleBuildsMap, cdConfigMap)
-    val params = continuousDeployment.getApplicableDeployParams(newBuilds, cdConfigMap).toSet
-    val expected = Set(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")))
-    params should be(expected)
-  }
-
-  it should "filter only enabled CD configs" in {
-    continuousDeployment.createContinuousDeploymentMap(contDeployConfigs) should be(Map(
-      "tools::deploy" -> Set(tdProdEnabled),
-      "tools::deploy2" -> Set(td2QaEnabled)
-    ))
-  }
-
   it should "filter stages according to the domains configuration" in {
-    val buildMap = Map(td2BT -> List(td2B390))
-    val params = nonProdCD.getApplicableDeployParams(buildMap, nonProdCD.createContinuousDeploymentMap(contDeployConfigs))
+    val params = nonProdCD.getApplicableDeployParams(List(td2B390), contDeployConfigs)
     params.size should be(1)
     params.head should be(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "390"), Stage("QA"), RecipeName("default")))
   }
-
 
   /* Test types */
 
@@ -96,20 +65,15 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   val config = Map("domains.enabled" -> "false")
   val domainInstance = new Domains(testDomainsConfiguration(config))
   val continuousDeployment = new ContinuousDeployment(domainInstance)
-  val cdConfigMap = continuousDeployment.createContinuousDeploymentMap(contDeployConfigs)
-  val cdConfigBranchMap = continuousDeployment.createContinuousDeploymentMap(contDeployBranchConfigs)
 
   val tdBT = BuildType("bt204", "tools::deploy")
-  val tdB70 = Build(45394, "bt204", "70", "20130124T144247+0000", "master")
-  val tdB71 = Build(45397, "bt204", "71", "20130125T144247+0000", "master")
+  val tdB70 = Build(45394, tdBT, "70", "20130124T144247+0000", "master")
+  val tdB71 = Build(45397, tdBT, "71", "20130125T144247+0000", "master")
 
   val td2BT = BuildType("bt205", "tools::deploy2")
-  val td2B390 = Build(45395, "bt205", "390", "20130124T144347+0000", "branch")
-  val td2B391 = Build(45396, "bt205", "391", "20130125T144447+0000", "master")
-  val td2B392 = Build(45400, "bt205", "392", "20130125T153447+0000", "branch")
+  val td2B390 = Build(45395, td2BT, "390", "20130124T144347+0000", "branch")
+  val td2B391 = Build(45396, td2BT, "391", "20130125T144447+0000", "master")
+  val td2B392 = Build(45400, td2BT, "392", "20130125T153447+0000", "branch")
 
-  val simpleBuildsMap = Map(
-    tdBT -> List(tdB70, tdB71),
-    td2BT -> List(td2B390, td2B391, td2B392)
-  )
+  val newBuildsList = List( tdB70, tdB71, td2B390, td2B391, td2B392 )
 }
