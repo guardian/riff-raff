@@ -6,7 +6,7 @@ import com.novus.salat.annotations.raw.Salat
 import magenta._
 import deployment.{Record, TaskType}
 
-case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value) {
+case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value, summarised: Option[Boolean] = None) {
   lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
 }
 object DeployRecordDocument {

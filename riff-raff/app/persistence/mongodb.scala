@@ -297,8 +297,22 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    deployV2Collection.find(
+      MongoDBObject(
+        "startTime" -> MongoDBObject("$lt" -> dateTime),
+        "summarised" -> MongoDBObject("$ne" -> true)
+      )
+    ).toIterable.map { dbo =>
+      val uuid = dbo.getAs[UUID]("_id").get
+      val dateTime = dbo.getAs[DateTime]("startTime").get
+      SimpleDeployDetail(uuid, dateTime)
+    }
+  }
+
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
+      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
       deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }

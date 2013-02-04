@@ -4,6 +4,7 @@ import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
 import notification.{TeamCityBuildPinner, HooksClient, MessageQueue, IrcClient}
+import persistence.SummariseDeploysHousekeeping
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
 import play.{Application, GlobalSettings}
@@ -27,16 +28,17 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
   override def onStart(app: Application) {
     // list of singletons - note these are inside onStart() to ensure logging has fully initialised
     lifecycleSingletons ++= List(
+      ScheduledAgent,
       DeployInfoManager,
       DeployController,
       IrcClient,
       MessageQueue,
-      ScheduledAgent,
       ContinuousDeployment,
       DeployMetrics,
       HooksClient,
       TeamCity,
-      TeamCityBuildPinner
+      TeamCityBuildPinner,
+      SummariseDeploysHousekeeping
     )
 
     log.info("Calling init() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
@@ -50,8 +52,8 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
   }
 
   override def onStop(app: Application) {
-    log.info("Calling shutdown() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
-    lifecycleSingletons foreach { singleton =>
+    log.info("Calling shutdown() on Lifecycle singletons: %s" format lifecycleSingletons.reverse.map(_.getClass.getName).mkString(", "))
+    lifecycleSingletons.reverse.foreach { singleton =>
       try {
         singleton.shutdown(app)
       } catch {

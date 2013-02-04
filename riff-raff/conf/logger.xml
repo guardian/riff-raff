@@ -27,6 +27,7 @@
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
     <!--<logger name="deployment.DeployControlActor$" level="DEBUG" />-->
     <!--<logger name="ci.TeamCity$" level="DEBUG" />-->
+    <logger name="utils.ScheduledAgent" level="DEBUG" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>

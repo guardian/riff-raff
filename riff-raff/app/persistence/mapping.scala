@@ -136,6 +136,7 @@ trait DocumentStore {
   def addStringUUID(uuid: UUID) {}
   def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
+  def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
 }
 
 object DocumentStoreConverter extends Logging {
