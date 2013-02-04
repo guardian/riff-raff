@@ -1,7 +1,7 @@
 package ci
 
 import xml.{NodeSeq, Node, Elem}
-import utils.{ScheduledAgentUpdate, ScheduledAgent}
+import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent}
 import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
 import org.joda.time.format.DateTimeFormat
@@ -90,13 +90,13 @@ object TeamCity extends LifecycleWithoutApp with Logging {
     def buildSince(startTime:DateTime) = TeamCityWS.url("/app/rest/builds/?locator=sinceDate:%s,branch:branched:any" format URLEncoder.encode(dateTimeFormat.print(startTime), "UTF-8"))
   }
 
-  private val fullUpdate = ScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
+  private val fullUpdate = PeriodicScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
     val builds = getSuccessfulBuilds.await((1 minute).toMillis).get
     if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
     builds
   }
 
-  private val incrementalUpdate = ScheduledAgentUpdate[List[Build]](1 minute, pollingPeriod) { currentBuilds =>
+  private val incrementalUpdate = PeriodicScheduledAgentUpdate[List[Build]](1 minute, pollingPeriod) { currentBuilds =>
     if (currentBuilds.isEmpty) {
       log.warn("No builds yet, aborting incremental update")
       currentBuilds
