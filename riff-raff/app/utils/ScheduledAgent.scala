@@ -67,12 +67,12 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
   val cancellablesAgent = Agent[Map[ScheduledAgentUpdate[T],Cancellable]]{
     updates.map { update =>
       val cancellable = update match {
-        case periodic:PeriodicScheduledAgentUpdate[T] =>
+        case periodic:PeriodicScheduledAgentUpdate[_] =>
           system.scheduler.schedule(periodic.initialDelay, periodic.frequency) {
             queueUpdate(periodic)
           }
-        case daily:DailyScheduledAgentUpdate[T] =>
-          scheduleNext(daily)
+        case daily:DailyScheduledAgentUpdate[_] =>
+          scheduleNext(daily.asInstanceOf[DailyScheduledAgentUpdate[T]])
       }
       update -> cancellable
     }.toMap
