@@ -43,6 +43,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val maxDeploys = configuration.getIntegerProperty("concurrency.maxDeploys", 8)
   }
 
+  object continuousDeployment {
+    lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "true") == "true"
+  }
+
   object deployinfo {
     lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
     lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
@@ -50,30 +54,12 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }.getOrElse(DeployInfoMode.URL)
   }
 
-  object urls {
-    lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
-  }
+  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
 
-  object sshKey {
-    lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
-    lazy val file: Option[File] = path map (new File(_))
-  }
-
-  object logging {
-    lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
-  }
-
-  object s3 {
-    def credentials(accessKey: String) = {
-      val secretKey = configuration.getStringProperty("s3.secretAccessKey.%s" format accessKey).getOrException("No S3 secret access key configured for %s" format accessKey)
-      S3Credentials(accessKey,secretKey)
-    }
-  }
-
-  object mongo {
-    lazy val isConfigured = uri.isDefined
-    lazy val uri = configuration.getStringProperty("mongo.uri")
-    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
+  object housekeeping {
+    lazy val summariseDeploysAfterDays = configuration.getIntegerProperty("housekeeping.summariseDeploysAfterDays", 90)
+    lazy val hour = configuration.getIntegerProperty("housekeeping.hour", 4)
+    lazy val minute = configuration.getIntegerProperty("housekeeping.minute", 0)
   }
 
   object irc {
@@ -81,6 +67,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val name = configuration.getStringProperty("irc.name")
     lazy val host = configuration.getStringProperty("irc.host")
     lazy val channel = configuration.getStringProperty("irc.channel")
+  }
+
+  object logging {
+    lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
+  }
+
+  object mongo {
+    lazy val isConfigured = uri.isDefined
+    lazy val uri = configuration.getStringProperty("mongo.uri")
+    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
   }
 
   object mq {
@@ -100,16 +96,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val queueTargets: List[QueueDetails] = configuration.getStringPropertiesSplitByComma("mq.queueTargets").flatMap(QueueDetails(_))
   }
 
-  object teamcity {
-    lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
-    lazy val useAuth = user.isDefined && password.isDefined
-    lazy val user = configuration.getStringProperty("teamcity.user")
-    lazy val password = configuration.getStringProperty("teamcity.password")
-    lazy val pinSuccessfulDeploys = configuration.getStringProperty("teamcity.pinSuccessfulDeploys", "false") == "true"
-    lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
-    lazy val pollingWindowMinutes = configuration.getStringProperty("teamcity.pollingWindowMinutes", "60").toInt
-    lazy val pollingPeriodSeconds = configuration.getStringProperty("teamcity.pollingPeriodSeconds", "60").toInt
-    lazy val fullUpdatePeriodSeconds = configuration.getStringProperty("teamcity.fullUpdatePeriodSeconds", "3600").toInt
+  object s3 {
+    def credentials(accessKey: String) = {
+      val secretKey = configuration.getStringProperty("s3.secretAccessKey.%s" format accessKey).getOrException("No S3 secret access key configured for %s" format accessKey)
+      S3Credentials(accessKey,secretKey)
+    }
+  }
+
+  object sshKey {
+    lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
+    lazy val file: Option[File] = path map (new File(_))
   }
 
   object stages {
@@ -117,10 +113,20 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val ordering = UnnaturalOrdering(order, false)
   }
 
-  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
+  object teamcity {
+    lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
+    lazy val useAuth = user.isDefined && password.isDefined
+    lazy val user = configuration.getStringProperty("teamcity.user")
+    lazy val password = configuration.getStringProperty("teamcity.password")
+    lazy val pinSuccessfulDeploys = configuration.getStringProperty("teamcity.pinSuccessfulDeploys", "false") == "true"
+    lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
+    lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
+    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 60)
+    lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
+  }
 
-  object continuousDeployment {
-    lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "true") == "true"
+  object urls {
+    lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
 
   override def toString(): String = configuration.toString
