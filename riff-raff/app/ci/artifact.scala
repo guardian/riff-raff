@@ -112,7 +112,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
     val buildTypes = getBuildTypes
     buildTypes.flatMap { fulfilledBuildTypes =>
       log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
-      val allBuilds = Promise.sequence(fulfilledBuildTypes.map(_.builds)).map(_.flatten)
+      val allBuilds = Promise.sequence(fulfilledBuildTypes.map(_.builds)).map(_.flatten.filter(_.status=="SUCCESS"))
       allBuilds.map { result =>
         log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
         result
