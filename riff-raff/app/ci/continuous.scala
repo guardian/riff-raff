@@ -13,6 +13,7 @@ import persistence.Persistence
 import deployment.DomainAction.Local
 import deployment.Domains
 import org.joda.time.DateTime
+import teamcity.Build
 
 case class ContinuousDeploymentConfig(
   id: UUID,
@@ -27,8 +28,7 @@ case class ContinuousDeploymentConfig(
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   def findMatch(builds: List[Build]): Option[Build] = {
     builds.find{ build =>
-      build.buildType.name == projectName &&
-      branchRE.findFirstMatchIn(build.branch).isDefined
+      build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
     }
   }
 }
@@ -40,12 +40,12 @@ object ContinuousDeployment extends LifecycleWithoutApp {
   def init() {
     if (buildWatcher.isEmpty) {
       buildWatcher = Some(new ContinuousDeployment(Domains))
-      buildWatcher.foreach(TeamCity.subscribe)
+      buildWatcher.foreach(TeamCityBuilds.subscribe)
     }
   }
 
   def shutdown() {
-    buildWatcher.foreach(TeamCity.unsubscribe)
+    buildWatcher.foreach(TeamCityBuilds.unsubscribe)
     buildWatcher = None
   }
 }
@@ -56,13 +56,13 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def getApplicableDeployParams(builds: List[Build], configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     val enabledConfigs = configs.filter(_.enabled)
-    val sortedBuilds = builds.sortBy(-_.buildId)
+    val sortedBuilds = builds.sortBy(-_.id)
 
     val allParams = enabledConfigs.flatMap { config =>
       config.findMatch(sortedBuilds).map { build =>
         DeployParameters(
           Deployer("Continuous Deployment"),
-          MagentaBuild(build.buildType.name,build.number),
+          MagentaBuild(build.buildType.fullName,build.number),
           Stage(config.stage),
           RecipeName(config.recipe)
         )

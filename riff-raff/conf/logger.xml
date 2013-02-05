@@ -11,7 +11,7 @@
         </rollingPolicy>
 
         <encoder>
-            <pattern>%date [%thread] %-5level %logger{36} - %msg%n%xException{3}</pattern>
+            <pattern>%date [%thread] %-5level %logger{36} - %msg%n%xException{20}</pattern>
         </encoder>
     </appender>
 
@@ -26,7 +26,7 @@
     <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
     <!--<logger name="deployment.DeployControlActor$" level="DEBUG" />-->
-    <!--<logger name="ci.TeamCity$" level="DEBUG" />-->
+    <logger name="ci.teamcity" level="DEBUG" />
     <logger name="utils.ScheduledAgent" level="DEBUG" />
 
     <root level="INFO">
