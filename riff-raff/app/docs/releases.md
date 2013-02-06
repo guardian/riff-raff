@@ -1,5 +1,13 @@
 ### Release notes
 
+#### 6th Feb 2013
+
+Pinned builds in TeamCity are now tidied up so there are no more than 5 pinned builds for any build configuration.
+
+#### 4th Feb 2013
+
+Added housekeeping task that summarises deploys after 90 days.  The detailed log information is deleted at this point.
+
 #### 1st Feb 2013
 
 Fixed a bug that missed builds for continuous deployment.  Also made incremental TeamCity build retrieval possible,
