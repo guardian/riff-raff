@@ -10,7 +10,7 @@ import play.mvc.Result
 import play.{Application, GlobalSettings}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
-import ci.{TeamCity, ContinuousDeployment}
+import ci.{TeamCityBuilds, ContinuousDeployment}
 import utils.ScheduledAgent
 import conf.{DeployMetrics, RequestMetrics}
 
@@ -36,7 +36,7 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
       ContinuousDeployment,
       DeployMetrics,
       HooksClient,
-      TeamCity,
+      TeamCityBuilds,
       TeamCityBuildPinner,
       SummariseDeploysHousekeeping
     )
