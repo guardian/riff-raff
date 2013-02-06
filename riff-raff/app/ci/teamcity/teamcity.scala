@@ -1,6 +1,6 @@
 package ci.teamcity
 
-import play.api.libs.ws.WS
+import play.api.libs.ws.{Response, WS}
 import com.ning.http.client.Realm.AuthScheme
 import conf.Configuration.teamcity
 import play.api.libs.ws.WS.WSRequestHolder
@@ -27,7 +27,8 @@ object Project extends Logging {
 }
 
 case class BuildType(id: String, name: String, project: Project, webUrl: URL) {
-  def builds = BuildSummary(BuildLocator.buildTypeId(id), Some(this))
+  def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
+  def builds(locator: BuildLocator) = BuildSummary(locator.buildTypeId(id), this)
   lazy val fullName = "%s::%s" format (project.name, name)
 }
 object BuildType extends Logging {
@@ -51,7 +52,7 @@ object BuildType extends Logging {
   }
 }
 
-trait Build {
+trait Build extends Logging {
   def id: Int
   def number: String
   def status: String
@@ -62,6 +63,22 @@ trait Build {
   def branchName: String
   def defaultBranch: Option[Boolean]
   def detail: Promise[BuildDetail]
+  def pin(text: String): Promise[Response] = {
+    val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).put(text)
+    buildPinCall.map { response =>
+      log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
+      log.debug("HTTP response body %s" format response.body)
+    }
+    buildPinCall
+  }
+  def unpin(): Promise[Response] = {
+    val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).delete()
+    buildPinCall.map { response =>
+      log.info("Unpinning build %s: HTTP status code %d" format (this.toString, response.status))
+      log.debug("HTTP response body %s" format response.body)
+    }
+    buildPinCall
+  }
 }
 
 case class BuildSummary(id: Int,
@@ -77,37 +94,47 @@ case class BuildSummary(id: Int,
   def detail: Promise[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
 }
 object BuildSummary extends Logging {
-  def apply(locator: BuildLocator, buildType: Option[BuildType] = None): Promise[List[BuildSummary]] = {
-    def lookup = (id: String) => { buildType }
-    api.build.list(locator).get().map( data => BuildSummary(data.xml, lookup) )
+  def wrapLookup(original: String => Option[BuildType]) = (id: String) => Promise.pure(original(id))
+
+  def apply(locator: BuildLocator, buildType: BuildType): Promise[List[BuildSummary]] = {
+    log.debug("Getting build summaries for %s, buildType %s" format (locator, buildType))
+    def lookup = (id: String) => { Some(buildType) }
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(lookup)) )
   }
 
   def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType]): Promise[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().map( data => BuildSummary(data.xml, buildTypeLookup) )
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(buildTypeLookup)) )
   }
 
-  private def apply(build: Node, buildTypeLookup: String => Option[BuildType]): Option[BuildSummary] = {
+  def listWithPromisedLookup(locator: BuildLocator, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[List[BuildSummary]] = {
+    log.debug("Getting build summaries for %s" format locator)
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup) )
+  }
+
+  private def apply(build: Node, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[Option[BuildSummary]] = {
     val buildTypeId = build \ "@buildTypeId" text
-    val buildType = buildTypeLookup(buildTypeId)
-    if (buildType.isEmpty) log.warn("No build type found for %s" format buildTypeId)
-    buildType.map { bt =>
-      apply(
-        (build \ "@id" text).toInt,
-        build \ "@number" text,
-        build \ "@buildTypeId" text,
-        build \ "@status" text,
-        new URL(build \ "@webUrl" text),
-        (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
-        (build \ "@defaultBranch").headOption.map(_.text == "true"),
-        TeamCity.dateTimeFormat.parseDateTime(build \ "@startDate" text),
-        bt
-      )
+    val buildSummary = buildTypeLookup(buildTypeId).map { buildType =>
+      if (buildType.isEmpty) log.warn("No build type found for %s" format buildTypeId)
+      buildType.map { bt =>
+        apply(
+          (build \ "@id" text).toInt,
+          build \ "@number" text,
+          build \ "@buildTypeId" text,
+          build \ "@status" text,
+          new URL(build \ "@webUrl" text),
+          (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
+          (build \ "@defaultBranch").headOption.map(_.text == "true"),
+          TeamCity.dateTimeFormat.parseDateTime(build \ "@startDate" text),
+          bt
+        )
+      }
     }
+    buildSummary
   }
 
-  def apply(builds: Elem, buildTypeLookup: String => Option[BuildType]): List[BuildSummary] = {
-    (builds \ "build").toList flatMap { apply(_, buildTypeLookup) }
+  def apply(builds: Elem, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[List[BuildSummary]] = {
+    Promise.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
   }
 }
 
@@ -139,7 +166,7 @@ case class BuildDetail(
   defaultBranch: Option[Boolean],
   startDate: DateTime,
   finishDate: DateTime,
-  pin: Option[PinInfo]
+  pinInfo: Option[PinInfo]
 ) extends Build {
   def detail = Promise.pure(this)
   def buildTypeId = buildType.id
@@ -159,12 +186,14 @@ object BuildDetail {
       defaultBranch = (build \ "@defaultBranch").headOption.map(_.text == "true"),
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
-      pin = (build \ "pinInfo" headOption) map (PinInfo(_))
+      pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_))
     )
   }
 }
 
 object TeamCity {
+  def encode(toEncode:String) = URLEncoder.encode(toEncode,"UTF-8")
+
   val dateTimeFormat = DateTimeFormat.forPattern("yyyyMMdd'T'HHmmssZ")
 
   trait Locator {
@@ -180,26 +209,49 @@ object TeamCity {
                            id: Option[Int] = None,
                            branch: Option[BranchLocator] = Some(BranchLocator(branched = Some("any"))),
                            buildType: Option[BuildTypeLocator] = None,
+                           buildTypeInstance: Option[BuildType] = None,
                            sinceBuild: Option[Int] = None,
                            sinceDate: Option[DateTime] = None,
-                           number: Option[String] = None
+                           number: Option[String] = None,
+                           pinned: Option[Boolean] = None,
+                           status: Option[String] = None
                            ) extends Locator {
     lazy val params = Map(
       "branch" -> branch.map(_.toString),
       "buildType" -> buildType.map(_.toString),
       "sinceBuild" -> sinceBuild.map(_.toString),
       "sinceDate" -> sinceDate.map(date => URLEncoder.encode(TeamCity.dateTimeFormat.print(date), "UTF-8")),
-      "number" -> number
+      "number" -> number.map(encode),
+      "pinned" -> pinned.map(_.toString),
+      "status" -> status.map(encode),
+      "id" -> id.map(_.toString)
     )
-    def list: Promise[List[BuildSummary]] = BuildSummary(this)
+    def list: Promise[List[BuildSummary]] = {
+      if (buildTypeInstance.isDefined)
+        BuildSummary(this, buildTypeInstance.get)
+      else {
+        val buildTypes = BuildTypeLocator.list
+        val lookupFromTC = (id: String) => {
+          buildTypes.map(_.find(_.id == id))
+        }
+        BuildSummary.listWithPromisedLookup(this, lookupFromTC)
+      }
+    }
     def detail: Promise[BuildDetail] = BuildDetail(this)
-    def number(number:String) = copy(number=Some(number))
+    def number(number:String): BuildLocator = copy(number=Some(number))
+    def status(status:String): BuildLocator = copy(status=Some(status))
+    def buildTypeId(buildTypeId: String) = copy(buildType=Some(BuildTypeLocator.id(buildTypeId)))
+    def buildTypeInstance(buildType: BuildType) = copy(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
   }
   object BuildLocator {
+    def id(id: Int) = BuildLocator(id=Some(id))
     def buildTypeId(buildTypeId: String) = BuildLocator(buildType=Some(BuildTypeLocator.id(buildTypeId)))
+    def buildTypeInstance(buildType: BuildType) = BuildLocator(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
     def sinceBuild(buildId: Int) = BuildLocator(sinceBuild=Some(buildId))
     def sinceDate(date: DateTime) = BuildLocator(sinceDate=Some(date))
     def number(buildNumber: String) = BuildLocator(number=Some(buildNumber))
+    def pinned(pinned: Boolean) = BuildLocator(pinned=Some(pinned))
+    def status(status: String) = BuildLocator(status=Some(status))
   }
 
   case class BranchLocator(branched: Option[String] = None) extends Locator {
@@ -216,13 +268,13 @@ object TeamCity {
   object BuildTypeLocator {
     def id(buildTypeId: String) = BuildTypeLocator(id=Some(buildTypeId))
     def name(buildTypeName: String) = BuildTypeLocator(name=Some(buildTypeName))
+    def list: Promise[List[BuildType]] = api.buildType.list.get().map(data => BuildType(data.xml \ "buildType"))
   }
   case class ProjectLocator(id: Option[String] = None, name: Option[String] = None) extends Locator {
     lazy val params = Map(
       "id" -> id,
       "name" -> name
     )
-    def buildTypes: WSRequestHolder = api.project.detail(this)
   }
   object ProjectLocator {
     def id(projectId: String) = ProjectLocator(id=Some(projectId))
@@ -236,6 +288,10 @@ object TeamCity {
       def list = TeamCityWS.url("/app/rest/projects")
       def detail(projectLocator: ProjectLocator) = TeamCityWS.url("/app/rest/projects/%s" format projectLocator)
       def id(projectId: String) = detail(ProjectLocator(id=Some(projectId)))
+    }
+
+    object buildType {
+      def list = TeamCityWS.url("/app/rest/buildTypes")
     }
 
     object build {

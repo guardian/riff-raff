@@ -27,6 +27,8 @@
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
     <!--<logger name="deployment.DeployControlActor$" level="DEBUG" />-->
     <logger name="ci.teamcity" level="DEBUG" />
+    <logger name="ci.TeamCityBuilds$" level="DEBUG" />
+    <logger name="notification.TeamCityBuildPinner$" level="DEBUG" />
     <logger name="utils.ScheduledAgent" level="DEBUG" />
 
     <root level="INFO">

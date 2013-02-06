@@ -1,7 +1,7 @@
 package ci
 
 import teamcity._
-import teamcity.TeamCity.BuildLocator
+import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
 import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent}
 import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
@@ -86,6 +86,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   private var buildAgent:Option[ScheduledAgent[List[Build]]] = None
 
   def builds: List[Build] = buildAgent.map(_.apply()).getOrElse(Nil)
+  def build(project: String, number: String) = builds.find(b => b.buildType.fullName == project && b.number == number)
   def buildTypes: Set[BuildType] = builds.buildTypes
 
   def successfulBuilds(projectName: String): List[Build] = builds.filter(_.buildType.fullName == projectName)
@@ -106,13 +107,12 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
 
   def shutdown() { buildAgent.foreach(_.shutdown()) }
 
-  private def getBuildTypes: Promise[List[teamcity.BuildType]] = Project().flatPromiseMap(_.buildTypes).map(_.toList)
-
   private def getSuccessfulBuilds: Promise[List[Build]] = {
-    val buildTypes = getBuildTypes
+    log.debug("Getting successful builds")
+    val buildTypes = BuildTypeLocator.list
     buildTypes.flatMap { fulfilledBuildTypes =>
       log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
-      val allBuilds = Promise.sequence(fulfilledBuildTypes.map(_.builds)).map(_.flatten.filter(_.status=="SUCCESS"))
+      val allBuilds = Promise.sequence(fulfilledBuildTypes.map(_.builds(BuildLocator.status("SUCCESS")))).map(_.flatten)
       allBuilds.map { result =>
         log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
         result
@@ -132,7 +132,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
     }
     val pollingWindowStart = (new DateTime()).minus(pollingWindow)
     log.info("Querying TC for all builds since %s" format pollingWindowStart)
-    val builds = BuildSummary.listWithLookup(BuildLocator.sinceDate(pollingWindowStart), getBuildType)
+    val builds = BuildSummary.listWithLookup(BuildLocator.sinceDate(pollingWindowStart).status("SUCCESS"), getBuildType)
     builds.map { builds =>
       log.debug("Found %d builds since %s" format (builds.size, pollingWindowStart))
       val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
