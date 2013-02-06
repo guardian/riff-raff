@@ -164,7 +164,7 @@ object VCSRootInstance {
       id = (xml \ "@id" text).toInt,
       name = xml \ "@name" text,
       vcsName = xml \ "@vcsName" text,
-      (xml \ "properties" \ "property").toList.map { property =>
+      properties = (xml \ "properties" \ "property").toList.map { property =>
         (property \ "@name" text) -> (property \ "@value" text)
       }.toMap
     )
