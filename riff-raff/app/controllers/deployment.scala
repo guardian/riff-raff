@@ -85,7 +85,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
 
-    val params = TeamCity.transformLastSuccessful(requestedParams)
+    val params = TeamCityBuilds.transformLastSuccessful(requestedParams)
     Domains.assertResponsibleFor(params)
 
     enableDeploysSwitch.whileOnYield {
@@ -259,14 +259,16 @@ object Deployment extends Controller with Logging {
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = TeamCity.buildTypes.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
+    val possibleProjects = TeamCityBuilds.buildTypes.map(_.fullName).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
   def autoCompleteBuild(project: String, term: String) = AuthAction {
-    val possibleProjects = TeamCity.successfulBuilds(project).filter(p => p.number.contains(term) || p.branch.contains(term)).map { build =>
+    val possibleProjects = TeamCityBuilds.successfulBuilds(project).filter(
+      p => p.number.contains(term) || p.branchName.contains(term)
+    ).map { build =>
       val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
-      val label = "%s [%s] (%s)" format (build.number, build.branch, formatter.print(build.startDate))
+      val label = "%s [%s] (%s)" format (build.number, build.branchName, formatter.print(build.startDate))
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
@@ -280,8 +282,8 @@ object Deployment extends Controller with Logging {
   def teamcity = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
-      for(build <- TeamCity.builds.sortBy(_.buildType.name))
-        yield Seq(build.buildType.name,build.number,build.branch,build.buildType.id,build.buildId)
+      for(build <- TeamCityBuilds.builds.sortBy(_.buildType.fullName))
+        yield Seq(build.buildType.name,build.number,build.branchName,build.buildType.id,build.id)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }

@@ -2,7 +2,7 @@ package test
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import ci.{ContinuousDeploymentConfig, Build, BuildType, ContinuousDeployment}
+import ci.{ContinuousDeploymentConfig, ContinuousDeployment}
 import deployment.Domains
 import java.util.UUID
 import magenta.{Build => MagentaBuild}
@@ -10,6 +10,9 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import magenta.RecipeName
+import ci.teamcity.{Project, BuildType, BuildSummary}
+import java.net.URL
+import org.joda.time.DateTime
 
 class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with DomainsTestHelper {
 
@@ -66,14 +69,16 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   val domainInstance = new Domains(testDomainsConfiguration(config))
   val continuousDeployment = new ContinuousDeployment(domainInstance)
 
-  val tdBT = BuildType("bt204", "tools::deploy")
-  val tdB70 = Build(45394, tdBT, "70", "20130124T144247+0000", "master")
-  val tdB71 = Build(45397, tdBT, "71", "20130125T144247+0000", "master")
+  val url = new URL("http://riffraff.gnl/test")
 
-  val td2BT = BuildType("bt205", "tools::deploy2")
-  val td2B390 = Build(45395, td2BT, "390", "20130124T144347+0000", "branch")
-  val td2B391 = Build(45396, td2BT, "391", "20130125T144447+0000", "master")
-  val td2B392 = Build(45400, td2BT, "392", "20130125T153447+0000", "branch")
+  val tdBT = BuildType("bt204", "deploy", Project("project1", "tools"), url)
+  val tdB70 = BuildSummary(45394, "70", tdBT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,24,14,42,47), tdBT)
+  val tdB71 = BuildSummary(45397, "71", tdBT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,25,14,42,47), tdBT)
+
+  val td2BT = BuildType("bt205", "deploy2", Project("project1", "tools"), new URL("http://riffraff.gnl/test"))
+  val td2B390 = BuildSummary(45395, "390", td2BT.id, "SUCCESS", url, "branch", None, new DateTime(2013,1,24,14,43,47), td2BT)
+  val td2B391 = BuildSummary(45396, "391", td2BT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,25,14,44,47), td2BT)
+  val td2B392 = BuildSummary(45400, "392", td2BT.id, "SUCCESS", url, "branch", None, new DateTime(2013,1,25,15,34,47), td2BT)
 
   val newBuildsList = List( tdB70, tdB71, td2B390, td2B391, td2B392 )
 }

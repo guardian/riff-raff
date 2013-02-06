@@ -120,6 +120,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val password = configuration.getStringProperty("teamcity.password")
     lazy val pinSuccessfulDeploys = configuration.getStringProperty("teamcity.pinSuccessfulDeploys", "false") == "true"
     lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
+    lazy val maximumPinsPerProject = configuration.getIntegerProperty("teamcity.maximumPinsPerProject", 5)
     lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
     lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 60)
     lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
