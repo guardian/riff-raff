@@ -350,12 +350,12 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       )
     )
     val pipeline = pipeBuilder.result()
-    log.info(pipeline.toString())
+    log.debug("Aggregate query: %s" format pipeline.toString)
     val result = database.command(MongoDBObject("aggregate" -> deployV2Collection.name, "pipeline" -> pipeline))
     val ok = result.as[Double]("ok")
     ok match {
       case 1.0 =>
-        log.info(result.toString)
+        log.debug("Result of aggregate query: %s" format result.toString)
         result.get("result") match {
           case results: BasicDBList => results.map { result =>
             result match {
