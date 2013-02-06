@@ -34,6 +34,16 @@ trait ScheduledAgentUpdate[T] {
   def block: T => T
 }
 
+case class Update[T](block: T => T) extends ScheduledAgentUpdate[T]
+object Update {
+  def apply[T](block: => Unit): Update[T] = {
+    Update{ t =>
+      block
+      t
+    }
+  }
+}
+
 case class PeriodicScheduledAgentUpdate[T](block: T => T, initialDelay: Duration, frequency: Duration) extends ScheduledAgentUpdate[T]
 
 object PeriodicScheduledAgentUpdate {

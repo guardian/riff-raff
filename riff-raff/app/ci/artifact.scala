@@ -2,7 +2,7 @@ package ci
 
 import teamcity._
 import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
-import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent}
+import utils.{Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
 import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
 import controllers.Logging
@@ -53,10 +53,18 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
   def notifyListeners(newBuilds: List[Build]) {
-    listeners.foreach{ listener =>
-      try listener.newBuilds(newBuilds)
-      catch {
-        case e:Exception => log.error("BuildWatcher threw an exception", e)
+    if (!newBuilds.isEmpty) {
+      buildAgent.foreach{ agent =>
+        log.info("Queueing listener notification")
+        agent.queueUpdate(Update{
+          log.info("Notifying listeners")
+          listeners.foreach{ listener =>
+            try listener.newBuilds(newBuilds)
+            catch {
+              case e:Exception => log.error("BuildWatcher threw an exception", e)
+            }
+          }
+        })
       }
     }
   }
