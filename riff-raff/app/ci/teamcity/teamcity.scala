@@ -156,6 +156,36 @@ object PinInfo {
   }
 }
 
+case class VCSRootInstance(lastVersion: String, id: Int, name: String, vcsName: String, properties: Map[String, String])
+object VCSRootInstance {
+  def apply(xml: Node): VCSRootInstance = {
+    VCSRootInstance(
+      lastVersion = xml \ "@lastVersion" text,
+      id = (xml \ "@id" text).toInt,
+      name = xml \ "@name" text,
+      vcsName = xml \ "@vcsName" text,
+      (xml \ "properties" \ "property").toList.map { property =>
+        (property \ "@name" text) -> (property \ "@value" text)
+      }.toMap
+    )
+  }
+}
+
+case class Revision(version: String, vcsInstanceId: Int, vcsRootId: Int, vcsName: String, vcsHref: String) {
+  def vcsDetails = TeamCityWS.href(vcsHref).get().map(data => VCSRootInstance(data.xml))
+}
+object Revision {
+  def apply(xml: Node): Revision = {
+    Revision(
+      xml \ "@version" text,
+      (xml \ "vcs-root-instance" \ "@id" text).toInt,
+      (xml \ "vcs-root-instance" \ "@vcs-root-id" text).toInt,
+      xml \ "vcs-root-instance" \ "@name" text,
+      xml \ "vcs-root-instance" \ "@href" text
+    )
+  }
+}
+
 case class BuildDetail(
   id: Int,
   number: String,
@@ -166,7 +196,8 @@ case class BuildDetail(
   defaultBranch: Option[Boolean],
   startDate: DateTime,
   finishDate: DateTime,
-  pinInfo: Option[PinInfo]
+  pinInfo: Option[PinInfo],
+  revision: Option[Revision]
 ) extends Build {
   def detail = Promise.pure(this)
   def buildTypeId = buildType.id
@@ -186,7 +217,8 @@ object BuildDetail {
       defaultBranch = (build \ "@defaultBranch").headOption.map(_.text == "true"),
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
-      pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_))
+      pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
+      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
     )
   }
 }
@@ -304,6 +336,8 @@ object TeamCity {
       def pin(buildLocator: BuildLocator): WSRequestHolder = TeamCityWS.url("/app/rest/builds/%s/pin" format buildLocator)
       def pin(buildTypeId: String, buildNumber: String): WSRequestHolder = pin(BuildLocator.buildTypeId(buildTypeId).number(buildNumber))
     }
+
+    def href(href: String) = TeamCityWS.href(href)
   }
 }
 
@@ -317,5 +351,11 @@ object TeamCityWS {
   def url(path: String): WSRequestHolder = {
     val url = "%s%s" format (teamcityURL, path)
     auth.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
+  }
+
+  def href(href: String): WSRequestHolder = {
+    val Stripper = """/[a-z]*Auth(.*)""".r
+    val Stripper(apiUrl) = href
+    url(apiUrl)
   }
 }
