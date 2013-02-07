@@ -8,6 +8,7 @@ import java.io.File
 import magenta.teamcity.Artifact.build2download
 import org.joda.time.{Interval, DateTime, Duration}
 import ci.ContinuousIntegration
+import utils.VCSInfo
 
 object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
@@ -61,6 +62,12 @@ trait Record {
   }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
+
+  def allMetaData = metaData ++ computedMetaData
+
+  def computedMetaData = vcsInfo.map(_.map).flatten
+
+  def vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
 }
 
 object DeployV2Record {

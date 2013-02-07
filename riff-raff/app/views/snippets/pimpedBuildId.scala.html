@@ -1,0 +1,21 @@
+@(r: deployment.Record)
+@import html.helper.twitterBootstrap2.htmlTooltip
+
+@htmlTooltip(placement="left"){
+    <table>
+        <tbody>
+        <tr>
+    <td><strong>Deploy started:</strong></td><td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(r.time)</td>
+        </tr><tr>
+            <td><strong>Branch:</strong></td><td>@r.metaData.get("branch").getOrElse("unknown")</td>
+        </tr><tr>
+            <td><strong>Recipe:</strong></td><td>@r.parameters.recipe.name</td>
+        </tr><tr>
+            <td><strong>Deployer:</strong></td><td>@r.parameters.deployer.name</td>
+        </tr>
+        </tbody>
+    </table>
+}{
+        @r.buildId
+        @if(r.hoursAgo <=24) { <span class="label label-info">&lt; 24hrs</span> }
+}

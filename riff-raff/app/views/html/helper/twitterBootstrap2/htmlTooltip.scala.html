@@ -1,0 +1,6 @@
+@(placement: String = "top")(tooltip: Html)(content: Html)
+@if(!tooltip.body.trim.isEmpty) {
+    <div rel="tooltip" data-html="true" data-placement="@placement" title="@tooltip">@content</div>
+} else {
+@content
+}
