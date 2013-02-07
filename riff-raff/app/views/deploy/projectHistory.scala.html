@@ -23,10 +23,7 @@
 
                 <td>@stage</td>
                 <td>
-                <div class="build" rel="tooltip" title="@{org.joda.time.format.DateTimeFormat.shortDateTime.print(record.time)} (recipe @{record.parameters.recipe.name} by @{record.parameters.deployer.name})" data-placement="left">
-                    @record.buildId
-                        @if(record.hoursAgo <=24) { <span class="label label-info">Recent</span> }
-                </div>
+                    @snippets.pimpedBuildId(record)
                 </td>
 
                 <td>
