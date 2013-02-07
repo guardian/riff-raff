@@ -32,13 +32,11 @@
           @vcsInfo.map { info =>
             <strong>@info.name</strong> @info.repo<br/>
             @info.revision
-          }.getOrElse {
-            No VCS information
           }
         }{
-            @vcsInfo.map{ info => <a href="@info.treeUrl"> }
-            @record.metaData.get("branch").getOrElse("unknown")
-            @if(vcsInfo.isDefined){</a>}
+            @snippets.optionalLink(vcsInfo.map(_.treeUrl)){
+                @record.metaData.get("branch").getOrElse("unknown")
+            }
         }</td>
         }
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>

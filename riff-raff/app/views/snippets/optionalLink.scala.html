@@ -1,0 +1,2 @@
+@(link: Option[java.net.URL])(content:Html)
+@link.map{ url => <a href="@url.toString">} @content @link.map{ url => </a> }
