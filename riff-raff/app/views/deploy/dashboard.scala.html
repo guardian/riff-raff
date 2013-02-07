@@ -1,10 +1,10 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], projects: String)
+@(request: controllers.AuthenticatedRequest[AnyContent], projects: String, search: Boolean)
 
 @main("Dashboard", request, List("auto-refresh")) {
     <h2>Dashboard</h2>
     <hr/>
 
-    <div class="content" data-ajax-refresh="@{routes.Deployment.dashboardContent(projects)}" data-ajax-interval="60000">
+    <div class="content" data-ajax-refresh="@{routes.Deployment.dashboardContent(projects, search)}" data-ajax-interval="60000">
         <p><img src="@routes.Assets.at("images/ajax-loader.gif")"/> Analysing history...</p>
     </div>
 }

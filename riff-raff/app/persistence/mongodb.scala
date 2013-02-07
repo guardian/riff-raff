@@ -381,6 +381,10 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def findProjects(): List[String] = logAndSquashExceptions[List[String]](None,Nil) {
+    deployV2Collection.distinct("parameters.projectName").map(_.asInstanceOf[String]).toList
+  }
+
   override def addStringUUID(uuid: UUID) {
     val setStringUUID = $set("stringUUID" -> uuid.toString)
     logAndSquashExceptions(Some("Updating stringUUID for %s" format uuid),()) {
