@@ -2,7 +2,7 @@ package ci
 
 import teamcity._
 import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
-import utils.{Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
+import utils.{VCSInfo, Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
 import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
 import controllers.Logging
@@ -38,9 +38,10 @@ object ContinuousIntegration {
       build.detail.flatMap { detailedBuild =>
         Promise.sequence(detailedBuild.revision.map { revision =>
           revision.vcsDetails.map { vcsDetails =>
-            branch ++ Map(
-              "vcsRevision" -> revision.version,
-              "vcsUrl" -> vcsDetails.properties("url")
+            branch ++
+            Map(
+              VCSInfo.REVISION -> revision.version,
+              VCSInfo.CIURL -> vcsDetails.properties("url")
             )
           }
         }).map(_.flatten.toMap)

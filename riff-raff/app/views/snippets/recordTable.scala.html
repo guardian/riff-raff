@@ -1,5 +1,6 @@
 @(records: List[deployment.Record])
 @import deployment._
+@import html.helper.twitterBootstrap2.htmlTooltip
 
 @if(records.isEmpty) {
 <div class="alert alert-warning"><strong>No deploys found.</strong></div>
@@ -26,7 +27,20 @@
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
-        <td>@record.metaData.get("branch").getOrElse("")</td>
+        @defining(utils.VCSInfo(record.metaData)) { vcsInfo =>
+        <td @if(vcsInfo.isDefined){class="nolink"}>@htmlTooltip(placement="left"){
+          @vcsInfo.map { info =>
+            <strong>@info.name</strong> @info.repo<br/>
+            @info.revision
+          }.getOrElse {
+            No VCS information
+          }
+        }{
+            @vcsInfo.map{ info => <a href="@info.treeUrl"> }
+            @record.metaData.get("branch").getOrElse("unknown")
+            @if(vcsInfo.isDefined){</a>}
+        }</td>
+        }
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
         <td>@Some(record.parameters.hostList.size).filter(_ != 0).getOrElse(Html(""))</td>
         <td>
