@@ -1,4 +1,5 @@
 @(deployRecords:List[(String,Map[String,deployment.Record])])
+@import html.helper.twitterBootstrap2.htmlTooltip
 @defining(deployRecords.flatMap(_._2.values).map(_.stage.name).distinct.sorted(conf.Configuration.stages.ordering)) { stages =>
 
     <table class="table">
@@ -15,16 +16,9 @@
         <tr>
         <td>@project</td>
         @stages.map{ stage =>
-            @defining(stageRecordMap.get(stage)) { record =>
                 <td>
-                <div @record.map{ r => rel="tooltip" title="@org.joda.time.format.DateTimeFormat.shortDateTime.print(r.time) (recipe @r.parameters.recipe.name by @r.parameters.deployer.name)" data-placement="left"}>
-                    @record.map{ r =>
-                        @r.buildId
-                        @if(r.hoursAgo <=24) { <span class="label label-info">Recent</span> }
-                        }.getOrElse("")
-                </div>
+                  @stageRecordMap.get(stage).map{ r => @snippets.pimpedBuildId(r) }
                 </td>
-                        }
                         }
                 </tr>
                         }
