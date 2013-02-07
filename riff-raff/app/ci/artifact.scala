@@ -34,8 +34,21 @@ object ContinuousIntegration {
       build.buildType.fullName == projectName && build.number == buildId
     }
     build.map { build =>
-      List("branch" -> build.branchName)
-    }.getOrElse(Nil).toMap
+      val branch = Map("branch" -> build.branchName)
+      build.detail.flatMap { detailedBuild =>
+        Promise.sequence(detailedBuild.revision.map { revision =>
+          revision.vcsDetails.map { vcsDetails =>
+            branch ++ Map(
+              "vcsRevision" -> revision.version,
+              "vcsUrl" -> vcsDetails.properties("url")
+            )
+          }
+        }).map(_.flatten.toMap)
+      }.await(5000).fold (
+        error => Map.empty[String,String],
+        success => success
+      )
+    }.getOrElse(Map.empty)
   }
 }
 

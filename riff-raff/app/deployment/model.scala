@@ -85,6 +85,10 @@ case class DeployV2Record(time: DateTime,
     this.copy(messages = messages ++ List(message))
   }
 
+  def ++(newMetaData: Map[String, String]): DeployV2Record = {
+    this.copy(metaData = metaData ++ newMetaData)
+  }
+
   def isSummarised = messages.isEmpty && recordState.isDefined
 
   lazy val lastActivityTime = messages.lastOption.map(_.stack.time).getOrElse(time)

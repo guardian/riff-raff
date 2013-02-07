@@ -137,6 +137,7 @@ trait DocumentStore {
   def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
+  def addMetaData(uuid: UUID, metaData: Map[String, String]) {}
 }
 
 object DocumentStoreConverter extends Logging {
@@ -159,6 +160,10 @@ object DocumentStoreConverter extends Logging {
 
   def updateDeployStatus(uuid: UUID, state: RunState.Value) {
     documentStore.updateStatus(uuid, state)
+  }
+
+  def addMetaData(uuid: UUID, metaData: Map[String, String]) {
+    documentStore.addMetaData(uuid, metaData)
   }
 
   def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)

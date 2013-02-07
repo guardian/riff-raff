@@ -310,6 +310,15 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]) {
+    logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
+      val update = metaData.map { case (tag, value) =>
+        $set(("parameters.tags.%s" format tag) -> value)
+      }.fold(MongoDBObject())(_ ++ _)
+      deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
+    }
+  }
+
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
       deployV2Collection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))

@@ -22,6 +22,7 @@ import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
 import org.joda.time.{Interval, DateTime}
+import play.api.libs.concurrent.Akka
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -52,6 +53,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     val record = DeployV2Record(recordType, uuid, params)
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
+    attachMetaData(record)
     await(uuid)
   }
 
@@ -67,6 +69,21 @@ object DeployController extends Logging with LifecycleWithoutApp {
         case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
         case List(FailContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
         case _ =>
+      }
+    }
+  }
+
+  def attachMetaData(record: Record) {
+    import play.api.Play.current
+    val metaData = Akka.future {
+      ContinuousIntegration.getMetaData(record.buildName, record.buildId)
+    }
+    metaData.map { md =>
+      DocumentStoreConverter.addMetaData(record.uuid, md)
+      Option(library()(record.uuid)) foreach { recordAgent =>
+        recordAgent send { record =>
+          record ++ md
+        }
       }
     }
   }
