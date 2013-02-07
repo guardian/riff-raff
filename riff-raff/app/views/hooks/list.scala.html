@@ -21,7 +21,7 @@
         </thead>
         <tbody>
           @for((criteria, action) <- hooks) {
-            <tr>
+            <tr @if(!action.enabled){ class="error" }>
                 <td>@criteria.projectName</td>
                 <td>@criteria.stage</td>
                 <td>@action.url</td>

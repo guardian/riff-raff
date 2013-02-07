@@ -24,7 +24,7 @@
         </thead>
         <tbody>
           @for(config <- configs) {
-            <tr>
+            <tr @if(!config.enabled){ class="error" }>
                 <td>@shortDateTime.print(config.lastEdited) by <span class="label">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.branchRE.toString()</td>
