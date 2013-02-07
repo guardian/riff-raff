@@ -28,15 +28,13 @@
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
         @defining(utils.VCSInfo(record.metaData)) { vcsInfo =>
-        <td @if(vcsInfo.isDefined){class="nolink"}>@htmlTooltip(placement="left"){
+        <td>@htmlTooltip(placement="left"){
           @vcsInfo.map { info =>
             <strong>@info.name</strong> @info.repo<br/>
             @info.revision
           }
         }{
-            @snippets.optionalLink(vcsInfo.map(_.treeUrl)){
-                @record.metaData.get("branch").getOrElse("unknown")
-            }
+            @record.metaData.get("branch").getOrElse("unknown")
         }</td>
         }
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
