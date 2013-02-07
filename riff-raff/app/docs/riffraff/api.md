@@ -48,7 +48,10 @@ the history section in the web GUI.  By default the most recent deploys will be 
                     status: "Failed",
                     logURL: "http://gnm41175:9000/deployment/view/19097f12-7a8d-4fc0-80bc-630f3cb43bdc",
                     taskType: "Deploy",
-                    time: 1358444866420
+                    time: 1358444866420,
+                    tags: {
+                        branch: "master"
+                    }
                 }
                 ...
             ]

@@ -1,5 +1,16 @@
 ### Release notes
 
+#### 7th Feb 2013
+
+VCS information is not collected when possible from TeamCity.  This is exposed via the API and also via a tooltip
+in the history pane.
+
+The tooltip on the dashboard and in the deploy screen has been given a little polish and now displays the branch as
+well.
+
+Dashboards are simpler to use for a set of related projects, you can now specify project terms to search by as well
+as exact matches.
+
 #### 6th Feb 2013
 
 Pinned builds in TeamCity are now tidied up so there are no more than 5 pinned builds for any build configuration.
