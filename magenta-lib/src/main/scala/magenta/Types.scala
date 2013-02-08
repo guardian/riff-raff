@@ -151,6 +151,17 @@ abstract class WebappPackageType extends PackageType {
         UnblockFirewall(host as user))
       }
     }
+    case "restart" => {
+      host => {
+        List(
+          BlockFirewall(host as user),
+          Restart(host as user, serviceName),
+          WaitForPort(host, port, waitDuration),
+          CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
+          UnblockFirewall(host as user)
+        )
+      }
+    }
   }
 
   override val perAppActions: AppActionDefinition = {
