@@ -2,7 +2,7 @@
 
 #### 7th Feb 2013
 
-VCS information is not collected when possible from TeamCity.  This is exposed via the API and also via a tooltip
+VCS information is now collected when possible from TeamCity.  This is exposed via the API and also via a tooltip
 in the history pane.
 
 The tooltip on the dashboard and in the deploy screen has been given a little polish and now displays the branch as
