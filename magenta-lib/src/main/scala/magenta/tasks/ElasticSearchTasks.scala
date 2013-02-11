@@ -37,8 +37,13 @@ case class CullElasticSearchInstancesWithTerminationTag(packageName: String, sta
         check(stopFlag) {
           node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
         }
-        node.shutdown()
-        cull(asg, instance)
+        if (!stopFlag) {
+          node.shutdown()
+          check(stopFlag) {
+            node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity - 1)
+          }
+        }
+        if (!stopFlag) cull(asg, instance)
       }
     }
   }
