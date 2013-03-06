@@ -34,17 +34,24 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   }
 }
 
-case class CompressedCopy(host: Host, source: File, dest: String) extends Task with CompressedFilename {
-  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
-    Compress(source).execute(sshCredentials)
-    CopyFile(host, compressedPath, dest).execute(sshCredentials)
-    Decompress(host, dest, source).execute(sshCredentials)
-  }
+case class CompressedCopy(host: Host, source: File, dest: String) extends CompositeTask with CompressedFilename {
+  val tasks = Seq(
+    Compress(source),
+    CopyFile(host, compressedPath, dest),
+    Decompress(host, dest, source)
+  )
 
   def description: String = "%s -> %s:%s using a compressed archive while copying to the target" format
     (source, host.connectStr, dest)
 
   def verbose: String = description
+}
+
+trait CompositeTask extends Task {
+  def tasks: Seq[Task]
+  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+    for (task <- tasks) { if (!stopFlag) task.execute(sshCredentials, stopFlag) }
+  }
 }
 
 
