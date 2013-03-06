@@ -207,7 +207,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       val destDir: String = "/django-apps/"
       List(
         BlockFirewall(host as user),
-        CopyFile(host as user, appVersionPath.getPath, destDir),
+        CompressedCopy(host as user, appVersionPath, destDir),
         ApacheGracefulStop(host as user),
         Link(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
         ApacheStart(host as user),
