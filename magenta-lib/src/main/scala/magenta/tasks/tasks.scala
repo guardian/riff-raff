@@ -34,6 +34,48 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   }
 }
 
+case class CompressedCopy(host: Host, source: File, dest: String) extends CompositeTask with CompressedFilename {
+  val tasks = Seq(
+    Compress(source),
+    CopyFile(host, compressedPath, dest),
+    Decompress(host, dest, source)
+  )
+
+  def description: String = "%s -> %s:%s using a compressed archive while copying to the target" format
+    (source, host.connectStr, dest)
+
+  def verbose: String = description
+}
+
+trait CompositeTask extends Task {
+  def tasks: Seq[Task]
+  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+    for (task <- tasks) { if (!stopFlag) task.execute(sshCredentials, stopFlag) }
+  }
+}
+
+
+case class Compress(source: File) extends ShellTask with CompressedFilename {
+  def commandLine: CommandLine = {
+    CommandLine("tar" :: "--bzip2" :: "--directory" :: source.getParent :: "-cf" :: compressedPath :: source.getName :: Nil)
+  }
+
+  def description: String = "Compress %s to %s" format (source, compressedName)
+}
+
+case class Decompress(host: Host, dest: String, source: File) extends RemoteShellTask with CompressedFilename {
+  def commandLine: CommandLine = {
+    CommandLine("tar" :: "--bzip2" :: "--directory" :: dest :: "-xf" :: dest + compressedName:: Nil)
+  }
+}
+
+trait CompressedFilename {
+  def source: File
+  def compressedPath = source.getPath + ".tar.bz2"
+  def compressedName = source.getName + ".tar.bz2"
+}
+
+
 case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader: Option[String] = None) extends Task with S3 {
   private val base = file.getParent + "/"
 
