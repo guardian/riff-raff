@@ -31,14 +31,22 @@ case class CullElasticSearchInstancesWithTerminationTag(packageName: String, sta
   extends ASGTask with RepeatedPollingCheck{
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+    val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
+    val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
+
     for (instance <- asg.getInstances) {
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
         check(stopFlag) {
-          node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
+          newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
         }
-        node.shutdown()
-        cull(asg, instance)
+        if (!stopFlag) {
+          node.shutdown()
+          check(stopFlag) {
+            newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity - 1)
+          }
+        }
+        if (!stopFlag) cull(asg, instance)
       }
     }
   }
