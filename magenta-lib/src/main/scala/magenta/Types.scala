@@ -208,9 +208,8 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       List(
         BlockFirewall(host as user),
         CompressedCopy(host as user, appVersionPath, destDir),
-        ApacheGracefulStop(host as user),
         Link(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
-        ApacheStart(host as user),
+        ApacheGracefulRestart(host as user),
         WaitForPort(host, port, 1 minute),
         UnblockFirewall(host as user)
       )

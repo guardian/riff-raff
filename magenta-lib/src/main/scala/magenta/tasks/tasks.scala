@@ -204,12 +204,8 @@ case class Link(host: Host, target: String, linkName: String) extends RemoteShel
   def commandLine = List("ln", "-sfn", target, linkName)
 }
 
-case class ApacheGracefulStop(host: Host) extends RemoteShellTask {
-  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful-stop")
-}
-
-case class ApacheStart(host: Host) extends RemoteShellTask {
-  def commandLine = List("sudo", "/usr/sbin/apachectl", "start")
+case class ApacheGracefulRestart(host: Host) extends RemoteShellTask {
+  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
 }
 
 case class Mkdir(host: Host, path: String) extends RemoteShellTask {

@@ -62,9 +62,8 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     django.perHostActions("deploy")(host) should be (List(
       BlockFirewall(host as "django"),
       CompressedCopy(host as "django", specificBuildFile, "/django-apps/"),
-      ApacheGracefulStop(host as "django"),
       Link(host as "django", "/django-apps/" + specificBuildFile.getName, "/django-apps/webapp"),
-      ApacheStart(host as "django"),
+      ApacheGracefulRestart(host as "django"),
       WaitForPort(host, "80", 1 minute),
       UnblockFirewall(host as "django")
     ))
