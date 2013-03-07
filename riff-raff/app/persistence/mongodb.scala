@@ -242,7 +242,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def writeDeploy(deploy: DeployRecordDocument) {
     logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
       val gratedDeploy = deployGrater.asDBObject(deploy)
-      deployV2Collection.insert(gratedDeploy)
+      deployV2Collection.insert(gratedDeploy, WriteConcern.Safe)
     }
   }
 
@@ -274,7 +274,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
-      val dateTime = dbo.getAs[DateTime]("startTime").get
+      val dateTime = dbo.getAs[DateTime]("startTime")
       SimpleDeployDetail(uuid, dateTime)
     }
   }
@@ -305,7 +305,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       )
     ).toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
-      val dateTime = dbo.getAs[DateTime]("startTime").get
+      val dateTime = dbo.getAs[DateTime]("startTime")
       SimpleDeployDetail(uuid, dateTime)
     }
   }
@@ -404,7 +404,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     val cursor = deployV2Collection.find(MongoDBObject("stringUUID" -> MongoDBObject("$exists" -> false)), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     cursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
-      val dateTime = dbo.getAs[DateTime]("startTime").get
+      val dateTime = dbo.getAs[DateTime]("startTime")
       SimpleDeployDetail(uuid, dateTime)
     }
   }

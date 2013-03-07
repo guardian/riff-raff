@@ -11,7 +11,7 @@ import play.api.data.Forms._
 import org.joda.time.DateTime
 import persistence.{DocumentStoreConverter, Persistence}
 
-case class SimpleDeployDetail(uuid: UUID, time: DateTime)
+case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
 object Testing extends Controller with Logging {
   def reportTestPartial(take: Int, verbose: Boolean) = NonAuthAction { implicit request =>
@@ -101,7 +101,7 @@ object Testing extends Controller with Logging {
 
 
   def uuidList = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.getMillis).reverse
+    val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(0L)).reverse
     Ok(views.html.test.uuidList(request, allDeploys))
   }
 
