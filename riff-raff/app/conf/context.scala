@@ -152,30 +152,7 @@ object Management extends PlayManagement {
   )
 }
 
-object RequestMetrics {
-  object RequestTimingMetric extends TimingMetric(
-    "performance",
-    "requests",
-    "Client requests",
-    "incoming requests to the application"
-  )
-
-  object DatastoreRequest extends TimingMetric(
-    "performance",
-    "database_requests",
-    "Database requests",
-    "outgoing requests to the database",
-    Some(RequestTimingMetric)
-  )
-
-  object Request200s extends CountMetric("request-status", "200_ok", "200 Ok", "number of pages that responded 200")
-  object Request50xs extends CountMetric("request-status", "50x_error", "50x Error", "number of pages that responded 50x")
-  object Request404s extends CountMetric("request-status", "404_not_found", "404 Not found", "number of pages that responded 404")
-  object Request30xs extends CountMetric("request-status", "30x_redirect", "30x Redirect", "number of pages that responded with a redirect")
-  object RequestOther extends CountMetric("request-status", "other", "Other", "number of pages that responded with an unexpected status code")
-
-  val all = Seq(RequestTimingMetric, DatastoreRequest, Request200s, Request50xs, Request404s, RequestOther, Request30xs)
-}
+object RequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends LifecycleWithoutApp {
   val runningDeploys = mutable.Buffer[UUID]()

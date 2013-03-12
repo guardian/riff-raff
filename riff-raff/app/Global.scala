@@ -1,27 +1,20 @@
 import collection.mutable
-import com.gu.management.play.{StatusCounters, RequestTimer}
+import conf.{RequestMetrics, DeployMetrics}
 import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
 import notification.{TeamCityBuildPinner, HooksClient, MessageQueue, IrcClient}
 import persistence.SummariseDeploysHousekeeping
+import play.api.mvc.WithFilters
 import play.mvc.Http.RequestHeader
 import play.mvc.Result
-import play.{Application, GlobalSettings}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
 import ci.{TeamCityBuilds, ContinuousDeployment}
 import utils.ScheduledAgent
-import conf.{DeployMetrics, RequestMetrics}
+import play.api.Application
 
-class Global extends GlobalSettings with Logging with RequestTimer with StatusCounters {
-
-  import RequestMetrics._
-  override val requestTimer = RequestTimingMetric
-  override val okCounter = Request200s
-  override val errorCounter = Request50xs
-  override val notFoundCounter = Request404s
-  override val redirectCounter = Request30xs
+object Global extends WithFilters(RequestMetrics.asFilters: _*) with Logging {
 
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
@@ -62,9 +55,9 @@ class Global extends GlobalSettings with Logging with RequestTimer with StatusCo
     }
   }
 
-  override def onError(request: RequestHeader, t: Throwable) = {
-    log.error("Error whilst trying to serve request", t)
-    val reportException = if (t.getCause != null) t.getCause else t
-    new Result() { def getWrappedResult = InternalServerError(views.html.errorPage(reportException)) }
-  }
+//  override def onError(request: RequestHeader, t: Throwable) = {
+//    log.error("Error whilst trying to serve request", t)
+//    val reportException = if (t.getCause != null) t.getCause else t
+//    new Result() { def getWrappedResult = InternalServerError(views.html.errorPage(reportException)) }
+//  }
 }

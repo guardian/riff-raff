@@ -1,9 +1,9 @@
 package magenta.teamcity
 
 import java.io.File
-import dispatch.{StatusCode, :/, Logger, Http}
+import dispatch.classic.{StatusCode, :/, Logger, Http}
 import magenta.{Build, MessageBroker}
-import dispatch.Request._
+import dispatch.classic.Request._
 import sbt.IO
 
 object Artifact {
