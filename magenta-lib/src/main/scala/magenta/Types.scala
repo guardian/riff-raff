@@ -200,7 +200,9 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
 
   lazy val user = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
-  lazy val appVersionPath = pkg.srcDir.listFiles().head
+
+  // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
+  lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => { host => {
@@ -208,7 +210,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
       List(
         BlockFirewall(host as user),
         CompressedCopy(host as user, appVersionPath, destDir),
-        Link(host as user, destDir + appVersionPath.getName, "/django-apps/%s" format pkg.name),
+        Link(host as user, appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
         ApacheGracefulRestart(host as user),
         WaitForPort(host, port, 1 minute),
         UnblockFirewall(host as user)
