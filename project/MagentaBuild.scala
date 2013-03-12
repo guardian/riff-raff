@@ -15,7 +15,7 @@ object MagentaBuild extends Build {
 
   lazy val riffraff = magentaPlayProject("riff-raff") dependsOn(lib)
 
-  val liftVersion = "2.4-M4"
+  val liftVersion = "2.5-RC2"
 
   def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
@@ -47,7 +47,7 @@ object MagentaBuild extends Build {
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
-    scalaVersion := "2.10.0-RC5",
+    scalaVersion := "2.10.0",
     scalacOptions ++= Seq("-deprecation"),
     version := magentaVersion
   )
