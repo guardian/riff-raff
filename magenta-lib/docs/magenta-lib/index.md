@@ -148,7 +148,7 @@ So Content-Api-Concierge has a deploy.json like
 ```
 It will upload the file to s3://content-api-dist/<STAGE>/content-api-concierge
 
-It will then look for an AutoscalingGroup that is tagged with the tag Role and the name of the package, and the tag Stage, and the stage you are deploying to.
+It will then look for an AutoscalingGroup that has two tags: one with the key 'Role' and the name of the package as the value and the other with the key 'Stage' and the name of the stage you're deploying to as the value.
 In cloudformation you could use this:
 ```json
         "AutoscalingGroup":{
