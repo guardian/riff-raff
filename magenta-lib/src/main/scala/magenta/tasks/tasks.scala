@@ -34,15 +34,15 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   }
 }
 
-case class CompressedCopy(host: Host, source: File, dest: String) extends CompositeTask with CompressedFilename {
+case class CompressedCopy(host: Host, source: Option[File], dest: String) extends CompositeTask with CompressedFilename {
   val tasks = Seq(
     Compress(source),
-    CopyFile(host, compressedPath, dest),
+    CopyFile(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
     Decompress(host, dest, source)
   )
 
   def description: String = "%s -> %s:%s using a compressed archive while copying to the target" format
-    (source, host.connectStr, dest)
+    (source.getOrElse("Unknown"), host.connectStr, dest)
 
   def verbose: String = description
 }
@@ -55,24 +55,25 @@ trait CompositeTask extends Task {
 }
 
 
-case class Compress(source: File) extends ShellTask with CompressedFilename {
+case class Compress(source:  Option[File]) extends ShellTask with CompressedFilename {
   def commandLine: CommandLine = {
-    CommandLine("tar" :: "--bzip2" :: "--directory" :: source.getParent :: "-cf" :: compressedPath :: source.getName :: Nil)
+    CommandLine("tar" :: "--bzip2" :: "--directory" :: sourceFile.getParent :: "-cf" :: compressedPath :: sourceFile.getName :: Nil)
   }
 
   def description: String = "Compress %s to %s" format (source, compressedName)
 }
 
-case class Decompress(host: Host, dest: String, source: File) extends RemoteShellTask with CompressedFilename {
+case class Decompress(host: Host, dest: String, source: Option[File]) extends RemoteShellTask with CompressedFilename {
   def commandLine: CommandLine = {
     CommandLine("tar" :: "--bzip2" :: "--directory" :: dest :: "-xf" :: dest + compressedName:: Nil)
   }
 }
 
 trait CompressedFilename {
-  def source: File
-  def compressedPath = source.getPath + ".tar.bz2"
-  def compressedName = source.getName + ".tar.bz2"
+  def source: Option[File]
+  def sourceFile = source.getOrElse(throw new FileNotFoundException())
+  def compressedPath = sourceFile.getPath + ".tar.bz2"
+  def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
 
@@ -200,8 +201,8 @@ case class EchoHello(host: Host) extends ShellTask {
   def description = "to " + host.name
 }
 
-case class Link(host: Host, target: String, linkName: String) extends RemoteShellTask {
-  def commandLine = List("ln", "-sfn", target, linkName)
+case class Link(host: Host, target: Option[String], linkName: String) extends RemoteShellTask {
+  def commandLine = List("ln", "-sfn", target.getOrElse(throw new FileNotFoundException()), linkName)
 }
 
 case class ApacheGracefulRestart(host: Host) extends RemoteShellTask {
