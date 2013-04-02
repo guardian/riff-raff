@@ -165,9 +165,10 @@ object Login extends Controller with Logging {
   }
 
   def loginAction = Action { implicit request =>
+    val secureConnection = request.headers.get("X-Forwarded-Proto").map(_ == "https").getOrElse(false)
     AsyncResult(
       OpenID
-        .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(), openIdAttributes)
+        .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
         .extend(_.value match {
           case Redeemed(url) => {
             LoginCounter.recordCount(1)
