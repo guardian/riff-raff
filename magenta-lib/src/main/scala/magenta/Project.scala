@@ -7,15 +7,23 @@ import java.util.UUID
 
 object DeployInfo {
   def apply(jsonData: DeployInfoJsonInputFile): DeployInfo = {
-    val magentaHosts = jsonData.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
+    val magentaHosts = jsonData.hosts map { host =>
+      val tags:List[(String,String)] =
+        List("group" -> host.group) ++
+          host.created_at.map("created_at" -> _) ++
+          host.dnsname.map("dnsname" -> _) ++
+          host.instancename.map("instancename" -> _) ++
+          host.internalname.map("internalname" -> _)
+      Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
+    }
     val magentaData = jsonData.data mapValues { dataList =>
       dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
     }
-    DeployInfo(magentaHosts, magentaData)
+    DeployInfo(magentaHosts, magentaData, Some(jsonData))
   }
 }
 
-case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
+case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map(), input:Option[DeployInfoJsonInputFile] = None) {
   import HostList._
   def forParams(params: DeployParameters) = {
     val hostsFilteredByStage = hosts.filterByStage(params.stage).hosts
@@ -52,7 +60,8 @@ case class Host(
     name: String,
     apps: Set[App] = Set.empty,
     stage: String = "NO_STAGE",
-    connectAs: Option[String] = None)
+    connectAs: Option[String] = None,
+    tags: Map[String, String] = Map.empty)
 {
   def app(name: String) = this.copy(apps = apps + App(name))
   def app(app: App) = this.copy(apps= apps + app)
