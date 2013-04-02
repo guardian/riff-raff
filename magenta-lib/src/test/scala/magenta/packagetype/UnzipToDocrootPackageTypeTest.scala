@@ -26,7 +26,7 @@ class UnzipToDocrootPackageTypeTest extends FunSuite with ShouldMatchers{
 
     val diData = Map("ddm" -> List(Data("*", PROD.name, "ddm.domain", None)))
 
-    packType.perAppActions("deploy")(DeployInfo(Nil, diData), parameters()) should be (List(
+    packType.perAppActions("deploy")(stubDeployInfo(data = diData), parameters()) should be (List(
       CopyFile(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/packages/webapp/dir/files.zip", "/tmp"),
       ExtractToDocroots(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/files.zip", "static", "the-app/static")
     ))

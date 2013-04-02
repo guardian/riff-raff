@@ -7,8 +7,8 @@ import persistence.Persistence
 import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
-import play.api.libs.json.Json.{toJson,parse}
-import play.api.libs.json.{JsArray, Json, JsObject, JsValue}
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.{Json, JsObject, JsValue}
 import deployment.DeployInfoManager
 
 
@@ -156,6 +156,8 @@ object Api extends Controller with Logging {
   }
 
   def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
+    assert(!DeployInfoManager.deployInfo.hosts.isEmpty, "No deploy information available")
+
     val filter = deployment.HostFilter.fromRequest
     val query:List[(String,JsValue)] = Nil ++
       filter.stage.map("stage" -> toJson(_)) ++
@@ -164,16 +166,12 @@ object Api extends Controller with Logging {
 
     import net.liftweb.json.{Serialization,NoTypeHints}
     implicit val format = Serialization.formats(NoTypeHints)
-    val input = DeployInfoManager.deployInfo.input.map { input =>
-      input.copy(hosts=input.hosts.filter { host =>
+    val filtered = DeployInfoManager.deployInfo.filterHosts { host =>
         (filter.stage.isEmpty || filter.stage.get == host.stage) &&
-          (filter.app.isEmpty || filter.app.get == host.app) &&
-          (filter.hostList.isEmpty || filter.hostList.contains(host.hostname))
-      })
-    }
-    val results = input.map(input => Json.parse(Serialization.write(input))).getOrElse {
-      throw new IllegalStateException("No deploy information available")
-    }
+          (filter.app.isEmpty || host.apps.exists(_.name == filter.app.get) ) &&
+          (filter.hostList.isEmpty || filter.hostList.contains(host.name))
+      }
+    val results = Json.parse(Serialization.write(filtered.input))
 
     val response = Map(
       "response" -> toJson(Map(
