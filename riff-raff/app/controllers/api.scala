@@ -8,7 +8,7 @@ import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
-import play.api.libs.json.{Json, JsObject, JsValue}
+import play.api.libs.json.{JsString, Json, JsObject, JsValue}
 import deployment.DeployInfoManager
 
 
@@ -74,7 +74,11 @@ object ApiJsonEndpoint {
         val callback = jsonpCallback.head
         Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
       } else {
-        Ok(responseObject)
+        response \ "response" \ "status" match {
+          case JsString("ok") => Ok(responseObject)
+          case JsString("error") => BadRequest(responseObject)
+          case _ => throw new IllegalStateException("Response status missing or invalid")
+        }
       }
     }
   }
