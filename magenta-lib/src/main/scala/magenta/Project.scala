@@ -11,16 +11,14 @@ object DeployInfo {
 
 case class DeployInfo(input:DeployInfoJsonInputFile) {
 
-  implicit def jsonHost2toHost(host: DeployInfoHost) = new {
-    def toHost = {
-      val tags:List[(String,String)] =
-        List("group" -> host.group) ++
-          host.created_at.map("created_at" -> _) ++
-          host.dnsname.map("dnsname" -> _) ++
-          host.instancename.map("instancename" -> _) ++
-          host.internalname.map("internalname" -> _)
-      Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
-    }
+  def asHost(host: DeployInfoHost) = {
+    val tags:List[(String,String)] =
+      List("group" -> host.group) ++
+        host.created_at.map("created_at" -> _) ++
+        host.dnsname.map("dnsname" -> _) ++
+        host.instancename.map("instancename" -> _) ++
+        host.internalname.map("internalname" -> _)
+    Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
   }
 
   def forParams(params: DeployParameters): DeployInfo = {
@@ -28,9 +26,9 @@ case class DeployInfo(input:DeployInfoJsonInputFile) {
     else filterHosts(params.hostList contains _.name)
   }
 
-  def filterHosts(p: Host => Boolean) = DeployInfo(input.copy(hosts = input.hosts.filter(jsonHost => p(jsonHost.toHost))))
+  def filterHosts(p: Host => Boolean) = DeployInfo(input.copy(hosts = input.hosts.filter(jsonHost => p(asHost(jsonHost)))))
 
-  val hosts = input.hosts.map(_.toHost)
+  val hosts = input.hosts.map(asHost)
   val data = input.data mapValues { dataList =>
     dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
   }
