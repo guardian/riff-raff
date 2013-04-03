@@ -65,7 +65,7 @@ class IrcClient extends Actor with Logging {
     ircBot.connect(host)
     ircBot.joinChannel(channel)
   } catch {
-    case e =>
+    case e:Throwable =>
       log.error(e.toString)
   }
 

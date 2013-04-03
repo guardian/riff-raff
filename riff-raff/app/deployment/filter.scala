@@ -3,7 +3,6 @@ package deployment
 import java.net.URLEncoder
 import play.api.mvc.{Call, RequestHeader}
 import magenta.RunState
-import com.codahale.jerkson.Json._
 
 trait QueryStringBuilder {
   def queryStringParams: List[(String,String)]

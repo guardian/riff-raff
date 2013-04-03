@@ -149,7 +149,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
           true
         } catch {
           case e: FileNotFoundException => MessageBroker.fail("404 Not Found", e)
-          case e => false
+          case e:Throwable => false
         }
       }
     }

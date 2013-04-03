@@ -14,6 +14,7 @@ import java.util.UUID
 import ci.teamcity.BuildType
 import ci.teamcity.TeamCity.BuildLocator
 import play.api.libs.concurrent.Promise
+import play.api.libs.concurrent.Execution.Implicits._
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 

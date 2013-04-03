@@ -47,7 +47,7 @@ object ApiKeyGenerator {
 object ApiJsonEndpoint {
   def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
     ApiAuthAction(counter) { authenticatedRequest =>
-      val format = authenticatedRequest.queryString.get("format").flatten.toSeq
+      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
       val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
 
       val response = try {

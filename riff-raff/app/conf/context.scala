@@ -17,7 +17,7 @@ import persistence.{CollectionStats, Persistence}
 import deployment.GuDomainsConfiguration
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
-import akka.util.duration._
+import scala.concurrent.duration._
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -198,6 +198,12 @@ object MessageMetrics {
 }
 
 object DatastoreMetrics {
+  object DatastoreRequest extends TimingMetric(
+    "performance",
+    "database_requests",
+    "Database requests",
+    "outgoing requests to the database"
+  )
   val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>  Persistence.store.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
@@ -205,7 +211,7 @@ object DatastoreMetrics {
   object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
   object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
   object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
-  val all = Seq(MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
+  val all = Seq(DatastoreRequest, MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 
 object LoginCounter extends CountMetric("webapp",
@@ -222,7 +228,7 @@ object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
-    RequestMetrics.all ++
+    RequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all
 }

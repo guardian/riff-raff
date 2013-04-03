@@ -3,7 +3,6 @@ package notification
 import controllers.{DeployController, Logging}
 import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
-import java.util.UUID
 import lifecycle.LifecycleWithoutApp
 import persistence.{MongoSerialisable, Persistence}
 import deployment.TaskType
@@ -11,11 +10,11 @@ import java.net.URL
 import com.mongodb.casbah.commons.MongoDBObject
 import magenta.FinishContext
 import magenta.DeployParameters
-import magenta.MessageStack
 import magenta.Deploy
 import scala.Some
 import play.api.libs.ws.WS
 import com.ning.http.client.Realm.AuthScheme
+import play.api.libs.concurrent.Execution.Implicits._
 
 
 case class HookCriteria(projectName: String, stage: String) extends MongoSerialisable {

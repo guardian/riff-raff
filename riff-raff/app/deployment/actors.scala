@@ -5,8 +5,7 @@ import java.io.File
 import magenta._
 import akka.actor._
 import controllers.Logging
-import akka.util.duration._
-import akka.util.Timeout
+import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy.Restart
 import akka.pattern.ask
 import tasks.Task
@@ -14,9 +13,10 @@ import java.util.UUID
 import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
-import akka.dispatch.Await
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
+import concurrent.Await
+import akka.util.Timeout
 
 object DeployControlActor extends Logging {
   trait Event
@@ -207,7 +207,7 @@ class DeployCoordinator extends Actor with Logging {
     }
   }
 
-  protected def receive = {
+  def receive = {
     case StartDeploy(record) if !schedulable(record) =>
       log.debug("Not schedulable, queuing")
       deferredDeployQueue += StartDeploy(record)
@@ -308,7 +308,7 @@ object TaskRunner {
 class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
-  protected def receive = {
+  def receive = {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {

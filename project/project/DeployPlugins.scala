@@ -1,7 +1,7 @@
 import sbt._
 
 object DeployPlugins extends Build {
-  val playArtifactPluginVersion = "v2.8"
+  val playArtifactPluginVersion = "v2.9"
 
   lazy val plugins = Project("deploy-plugins", file("."))
     .dependsOn(

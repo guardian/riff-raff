@@ -3,7 +3,7 @@ package ci
 import teamcity._
 import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
 import utils.{VCSInfo, Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
-import akka.util.duration._
+import scala.concurrent.duration._
 import org.joda.time.{Duration, DateTime}
 import controllers.Logging
 import scala.Predef._
@@ -12,6 +12,7 @@ import lifecycle.LifecycleWithoutApp
 import scala.Some
 import magenta.DeployParameters
 import concurrent.Future
+import concurrent.Await
 import concurrent.ExecutionContext.Implicits.global
 
 object `package` {
@@ -36,21 +37,24 @@ object ContinuousIntegration {
     }
     build.map { build =>
       val branch = Map("branch" -> build.branchName)
-      build.detail.flatMap { detailedBuild =>
-        Future.sequence(detailedBuild.revision.map { revision =>
-          revision.vcsDetails.map { vcsDetails =>
-            branch ++
-            Map(
-              VCSInfo.REVISION -> revision.version,
-              VCSInfo.CIURL -> vcsDetails.properties("url")
-            )
-          }
-        }).map(_.flatten.toMap)
-      }.await(5000).fold (
-        error => Map.empty[String,String],
-        success => success
-      )
-    }.getOrElse(Map.empty)
+      val futureMap = build.detail.flatMap { detailedBuild =>
+        Future.sequence(detailedBuild.revision.map {
+          revision =>
+            revision.vcsDetails.map {
+              vcsDetails =>
+                branch ++
+                  Map(
+                    VCSInfo.REVISION -> revision.version,
+                    VCSInfo.CIURL -> vcsDetails.properties("url")
+                  )
+            }
+        }.toIterable)
+          .map(_.flatten.toMap)
+      } recover {
+        case _ => Map.empty[String,String]
+      }
+      Await.result(futureMap, 5 seconds)
+    }.getOrElse(Map.empty[String,String])
   }
 }
 
@@ -85,7 +89,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   }
 
   private val fullUpdate = PeriodicScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
-    val builds = getSuccessfulBuilds.await((1 minute).toMillis).get
+    val builds = Await.result(getSuccessfulBuilds, 1 minute)
     if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
     builds
   }
@@ -95,14 +99,14 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
       log.warn("No builds yet, aborting incremental update")
       currentBuilds
     } else {
-      getNewBuilds(currentBuilds).map { newBuilds =>
+      Await.result(getNewBuilds(currentBuilds).map { newBuilds =>
         if (newBuilds.isEmpty)
           currentBuilds
         else {
           notifyListeners(newBuilds)
           (currentBuilds ++ newBuilds).sortBy(-_.id)
         }
-      }.await((pollingPeriod).toMillis).get
+      },pollingPeriod)
     }
   }
 
