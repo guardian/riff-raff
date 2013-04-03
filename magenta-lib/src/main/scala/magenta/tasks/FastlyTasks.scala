@@ -5,27 +5,28 @@ import java.io.{FileInputStream, File}
 import java.util.Properties
 import moschops.FastlyAPIClient
 import org.apache.commons.io.FileUtils
-import com.ning.http.client.Response
+import com.ning.http.client.{AsyncHttpClientConfig, Response}
 
 
 case class UpdateFastlyConfig(pkg: Package) extends Task {
 
   // TODO: integrate credentials into riff-raff
-  private lazy val credentials = {
+  private val credentials = {
     val props = new Properties()
     val stream = new FileInputStream(new File("/home/kchappel/.fastlyapiclientcconfig"))
     props.load(stream)
     stream.close()
     props
   }
-  private lazy val serviceId = credentials.getProperty("serviceId")
+  private val serviceId = credentials.getProperty("serviceId")
   private val apiKey = credentials.getProperty("apiKey")
 
-  private lazy val fastlyApiClient: FastlyAPIClient = {
-    FastlyAPIClient(apiKey, serviceId)
+  private val fastlyApiClient: FastlyAPIClient = {
+    val config = new AsyncHttpClientConfig.Builder().setRequestTimeoutInMs(30000).build()
+    FastlyAPIClient(apiKey, serviceId, Some(config))
   }
 
-  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+  override def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
 
     val vclFiles = pkg.srcDir.listFiles.filter(_.getName.endsWith(".vcl"))
     val vclsToUpdate = vclFiles.foldLeft(Map[String, String]())((map, file) => {
@@ -34,31 +35,57 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       map + (name -> vcl)
     })
 
-    // TODO: react if can't connect to service
-    // TODO: have timeout
+    def fails(response: Response): Boolean = {
+      if (response.getStatusCode == 200) {
+        MessageBroker.verbose(response.getResponseBody)
+        true
+      }
+      MessageBroker.fail(response.getResponseBody)
+      false
+    }
 
-    MessageBroker.info("Finding previous config version number...")
-    val prevVersion = fastlyApiClient.latestVersionNumber
-    MessageBroker.info(prevVersion.toString)
+    var prevVersion = -1
+    if (!stopFlag) {
+      MessageBroker.info("Finding previous config version number...")
+      prevVersion = fastlyApiClient.latestVersionNumber
+      MessageBroker.info(prevVersion.toString)
+      true
+    }
 
-    MessageBroker.info("Cloning previous config...")
-    val cloneResponse = fastlyApiClient.versionClone(prevVersion)
-    MessageBroker.verbose(cloneResponse.getResponseBody)
+    if (!stopFlag) {
+      MessageBroker.info("Cloning previous config...")
+      if (fails(fastlyApiClient.versionClone(prevVersion))) return
+      true
+    }
 
-    MessageBroker.info("Finding new config version number...")
-    val currVersion = fastlyApiClient.latestVersionNumber
-    MessageBroker.info(currVersion.toString)
+    var currVersion = -1
+    if (!stopFlag) {
+      MessageBroker.info("Finding new config version number...")
+      currVersion = fastlyApiClient.latestVersionNumber
+      MessageBroker.info(currVersion.toString)
+      true
+    }
 
-    MessageBroker.info("Updating VCL files...")
-    val updateResponses = fastlyApiClient.vclUpdate(vclsToUpdate, currVersion)
-    updateResponses.foreach(response => MessageBroker.verbose(response.getResponseBody))
+    if (!stopFlag) {
+      MessageBroker.info("Updating VCL files...")
+      val updateResponses = fastlyApiClient.vclUpdate(vclsToUpdate, currVersion)
+      updateResponses.foreach {
+        response =>
+          if (fails(response)) return
+      }
+      true
+    }
 
-    MessageBroker.info("Activating new config version...")
-    val activateResponse = fastlyApiClient.versionActivate(currVersion)
-    MessageBroker.verbose(activateResponse.getResponseBody)
+    if (!stopFlag) {
+      MessageBroker.info("Activating new config version...")
+      if (fails(fastlyApiClient.versionActivate(currVersion))) return
+      true
+    }
+
   }
 
-  def description: String = "Update configuration of Fastly edge-caching service"
+  override def description: String = "Update configuration of Fastly edge-caching service"
 
-  def verbose: String = description
+  override def verbose: String = description
+
 }
