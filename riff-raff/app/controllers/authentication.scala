@@ -180,7 +180,6 @@ object Login extends Controller with Logging {
   }
 
   def openIDCallback = Action { implicit request =>
-    log.info("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
     AsyncResult(
       OpenID.verifiedId.extend(_.value match {
         case Redeemed(info) => {
