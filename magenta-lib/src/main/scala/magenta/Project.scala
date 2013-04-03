@@ -1,39 +1,44 @@
 package magenta
 
-import json.DeployInfoJsonInputFile
+import json.{DeployInfoHost, DeployInfoJsonInputFile}
 import tasks.Task
 import collection.SortedSet
 import java.util.UUID
 
 object DeployInfo {
-  def apply(jsonData: DeployInfoJsonInputFile): DeployInfo = {
-    val magentaHosts = jsonData.hosts map { host => Host(host.hostname, Set(App(host.app)), host.stage) }
-    val magentaData = jsonData.data mapValues { dataList =>
-      dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
-    }
-    DeployInfo(magentaHosts, magentaData)
-  }
+  def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty))
 }
 
-case class DeployInfo(hosts: List[Host], data: Map[String,List[Data]] = Map()) {
-  import HostList._
-  def forParams(params: DeployParameters) = {
-    val hostsFilteredByStage = hosts.filterByStage(params.stage).hosts
-    val hostsForParams =
-      if (params.hostList.isEmpty)
-        hostsFilteredByStage
-      else
-        hosts.filter(params.hostList contains _.name)
+case class DeployInfo(input:DeployInfoJsonInputFile) {
 
-    DeployInfo(hostsForParams, data)
+  def asHost(host: DeployInfoHost) = {
+    val tags:List[(String,String)] =
+      List("group" -> host.group) ++
+        host.created_at.map("created_at" -> _) ++
+        host.dnsname.map("dnsname" -> _) ++
+        host.instancename.map("instancename" -> _) ++
+        host.internalname.map("internalname" -> _)
+    Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
   }
 
-  def knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
-  def knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
+  def forParams(params: DeployParameters): DeployInfo = {
+    if (params.hostList.isEmpty) filterHosts(_.stage == params.stage.name)
+    else filterHosts(params.hostList contains _.name)
+  }
+
+  def filterHosts(p: Host => Boolean) = DeployInfo(input.copy(hosts = input.hosts.filter(jsonHost => p(asHost(jsonHost)))))
+
+  val hosts = input.hosts.map(asHost)
+  val data = input.data mapValues { dataList =>
+    dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
+  }
+
+  lazy val knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
+  lazy val knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
 
   def knownHostApps(stage: String): List[Set[App]] = knownHostApps.filter(stageAppToHostMap.contains(stage, _))
 
-  def knownKeys: List[String] = data.keys.toList.sorted
+  lazy val knownKeys: List[String] = data.keys.toList.sorted
 
   def dataForKey(key: String): List[Data] = data.get(key).getOrElse(List.empty)
   def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
@@ -52,7 +57,8 @@ case class Host(
     name: String,
     apps: Set[App] = Set.empty,
     stage: String = "NO_STAGE",
-    connectAs: Option[String] = None)
+    connectAs: Option[String] = None,
+    tags: Map[String, String] = Map.empty)
 {
   def app(name: String) = this.copy(apps = apps + App(name))
   def app(app: App) = this.copy(apps= apps + app)

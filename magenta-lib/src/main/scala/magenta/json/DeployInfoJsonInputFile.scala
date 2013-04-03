@@ -15,7 +15,11 @@ case class DeployInfoHost(
   hostname: String,
   app: String,
   group: String,
-  stage: String
+  stage: String,
+  instancename: Option[String],
+  internalname: Option[String],
+  dnsname: Option[String],
+  created_at: Option[String]
 )
 
 case class DeployInfoKey(
