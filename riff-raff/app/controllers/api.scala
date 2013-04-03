@@ -8,7 +8,8 @@ import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
-import play.api.libs.json.{JsString, JsObject, JsValue}
+import play.api.libs.json.{JsString, Json, JsObject, JsValue}
+import deployment.DeployInfoManager
 
 
 case class ApiKey(
@@ -153,6 +154,34 @@ object Api extends Controller with Logging {
         "pages" -> toJson(pagination.pageCount.get),
         "filter" -> toJson(filter.map(_.queryStringParams.toMap.mapValues(toJson(_))).getOrElse(Map.empty)),
         "results" -> toJson(deploys)
+      ))
+    )
+    toJson(response)
+  }
+
+  def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
+    assert(!DeployInfoManager.deployInfo.hosts.isEmpty, "No deploy information available")
+
+    val filter = deployment.HostFilter.fromRequest
+    val query:List[(String,JsValue)] = Nil ++
+      filter.stage.map("stage" -> toJson(_)) ++
+      filter.app.map("app" -> toJson(_)) ++
+      Some("hostList" -> toJson(filter.hostList))
+
+    import net.liftweb.json.{Serialization,NoTypeHints}
+    implicit val format = Serialization.formats(NoTypeHints)
+    val filtered = DeployInfoManager.deployInfo.filterHosts { host =>
+        (filter.stage.isEmpty || filter.stage.get == host.stage) &&
+          (filter.app.isEmpty || host.apps.exists(_.name == filter.app.get) ) &&
+          (filter.hostList.isEmpty || filter.hostList.contains(host.name))
+      }
+    val results = Json.parse(Serialization.write(filtered.input))
+
+    val response = Map(
+      "response" -> toJson(Map(
+        "status" -> toJson("ok"),
+        "filter" -> toJson(query.toMap),
+        "results" -> toJson(results)
       ))
     )
     toJson(response)

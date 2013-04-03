@@ -1,12 +1,14 @@
 package magenta
 
+import json.{DeployInfoData, DeployInfoJsonInputFile, DeployInfoHost}
+
 package object fixtures {
   val CODE = Stage("CODE")
   val PROD = Stage("PROD")
 
   val app1 = App("the_role")
 
-  val deployinfoSingleHost = DeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
+  val deployinfoSingleHost = stubDeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
 
   val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
 
@@ -39,4 +41,15 @@ package object fixtures {
 
   def parameters(stage: Stage = PROD, version: String = "version") =
     DeployParameters(Deployer("tester"), Build("project", version), stage)
+
+  def stubDeployInfo(hosts: List[Host] = Nil, data: Map[String, List[Data]] = Map.empty): DeployInfo = {
+    val deployHosts = hosts.flatMap{ host => host.apps.map{app =>
+      DeployInfoHost(host.name, app.name, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
+    }}
+    val deployData = data.mapValues{ list =>
+      list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
+    }
+    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData))
+  }
+
 }

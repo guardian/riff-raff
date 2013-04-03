@@ -43,9 +43,6 @@ object DeployFilter {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
-    def listParam(s: String): List[String] =
-      r.queryString.get(s).getOrElse(Nil).flatMap(_.split(",").map(_.trim).filter(!_.isEmpty)).toList
-
     val statusType = try {
       param("status").map(RunState.withName)
     } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for status parameter")}
@@ -63,6 +60,34 @@ object DeployFilter {
     )
 
     if (filter == DeployFilter()) None else Some(filter)
+  }
+}
+
+case class HostFilter(
+  stage: Option[String] = None,
+  app: Option[String] = None,
+  hostList: List[String] = Nil ) extends QueryStringBuilder {
+  lazy val queryStringParams: List[(String, String)] = {
+    Nil ++
+      stage.map("stage" -> _.toString) ++
+      app.map("app" -> _.toString) ++
+      (if (hostList.isEmpty) None else Some("hostList" -> hostList.mkString(",")))
+  }
+}
+
+object HostFilter {
+  def fromRequest(implicit r:RequestHeader):HostFilter = {
+    def param(s: String): Option[String] =
+      r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
+
+    def listParam(s: String): List[String] =
+      r.queryString.get(s).getOrElse(Nil).flatMap(_.split(",").map(_.trim).filter(!_.isEmpty)).toList
+
+    HostFilter(
+      stage = param("stage"),
+      app = param("app"),
+      hostList = listParam("hostList")
+    )
   }
 }
 

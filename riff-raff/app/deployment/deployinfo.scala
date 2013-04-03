@@ -56,10 +56,10 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   var agent: Option[ScheduledAgent[DeployInfo]] = None
 
   def init() {
-    agent = Some(ScheduledAgent[DeployInfo](0 seconds, 1 minute, DeployInfo(Nil, Map.empty))(_ => getDeployInfo))
+    agent = Some(ScheduledAgent[DeployInfo](0 seconds, 1 minute, DeployInfo())(_ => getDeployInfo))
   }
 
-  def deployInfo = agent.map(_()).getOrElse(DeployInfo(Nil, Map.empty))
+  def deployInfo = agent.map(_()).getOrElse(DeployInfo())
 
   def stageList = deployInfo.knownHostStages.sorted(conf.Configuration.stages.ordering)
   def hostList = deployInfo.hosts

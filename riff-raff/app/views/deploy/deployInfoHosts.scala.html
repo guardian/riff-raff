@@ -1,5 +1,6 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], filter: String)
 @import deployment.DeployInfoManager._
+@import html.helper.twitterBootstrap2.htmlTooltip
 
 @main("Deployment Hosts", request, List("deployinfo-app-tabs")) {
 
@@ -20,8 +21,20 @@
             <tr>
             <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
             <td>
-            @deployInfo.stageAppToHostMap((stage,appSet)).map(_.name).zipWithIndex.map{ zipped =>
-                <div>@zipped._1</div>
+            @deployInfo.stageAppToHostMap((stage,appSet)).map{ host =>
+                @htmlTooltip(placement="left"){
+                    <table>
+                        <tbody>
+                            @host.tags.map { case (key, value) =>
+                                <tr>
+                                    <td><strong>@key:</strong></td><td>@value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }{
+                    @host.name
+                }
             }
             </td>
             </tr>
