@@ -113,8 +113,10 @@ private[openid] class OpenIDClient(ws: String => WSRequestHolder) extends Loggin
    * Perform direct verification (see 11.4.2. Verifying Directly with the OpenID Provider)
    */
   private def directVerification(queryString: Map[String, Seq[String]])(server:OpenIDServer) = {
+    import URLEncoder.encode
     val fields = (queryString - "openid.mode" + ("openid.mode" -> Seq("check_authentication")))
-    ws(server.url).post(fields).map(response => {
+    val encodedFields = fields.mapValues(_.map(encode(_, "UTF-8")))
+    ws(server.url).post(encodedFields).map(response => {
       if (response.status == 200 && response.body.contains("is_valid:true")) {
         UserInfo(queryString)
       } else {

@@ -121,7 +121,7 @@ object ApiAuthAction {
     Action(p) { implicit request =>
       val inputKey = request.queryString.get("key").flatMap(_.headOption)
       val validatedIdentity = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter)).map(ApiIdentity)
-      assert(!(inputKey.isDefined ^ validatedIdentity.isDefined), "The ApiKey provided is not valid, please check and try again")
+      assert(inputKey.isDefined == validatedIdentity.isDefined, "The ApiKey provided is not valid, please check and try again")
       validatedIdentity.orElse(UserIdentity(request)).map { identity =>
         f(new AuthenticatedRequest(Some(identity), request))
       }.getOrElse(Redirect(routes.Login.loginAction).withSession {
@@ -165,9 +165,10 @@ object Login extends Controller with Logging {
   }
 
   def loginAction = Action { implicit request =>
+    val secureConnection = request.headers.get("X-Forwarded-Proto").map(_ == "https").getOrElse(false)
     AsyncResult(
       OpenID
-        .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(), openIdAttributes)
+        .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
         .extend(_.value match {
           case Redeemed(url) => {
             LoginCounter.recordCount(1)

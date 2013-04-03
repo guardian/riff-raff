@@ -1,13 +1,14 @@
 package controllers
 
-import play.api.mvc.Controller
+import play.api.mvc.{Action, AnyContent, Controller}
+import play.api.mvc.Results._
 import org.joda.time.DateTime
 import persistence.Persistence
 import play.api.data._
 import play.api.data.Forms._
-import play.api.data.validation.Constraints._
 import java.security.SecureRandom
-import com.codahale.jerkson.Json._
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.{JsString, JsObject, JsValue}
 
 
 case class ApiKey(
@@ -41,6 +42,45 @@ object ApiKeyGenerator {
     }.mkString
   }
 
+}
+
+object ApiJsonEndpoint {
+  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
+    ApiAuthAction(counter) { authenticatedRequest =>
+      val format = authenticatedRequest.queryString.get("format").flatten.toSeq
+      val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+
+      val response = try {
+        f(authenticatedRequest)
+      } catch {
+        case t:Throwable =>
+          toJson(Map(
+            "response" -> toJson(Map(
+              "status" -> toJson("error"),
+              "message" -> toJson(t.getMessage),
+              "stacktrace" -> toJson(t.getStackTraceString.split("\n"))
+            ))
+          ))
+      }
+
+      val responseObject = response match {
+        case jso:JsObject => jso
+        case jsv:JsValue => JsObject(Seq(("value", jsv)))
+      }
+
+      if (format.contains("jsonp")) {
+        assert(jsonpCallback.isDefined, "Must specify 'callback' parameter for jsonp")
+        val callback = jsonpCallback.head
+        Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
+      } else {
+        response \ "response" \ "status" match {
+          case JsString("ok") => Ok(responseObject)
+          case JsString("error") => BadRequest(responseObject)
+          case _ => throw new IllegalStateException("Response status missing or invalid")
+        }
+      }
+    }
+  }
 }
 
 object Api extends Controller with Logging {
@@ -83,51 +123,39 @@ object Api extends Controller with Logging {
     )
   }
 
-  def history = ApiAuthAction("history") { implicit request =>
-    try {
-      val filter = deployment.DeployFilter.fromRequest(request)
-      val count = DeployController.countDeploys(filter)
-      val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
-      val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
+  def history = ApiJsonEndpoint("history") { implicit request =>
+    val filter = deployment.DeployFilter.fromRequest(request)
+    val count = DeployController.countDeploys(filter)
+    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
+    val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
 
-      val deploys = deployList.map{ deploy =>
-        Map(
-          "time" -> deploy.time,
-          "uuid" -> deploy.uuid,
-          "taskType" -> deploy.taskType.toString,
-          "projectName" -> deploy.parameters.build.projectName,
-          "build" -> deploy.parameters.build.id,
-          "stage" -> deploy.parameters.stage.name,
-          "deployer" -> deploy.parameters.deployer.name,
-          "recipe" -> deploy.parameters.recipe.name,
-          "status" -> deploy.state.toString,
-          "logURL" -> routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL(),
-          "tags" -> deploy.allMetaData
-        )
-      }
-      val response = Map(
-        "response" -> Map(
-          "status" -> "ok",
-          "total" -> pagination.itemCount,
-          "pageSize" -> pagination.pageSize,
-          "currentPage" -> pagination.page,
-          "pages" -> pagination.pageCount.get,
-          "filter" -> filter.map(_.queryStringParams.toMap).getOrElse(Map.empty),
-          "results" -> deploys
-        )
-      )
-      Ok(generate(response))
-    } catch {
-      case t:Throwable =>
-        val response = Map(
-          "response" -> Map(
-            "status" -> "error",
-            "message" -> t.getMessage,
-            "stacktrace" -> t.getStackTraceString.split("\n")
-          )
-        )
-        Ok(generate(response))
+    val deploys = deployList.map{ deploy =>
+      toJson(Map(
+        "time" -> toJson(deploy.time.getMillis),
+        "uuid" -> toJson(deploy.uuid.toString),
+        "taskType" -> toJson(deploy.taskType.toString),
+        "projectName" -> toJson(deploy.parameters.build.projectName),
+        "build" -> toJson(deploy.parameters.build.id),
+        "stage" -> toJson(deploy.parameters.stage.name),
+        "deployer" -> toJson(deploy.parameters.deployer.name),
+        "recipe" -> toJson(deploy.parameters.recipe.name),
+        "status" -> toJson(deploy.state.toString),
+        "logURL" -> toJson(routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL()),
+        "tags" -> toJson(deploy.allMetaData)
+      ))
     }
+    val response = Map(
+      "response" -> toJson(Map(
+        "status" -> toJson("ok"),
+        "total" -> toJson(pagination.itemCount),
+        "pageSize" -> toJson(pagination.pageSize),
+        "currentPage" -> toJson(pagination.page),
+        "pages" -> toJson(pagination.pageCount.get),
+        "filter" -> toJson(filter.map(_.queryStringParams.toMap.mapValues(toJson(_))).getOrElse(Map.empty)),
+        "results" -> toJson(deploys)
+      ))
+    )
+    toJson(response)
   }
 
 }

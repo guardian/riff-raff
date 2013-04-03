@@ -87,6 +87,7 @@ I'm a developer at the guardian, how do I make my scala project deployable
 You are using Scala, SBT and so on, so you can apply the following rules.
 
  * Ensure you are using SBT 0.11.2 (or later)
+ * Use Assembly to create a self-executing jar
  * Add the dist plugin to your plugins.
    * Add this to project/project/Plugins.scala
 
@@ -97,19 +98,24 @@ You are using Scala, SBT and so on, so you can apply the following rules.
 				)
 			}
 
-   * Add this to build.sbt
+   * In your SBT build you'll want to do the following:
+     * Add the default dist settings to your build
 
-			Seq(com.gu.SbtDistPlugin.distSettings :_*)
-			distPath := file("/r2/ArtifactRepository/MY-APP/trunk") / ("trunk-build." + System.getProperty("build.number", "DEV")) / "artifacts.zip"
-			distFiles <+= (packageWar in Compile) map { _ -> "packages/MY-APP/webapps/MY-APP.war" }
-			distFiles <++= (sourceDirectory in Compile) map { src => (src / "deploy" ***) x (relativeTo(src / "deploy"), false) }
+        .settings(distSettings: _*)
+
+     * Declare the packages to put into the artifact.zip
+       .settings(
+         distFiles <++= (sourceDirectory in Compile) map { src => (src / "deploy" ***) x rebase(src / "deploy", "") },
+         distFiles <+= (assembly in Compile) map { _ -> "packages/<package>/<jarfile>" }
+       )
+
 
    * Add a deploy.json under `src/main/deploy`, something like:
 
 			{
 			    "packages":{
-			        "MY-APP":{
-			            "type":"jetty-webapp",
+			        "<package>":{
+			            "type":"executable-jar-webapp",
 			        }
 			    }
 			}
@@ -117,3 +123,88 @@ You are using Scala, SBT and so on, so you can apply the following rules.
  * Run `./sbt dist` locally and check that the artifact.zip is created correctly
  * Update the teamcity build to use the dist target
  * Ensure that the systems team have made your servers available as APP-ROLE in the deployinfo
+
+What about deploying to the cloud?
+----------------------------------
+
+To deploy to the cloud, follow the above steps, but declare your package type as autoscaling.
+You'll need to provide a `bucket` data to say where to put the artifact in S3.
+
+The deploy will then do the following:
+
+Take the package and upload it to the bucket you specified into the directory:
+`<bucket>/<stage>` - it will use the <package> directory from the artifact.
+So Content-Api-Concierge has a deploy.json like
+```json
+    "packages": {
+        "content-api-concierge": {
+            "type":"autoscaling",
+            "data":{
+                "port":"8080",
+                "bucket":"content-api-dist"
+            }
+        }
+    },
+```
+It will upload the file to s3://content-api-dist/<STAGE>/content-api-concierge
+
+It will then look for an AutoscalingGroup that has two tags: one with the key 'Role' and the name of the package as the value and the other with the key 'Stage' and the name of the stage you're deploying to as the value.
+In cloudformation you could use this:
+```json
+        "AutoscalingGroup":{
+            "Type":"AWS::AutoScaling::AutoScalingGroup",
+            "Properties":{
+                "Tags":[
+                    {
+                        "Key":"Stage",
+                        "Value":{ "Ref":"Stage" },
+                        "PropagateAtLaunch":"true"
+                    },
+                    {
+                        "Key":"Role",
+                        "Value":"content-api-concierge",
+                        "PropagateAtLaunch":"true"
+                    }
+                ]
+            }
+        },
+
+```
+
+In order to do all of this, You'll need an AWS key for deploying, which needs the AccessKey and SecretKey provided to RiffRaff via the configuration file, and you'll need to create the user in your IAM profile with permissions like:
+
+```json
+{
+  "Statement": [
+    {
+      "Sid": "Stmt1362760208538",
+      "Action": [
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:DescribeAutoScalingInstances",
+        "autoscaling:DescribeTags",
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:TerminateInstanceInAutoScalingGroup",
+        "ec2:CreateTags",
+        "ec2:DescribeInstances",
+        "elb:DescribeInstanceHealth",
+        "elasticloadbalancing:DescribeInstanceHealth",
+        "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Sid": "Stmt1362760268494",
+      "Action": [
+        "s3:*"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::*"
+      ]
+    }
+  ]
+}
+```

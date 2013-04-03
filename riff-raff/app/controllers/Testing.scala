@@ -98,7 +98,9 @@ object Testing extends Controller with Logging {
       )
     }
 
-
+  def testcharset = AuthAction { implicit request =>
+    Ok("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
+  }
 
   def uuidList = AuthAction { implicit request =>
     val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(0L)).reverse

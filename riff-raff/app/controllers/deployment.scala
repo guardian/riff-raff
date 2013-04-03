@@ -195,10 +195,13 @@ object Deployment extends Controller with Logging {
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
         log.info("Host list: %s" format form.hosts)
+        val defaultRecipe = DeployInfoManager.deployInfo
+          .firstMatchingData("default-recipe", App(form.project), form.stage)
+          .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
-          recipe = form.recipe.map(RecipeName(_)).getOrElse(DefaultRecipe()),
+          recipe = form.recipe.map(RecipeName(_)).getOrElse(defaultRecipe),
           hostList = form.hosts)
 
         form.action match {
