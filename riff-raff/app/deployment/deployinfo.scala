@@ -8,10 +8,11 @@ import controllers.Logging
 import magenta.App
 import conf.{DeployInfoMode, Configuration}
 import utils.ScheduledAgent
-import java.io.{FileNotFoundException, File}
+import java.io.{FileInputStream, FileNotFoundException, File}
 import java.net.{URLConnection, URL, URLStreamHandler}
 import io.Source
 import lifecycle.LifecycleWithoutApp
+import java.util.Properties
 
 object DeployInfoManager extends LifecycleWithoutApp with Logging {
   private val classpathHandler = new URLStreamHandler {
@@ -65,8 +66,32 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   def hostList = deployInfo.hosts
   def dataList = deployInfo.data
 
-  def credentials(stage:String,apps:Set[App]) : List[Credentials] = {
-    apps.toList.flatMap(app => deployInfo.firstMatchingData("aws-keys",app,stage)).map(k => Configuration.s3.credentials(k.value)).distinct
+  def credentials(stage: String, apps: Set[App]): List[Credentials] = {
+    val s3Credentials = apps.toList.flatMap(app => deployInfo.firstMatchingData("aws-keys", app, stage)).map(k => Configuration.s3.credentials(k.value)).distinct
+
+    // TODO: get credentials from deployment info
+    //    val fastlyCredentials = apps.headOption.flatMap {
+    //      app => {
+    //        val serviceIdData = deployInfo.firstMatchingData("fastly-service-id", app, stage)
+    //        val apiKeyData = deployInfo.firstMatchingData("fastly-api-key", app, stage)
+    //        (serviceIdData, apiKeyData) match {
+    //          case (Some(serviceId), Some(apiKey)) => Some(FastlyCredentials(serviceId.value, apiKey.value))
+    //          case _ => None
+    //        }
+    //      }
+    //    }
+    val tmpProps = {
+      val props = new Properties()
+      val stream = new FileInputStream(new File("/home/kchappel/.fastlyapiclientcconfig"))
+      props.load(stream)
+      stream.close()
+      props
+    }
+    val serviceId = tmpProps.getProperty("serviceId")
+    val apiKey = tmpProps.getProperty("apiKey")
+    val fastlyCredentials = Some(FastlyCredentials(serviceId, apiKey))
+
+    s3Credentials ++ fastlyCredentials
   }
 
   def keyRing(context:DeployContext): KeyRing = {
