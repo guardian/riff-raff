@@ -26,14 +26,20 @@ object MagentaBuild extends Build {
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
       excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-        cp filter {jar => List("io_2.9.1-0.11.2.jar","specs_2.9.0-1-1.6.8.jar").contains(jar.data.getName)}
+        cp filter {jar => List("io_2.9.1-0.11.2.jar","specs_2.9.0-1-1.6.8.jar","scala-stm_2.10.0-0.6.jar").contains(jar.data.getName)}
       },
       templatesImport ++= Seq(
         "magenta._",
         "deployment._",
         "controllers._",
         "views.html.helper.magenta._"
-      )
+      ),
+      mergeStrategy in assembly <<= (mergeStrategy in assembly) {
+        (old) => {
+          case "play/core/server/ServerWithStop.class" => MergeStrategy.first
+          case x => old(x)
+        }
+      }
     )
     .settings(
       playExternalAssets <++= (baseDirectory) { base =>
