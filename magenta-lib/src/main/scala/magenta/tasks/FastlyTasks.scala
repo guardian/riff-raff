@@ -11,12 +11,13 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
 
   override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
 
-    if (keyRing.fastlyCredentials.isEmpty) {
+    val fastlyCredentials = keyRing.apiCredentials.find(_.service == "fastly")
+    if (fastlyCredentials.isEmpty) {
       MessageBroker.fail("No Fastly credentials available")
       return
     }
-    val serviceId = keyRing.fastlyCredentials.get.serviceId
-    val apiKey = keyRing.fastlyCredentials.get.apiKey
+    val serviceId = fastlyCredentials.get.id
+    val apiKey = fastlyCredentials.get.secret
     val fastlyApiClient = FastlyAPIClient(apiKey, serviceId)
 
     val vclFiles = pkg.srcDir.listFiles.filter(_.getName.endsWith(".vcl"))
@@ -46,13 +47,11 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       MessageBroker.info("Finding previous config version number...")
       prevVersion = fastlyApiClient.latestVersionNumber
       MessageBroker.info(prevVersion.toString)
-      true
     }
 
     if (!stopFlag) {
       MessageBroker.info("Cloning previous config...")
       if (fails(fastlyApiClient.versionClone(prevVersion))) return
-      true
     }
 
     var currVersion = -1
@@ -60,7 +59,6 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       MessageBroker.info("Finding new config version number...")
       currVersion = fastlyApiClient.latestVersionNumber
       MessageBroker.info(currVersion.toString)
-      true
     }
 
     if (!stopFlag) {
@@ -70,13 +68,11 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
         response =>
           if (fails(response)) return
       }
-      true
     }
 
     if (!stopFlag) {
       MessageBroker.info("Activating new config version...")
       if (fails(fastlyApiClient.versionActivate(currVersion))) return
-      true
     }
 
   }
