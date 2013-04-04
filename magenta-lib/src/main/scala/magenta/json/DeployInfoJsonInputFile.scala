@@ -43,9 +43,9 @@ object DeployInfoJsonReader {
 
   def parse(inputFile: DeployInfoJsonInputFile): DeployInfo = DeployInfo(inputFile)
 
-  def parse(s: String): DeployInfo = {
-    parse(Extraction.extract[DeployInfoJsonInputFile](JsonParser.parse(s)))
-  }
+  def parse(json: JValue): DeployInfo = parse(Extraction.extract[DeployInfoJsonInputFile](json))
+
+  def parse(s: String): DeployInfo = parse(JsonParser.parse(s))
 
 }
 

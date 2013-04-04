@@ -12,6 +12,8 @@ import java.io.{FileNotFoundException, File}
 import java.net.{URLConnection, URL, URLStreamHandler}
 import io.Source
 import lifecycle.LifecycleWithoutApp
+import net.liftweb.json.JsonParser
+import net.liftweb.json.JsonAST.{JObject, JNothing}
 
 object DeployInfoManager extends LifecycleWithoutApp with Logging {
   private val classpathHandler = new URLStreamHandler {
@@ -44,7 +46,12 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
         Source.fromURL(url).getLines.mkString
     }
 
-    val deployInfo = DeployInfoJsonReader.parse(deployInfoJson)
+    val json = JsonParser.parse(deployInfoJson)
+    val deployInfo = (json \ "response") match {
+      case response:JObject => DeployInfoJsonReader.parse(response \ "results")
+      case _ => DeployInfoJsonReader.parse(deployInfoJson)
+    }
+
 
     log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
       deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
