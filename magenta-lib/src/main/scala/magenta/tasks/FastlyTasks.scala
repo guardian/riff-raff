@@ -1,32 +1,23 @@
 package magenta.tasks
 
 import magenta.{MessageBroker, KeyRing, Package}
-import java.io.{FileInputStream, File}
-import java.util.Properties
 import moschops.FastlyAPIClient
 import org.apache.commons.io.FileUtils
-import com.ning.http.client.{AsyncHttpClientConfig, Response}
+import com.ning.http.client.Response
+import scala.collection.JavaConversions._
 
 
 case class UpdateFastlyConfig(pkg: Package) extends Task {
 
-  // TODO: integrate credentials into riff-raff
-  private val credentials = {
-    val props = new Properties()
-    val stream = new FileInputStream(new File("/home/kchappel/.fastlyapiclientcconfig"))
-    props.load(stream)
-    stream.close()
-    props
-  }
-  private val serviceId = credentials.getProperty("serviceId")
-  private val apiKey = credentials.getProperty("apiKey")
+  override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
 
-  private val fastlyApiClient: FastlyAPIClient = {
-    val config = new AsyncHttpClientConfig.Builder().setRequestTimeoutInMs(30000).build()
-    FastlyAPIClient(apiKey, serviceId, Some(config))
-  }
-
-  override def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+    if (keyRing.fastlyCredentials.isEmpty) {
+      MessageBroker.fail("No Fastly credentials available")
+      return
+    }
+    val serviceId = keyRing.fastlyCredentials.get.serviceId
+    val apiKey = keyRing.fastlyCredentials.get.apiKey
+    val fastlyApiClient = FastlyAPIClient(apiKey, serviceId)
 
     val vclFiles = pkg.srcDir.listFiles.filter(_.getName.endsWith(".vcl"))
     val vclsToUpdate = vclFiles.foldLeft(Map[String, String]())((map, file) => {
@@ -38,10 +29,16 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     def fails(response: Response): Boolean = {
       if (response.getStatusCode == 200) {
         MessageBroker.verbose(response.getResponseBody)
-        true
+        return false
       }
-      MessageBroker.fail(response.getResponseBody)
-      false
+
+      val headerDump = mapAsScalaMap(response.getHeaders) map {
+        case (key, value) => "%s=%s" format(key, value)
+      } mkString ("; ")
+      val statusDump = "Status code: %s; Headers: %s; Response body: %s"
+        .format(response.getStatusCode, headerDump, response.getResponseBody)
+      MessageBroker.fail(statusDump)
+      true
     }
 
     var prevVersion = -1
