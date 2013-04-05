@@ -18,10 +18,10 @@ import play.api.libs.concurrent.Execution.Implicits._
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
-  val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   val pinStages = conf.Configuration.teamcity.pinStages
   val maxPinned = conf.Configuration.teamcity.maximumPinsPerProject
-  val tcUserName = conf.Configuration.teamcity.user.get
+  val tcUserName = conf.Configuration.teamcity.user
+  val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys && tcUserName.isDefined
 
   val sink = if (!pinningEnabled) None else Some(new MessageSink {
     def message(message: MessageWrapper) {
@@ -55,7 +55,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
         log.debug("Getting pin information")
         Promise.sequence(builds.map(_.detail)).map { detailedBuilds =>
           log.debug("Got details for %d builds: %s" format (detailedBuilds.size, detailedBuilds.mkString("\n")))
-          detailedBuilds.filter(_.pinInfo.get.user.username == tcUserName).sortBy(-_.pinInfo.get.timestamp.getMillis).drop(maxPinned).map { buildToUnpin =>
+          detailedBuilds.filter(_.pinInfo.get.user.username == tcUserName.get).sortBy(-_.pinInfo.get.timestamp.getMillis).drop(maxPinned).map { buildToUnpin =>
             log.debug("Unpinning %s" format buildToUnpin)
             buildToUnpin.unpin()
           }

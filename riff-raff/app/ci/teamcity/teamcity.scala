@@ -347,10 +347,11 @@ object TeamCityWS {
   case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
   val auth = if (teamcity.useAuth) Some(Auth(teamcity.user.get, teamcity.password.get)) else None
-  val teamcityURL ="%s/%s" format (teamcity.serverURL, if (auth.isDefined) "httpAuth" else "guestAuth")
+  val teamcityURL =teamcity.serverURL.map(url => "%s/%s" format (url, if (auth.isDefined) "httpAuth" else "guestAuth"))
 
   def url(path: String): WSRequestHolder = {
-    val url = "%s%s" format (teamcityURL, path)
+    assert(teamcityURL.isDefined, "TeamCity is not configured")
+    val url = "%s%s" format (teamcityURL.get, path)
     auth.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
   }
 

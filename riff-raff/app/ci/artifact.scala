@@ -130,7 +130,11 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   }
 
 
-  def init() { buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate)) }
+  def init() {
+    if (TeamCityWS.teamcityURL.isDefined) {
+      buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate))
+    }
+  }
 
   def shutdown() { buildAgent.foreach(_.shutdown()) }
 
