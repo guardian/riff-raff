@@ -46,7 +46,7 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
   }
 
   it should "not change without careful thought and testing of migration" in {
-    val time = new DateTime(2012,11,8,17,20,00)
+    val time = new DateTime(2012,11,8,17,20,0)
     val id = UUID.fromString("4ef18506-3b38-4235-9933-d7da831247a6")
     val parentId = UUID.fromString("4236c133-be50-4169-8e0c-096eded5bfeb")
     val messageJsonMap = Map(
@@ -121,8 +121,8 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
   }
 
   "ApiKey" should "never change without careful thought and testing of migration" in {
-    val time = new DateTime(2012,11,8,17,20,00)
-    val lastTime = new DateTime(2013,1,8,17,20,00)
+    val time = new DateTime(2012,11,8,17,20,0)
+    val lastTime = new DateTime(2013,1,8,17,20,0)
 
     val apiKeyDump = """{ "application" : "test-application" , "_id" : "hfeklwb34uiopfnu34io2tr_-fffDS" , "issuedBy" : "Test User" , "created" : { "$date" : "2012-11-08T17:20:00.000Z"} , "lastUsed" : { "$date" : "2013-01-08T17:20:00.000Z"} , "callCounters" : { "counter1" : 34 , "counter2" : 2345}}"""
 
@@ -143,7 +143,7 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
 
   "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
     val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
-    val lastTime = new DateTime(2013,1,8,17,20,00)
+    val lastTime = new DateTime(2013,1,8,17,20,0)
     val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
 
     val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), true, "Test user", lastTime)
