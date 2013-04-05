@@ -5,9 +5,13 @@ import moschops.FastlyAPIClient
 import org.apache.commons.io.FileUtils
 import com.ning.http.client.Response
 import scala.collection.JavaConversions._
+import java.util.Date
+import scala.io.Source
 
 
-case class UpdateFastlyConfig(pkg: Package) extends Task {
+case class UpdateFastlyConfig(pkg: Package,
+                              fastlyApiClientBuilder: FastlyApiClientBuilder = new DefaultFastlyApiClientBuilder)
+  extends Task {
 
   override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
 
@@ -18,7 +22,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
     val serviceId = fastlyCredentials.get.id
     val apiKey = fastlyCredentials.get.secret
-    val fastlyApiClient = FastlyAPIClient(apiKey, serviceId)
+    val fastlyApiClient = fastlyApiClientBuilder.build(apiKey, serviceId)
 
     val vclFiles = pkg.srcDir.listFiles.filter(_.getName.endsWith(".vcl"))
     val vclsToUpdate = vclFiles.foldLeft(Map[String, String]())((map, file) => {
@@ -81,4 +85,14 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
 
   override def verbose: String = description
 
+}
+
+trait FastlyApiClientBuilder {
+
+  def build(apiKey: String, serviceId: String): FastlyAPIClient
+}
+
+class DefaultFastlyApiClientBuilder extends FastlyApiClientBuilder {
+
+  override def build(apiKey: String, serviceId: String) = FastlyAPIClient(apiKey, serviceId)
 }
