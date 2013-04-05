@@ -94,7 +94,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     new CollectionStats {
       def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
       def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
-      def documentCount = logAndSquashExceptions(None,0L){ collection.count }
+      def documentCount = logAndSquashExceptions(None,0L){ collection.getCount() }
     }
   }
 
@@ -212,7 +212,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
-    val setLastUsed = $set("lastUsed" -> (new DateTime()))
+    val setLastUsed = $set(Seq("lastUsed" -> (new DateTime())))
     val incCounter = counter.map(name => $inc(("callCounters.%s" format name) -> 1L)).getOrElse(MongoDBObject())
     val update = setLastUsed ++ incCounter
     logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key),None) {
@@ -248,7 +248,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
-      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
+      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set(Seq("status" -> status.toString)), concern=WriteConcern.Safe)
     }
   }
 
@@ -313,7 +313,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def addMetaData(uuid: UUID, metaData: Map[String, String]) {
     logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
       val update = metaData.map { case (tag, value) =>
-        $set(("parameters.tags.%s" format tag) -> value)
+        $set(Seq(("parameters.tags.%s" format tag) -> value))
       }.fold(MongoDBObject())(_ ++ _)
       deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
     }
@@ -321,7 +321,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
-      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
+      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set(Seq("summarised" -> true)))
       deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
@@ -386,7 +386,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def addStringUUID(uuid: UUID) {
-    val setStringUUID = $set("stringUUID" -> uuid.toString)
+    val setStringUUID = $set(Seq("stringUUID" -> uuid.toString))
     logAndSquashExceptions(Some("Updating stringUUID for %s" format uuid),()) {
       deployV2Collection.findAndModify(
         query = MongoDBObject("_id" -> uuid),

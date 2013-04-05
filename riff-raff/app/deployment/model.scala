@@ -65,7 +65,7 @@ trait Record {
 
   def allMetaData = metaData ++ computedMetaData
 
-  def computedMetaData = vcsInfo.map(_.map).flatten
+  def computedMetaData = vcsInfo.map(_.map).getOrElse(Map.empty)
 
   def vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
 }

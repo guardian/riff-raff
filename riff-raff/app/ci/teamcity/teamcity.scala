@@ -7,16 +7,17 @@ import play.api.libs.ws.WS.WSRequestHolder
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTime
 import java.net.{URL, URLEncoder}
-import play.api.libs.concurrent.Promise
 import xml.{NodeSeq, Node, Elem}
 import ci.teamcity.TeamCity.{api, BuildLocator, ProjectLocator}
 import controllers.Logging
+import concurrent.{ExecutionContext, Future}
+import ExecutionContext.Implicits.global
 
 case class Project(id: String, name: String) {
-  def buildTypes: Promise[List[BuildType]] = BuildType(this)
+  def buildTypes: Future[List[BuildType]] = BuildType(this)
 }
 object Project extends Logging {
-  def apply(): Promise[List[Project]] = {
+  def apply(): Future[List[Project]] = {
     val ws = api.project.list
     log.debug("Getting list of projects from %s" format ws.url)
     ws.get().map{ data => Project(data.xml) }
@@ -32,7 +33,7 @@ case class BuildType(id: String, name: String, project: Project, webUrl: URL) {
   lazy val fullName = "%s::%s" format (project.name, name)
 }
 object BuildType extends Logging {
-  def apply(project: Project): Promise[List[BuildType]] = {
+  def apply(project: Project): Future[List[BuildType]] = {
     val ws = api.project.detail(ProjectLocator(project))
     log.debug("Getting list of buildTypes from %s" format ws.url)
     ws.get().map( data => BuildType(data.xml \ "buildTypes" \ "buildType"))
@@ -62,8 +63,8 @@ trait Build extends Logging {
   def buildType: BuildType
   def branchName: String
   def defaultBranch: Option[Boolean]
-  def detail: Promise[BuildDetail]
-  def pin(text: String): Promise[Response] = {
+  def detail: Future[BuildDetail]
+  def pin(text: String): Future[Response] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).put(text)
     buildPinCall.map { response =>
       log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
@@ -71,7 +72,7 @@ trait Build extends Logging {
     }
     buildPinCall
   }
-  def unpin(): Promise[Response] = {
+  def unpin(): Future[Response] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).delete()
     buildPinCall.map { response =>
       log.info("Unpinning build %s: HTTP status code %d" format (this.toString, response.status))
@@ -91,28 +92,28 @@ case class BuildSummary(id: Int,
                         startDate: DateTime,
                         buildType: BuildType
                          ) extends Build {
-  def detail: Promise[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
+  def detail: Future[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
 }
 object BuildSummary extends Logging {
-  def wrapLookup(original: String => Option[BuildType]) = (id: String) => Promise.pure(original(id))
+  def wrapLookup(original: String => Option[BuildType]) = (id: String) => Future.successful(original(id))
 
-  def apply(locator: BuildLocator, buildType: BuildType): Promise[List[BuildSummary]] = {
+  def apply(locator: BuildLocator, buildType: BuildType): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s, buildType %s" format (locator, buildType))
     def lookup = (id: String) => { Some(buildType) }
     api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(lookup)) )
   }
 
-  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType]): Promise[List[BuildSummary]] = {
+  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType]): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
     api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(buildTypeLookup)) )
   }
 
-  def listWithPromisedLookup(locator: BuildLocator, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[List[BuildSummary]] = {
+  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
     api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup) )
   }
 
-  private def apply(build: Node, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[Option[BuildSummary]] = {
+  private def apply(build: Node, buildTypeLookup: String => Future[Option[BuildType]]): Future[Option[BuildSummary]] = {
     val buildTypeId = build \ "@buildTypeId" text
     val buildSummary = buildTypeLookup(buildTypeId).map { buildType =>
       if (buildType.isEmpty) log.warn("No build type found for %s" format buildTypeId)
@@ -133,8 +134,8 @@ object BuildSummary extends Logging {
     buildSummary
   }
 
-  def apply(builds: Elem, buildTypeLookup: String => Promise[Option[BuildType]]): Promise[List[BuildSummary]] = {
-    Promise.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
+    Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
   }
 }
 
@@ -199,11 +200,11 @@ case class BuildDetail(
   pinInfo: Option[PinInfo],
   revision: Option[Revision]
 ) extends Build {
-  def detail = Promise.pure(this)
+  def detail = Future.successful(this)
   def buildTypeId = buildType.id
 }
 object BuildDetail {
-  def apply(locator: BuildLocator): Promise[BuildDetail] = {
+  def apply(locator: BuildLocator): Future[BuildDetail] = {
     api.build.detail(locator).get().map( data => BuildDetail(data.xml) )
   }
   def apply(build: Elem): BuildDetail = {
@@ -258,7 +259,7 @@ object TeamCity {
       "status" -> status.map(encode),
       "id" -> id.map(_.toString)
     )
-    def list: Promise[List[BuildSummary]] = {
+    def list: Future[List[BuildSummary]] = {
       if (buildTypeInstance.isDefined)
         BuildSummary(this, buildTypeInstance.get)
       else {
@@ -266,10 +267,10 @@ object TeamCity {
         val lookupFromTC = (id: String) => {
           buildTypes.map(_.find(_.id == id))
         }
-        BuildSummary.listWithPromisedLookup(this, lookupFromTC)
+        BuildSummary.listWithFuturedLookup(this, lookupFromTC)
       }
     }
-    def detail: Promise[BuildDetail] = BuildDetail(this)
+    def detail: Future[BuildDetail] = BuildDetail(this)
     def number(number:String): BuildLocator = copy(number=Some(number))
     def status(status:String): BuildLocator = copy(status=Some(status))
     def buildTypeId(buildTypeId: String) = copy(buildType=Some(BuildTypeLocator.id(buildTypeId)))
@@ -300,7 +301,7 @@ object TeamCity {
   object BuildTypeLocator {
     def id(buildTypeId: String) = BuildTypeLocator(id=Some(buildTypeId))
     def name(buildTypeName: String) = BuildTypeLocator(name=Some(buildTypeName))
-    def list: Promise[List[BuildType]] = api.buildType.list.get().map(data => BuildType(data.xml \ "buildType"))
+    def list: Future[List[BuildType]] = api.buildType.list.get().map(data => BuildType(data.xml \ "buildType"))
   }
   case class ProjectLocator(id: Option[String] = None, name: Option[String] = None) extends Locator {
     lazy val params = Map(
@@ -312,7 +313,7 @@ object TeamCity {
     def id(projectId: String) = ProjectLocator(id=Some(projectId))
     def name(projectName: String) = ProjectLocator(name=Some(projectName))
     def apply(project: Project): ProjectLocator = ProjectLocator(id=Some(project.id))
-    def list: Promise[List[Project]] = Project()
+    def list: Future[List[Project]] = Project()
   }
 
   object api {
@@ -346,10 +347,11 @@ object TeamCityWS {
   case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
   val auth = if (teamcity.useAuth) Some(Auth(teamcity.user.get, teamcity.password.get)) else None
-  val teamcityURL ="%s/%s" format (teamcity.serverURL, if (auth.isDefined) "httpAuth" else "guestAuth")
+  val teamcityURL =teamcity.serverURL.map(url => "%s/%s" format (url, if (auth.isDefined) "httpAuth" else "guestAuth"))
 
   def url(path: String): WSRequestHolder = {
-    val url = "%s%s" format (teamcityURL, path)
+    assert(teamcityURL.isDefined, "TeamCity is not configured")
+    val url = "%s%s" format (teamcityURL.get, path)
     auth.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
   }
 
