@@ -50,6 +50,24 @@ case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) ex
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
+case class SuspendAlarmNotifications(packageName: String, stage: Stage) extends ASGTask {
+
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+    suspendAlarmNotifications(asg.getAutoScalingGroupName)
+  }
+
+  lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
+}
+
+case class ResumeAlarmNotifications(packageName: String, stage: Stage) extends ASGTask {
+
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+    resumeAlarmNotifications(asg.getAutoScalingGroupName)
+  }
+
+  lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
+}
+
 trait ASGTask extends Task with ASG {
   def packageName: String
   def stage: Stage
