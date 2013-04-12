@@ -74,10 +74,12 @@ case class AutoScaling(pkg: Package) extends PackageType {
   override val perAppActions: AppActionDefinition = {
     case "deploy" => (_, parameters) => {
       List(
+        SuspendAlarmNotifications(pkg.name, parameters.stage),
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
         WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
-        CullInstancesWithTerminationTag(pkg.name, parameters.stage)
+        CullInstancesWithTerminationTag(pkg.name, parameters.stage),
+        ResumeAlarmNotifications(pkg.name, parameters.stage)
       )
     }
     case "uploadArtifacts" => (_, parameters) =>
