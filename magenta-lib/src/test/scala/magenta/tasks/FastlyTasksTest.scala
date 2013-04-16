@@ -7,7 +7,7 @@ import org.scalatest.FlatSpec
 import org.mockito.Mockito._
 import magenta.{ApiCredentials, FailException, KeyRing, Package}
 import moschops.FastlyAPIClient
-import com.ning.http.client.{FluentCaseInsensitiveStringsMap, Response}
+import com.ning.http.client.{ListenableFuture, FluentCaseInsensitiveStringsMap, Response}
 import scala.io.Source
 
 class FastlyTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
@@ -28,6 +28,8 @@ class FastlyTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   headers.add("header2", "value2")
   when(failResponse.getHeaders) thenReturn headers
   when(failResponse.getResponseBody) thenReturn "{ failing response body }"
+  val failResponseProxy = mock[ListenableFuture[Response]]
+  when(failResponseProxy.get) thenReturn failResponse
 
   val succeedResponse = mock[Response]
   when(succeedResponse.getStatusCode) thenReturn 200
@@ -50,8 +52,8 @@ class FastlyTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     when(pkg.srcDir) thenReturn pkgDir
     when(pkgDir.listFiles) thenReturn Array[File]()
     when(fastlyApiClientBuilder.build("apiKey", "serviceId")) thenReturn fastlyApiClient
-    when(fastlyApiClient.latestVersionNumber) thenReturn 1
-    when(fastlyApiClient.versionClone(1)) thenReturn failResponse
+    when(fastlyApiClient.latestVersionNumber()) thenReturn 1
+    when(fastlyApiClient.versionClone(1)) thenReturn failResponseProxy
 
     try {
       task.execute(keyRing)
@@ -62,16 +64,16 @@ class FastlyTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   }
 
   // TODO
-//  it should "succeed when all responses from Fastly are ok" in {
-//    when(keyRing.apiCredentials) thenReturn List(ApiCredentials("fastly", "serviceId", "apiKey"))
-//    when(pkg.srcDir) thenReturn pkgDir
-//    when(pkgDir.listFiles) thenReturn Array(vclFile)
-//    when(fastlyApiClientBuilder.build("apiKey", "serviceId")) thenReturn fastlyApiClient
-//    when(fastlyApiClient.latestVersionNumber) thenReturn 1
-//    when(fastlyApiClient.versionClone(1)) thenReturn succeedResponse
-//    when(fastlyApiClient.vclUpdate(Map(), 1)) thenReturn List(succeedResponse)
-//
-//    task.execute(keyRing)
-//  }
+  //  it should "succeed when all responses from Fastly are ok" in {
+  //    when(keyRing.apiCredentials) thenReturn List(ApiCredentials("fastly", "serviceId", "apiKey"))
+  //    when(pkg.srcDir) thenReturn pkgDir
+  //    when(pkgDir.listFiles) thenReturn Array(vclFile)
+  //    when(fastlyApiClientBuilder.build("apiKey", "serviceId")) thenReturn fastlyApiClient
+  //    when(fastlyApiClient.latestVersionNumber) thenReturn 1
+  //    when(fastlyApiClient.versionClone(1)) thenReturn succeedResponse
+  //    when(fastlyApiClient.vclUpdate(Map(), 1)) thenReturn List(succeedResponse)
+  //
+  //    task.execute(keyRing)
+  //  }
 
 }

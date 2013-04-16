@@ -5,8 +5,7 @@ import moschops.FastlyAPIClient
 import org.apache.commons.io.FileUtils
 import com.ning.http.client.Response
 import scala.collection.JavaConversions._
-import java.util.Date
-import scala.io.Source
+import net.liftweb.json._
 
 
 case class UpdateFastlyConfig(pkg: Package,
@@ -25,10 +24,10 @@ case class UpdateFastlyConfig(pkg: Package,
     val fastlyApiClient = fastlyApiClientBuilder.build(apiKey, serviceId)
 
     val vclFiles = pkg.srcDir.listFiles.filter(_.getName.endsWith(".vcl"))
-    val vclsToUpdate = vclFiles.foldLeft(Map[String, String]())((map, file) => {
-      val name = file.getName
-      val vcl = FileUtils.readFileToString(file)
-      map + (name -> vcl)
+    val vclsToAddOrUpdate = vclFiles.foldLeft(Map[String, String]())((map, file) => {
+      val vclName = file.getName
+      val vclContent = FileUtils.readFileToString(file)
+      map + (vclName -> vclContent)
     })
 
     def fails(response: Response): Boolean = {
@@ -49,34 +48,54 @@ case class UpdateFastlyConfig(pkg: Package,
     var prevVersion = -1
     if (!stopFlag) {
       MessageBroker.info("Finding previous config version number...")
-      prevVersion = fastlyApiClient.latestVersionNumber
+      prevVersion = fastlyApiClient.latestVersionNumber()
       MessageBroker.info(prevVersion.toString)
     }
 
     if (!stopFlag) {
       MessageBroker.info("Cloning previous config...")
-      if (fails(fastlyApiClient.versionClone(prevVersion))) return
+      if (fails(fastlyApiClient.versionClone(prevVersion).get)) return
     }
 
     var currVersion = -1
     if (!stopFlag) {
       MessageBroker.info("Finding new config version number...")
-      currVersion = fastlyApiClient.latestVersionNumber
+      currVersion = fastlyApiClient.latestVersionNumber()
       MessageBroker.info(currVersion.toString)
     }
 
     if (!stopFlag) {
       MessageBroker.info("Updating VCL files...")
+
+      val vclListResponse = fastlyApiClient.vclList(currVersion).get
+      val vclListJson = parse(vclListResponse.getResponseBody)
+      val JArray(nameFields) = vclListJson \ "name"
+      val currentVcls = nameFields collect {
+        case nameField: JField => nameField.values._2
+      }
+
+      val vclsToAdd = vclsToAddOrUpdate.filterNot {
+        case (vclName, vclContent) => currentVcls.contains(vclName)
+      }
+      vclsToAdd.foreach {
+        case (vclName, vclContent) =>
+          // TODO: what is id?
+          if (fails(fastlyApiClient.vclUpload(vclContent, "id", vclName, currVersion).get)) return
+      }
+
+      val vclsToUpdate = vclsToAddOrUpdate.filter {
+        case (vclName, vclContent) => currentVcls.contains(vclName)
+      }
       val updateResponses = fastlyApiClient.vclUpdate(vclsToUpdate, currVersion)
       updateResponses.foreach {
         response =>
-          if (fails(response)) return
+          if (fails(response.get)) return
       }
     }
 
     if (!stopFlag) {
       MessageBroker.info("Activating new config version...")
-      if (fails(fastlyApiClient.versionActivate(currVersion))) return
+      if (fails(fastlyApiClient.versionActivate(currVersion).get)) return
     }
 
   }

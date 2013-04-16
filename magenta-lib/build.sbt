@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
     "org.mockito" % "mockito-core" % "1.9.0" % "test",
     "org.scala-sbt" %% "io" % "0.11.3",
     "com.gu" %% "management" % "5.19",
-    "moschops" %% "fastlyapiclient" % "0.1.4" intransitive(),
+    "moschops" %% "fastlyapiclient" % "0.2.1" intransitive(),
     "commons-io" % "commons-io" % "2.1",
     "com.ning" % "async-http-client" % "1.7.6"
 )

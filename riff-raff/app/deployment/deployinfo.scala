@@ -84,6 +84,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
                 data =>
                   Configuration.credentials.lookup(service, data.value)
               }
+            case _ => None
           }
         }
         apiCredentials ++ s3Credential
