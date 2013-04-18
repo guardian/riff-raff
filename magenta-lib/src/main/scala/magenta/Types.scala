@@ -74,6 +74,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
   override val perAppActions: AppActionDefinition = {
     case "deploy" => (_, parameters) => {
       List(
+        CheckGroupSize(pkg.name, parameters.stage),
         SuspendAlarmNotifications(pkg.name, parameters.stage),
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),

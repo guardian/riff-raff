@@ -27,20 +27,21 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     )
   }
 
-  it should "increase the max size of the autoscaling group if less than double desired capacity" in {
-    val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(5)
+  it should "fail if you do not have the capacity to deploy" in {
+    val asg = new AutoScalingGroup().withAutoScalingGroupName("test")
+      .withMinSize(1).withDesiredCapacity(1).withMaxSize(1)
+
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val task = new DoubleSize("app", Stage("PROD")) {
+    val task = new CheckGroupSize("app", Stage("PROD")) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
       override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = Some(asg)
     }
 
-    task.execute(fakeKeyRing)
+    val thrown = intercept[FailException](task.execute(fakeKeyRing))
 
-    verify(asgClientMock).updateAutoScalingGroup(
-      new UpdateAutoScalingGroupRequest().withAutoScalingGroupName("test").withMaxSize(6)
-    )
+    thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
+
   }
 
   val fakeKeyRing = KeyRing(SystemUser(None))
