@@ -20,7 +20,7 @@ case class CopyFile(host: Host, source: String, dest: String) extends ShellTask 
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
-  def commandLine = List("rsync", "-rpv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = List("rsync", "-rpEv", source, "%s:%s" format(host.connectStr, dest))
   def commandLine(keyRing: KeyRing): CommandLine = {
     val keyFileArgs = keyRing.sshCredentials.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
     val shellCommand = CommandLine("ssh" :: noHostKeyChecking ::: keyFileArgs ::: Nil).quoted
