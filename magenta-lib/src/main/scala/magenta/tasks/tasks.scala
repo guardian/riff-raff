@@ -88,11 +88,15 @@ case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader
     val client = s3client(keyRing)
     val filesToCopy = resolveFiles(file)
 
+    val totalSize = filesToCopy.map(_.length).fold(0L)(_ + _)
+
     val requests = filesToCopy map { file =>
       putObjectRequestWithPublicRead(bucket, toKey(file), file, cacheControlHeader)
     }
 
+    MessageBroker.verbose("Starting upload of %d files (%d bytes) to S3" format (requests.size, totalSize))
     requests.par foreach { client.putObject }
+    MessageBroker.verbose("Finished upload of %d files to S3" format requests.size)
   }
 
   def toKey(file: File) = stage.name + "/" + file.getAbsolutePath.replace(base, "")
