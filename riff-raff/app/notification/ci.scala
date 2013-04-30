@@ -20,7 +20,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
   val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   val pinStages = conf.Configuration.teamcity.pinStages
   val maxPinned = conf.Configuration.teamcity.maximumPinsPerProject
-  val tcUserName = conf.Configuration.teamcity.user.get
+  lazy val tcUserName = conf.Configuration.teamcity.user.get
 
   val sink = if (!pinningEnabled) None else Some(new MessageSink {
     def message(message: MessageWrapper) {
