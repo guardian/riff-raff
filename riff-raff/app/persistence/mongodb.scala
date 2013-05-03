@@ -282,7 +282,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
     val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
-    cursor.toIterable.map { deployGrater.asObject(_) }
+    cursor.toIterable.flatMap { dbo => try { Some(deployGrater.asObject(dbo)) } catch { case e:Exception => None } }
   }
 
   override def countDeploysV2(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {

@@ -125,7 +125,7 @@ object Api extends Controller with Logging {
   def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request)
     val count = DeployController.countDeploys(filter)
-    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
+    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
 
     val deploysPerDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
