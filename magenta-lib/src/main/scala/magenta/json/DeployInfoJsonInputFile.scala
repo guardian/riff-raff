@@ -15,7 +15,11 @@ case class DeployInfoHost(
   hostname: String,
   app: String,
   group: String,
-  stage: String
+  stage: String,
+  instancename: Option[String],
+  internalname: Option[String],
+  dnsname: Option[String],
+  created_at: Option[String]
 )
 
 case class DeployInfoKey(
@@ -39,9 +43,9 @@ object DeployInfoJsonReader {
 
   def parse(inputFile: DeployInfoJsonInputFile): DeployInfo = DeployInfo(inputFile)
 
-  def parse(s: String): DeployInfo = {
-    parse(Extraction.extract[DeployInfoJsonInputFile](JsonParser.parse(s)))
-  }
+  def parse(json: JValue): DeployInfo = parse(Extraction.extract[DeployInfoJsonInputFile](json))
+
+  def parse(s: String): DeployInfo = parse(JsonParser.parse(s))
 
 }
 
