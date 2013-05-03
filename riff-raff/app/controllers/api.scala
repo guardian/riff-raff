@@ -2,7 +2,7 @@ package controllers
 
 import play.api.mvc.{Action, AnyContent, Controller}
 import play.api.mvc.Results._
-import org.joda.time.DateTime
+import org.joda.time.{DateMidnight, DateTime}
 import persistence.Persistence
 import play.api.data._
 import play.api.data.Forms._
@@ -10,7 +10,7 @@ import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{JsString, Json, JsObject, JsValue}
 import deployment.DeployInfoManager
-
+import utils.Graph
 
 case class ApiKey(
   application:String,
@@ -69,11 +69,9 @@ object ApiJsonEndpoint {
         case jsv:JsValue => JsObject(Seq(("value", jsv)))
       }
 
-      if (format.contains("jsonp")) {
-        assert(jsonpCallback.isDefined, "Must specify 'callback' parameter for jsonp")
-        val callback = jsonpCallback.head
+      jsonpCallback map { callback =>
         Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
-      } else {
+      } getOrElse {
         response \ "response" \ "status" match {
           case JsString("ok") => Ok(responseObject)
           case JsString("error") => BadRequest(responseObject)
@@ -122,6 +120,30 @@ object Api extends Controller with Logging {
         Redirect(routes.Api.listKeys())
       }
     )
+  }
+
+  def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
+    val filter = deployment.DeployFilter.fromRequest(request)
+    val count = DeployController.countDeploys(filter)
+    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
+    val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
+
+    val deploysPerDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
+      case (date, _) => date.getMillis
+    }
+
+    val deploys = Graph.zeroFillDays(deploysPerDay).map {
+      case (day, deploys) =>
+      toJson(Map(
+        "x" -> toJson(day.getMillis / 1000),
+        "y" -> toJson(deploys)
+      ))
+    }
+    toJson(Map("response" -> toJson(Map(
+      "data" -> toJson(deploys),
+      "name" -> toJson(filter.map(_.description).getOrElse("All")),
+      "status" -> toJson("ok")
+    ))))
   }
 
   def history = ApiJsonEndpoint("history") { implicit request =>

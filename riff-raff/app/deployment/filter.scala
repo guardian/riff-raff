@@ -36,6 +36,10 @@ case class DeployFilter(
   def withTask(task: Option[TaskType.Value]) = this.copy(task=task)
 
   lazy val default = this == DeployFilter()
+
+  lazy val description = status.map(_ + " ").getOrElse("") +
+    "deploys" + projectName.map(" of " + _).getOrElse("") +
+    stage.map(" in " + _).getOrElse("")
 }
 
 object DeployFilter {
