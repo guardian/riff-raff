@@ -46,6 +46,17 @@ so with the -n or --dry-run flag
 
     $ java -jar magenta.jar -n TEST ContentApi::master 122
 
+How do I run Riff-Raff locally if I want to hack on it?
+-------------------------------------------------------
+
+Assuming you have a reasonably recent version of Java installed, 
+
+ * Run the sbt script
+ * enter `project riff-raff` at the SBT prompt
+ * enter `run` at the SBT prompt
+ * visit http://localhost:9000/
+ * Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/properties 
+
 
 What is still left to do?
 ------
