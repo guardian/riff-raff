@@ -3,13 +3,14 @@
 
 .graph-container {
   position: relative;
-  padding-top: 20px;
+  padding-top: 10px;
   padding-bottom: 20px;
-  padding-right: 50px;
+  padding-right: 5px;
 }
 
 .graph-body {
   margin-left: 50px;
+  display: inline-block;
 }
 
 .graph {
@@ -36,13 +37,13 @@
 }
 
 .graph-legend {
-  margin-top: 20px;
+  margin-left: 20px;
   padding: 2px 0;
   background-color: transparent;
   color: black;
 
   li, div.swatch {
-    display: inline-block;
+    display: block;
   }
 
   a {
@@ -61,10 +62,16 @@
   .x_tick .title {
     opacity: 1;
   }
+  .x_label {
+    display: none;
+  }
 }
 
-.x_label {
-  display: none;
+.rickshaw_legend {
+  margin-left: 10px;
+  .line {
+    padding-right: 3px;
+  }
 }
 
 .graph-dark {

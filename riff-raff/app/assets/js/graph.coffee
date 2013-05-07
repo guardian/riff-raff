@@ -24,10 +24,13 @@ graph = (args) ->
     stuffBeforeGraph = $(container).position().top
     graphHeight = $(window).height() - legendHeight - stuffBeforeGraph
 
+  graphWidth = args.width
+
   $(element).height(graphHeight)
 
   graphArgs = {
     element: element
+    width: graphWidth
     stroke: true
     strokeWidth: 2
     renderer: args.renderer || 'area'
@@ -50,6 +53,21 @@ graph = (args) ->
     console.log(graphArgs.series)
 
     # first time creation
+    unless graphWidth?
+      labelLength = 0
+      for series in graphArgs.series
+        nameLength = series.name.length
+        if nameLength > labelLength
+          labelLength = nameLength
+      legendWidth = labelLength * 6.5 + 50
+      console.log(legendWidth)
+      graphMargins = $(container).position().left + 90
+      console.log(graphMargins)
+      graphWidth = $(window).width() - legendWidth - graphMargins
+      console.log(graphWidth)
+
+    graphArgs.width = graphWidth
+
     graph = new Rickshaw.Graph(graphArgs)
 
     domain = graph.x.domain()
@@ -73,18 +91,18 @@ graph = (args) ->
       element: container.querySelector('.graph-y-axis')
     )
 
-    legend = new Rickshaw.Graph.Legend(
-      graph: graph
-      element: container.querySelector('.graph-legend')
-      naturalOrder: true
-    )
-
     new Rickshaw.Graph.HoverDetail(
       graph: graph
       formatter: (series, x, y) ->
         date = '<span class="date">' + moment(x*1000).format("ddd Do MMM") + '</span>'
         deploys = '<span class="deploys">' + series.name + ': ' + y + '</span>'
         date + '<br/>' + deploys
+    )
+
+    legend = new Rickshaw.Graph.Legend(
+      graph: graph
+      element: container.querySelector('.graph-legend')
+      naturalOrder: true
     )
 
     new Rickshaw.Graph.Behavior.Series.Toggle(
