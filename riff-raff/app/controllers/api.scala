@@ -11,6 +11,7 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json.{JsString, Json, JsObject, JsValue}
 import deployment.DeployInfoManager
 import utils.Graph
+import magenta.RunState
 
 case class ApiKey(
   application:String,
@@ -128,20 +129,45 @@ object Api extends Controller with Logging {
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
 
-    val deploysPerDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
+    def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
+      f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
+    }.getOrElse("")
+
+    val allDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
       case (date, _) => date.getMillis
     }
+    val firstDate = allDataByDay.headOption.map(_._1)
+    val lastDate = allDataByDay.lastOption.map(_._1)
 
-    val deploys = Graph.zeroFillDays(deploysPerDay).map {
-      case (day, deploys) =>
-      toJson(Map(
-        "x" -> toJson(day.getMillis / 1000),
-        "y" -> toJson(deploys)
-      ))
+    val deploysByState = deployList.groupBy(_.state).toList.sortBy {
+      case (RunState.Completed, _) => 1
+      case (RunState.Failed, _) => 2
+      case (RunState.Running, _) => 3
+      case (RunState.NotRunning, _) => 4
+      case default => 5
     }
+
+    val deploys = deploysByState.map { case (state, deployList) =>
+      val seriesDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
+        case (date, _) => date.getMillis
+      }
+      val seriesJson = Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
+        case (day, deploys) =>
+          toJson(Map(
+            "x" -> toJson(day.getMillis / 1000),
+            "y" -> toJson(deploys)
+          ))
+      }
+      Map(
+        "data" -> toJson(seriesJson),
+        "points" -> toJson(seriesJson.length),
+        "deploystate" -> toJson(state.toString),
+        "name" -> toJson(description(state))
+      )
+    }
+
     toJson(Map("response" -> toJson(Map(
-      "data" -> toJson(deploys),
-      "name" -> toJson(filter.map(_.description).getOrElse("All")),
+      "series" -> toJson(deploys),
       "status" -> toJson("ok")
     ))))
   }
