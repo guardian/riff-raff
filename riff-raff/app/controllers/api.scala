@@ -9,7 +9,7 @@ import play.api.data.Forms._
 import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{JsString, Json, JsObject, JsValue}
-import deployment.DeployInfoManager
+import deployment.{DeployFilter, DeployInfoManager}
 import utils.Graph
 import magenta.RunState
 
@@ -124,7 +124,7 @@ object Api extends Controller with Logging {
   }
 
   def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
-    val filter = deployment.DeployFilter.fromRequest(request)
+    val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
     val count = DeployController.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
