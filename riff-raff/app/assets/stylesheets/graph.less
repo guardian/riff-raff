@@ -1,0 +1,133 @@
+// This file includes everything relating to
+// formatting of the rickshaw graph.
+
+.graph-container {
+  position: relative;
+  padding-top: 10px;
+  padding-bottom: 20px;
+  padding-right: 5px;
+}
+
+.graph-body {
+  margin-left: 50px;
+  display: inline-block;
+}
+
+.graph {
+}
+
+.graph-y-axis {
+  position: absolute;
+  width: 50px;
+}
+
+.graph-y-axis-label {
+  -webkit-transform: rotate(-90deg);
+  -moz-transform: rotate(-90deg);
+  -ms-transform: rotate(-90deg);
+  -o-transform: rotate(-90deg);
+  transform: rotate(-90deg);
+  left: -60px;
+  top: 50%;
+  position: absolute;
+}
+
+.graph-caption {
+  font-size: small;
+}
+
+.graph-legend {
+  margin-left: 20px;
+  padding: 2px 0;
+  background-color: transparent;
+  color: black;
+
+  li, div.swatch {
+    display: block;
+  }
+
+  a {
+    color: black;
+  }
+}
+
+// this element is created by rickshaw, so we need to be overselective to hack
+.rickshaw_graph {
+  .x_tick {
+    bottom: -20px;
+  }
+  .y_ticks text {
+    opacity: 0.8;
+  }
+  .x_tick .title {
+    opacity: 1;
+  }
+  .x_label {
+    display: none;
+  }
+}
+
+.rickshaw_legend {
+  margin-left: 10px;
+  .line {
+    padding-right: 3px;
+  }
+}
+
+.graph-dark {
+
+  text {
+    stroke: white;
+  }
+
+  .rickshaw_legend {
+    .label {
+      color: white;
+    }
+  }
+
+  .rickshaw_graph {
+    .x_tick {
+      border-left: 1px dotted rgba(255, 255, 255, 0.2);
+    }
+
+    .y_ticks {
+      .tick {
+        stroke: rgba(255, 255, 255, 0.16);
+      }
+      path {
+        stroke: #808080;
+      }
+    }
+
+    .y_grid .tick {
+      stroke: rgba(255, 255, 255, 0.20);
+    }
+
+    .detail {
+      background: rgba(255, 255, 255, 0.1);
+
+      .x_label {
+        background: black;
+      }
+
+      .item {
+        background: rgba(255, 255, 255, 0.4);
+        color: black;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+      }
+      .item.active {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.8);
+      }
+      .item:before {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .dot {
+        box-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
+        background: black;
+      }
+    }
+  }
+}
+
