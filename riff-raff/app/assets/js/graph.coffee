@@ -63,7 +63,7 @@ graph = (args) ->
       graph: graph
       timeUnit:
         seconds: (unit for unit in [monthish, week, day, hour] when Math.floor(rangeSeconds / unit) >= 2)[0]
-        formatter: (d) -> d.toUTCString().match(/, (\w+ \w+)/)[1]
+        formatter: (d) -> moment(d).format("Do MMM")
     )
 
     new Rickshaw.Graph.Axis.Y(
@@ -81,7 +81,10 @@ graph = (args) ->
 
     new Rickshaw.Graph.HoverDetail(
       graph: graph
-      yFormatter: (y) -> y
+      formatter: (series, x, y) ->
+        date = '<span class="date">' + moment(x*1000).format("ddd Do MMM") + '</span>'
+        deploys = '<span class="deploys">' + series.name + ': ' + y + '</span>'
+        date + '<br/>' + deploys
     )
 
     new Rickshaw.Graph.Behavior.Series.Toggle(
