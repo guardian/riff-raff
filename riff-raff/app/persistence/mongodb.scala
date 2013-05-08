@@ -315,7 +315,8 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       val update = metaData.map { case (tag, value) =>
         $set(("parameters.tags.%s" format tag) -> value)
       }.fold(MongoDBObject())(_ ++ _)
-      deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
+      if (update.size > 0)
+        deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
     }
   }
 
