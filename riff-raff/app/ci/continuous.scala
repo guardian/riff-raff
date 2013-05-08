@@ -44,7 +44,7 @@ case class ContinuousDeploymentConfig(
       "enabled" -> enabled,
       "user" -> user,
       "lastEdited" -> lastEdited
-    ) ++ branchMatcher map ("branchMatcher" -> _)
+    ) ++ (branchMatcher map ("branchMatcher" -> _))
     values.toMap
   }
 }

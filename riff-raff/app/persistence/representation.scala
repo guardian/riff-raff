@@ -6,14 +6,14 @@ import magenta._
 import deployment.{Record, TaskType}
 import com.mongodb.DBObject
 import com.mongodb.casbah.commons.Implicits._
-import com.mongodb.casbah.commons.MongoDBObject
+import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 
 case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value, summarised: Option[Boolean] = None) {
   lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
   lazy val asDBObject:DBObject = {
     val fields:List[(String,Any)] =
       List(
-        "uuid" -> uuid,
+        "_id" -> uuid,
         "startTime" -> startTime,
         "parameters" -> parameters.asDBObject,
         "status" -> status.toString
@@ -26,7 +26,7 @@ object DeployRecordDocument {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
   }
   def from(dbo: MongoDBObject) = DeployRecordDocument(
-    uuid = dbo.as[UUID]("uuid"),
+    uuid = dbo.as[UUID]("_id"),
     stringUUID = dbo.getAs[String]("stringUUID"),
     startTime = dbo.as[DateTime]("startTime"),
     parameters = ParametersDocument.from(dbo.as[DBObject]("parameters")),
@@ -69,8 +69,8 @@ object ParametersDocument {
     buildId = dbo.as[String]("buildId"),
     stage = dbo.as[String]("stage"),
     recipe = dbo.as[String]("recipe"),
-    hostList = dbo.as[List[String]]("hostList"),
-    tags = dbo.as[Map[String,String]]("tags")
+    hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
+    tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
   )
 }
 

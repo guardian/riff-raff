@@ -25,28 +25,28 @@ case class ApiKey(
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
 
   def asDBObject:DBObject =  {
-    val dbo = MongoDBObject(
-      "application" -> application,
-      "key" -> key,
-      "issuedBy" -> issuedBy,
-      "created" -> created,
-      "callCounters" -> callCounters.asDBObject
-    )
-    lastUsed match {
-      case Some(used) => dbo + ("lastUsed" -> used)
-      case None => dbo
-    }
+    val fields:List[(String,Any)] =
+      List(
+        "application" -> application,
+        "_id" -> key,
+        "issuedBy" -> issuedBy,
+        "created" -> created
+      ) ++ lastUsed.map("lastUsed" ->) ++
+      List(
+        "callCounters" -> callCounters.asDBObject
+      )
+    fields.toMap
   }
 }
 
 object ApiKey {
   def from(dbo: MongoDBObject) = ApiKey(
     application = dbo.as[String]("application"),
-    key = dbo.as[String]("key"),
+    key = dbo.as[String]("_id"),
     issuedBy = dbo.as[String]("issuedBy"),
     created = dbo.as[DateTime]("created"),
     lastUsed = dbo.getAs[DateTime]("lastUsed"),
-    callCounters = dbo.as[Map[String, Long]]("callCounters")
+    callCounters = dbo.as[DBObject]("callCounters").map(entry => (entry._1, entry._2.asInstanceOf[Int].toLong)).toMap
   )
 }
 

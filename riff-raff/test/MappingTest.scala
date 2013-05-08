@@ -8,10 +8,6 @@ import controllers.Logging
 import java.util.UUID
 
 class MappingTest extends FlatSpec with ShouldMatchers with Utilities with PersistenceTestInstances with Logging {
-  lazy val graters = new RiffRaffGraters {
-    def loader = Some(getClass.getClassLoader)
-  }
-
   "RecordV2Converter" should "transform a deploy record into a deploy document" in {
     RecordConverter(testRecordV2).deployDocument should be(
       DeployRecordDocument(
