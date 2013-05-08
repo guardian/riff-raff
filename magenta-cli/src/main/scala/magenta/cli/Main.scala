@@ -142,7 +142,7 @@ object Main extends scala.App {
 
           Config.localArtifactDir.map{ file =>
             MessageBroker.info("Making temporary copy of local artifact: %s" format file)
-            file.copyTo(tmpDir)
+            file.copyTo(Path(tmpDir))
           } getOrElse {
             Artifact.download(tmpDir, build)
           }
