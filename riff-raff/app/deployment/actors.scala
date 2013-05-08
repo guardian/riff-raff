@@ -37,12 +37,7 @@ object DeployControlActor extends Logging {
   )
   lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
 
-  lazy val deployController = system.actorOf(Props[DeployControlActor])
   lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
-
-  def deploy(record: Record){
-    deployController ! Deploy(record)
-  }
 
   import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
 
@@ -63,89 +58,6 @@ object DeployControlActor extends Logging {
     } catch {
       case t:Throwable => None
     }
-  }
-}
-
-class DeployControlActor() extends Actor with Logging {
-  import DeployControlActor._
-
-  var deployActors = Map.empty[(String, String), ActorRef]
-
-  override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 1000, withinTimeRange = 1 minute ) {
-    case _ => Restart
-  }
-
-  def receive = {
-    case Deploy(record) => {
-      try {
-        val project = record.parameters.build.projectName
-        val stage = record.parameters.stage.name
-        val actor = deployActors.get(project, stage).getOrElse {
-          log.info("Created new actor for %s %s" format (project, stage))
-          val newActor = context.actorOf(Props[DeployActor],"deploy-%s-%s" format (project.replace(" ", "_").replace("/","_"), stage))
-          context.watch(newActor)
-          deployActors += ((project,stage) -> newActor)
-          newActor
-        }
-        actor ! DeployActor.Deploy(record)
-      } catch {
-        case e:Throwable => {
-          log.error("Exception whilst dispatching deploy event", e)
-        }
-      }
-    }
-    case Terminated(actor) => {
-      log.warn("Received terminate from %s " format actor.path)
-      deployActors.find(_._2 == actor).map { case(key,value) =>
-        deployActors -= key
-      }
-    }
-  }
-
-  override def postStop() {
-    log.info("I've been stopped")
-  }
-}
-
-object DeployActor {
-  trait Event
-  case class Deploy(record: Record) extends Event
-}
-
-class DeployActor() extends Actor with Logging {
-  import DeployActor._
-
-  override def preRestart(reason: Throwable, message: Option[Any]) {
-    log.warn("Deploy actor has been restarted", reason)
-  }
-
-  def receive = {
-    case Deploy(record) => {
-      record.loggingContext {
-        record.withDownload { artifactDir =>
-          val context = resolveContext(artifactDir, record)
-          record.taskType match {
-            case TaskType.Preview => { }
-            case TaskType.Deploy =>
-              log.info("Executing deployContext")
-              val keyRing = DeployInfoManager.keyRing(context)
-              context.execute(keyRing)
-          }
-        }
-      }
-    }
-  }
-
-  def resolveContext(artifactDir: File, record: Record): DeployContext = {
-    log.info("Reading deploy.json")
-    MessageBroker.info("Reading deploy.json")
-    val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-    val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
-    context
-  }
-
-  override def postStop() {
-    log.info("I've been stopped")
   }
 }
 

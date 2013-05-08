@@ -22,8 +22,11 @@
     </appender>
 
     <logger name="com.amazonaws.request" level="WARN" />
-    <logger name="ci.teamcity" level="DEBUG" />
-    <logger name="utils.ScheduledAgent" level="DEBUG" />
+    <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
+    <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
+    <!--<logger name="ci.teamcity" level="DEBUG" />-->
+    <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
+    <!--<logger name="persistence.MongoDatastore" level="DEBUG" />-->
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>
