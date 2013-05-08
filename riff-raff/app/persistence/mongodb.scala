@@ -5,7 +5,6 @@ import com.mongodb.casbah.{MongoCollection, MongoDB, MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports.WriteConcern
 import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
-import com.novus.salat._
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
 import magenta.{Build, RunState}
@@ -54,30 +53,30 @@ object MongoDatastore extends Logging {
   }
 }
 
-trait RiffRaffGraters {
-  RegisterJodaTimeConversionHelpers()
-  def loader:Option[ClassLoader]
-  val riffRaffContext = {
-    val context = new Context {
-      val name = "global"
-      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
-    }
-    loader.foreach(context.registerClassLoader(_))
-    context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
-    context.registerPerClassKeyOverride(classOf[ContinuousDeploymentConfig], remapThis = "id", toThisInstead = "_id")
-    context
-  }
-  val apiGrater = {
-    implicit val context = riffRaffContext
-    grater[ApiKey]
-  }
-  val continuousDeployConfigGrater = {
-    implicit val context = riffRaffContext
-    grater[ContinuousDeploymentConfig]
-  }
-}
+//trait RiffRaffGraters {
+//  RegisterJodaTimeConversionHelpers()
+//  def loader:Option[ClassLoader]
+//  val riffRaffContext = {
+//    val context = new Context {
+//      val name = "global"
+//      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
+//    }
+//    loader.foreach(context.registerClassLoader(_))
+//    context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
+//    context.registerPerClassKeyOverride(classOf[ContinuousDeploymentConfig], remapThis = "id", toThisInstead = "_id")
+//    context
+//  }
+//  val apiGrater = {
+//    implicit val context = riffRaffContext
+//    grater[ApiKey]
+//  }
+//  val continuousDeployConfigGrater = {
+//    implicit val context = riffRaffContext
+//    grater[ContinuousDeploymentConfig]
+//  }
+//}
 
-class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with RiffRaffGraters with DocumentGraters with Logging {
+class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
@@ -168,18 +167,18 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
     logAndSquashExceptions[Option[ContinuousDeploymentConfig]](Some("Getting continuous deploy config for %s" format id), None) {
-      continuousDeployCollection.findOneByID(id).map(continuousDeployConfigGrater.asObject(_))
+      continuousDeployCollection.findOneByID(id).map(ContinuousDeploymentConfig.from(_))
     }
   override def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] =
     logAndSquashExceptions[Iterable[ContinuousDeploymentConfig]](Some("Getting all continuous deploy configs"), Nil) {
       continuousDeployCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
-        .toIterable.map(continuousDeployConfigGrater.asObject(_))
+        .toIterable.map(ContinuousDeploymentConfig.from(_))
     }
   override def setContinuousDeployment(cd: ContinuousDeploymentConfig) {
     logAndSquashExceptions(Some("Saving continuous integration config: %s" format cd),()) {
       continuousDeployCollection.findAndModify(
         query = MongoDBObject("_id" -> cd.id),
-        update = continuousDeployConfigGrater.asDBObject(cd),
+        update = cd.asDBObject,
         upsert = true,
         fields = MongoDBObject(),
         sort = MongoDBObject(),
@@ -196,19 +195,19 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def createApiKey(newKey: ApiKey) {
     logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
-      val dbo = apiGrater.asDBObject(newKey)
+      val dbo = newKey.asDBObject
       apiKeyCollection.insert(dbo)
     }
   }
 
   override def getApiKeyList = logAndSquashExceptions[Iterable[ApiKey]](Some("Requesting list of API keys"), Nil) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
-    keys.toIterable.map( apiGrater.asObject(_) )
+    keys.toIterable.map( ApiKey.from(_) )
   }
 
   override def getApiKey(key: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for %s" format key),None) {
-      apiKeyCollection.findOneByID(key).map(apiGrater.asObject(_))
+      apiKeyCollection.findOneByID(key).map(ApiKey.from(_))
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
@@ -224,13 +223,13 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
         update = update,
         returnNew = true,
         upsert = false
-      ).map(apiGrater.asObject(_))
+      ).map(ApiKey.from(_))
     }
   }
 
   override def getApiKeyByApplication(application: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for application %s" format application),None) {
-      apiKeyCollection.findOne(MongoDBObject("application" -> application)).map(apiGrater.asObject(_))
+      apiKeyCollection.findOne(MongoDBObject("application" -> application)).map(ApiKey.from(_))
     }
 
   override def deleteApiKey(key: String) {
@@ -259,7 +258,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
-      deployV2LogCollection.insert(logDocumentGrater.asDBObject(log), WriteConcern.Safe)
+      deployV2LogCollection.insersalatt(logDocumentGrater.asDBObject(log), WriteConcern.Safe)
     }
   }
 

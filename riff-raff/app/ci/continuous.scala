@@ -14,6 +14,7 @@ import deployment.DomainAction.Local
 import deployment.Domains
 import org.joda.time.DateTime
 import teamcity.Build
+import com.mongodb.casbah.commons.MongoDBObject
 
 case class ContinuousDeploymentConfig(
   id: UUID,
@@ -31,6 +32,32 @@ case class ContinuousDeploymentConfig(
       build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
     }
   }
+
+  def asDBObject = {
+    val dbo = MongoDBObject(
+      "_id" -> id,
+      "projectName" -> projectName,
+      "stage" -> stage,
+      "recipe" -> recipe,
+      "enabled" -> enabled,
+      "user" -> user,
+      "lastEdited" -> lastEdited
+    )
+    branchMatcher map (dbo + "branchMatcher" -> _) getOrElse dbo
+  }
+}
+
+object ContinuousDeploymentConfig {
+  def from(dbo: MongoDBObject) = ContinuousDeploymentConfig(
+    id = dbo.as[UUID]("_id"),
+    projectName = dbo.as[String]("projectName"),
+    stage = dbo.as[String]("stage"),
+    recipe = dbo.as[String]("recipe"),
+    enabled = dbo.as[Boolean]("enabled"),
+    user = dbo.as[String]("user"),
+    lastEdited = dbo.as[DateTime]("lastEdited"),
+    branchMatcher = dbo.getAs[String]("branchMatcher")
+  )
 }
 
 object ContinuousDeployment extends LifecycleWithoutApp {

@@ -10,6 +10,7 @@ import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{JsString, Json, JsObject, JsValue}
 import deployment.DeployInfoManager
+import com.mongodb.casbah.Imports._
 
 
 case class ApiKey(
@@ -21,6 +22,31 @@ case class ApiKey(
   callCounters:Map[String, Long] = Map.empty
 ){
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
+
+  def asDBObject =  {
+    val dbo = MongoDBObject(
+      "application" -> application,
+      "key" -> key,
+      "issuedBy" -> issuedBy,
+      "created" -> created,
+      "callCounters" -> callCounters.asDBObject
+    )
+    lastUsed match {
+      case Some(used) => dbo + "lastUsed" -> used
+      case None => dbo
+    }
+  }
+}
+
+object ApiKey {
+  def from(dbo: MongoDBObject) = ApiKey(
+    application = dbo.as[String]("application"),
+    key = dbo.as[String]("key"),
+    issuedBy = dbo.as[String]("issuedBy"),
+    created = dbo.as[DateTime]("created"),
+    lastUsed = dbo.getAs[DateTime]("lastUsed"),
+    callCounters = dbo.as[Map[String, Long]]("callCounters")
+  )
 }
 
 object ApiKeyGenerator {

@@ -6,7 +6,6 @@ import json.{DeployInfoJsonReader, JsonReader}
 import scopt.OptionParser
 import HostList._
 import tasks.CommandLocator
-import sbt.IO
 import magenta.teamcity.Artifact._
 import java.util.UUID
 import org.joda.time.format.DateTimeFormat

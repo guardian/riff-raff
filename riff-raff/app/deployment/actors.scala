@@ -10,13 +10,14 @@ import akka.actor.SupervisorStrategy.Restart
 import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
-import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
 import concurrent.Await
 import akka.util.Timeout
+import scalax.file.Path
+import magenta.teamcity.Artifact
 
 object DeployControlActor extends Logging {
   trait Event
@@ -279,7 +280,7 @@ class DeployCoordinator extends Actor with Logging {
 
   private def cleanup(state: DeployRunState) {
     try {
-      sbt.IO.delete(state.artifactDir)
+      state.artifactDir.map(Path(_).delete())
     } catch {
       case t:Throwable =>
         log.warn("Exception whilst trying to delete artifact directory", t)
@@ -312,7 +313,7 @@ class TaskRunner extends Actor with Logging {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {
-          val artifactDir = record.parameters.build.download()
+          val artifactDir = Artifact.download(record.parameters.build)
           MessageBroker.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
@@ -358,7 +359,7 @@ class TaskRunner extends Actor with Logging {
 
     case RemoveArtifact(artifactDir) => {
       log.debug("Delete artifact dir")
-      sbt.IO.delete(artifactDir)
+      Path(artifactDir).delete()
     }
   }
 }

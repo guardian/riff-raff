@@ -15,7 +15,7 @@ object MagentaBuild extends Build {
 
   lazy val riffraff = magentaPlayProject("riff-raff") dependsOn(lib)
 
-  val liftVersion = "2.5-RC2"
+  val liftVersion = "2.5-RC5"
 
   def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
@@ -25,9 +25,6 @@ object MagentaBuild extends Build {
     .settings(
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
-      excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-        cp filter {jar => List("io_2.9.1-0.11.2.jar","specs_2.9.0-1-1.6.8.jar","scala-stm_2.10.0-0.6.jar").contains(jar.data.getName)}
-      },
       templatesImport ++= Seq(
         "magenta._",
         "deployment._",
@@ -54,7 +51,7 @@ object MagentaBuild extends Build {
 
   val magentaSettings: Seq[Setting[_]] = Seq(
     scalaVersion := "2.10.0",
-    scalacOptions ++= Seq("-deprecation"),
+    scalacOptions ++= Seq("-deprecation", "-feature"),
     version := magentaVersion
   )
 

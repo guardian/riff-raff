@@ -16,6 +16,7 @@ libraryDependencies ++= Seq(
     "com.amazonaws" % "aws-java-sdk" % "1.3.32",
     "org.scalatest" %% "scalatest" % "1.9.1" % "test",
     "org.mockito" % "mockito-core" % "1.9.0" % "test",
-    "org.scala-sbt" % "io" % "0.12.2",
+    "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
+    "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
     "com.gu" %% "management" % "5.27"
 )
