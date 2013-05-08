@@ -10,6 +10,11 @@ import magenta.teamcity.Artifact._
 import java.util.UUID
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.DateTime
+import scalax.file.Path
+import scalax.file.ImplicitConversions.defaultPath2jfile
+import scalax.file.ImplicitConversions.jfile2path
+import scala.util.Try
+import magenta.teamcity.Artifact
 
 object Main extends scala.App {
 
@@ -115,9 +120,18 @@ object Main extends scala.App {
     if (file.exists() && file.isFile) file else sys.error("File not found: %s" format (s))
   }
 
+  def withTemporaryDirectory[T](block: File => T): T = {
+    val tempDir = Path.createTempDirectory()
+    val result = Try {
+      block(tempDir)
+    }
+    tempDir.delete()
+    result.get
+  }
+
   if (parser.parse(args)) {
     try {
-      IO.withTemporaryDirectory { tmpDir =>
+      withTemporaryDirectory { tmpDir =>
         val build = Build(Config.project.get, Config.build.get)
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Config.host.toList)
         MessageBroker.deployContext(UUID.randomUUID(), parameters) {
@@ -128,9 +142,9 @@ object Main extends scala.App {
 
           Config.localArtifactDir.map{ file =>
             MessageBroker.info("Making temporary copy of local artifact: %s" format file)
-            IO.copyDirectory(file, tmpDir)
+            file.copyTo(tmpDir)
           } getOrElse {
-            build.download(tmpDir)
+            Artifact.download(tmpDir, build)
           }
 
           MessageBroker.info("Loading project file...")
