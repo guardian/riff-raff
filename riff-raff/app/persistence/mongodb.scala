@@ -53,29 +53,6 @@ object MongoDatastore extends Logging {
   }
 }
 
-//trait RiffRaffGraters {
-//  RegisterJodaTimeConversionHelpers()
-//  def loader:Option[ClassLoader]
-//  val riffRaffContext = {
-//    val context = new Context {
-//      val name = "global"
-//      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
-//    }
-//    loader.foreach(context.registerClassLoader(_))
-//    context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
-//    context.registerPerClassKeyOverride(classOf[ContinuousDeploymentConfig], remapThis = "id", toThisInstead = "_id")
-//    context
-//  }
-//  val apiGrater = {
-//    implicit val context = riffRaffContext
-//    grater[ApiKey]
-//  }
-//  val continuousDeployConfigGrater = {
-//    implicit val context = riffRaffContext
-//    grater[ContinuousDeploymentConfig]
-//  }
-//}
-
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
@@ -211,7 +188,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
-    val setLastUsed = $set(Seq("lastUsed" -> (new DateTime())))
+    val setLastUsed = $set("lastUsed" -> (new DateTime()))
     val incCounter = counter.map(name => $inc(("callCounters.%s" format name) -> 1L)).getOrElse(MongoDBObject())
     val update = setLastUsed ++ incCounter
     logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key),None) {
@@ -240,32 +217,32 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def writeDeploy(deploy: DeployRecordDocument) {
     logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
-      val gratedDeploy = deployGrater.asDBObject(deploy)
+      val gratedDeploy = deploy.asDBObject
       deployV2Collection.insert(gratedDeploy, WriteConcern.Safe)
     }
   }
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
-      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set(Seq("status" -> status.toString)), concern=WriteConcern.Safe)
+      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
     }
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
-      deployV2Collection.findOneByID(uuid).map(deployGrater.asObject(_))
+      deployV2Collection.findOneByID(uuid).map(DeployRecordDocument.from(_))
     }
 
   override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
-      deployV2LogCollection.insersalatt(logDocumentGrater.asDBObject(log), WriteConcern.Safe)
+      deployV2LogCollection.insert(log.asDBObject, WriteConcern.Safe)
     }
   }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
       val criteria = MongoDBObject("deploy" -> uuid)
-      deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))
+      deployV2LogCollection.find(criteria).toIterable.map(LogDocument.from(_))
     }
 
   override def getDeployV2UUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
@@ -281,7 +258,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
     val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
-    cursor.toIterable.flatMap { dbo => try { Some(deployGrater.asObject(dbo)) } catch { case e:Exception => None } }
+    cursor.toIterable.flatMap { dbo => try { Some(DeployRecordDocument.from(dbo)) } catch { case e:Exception => None } }
   }
 
   override def countDeploysV2(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
@@ -312,7 +289,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def addMetaData(uuid: UUID, metaData: Map[String, String]) {
     logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
       val update = metaData.map { case (tag, value) =>
-        $set(Seq(("parameters.tags.%s" format tag) -> value))
+        $set(("parameters.tags.%s" format tag) -> value)
       }.fold(MongoDBObject())(_ ++ _)
       if (update.size > 0)
         deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
@@ -321,7 +298,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
-      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set(Seq("summarised" -> true)))
+      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
       deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
@@ -386,7 +363,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def addStringUUID(uuid: UUID) {
-    val setStringUUID = $set(Seq("stringUUID" -> uuid.toString))
+    val setStringUUID = $set("stringUUID" -> uuid.toString)
     logAndSquashExceptions(Some("Updating stringUUID for %s" format uuid),()) {
       deployV2Collection.findAndModify(
         query = MongoDBObject("_id" -> uuid),

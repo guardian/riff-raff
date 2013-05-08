@@ -24,7 +24,7 @@ case class ApiKey(
 ){
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
 
-  def asDBObject =  {
+  def asDBObject:DBObject =  {
     val dbo = MongoDBObject(
       "application" -> application,
       "key" -> key,
@@ -33,7 +33,7 @@ case class ApiKey(
       "callCounters" -> callCounters.asDBObject
     )
     lastUsed match {
-      case Some(used) => dbo + "lastUsed" -> used
+      case Some(used) => dbo + ("lastUsed" -> used)
       case None => dbo
     }
   }

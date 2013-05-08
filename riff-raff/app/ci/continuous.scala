@@ -15,6 +15,8 @@ import deployment.Domains
 import org.joda.time.DateTime
 import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
+import com.mongodb.casbah.commons.Implicits._
+import com.mongodb.DBObject
 
 case class ContinuousDeploymentConfig(
   id: UUID,
@@ -33,8 +35,8 @@ case class ContinuousDeploymentConfig(
     }
   }
 
-  def asDBObject = {
-    val dbo = MongoDBObject(
+  def asDBObject:DBObject = {
+    val values = Map(
       "_id" -> id,
       "projectName" -> projectName,
       "stage" -> stage,
@@ -42,8 +44,8 @@ case class ContinuousDeploymentConfig(
       "enabled" -> enabled,
       "user" -> user,
       "lastEdited" -> lastEdited
-    )
-    branchMatcher map (dbo + "branchMatcher" -> _) getOrElse dbo
+    ) ++ branchMatcher map ("branchMatcher" -> _)
+    values.toMap
   }
 }
 
