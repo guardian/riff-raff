@@ -63,11 +63,11 @@ trait Record {
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 
-  def allMetaData = metaData ++ computedMetaData
+  lazy val allMetaData = metaData ++ computedMetaData
 
-  def computedMetaData = vcsInfo.map(_.map).getOrElse(Map.empty)
+  lazy val computedMetaData = vcsInfo.map(_.map).getOrElse(Map.empty)
 
-  def vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
+  lazy val vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
 }
 
 object DeployV2Record {
