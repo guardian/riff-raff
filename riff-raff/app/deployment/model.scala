@@ -30,7 +30,7 @@ trait Record {
   lazy val stage = parameters.stage
   lazy val recipe = parameters.recipe
   lazy val isRunning = report.isRunning
-  lazy val isDone = (!isRunning && report.size > 1) || isSummarised
+  lazy val isDone = (!isRunning && report.size > 1) || isSummarised || isMarkedAsFailed
   lazy val state = {
     recordState.getOrElse(
       report.cascadeState match {
@@ -51,6 +51,11 @@ trait Record {
       }
     }.getOrElse(false)
   }
+
+  lazy val isMarkedAsFailed = recordState.map {
+    case RunState.Failed => true
+    case _ => false
+  }.getOrElse(false)
 
   def isSummarised: Boolean
 
