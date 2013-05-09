@@ -9,6 +9,8 @@ import scalax.file.ImplicitConversions.defaultPath2jfile
 import scala.util.Try
 import java.util.zip.ZipInputStream
 import scalax.io.Resource
+import scalax.io.JavaConverters._
+import scala.annotation.tailrec
 
 object Artifact {
 
@@ -36,7 +38,7 @@ object Artifact {
       http(tcUrl >> { is =>
         val zip = new ZipInputStream(is)
 
-      println("ZZZZZip")
+        @tailrec
         def next() {
           val entry = zip.getNextEntry()
           if(entry != null) {
@@ -45,15 +47,14 @@ object Artifact {
             if(entry.isDirectory)
               Path(target).createDirectory()
             else
-              Resource.fromFile(target).doCopyFrom(Resource.fromInputStream(zip))
+              Resource.fromFile(target).doCopyFrom(zip.asUnmanagedInput)
             target.setLastModified(entry.getTime)
-
-            println("foo")
             zip.closeEntry()
             next()
           }
         }
         next()
+        zip.close()
       })
       MessageBroker.verbose("Extracted files")
     } catch {
@@ -65,12 +66,12 @@ object Artifact {
   }
 
   def withDownload[T](build: Build)(block: File => T): T = {
-    val tempDir = Path.createTempDirectory()
+    val tempDir = Path.createTempDirectory(prefix="riffraff-", suffix="")
     val result = Try {
       download(tempDir, build)
       block(tempDir)
     }
-    tempDir.delete()
+    tempDir.deleteRecursively(continueOnFailure = true)
     result.get
   }
 }
