@@ -3,7 +3,7 @@ package controllers
 import play.api.mvc.{Action, AnyContent, Controller}
 import play.api.mvc.Results._
 import org.joda.time.{DateMidnight, DateTime}
-import persistence.Persistence
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
@@ -23,31 +23,44 @@ case class ApiKey(
   callCounters:Map[String, Long] = Map.empty
 ){
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
-
-  def asDBObject:DBObject =  {
-    val fields:List[(String,Any)] =
-      List(
-        "application" -> application,
-        "_id" -> key,
-        "issuedBy" -> issuedBy,
-        "created" -> created
-      ) ++ lastUsed.map("lastUsed" ->) ++
-      List(
-        "callCounters" -> callCounters.asDBObject
-      )
-    fields.toMap
-  }
 }
 
-object ApiKey {
-  def from(dbo: MongoDBObject) = ApiKey(
-    application = dbo.as[String]("application"),
-    key = dbo.as[String]("_id"),
-    issuedBy = dbo.as[String]("issuedBy"),
-    created = dbo.as[DateTime]("created"),
-    lastUsed = dbo.getAs[DateTime]("lastUsed"),
-    callCounters = dbo.as[DBObject]("callCounters").map(entry => (entry._1, entry._2.asInstanceOf[Int].toLong)).toMap
-  )
+object ApiKey extends MongoSerialisable[ApiKey] {
+  implicit val keyFormat:MongoFormat[ApiKey] = new KeyMongoFormat
+  private class KeyMongoFormat extends MongoFormat[ApiKey] with Logging {
+    def toDBO(a: ApiKey) = {
+      val fields:List[(String,Any)] =
+        List(
+          "application" -> a.application,
+          "_id" -> a.key,
+          "issuedBy" -> a.issuedBy,
+          "created" -> a.created
+        ) ++ a.lastUsed.map("lastUsed" ->) ++
+          List(
+            "callCounters" -> a.callCounters.asDBObject
+          )
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = Some(ApiKey(
+      application = dbo.as[String]("application"),
+      key = dbo.as[String]("_id"),
+      issuedBy = dbo.as[String]("issuedBy"),
+      created = dbo.as[DateTime]("created"),
+      lastUsed = dbo.getAs[DateTime]("lastUsed"),
+      callCounters = dbo.as[DBObject]("callCounters").map { entry =>
+        val key = entry._1
+        val counter = try {
+          entry._2.asInstanceOf[Long]
+        } catch {
+          case cce:ClassCastException =>
+            log.warn("Automatically marshalling an Int to a Long (you should only see this during unit tests)")
+            entry._2.asInstanceOf[Int].toLong
+        }
+        key -> counter
+      }.toMap
+    ))
+  }
 }
 
 object ApiKeyGenerator {

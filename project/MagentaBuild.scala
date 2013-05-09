@@ -25,6 +25,9 @@ object MagentaBuild extends Build {
     .settings(
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
+      excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
+        cp filter {jar => "scala-stm_2.10.0-0.6.jar" == jar.data.getName}
+      },
       templatesImport ++= Seq(
         "magenta._",
         "deployment._",

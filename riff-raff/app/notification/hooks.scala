@@ -4,10 +4,10 @@ import controllers.{DeployController, Logging}
 import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
 import lifecycle.LifecycleWithoutApp
-import persistence.{MongoSerialisable, Persistence}
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import deployment.TaskType
 import java.net.URL
-import com.mongodb.casbah.commons.MongoDBObject
+import com.mongodb.casbah.commons.{Imports, MongoDBObject}
 import magenta.FinishContext
 import magenta.DeployParameters
 import magenta.Deploy
@@ -17,18 +17,20 @@ import com.ning.http.client.Realm.AuthScheme
 import play.api.libs.concurrent.Execution.Implicits._
 
 
-case class HookCriteria(projectName: String, stage: String) extends MongoSerialisable {
-  lazy val dbObject = MongoDBObject("projectName" -> projectName, "stageName" -> stage)
-}
-object HookCriteria {
+case class HookCriteria(projectName: String, stage: String)
+object HookCriteria extends MongoSerialisable[HookCriteria] {
   def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
-  def apply(dbo: MongoDBObject): HookCriteria = HookCriteria(dbo.as[String]("projectName"), dbo.as[String]("stageName"))
+  implicit val criteriaFormat: MongoFormat[HookCriteria] =
+    new CriteriaMongoFormat
+  private class CriteriaMongoFormat extends MongoFormat[HookCriteria] {
+    def toDBO(a: HookCriteria) = MongoDBObject("projectName" -> a.projectName, "stageName" -> a.stage)
+    def fromDBO(dbo: MongoDBObject) = Some(HookCriteria(dbo.as[String]("projectName"), dbo.as[String]("stageName")))
+  }
 }
 
 case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
-case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable {
-  lazy val dbObject = MongoDBObject("url" -> url, "enabled" -> enabled)
+case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable[HookAction] {
   lazy val request = {
     val userInfo = Option(new URL(url).getUserInfo).flatMap { ui =>
       val elements = ui.split(':')
@@ -52,8 +54,12 @@ case class HookAction(url: String, enabled: Boolean) extends Logging with MongoS
     }
   }
 }
-object HookAction {
-  def apply(dbo: MongoDBObject): HookAction = HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled"))
+object HookAction extends MongoSerialisable[HookAction] {
+  implicit val actionFormat: MongoFormat[HookAction] = new ActionMongoFormat
+  private class ActionMongoFormat extends MongoFormat[HookAction] {
+    def toDBO(a: HookAction) = MongoDBObject("url" -> a.url, "enabled" -> a.enabled)
+    def fromDBO(dbo: MongoDBObject) = Some(HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled")))
+  }
 }
 
 

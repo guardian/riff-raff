@@ -9,7 +9,7 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import scala.Some
-import persistence.Persistence
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import deployment.DomainAction.Local
 import deployment.Domains
 import org.joda.time.DateTime
@@ -34,32 +34,34 @@ case class ContinuousDeploymentConfig(
       build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
     }
   }
-
-  def asDBObject:DBObject = {
-    val values = Map(
-      "_id" -> id,
-      "projectName" -> projectName,
-      "stage" -> stage,
-      "recipe" -> recipe,
-      "enabled" -> enabled,
-      "user" -> user,
-      "lastEdited" -> lastEdited
-    ) ++ (branchMatcher map ("branchMatcher" -> _))
-    values.toMap
-  }
 }
 
-object ContinuousDeploymentConfig {
-  def from(dbo: MongoDBObject) = ContinuousDeploymentConfig(
-    id = dbo.as[UUID]("_id"),
-    projectName = dbo.as[String]("projectName"),
-    stage = dbo.as[String]("stage"),
-    recipe = dbo.as[String]("recipe"),
-    enabled = dbo.as[Boolean]("enabled"),
-    user = dbo.as[String]("user"),
-    lastEdited = dbo.as[DateTime]("lastEdited"),
-    branchMatcher = dbo.getAs[String]("branchMatcher")
-  )
+object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
+  implicit val configFormat: MongoFormat[ContinuousDeploymentConfig] = new ConfigMongoFormat
+  private class ConfigMongoFormat extends MongoFormat[ContinuousDeploymentConfig] {
+    def toDBO(a: ContinuousDeploymentConfig) = {
+      val values = Map(
+        "_id" -> a.id,
+        "projectName" -> a.projectName,
+        "stage" -> a.stage,
+        "recipe" -> a.recipe,
+        "enabled" -> a.enabled,
+        "user" -> a.user,
+        "lastEdited" -> a.lastEdited
+      ) ++ (a.branchMatcher map ("branchMatcher" -> _))
+      values.toMap
+    }
+    def fromDBO(dbo: MongoDBObject) = Some(ContinuousDeploymentConfig(
+      id = dbo.as[UUID]("_id"),
+      projectName = dbo.as[String]("projectName"),
+      stage = dbo.as[String]("stage"),
+      recipe = dbo.as[String]("recipe"),
+      enabled = dbo.as[Boolean]("enabled"),
+      user = dbo.as[String]("user"),
+      lastEdited = dbo.as[DateTime]("lastEdited"),
+      branchMatcher = dbo.getAs[String]("branchMatcher")
+    ))
+  }
 }
 
 object ContinuousDeployment extends LifecycleWithoutApp {

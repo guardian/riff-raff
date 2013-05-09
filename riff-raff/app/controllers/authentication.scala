@@ -7,7 +7,7 @@ import net.liftweb.json.{ Serialization, NoTypeHints }
 import net.liftweb.json.Serialization.{ read, write }
 import conf._
 import conf.Configuration.auth
-import persistence.{MongoSerialisable, Persistence}
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import org.joda.time.DateTime
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
@@ -43,11 +43,13 @@ case class ApiIdentity(apiKey: ApiKey) extends Identity {
   lazy val fullName = apiKey.application
 }
 
-case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) extends MongoSerialisable {
-  def dbObject = MongoDBObject("_id" -> email, "approvedBy" -> approvedBy, "approvedDate" -> approvedDate)
-}
-object AuthorisationRecord {
-  def apply(dbo: DBObject): AuthorisationRecord = AuthorisationRecord(dbo.as[String]("_id"), dbo.as[String]("approvedBy"), dbo.as[DateTime]("approvedDate"))
+case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime)
+object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
+  implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
+  private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {
+    def toDBO(a: AuthorisationRecord) = MongoDBObject("_id" -> a.email, "approvedBy" -> a.approvedBy, "approvedDate" -> a.approvedDate)
+    def fromDBO(dbo: MongoDBObject) = Some(AuthorisationRecord(dbo.as[String]("_id"), dbo.as[String]("approvedBy"), dbo.as[DateTime]("approvedDate")))
+  }
 }
 
 trait AuthorisationValidator {

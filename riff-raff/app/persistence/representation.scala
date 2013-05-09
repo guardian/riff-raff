@@ -4,35 +4,41 @@ import java.util.UUID
 import org.joda.time.DateTime
 import magenta._
 import deployment.{Record, TaskType}
-import com.mongodb.DBObject
+import com.mongodb.{BasicDBList, DBObject}
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 
 case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value, summarised: Option[Boolean] = None) {
   lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
-  lazy val asDBObject:DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "_id" -> uuid,
-        "startTime" -> startTime,
-        "parameters" -> parameters.asDBObject,
-        "status" -> status.toString
-      ) ++ stringUUID.map("stringUUID" -> _) ++ summarised.map("summarised" -> _)
-    fields.toMap
-  }
 }
-object DeployRecordDocument {
+object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
   }
-  def from(dbo: MongoDBObject) = DeployRecordDocument(
-    uuid = dbo.as[UUID]("_id"),
-    stringUUID = dbo.getAs[String]("stringUUID"),
-    startTime = dbo.as[DateTime]("startTime"),
-    parameters = ParametersDocument.from(dbo.as[DBObject]("parameters")),
-    status = RunState.withName(dbo.as[String]("status")),
-    summarised = dbo.getAs[Boolean]("summarised")
-  )
+  implicit val deployFormat:MongoFormat[DeployRecordDocument] = new DeployMongoFormat
+  private class DeployMongoFormat extends MongoFormat[DeployRecordDocument] {
+    def toDBO(a: DeployRecordDocument) = {
+      val fields:List[(String,Any)] =
+        List(
+          "_id" -> a.uuid,
+          "startTime" -> a.startTime,
+          "parameters" -> a.parameters.toDBO,
+          "status" -> a.status.toString
+        ) ++ a.stringUUID.map("stringUUID" -> _) ++ a.summarised.map("summarised" -> _)
+      fields.toMap
+    }
+    def fromDBO(dbo: MongoDBObject) =
+      ParametersDocument.fromDBO(dbo.as[DBObject]("parameters")).map(pd =>
+        DeployRecordDocument(
+        uuid = dbo.as[UUID]("_id"),
+        stringUUID = dbo.getAs[String]("stringUUID"),
+        startTime = dbo.as[DateTime]("startTime"),
+        parameters = pd,
+        status = RunState.withName(dbo.as[String]("status")),
+        summarised = dbo.getAs[Boolean]("summarised")
+      )
+    )
+  }
 }
 
 case class ParametersDocument(
@@ -44,34 +50,36 @@ case class ParametersDocument(
   recipe: String,
   hostList: List[String],
   tags: Map[String,String]
-) {
-  lazy val asDBObject:DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "deployer" -> deployer,
-        "deployType" -> deployType,
-        "projectName" -> projectName,
-        "buildId" -> buildId,
-        "stage" -> stage,
-        "recipe" -> recipe,
-        "hostList" -> hostList,
-        "tags" -> tags
-      )
-    fields.toMap
-  }
-}
+)
 
-object ParametersDocument {
-  def from(dbo: MongoDBObject) = ParametersDocument(
-    deployer = dbo.as[String]("deployer"),
-    deployType = dbo.as[String]("deployType"),
-    projectName = dbo.as[String]("projectName"),
-    buildId = dbo.as[String]("buildId"),
-    stage = dbo.as[String]("stage"),
-    recipe = dbo.as[String]("recipe"),
-    hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
-    tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
-  )
+object ParametersDocument extends MongoSerialisable[ParametersDocument] {
+  implicit val parametersFormat:MongoFormat[ParametersDocument] = new ParameterMongoFormat
+  private class ParameterMongoFormat extends MongoFormat[ParametersDocument] {
+    def toDBO(a: ParametersDocument) = {
+      val fields:List[(String,Any)] =
+        List(
+          "deployer" -> a.deployer,
+          "deployType" -> a.deployType,
+          "projectName" -> a.projectName,
+          "buildId" -> a.buildId,
+          "stage" -> a.stage,
+          "recipe" -> a.recipe,
+          "hostList" -> a.hostList,
+          "tags" -> a.tags
+        )
+      fields.toMap
+    }
+    def fromDBO(dbo: MongoDBObject) = Some(ParametersDocument(
+      deployer = dbo.as[String]("deployer"),
+      deployType = dbo.as[String]("deployType"),
+      projectName = dbo.as[String]("projectName"),
+      buildId = dbo.as[String]("buildId"),
+      stage = dbo.as[String]("stage"),
+      recipe = dbo.as[String]("recipe"),
+      hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
+      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
+    ))
+  }
 }
 
 case class LogDocument(
@@ -80,19 +88,9 @@ case class LogDocument(
   parent: Option[UUID],
   document: MessageDocument,
   time: DateTime
-) {
-  lazy val asDBObject:DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "deploy" -> deploy,
-        "id" -> id,
-        "document" -> document.asDBObject,
-        "time" -> time
-      ) ++ parent.map("parent" -> _)
-    fields.toMap
-  }
-}
-object LogDocument {
+)
+
+object LogDocument extends MongoSerialisable[LogDocument] {
   def apply(wrapper: MessageWrapper): LogDocument = {
     LogDocument(wrapper.context.deployId, wrapper.messageId, wrapper.context.parentId, wrapper.stack.top, wrapper.stack.time)
   }
@@ -103,13 +101,28 @@ object LogDocument {
       }
     LogDocument(deploy, id, parent, messageDocument.asMessageDocument, time)
   }
-  def from(dbo: MongoDBObject) = LogDocument(
-    deploy = dbo.as[UUID]("deploy"),
-    id = dbo.as[UUID]("id"),
-    parent = dbo.getAs[UUID]("parent"),
-    document = MessageDocument.from(dbo.as[DBObject]("document")),
-    time = dbo.as[DateTime]("time")
-  )
+
+  implicit val logFormat:MongoFormat[LogDocument] = new LogMongoFormat
+  private class LogMongoFormat extends MongoFormat[LogDocument] {
+    def toDBO(a: LogDocument) = {
+      val fields:List[(String,Any)] =
+        List(
+          "deploy" -> a.deploy,
+          "id" -> a.id,
+          "document" -> a.document.asDBObject,
+          "time" -> a.time
+        ) ++ a.parent.map("parent" -> _)
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = Some(LogDocument(
+      deploy = dbo.as[UUID]("deploy"),
+      id = dbo.as[UUID]("id"),
+      parent = dbo.getAs[UUID]("parent"),
+      document = MessageDocument.from(dbo.as[DBObject]("document")),
+      time = dbo.as[DateTime]("time")
+    ))
+  }
 }
 
 case class LogDocumentTree(documents: Seq[LogDocument]) {
@@ -127,57 +140,62 @@ case class LogDocumentTree(documents: Seq[LogDocument]) {
 }
 
 object DetailConversions {
-  def taskDetail2dbo(task: TaskDetail):DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "name" -> task.name,
-        "description" -> task.description,
-        "verbose" -> task.verbose,
-        "taskHosts" -> task.taskHosts.map(DetailConversions.host2dbo)
-      )
-    fields.toMap
-  }
-  def dbo2taskDetail(dbo: DBObject):TaskDetail = {
-    TaskDetail(
-      name = dbo.as[String]("name"),
-      description = dbo.as[String]("description"),
-      verbose = dbo.as[String]("verbose"),
-      taskHosts = dbo.as[List[DBObject]]("taskHosts").map(dbo2host)
-    )
-  }
-  def host2dbo(host:Host):DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "name" -> host.name,
-        "apps" -> host.apps.map(app => MongoDBObject("name" -> app.name)).toList,
-        "stage" -> host.stage
-      ) ++ host.connectAs.map("connectAs" ->)
-    fields.toMap
-  }
-  def dbo2host(dbo: DBObject):Host = {
-    Host(
+  val host = new MongoFormat[Host] {
+    def toDBO(a: Host) = {
+      val fields:List[(String,Any)] =
+        List(
+          "name" -> a.name,
+          "apps" -> a.apps.map(app => MongoDBObject("name" -> app.name)).toList,
+          "stage" -> a.stage
+        ) ++ a.connectAs.map("connectAs" ->)
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = Some(Host(
       name = dbo.as[String]("name"),
       apps = dbo.as[List[DBObject]]("apps").map(dbo => App(dbo.as[String]("name"))).toSet,
       stage = dbo.as[String]("stage"),
       connectAs = dbo.getAs[String]("connectAs")
-    )
+    ))
   }
-  def throwableDetail2dbo(throwable: ThrowableDetail):DBObject = {
-    val fields:List[(String,Any)] =
-      List(
-        "name" -> throwable.name,
-        "message" -> throwable.message,
-        "stackTrace" -> throwable.stackTrace
-      ) ++ throwable.cause.map("cause" -> throwableDetail2dbo(_))
-    fields.toMap
+
+  val taskDetail = new MongoFormat[TaskDetail] {
+    def toDBO(a: TaskDetail) = {
+      val fields:List[(String,Any)] =
+        List(
+          "name" -> a.name,
+          "description" -> a.description,
+          "verbose" -> a.verbose,
+          "taskHosts" -> a.taskHosts.map(DetailConversions.host.toDBO)
+        )
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = Some(TaskDetail(
+      name = dbo.as[String]("name"),
+      description = dbo.as[String]("description"),
+      verbose = dbo.as[String]("verbose"),
+      taskHosts = dbo.as[MongoDBList]("taskHosts").flatMap(item => host.fromDBO(item.asInstanceOf[DBObject])).toList
+    ))
   }
-  def dbo2throwableDetail(dbo: DBObject):ThrowableDetail = {
-    ThrowableDetail(
+
+  val throwableDetail = new MongoFormat[ThrowableDetail] {
+    def toDBO(a: ThrowableDetail) = {
+      val fields:List[(String,Any)] =
+        List(
+          "name" -> a.name,
+          "message" -> a.message,
+          "stackTrace" -> a.stackTrace
+        ) ++ a.cause.map("cause" -> toDBO(_))
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject): Option[ThrowableDetail] = Some(ThrowableDetail(
       name = dbo.as[String]("name"),
       message = dbo.as[String]("message"),
       stackTrace = dbo.as[String]("stackTrace"),
-      cause = dbo.getAs[DBObject]("cause").map(dbo2throwableDetail)
-    )
+      cause = dbo.getAs[DBObject]("cause").flatMap(dbo => fromDBO(dbo))
+    ))
   }
 }
 
@@ -196,11 +214,11 @@ case class DeployDocument() extends MessageDocument {
 }
 case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
-  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail2dbo))
+  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
 }
 case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
-  override lazy val dboFields = List("task" -> DetailConversions.taskDetail2dbo(task))
+  override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
 }
 case class InfoDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
@@ -220,7 +238,7 @@ case class VerboseDocument(text: String) extends MessageDocument {
 }
 case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
-  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail2dbo(detail))
+  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
 }
 case class FinishContextDocument() extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
@@ -250,16 +268,19 @@ object MessageDocument {
     import DetailConversions._
     dbo.as[String]("_typeHint") match {
       case "persistence.DeployDocument" => DeployDocument()
-      case "persistence.TaskListDocument" => TaskListDocument(dbo.as[List[DBObject]]("taskList").map(dbo2taskDetail))
-      case "persistence.TaskRunDocument" => TaskRunDocument(dbo2taskDetail(dbo.as[DBObject]("task")))
+      case "persistence.TaskListDocument" =>
+        TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
+      case "persistence.TaskRunDocument" => TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
       case "persistence.InfoDocument" => InfoDocument(dbo.as[String]("text"))
       case "persistence.CommandOutputDocument" => CommandOutputDocument(dbo.as[String]("text"))
       case "persistence.CommandErrorDocument" => CommandErrorDocument(dbo.as[String]("text"))
       case "persistence.VerboseDocument" => VerboseDocument(dbo.as[String]("text"))
-      case "persistence.FailDocument" => FailDocument(dbo.as[String]("text"), dbo2throwableDetail(dbo.as[DBObject]("detail")))
+      case "persistence.FailDocument" =>
+        FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
       case "persistence.FinishContextDocument" => FinishContextDocument()
       case "persistence.FailContextDocument" => FailContextDocument()
-      case hint => throw new IllegalArgumentException("Don't know how to construct MessageDocument of type %s" format hint)
+      case hint =>
+        throw new IllegalArgumentException("Don't know how to construct MessageDocument of type %s" format hint)
     }
   }
 }
