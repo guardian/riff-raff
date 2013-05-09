@@ -192,7 +192,7 @@ class DeployCoordinator extends Actor with Logging {
 
   private def cleanup(state: DeployRunState) {
     try {
-      state.artifactDir.map(Path(_).delete())
+      state.artifactDir.map(Path(_).deleteRecursively(continueOnFailure = true))
     } catch {
       case t:Throwable =>
         log.warn("Exception whilst trying to delete artifact directory", t)
