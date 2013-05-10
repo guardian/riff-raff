@@ -9,10 +9,10 @@ import com.ning.http.client.Realm.AuthScheme
 class HooksTest extends FlatSpec with ShouldMatchers {
   "HookAction" should "serialise and deserialise" in {
     val action = HookAction("http://localhost:80/test", true)
-    val dbo = action.toDBO
+    val dbo = action.dbObject
     dbo.as[String]("url") should be("http://localhost:80/test")
     dbo.as[Boolean]("enabled") should be(true)
-    HookAction.fromDBO(dbo) should be(Some(action))
+    HookAction(dbo) should be(action)
   }
 
   it should "create an authenticated request" in {
@@ -29,9 +29,9 @@ class HooksTest extends FlatSpec with ShouldMatchers {
 
   "HookCriteria" should "serialise and deserialise" in {
     val criteria = HookCriteria("testProject","CODE")
-    val dbo = criteria.toDBO
+    val dbo = criteria.dbObject
     dbo.as[String]("projectName") should be("testProject")
     dbo.as[String]("stageName") should be("CODE")
-    HookCriteria.fromDBO(dbo) should be(Some(criteria))
+    HookCriteria(dbo) should be(criteria)
   }
 }

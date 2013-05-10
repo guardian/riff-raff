@@ -13,15 +13,15 @@ import magenta._
 import magenta.Build
 import akka.agent.Agent
 import akka.util.Timeout
-import scala.concurrent.duration._
+import akka.util.duration._
 import play.api.libs.json.Json
+import com.codahale.jerkson.Json._
 import org.joda.time.format.DateTimeFormat
 import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
 import org.joda.time.{Interval, DateTime}
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 
 object DeployController extends Logging with LifecycleWithoutApp {
@@ -213,8 +213,7 @@ object Deployment extends Controller with Logging {
                 val uuid = DeployController.deploy(parameters)
                 Redirect(routes.Deployment.viewUUID(uuid.toString))
               case Remote(_, urlPrefix) =>
-                implicit val formWrites = Json.writes[DeployParameterForm]
-                val call = routes.Deployment.deployConfirmation(Json.toJson(form).toString)
+                val call = routes.Deployment.deployConfirmation(generate(form))
                 Redirect(urlPrefix+call.url)
               case Noop() =>
                 throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")

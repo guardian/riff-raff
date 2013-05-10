@@ -6,17 +6,16 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-    "net.databinder" %% "dispatch-http" % "0.8.9",
+    "net.databinder" %% "dispatch-http" % "0.8.5",
     "net.liftweb" %% "lift-json" % liftVersion,
     "net.liftweb" %% "lift-util" % liftVersion,
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
-    "com.decodified" % "scala-ssh_2.10.0-RC1" % "0.6.3",
+    "com.decodified" %% "scala-ssh" % "0.5.0",
     "ch.qos.logback" % "logback-classic" % "1.0.3",
-    "com.amazonaws" % "aws-java-sdk" % "1.3.32",
-    "org.scalatest" %% "scalatest" % "1.9.1" % "test",
+    "com.amazonaws" % "aws-java-sdk" % "1.3.14",
+    "org.scalatest" %% "scalatest" % "1.6.1" % "test",
     "org.mockito" % "mockito-core" % "1.9.0" % "test",
-    "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
-    "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
-    "com.gu" %% "management" % "5.27"
+    "org.scala-sbt" %% "io" % "0.11.3",
+    "com.gu" %% "management" % "5.19"
 )

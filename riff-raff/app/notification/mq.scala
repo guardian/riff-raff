@@ -19,7 +19,7 @@ import akka.actor.SupervisorStrategy.Restart
 import scala.Some
 import akka.actor.OneForOneStrategy
 import magenta.DeployParameters
-import scala.concurrent.duration._
+import akka.util.duration._
 import deployment.TaskType
 
 /*

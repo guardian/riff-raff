@@ -5,19 +5,18 @@ import java.io.File
 import magenta._
 import akka.actor._
 import controllers.Logging
-import scala.concurrent.duration._
+import akka.util.duration._
+import akka.util.Timeout
 import akka.actor.SupervisorStrategy.Restart
 import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
+import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
+import akka.dispatch.Await
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
-import concurrent.Await
-import akka.util.Timeout
-import scalax.file.Path
-import magenta.teamcity.Artifact
 
 object DeployControlActor extends Logging {
   trait Event
@@ -120,7 +119,7 @@ class DeployCoordinator extends Actor with Logging {
     }
   }
 
-  def receive = {
+  protected def receive = {
     case StartDeploy(record) if !schedulable(record) =>
       log.debug("Not schedulable, queuing")
       deferredDeployQueue += StartDeploy(record)
@@ -192,7 +191,7 @@ class DeployCoordinator extends Actor with Logging {
 
   private def cleanup(state: DeployRunState) {
     try {
-      state.artifactDir.map(Path(_).deleteRecursively(continueOnFailure = true))
+      sbt.IO.delete(state.artifactDir)
     } catch {
       case t:Throwable =>
         log.warn("Exception whilst trying to delete artifact directory", t)
@@ -221,11 +220,11 @@ object TaskRunner {
 class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
-  def receive = {
+  protected def receive = {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {
-          val artifactDir = Artifact.download(record.parameters.build)
+          val artifactDir = record.parameters.build.download()
           MessageBroker.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
@@ -271,7 +270,7 @@ class TaskRunner extends Actor with Logging {
 
     case RemoveArtifact(artifactDir) => {
       log.debug("Delete artifact dir")
-      Path(artifactDir).delete()
+      sbt.IO.delete(artifactDir)
     }
   }
 }

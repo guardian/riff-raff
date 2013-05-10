@@ -3,19 +3,19 @@ package utils
 import akka.actor.{Cancellable, ActorSystem}
 import akka.agent.Agent
 import controllers.Logging
+import akka.util.{Timeout, Duration}
 import lifecycle.LifecycleWithoutApp
-import scala.concurrent.duration._
-import org.joda.time.{DateTime, Interval, LocalDate, LocalTime}
-import play.api.libs.concurrent.Execution.Implicits._
+import org.joda.time._
+import akka.util.duration._
 
 object ScheduledAgent extends LifecycleWithoutApp {
   val scheduleSystem = ActorSystem("scheduled-agent")
 
-  def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration)(block: => T): ScheduledAgent[T] = {
+  def apply[T](initialDelay: Duration, frequency: Duration)(block: => T): ScheduledAgent[T] = {
     ScheduledAgent(initialDelay, frequency, block)(_ => block)
   }
 
-  def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration, initialValue: T)(block: T => T): ScheduledAgent[T] = {
+  def apply[T](initialDelay: Duration, frequency: Duration, initialValue: T)(block: T => T): ScheduledAgent[T] = {
     ScheduledAgent(initialValue, PeriodicScheduledAgentUpdate(block, initialDelay, frequency))
   }
 
@@ -44,15 +44,15 @@ object Update {
   }
 }
 
-case class PeriodicScheduledAgentUpdate[T](block: T => T, initialDelay: FiniteDuration, frequency: FiniteDuration) extends ScheduledAgentUpdate[T]
+case class PeriodicScheduledAgentUpdate[T](block: T => T, initialDelay: Duration, frequency: Duration) extends ScheduledAgentUpdate[T]
 
 object PeriodicScheduledAgentUpdate {
-  def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration)(block: T => T): PeriodicScheduledAgentUpdate[T] =
+  def apply[T](initialDelay: Duration, frequency: Duration)(block: T => T): PeriodicScheduledAgentUpdate[T] =
     PeriodicScheduledAgentUpdate(block, initialDelay, frequency)
 }
 
 case class DailyScheduledAgentUpdate[T](block: T => T, timeOfDay: LocalTime) extends ScheduledAgentUpdate[T] {
-  def timeToNextExecution: FiniteDuration = {
+  def timeToNextExecution: Duration = {
     val executionToday = (new LocalDate()).toDateTime(timeOfDay)
 
     val interval = if (executionToday.isAfterNow)

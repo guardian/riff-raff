@@ -9,13 +9,11 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import scala.Some
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.Persistence
 import deployment.DomainAction.Local
 import deployment.Domains
 import org.joda.time.DateTime
 import teamcity.Build
-import com.mongodb.casbah.commons.MongoDBObject
-import com.mongodb.casbah.commons.Implicits._
 
 case class ContinuousDeploymentConfig(
   id: UUID,
@@ -28,42 +26,10 @@ case class ContinuousDeploymentConfig(
   lastEdited: DateTime = new DateTime()
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
-  lazy val buildFilter =
-    (build:Build) => build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
   def findMatch(builds: List[Build]): Option[Build] = {
-    val potential = builds.filter(buildFilter).sortBy(-_.id)
-    potential.find { build =>
-      val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
-      !olderBuilds.exists(_.id > build.id)
+    builds.find{ build =>
+      build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
     }
-  }
-}
-
-object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
-  implicit val configFormat: MongoFormat[ContinuousDeploymentConfig] = new ConfigMongoFormat
-  private class ConfigMongoFormat extends MongoFormat[ContinuousDeploymentConfig] {
-    def toDBO(a: ContinuousDeploymentConfig) = {
-      val values = Map(
-        "_id" -> a.id,
-        "projectName" -> a.projectName,
-        "stage" -> a.stage,
-        "recipe" -> a.recipe,
-        "enabled" -> a.enabled,
-        "user" -> a.user,
-        "lastEdited" -> a.lastEdited
-      ) ++ (a.branchMatcher map ("branchMatcher" -> _))
-      values.toMap
-    }
-    def fromDBO(dbo: MongoDBObject) = Some(ContinuousDeploymentConfig(
-      id = dbo.as[UUID]("_id"),
-      projectName = dbo.as[String]("projectName"),
-      stage = dbo.as[String]("stage"),
-      recipe = dbo.as[String]("recipe"),
-      enabled = dbo.as[Boolean]("enabled"),
-      user = dbo.as[String]("user"),
-      lastEdited = dbo.as[DateTime]("lastEdited"),
-      branchMatcher = dbo.getAs[String]("branchMatcher")
-    ))
   }
 }
 
@@ -90,9 +56,10 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def getApplicableDeployParams(builds: List[Build], configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     val enabledConfigs = configs.filter(_.enabled)
+    val sortedBuilds = builds.sortBy(-_.id)
 
     val allParams = enabledConfigs.flatMap { config =>
-      config.findMatch(builds).map { build =>
+      config.findMatch(sortedBuilds).map { build =>
         DeployParameters(
           Deployer("Continuous Deployment"),
           MagentaBuild(build.buildType.fullName,build.number),

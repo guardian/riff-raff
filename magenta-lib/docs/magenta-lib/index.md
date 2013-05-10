@@ -94,7 +94,7 @@ You are using Scala, SBT and so on, so you can apply the following rules.
 			object MYAPPPlugins extends Build {
 				lazy val plugins = Project("MY-APP-plugins", file("."))
 				.dependsOn(
-					uri("git://github.com/guardian/sbt-dist-plugin.git#1.7")
+					uri("git://github.com/guardian/sbt-dist-plugin.git#1.6")
 				)
 			}
 

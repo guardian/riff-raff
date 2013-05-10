@@ -5,10 +5,10 @@ import magenta._
 import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
+import magenta.teamcity.Artifact.build2download
 import org.joda.time.{Interval, DateTime, Duration}
 import ci.ContinuousIntegration
 import utils.VCSInfo
-import magenta.teamcity.Artifact
 
 object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
@@ -30,7 +30,7 @@ trait Record {
   lazy val stage = parameters.stage
   lazy val recipe = parameters.recipe
   lazy val isRunning = report.isRunning
-  lazy val isDone = (!isRunning && report.size > 1) || isSummarised || isMarkedAsFailed
+  lazy val isDone = (!isRunning && report.size > 1) || isSummarised
   lazy val state = {
     recordState.getOrElse(
       report.cascadeState match {
@@ -52,27 +52,22 @@ trait Record {
     }.getOrElse(false)
   }
 
-  lazy val isMarkedAsFailed = recordState.map {
-    case RunState.Failed => true
-    case _ => false
-  }.getOrElse(false)
-
   def isSummarised: Boolean
 
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }
   }
   def withDownload[T](block: File => T): T = {
-    Artifact.withDownload(parameters.build)(block)
+    parameters.build.withDownload(block)
   }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 
-  lazy val allMetaData = metaData ++ computedMetaData
+  def allMetaData = metaData ++ computedMetaData
 
-  lazy val computedMetaData = vcsInfo.map(_.map).getOrElse(Map.empty)
+  def computedMetaData = vcsInfo.map(_.map).flatten
 
-  lazy val vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
+  def vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
 }
 
 object DeployV2Record {

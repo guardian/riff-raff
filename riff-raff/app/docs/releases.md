@@ -1,9 +1,5 @@
 ### Release notes
 
-#### 10th May 2013
-
-Migrate from play 2 to 2.1 (and also scala 2.9 to 2.10).
-
 #### 7th May 2013
 
 Add graphs to the history page showing the number of deploys that have been done recently.  The graph will return

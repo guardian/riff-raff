@@ -3,28 +3,26 @@ package ci
 import teamcity._
 import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
 import utils.{VCSInfo, Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
-import scala.concurrent.duration._
+import akka.util.duration._
 import org.joda.time.{Duration, DateTime}
 import controllers.Logging
 import scala.Predef._
 import collection.mutable
+import play.api.libs.concurrent.Promise
 import lifecycle.LifecycleWithoutApp
 import scala.Some
 import magenta.DeployParameters
-import concurrent.Future
-import concurrent.Await
-import concurrent.ExecutionContext.Implicits.global
 
 object `package` {
   implicit def listOfBuild2helpers(builds: List[Build]) = new {
     def buildTypes: Set[teamcity.BuildType] = builds.map(_.buildType).toSet
   }
 
-  implicit def futureIterable2FlattenMap[A](futureIterable: Future[Iterable[A]]) = new {
-    def flatFutureMap[B](p: A => Future[Iterable[B]]):Future[Iterable[B]] = {
-      futureIterable.flatMap { iterable =>
-        val newFutures:Iterable[Future[Iterable[B]]] = iterable.map(p)
-        Future.sequence(newFutures).map(_.flatten)
+  implicit def promiseIterable2FlattenMap[A](promiseIterable: Promise[Iterable[A]]) = new {
+    def flatPromiseMap[B](p: A => Promise[Iterable[B]]):Promise[Iterable[B]] = {
+      promiseIterable.flatMap { iterable =>
+        val newPromises:Iterable[Promise[Iterable[B]]] = iterable.map(p)
+        Promise.sequence(newPromises).map(_.flatten)
       }
     }
   }
@@ -37,24 +35,21 @@ object ContinuousIntegration {
     }
     build.map { build =>
       val branch = Map("branch" -> build.branchName)
-      val futureMap = build.detail.flatMap { detailedBuild =>
-        Future.sequence(detailedBuild.revision.map {
-          revision =>
-            revision.vcsDetails.map {
-              vcsDetails =>
-                branch ++
-                  Map(
-                    VCSInfo.REVISION -> revision.version,
-                    VCSInfo.CIURL -> vcsDetails.properties("url")
-                  )
-            }
-        }.toIterable)
-          .map(_.flatten.toMap)
-      } recover {
-        case _ => Map.empty[String,String]
-      }
-      Await.result(futureMap, 5 seconds)
-    }.getOrElse(Map.empty[String,String])
+      build.detail.flatMap { detailedBuild =>
+        Promise.sequence(detailedBuild.revision.map { revision =>
+          revision.vcsDetails.map { vcsDetails =>
+            branch ++
+            Map(
+              VCSInfo.REVISION -> revision.version,
+              VCSInfo.CIURL -> vcsDetails.properties("url")
+            )
+          }
+        }).map(_.flatten.toMap)
+      }.await(5000).fold (
+        error => Map.empty[String,String],
+        success => success
+      )
+    }.getOrElse(Map.empty)
   }
 }
 
@@ -89,7 +84,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   }
 
   private val fullUpdate = PeriodicScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
-    val builds = Await.result(getSuccessfulBuilds, 1 minute)
+    val builds = getSuccessfulBuilds.await((1 minute).toMillis).get
     if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
     builds
   }
@@ -99,14 +94,14 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
       log.warn("No builds yet, aborting incremental update")
       currentBuilds
     } else {
-      Await.result(getNewBuilds(currentBuilds).map { newBuilds =>
+      getNewBuilds(currentBuilds).map { newBuilds =>
         if (newBuilds.isEmpty)
           currentBuilds
         else {
           notifyListeners(newBuilds)
           (currentBuilds ++ newBuilds).sortBy(-_.id)
         }
-      },pollingPeriod)
+      }.await((pollingPeriod).toMillis).get
     }
   }
 
@@ -130,20 +125,16 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   }
 
 
-  def init() {
-    if (TeamCityWS.teamcityURL.isDefined) {
-      buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate))
-    }
-  }
+  def init() { buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate)) }
 
   def shutdown() { buildAgent.foreach(_.shutdown()) }
 
-  private def getSuccessfulBuilds: Future[List[Build]] = {
+  private def getSuccessfulBuilds: Promise[List[Build]] = {
     log.debug("Getting successful builds")
     val buildTypes = BuildTypeLocator.list
     buildTypes.flatMap { fulfilledBuildTypes =>
       log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
-      val allBuilds = Future.sequence(fulfilledBuildTypes.map(_.builds(BuildLocator.status("SUCCESS")))).map(_.flatten)
+      val allBuilds = Promise.sequence(fulfilledBuildTypes.map(_.builds(BuildLocator.status("SUCCESS")))).map(_.flatten)
       allBuilds.map { result =>
         log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
         result
@@ -151,7 +142,7 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
     }
   }
 
-  private def getNewBuilds(currentBuilds: List[Build]): Future[List[Build]] = {
+  private def getNewBuilds(currentBuilds: List[Build]): Promise[List[Build]] = {
     val knownBuilds = currentBuilds.map(_.id).toSet
     val buildTypeMap = currentBuilds.map(b => b.buildType.id -> b.buildType).toMap
     val getBuildType = (buildTypeId:String) => {

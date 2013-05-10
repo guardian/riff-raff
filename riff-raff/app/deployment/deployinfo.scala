@@ -3,7 +3,7 @@ package deployment
 import magenta.json.DeployInfoJsonReader
 import magenta._
 import akka.actor.ActorSystem
-import scala.concurrent.duration._
+import akka.util.duration._
 import controllers.Logging
 import magenta.App
 import conf.{DeployInfoMode, Configuration}
