@@ -16,7 +16,6 @@ import org.joda.time.DateTime
 import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
-import com.mongodb.DBObject
 
 case class ContinuousDeploymentConfig(
   id: UUID,
@@ -29,9 +28,13 @@ case class ContinuousDeploymentConfig(
   lastEdited: DateTime = new DateTime()
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
+  lazy val buildFilter =
+    (build:Build) => build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
   def findMatch(builds: List[Build]): Option[Build] = {
-    builds.find{ build =>
-      build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
+    val potential = builds.filter(buildFilter).sortBy(-_.id)
+    potential.find { build =>
+      val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
+      !olderBuilds.exists(_.id > build.id)
     }
   }
 }
@@ -87,10 +90,9 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def getApplicableDeployParams(builds: List[Build], configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     val enabledConfigs = configs.filter(_.enabled)
-    val sortedBuilds = builds.sortBy(-_.id)
 
     val allParams = enabledConfigs.flatMap { config =>
-      config.findMatch(sortedBuilds).map { build =>
+      config.findMatch(builds).map { build =>
         DeployParameters(
           Deployer("Continuous Deployment"),
           MagentaBuild(build.buildType.fullName,build.number),
