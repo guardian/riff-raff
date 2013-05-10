@@ -1,6 +1,6 @@
 package lifecycle
 
-import play.Application
+import play.api.Application
 
 /**
  * Any objects with this trait mixed in will automatically get

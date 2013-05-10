@@ -5,7 +5,6 @@ import com.mongodb.casbah.{MongoCollection, MongoDB, MongoURI, MongoConnection}
 import com.mongodb.casbah.Imports.WriteConcern
 import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
-import com.novus.salat._
 import play.api.Application
 import deployment.{PaginationView, DeployFilter}
 import magenta.{Build, RunState}
@@ -18,8 +17,19 @@ import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import ci.ContinuousDeploymentConfig
 
-trait MongoSerialisable {
-  def dbObject: DBObject
+trait MongoSerialisable[A] {
+
+  def fromDBO(dbo: MongoDBObject)(implicit format: MongoFormat[A]): Option[A] =
+    format fromDBO dbo
+
+  implicit class MongoOps[A](a: A) {
+    def toDBO(implicit format: MongoFormat[A]): DBObject = format toDBO a
+  }
+}
+
+trait MongoFormat[A] {
+  def toDBO(a: A): DBObject
+  def fromDBO(dbo: MongoDBObject): Option[A]
 }
 
 trait CollectionStats {
@@ -31,6 +41,8 @@ trait CollectionStats {
 object MongoDatastore extends Logging {
 
   val MESSAGE_STACKS = "messageStacks"
+
+  RegisterJodaTimeConversionHelpers()
 
   def buildDatastore(app:Option[Application]) = try {
     if (Configuration.mongo.isConfigured) {
@@ -54,30 +66,7 @@ object MongoDatastore extends Logging {
   }
 }
 
-trait RiffRaffGraters {
-  RegisterJodaTimeConversionHelpers()
-  def loader:Option[ClassLoader]
-  val riffRaffContext = {
-    val context = new Context {
-      val name = "global"
-      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
-    }
-    loader.foreach(context.registerClassLoader(_))
-    context.registerPerClassKeyOverride(classOf[ApiKey], remapThis = "key", toThisInstead = "_id")
-    context.registerPerClassKeyOverride(classOf[ContinuousDeploymentConfig], remapThis = "id", toThisInstead = "_id")
-    context
-  }
-  val apiGrater = {
-    implicit val context = riffRaffContext
-    grater[ApiKey]
-  }
-  val continuousDeployConfigGrater = {
-    implicit val context = riffRaffContext
-    grater[ContinuousDeploymentConfig]
-  }
-}
-
-class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with RiffRaffGraters with DocumentGraters with Logging {
+class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
@@ -94,7 +83,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     new CollectionStats {
       def dataSize = logAndSquashExceptions(None,0L){ stats.getLong("size", 0L) }
       def storageSize = logAndSquashExceptions(None,0L){ stats.getLong("storageSize", 0L) }
-      def documentCount = logAndSquashExceptions(None,0L){ collection.count }
+      def documentCount = logAndSquashExceptions(None,0L){ collection.getCount() }
     }
   }
 
@@ -105,23 +94,23 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   deployV2LogCollection.ensureIndex("deploy")
   apiKeyCollection.ensureIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
-  override def getPostDeployHooks = hooksCollection.find().map{ dbo =>
-    val criteria = HookCriteria(dbo.as[DBObject]("_id"))
-    val action = HookAction(dbo.as[String]("url"),dbo.as[Boolean]("enabled"))
-    criteria -> action
+  override def getPostDeployHooks = hooksCollection.find().flatMap{ dbo =>
+    val criteria = HookCriteria.fromDBO(dbo.as[DBObject]("_id"))
+    val action = HookAction.fromDBO(dbo)
+    criteria.flatMap(c => action.map(c ->))
   }.toMap
 
   override def getPostDeployHook(criteria: HookCriteria) =
     logAndSquashExceptions[Option[HookAction]](Some("Requesting post deploy hook for %s" format criteria),None) {
-      hooksCollection.find(MongoDBObject("_id" -> criteria.dbObject)).map(HookAction(_)).toSeq.headOption
+      hooksCollection.findOneByID(criteria.toDBO).flatMap(dbo => HookAction.fromDBO(dbo))
     }
 
   override def setPostDeployHook(criteria: HookCriteria, action: HookAction) {
     logAndSquashExceptions(Some("Creating post deploy hook %s" format criteria),()) {
-      val criteriaId = MongoDBObject("_id" -> criteria.dbObject)
+      val criteriaId = MongoDBObject("_id" -> criteria.toDBO)
       hooksCollection.findAndModify(
         query = criteriaId,
-        update = criteriaId ++ action.dbObject,
+        update = criteriaId ++ action.toDBO,
         upsert = true, fields = MongoDBObject(),
         sort = MongoDBObject(),
         remove = false,
@@ -132,7 +121,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def deletePostDeployHook(criteria: HookCriteria) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
-      hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.dbObject))
+      hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.toDBO))
     }
   }
 
@@ -141,7 +130,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       val criteriaId = MongoDBObject("_id" -> auth.email)
       authCollection.findAndModify(
         query = criteriaId,
-        update = auth.dbObject,
+        update = auth.toDBO,
         upsert = true, fields = MongoDBObject(),
         sort = MongoDBObject(),
         remove = false,
@@ -152,12 +141,12 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def getAuthorisation(email: String): Option[AuthorisationRecord] =
     logAndSquashExceptions[Option[AuthorisationRecord]](Some("Requesting authorisation object for %s" format email),None) {
-      authCollection.find(MongoDBObject("_id" -> email)).map(AuthorisationRecord(_)).toSeq.headOption
+      authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
   override def getAuthorisationList: List[AuthorisationRecord] =
     logAndSquashExceptions[List[AuthorisationRecord]](Some("Requesting list of authorisation objects"), Nil) {
-      authCollection.find().map(AuthorisationRecord(_)).toList
+      authCollection.find().flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
   override def deleteAuthorisation(email: String) {
@@ -168,18 +157,18 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
     logAndSquashExceptions[Option[ContinuousDeploymentConfig]](Some("Getting continuous deploy config for %s" format id), None) {
-      continuousDeployCollection.findOneByID(id).map(continuousDeployConfigGrater.asObject(_))
+      continuousDeployCollection.findOneByID(id).flatMap(ContinuousDeploymentConfig.fromDBO(_))
     }
   override def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] =
     logAndSquashExceptions[Iterable[ContinuousDeploymentConfig]](Some("Getting all continuous deploy configs"), Nil) {
       continuousDeployCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
-        .toIterable.map(continuousDeployConfigGrater.asObject(_))
+        .toIterable.flatMap(ContinuousDeploymentConfig.fromDBO(_))
     }
   override def setContinuousDeployment(cd: ContinuousDeploymentConfig) {
     logAndSquashExceptions(Some("Saving continuous integration config: %s" format cd),()) {
       continuousDeployCollection.findAndModify(
         query = MongoDBObject("_id" -> cd.id),
-        update = continuousDeployConfigGrater.asDBObject(cd),
+        update = cd.toDBO,
         upsert = true,
         fields = MongoDBObject(),
         sort = MongoDBObject(),
@@ -196,19 +185,19 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def createApiKey(newKey: ApiKey) {
     logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
-      val dbo = apiGrater.asDBObject(newKey)
+      val dbo = newKey.toDBO
       apiKeyCollection.insert(dbo)
     }
   }
 
   override def getApiKeyList = logAndSquashExceptions[Iterable[ApiKey]](Some("Requesting list of API keys"), Nil) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
-    keys.toIterable.map( apiGrater.asObject(_) )
+    keys.toIterable.flatMap( ApiKey.fromDBO(_) )
   }
 
   override def getApiKey(key: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for %s" format key),None) {
-      apiKeyCollection.findOneByID(key).map(apiGrater.asObject(_))
+      apiKeyCollection.findOneByID(key).flatMap(ApiKey.fromDBO(_))
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
@@ -224,13 +213,13 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
         update = update,
         returnNew = true,
         upsert = false
-      ).map(apiGrater.asObject(_))
+      ).flatMap(ApiKey.fromDBO(_))
     }
   }
 
   override def getApiKeyByApplication(application: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for application %s" format application),None) {
-      apiKeyCollection.findOne(MongoDBObject("application" -> application)).map(apiGrater.asObject(_))
+      apiKeyCollection.findOne(MongoDBObject("application" -> application)).flatMap(ApiKey.fromDBO(_))
     }
 
   override def deleteApiKey(key: String) {
@@ -241,7 +230,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def writeDeploy(deploy: DeployRecordDocument) {
     logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
-      val gratedDeploy = deployGrater.asDBObject(deploy)
+      val gratedDeploy = deploy.toDBO
       deployV2Collection.insert(gratedDeploy, WriteConcern.Safe)
     }
   }
@@ -254,19 +243,19 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
-      deployV2Collection.findOneByID(uuid).map(deployGrater.asObject(_))
+      deployV2Collection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))
     }
 
   override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
-      deployV2LogCollection.insert(logDocumentGrater.asDBObject(log), WriteConcern.Safe)
+      deployV2LogCollection.insert(log.toDBO, WriteConcern.Safe)
     }
   }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
       val criteria = MongoDBObject("deploy" -> uuid)
-      deployV2LogCollection.find(criteria).toIterable.map(logDocumentGrater.asObject(_))
+      deployV2LogCollection.find(criteria).toIterable.flatMap(LogDocument.fromDBO(_))
     }
 
   override def getDeployV2UUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
@@ -282,7 +271,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
     val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
-    cursor.toIterable.flatMap { dbo => try { Some(deployGrater.asObject(dbo)) } catch { case e:Exception => None } }
+    cursor.toIterable.flatMap { DeployRecordDocument.fromDBO(_) }
   }
 
   override def countDeploysV2(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
