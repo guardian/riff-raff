@@ -3,8 +3,8 @@ import AssemblyKeys._
 import java.util.jar.Attributes
 
 libraryDependencies ++= Seq(
-    "com.github.scopt" % "scopt_2.9.0-1" % "1.1.1",
-    "net.databinder" %% "dispatch-http" % "0.8.5"
+    "com.github.scopt" %% "scopt" % "2.1.0",
+    "net.databinder" %% "dispatch-http" % "0.8.9"
 )
 
 seq(sbtassembly.Plugin.assemblySettings: _*)

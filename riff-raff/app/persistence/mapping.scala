@@ -3,34 +3,10 @@ package persistence
 import java.util.UUID
 import org.joda.time.DateTime
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import com.novus.salat._
-import com.novus.salat.StringTypeHintStrategy
 import controllers.Logging
 import deployment.{DeployFilter, DeployV2Record, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
-
-trait DocumentGraters {
-  RegisterJodaTimeConversionHelpers()
-  def loader:Option[ClassLoader]
-  val documentContext = {
-    val context = new Context {
-      val name = "global"
-      override val typeHintStrategy = StringTypeHintStrategy(TypeHintFrequency.WhenNecessary)
-    }
-    loader.foreach(context.registerClassLoader(_))
-    context.registerPerClassKeyOverride(classOf[DeployRecordDocument], remapThis = "uuid", toThisInstead = "_id")
-    context
-  }
-  val deployGrater = {
-    implicit val context = documentContext
-    grater[DeployRecordDocument]
-  }
-  val logDocumentGrater = {
-    implicit val context = documentContext
-    grater[LogDocument]
-  }
-}
 
 trait RecordConverter {
   def uuid:UUID

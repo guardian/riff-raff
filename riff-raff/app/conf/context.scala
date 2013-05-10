@@ -17,7 +17,7 @@ import persistence.{CollectionStats, Persistence}
 import deployment.GuDomainsConfiguration
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
-import akka.util.duration._
+import scala.concurrent.duration._
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -114,7 +114,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object teamcity {
-    lazy val serverURL = new URL(configuration.getStringProperty("teamcity.serverURL").getOrException("Teamcity server URL not configured"))
+    lazy val serverURL = configuration.getStringProperty("teamcity.serverURL").map(new URL(_))
     lazy val useAuth = user.isDefined && password.isDefined
     lazy val user = configuration.getStringProperty("teamcity.user")
     lazy val password = configuration.getStringProperty("teamcity.password")
@@ -152,30 +152,7 @@ object Management extends PlayManagement {
   )
 }
 
-object RequestMetrics {
-  object RequestTimingMetric extends TimingMetric(
-    "performance",
-    "requests",
-    "Client requests",
-    "incoming requests to the application"
-  )
-
-  object DatastoreRequest extends TimingMetric(
-    "performance",
-    "database_requests",
-    "Database requests",
-    "outgoing requests to the database",
-    Some(RequestTimingMetric)
-  )
-
-  object Request200s extends CountMetric("request-status", "200_ok", "200 Ok", "number of pages that responded 200")
-  object Request50xs extends CountMetric("request-status", "50x_error", "50x Error", "number of pages that responded 50x")
-  object Request404s extends CountMetric("request-status", "404_not_found", "404 Not found", "number of pages that responded 404")
-  object Request30xs extends CountMetric("request-status", "30x_redirect", "30x Redirect", "number of pages that responded with a redirect")
-  object RequestOther extends CountMetric("request-status", "other", "Other", "number of pages that responded with an unexpected status code")
-
-  val all = Seq(RequestTimingMetric, DatastoreRequest, Request200s, Request50xs, Request404s, RequestOther, Request30xs)
-}
+object RequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends LifecycleWithoutApp {
   val runningDeploys = mutable.Buffer[UUID]()
@@ -221,6 +198,12 @@ object MessageMetrics {
 }
 
 object DatastoreMetrics {
+  object DatastoreRequest extends TimingMetric(
+    "performance",
+    "database_requests",
+    "Database requests",
+    "outgoing requests to the database"
+  )
   val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>  Persistence.store.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
@@ -228,7 +211,7 @@ object DatastoreMetrics {
   object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
   object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
   object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
-  val all = Seq(MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
+  val all = Seq(DatastoreRequest, MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 
 object LoginCounter extends CountMetric("webapp",
@@ -245,7 +228,7 @@ object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
-    RequestMetrics.all ++
+    RequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all
 }

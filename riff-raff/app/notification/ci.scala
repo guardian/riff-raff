@@ -14,12 +14,13 @@ import java.util.UUID
 import ci.teamcity.BuildType
 import ci.teamcity.TeamCity.BuildLocator
 import play.api.libs.concurrent.Promise
+import play.api.libs.concurrent.Execution.Implicits._
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
-  val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   val pinStages = conf.Configuration.teamcity.pinStages
   val maxPinned = conf.Configuration.teamcity.maximumPinsPerProject
+  val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   lazy val tcUserName = conf.Configuration.teamcity.user.get
 
   val sink = if (!pinningEnabled) None else Some(new MessageSink {

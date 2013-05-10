@@ -3,7 +3,7 @@ package magenta.tasks
 import magenta.{KeyRing, Stage}
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
-import dispatch._
+import dispatch.classic._
 import net.liftweb.json._
 import java.net.ConnectException
 

@@ -103,7 +103,7 @@ object MessageBroker {
           case f:FailException =>
             send(FailContext(context.messageStack.head))
             throw f
-          case t =>
+          case t:Throwable =>
             // build exception (and send fail message) first
             val message = context.messageStack.head
             val exception = failException("Unhandled exception in %s" format message.text, t)
