@@ -91,7 +91,9 @@ class DeployCoordinator extends Actor with Logging {
   }
 
   val taskStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
-  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(new RoundRobinRouter(8).withSupervisorStrategy(taskStrategy)))
+  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(
+    new RoundRobinRouter(conf.Configuration.concurrency.maxDeploys).withSupervisorStrategy(taskStrategy)
+  ))
 
   var deployStateMap = Map.empty[UUID, DeployRunState]
   var deferredDeployQueue = ListBuffer[DeployCoordinator.Message]()
