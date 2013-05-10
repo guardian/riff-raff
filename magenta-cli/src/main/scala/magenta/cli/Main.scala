@@ -121,11 +121,11 @@ object Main extends scala.App {
   }
 
   def withTemporaryDirectory[T](block: File => T): T = {
-    val tempDir = Path.createTempDirectory()
+    val tempDir = Path.createTempDirectory(prefix="magenta-", suffix="")
     val result = Try {
       block(tempDir)
     }
-    tempDir.delete()
+    tempDir.deleteRecursively(continueOnFailure = true)
     result.get
   }
 
