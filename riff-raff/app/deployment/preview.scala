@@ -2,7 +2,6 @@ package deployment
 
 import magenta._
 import persistence.Persistence
-import magenta.teamcity.Artifact.build2download
 import java.io.File
 import io.Source
 import magenta.json.JsonReader
@@ -11,6 +10,7 @@ import magenta.DeployParameters
 import magenta.Project
 import magenta.Build
 import tasks.{ Task => MagentaTask }
+import magenta.teamcity.Artifact
 
 object Preview {
   /**
@@ -20,7 +20,7 @@ object Preview {
    */
   def getProject(build: Build): Project = {
     val json = Persistence.store.getDeployJson(build).getOrElse {
-      build.withDownload { artifactDir =>
+      Artifact.withDownload(build) { artifactDir =>
         val json = Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
         Persistence.store.writeDeployJson(build, json)
         json

@@ -5,18 +5,18 @@ import play.api.mvc.Results._
 import play.api.mvc.BodyParsers._
 import net.liftweb.json.{ Serialization, NoTypeHints }
 import net.liftweb.json.Serialization.{ read, write }
-import play.api.libs.concurrent.{ Thrown, Redeemed }
 import conf._
 import conf.Configuration.auth
-import persistence.{MongoSerialisable, Persistence}
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import org.joda.time.DateTime
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import play.api.data._
 import play.api.data.Forms._
-import openid._
 import deployment.DeployFilter
+import play.api.libs.openid.{OpenIDError, OpenID}
+import play.api.libs.concurrent.Execution.Implicits._
 
 trait Identity {
   def fullName: String
@@ -43,11 +43,13 @@ case class ApiIdentity(apiKey: ApiKey) extends Identity {
   lazy val fullName = apiKey.application
 }
 
-case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) extends MongoSerialisable {
-  def dbObject = MongoDBObject("_id" -> email, "approvedBy" -> approvedBy, "approvedDate" -> approvedDate)
-}
-object AuthorisationRecord {
-  def apply(dbo: DBObject): AuthorisationRecord = AuthorisationRecord(dbo.as[String]("_id"), dbo.as[String]("approvedBy"), dbo.as[DateTime]("approvedDate"))
+case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime)
+object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
+  implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
+  private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {
+    def toDBO(a: AuthorisationRecord) = MongoDBObject("_id" -> a.email, "approvedBy" -> a.approvedBy, "approvedDate" -> a.approvedDate)
+    def fromDBO(dbo: MongoDBObject) = Some(AuthorisationRecord(dbo.as[String]("_id"), dbo.as[String]("approvedBy"), dbo.as[DateTime]("approvedDate")))
+  }
 }
 
 trait AuthorisationValidator {
@@ -169,20 +171,19 @@ object Login extends Controller with Logging {
     AsyncResult(
       OpenID
         .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
-        .extend(_.value match {
-          case Redeemed(url) => {
+        .map { url =>
             LoginCounter.recordCount(1)
             Redirect(url)
-          }
-          case Thrown(t) => Redirect(routes.Login.login).flashing(("error" -> "Unknown error: %s ".format(t.getMessage)))
-        })
+        }
+        .recover {
+        case t => Redirect(routes.Login.login).flashing(("error" -> "Unknown error: %s ".format(t.getMessage)))
+        }
     )
   }
 
   def openIDCallback = Action { implicit request =>
     AsyncResult(
-      OpenID.verifiedId.extend(_.value match {
-        case Redeemed(info) => {
+      OpenID.verifiedId.map{ info =>
           val credentials = UserIdentity(
             info.id,
             info.attributes.get("email").get,
@@ -199,8 +200,8 @@ object Login extends Controller with Logging {
               ("error" -> (validator.authorisationError(credentials).get))
             ).withSession(session - UserIdentity.KEY)
           }
-        }
-        case Thrown(t) => {
+        } recover {
+        case t => {
           // Here you should look at the error, and give feedback to the user
           FailedLoginCounter.recordCount(1)
           val message = t match {
@@ -211,7 +212,7 @@ object Login extends Controller with Logging {
             ("error" -> (message))
           )
         }
-      })
+      }
     )
   }
 

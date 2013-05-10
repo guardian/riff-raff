@@ -11,11 +11,11 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
   "AuthorisationRecord" should "serialise and deserialise" in {
     val dateTime = new DateTime()
     val auth = AuthorisationRecord("test@test.com", "Test Person", dateTime)
-    val dbo = auth.dbObject
+    val dbo = auth.toDBO
     dbo.as[String]("_id") should be("test@test.com")
     dbo.as[String]("approvedBy") should be("Test Person")
     dbo.as[DateTime]("approvedDate") should be(dateTime)
-    AuthorisationRecord(dbo) should be(auth)
+    AuthorisationRecord.fromDBO(dbo) should be(Some(auth))
   }
 
   "AuthorisationValidator" should "allow any domain when not configured" in {
