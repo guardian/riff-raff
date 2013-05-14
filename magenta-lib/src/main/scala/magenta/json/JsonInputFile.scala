@@ -3,7 +3,7 @@ package json
 
 import net.liftweb.json._
 import io.Source
-import java.io.File
+import java.io.{FileNotFoundException, File}
 
 
 case class JsonInputFile(
@@ -35,7 +35,14 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File): Project = parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
+  def parse(f: File): Project = {
+    try {
+      parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
+    } catch {
+      case e:FileNotFoundException =>
+        MessageBroker.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
+    }
+  }
 
   def parse(s: String, artifactSrcDir: File): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
