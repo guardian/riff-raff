@@ -67,7 +67,11 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
       assert(bucket.isDefined != bucketResource.isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.orElse {
         assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")
-        bucketResource.flatMap(deployInfo.firstMatchingData(_, pkg.apps.head, parameters.stage.name)).map(_.value)
+        bucketResource.map{ resource =>
+          val data = deployInfo.firstMatchingData(resource, pkg.apps.head, parameters.stage.name)
+          assert(data.isDefined, s"Cannot find resource value for $resource (${pkg.apps.head} in ${parameters.stage.name})")
+          data.get
+        }.map(_.value)
       }
       List(
         S3Upload(parameters.stage, bucketName.get, new File(staticDir), cacheControlPatterns, prefixStage = prefixStage)
