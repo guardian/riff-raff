@@ -1,5 +1,37 @@
 ### Release notes
 
+#### 10th May 2013
+
+Migrate from play 2 to 2.1 (and also scala 2.9 to 2.10).
+
+#### 7th May 2013
+
+Add graphs to the history page showing the number of deploys that have been done recently.  The graph will return
+up to 30 days with no filter and up to 90 days with a filter applied.
+
+#### 11th Apr 2013
+
+The AWS autoscale deploy now suspends AlarmNotifications during a deploy.
+
+#### 3rd Apr 2013
+
+Add deployinfo endpoint at /api/deployinfo to return the in-memory cache of the most recently returned
+`deployinfo.json` file.  This is updated roughly once a minute.
+
+You can now make a riff-raff instance obtain deployinfo from the API endpoint of another instance.
+
+#### 2nd Apr 2013
+
+jsonp responses to api endpoints have now been added.  Adding format=jsonp&callback=jsCallback will do what you
+expect.
+
+The default recipe for a particular stage and project combination can now be set in the resource listing, making
+certain types of migration much easier.
+
+#### 7th Mar 2013
+
+Improvements to the django app deploy package and tasks.
+
 #### 7th Feb 2013
 
 VCS information is now collected when possible from TeamCity.  This is exposed via the API and also via a tooltip
@@ -10,6 +42,8 @@ well.
 
 Dashboards are simpler to use for a set of related projects, you can now specify project terms to search by as well
 as exact matches.
+
+Disabled hooks and continuous deploy configurations are now highlighted to make it obvious when they are disabled.
 
 #### 6th Feb 2013
 

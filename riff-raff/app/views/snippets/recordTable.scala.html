@@ -27,7 +27,7 @@
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
-        @defining(utils.VCSInfo(record.metaData)) { vcsInfo =>
+        @defining(record.vcsInfo) { vcsInfo =>
         <td>@htmlTooltip(placement="left"){
           @vcsInfo.map { info =>
             <strong>@info.name</strong> @info.repo<br/>

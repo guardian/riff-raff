@@ -72,13 +72,15 @@ POST    /apiKeys/delete             controllers.Api.delete
 GET     /api/history                controllers.Api.history
 GET     /api/deployinfo             controllers.Api.deployinfo
 
+GET     /api/historyGraph                controllers.Api.historyGraph
+
 # Testing pages (for changing styling without running deploys)
 GET     /testing/reportTestPartial  controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)
 GET     /testing/form   controllers.Testing.form
 POST    /testing/formPost  controllers.Testing.formPost
-GET     /testing/uuidList   controllers.Testing.uuidList
+GET     /testing/uuidList   controllers.Testing.uuidList(limit:Int ?= 500)
 POST    /testing/actionUUID   controllers.Testing.actionUUID
-GET     /testing/debugLogViewer/:uuid controllers.Testing.debugLogViewer(uuid)
+GET     /testing/view/:uuid controllers.Testing.debugLogViewer(uuid)
 GET     /testing/addStringUUID  controllers.Testing.transferAllUUIDs
 GET     /testing/testcharset    controllers.Testing.testcharset
 GET     /teamcity       controllers.Deployment.teamcity

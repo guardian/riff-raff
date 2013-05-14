@@ -1,28 +1,24 @@
-Command Line Client
-===================
+RiffRaff outside the Guardian
+=============================
 
-Logging - We should copy all stdout and logs into a logging facility (syslog, file?)
-IRC Connection - Executing a deploy should mention to IRC what is going on.
-Configuration - FEatures like logging, irc etc, should be configurable on the deploy host
-SSH Support - Use a local key, prompt for password, allow ssh-agent connections
-TeamCity Support - Upon deploying we should tag and pin builds in teamcity.
+RiffRaff is pretty awesome and it would be nice if people outside of the Guardian could get a taste of the awesomeness.
 
-Deployment Library
-==================
+ * Support for Jenkins as well as Teamcity
+ * Attempt to set up RiffRaff elsewhere to deploy something and see what breaks
+ * Review how Guardian specific the documentation is
+ * Get the documentation built to Github pages and put in some shiny screenshots
+ * Blog on guardian developer blog
+ * Yak on about it at conferences
 
-Convention over Configuration - in deploy.json, there should be a default "default" recipe, and a default action per package.
-
-RiffRaff
-========
-
-Prototype 0 - This should allow you to 1 button click to deploy.
-Authentication - Using OpenId, you should only be allowed to login if you have a valid domain account
-Realtime logs - You should be able to see all deploys happening, including feedback from the deploy as it happens
-Current Status Database - We should keep a list of what was last deployed to each server.
-
-Enhancements / Future Stuff
+RiffRaff as development hub
 ===========================
 
-IRC Control - Kick off a deploy from irc?
-Twitter integration - Alert to deploys via twitter account
-XMPP Support - Use XMPP/Google Chat to send notifications about deploys
+It may be desirable to allow RiffRaff to do things like track pull requests so that it can act as a hub for tracking project activity.
+
+Move repository to RiffRaff
+===========================
+
+Since that's what everyone calls it
+
+Upgrade Scala/Play etc.
+======================

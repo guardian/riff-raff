@@ -2,15 +2,17 @@ package controllers
 
 import play.api.mvc.{Action, AnyContent, Controller}
 import play.api.mvc.Results._
-import org.joda.time.DateTime
-import persistence.Persistence
+import org.joda.time.{DateMidnight, DateTime}
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{JsString, Json, JsObject, JsValue}
-import deployment.DeployInfoManager
-
+import com.mongodb.casbah.Imports._
+import deployment.{DeployFilter, DeployInfoManager}
+import utils.Graph
+import magenta.RunState
 
 case class ApiKey(
   application:String,
@@ -21,6 +23,44 @@ case class ApiKey(
   callCounters:Map[String, Long] = Map.empty
 ){
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
+}
+
+object ApiKey extends MongoSerialisable[ApiKey] {
+  implicit val keyFormat:MongoFormat[ApiKey] = new KeyMongoFormat
+  private class KeyMongoFormat extends MongoFormat[ApiKey] with Logging {
+    def toDBO(a: ApiKey) = {
+      val fields:List[(String,Any)] =
+        List(
+          "application" -> a.application,
+          "_id" -> a.key,
+          "issuedBy" -> a.issuedBy,
+          "created" -> a.created
+        ) ++ a.lastUsed.map("lastUsed" ->) ++
+          List(
+            "callCounters" -> a.callCounters.asDBObject
+          )
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = Some(ApiKey(
+      application = dbo.as[String]("application"),
+      key = dbo.as[String]("_id"),
+      issuedBy = dbo.as[String]("issuedBy"),
+      created = dbo.as[DateTime]("created"),
+      lastUsed = dbo.getAs[DateTime]("lastUsed"),
+      callCounters = dbo.as[DBObject]("callCounters").map { entry =>
+        val key = entry._1
+        val counter = try {
+          entry._2.asInstanceOf[Long]
+        } catch {
+          case cce:ClassCastException =>
+            log.warn("Automatically marshalling an Int to a Long (you should only see this during unit tests)")
+            entry._2.asInstanceOf[Int].toLong
+        }
+        key -> counter
+      }.toMap
+    ))
+  }
 }
 
 object ApiKeyGenerator {
@@ -48,7 +88,7 @@ object ApiKeyGenerator {
 object ApiJsonEndpoint {
   def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
     ApiAuthAction(counter) { authenticatedRequest =>
-      val format = authenticatedRequest.queryString.get("format").flatten.toSeq
+      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
       val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
 
       val response = try {
@@ -69,11 +109,9 @@ object ApiJsonEndpoint {
         case jsv:JsValue => JsObject(Seq(("value", jsv)))
       }
 
-      if (format.contains("jsonp")) {
-        assert(jsonpCallback.isDefined, "Must specify 'callback' parameter for jsonp")
-        val callback = jsonpCallback.head
+      jsonpCallback map { callback =>
         Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
-      } else {
+      } getOrElse {
         response \ "response" \ "status" match {
           case JsString("ok") => Ok(responseObject)
           case JsString("error") => BadRequest(responseObject)
@@ -122,6 +160,55 @@ object Api extends Controller with Logging {
         Redirect(routes.Api.listKeys())
       }
     )
+  }
+
+  def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
+    val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
+    val count = DeployController.countDeploys(filter)
+    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
+    val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
+
+    def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
+      f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
+    }.getOrElse("")
+
+    val allDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
+      case (date, _) => date.getMillis
+    }
+    val firstDate = allDataByDay.headOption.map(_._1)
+    val lastDate = allDataByDay.lastOption.map(_._1)
+
+    val deploysByState = deployList.groupBy(_.state).toList.sortBy {
+      case (RunState.Completed, _) => 1
+      case (RunState.Failed, _) => 2
+      case (RunState.Running, _) => 3
+      case (RunState.NotRunning, _) => 4
+      case default => 5
+    }
+
+    val deploys = deploysByState.map { case (state, deployList) =>
+      val seriesDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
+        case (date, _) => date.getMillis
+      }
+      val seriesJson = Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
+        case (day, deploys) =>
+          toJson(Map(
+            "x" -> toJson(day.getMillis / 1000),
+            "y" -> toJson(deploys)
+          ))
+      }
+      Map(
+        "data" -> toJson(seriesJson),
+        "points" -> toJson(seriesJson.length),
+        "deploystate" -> toJson(state.toString),
+        "name" -> toJson(description(state))
+      )
+    }
+
+    toJson(Map("response" -> toJson(Map(
+      "series" -> toJson(deploys),
+      "status" -> toJson("ok")
+    ))))
   }
 
   def history = ApiJsonEndpoint("history") { implicit request =>

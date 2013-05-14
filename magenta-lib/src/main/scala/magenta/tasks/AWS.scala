@@ -72,6 +72,14 @@ trait ASG extends AWS {
       new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
     ).getAutoScalingGroups.head
 
+  def suspendAlarmNotifications(name: String)(implicit keyRing: KeyRing) = client.suspendProcesses(
+    new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
+  )
+
+  def resumeAlarmNotifications(name: String)(implicit keyRing: KeyRing) = client.resumeProcesses(
+    new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
+  )
+
   def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing): Option[AutoScalingGroup] = {
     implicit def autoscalingGroup2HasTag(asg: AutoScalingGroup) = new {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
@@ -122,7 +130,7 @@ trait EC2 extends AWS {
 
     client.createTags(request)
   }
-  
+
   def hasTag(instance: ASGInstance, key: String, value: String)(implicit keyRing: KeyRing): Boolean = {
     describe(instance).getTags() exists { tag =>
       tag.getKey() == key && tag.getValue() == value

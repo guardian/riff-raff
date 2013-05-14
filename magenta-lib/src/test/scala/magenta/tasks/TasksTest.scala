@@ -181,6 +181,21 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "foo", "some-host", "ls -l")))
   }
 
+  it should "specify custom remote shell for rsync if key-file specified" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+
+    val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i key" -rpv /source foo.com:/dest""")
+  }
+
+  it should "specify custom remote shell without keyfile if no key-file specified" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+
+    val command = task.commandLine(KeyRing(SystemUser(None)))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv /source foo.com:/dest""")
+  }
 
 
   "S3Upload task" should "upload a single file to S3" in {
@@ -251,22 +266,6 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
     verifyNoMoreInteractions(s3Client)
-  }
-
-  it should "specify custom remote shell for rsync if key-file specified" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest")
-
-    val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
-
-    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i key" -rv /source foo.com:/dest""")
-  }
-
-  it should "specify custom remote shell without keyfile if no key-file specified" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest")
-
-    val command = task.commandLine(KeyRing(SystemUser(None)))
-
-    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rv /source foo.com:/dest""")
   }
 
   private def createTempDir() = {

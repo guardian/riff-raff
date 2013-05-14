@@ -5,18 +5,19 @@ import java.io.File
 import magenta._
 import akka.actor._
 import controllers.Logging
-import akka.util.duration._
-import akka.util.Timeout
+import scala.concurrent.duration._
 import akka.actor.SupervisorStrategy.Restart
 import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
-import magenta.teamcity.Artifact.build2download
 import collection.mutable.ListBuffer
 import akka.routing.RoundRobinRouter
-import akka.dispatch.Await
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
+import concurrent.Await
+import akka.util.Timeout
+import scalax.file.Path
+import magenta.teamcity.Artifact
 
 object DeployControlActor extends Logging {
   trait Event
@@ -36,12 +37,7 @@ object DeployControlActor extends Logging {
   )
   lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
 
-  lazy val deployController = system.actorOf(Props[DeployControlActor])
   lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
-
-  def deploy(record: Record){
-    deployController ! Deploy(record)
-  }
 
   import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
 
@@ -62,89 +58,6 @@ object DeployControlActor extends Logging {
     } catch {
       case t:Throwable => None
     }
-  }
-}
-
-class DeployControlActor() extends Actor with Logging {
-  import DeployControlActor._
-
-  var deployActors = Map.empty[(String, String), ActorRef]
-
-  override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 1000, withinTimeRange = 1 minute ) {
-    case _ => Restart
-  }
-
-  def receive = {
-    case Deploy(record) => {
-      try {
-        val project = record.parameters.build.projectName
-        val stage = record.parameters.stage.name
-        val actor = deployActors.get(project, stage).getOrElse {
-          log.info("Created new actor for %s %s" format (project, stage))
-          val newActor = context.actorOf(Props[DeployActor],"deploy-%s-%s" format (project.replace(" ", "_").replace("/","_"), stage))
-          context.watch(newActor)
-          deployActors += ((project,stage) -> newActor)
-          newActor
-        }
-        actor ! DeployActor.Deploy(record)
-      } catch {
-        case e:Throwable => {
-          log.error("Exception whilst dispatching deploy event", e)
-        }
-      }
-    }
-    case Terminated(actor) => {
-      log.warn("Received terminate from %s " format actor.path)
-      deployActors.find(_._2 == actor).map { case(key,value) =>
-        deployActors -= key
-      }
-    }
-  }
-
-  override def postStop() {
-    log.info("I've been stopped")
-  }
-}
-
-object DeployActor {
-  trait Event
-  case class Deploy(record: Record) extends Event
-}
-
-class DeployActor() extends Actor with Logging {
-  import DeployActor._
-
-  override def preRestart(reason: Throwable, message: Option[Any]) {
-    log.warn("Deploy actor has been restarted", reason)
-  }
-
-  def receive = {
-    case Deploy(record) => {
-      record.loggingContext {
-        record.withDownload { artifactDir =>
-          val context = resolveContext(artifactDir, record)
-          record.taskType match {
-            case TaskType.Preview => { }
-            case TaskType.Deploy =>
-              log.info("Executing deployContext")
-              val keyRing = DeployInfoManager.keyRing(context)
-              context.execute(keyRing)
-          }
-        }
-      }
-    }
-  }
-
-  def resolveContext(artifactDir: File, record: Record): DeployContext = {
-    log.info("Reading deploy.json")
-    MessageBroker.info("Reading deploy.json")
-    val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-    val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
-    context
-  }
-
-  override def postStop() {
-    log.info("I've been stopped")
   }
 }
 
@@ -178,7 +91,9 @@ class DeployCoordinator extends Actor with Logging {
   }
 
   val taskStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
-  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(new RoundRobinRouter(8).withSupervisorStrategy(taskStrategy)))
+  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(
+    new RoundRobinRouter(conf.Configuration.concurrency.maxDeploys).withSupervisorStrategy(taskStrategy)
+  ))
 
   var deployStateMap = Map.empty[UUID, DeployRunState]
   var deferredDeployQueue = ListBuffer[DeployCoordinator.Message]()
@@ -207,7 +122,7 @@ class DeployCoordinator extends Actor with Logging {
     }
   }
 
-  protected def receive = {
+  def receive = {
     case StartDeploy(record) if !schedulable(record) =>
       log.debug("Not schedulable, queuing")
       deferredDeployQueue += StartDeploy(record)
@@ -279,7 +194,7 @@ class DeployCoordinator extends Actor with Logging {
 
   private def cleanup(state: DeployRunState) {
     try {
-      sbt.IO.delete(state.artifactDir)
+      state.artifactDir.map(Path(_).deleteRecursively(continueOnFailure = true))
     } catch {
       case t:Throwable =>
         log.warn("Exception whilst trying to delete artifact directory", t)
@@ -308,11 +223,11 @@ object TaskRunner {
 class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
-  protected def receive = {
+  def receive = {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {
-          val artifactDir = record.parameters.build.download()
+          val artifactDir = Artifact.download(record.parameters.build)
           MessageBroker.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
@@ -358,7 +273,7 @@ class TaskRunner extends Actor with Logging {
 
     case RemoveArtifact(artifactDir) => {
       log.debug("Delete artifact dir")
-      sbt.IO.delete(artifactDir)
+      Path(artifactDir).delete()
     }
   }
 }
