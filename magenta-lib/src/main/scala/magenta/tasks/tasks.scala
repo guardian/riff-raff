@@ -86,7 +86,7 @@ case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlPatter
 
   lazy val filesToCopy = resolveFiles(file)
 
-  lazy val totalSize = filesToCopy.map(_.length).fold(0L)(_ + _)
+  lazy val totalSize = filesToCopy.map(_.length).sum
 
   lazy val requests = filesToCopy map { file =>
     putObjectRequestWithPublicRead(bucket, toKey(file), file, cacheControlLookup(toRelative(file)))

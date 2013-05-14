@@ -287,15 +287,9 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       override val bucket = "bucket"
     }
 
-    task.requests.find(_.getFile == fileOne).map{ file =>
-      file.getMetadata.getCacheControl should be("no-cache")
-    }
-    task.requests.find(_.getFile == fileTwo).map{ file =>
-      file.getMetadata.getCacheControl should be("no-cache")
-    }
-    task.requests.find(_.getFile == fileThree).map{ file =>
-      file.getMetadata.getCacheControl should be("public; max-age=3600")
-    }
+    task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
   private def createTempDir() = {
