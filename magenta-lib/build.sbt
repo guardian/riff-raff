@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
     "com.gu" %% "management" % "5.27",
-    "moschops" %% "fastlyapiclient" % "0.2.1" intransitive(),
+    "moschops" % "fastlyapiclient_2.10.0" % "0.2.1" intransitive(),
     "commons-io" % "commons-io" % "2.1",
     "com.ning" % "async-http-client" % "1.7.6"
 )
