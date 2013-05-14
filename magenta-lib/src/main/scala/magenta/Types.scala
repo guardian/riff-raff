@@ -48,12 +48,14 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   val name = "aws-s3"
 
   override val defaultData = Map[String, JValue](
-    "prefixStage" -> true
+    "prefixStage" -> true,
+    "prefixPackage" -> true
   )
 
   lazy val staticDir = pkg.srcDir.getPath + "/"
 
   lazy val prefixStage = pkg.booleanData("prefixStage")
+  lazy val prefixPackage = pkg.booleanData("prefixPackage")
 
   //required configuration, you cannot upload without setting these
   lazy val bucket = pkg.stringDataOption("bucket")
@@ -74,7 +76,13 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
         }.map(_.value)
       }
       List(
-        S3Upload(parameters.stage, bucketName.get, new File(staticDir), cacheControlPatterns, prefixStage = prefixStage)
+        S3Upload(parameters.stage,
+          bucketName.get,
+          new File(staticDir),
+          cacheControlPatterns,
+          prefixStage = prefixStage,
+          prefixPackage = prefixPackage
+        )
       )
   }
 }

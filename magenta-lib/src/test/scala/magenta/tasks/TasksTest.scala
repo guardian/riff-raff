@@ -242,6 +242,33 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.toKey(child) should be ("CODE/bar/the/file/name.txt")
   }
 
+  it should "correctly convert a file to a key with prefixStage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false)
+
+    task.toKey(child) should be ("bar/the/file/name.txt")
+  }
+
+  it should "correctly convert a file to a key with prefixPackage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixPackage = false)
+
+    task.toKey(child) should be ("CODE/the/file/name.txt")
+  }
+
+  it should "correctly convert a file to a key with prefixStage=false and prefixPackage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false, prefixPackage = false)
+
+    task.toKey(child) should be ("the/file/name.txt")
+  }
+
   it should "upload a directory to S3" in {
 
     val baseDir = createTempDir()

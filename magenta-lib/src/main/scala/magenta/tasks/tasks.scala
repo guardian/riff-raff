@@ -77,8 +77,14 @@ trait CompressedFilename {
 }
 
 
-case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlPatterns: List[PatternValue] = Nil, prefixStage: Boolean = true) extends Task with S3 {
-  private val base = file.getParent + "/"
+case class S3Upload( stage: Stage,
+                     bucket: String,
+                     file: File,
+                     cacheControlPatterns: List[PatternValue] = Nil,
+                     prefixStage: Boolean = true,
+                     prefixPackage: Boolean = true) extends Task with S3 {
+
+  private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
 
   private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
   def description = describe
@@ -100,7 +106,7 @@ case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlPatter
   }
 
   def toRelative(file: File) = file.getAbsolutePath.replace(base, "")
-  def toKey(file: File) = stage.name + "/" + toRelative(file)
+  def toKey(file: File) = (if (prefixStage) stage.name + "/" else "") + toRelative(file)
 
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
 
