@@ -9,6 +9,7 @@ import magenta.{ApiCredentials, FailException, KeyRing, Package}
 import moschops.FastlyAPIClient
 import com.ning.http.client.{ListenableFuture, FluentCaseInsensitiveStringsMap, Response}
 import scala.io.Source
+import com.gu.FastlyAPIClient
 
 class FastlyTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 

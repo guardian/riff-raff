@@ -1,11 +1,11 @@
 package magenta.tasks
 
 import magenta.{MessageBroker, KeyRing, Package}
-import moschops.FastlyAPIClient
 import org.apache.commons.io.FileUtils
 import com.ning.http.client.Response
 import scala.collection.JavaConversions._
 import net.liftweb.json._
+import com.gu.FastlyAPIClient
 
 
 case class UpdateFastlyConfig(pkg: Package,
@@ -79,8 +79,7 @@ case class UpdateFastlyConfig(pkg: Package,
       }
       vclsToAdd.foreach {
         case (vclName, vclContent) =>
-          // TODO: what is id?
-          if (fails(fastlyApiClient.vclUpload(vclContent, "id", vclName, currVersion).get)) return
+          if (fails(fastlyApiClient.vclUpload(vclContent, vclContent, vclName, currVersion).get)) return
       }
 
       val vclsToUpdate = vclsToAddOrUpdate.filter {
