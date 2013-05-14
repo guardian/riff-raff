@@ -47,17 +47,31 @@ private abstract case class PackageAction(pkg: Package, actionName: String) exte
 case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   val name = "aws-s3"
 
+  override val defaultData = Map[String, JValue](
+    "prefixStage" -> true
+  )
+
   lazy val staticDir = pkg.srcDir.getPath + "/"
 
+  lazy val prefixStage = pkg.booleanData("prefixStage")
+
   //required configuration, you cannot upload without setting these
-  lazy val bucket = pkg.stringData("bucket")
-  lazy val cacheControl = pkg.stringData("cacheControl")
+  lazy val bucket = pkg.stringDataOption("bucket")
+  lazy val bucketResource = pkg.stringDataOption("bucketResource")
+
+  lazy val cacheControl = pkg.stringDataOption("cacheControl")
+  lazy val cacheControlPatterns = cacheControl.map(cc => List(PatternValue(".*", cc))).getOrElse(pkg.arrayPatternValueData("cacheControl"))
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadStaticFiles" => (_, parameters) =>
+    case "uploadStaticFiles" => (deployInfo, parameters) =>
+      assert(bucket.isDefined != bucketResource.isDefined, "One, and only one, of bucket or bucketResource must be specified")
+      val bucketName = bucket.orElse {
+        assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")
+        bucketResource.flatMap(deployInfo.firstMatchingData(_, pkg.apps.head, parameters.stage.name)).map(_.value)
+      }
       List(
-      S3Upload(parameters.stage, bucket, new File(staticDir), Some(cacheControl))
-    )
+        S3Upload(parameters.stage, bucketName.get, new File(staticDir), cacheControlPatterns, prefixStage = prefixStage)
+      )
   }
 }
 

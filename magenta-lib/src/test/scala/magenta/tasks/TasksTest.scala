@@ -268,6 +268,30 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     verifyNoMoreInteractions(s3Client)
   }
 
+  it should "use different cache control" in {
+    val tempDir = createTempDir()
+    val baseDir = new File(tempDir, "package")
+    baseDir.mkdir()
+
+    val fileOne = new File(baseDir, "one.txt")
+    fileOne.createNewFile()
+    val fileTwo = new File(baseDir, "two.txt")
+    fileTwo.createNewFile()
+    val subDir = new File(baseDir, "sub")
+    subDir.mkdir()
+    val fileThree = new File(subDir, "three.txt")
+    fileThree.createNewFile()
+
+    val cacheControlPatterns = List(PatternValue("^package/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, cacheControlPatterns) with StubS3 {
+      override val bucket = "bucket"
+    }
+
+    task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
+  }
+
   private def createTempDir() = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
