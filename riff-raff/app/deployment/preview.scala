@@ -11,24 +11,75 @@ import magenta.Project
 import magenta.Build
 import tasks.{ Task => MagentaTask }
 import magenta.teamcity.Artifact
+import java.util.UUID
+import akka.agent.Agent
+import org.joda.time.DateTime
+import akka.actor.{Actor, Props, ActorSystem}
+
+trait PreviewResult {
+  def completed: Boolean
+}
+case class PreviewReady(preview: Preview) extends PreviewResult { val completed = true }
+case class PreviewFailed(exception: Exception) extends PreviewResult { val completed = true }
+case class PreviewInProgress(startTime: DateTime = new DateTime()) extends PreviewResult { val completed = false }
+
+object PreviewController {
+  implicit lazy val system = ActorSystem("preview")
+  val agent = Agent[Map[UUID, PreviewResult]](Map.empty)
+  lazy val actor = system.actorOf(Props[PreviewActor])
+
+  def getPreview(id: UUID, parameters: DeployParameters): PreviewResult = {
+    val result = agent().get(id)
+    result match {
+      case Some(previewResult) =>
+        if (previewResult.completed) agent.send( _ - id )
+        previewResult
+      case None =>
+        val previewResult = PreviewInProgress(new DateTime())
+        agent.send{ _ + (id -> previewResult) }
+        actor ! (id, parameters)
+        previewResult
+    }
+  }
+}
+
+class PreviewActor extends Actor {
+  def receive = {
+    case (id:UUID, parameters:DeployParameters) =>
+      try {
+        val result = Preview(parameters)
+        PreviewController.agent.send( _ + (id -> PreviewReady(result)))
+      } catch {
+        case e:Exception =>
+          PreviewController.agent.send( _ + (id -> PreviewFailed(e)))
+      }
+  }
+}
 
 object Preview {
+  def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
+  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(build) { artifactDir =>
+    Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
+  }
+  def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))
+
   /**
    * Get the project for the build for preview purposes.  The project returned will not have a valid artifactDir so
    * cannot be used for an actual deploy.
    * This is cached in the database so future previews are faster.
    */
   def getProject(build: Build): Project = {
-    val json = Persistence.store.getDeployJson(build).getOrElse {
-      Artifact.withDownload(build) { artifactDir =>
-        val json = Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
-        Persistence.store.writeDeployJson(build, json)
-        json
-      }
+    val json = getJsonFromStore(build).getOrElse {
+      val json = getJsonFromArtifact(build)
+      Persistence.store.writeDeployJson(build, json)
+      json
     }
-    JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))
+    parseJson(json)
   }
 
+  /**
+   * Get the preview, extracting the artifact if necessary - this may take a long time to run
+   */
   def apply(parameters: DeployParameters): Preview = {
     val project = Preview.getProject(parameters.build)
     Preview(project, parameters)

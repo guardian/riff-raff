@@ -1,0 +1,33 @@
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], elapsed: Long)
+
+<p><img height="16" width="16" src="@routes.Assets.at("images/ajax-loader.gif")"/>
+    @elapsed match {
+       case time if time < 10 => {
+           Resolving recipes, hosts and tasks from artifacts deploy.json file...
+       }
+       case time if time < 23 => {
+           Still resolving recipes, hosts and tasks from artifacts deploy.json file (it's tricky you know, I have to download the artifact, twiddle my thumbs and EVERYTHING)...
+       }
+       case time if time < 36 => {
+           Still resolving ALL THE THINGS...
+       }
+       case time if time < 48 => {
+           @defining(request.identity.get) { id =>
+                   @id match {
+                       case controllers.UserIdentity(_, _, firstName, _) => {
+                           Sorry, @firstName, I'm still resolving this preview - I know you have things to do and to be honest I'd actually prefer to be deploying something myself...
+                       }
+                       case _ => {
+                           Still resolving recipes, hosts and tasks from artifacts deploy.json file (it's tricky you know, I have to download the artifact and twiddle my thumbs)...
+                       }
+                   }
+           }
+       }
+       case time if time < 180 => {
+           Oh good grief this is taking FOREVER.
+       }
+       case time => {
+           Ummm, I think I may have broken - this really should have finished within a couple of minutes...
+       }
+    }
+</p>

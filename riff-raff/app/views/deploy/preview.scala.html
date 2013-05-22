@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], parameters: magenta.DeployParameters)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], parameters: magenta.DeployParameters, previewId: String)
 @import views.html.helper.magenta.ParameterHelper._
 
 @main("Preview", request, List("auto-refresh","checkbox-selection")) {
@@ -15,8 +15,8 @@
         </table>
     <div>
 
-    <div class="content" data-ajax-refresh="@parameters.previewContentCall">
-        <p><img src="@routes.Assets.at("images/ajax-loader.gif")"/> Resolving recipes, hosts and tasks from artifacts deploy.json file...</p>
+    <div class="content" data-ajax-refresh="@parameters.previewContentCall(previewId)">
+        @views.html.deploy.previewLoading(request, 0L)
     </div>
 
 }
