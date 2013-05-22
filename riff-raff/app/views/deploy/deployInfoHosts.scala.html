@@ -19,7 +19,7 @@
     <tbody>
         @deployInfo.knownHostApps(stage).filter(_.exists(_.name.matches(filter))).map { appSet =>
             <tr>
-            <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@deployInfo.stageAppToHostMap((stage,appSet)).size)</td>
             <td>
             @deployInfo.stageAppToHostMap((stage,appSet)).map{ host =>
                 @htmlTooltip(placement="left"){
