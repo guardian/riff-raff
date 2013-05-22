@@ -32,7 +32,7 @@ GET     /deployment/request/autoComplete/build/:project   controllers.Deployment
 GET     /deployment/request/history/:project   controllers.Deployment.projectHistory(project:String)
 
 GET     /deployment/preview         controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
-GET     /deployment/preview/content  controllers.Deployment.previewContent(project:String,build:String,stage:String,recipe:String,hosts:String)
+GET     /deployment/preview/content  controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
 GET     /deployment/dashboard           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)
 GET     /deployment/dashboard/content   controllers.Deployment.dashboardContent(projects:String, search:Boolean?=false)

@@ -248,18 +248,21 @@ object Deployment extends Controller with Logging {
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
-    Ok(views.html.deploy.preview(request, parameters))
+    val previewId = PreviewController.startPreview(parameters)
+    Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
 
-  def previewContent(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
-    try {
-      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-      val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
-      val previewData = Preview(parameters)
-      Ok(views.html.deploy.previewContent(request, previewData))
-    } catch {
-      case e: Throwable =>
-        Ok(views.html.errorContent(e, "Couldn't resolve preview information."))
+  def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
+    val previewUUID = UUID.fromString(previewId)
+    val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
+    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val result = PreviewController.getPreview(previewUUID, parameters)
+    result match {
+      case PreviewReady(preview) => Ok(views.html.deploy.previewContent(request, preview))
+      case PreviewFailed(exception) => Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
+      case PreviewInProgress(startTime) =>
+        val duration = new org.joda.time.Duration(startTime, new DateTime())
+        Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
     }
   }
 
