@@ -28,18 +28,18 @@ object PreviewController {
   val agent = Agent[Map[UUID, PreviewResult]](Map.empty)
   lazy val actor = system.actorOf(Props[PreviewActor])
 
+  def startPreview(parameters: DeployParameters): UUID = {
+    val previewId = UUID.randomUUID()
+    val previewResult = PreviewInProgress(new DateTime())
+    agent.send{ _ + (previewId -> previewResult) }
+    actor ! (previewId, parameters)
+    previewId
+  }
+
   def getPreview(id: UUID, parameters: DeployParameters): PreviewResult = {
-    val result = agent().get(id)
-    result match {
-      case Some(previewResult) =>
-        if (previewResult.completed) agent.send( _ - id )
-        previewResult
-      case None =>
-        val previewResult = PreviewInProgress(new DateTime())
-        agent.send{ _ + (id -> previewResult) }
-        actor ! (id, parameters)
-        previewResult
-    }
+    val result = agent()(id)
+    if (result.completed) agent.send( _ - id )
+    result
   }
 }
 

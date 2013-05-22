@@ -248,7 +248,8 @@ object Deployment extends Controller with Logging {
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
-    Ok(views.html.deploy.preview(request, parameters, UUID.randomUUID.toString))
+    val previewId = PreviewController.startPreview(parameters)
+    Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
 
   def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
