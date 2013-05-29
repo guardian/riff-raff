@@ -1,21 +1,18 @@
 package magenta.teamcity
 
-import java.io.File
+import java.io.{FileOutputStream, File}
 import dispatch.classic.{StatusCode, :/, Logger, Http}
 import magenta.{Build, MessageBroker}
 import dispatch.classic.Request._
 import scalax.file.Path
 import scalax.file.ImplicitConversions.defaultPath2jfile
 import scala.util.Try
-import java.util.zip.ZipInputStream
-import scalax.io.Resource
-import scalax.io.JavaConverters._
-import scala.annotation.tailrec
+import magenta.tasks.CommandLine
 
 object Artifact {
 
   def download(build: Build): File = {
-    val dir = Path.createTempDirectory()
+    val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
     download(dir, build)
     dir
   }
@@ -35,27 +32,10 @@ object Artifact {
     MessageBroker.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, dir.getAbsolutePath))
 
     try {
-      http(tcUrl >> { is =>
-        val zip = new ZipInputStream(is)
-
-        @tailrec
-        def next() {
-          val entry = zip.getNextEntry()
-          if(entry != null) {
-            val name = entry.getName
-            val target = new File(dir, name)
-            if(entry.isDirectory)
-              Path(target).createDirectory()
-            else
-              Resource.fromFile(target).doCopyFrom(zip.asUnmanagedInput)
-            target.setLastModified(entry.getTime)
-            zip.closeEntry()
-            next()
-          }
-        }
-        next()
-        zip.close()
-      })
+      val artifact = Path.createTempFile(prefix = "riffraff-artifact-", suffix = ".zip")
+      http(tcUrl >>> new FileOutputStream(artifact))
+      CommandLine("unzip" :: "-q" :: "-d" :: dir.getAbsolutePath :: artifact.getAbsolutePath :: Nil).run()
+      artifact.delete()
       MessageBroker.verbose("Extracted files")
     } catch {
       case StatusCode(404, _) =>
@@ -66,12 +46,9 @@ object Artifact {
   }
 
   def withDownload[T](build: Build)(block: File => T): T = {
-    val tempDir = Path.createTempDirectory(prefix="riffraff-", suffix="")
-    val result = Try {
-      download(tempDir, build)
-      block(tempDir)
-    }
-    tempDir.deleteRecursively(continueOnFailure = true)
+    val tempDir = Try { download(build) }
+    val result = tempDir.map(block)
+    tempDir.map(dir => Path(dir).deleteRecursively(continueOnFailure = true))
     result.get
   }
 }
