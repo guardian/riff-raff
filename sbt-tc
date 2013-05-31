@@ -6,13 +6,20 @@ if [ ! -d "$SBT_BOOT_DIR" ]; then
   mkdir -p $SBT_BOOT_DIR
 fi
 
+DOMAIN=`hostname -d`
+
+if [ "$DOMAIN" = "gc2.dc1.gnm" ]; then
+    PROXY_CONF=""
+else
+    PROXY_CONF="-Dhttp.proxyHost=devproxy.gul3.gnl -Dhttp.proxyPort=3128"
+fi
+
 cat /dev/null | java -Xmx1G -XX:MaxPermSize=250m -XX:+UseCompressedOops \
     -Dsbt.log.noformat=true \
     -Dbuild.configuation.name="$TEAMCITY_BUILDCONF_NAME" \
     -Dbuild.number="$BUILD_NUMBER" \
     -Dbuild.vcs.number="$BUILD_VCS_NUMBER" \
     -Dsbt.boot.directory=$SBT_BOOT_DIR \
-    -Dhttp.proxyHost=devproxy.gul3.gnl\
-    -Dhttp.proxyPort=3128 \
+    $PROXY_CONF \
     -jar sbt-launch-*.jar "$@"
 
