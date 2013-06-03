@@ -46,7 +46,7 @@ case class CompressedCopy(host: Host, source: Option[File], dest: String) extend
 
   def verbose: String = description
 
-  override val taskHost = host
+  override val taskHost = Some(host)
 }
 
 trait CompositeTask extends Task {
