@@ -83,6 +83,7 @@ POST    /testing/actionUUID   controllers.Testing.actionUUID
 GET     /testing/view/:uuid controllers.Testing.debugLogViewer(uuid)
 GET     /testing/addStringUUID  controllers.Testing.transferAllUUIDs
 GET     /testing/testcharset    controllers.Testing.testcharset
+GET     /testing/deployinfo     controllers.Testing.hosts
 GET     /teamcity       controllers.Deployment.teamcity
 
 # Javascript routing

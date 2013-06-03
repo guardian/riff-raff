@@ -3,7 +3,7 @@ package controllers
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import deployment.{DeployV2Record, TaskType}
+import deployment.{DeployInfoManager, DeployV2Record, TaskType}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
@@ -81,6 +81,8 @@ object Testing extends Controller with Logging {
     )(TestForm.apply)
       (TestForm.unapply)
   )
+
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${DeployInfoManager.deployInfo.hosts.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>

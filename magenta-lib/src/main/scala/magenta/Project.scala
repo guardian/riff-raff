@@ -7,6 +7,16 @@ import java.util.UUID
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty))
+
+  def transpose[A](xs: List[List[A]]): List[List[A]] = xs.filter(_.nonEmpty) match {
+    case Nil => Nil
+    case ys: List[List[A]] => ys.map{ _.head }::transpose(ys.map{ _.tail })
+  }
+
+  def transposeHostsByGroup(hosts: List[Host]): List[Host] = {
+    val listOfGroups = hosts.groupBy(_.tags.get("group").getOrElse("")).toList.sortBy(_._1).map(_._2)
+    transpose(listOfGroups).fold(Nil)(_ ::: _)
+  }
 }
 
 case class DeployInfo(input:DeployInfoJsonInputFile) {
@@ -44,7 +54,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile) {
   def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
   def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
 
-  def stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage,host.apps))
+  lazy val stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage,host.apps)).mapValues(DeployInfo.transposeHostsByGroup)
   def stageAppToDataMap(key: String): Map[(String,String),List[Data]] = data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
 
   def firstMatchingData(key: String, app:App, stage:String): Option[Data] = {
