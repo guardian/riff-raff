@@ -52,8 +52,11 @@ object Resolver {
         }
       }
 
+      val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
+      val taskHostsInOriginalOrder = deployInfo.hosts.filter(h => taskHosts.contains(h.copy(connectAs = None)))
+      val groupedHosts = DeployInfo.transposeHostsByGroup(taskHostsInOriginalOrder)
       val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
-        t.taskHost.map(h => deployInfo.hosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
+        t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
       )
 
       RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)

@@ -18,7 +18,7 @@
                             <div><em>No hosts</em></div>
                         }
                         @recipeTasks.hosts.map { host =>
-                            <div class="no-hyphenation">@host.name</div>
+                            <div class="no-hyphenation">@snippets.hostWithTooltip(host, placement="right")</div>
                         }
                 </td>
                 <td>
