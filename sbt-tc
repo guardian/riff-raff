@@ -6,8 +6,8 @@ if [ ! -d "$SBT_BOOT_DIR" ]; then
   mkdir -p $SBT_BOOT_DIR
 fi
 
+# look at the domain we are on and set up the proxy config in response
 DOMAIN=`hostname -d`
-
 if [ "$DOMAIN" = "gc2.dc1.gnm" ]; then
     PROXY_CONF=""
 else
