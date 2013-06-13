@@ -106,6 +106,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
         DoubleSize(pkg.name, parameters.stage),
         WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         ResumeAlarmNotifications(pkg.name, parameters.stage)
       )
     }
