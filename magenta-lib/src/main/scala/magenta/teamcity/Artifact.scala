@@ -26,7 +26,7 @@ object Artifact {
       }
     }
 
-    val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
+    val tcUrl = :/("teamcity.guprod.gnm", 80) / "guestAuth" / "repository" / "download" /
         encode_%(build.projectName) / build.id / "artifacts.zip"
 
     MessageBroker.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, dir.getAbsolutePath))
