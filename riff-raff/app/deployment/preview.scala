@@ -15,6 +15,7 @@ import java.util.UUID
 import akka.agent.Agent
 import org.joda.time.DateTime
 import akka.actor.{Actor, Props, ActorSystem}
+import conf.Configuration
 
 trait PreviewResult {
   def completed: Boolean
@@ -58,7 +59,7 @@ class PreviewActor extends Actor {
 
 object Preview {
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(build) { artifactDir =>
+  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(Configuration.teamcity.serverURL, build) { artifactDir =>
     Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
   }
   def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))

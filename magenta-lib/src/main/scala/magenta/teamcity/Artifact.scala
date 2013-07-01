@@ -1,23 +1,26 @@
 package magenta.teamcity
 
 import java.io.{FileOutputStream, File}
-import dispatch.classic.{StatusCode, :/, Logger, Http}
+import dispatch.classic._
 import magenta.{Build, MessageBroker}
 import dispatch.classic.Request._
 import scalax.file.Path
 import scalax.file.ImplicitConversions.defaultPath2jfile
 import scala.util.Try
 import magenta.tasks.CommandLine
+import java.net.URL
+import dispatch.classic.StatusCode
+import magenta.Build
 
 object Artifact {
 
-  def download(build: Build): File = {
+  def download(teamcity: Option[URL], build: Build): File = {
     val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
-    download(dir, build)
+    download(teamcity, dir, build)
     dir
   }
 
-  def download(dir: File, build: Build) {
+  def download(teamcity: Option[URL], dir: File, build: Build) {
     MessageBroker.info("Downloading artifact")
     val http = new Http {
       override def make_logger = new Logger {
@@ -26,7 +29,9 @@ object Artifact {
       }
     }
 
-    val tcUrl = :/("teamcity.guprod.gnm", 80) / "guestAuth" / "repository" / "download" /
+    if (teamcity.isEmpty) MessageBroker.fail("Don't know where to get artifact - no teamcity URL set")
+
+    val tcUrl = url(teamcity.get.toString) / "guestAuth" / "repository" / "download" /
         encode_%(build.projectName) / build.id / "artifacts.zip"
 
     MessageBroker.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, dir.getAbsolutePath))
@@ -45,8 +50,8 @@ object Artifact {
     http.shutdown()
   }
 
-  def withDownload[T](build: Build)(block: File => T): T = {
-    val tempDir = Try { download(build) }
+  def withDownload[T](teamcity: Option[URL], build: Build)(block: File => T): T = {
+    val tempDir = Try { download(teamcity, build) }
     val result = tempDir.map(block)
     tempDir.map(dir => Path(dir).deleteRecursively(continueOnFailure = true))
     result.get
