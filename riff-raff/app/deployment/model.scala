@@ -9,6 +9,7 @@ import org.joda.time.{Interval, DateTime, Duration}
 import ci.ContinuousIntegration
 import utils.VCSInfo
 import magenta.teamcity.Artifact
+import conf.Configuration
 
 object TaskType extends Enumeration {
   val Deploy = Value("Deploy")
@@ -63,7 +64,7 @@ trait Record {
     MessageBroker.deployContext(uuid, parameters) { block }
   }
   def withDownload[T](block: File => T): T = {
-    Artifact.withDownload(parameters.build)(block)
+    Artifact.withDownload(Configuration.teamcity.serverURL, parameters.build)(block)
   }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
