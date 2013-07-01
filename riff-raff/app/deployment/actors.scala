@@ -18,6 +18,7 @@ import concurrent.Await
 import akka.util.Timeout
 import scalax.file.Path
 import magenta.teamcity.Artifact
+import conf.Configuration
 
 object DeployControlActor extends Logging {
   trait Event
@@ -227,7 +228,7 @@ class TaskRunner extends Actor with Logging {
     case PrepareDeploy(record, loggingContext) =>
       try {
         MessageBroker.withContext(loggingContext) {
-          val artifactDir = Artifact.download(record.parameters.build)
+          val artifactDir = Artifact.download(Configuration.teamcity.serverURL, record.parameters.build)
           MessageBroker.info("Reading deploy.json")
           val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
           val context = record.parameters.toDeployContext(record.uuid, project, DeployInfoManager.deployInfo)
