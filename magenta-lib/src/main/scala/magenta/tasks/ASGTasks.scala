@@ -1,7 +1,7 @@
 package magenta.tasks
 
-import magenta.{Build, MessageBroker, Stage, KeyRing}
-import com.amazonaws.services.autoscaling.model.{Instance, AutoScalingGroup}
+import magenta.{MessageBroker, Stage, KeyRing}
+import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 
 case class CheckGroupSize(packageName: String, stage: Stage) extends ASGTask {
@@ -33,6 +33,17 @@ case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
 
   lazy val description = "Double the size of the auto-scaling group for package: %s, stage: %s" format (
     packageName, stage.name)
+}
+
+case class HealthcheckGrace(duration: Long) extends Task {
+
+  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+    Thread.sleep(duration)
+  }
+
+  def verbose: String = s"Wait extra ${duration}ms to let Load Balancer report correctly"
+
+  def description = verbose
 }
 
 case class WaitForStabilization(packageName: String, stage: Stage, duration: Long) extends ASGTask
