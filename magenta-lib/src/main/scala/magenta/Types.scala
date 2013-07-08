@@ -91,7 +91,8 @@ case class AutoScaling(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
-    "secondsToWait" -> 15 * 60
+    "secondsToWait" -> 15 * 60,
+    "healthcheckGrace" -> 0
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
@@ -104,6 +105,8 @@ case class AutoScaling(pkg: Package) extends PackageType {
         SuspendAlarmNotifications(pkg.name, parameters.stage),
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        HealthcheckGrace(pkg.intData("healthcheckGrace").toInt * 1000),
         WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
         WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
