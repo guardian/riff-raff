@@ -40,6 +40,9 @@
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
         <td>@Some(record.parameters.hostList.size).filter(_ != 0).getOrElse(Html(""))</td>
         <td>
+            @htmlTooltip(placement="left"){
+                @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
+            }{
             @defining(record.taskType) { taskType =>
                 @taskType match {
                     case TaskType.Deploy => { }
@@ -52,6 +55,7 @@
             case RunState.Failed => { <span class="label label-important">Failed</span> }
             case RunState.NotRunning => { <span class="label">Waiting</span> }
             case _ => {<span class="label label-info">Running</span>}
+            }
             }
             }
         </td>
