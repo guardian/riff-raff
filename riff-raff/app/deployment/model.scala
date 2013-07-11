@@ -16,6 +16,11 @@ object TaskType extends Enumeration {
   val Preview = Value("Preview")
 }
 
+object Record {
+  val RIFFRAFF_HOSTNAME = "riffraff-hostname"
+  val RIFFRAFF_DOMAIN = "riffraff-domain"
+}
+
 trait Record {
   def time: DateTime
   def taskType: TaskType.Value

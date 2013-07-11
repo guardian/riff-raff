@@ -10,6 +10,9 @@
 <div class="row-fluid">
 <div class="span8">
 <h2>@record.taskType of deploy for @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
+@record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
+    <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
+}
 </div>
 <div class="span4">
 @if(record.isStalled) {

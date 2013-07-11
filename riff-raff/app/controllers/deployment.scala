@@ -50,8 +50,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def create(recordType: TaskType.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val hostNameMetadata = Map("riffraff-domain" -> conf.Configuration.domains.identityName,
-                               "riffraff-hostname" -> java.net.InetAddress.getLocalHost.getHostName)
+    val hostNameMetadata = Map(Record.RIFFRAFF_DOMAIN -> conf.Configuration.domains.identityName,
+                               Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = DeployV2Record(recordType, uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
