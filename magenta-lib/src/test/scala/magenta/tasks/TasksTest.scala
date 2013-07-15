@@ -181,7 +181,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "foo", "some-host", "ls -l")))
   }
 
-  it should "specify custom remote shell for rsync if key-file specified" in {
+  "CopyFile task" should "specify custom remote shell for rsync if key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
     val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
@@ -197,6 +197,21 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv /source foo.com:/dest""")
   }
 
+  it should "honour additive mode" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.ADDITIVE_MODE)
+
+    val command = task.commandLine(KeyRing(SystemUser(None)))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv /source foo.com:/dest""")
+  }
+
+  it should "honour mirror mode" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.MIRROR_MODE)
+
+    val command = task.commandLine(KeyRing(SystemUser(None)))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv --delete --delete-after /source foo.com:/dest""")
+  }
 
   "S3Upload task" should "upload a single file to S3" in {
 

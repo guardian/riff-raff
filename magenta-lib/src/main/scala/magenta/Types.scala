@@ -155,13 +155,15 @@ abstract class WebappPackageType extends PackageType {
     "servicename" -> pkg.name,
     "waitseconds" -> 60,
     "checkseconds" -> 120,
-    "checkUrlReadTimeoutSeconds" -> 5
+    "checkUrlReadTimeoutSeconds" -> 5,
+    "copyRoots" -> JArray(List("")),
+    "copyMode" -> "additive"
   )
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
   lazy val serviceName = pkg.stringData("servicename")
-  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val packageArtifactDir = pkg.srcDir.getPath
   lazy val bucket = pkg.stringData("bucket")
   lazy val waitDuration = pkg.intData("waitseconds").toLong.seconds
   lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
@@ -171,17 +173,26 @@ abstract class WebappPackageType extends PackageType {
     else paths
   }
   lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
+  val TRAILING_SLASH = """^(.*/)$""".r
+  lazy val copyRoots = pkg.arrayStringData("copyRoots").map{ root =>
+    root match {
+      case "" => root
+      case TRAILING_SLASH(withSlash) => withSlash
+      case noTrailingSlash => s"$noTrailingSlash/"
+    }
+  }
+  lazy val copyMode = pkg.stringData("copyMode")
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
       host => {
-        List(
-        BlockFirewall(host as user),
-        CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
-        Restart(host as user, serviceName),
-        WaitForPort(host, port, waitDuration),
-        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
-        UnblockFirewall(host as user))
+        BlockFirewall(host as user) ::
+        copyRoots.map(root => CopyFile(host as user, s"$packageArtifactDir/$root", s"/$containerName-apps/$serviceName/$root", copyMode)) :::
+        Restart(host as user, serviceName) ::
+        WaitForPort(host, port, waitDuration) ::
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds) ::
+        UnblockFirewall(host as user) ::
+        Nil
       }
     }
     case "restart" => {
