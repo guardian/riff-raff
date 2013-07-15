@@ -171,17 +171,19 @@ abstract class WebappPackageType extends PackageType {
     else paths
   }
   lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
+  lazy val predeployDeleteFiles = pkg.arrayStringData("predeployDeleteFiles")
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
       host => {
-        List(
-        BlockFirewall(host as user),
-        CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
-        Restart(host as user, serviceName),
-        WaitForPort(host, port, waitDuration),
-        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
-        UnblockFirewall(host as user))
+        val targetContainerDir = "/%s-apps/%s/" format(containerName, serviceName)
+        BlockFirewall(host as user) ::
+        predeployDeleteFiles.map(targetToDelete => DeleteFile(host as user, s"${targetContainerDir}${targetToDelete}")) :::
+        CopyFile(host as user, packageArtifactDir, targetContainerDir) ::
+        Restart(host as user, serviceName) ::
+        WaitForPort(host, port, waitDuration) ::
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds) ::
+        UnblockFirewall(host as user) :: Nil
       }
     }
     case "restart" => {

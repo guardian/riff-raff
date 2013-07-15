@@ -319,6 +319,12 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
+  "delete file task" should "use rm to delete the target" in {
+    val deletingFiles = DeleteFile(Host("some-host"), "/test/dir")
+    val command = deletingFiles.remoteCommandLine
+    command.quoted should be ("""ssh -qtt -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no some-host "rm /test/dir"""")
+  }
+
   private def createTempDir() = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
