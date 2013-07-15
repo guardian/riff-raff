@@ -228,4 +228,9 @@ case class Mkdir(host: Host, path: String) extends RemoteShellTask {
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
+case class DeleteFile(host: Host, target: String) extends RemoteShellTask {
+  def commandLine = List("rm", s"${target}")
+
+  override def fullDescription = s"${super.fullDescription}:${target}"
+}
 
