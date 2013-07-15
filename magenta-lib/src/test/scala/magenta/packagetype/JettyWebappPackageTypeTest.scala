@@ -88,6 +88,33 @@ class JettyWebappPackageTypeTest  extends FlatSpec with ShouldMatchers {
     ) and contain[Task] (
       Restart(host as "jetty", "microapps")
     ))
+  }
 
+  it should "have useful default copyRoots" in {
+    val p = Package("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
+    val jetty = new JettyWebappPackageType(p)
+    jetty.copyRoots should be(List(""))
+  }
+
+  it should "add missing slashes" in {
+    val p = Package("webapp", Set.empty, Map("copyRoots" -> JArray(List("solr/conf/", "webapp"))), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val jetty = new JettyWebappPackageType(p)
+    jetty.copyRoots should be(List("solr/conf/", "webapp/"))
+  }
+
+  it should "have multiple copy file tasks for multiple roots in mirror mode" in {
+    val p = Package("d2index", Set.empty, Map("copyRoots" -> JArray(List("solr/conf/", "webapp")), "copyMode" -> CopyFile.MIRROR_MODE), "jetty-webapp", new File("/tmp/packages/d2index"))
+    val jetty = new JettyWebappPackageType(p)
+    val host = Host("host_name")
+
+    jetty.perHostActions("deploy")(host) should be (List(
+      BlockFirewall(host as "jetty"),
+      CopyFile(host as "jetty", "/tmp/packages/d2index/solr/conf/", "/jetty-apps/d2index/solr/conf/", CopyFile.MIRROR_MODE),
+      CopyFile(host as "jetty", "/tmp/packages/d2index/webapp/", "/jetty-apps/d2index/webapp/", CopyFile.MIRROR_MODE),
+      Restart(host as "jetty", "d2index"),
+      WaitForPort(host, "8080", 1 minute),
+      CheckUrls(host, "8080", List("/d2index/management/healthcheck"), 2 minutes, 5),
+      UnblockFirewall(host as "jetty")
+    ))
   }
 }

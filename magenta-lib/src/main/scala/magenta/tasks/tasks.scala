@@ -16,11 +16,23 @@ object CommandLocator {
   def conditional(binary: String) = List("if", "[", "-f", rootPath+"/"+binary, "];", "then", rootPath+"/"+binary,";", "fi" )
 }
 
-case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
+object CopyFile {
+  val ADDITIVE_MODE = "additive"
+  val MIRROR_MODE = "mirror"
+  lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
+}
+case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
-  def commandLine = List("rsync", "-rpv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = {
+    val rsyncOptions = copyMode match {
+      case CopyFile.ADDITIVE_MODE => List("-rpv")
+      case CopyFile.MIRROR_MODE => List("-rpv", "--delete", "--delete-after")
+      case _ => throw new IllegalArgumentException(s"Unknown copyMode: $copyMode (use one of ${CopyFile.MODES.mkString(",")})")
+    }
+    "rsync" :: rsyncOptions ::: source :: s"${host.connectStr}:$dest" :: Nil
+  }
   def commandLine(keyRing: KeyRing): CommandLine = {
     val keyFileArgs = keyRing.sshCredentials.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
     val shellCommand = CommandLine("ssh" :: noHostKeyChecking ::: keyFileArgs ::: Nil).quoted
