@@ -240,10 +240,17 @@ case class FilePackageType(pkg: Package) extends PackageType {
 
 case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   lazy val name = "django-webapp"
-  override lazy val defaultData = Map[String, JValue]("port" -> "80", "user" -> "django")
+  override lazy val defaultData = Map[String, JValue]("port" -> "80",
+    "user" -> "django",
+    "checkseconds" -> 120,
+    "checkUrlReadTimeoutSeconds" -> 5
+  )
 
   lazy val user = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
+  lazy val healthCheckPaths = pkg.arrayStringData("healthcheck_paths")
+  lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
+  lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
 
   // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
   lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
@@ -257,6 +264,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         Link(host as user, appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
         ApacheGracefulRestart(host as user),
         WaitForPort(host, port, 1 minute),
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
         UnblockFirewall(host as user)
       )
     }
