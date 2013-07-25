@@ -86,6 +86,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
       ApacheGracefulRestart(host as "django"),
       WaitForPort(host, "80", 1 minute),
+      CheckUrls(host, "80", List.empty, 120000, 5),
       UnblockFirewall(host as "django")
     ))
   }
