@@ -11,7 +11,7 @@
             <tr><td><strong>Build</strong></td><td>@parameters.build.id</td></tr>
             <tr><td><strong>Stage</strong></td><td>@parameters.stage.name</td></tr>
             <tr><td><strong>Recipe</strong></td><td>@parameters.recipe.name</td></tr>
-            <tr><td><strong>Hosts</strong></td><td>@if(parameters.hostList.isEmpty) { <em>All hosts</em> } else { @parameters.hostList..mkString(", ") }</td></tr>
+            <tr><td><strong>Hosts</strong></td><td>@if(parameters.hostList.isEmpty) { <em>All hosts</em> } else { @parameters.hostList.mkString(", ") }</td></tr>
         </table>
     <div>
 
