@@ -285,3 +285,11 @@ case class DemoPackageType(pkg: Package) extends PackageType {
     )
   }
 }
+
+case class UpdateFastlyConfigPackageType(pkg: Package) extends PackageType {
+  val name = "fastly-config"
+
+  override def perAppActions: AppActionDefinition = {
+    case anything => (_, parameters) => List(UpdateFastlyConfig(pkg))
+  }
+}

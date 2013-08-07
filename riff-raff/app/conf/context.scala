@@ -47,6 +47,13 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
   }
 
+  object credentials {
+    def lookup(service: String, id:String) = {
+      val secret = configuration.getStringProperty("credentials.%s.%s" format (service, id)).getOrException("No secret configured for %s.%s" format (service, id))
+      ApiCredentials(service, id, secret)
+    }
+  }
+
   object deployinfo {
     lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
     lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
