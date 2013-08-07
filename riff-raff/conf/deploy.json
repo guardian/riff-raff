@@ -2,6 +2,7 @@
     "packages":{
         "riff-raff":{
             "type":"executable-jar-webapp",
+            "apps":["deploy::node"],
             "data":{
                 "port":"8080",
                 "healthcheck_paths":[

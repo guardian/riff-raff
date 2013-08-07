@@ -4,7 +4,7 @@ import java.io.File
 import tasks._
 import fixtures._
 import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.{JValue, JString, JArray}
+import net.liftweb.json.JsonAST.JValue
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
@@ -24,7 +24,10 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", Stage("PROD")),
       WaitForStabilization("app", PROD, 15 * 60 * 1000),
+      HealthcheckGrace(0),
+      WaitForStabilization("app", PROD, 15 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
+      WaitForStabilization("app", PROD, 15 * 60 * 1000),
       ResumeAlarmNotifications("app", PROD)
     ))
   }
@@ -32,7 +35,8 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
   "seconds to wait" should "be overridable" in {
     val data: Map[String, JValue] = Map(
       "bucket" -> "asg-bucket",
-      "secondsToWait" -> 3 * 60
+      "secondsToWait" -> 3 * 60,
+      "healthcheckGrace" -> 30
     )
 
     val p = Package("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
@@ -45,7 +49,10 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", PROD),
       WaitForStabilization("app", PROD, 3 * 60 * 1000),
+      HealthcheckGrace(30000),
+      WaitForStabilization("app", PROD, 3 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
+      WaitForStabilization("app", PROD, 3 * 60 * 1000),
       ResumeAlarmNotifications("app", PROD)
     ))
   }

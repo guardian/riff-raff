@@ -181,7 +181,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "foo", "some-host", "ls -l")))
   }
 
-  it should "specify custom remote shell for rsync if key-file specified" in {
+  "CopyFile task" should "specify custom remote shell for rsync if key-file specified" in {
     val task = CopyFile(Host("foo.com"), "/source", "/dest")
 
     val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
@@ -197,6 +197,21 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv /source foo.com:/dest""")
   }
 
+  it should "honour additive mode" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.ADDITIVE_MODE)
+
+    val command = task.commandLine(KeyRing(SystemUser(None)))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv /source foo.com:/dest""")
+  }
+
+  it should "honour mirror mode" in {
+    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.MIRROR_MODE)
+
+    val command = task.commandLine(KeyRing(SystemUser(None)))
+
+    command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv --delete --delete-after /source foo.com:/dest""")
+  }
 
   "S3Upload task" should "upload a single file to S3" in {
 
@@ -242,6 +257,33 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.toKey(child) should be ("CODE/bar/the/file/name.txt")
   }
 
+  it should "correctly convert a file to a key with prefixStage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false)
+
+    task.toKey(child) should be ("bar/the/file/name.txt")
+  }
+
+  it should "correctly convert a file to a key with prefixPackage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixPackage = false)
+
+    task.toKey(child) should be ("CODE/the/file/name.txt")
+  }
+
+  it should "correctly convert a file to a key with prefixStage=false and prefixPackage=false" in {
+    val baseDir = new File("/foo/bar/something").getParentFile
+    val child = new File(baseDir, "the/file/name.txt")
+
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false, prefixPackage = false)
+
+    task.toKey(child) should be ("the/file/name.txt")
+  }
+
   it should "upload a directory to S3" in {
 
     val baseDir = createTempDir()
@@ -266,6 +308,30 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
     verifyNoMoreInteractions(s3Client)
+  }
+
+  it should "use different cache control" in {
+    val tempDir = createTempDir()
+    val baseDir = new File(tempDir, "package")
+    baseDir.mkdir()
+
+    val fileOne = new File(baseDir, "one.txt")
+    fileOne.createNewFile()
+    val fileTwo = new File(baseDir, "two.txt")
+    fileTwo.createNewFile()
+    val subDir = new File(baseDir, "sub")
+    subDir.mkdir()
+    val fileThree = new File(subDir, "three.txt")
+    fileThree.createNewFile()
+
+    val cacheControlPatterns = List(PatternValue("^package/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, cacheControlPatterns) with StubS3 {
+      override val bucket = "bucket"
+    }
+
+    task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
+    task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
   private def createTempDir() = {

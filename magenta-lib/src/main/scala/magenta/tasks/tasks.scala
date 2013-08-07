@@ -16,11 +16,23 @@ object CommandLocator {
   def conditional(binary: String) = List("if", "[", "-f", rootPath+"/"+binary, "];", "then", rootPath+"/"+binary,";", "fi" )
 }
 
-case class CopyFile(host: Host, source: String, dest: String) extends ShellTask {
+object CopyFile {
+  val ADDITIVE_MODE = "additive"
+  val MIRROR_MODE = "mirror"
+  lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
+}
+case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
-  def commandLine = List("rsync", "-rpv", source, "%s:%s" format(host.connectStr, dest))
+  def commandLine = {
+    val rsyncOptions = copyMode match {
+      case CopyFile.ADDITIVE_MODE => List("-rpv")
+      case CopyFile.MIRROR_MODE => List("-rpv", "--delete", "--delete-after")
+      case _ => throw new IllegalArgumentException(s"Unknown copyMode: $copyMode (use one of ${CopyFile.MODES.mkString(",")})")
+    }
+    "rsync" :: rsyncOptions ::: source :: s"${host.connectStr}:$dest" :: Nil
+  }
   def commandLine(keyRing: KeyRing): CommandLine = {
     val keyFileArgs = keyRing.sshCredentials.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
     val shellCommand = CommandLine("ssh" :: noHostKeyChecking ::: keyFileArgs ::: Nil).quoted
@@ -45,6 +57,8 @@ case class CompressedCopy(host: Host, source: Option[File], dest: String) extend
     (source.getOrElse("Unknown"), host.connectStr, dest)
 
   def verbose: String = description
+
+  override val taskHost = Some(host)
 }
 
 trait CompositeTask extends Task {
@@ -77,29 +91,38 @@ trait CompressedFilename {
 }
 
 
-case class S3Upload(stage: Stage, bucket: String, file: File, cacheControlHeader: Option[String] = None) extends Task with S3 {
-  private val base = file.getParent + "/"
+case class S3Upload( stage: Stage,
+                     bucket: String,
+                     file: File,
+                     cacheControlPatterns: List[PatternValue] = Nil,
+                     prefixStage: Boolean = true,
+                     prefixPackage: Boolean = true) extends Task with S3 {
+
+  private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
 
   private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
   def description = describe
   def verbose = describe
 
+  lazy val filesToCopy = resolveFiles(file)
+
+  lazy val totalSize = filesToCopy.map(_.length).sum
+
+  lazy val requests = filesToCopy map { file =>
+    putObjectRequestWithPublicRead(bucket, toKey(file), file, cacheControlLookup(toRelative(file)))
+  }
+
   def execute(keyRing: KeyRing, stopFlag: =>  Boolean)  {
     val client = s3client(keyRing)
-    val filesToCopy = resolveFiles(file)
-
-    val totalSize = filesToCopy.map(_.length).fold(0L)(_ + _)
-
-    val requests = filesToCopy map { file =>
-      putObjectRequestWithPublicRead(bucket, toKey(file), file, cacheControlHeader)
-    }
-
     MessageBroker.verbose("Starting upload of %d files (%d bytes) to S3" format (requests.size, totalSize))
     requests.par foreach { client.putObject }
     MessageBroker.verbose("Finished upload of %d files to S3" format requests.size)
   }
 
-  def toKey(file: File) = stage.name + "/" + file.getAbsolutePath.replace(base, "")
+  def toRelative(file: File) = file.getAbsolutePath.replace(base, "")
+  def toKey(file: File) = (if (prefixStage) stage.name + "/" else "") + toRelative(file)
+
+  def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
 
   private def resolveFiles(file: File): Seq[File] =
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct

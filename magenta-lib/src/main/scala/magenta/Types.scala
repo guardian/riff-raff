@@ -47,17 +47,43 @@ private abstract case class PackageAction(pkg: Package, actionName: String) exte
 case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   val name = "aws-s3"
 
+  override val defaultData = Map[String, JValue](
+    "prefixStage" -> true,
+    "prefixPackage" -> true
+  )
+
   lazy val staticDir = pkg.srcDir.getPath + "/"
 
+  lazy val prefixStage = pkg.booleanData("prefixStage")
+  lazy val prefixPackage = pkg.booleanData("prefixPackage")
+
   //required configuration, you cannot upload without setting these
-  lazy val bucket = pkg.stringData("bucket")
-  lazy val cacheControl = pkg.stringData("cacheControl")
+  lazy val bucket = pkg.stringDataOption("bucket")
+  lazy val bucketResource = pkg.stringDataOption("bucketResource")
+
+  lazy val cacheControl = pkg.stringDataOption("cacheControl")
+  lazy val cacheControlPatterns = cacheControl.map(cc => List(PatternValue(".*", cc))).getOrElse(pkg.arrayPatternValueData("cacheControl"))
 
   override val perAppActions: AppActionDefinition = {
-    case "uploadStaticFiles" => (_, parameters) =>
+    case "uploadStaticFiles" => (deployInfo, parameters) =>
+      assert(bucket.isDefined != bucketResource.isDefined, "One, and only one, of bucket or bucketResource must be specified")
+      val bucketName = bucket.orElse {
+        assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")
+        bucketResource.map{ resource =>
+          val data = deployInfo.firstMatchingData(resource, pkg.apps.head, parameters.stage.name)
+          assert(data.isDefined, s"Cannot find resource value for $resource (${pkg.apps.head} in ${parameters.stage.name})")
+          data.get
+        }.map(_.value)
+      }
       List(
-      S3Upload(parameters.stage, bucket, new File(staticDir), Some(cacheControl))
-    )
+        S3Upload(parameters.stage,
+          bucketName.get,
+          new File(staticDir),
+          cacheControlPatterns,
+          prefixStage = prefixStage,
+          prefixPackage = prefixPackage
+        )
+      )
   }
 }
 
@@ -65,7 +91,8 @@ case class AutoScaling(pkg: Package) extends PackageType {
   val name = "auto-scaling-with-ELB"
 
   override val defaultData = Map[String, JValue](
-    "secondsToWait" -> 15 * 60
+    "secondsToWait" -> 15 * 60,
+    "healthcheckGrace" -> 0
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
@@ -79,7 +106,10 @@ case class AutoScaling(pkg: Package) extends PackageType {
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
         WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        HealthcheckGrace(pkg.intData("healthcheckGrace").toInt * 1000),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
         ResumeAlarmNotifications(pkg.name, parameters.stage)
       )
     }
@@ -125,13 +155,15 @@ abstract class WebappPackageType extends PackageType {
     "servicename" -> pkg.name,
     "waitseconds" -> 60,
     "checkseconds" -> 120,
-    "checkUrlReadTimeoutSeconds" -> 5
+    "checkUrlReadTimeoutSeconds" -> 5,
+    "copyRoots" -> JArray(List("")),
+    "copyMode" -> "additive"
   )
 
   lazy val user: String = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
   lazy val serviceName = pkg.stringData("servicename")
-  lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
+  lazy val packageArtifactDir = pkg.srcDir.getPath
   lazy val bucket = pkg.stringData("bucket")
   lazy val waitDuration = pkg.intData("waitseconds").toLong.seconds
   lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
@@ -141,17 +173,26 @@ abstract class WebappPackageType extends PackageType {
     else paths
   }
   lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
+  val TRAILING_SLASH = """^(.*/)$""".r
+  lazy val copyRoots = pkg.arrayStringData("copyRoots").map{ root =>
+    root match {
+      case "" => root
+      case TRAILING_SLASH(withSlash) => withSlash
+      case noTrailingSlash => s"$noTrailingSlash/"
+    }
+  }
+  lazy val copyMode = pkg.stringData("copyMode")
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
       host => {
-        List(
-        BlockFirewall(host as user),
-        CopyFile(host as user, packageArtifactDir, "/%s-apps/%s/" format (containerName, serviceName)),
-        Restart(host as user, serviceName),
-        WaitForPort(host, port, waitDuration),
-        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
-        UnblockFirewall(host as user))
+        BlockFirewall(host as user) ::
+        copyRoots.map(root => CopyFile(host as user, s"$packageArtifactDir/$root", s"/$containerName-apps/$serviceName/$root", copyMode)) :::
+        Restart(host as user, serviceName) ::
+        WaitForPort(host, port, waitDuration) ::
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds) ::
+        UnblockFirewall(host as user) ::
+        Nil
       }
     }
     case "restart" => {
@@ -199,10 +240,17 @@ case class FilePackageType(pkg: Package) extends PackageType {
 
 case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   lazy val name = "django-webapp"
-  override lazy val defaultData = Map[String, JValue]("port" -> "80", "user" -> "django")
+  override lazy val defaultData = Map[String, JValue]("port" -> "80",
+    "user" -> "django",
+    "checkseconds" -> 120,
+    "checkUrlReadTimeoutSeconds" -> 5
+  )
 
   lazy val user = pkg.stringData("user")
   lazy val port = pkg.stringData("port")
+  lazy val healthCheckPaths = pkg.arrayStringData("healthcheck_paths")
+  lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
+  lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
 
   // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
   lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
@@ -216,6 +264,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         Link(host as user, appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
         ApacheGracefulRestart(host as user),
         WaitForPort(host, port, 1 minute),
+        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
         UnblockFirewall(host as user)
       )
     }

@@ -1,26 +1,26 @@
 package magenta.teamcity
 
-import java.io.File
-import dispatch.classic.{StatusCode, :/, Logger, Http}
+import java.io.{FileOutputStream, File}
+import dispatch.classic._
 import magenta.{Build, MessageBroker}
 import dispatch.classic.Request._
 import scalax.file.Path
 import scalax.file.ImplicitConversions.defaultPath2jfile
 import scala.util.Try
-import java.util.zip.ZipInputStream
-import scalax.io.Resource
-import scalax.io.JavaConverters._
-import scala.annotation.tailrec
+import magenta.tasks.CommandLine
+import java.net.URL
+import dispatch.classic.StatusCode
+import magenta.Build
 
 object Artifact {
 
-  def download(build: Build): File = {
-    val dir = Path.createTempDirectory()
-    download(dir, build)
+  def download(teamcity: Option[URL], build: Build): File = {
+    val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
+    download(teamcity, dir, build)
     dir
   }
 
-  def download(dir: File, build: Build) {
+  def download(teamcity: Option[URL], dir: File, build: Build) {
     MessageBroker.info("Downloading artifact")
     val http = new Http {
       override def make_logger = new Logger {
@@ -29,33 +29,18 @@ object Artifact {
       }
     }
 
-    val tcUrl = :/("teamcity.gudev.gnl", 8111) / "guestAuth" / "repository" / "download" /
+    if (teamcity.isEmpty) MessageBroker.fail("Don't know where to get artifact - no teamcity URL set")
+
+    val tcUrl = url(teamcity.get.toString) / "guestAuth" / "repository" / "download" /
         encode_%(build.projectName) / build.id / "artifacts.zip"
 
     MessageBroker.verbose("Downloading from %s to %s..." format (tcUrl.to_uri, dir.getAbsolutePath))
 
     try {
-      http(tcUrl >> { is =>
-        val zip = new ZipInputStream(is)
-
-        @tailrec
-        def next() {
-          val entry = zip.getNextEntry()
-          if(entry != null) {
-            val name = entry.getName
-            val target = new File(dir, name)
-            if(entry.isDirectory)
-              Path(target).createDirectory()
-            else
-              Resource.fromFile(target).doCopyFrom(zip.asUnmanagedInput)
-            target.setLastModified(entry.getTime)
-            zip.closeEntry()
-            next()
-          }
-        }
-        next()
-        zip.close()
-      })
+      val artifact = Path.createTempFile(prefix = "riffraff-artifact-", suffix = ".zip")
+      http(tcUrl >>> new FileOutputStream(artifact))
+      CommandLine("unzip" :: "-q" :: "-d" :: dir.getAbsolutePath :: artifact.getAbsolutePath :: Nil).run()
+      artifact.delete()
       MessageBroker.verbose("Extracted files")
     } catch {
       case StatusCode(404, _) =>
@@ -65,13 +50,10 @@ object Artifact {
     http.shutdown()
   }
 
-  def withDownload[T](build: Build)(block: File => T): T = {
-    val tempDir = Path.createTempDirectory(prefix="riffraff-", suffix="")
-    val result = Try {
-      download(tempDir, build)
-      block(tempDir)
-    }
-    tempDir.deleteRecursively(continueOnFailure = true)
+  def withDownload[T](teamcity: Option[URL], build: Build)(block: File => T): T = {
+    val tempDir = Try { download(teamcity, build) }
+    val result = tempDir.map(block)
+    tempDir.map(dir => Path(dir).deleteRecursively(continueOnFailure = true))
     result.get
   }
 }

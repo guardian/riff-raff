@@ -27,8 +27,8 @@ $ ->
     input.autocomplete
       source: (request,response) ->
         $.getJSON(
-          serverUrl+'/'+encodeURIComponent(selectedProject),
-          term: request.term.split( /,\s*/).pop(),
+          serverUrl,
+          {term: request.term.split( /,\s*/).pop(), project: selectedProject},
           response
         )
       open: (event,ui) -> menuOpen = true

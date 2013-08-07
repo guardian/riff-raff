@@ -19,22 +19,10 @@
     <tbody>
         @deployInfo.knownHostApps(stage).filter(_.exists(_.name.matches(filter))).map { appSet =>
             <tr>
-            <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@deployInfo.stageAppToHostMap((stage,appSet)).size)</td>
             <td>
             @deployInfo.stageAppToHostMap((stage,appSet)).map{ host =>
-                @htmlTooltip(placement="left"){
-                    <table>
-                        <tbody>
-                            @host.tags.map { case (key, value) =>
-                                <tr>
-                                    <td><strong>@key:</strong></td><td>@value</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }{
-                    @host.name
-                }
+                @snippets.hostWithTooltip(host, placement="left")
             }
             </td>
             </tr>

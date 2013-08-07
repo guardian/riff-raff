@@ -6,7 +6,7 @@ import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.JValue
+import net.liftweb.json.JsonAST._
 import fixtures._
 
 
@@ -24,7 +24,28 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
     val deploy = AmazonWebServicesS3(p)
 
     deploy.perAppActions("uploadStaticFiles")(deployinfoSingleHost, parameters(Stage("CODE"))) should be (
-      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),Some("no-cache")))
+      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+    )
+  }
+
+  it should "take a pattern list for cache control" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "bucket-1234",
+      "cacheControl" -> JArray(List(
+        JObject(List(JField("pattern", JString("^sub")), JField("value", JString("no-cache")))),
+        JObject(List(JField("pattern", JString(".*")), JField("value", JString("public; max-age:3600"))))
+      ))
+    )
+
+    val p = Package("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+
+    val deploy = AmazonWebServicesS3(p)
+
+    deploy.perAppActions("uploadStaticFiles")(deployinfoSingleHost, parameters(Stage("CODE"))) should be (
+      List(
+        S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
+          List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
+      )
     )
   }
   
@@ -65,6 +86,7 @@ class PackageTypeTest extends FlatSpec with ShouldMatchers {
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
       ApacheGracefulRestart(host as "django"),
       WaitForPort(host, "80", 1 minute),
+      CheckUrls(host, "80", List.empty, 120000, 5),
       UnblockFirewall(host as "django")
     ))
   }

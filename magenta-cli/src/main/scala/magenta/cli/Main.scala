@@ -15,6 +15,7 @@ import scalax.file.ImplicitConversions.defaultPath2jfile
 import scalax.file.ImplicitConversions.jfile2path
 import scala.util.Try
 import magenta.teamcity.Artifact
+import java.net.URL
 
 object Main extends scala.App {
 
@@ -47,6 +48,8 @@ object Main extends scala.App {
   MessageBroker.subscribe(sink)
 
   object Config {
+
+    var teamcityUrl: Option[URL] = Some(new URL("http://teamcity.guprod.gnm"))
 
     var project: Option[String] = None
     var build: Option[String] = None
@@ -109,7 +112,8 @@ object Main extends scala.App {
     opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
 
     separator("\n")
-
+    opt("teamcityUrl", s"URL of the teamcity server from which to download artifacts (e.g. ${Config.teamcityUrl.toString}})",
+      { teamcityUrl => Config.teamcityUrl = Some(new URL(teamcityUrl)) })
     arg("<stage>", "Stage to deploy (e.g. TEST)", { s => Config.stage = s })
     argOpt("<project>", "TeamCity project name (e.g. tools::stats-aggregator)", { p => Config.project = Some(p) })
     argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
@@ -144,7 +148,7 @@ object Main extends scala.App {
             MessageBroker.info("Making temporary copy of local artifact: %s" format file)
             file.copyTo(Path(tmpDir))
           } getOrElse {
-            Artifact.download(tmpDir, build)
+            Artifact.download(Config.teamcityUrl, tmpDir, build)
           }
 
           MessageBroker.info("Loading project file...")

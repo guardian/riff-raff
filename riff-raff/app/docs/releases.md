@@ -1,5 +1,65 @@
 ### Release notes
 
+#### 16th July 2013
+
+Enhance the CopyFile task and Webapp types in order to allow multiple roots to be copied independently and allow
+mirroring to be done (thus not leaving old files on the target machines).
+
+Two new properties are now on the webapp types. `copyRoots` is an array of directories to copy from the package
+directory in the artifact.zip. `copyMode` can be set to `additive` (default) or `mirror`.  In `mirror` mode, the
+files are mirrored to the destination and any files present on the target but not in the source directory will be
+removed.
+
+#### 8th July 2013
+
+Record the details of the node that actually executes the deploy in the database so we can keep a history (primarily
+for migration).
+
+Introduce a grace period when doing an autoscaling deploy in order to work around a but in the AWS ELB
+service. See https://forums.aws.amazon.com/thread.jspa?messageID=457489 for info on the problem. We work
+around it by pausing briefly before asking for the status of the ELB backends which seems to ensure
+we have a reliable answer from the API.
+
+#### 1st July 2013
+
+Modify the way the config is set up to ensure that the TeamCity location is not hardcoded.
+
+#### 3rd June 2013
+
+Magenta is now smarter in the way it orders hosts. Previously it didn't modify the order of hosts that was
+passed in through deployinfo. However, it is better if we alternate between datacentres. Riff-Raff will now
+use the `group` provided by deployinfo and ensure that the order of hosts alternate between different groups.
+
+#### 29th May 2013
+
+Replaced the Java unzip process with a call out to the local Linux command.  This was primarily done
+ so that file permissions are preserved, but it is also a damn sight faster as there is no longer a need to
+ buffer the entire file in RAM.
+
+Also worked around a bug caused by the MarkDown rendering library not being thread safe.
+
+#### 22nd May 2013
+
+Reworked the preview functionality in order to prevent dog-piling.  Prior to this work, if a preview took longer
+than the ZXTM timeout, multiple previews would be fired off in the background - often causing Riff-Raff to
+stop responding for a short period of time.
+
+#### 13th May 2013
+
+Added more fine grained control to the S3Upload task, mainly for the Pasteup project.
+
+You can now specify boolean properties `prefixStage` and `prefixPackage` (both true by default) which
+can be used to disable the stage and/or package names being prefixed to the key of each file
+being uploaded into an S3 bucket.
+
+The property `bucketResource` can be specified instead of `bucket` in order to lookup the name of the bucket
+from the deployinfo resource data instead of using a hard coded value.
+
+Finally, the `cacheControl` property can be an array of dicts containing `pattern` and `value` keys.  Each
+file to be uploaded is matched against regular expressions provided in the `pattern` key (in the order of the
+array). The `value` key of the first match is used for the cache control for that key in the bucket. If no match
+is found, then no cache control is explicitly set.
+
 #### 10th May 2013
 
 Migrate from play 2 to 2.1 (and also scala 2.9 to 2.10).

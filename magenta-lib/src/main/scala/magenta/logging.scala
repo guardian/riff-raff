@@ -118,12 +118,17 @@ object MessageBroker {
   }
 
   def sendContext[T](message: Message)(block: => T): T = {
-    val contextUUID = UUID.randomUUID()
-    send(StartContext(message), contextUUID)
-    withContext(MessageBrokerContext(message :: messageStack.value, messageContext.value.copy(parentId = Some(contextUUID)))) {
-      val result = block
-      send(FinishContext(message))
-      result
+    Option(messageContext.value) match {
+      case Some(context) =>
+        val contextUUID = UUID.randomUUID()
+        send(StartContext(message), contextUUID)
+        withContext(MessageBrokerContext(message :: messageStack.value, context.copy(parentId = Some(contextUUID)))) {
+          val result = block
+          send(FinishContext(message))
+          result
+        }
+      case None =>
+        block
     }
   }
 

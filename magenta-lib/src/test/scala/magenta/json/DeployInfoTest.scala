@@ -28,12 +28,85 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
     val host = parsed.hosts(0)
     host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE.name, tags = Map("group" -> "a")))
-//
-//     host.group should be ("a")
-//     host.hostname should be ("machost01.dc-code.gnl")
-//     host.app should be ("microapp-cache")
-//     host.stage should be ("CODE")
    }
+
+  "host transposing" should "retain host ordering with no groups" in {
+    val hosts = List(Host("test1"), Host("test2"), Host("test3"))
+    DeployInfo.transposeHostsByGroup(hosts) should be(hosts)
+  }
+
+  it should "retain host ordering with one group" in {
+    val hosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"one"))
+    )
+    DeployInfo.transposeHostsByGroup(hosts) should be(hosts)
+  }
+
+  it should "interleave two groups of identical length" in {
+    val hosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test4", tags=Map("group"->"two"))
+    )
+    val orderedHosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test4", tags=Map("group"->"two"))
+    )
+    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+  }
+
+  it should "interleave two groups different lengths" in {
+    val hosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test4", tags=Map("group"->"two")),
+      Host("test5", tags=Map("group"->"two"))
+    )
+    val orderedHosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test4", tags=Map("group"->"two")),
+      Host("test5", tags=Map("group"->"two"))
+    )
+    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+  }
+
+  it should "interleave three groups different lengths" in {
+    val hosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test4", tags=Map("group"->"two")),
+      Host("test5", tags=Map("group"->"three")),
+      Host("test6", tags=Map("group"->"three")),
+      Host("test7", tags=Map("group"->"one")),
+      Host("test8", tags=Map("group"->"two")),
+      Host("test9", tags=Map("group"->"one")),
+      Host("testA", tags=Map("group"->"one")),
+      Host("testB", tags=Map("group"->"three"))
+    )
+    val orderedHosts = List(
+      Host("test1", tags=Map("group"->"one")),
+      Host("test5", tags=Map("group"->"three")),
+      Host("test3", tags=Map("group"->"two")),
+      Host("test2", tags=Map("group"->"one")),
+      Host("test6", tags=Map("group"->"three")),
+      Host("test4", tags=Map("group"->"two")),
+      Host("test7", tags=Map("group"->"one")),
+      Host("testB", tags=Map("group"->"three")),
+      Host("test8", tags=Map("group"->"two")),
+      Host("test9", tags=Map("group"->"one")),
+      Host("testA", tags=Map("group"->"one"))
+    )
+    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+  }
 
   "deploy info" should "provide a distinct list of host attributes" in {
     val parsed = DeployInfoJsonReader.parse(deployInfoSample)

@@ -28,11 +28,11 @@ POST    /deployment/markAsFailed    controllers.Deployment.markAsFailed
 GET     /deployment/updates/:uuid   controllers.Deployment.updatesUUID(uuid:String)
 
 GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)
-GET     /deployment/request/autoComplete/build/:project   controllers.Deployment.autoCompleteBuild(project:String,term:String)
-GET     /deployment/request/history/:project   controllers.Deployment.projectHistory(project:String)
+GET     /deployment/request/autoComplete/build   controllers.Deployment.autoCompleteBuild(project:String,term:String)
+GET     /deployment/request/history   controllers.Deployment.projectHistory(project:String)
 
 GET     /deployment/preview         controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
-GET     /deployment/preview/content  controllers.Deployment.previewContent(project:String,build:String,stage:String,recipe:String,hosts:String)
+GET     /deployment/preview/content  controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
 GET     /deployment/dashboard           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)
 GET     /deployment/dashboard/content   controllers.Deployment.dashboardContent(projects:String, search:Boolean?=false)
@@ -83,6 +83,7 @@ POST    /testing/actionUUID   controllers.Testing.actionUUID
 GET     /testing/view/:uuid controllers.Testing.debugLogViewer(uuid)
 GET     /testing/addStringUUID  controllers.Testing.transferAllUUIDs
 GET     /testing/testcharset    controllers.Testing.testcharset
+GET     /testing/deployinfo     controllers.Testing.hosts
 GET     /teamcity       controllers.Deployment.teamcity
 
 # Javascript routing
