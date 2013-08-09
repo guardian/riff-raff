@@ -1,5 +1,9 @@
 ### Release notes
 
+#### 9th August 2013
+
+Increase the akka task executor factor to create enough runners to match the configured number of concurrent deploys.
+
 #### 16th July 2013
 
 Enhance the CopyFile task and Webapp types in order to allow multiple roots to be copied independently and allow
