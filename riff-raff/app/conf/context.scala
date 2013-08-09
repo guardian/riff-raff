@@ -47,6 +47,12 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
   }
 
+  object credentials {
+    def lookupSecret(service: String, id:String): Option[String] = {
+      configuration.getStringProperty("credentials.%s.%s" format (service, id))
+    }
+  }
+
   object deployinfo {
     lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
     lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
@@ -94,13 +100,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
 
     lazy val queueTargets: List[QueueDetails] = configuration.getStringPropertiesSplitByComma("mq.queueTargets").flatMap(QueueDetails(_))
-  }
-
-  object s3 {
-    def credentials(accessKey: String) = {
-      val secretKey = configuration.getStringProperty("s3.secretAccessKey.%s" format accessKey).getOrException("No S3 secret access key configured for %s" format accessKey)
-      S3Credentials(accessKey,secretKey)
-    }
   }
 
   object sshKey {
