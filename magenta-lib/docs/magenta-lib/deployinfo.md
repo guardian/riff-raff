@@ -26,13 +26,17 @@ values vary given different application and stage combinations.  In the example 
 `ddm`, used by applications that need to push static files onto a docroot manager (DDM).  Each stage has a single DDM
 for all apps that want to use it - tasks can look up the correct value for a key given an app and stage.
 
-Another example is the `aws-keys` key.  This is used by the S3 upload task for authenticating against the AWS APIs.
+Another example is the `credentials:aws` key.  This is used by the AWS tasks for authenticating against the AWS APIs.
+The `credentials:` form is special and will be used to form a key-ring passed to deployments. The value is only the user
+id, the secret is stored in the Riff-Raff configuration by looking up the property `credentials.<service>.<userid>`
+(service would be aws and userid would be the value looked up from deployinfo as explained below. At present, CLI
+deploys cannot use this form of authentication.
 
 Each line in a key has regular expressions for both `app` and `stage` (these must match the whole app or stage name)
 along with the `value` that should be returned if the regular expression matches and an optional `comment` field to
 describe that particular value.  In the case that two or more sets of regular expressions match, the value from the
-first in the list will be used.  This means that you can have a catch-all value at the end (as seen in the `aws-keys`
-example).
+first in the list will be used.  This means that you can have a catch-all value at the end (as seen in the
+`credentials:aws` example).
 
     {
         "hosts": [
@@ -101,7 +105,7 @@ example).
                     "value": "pasteup-bucket-name-for-code"
                 }
             ],
-            "aws-keys": [
+            "credentials:aws": [
                 {
                     "app": "frontend::.*",
                     "comment": "gu-aws-frontend riff-raff",

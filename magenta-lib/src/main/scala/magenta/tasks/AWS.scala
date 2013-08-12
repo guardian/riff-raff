@@ -156,9 +156,6 @@ trait AWS {
   lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
   def credentials(keyRing: KeyRing): BasicAWSCredentials = {
-    keyRing.apiCredentials.filter(_.service == "aws").headOption.map{ credentials =>
-      MessageBroker.verbose(s"AWS credentials using accessKey ${credentials.id}"+credentials.comment.map(c => s" ($c)").getOrElse(""))
-      new BasicAWSCredentials(credentials.id,credentials.secret)
-    }.getOrElse{ envCredentials }
+    keyRing.apiCredentials.get("aws").map{ credentials => new BasicAWSCredentials(credentials.id,credentials.secret) }.getOrElse{ envCredentials }
   }
 }

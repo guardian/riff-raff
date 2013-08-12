@@ -30,7 +30,7 @@ credentials
 -----------
 
  - `sshKey.path` - path to the passphrase free SSH key to use during deployments
- - `s3.secretAccessKey.XXXXX` - the secret access key to accompany access key `XXXXX`
+ - `credentials.<service>.XXXXX` - the secret key to accompany access key `XXXXX` for the named service (e.g. credentials.aws.ACCESSKEY=SECRETACCESSKEY)
 
 continuous integration
 ----------------------
