@@ -13,7 +13,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 {"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
 {"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"}
   ],
-  "data":{ "aws-keys": [
+  "data":{ "credentials:aws": [
   {"app":"microapp-cache", "stage":"CODE", "value":"AAA"},
   {"app":"frontend-article", "stage":"CODE", "value":"CCC"},
   {"app":"frontend-.*", "stage":"CODE", "value":"BBB"},
@@ -116,26 +116,26 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
   it should "match an exact app and stage" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("aws-keys",App("microapp-cache"),"CODE") should be(Some(Data("microapp-cache","CODE","AAA",None)))
+    di.firstMatchingData("credentials:aws",App("microapp-cache"),"CODE") should be(Some(Data("microapp-cache","CODE","AAA",None)))
   }
 
   it should "match on a regex" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("aws-keys",App("frontend-front"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-front"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
   }
 
   it should "match the first in the list" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("aws-keys",App("frontend-article"),"CODE") should be(Some(Data("frontend-article","CODE","CCC",None)))
-    di.firstMatchingData("aws-keys",App("frontend-gallery"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-article"),"CODE") should be(Some(Data("frontend-article","CODE","CCC",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-gallery"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
   }
 
   it should "not match bigger app or stage names" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("aws-keys",App("frontend-article"),"CODE2") should be(None)
-    di.firstMatchingData("aws-keys",App("frontend-article"),"NEWCODE") should be(None)
-    di.firstMatchingData("aws-keys",App("new-microapp-cache"),"CODE") should be(None)
-    di.firstMatchingData("aws-keys",App("microapp-cache-again"),"CODE") should be(None)
+    di.firstMatchingData("credentials:aws",App("frontend-article"),"CODE2") should be(None)
+    di.firstMatchingData("credentials:aws",App("frontend-article"),"NEWCODE") should be(None)
+    di.firstMatchingData("credentials:aws",App("new-microapp-cache"),"CODE") should be(None)
+    di.firstMatchingData("credentials:aws",App("microapp-cache-again"),"CODE") should be(None)
   }
 
   it should "provide a list of hosts filtered by stage" in {

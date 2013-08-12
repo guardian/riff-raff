@@ -235,6 +235,7 @@ class TaskRunner extends Actor with Logging {
           if (context.tasks.isEmpty)
             MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
           val keyRing = DeployInfoManager.keyRing(context)
+          MessageBroker.verbose(s"Keyring contents: $keyRing")
 
           sender ! DeployReady(record, artifactDir, context, keyRing)
         }

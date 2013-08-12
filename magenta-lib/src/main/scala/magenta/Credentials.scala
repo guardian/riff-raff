@@ -3,15 +3,34 @@ package magenta
 import java.io.File
 import sun.net.dns.ResolverConfiguration.Options
 
-sealed trait Credentials
-sealed trait SshCredentials {
+sealed trait Credentials {
+  def service: String
+  def comment: Option[String]
+}
+sealed trait SshCredentials extends Credentials {
+  val service = "ssh"
   def keyFile: Option[File]
+  val comment = None
 }
-case class KeyRing(sshCredentials: SshCredentials, other: List[Credentials] = Nil) {
-  lazy val s3Credentials:Option[S3Credentials] = other.filter(_.getClass == classOf[S3Credentials]).headOption.asInstanceOf[Option[S3Credentials]]
+sealed trait ApiCredentials extends Credentials {
+  def id: String
+  def secret: String
+}
+case class KeyRing(sshCredentials: SshCredentials, apiCredentials: Map[String,ApiCredentials] = Map.empty) {
+  override def toString = (sshCredentials :: apiCredentials.values.toList).mkString(", ")
 }
 
-case class S3Credentials(accessKey: String, secretAccessKey: String) extends Credentials
+case class PassphraseProvided(user: String, passphrase: String, keyFile: Option[File]) extends SshCredentials {
+  override def toString = s"$service:$user ($keyFile)"
+}
+case class SystemUser(keyFile: Option[File]) extends SshCredentials {
+  override def toString = s"$service ($keyFile)"
+}
 
-case class PassphraseProvided(user: String, passphrase: String, keyFile: Option[File]) extends SshCredentials
-case class SystemUser(keyFile: Option[File]) extends SshCredentials
+object ApiCredentials {
+  def apply(service: String, id: String, secret: String, comment: Option[String] = None): ApiCredentials =
+    DefaultApiCredentials(service, id, secret, comment)
+}
+case class DefaultApiCredentials(service: String, id: String, secret: String, comment: Option[String]) extends ApiCredentials {
+  override def toString = s"$service:$id${comment.map(c => s" ($c)").getOrElse("")}"
+}
