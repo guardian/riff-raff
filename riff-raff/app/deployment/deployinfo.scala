@@ -72,24 +72,24 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   def hostList = deployInfo.hosts
   def dataList = deployInfo.data
 
-  def credentials(stage: String, apps: Set[App]): List[Credentials] = {
+  def credentials(stage: String, apps: Set[App]): Map[String, ApiCredentials] = {
     apps.toList.flatMap {
       app => {
-        val s3Credential = deployInfo.firstMatchingData("aws-keys", app, stage).map(k => Configuration.s3.credentials(k.value))
-        val KeyPattern = """credential:(.*)""".r
-        val apiCredentials = deployInfo.data.keys flatMap {
-          key => key match {
+        val KeyPattern = """credentials:(.*)""".r
+        val apiCredentials = deployInfo.data.keys flatMap { key =>
+          key match {
             case KeyPattern(service) =>
-              deployInfo.firstMatchingData(key, app, stage).map {
-                data =>
-                  Configuration.credentials.lookup(service, data.value)
+              deployInfo.firstMatchingData(key, app, stage).flatMap { data =>
+                Configuration.credentials.lookupSecret(service, data.value).map{ secret =>
+                  (service, ApiCredentials(service, data.value, secret, data.comment))
+                }
               }
             case _ => None
           }
         }
-        apiCredentials ++ s3Credential
+        apiCredentials
       }
-    }.distinct
+    }.distinct.toMap
   }
 
   def keyRing(context:DeployContext): KeyRing = {

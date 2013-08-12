@@ -31,7 +31,7 @@ object DeployControlActor extends Logging {
       "akka.task-dispatcher.type" -> "BalancingDispatcher",
       "akka.task-dispatcher.executor" -> "thread-pool-executor",
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
-      "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> "4.0",
+      "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-max" -> ("%d" format concurrentDeploys * 2),
       "akka.task-dispatcher.throughput" -> "100"
     )
@@ -235,6 +235,7 @@ class TaskRunner extends Actor with Logging {
           if (context.tasks.isEmpty)
             MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
           val keyRing = DeployInfoManager.keyRing(context)
+          MessageBroker.verbose(s"Keyring contents: $keyRing")
 
           sender ! DeployReady(record, artifactDir, context, keyRing)
         }

@@ -11,7 +11,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
-import magenta.{ Stage, KeyRing }
+import magenta.{Stage, KeyRing}
 import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
@@ -156,6 +156,6 @@ trait AWS {
   lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
   def credentials(keyRing: KeyRing): BasicAWSCredentials = {
-    keyRing.s3Credentials.map{ c => new BasicAWSCredentials(c.accessKey,c.secretAccessKey) }.getOrElse{ envCredentials }
+    keyRing.apiCredentials.get("aws").map{ credentials => new BasicAWSCredentials(credentials.id,credentials.secret) }.getOrElse{ envCredentials }
   }
 }

@@ -48,9 +48,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object credentials {
-    def lookup(service: String, id:String) = {
-      val secret = configuration.getStringProperty("credentials.%s.%s" format (service, id)).getOrException("No secret configured for %s.%s" format (service, id))
-      ApiCredentials(service, id, secret)
+    def lookupSecret(service: String, id:String): Option[String] = {
+      configuration.getStringProperty("credentials.%s.%s" format (service, id))
     }
   }
 
@@ -101,13 +100,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
 
     lazy val queueTargets: List[QueueDetails] = configuration.getStringPropertiesSplitByComma("mq.queueTargets").flatMap(QueueDetails(_))
-  }
-
-  object s3 {
-    def credentials(accessKey: String) = {
-      val secretKey = configuration.getStringProperty("s3.secretAccessKey.%s" format accessKey).getOrException("No S3 secret access key configured for %s" format accessKey)
-      S3Credentials(accessKey,secretKey)
-    }
   }
 
   object sshKey {

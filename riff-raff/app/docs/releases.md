@@ -1,5 +1,13 @@
 ### Release notes
 
+#### 12th August 2013
+
+Change credential handling to be generic rather than based solely around S3/AWS.
+
+#### 9th August 2013
+
+Increase the akka task executor factor to create enough runners to match the configured number of concurrent deploys.
+
 #### 16th July 2013
 
 Enhance the CopyFile task and Webapp types in order to allow multiple roots to be copied independently and allow
