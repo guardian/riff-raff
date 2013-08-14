@@ -22,7 +22,6 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  // helper methods
   private def getActiveVersionNumber(client: FastlyAPIClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
       val versionsJson = client.versions().get.getResponseBody
