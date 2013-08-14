@@ -1,21 +1,24 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, KeyRing, Package}
+import magenta.{ApiCredentials, MessageBroker, KeyRing, Package}
 import com.gu.FastlyAPIClient
 import java.io.File
 import net.liftweb.json._
 
 case class UpdateFastlyConfig(pkg: Package) extends Task {
 
+  implicit val formats = DefaultFormats
+
   override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
 
-    FastlyApiClientProvider.get(keyRing).map { client =>
+    FastlyApiClientProvider.get(keyRing).map {
+      client =>
 
-      val activeVersionNumber = getActiveVersionNumber(client, stopFlag)
-      val nextVersionNumber = clone(activeVersionNumber, client, stopFlag)
-      deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag)
-      uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag)
-      activateVersion(nextVersionNumber, client, stopFlag)
+        val activeVersionNumber = getActiveVersionNumber(client, stopFlag)
+        val nextVersionNumber = clone(activeVersionNumber, client, stopFlag)
+        deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag)
+        uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag)
+        activateVersion(nextVersionNumber, client, stopFlag)
     }
   }
 
@@ -35,6 +38,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
   private def clone(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
       val cloned = client.versionClone(versionNumber).get.getResponseBody
+
       val clonedVersion = parse(cloned).extract[Version]
       MessageBroker.info("Cloned version %d".format(clonedVersion.number))
       clonedVersion.number
@@ -46,6 +50,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
   private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean) = {
     if (!stopFlag) {
       val vclListJson = client.vclList(versionNumber).get.getResponseBody
+
       val vclFilesToDelete = parse(vclListJson).extract[List[Vcl]]
       vclFilesToDelete.foreach {
         file =>
@@ -90,32 +95,32 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private implicit val formats = DefaultFormats
-  private case class Version(number: Int, active: Option[Boolean])
-  private case class Vcl(name: String)
-
   override def description: String = "Update configuration of Fastly edge-caching service"
 
   override def verbose: String = description
 
 }
 
+case class Version(number: Int, active: Option[Boolean])
+
+case class Vcl(name: String)
+
 object FastlyApiClientProvider {
-  private var fastlApiClient: Option[FastlyAPIClient] = None
+
+  private var fastlyApiClients = Map[String, FastlyAPIClient]()
 
   def get(keyRing: KeyRing): Option[FastlyAPIClient] = {
 
-    if (this.fastlApiClient.isEmpty) {
+    keyRing.apiCredentials.get("fastly").map { credentials =>
+        val serviceId = credentials.id
+        val apiKey = credentials.secret
 
-      keyRing.apiCredentials.get("fastly").map {
-        credentials => {
-          val serviceId = credentials.id
-          val apiKey = credentials.secret
-          this.fastlApiClient = Option(new FastlyAPIClient(apiKey, serviceId))
+        if (fastlyApiClients.get(serviceId).isEmpty) {
+          this.fastlyApiClients += (serviceId -> new FastlyAPIClient(apiKey, serviceId))
         }
-      }
-
+        return fastlyApiClients.get(serviceId)
     }
-    this.fastlApiClient
+
+    None
   }
 }
