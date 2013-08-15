@@ -27,7 +27,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       val versionsJson = client.versions().get.getResponseBody
       val versions = parse(versionsJson).extract[List[Version]]
       val activeVersion = versions.filter(x => x.active.getOrElse(false) == true)(0)
-      MessageBroker.info("Current activate version %d".format(activeVersion.number))
+      MessageBroker.info(s"Current activate version ${activeVersion.number}")
       activeVersion.number
     } else {
       -1
@@ -37,9 +37,8 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
   private def clone(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
       val cloned = client.versionClone(versionNumber).get.getResponseBody
-
       val clonedVersion = parse(cloned).extract[Version]
-      MessageBroker.info("Cloned version %d".format(clonedVersion.number))
+      MessageBroker.info(s"Cloned version ${clonedVersion.number}")
       clonedVersion.number
     } else {
       -1
@@ -53,7 +52,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       val vclFilesToDelete = parse(vclListJson).extract[List[Vcl]]
       vclFilesToDelete.foreach {
         file =>
-          MessageBroker.info("Deleting %s".format(file.name))
+          MessageBroker.info(s"Deleting ${file.name}")
           client.vclDelete(versionNumber, file.name).get.getResponseBody
       }
     }
@@ -65,7 +64,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       vclFilesToUpload.foreach {
         file =>
           if (file.getName.endsWith(".vcl")) {
-            MessageBroker.info("Uploading %s".format(file.getName))
+            MessageBroker.info(s"Uploading ${file.getName}")
             val vcl = scala.io.Source.fromFile(file.getAbsolutePath).mkString
             client.vclUpload(versionNumber, vcl, file.getName, file.getName)
           }
@@ -77,19 +76,19 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
   private def activateVersion(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean) = {
     if (validateNewConfigFor(versionNumber, client, stopFlag)) {
       client.versionActivate(versionNumber).get
-      MessageBroker.info("Fastly version %s is now active".format(versionNumber))
+      MessageBroker.info(s"Fastly version $versionNumber is now active")
     } else {
-      MessageBroker.fail("Error validating Fastly version %s".format(versionNumber))
+      MessageBroker.fail(s"Error validating Fastly version $versionNumber")
     }
   }
 
   private def validateNewConfigFor(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Boolean = {
     if (!stopFlag) {
 
-      MessageBroker.info("Waiting 5 seconds for the VCL to compile".format(versionNumber))
+      MessageBroker.info("Waiting 5 seconds for the VCL to compile")
       Thread.sleep(5000)
 
-      MessageBroker.info("Validating new config %s".format(versionNumber))
+      MessageBroker.info(s"Validating new config $versionNumber")
       val response = client.versionValidate(versionNumber).get
       val validationResponse = parse(response.getResponseBody) \\ "status"
       validationResponse == JString("ok")
