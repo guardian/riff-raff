@@ -1,7 +1,6 @@
 package magenta
 
 import java.io.File
-import sun.net.dns.ResolverConfiguration.Options
 
 sealed trait Credentials {
   def service: String
