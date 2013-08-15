@@ -79,15 +79,16 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       client.versionActivate(versionNumber).get
       MessageBroker.info("Fastly version %s is now active".format(versionNumber))
     } else {
-      MessageBroker.info("Error validating Fastly version %s".format(versionNumber))
+      MessageBroker.fail("Error validating Fastly version %s".format(versionNumber))
     }
   }
 
   private def validateNewConfigFor(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Boolean = {
     if (!stopFlag) {
+
       MessageBroker.info("Waiting 5 seconds for the VCL to compile".format(versionNumber))
-      // wait for the compile to complete
       Thread.sleep(5000)
+
       MessageBroker.info("Validating new congif %s".format(versionNumber))
       val response = client.versionValidate(versionNumber).get
       val validationResponse = parse(response.getResponseBody) \\ "status"
