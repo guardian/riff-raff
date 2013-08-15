@@ -11,7 +11,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
-import magenta.{MessageBroker, Stage, KeyRing}
+import magenta.{Stage, KeyRing}
 import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
