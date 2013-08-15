@@ -29,7 +29,7 @@ case class Package(
     case "demo" => DemoPackageType(this)
     case "aws-s3" => AmazonWebServicesS3(this)
     case UnzipToDocrootPackageType.name => UnzipToDocrootPackageType(this)
-    case "fastly" => UpdateFastlyConfigPackageType(this)
+    case UpdateFastlyConfigPackageType.name => UpdateFastlyConfigPackageType(this)
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 
