@@ -89,7 +89,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
       MessageBroker.info("Waiting 5 seconds for the VCL to compile".format(versionNumber))
       Thread.sleep(5000)
 
-      MessageBroker.info("Validating new congif %s".format(versionNumber))
+      MessageBroker.info("Validating new config %s".format(versionNumber))
       val response = client.versionValidate(versionNumber).get
       val validationResponse = parse(response.getResponseBody) \\ "status"
       validationResponse == JString("ok")
