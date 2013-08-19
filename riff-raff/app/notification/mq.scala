@@ -142,7 +142,7 @@ class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
     }
     channel.foreach { c =>
       if (queueDetails.isExchange) {
-        c.exchangeDeclare(queueDetails.name, "fanout")
+        c.exchangeDeclare(queueDetails.name, "fanout", true, false, null)
       } else {
         c.queueDeclare(queueDetails.name, true, false, false, null)
       }
