@@ -1,5 +1,9 @@
 ### Release notes
 
+#### 19th August 2013
+
+Add API endpoint for starting deploys.
+
 #### 12th August 2013
 
 Change credential handling to be generic rather than based solely around S3/AWS.
