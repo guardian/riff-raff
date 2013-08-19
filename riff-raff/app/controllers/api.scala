@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc.{Action, AnyContent, Controller}
+import play.api.mvc.{BodyParser, Action, AnyContent, Controller}
 import play.api.mvc.Results._
 import org.joda.time.{DateMidnight, DateTime}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -8,11 +8,14 @@ import play.api.data._
 import play.api.data.Forms._
 import java.security.SecureRandom
 import play.api.libs.json.Json.toJson
-import play.api.libs.json.{JsString, Json, JsObject, JsValue}
+import play.api.libs.json._
+import play.api.libs.functional.syntax._
 import com.mongodb.casbah.Imports._
-import deployment.{DeployFilter, DeployInfoManager}
+import deployment.{Record, DeployFilter, DeployInfoManager}
 import utils.Graph
-import magenta.RunState
+import magenta._
+import play.api.mvc.BodyParsers.parse
+import java.util.UUID
 
 case class ApiKey(
   application:String,
@@ -86,8 +89,8 @@ object ApiKeyGenerator {
 }
 
 object ApiJsonEndpoint {
-  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
-    ApiAuthAction(counter) { authenticatedRequest =>
+  def apply[A](counter: String, p: BodyParser[A])(f: AuthenticatedRequest[A] => JsValue): Action[A] = {
+    ApiAuthAction(counter, p) { authenticatedRequest =>
       val format = authenticatedRequest.queryString.get("format").toSeq.flatten
       val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
 
@@ -119,6 +122,9 @@ object ApiJsonEndpoint {
         }
       }
     }
+  }
+  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
+    this.apply(counter, parse.anyContent)(f)
   }
 }
 
@@ -211,27 +217,29 @@ object Api extends Controller with Logging {
     ))))
   }
 
+  def record2apiResponse(deploy:Record)(implicit request: AuthenticatedRequest[AnyContent]) =
+    Json.obj(
+      "time" -> deploy.time.getMillis,
+      "uuid" -> deploy.uuid.toString,
+      "taskType" -> deploy.taskType.toString,
+      "projectName" -> deploy.parameters.build.projectName,
+      "build" -> deploy.parameters.build.id,
+      "stage" -> deploy.parameters.stage.name,
+      "deployer" -> deploy.parameters.deployer.name,
+      "recipe" -> deploy.parameters.recipe.name,
+      "status" -> deploy.state.toString,
+      "logURL" -> routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL(),
+      "tags" -> toJson(deploy.allMetaData)
+    )
+
+
   def history = ApiJsonEndpoint("history") { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request)
     val count = DeployController.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
 
-    val deploys = deployList.map{ deploy =>
-      toJson(Map(
-        "time" -> toJson(deploy.time.getMillis),
-        "uuid" -> toJson(deploy.uuid.toString),
-        "taskType" -> toJson(deploy.taskType.toString),
-        "projectName" -> toJson(deploy.parameters.build.projectName),
-        "build" -> toJson(deploy.parameters.build.id),
-        "stage" -> toJson(deploy.parameters.stage.name),
-        "deployer" -> toJson(deploy.parameters.deployer.name),
-        "recipe" -> toJson(deploy.parameters.recipe.name),
-        "status" -> toJson(deploy.state.toString),
-        "logURL" -> toJson(routes.Deployment.viewUUID(deploy.uuid.toString).absoluteURL()),
-        "tags" -> toJson(deploy.allMetaData)
-      ))
-    }
+    val deploys = deployList.map{ record2apiResponse }
     val response = Map(
       "response" -> toJson(Map(
         "status" -> toJson("ok"),
@@ -264,14 +272,70 @@ object Api extends Controller with Logging {
       }
     val results = Json.parse(Serialization.write(filtered.input))
 
-    val response = Map(
-      "response" -> toJson(Map(
-        "status" -> toJson("ok"),
+    val response = Json.obj(
+      "response" -> Json.obj(
+        "status" -> "ok",
         "filter" -> toJson(query.toMap),
-        "results" -> toJson(results)
-      ))
+        "results" -> results
+      )
     )
     toJson(response)
+  }
+
+  val deployRequestReader =
+    (__ \ "project").read[String] and
+    (__ \ "build").read[String] and
+    (__ \ "stage").read[String] and
+    (__ \ "recipe").readNullable[String] and
+    (__ \ "hosts").readNullable[List[String]] tupled
+
+  def deploy = ApiJsonEndpoint("deploy", parse.json) { implicit request =>
+    deployRequestReader.reads(request.body).fold(
+      valid = { deployRequest =>
+        val (project, build, stage, recipeOption, hostsOption) = deployRequest
+        val recipe = recipeOption.map(RecipeName).getOrElse(DefaultRecipe())
+        val hosts = hostsOption.getOrElse(Nil)
+        val params = DeployParameters(
+          Deployer(request.identity.get.fullName),
+          Build(project, build),
+          Stage(stage),
+          recipe,
+          hosts
+        )
+        val deployId = DeployController.deploy(params)
+        Json.obj(
+          "response" -> Json.obj(
+            "status" -> "ok",
+            "request" -> Json.obj(
+              "project" -> project,
+              "build" -> build,
+              "stage" -> stage,
+              "recipe" -> recipe.name,
+              "hosts" -> toJson(hosts)
+            ),
+            "uuid" -> deployId.toString
+          )
+        )
+      },
+      invalid = { error =>
+        Json.obj(
+          "response" -> Json.obj(
+            "status" -> "error",
+            "errors" -> JsError.toFlatJson(error)
+          )
+        )
+      }
+    )
+  }
+
+  def view(uuid: String) = ApiJsonEndpoint("viewDeploy") { implicit request =>
+    val record = DeployController.get(UUID.fromString(uuid), fetchLog = false)
+    Json.obj(
+      "response" -> Json.obj(
+        "status" -> "ok",
+        "deploy" -> record2apiResponse(record)
+      )
+    )
   }
 
 }

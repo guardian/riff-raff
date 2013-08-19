@@ -71,6 +71,8 @@ POST    /apiKeys/delete             controllers.Api.delete
 
 GET     /api/history                controllers.Api.history
 GET     /api/deployinfo             controllers.Api.deployinfo
+GET     /api/deploy/view            controllers.Api.view(uuid:String)
+POST    /api/deploy/request         controllers.Api.deploy
 
 GET     /api/historyGraph                controllers.Api.historyGraph
 

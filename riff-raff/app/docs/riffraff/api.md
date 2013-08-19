@@ -67,3 +67,61 @@ The parameters that can be supplied are the same as those on the history web UI 
   * `task` - `Deploy` or `Preview`
   * `project` - Case insensitive search by project
   * `deployer` - The name of the deployer as it appears on the search results
+
+Deploy view endpoint
+--------------------
+
+`api/deploy/view?uuid=<uuid>`
+
+This can be used to view information for a specific deploy for which you know the UUID. The result format is the same
+as provided in the history endpoint.
+
+Deploy request endpoint
+-----------------------
+
+`api/deploy/request`
+
+This endpoint can be used to start a deploy. It has parallels with the deploy screen in the web app. To start a deploy
+you send a post with a json fragment containing your request.
+
+An example fragment (sent as `application/json`) might be:
+
+    {
+      "project":"tools::dummy-app",
+      "build":"17",
+      "stage":"INFRA",
+      "recipe":"default",
+      "hosts":["10-252-94-200.gc2.dc1.gnm"]
+    }
+
+The response you receive will contain something like this:
+
+    {
+      "response": {
+        "status":"ok",
+        "request": {
+          "project":"tools::dummy-app",
+          "build":"17",
+          "stage":"INFRA",
+          "recipe":"default",
+          "hosts":["10-252-94-200.gc2.dc1.gnm"]
+        },
+        "uuid":"42738f4a-40e2-4d82-b720-ddb4a22ad81c"
+      }
+    }
+
+`recipe` and `hosts` are optional and default to `default` and the empty list respectively.
+
+Deploy Info endpoint
+--------------------
+
+`api/deployinfo`
+
+The deployinfo endpoint provides a dump of the host and resource information that Riff-Raff has cached in memory. This
+can be used to easily find servers running your application and also to chain Riff-Raff instances together such that
+only one has to run the fairly costly API calls to retrieve the information.
+
+The following parameters can be used to filter the host results:
+  * `stage` - The stage in which the host exists
+  * `app` - The app (substring search) that the host is used for
+  * `hostList` - A comma separated list of hosts
