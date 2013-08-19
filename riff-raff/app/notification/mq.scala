@@ -194,32 +194,28 @@ object AlertaEvent {
     val build = params.build.id
     val user = params.deployer.name
 
-    case class Severity(name: String, code: Int)
-    val inform = Severity("INFORM", 6)
-    val minor = Severity("MINOR", 3)
-    val severityMap = Map( DeployEvent.Complete -> inform, DeployEvent.Fail -> minor, DeployEvent.Start -> inform)
+    val severityMap = Map( DeployEvent.Complete -> "normal", DeployEvent.Fail -> "minor", DeployEvent.Start -> "normal")
     val adjectiveMap = Map( DeployEvent.Complete -> "completed", DeployEvent.Fail -> "failed", DeployEvent.Start -> "started")
 
     new AlertaEvent(
-      "riffraff/%s" format java.net.InetAddress.getLocalHost.getHostName,
+      s"riffraff/${java.net.InetAddress.getLocalHost.getHostName}",
       "Deploys",
-      severityMap(event).name,
+      severityMap(event),
       List(project.split(":").head),
       List("release:%s" format build, "user:%s" format user),
-      "Deploy of %s %s" format (project, adjectiveMap(event)),
+      s"Deploy of $project ${adjectiveMap(event)}",
       new Date(),
-      "Release %s" format build,
+      s"Release $build",
       event.toString,
       List(environment),
-      severityMap(event).code,
       86400,
-      "%s" format project,
+      s"$project",
       DeployEvent.values.map(_.toString).toList,
-      "%s - %s %s of %s build %s" format (environment, severityMap(event).name, event, project, build),
+      s"$event of $project build $build in $environment",
       "n/a",
       "deployAlert",
       UUID.randomUUID().toString,
-      "%s%s" format (Configuration.urls.publicPrefix, routes.Deployment.viewUUID(uuid.toString).url)
+      s"${Configuration.urls.publicPrefix}${routes.Deployment.viewUUID(uuid.toString).url}"
     )
   }
 }
@@ -235,7 +231,6 @@ case class AlertaEvent(
   value: String,
   event: String,
   environment: List[String],
-  severityCode: Int,
   timeout: Int,
   resource: String,
   correlatedEvents: List[String],
