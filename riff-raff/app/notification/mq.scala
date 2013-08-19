@@ -89,7 +89,7 @@ class MessageQueueController extends Actor with Logging {
     case Init(queueDetailList) => {
       mqClients ++= queueDetailList.flatMap { queueTarget =>
         try {
-          val actor = context.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client-%s" format queueTarget.name.replace("/","-"))
+          val actor = context.actorOf(Props(new MessageQueueClient(queueTarget)), "mq-client-%s" format queueTarget.url.replace("/","-"))
           context.watch(actor)
           Some(queueTarget -> actor)
         } catch {
@@ -140,13 +140,25 @@ class MessageQueueClient(queueDetails:QueueDetails) extends Actor with Logging {
         log.error("Error initialising %s" format queueDetails,e)
         throw e
     }
-    channel.foreach(_.queueDeclare(queueDetails.queueName, true, false, false, null))
+    channel.foreach { c =>
+      if (queueDetails.isExchange) {
+        c.exchangeDeclare(queueDetails.name, "fanout")
+      } else {
+        c.queueDeclare(queueDetails.name, true, false, false, null)
+      }
+    }
     log.info("Initialisation complete to %s" format queueDetails)
   }
 
   def sendToMQ(event:AlertaEvent) {
     log.info("Sending following message to %s: %s" format (queueDetails, event))
-    channel.foreach(_.basicPublish("",queueDetails.queueName, null, event.toJson.getBytes))
+    channel.foreach { c =>
+      if (queueDetails.isExchange) {
+        c.basicPublish(queueDetails.name, "", null, event.toJson.getBytes)
+      } else {
+        c.basicPublish("",queueDetails.name, null, event.toJson.getBytes)
+      }
+    }
   }
 
   def receive = {
