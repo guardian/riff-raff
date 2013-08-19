@@ -15,12 +15,6 @@ import deployment.{Record, DeployFilter, DeployInfoManager}
 import utils.Graph
 import magenta._
 import play.api.mvc.BodyParsers.parse
-import play.api.libs.json.JsString
-import scala.Some
-import magenta.Build
-import magenta.DeployParameters
-import magenta.Deployer
-import play.api.libs.json.JsObject
 import java.util.UUID
 
 case class ApiKey(
