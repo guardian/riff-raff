@@ -112,6 +112,18 @@ The response you receive will contain something like this:
 
 `recipe` and `hosts` are optional and default to `default` and the empty list respectively.
 
+Deploy stop endpoint
+--------------------
+
+`api/deploy/stop`
+
+This endpoint can be used to cancel a deploy (as much as is possible). This sets a stop flag which is periodically
+checked by the deploy which will then abandon further tasks and sub-tasks.
+
+To use this end point send a POST request with a `uuid` parameter which has the string representation of the deploy UUID
+that you wish to stop.
+
+
 Deploy Info endpoint
 --------------------
 
