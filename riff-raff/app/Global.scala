@@ -4,7 +4,7 @@ import conf.DeployMetrics
 import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
-import notification.{TeamCityBuildPinner, HooksClient, MessageQueue, IrcClient}
+import notification.{Alerta, TeamCityBuildPinner, HooksClient, IrcClient}
 import persistence.SummariseDeploysHousekeeping
 import play.api.mvc.{Result, RequestHeader, WithFilters}
 import play.api.mvc.Results.InternalServerError
@@ -24,7 +24,7 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
       DeployInfoManager,
       DeployController,
       IrcClient,
-      MessageQueue,
+      Alerta,
       ContinuousDeployment,
       DeployMetrics,
       HooksClient,

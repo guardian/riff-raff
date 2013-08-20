@@ -30,6 +30,12 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object alerta {
+    lazy val isConfigured = !endpoints.isEmpty
+
+    lazy val endpoints: List[String] = configuration.getStringPropertiesSplitByComma("alerta.endpoints")
+  }
+
   object auth {
     lazy val openIdUrl: String = configuration.getStringProperty("auth.openIdUrl").getOrException("No authentication URL configured")
     lazy val domains: List[String] = configuration.getStringPropertiesSplitByComma("auth.domains")
@@ -83,25 +89,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val isConfigured = uri.isDefined
     lazy val uri = configuration.getStringProperty("mongo.uri")
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
-  }
-
-  object mq {
-    lazy val isConfigured = !queueTargets.isEmpty
-
-    case class QueueDetails(url: String, hostname:String, port:Int, name:String, isExchange:Boolean)
-    object QueueDetails {
-      private lazy val QueueTarget = """^(.+):(\d+)(/exchange)?/(.+)$""".r
-      def apply(server:String): Option[QueueDetails] = { server match {
-        case QueueTarget(hostname, port, exchangeName, queueName) =>
-          val isExchange = Option(exchangeName).isDefined
-          Some(QueueDetails(server, hostname, port.toInt, queueName, isExchange))
-        case _ =>
-          log.warn("Couldn't parse queue target: %s" format server)
-          None
-      } }
-    }
-
-    lazy val queueTargets: List[QueueDetails] = configuration.getStringPropertiesSplitByComma("mq.queueTargets").flatMap(QueueDetails(_))
   }
 
   object sshKey {
