@@ -14,21 +14,22 @@ import magenta.DeployParameters
 import deployment.TaskType
 import play.api.libs.ws.WS
 import play.api.libs.json._
+import lifecycle.LifecycleWithoutApp
 
 /*
  Send deploy events to alerta (and graphite)
  */
 
-object Alerta extends Logging {
+object Alerta extends Logging with LifecycleWithoutApp {
   trait Event
   case class Notify(event: JsValue) extends Event
 
   private lazy val system = ActorSystem("notify")
   val actor = try {
-      Some(system.actorOf(Props[AlertaController], "mq-controller"))
+      Some(system.actorOf(Props[AlertaController], "alerta-controller"))
     } catch {
       case t:Throwable =>
-        log.error("Couldn't start MQ controller", t)
+        log.error("Couldn't start Alerta controller", t)
         None
     }
 
@@ -50,6 +51,14 @@ object Alerta extends Logging {
           case _ =>
         }
     }
+  }
+
+  def init() {
+    MessageBroker.subscribe(sink)
+  }
+
+  def shutdown() {
+    MessageBroker.unsubscribe(sink)
   }
 }
 
@@ -97,17 +106,13 @@ object AlertaEvent {
       "service" -> List(project.split(":").head),
       "tags" -> List("release:%s" format build, "user:%s" format user),
       "text" -> s"Deploy of $project ${adjectiveMap(event)}",
-      "createTime" -> new Date(),
       "value" -> s"Release $build",
       "event" -> event.toString,
       "environment" -> List(environment),
-      "timeout" -> 86400,
       "resource" -> s"$project",
       "correlatedEvents" -> DeployEvent.values.map(_.toString).toList,
       "summary" -> s"$event of $project build $build in $environment",
-      "thresholdInfo" -> "n/a",
       "type" -> "deployAlert",
-      "id" -> UUID.randomUUID().toString,
       "moreInfo" -> s"${Configuration.urls.publicPrefix}${routes.Deployment.viewUUID(uuid.toString).url}"
     )
   }
