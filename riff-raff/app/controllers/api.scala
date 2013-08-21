@@ -313,7 +313,8 @@ object Api extends Controller with Logging {
               "recipe" -> recipe.name,
               "hosts" -> toJson(hosts)
             ),
-            "uuid" -> deployId.toString
+            "uuid" -> deployId.toString,
+            "logURL" -> routes.Deployment.viewUUID(deployId.toString).absoluteURL()
           )
         )
       },
@@ -335,6 +336,24 @@ object Api extends Controller with Logging {
         "status" -> "ok",
         "deploy" -> record2apiResponse(record)
       )
+    )
+  }
+
+  def stop = ApiJsonEndpoint("stopDeploy") { implicit request =>
+    Form("uuid" -> nonEmptyText).bindFromRequest.fold(
+      errors => throw new IllegalArgumentException("No UUID specified"),
+      uuid => {
+        val record = DeployController.get(UUID.fromString(uuid), fetchLog = false)
+        assert(!record.isDone, "Can't stop a deploy that has already completed")
+        DeployController.stop(UUID.fromString(uuid), request.identity.get.fullName)
+        Json.obj(
+          "response" -> Json.obj(
+            "status" -> "ok",
+            "message" -> "Set stop flag for deploy",
+            "uuid" -> uuid
+          )
+        )
+      }
     )
   }
 

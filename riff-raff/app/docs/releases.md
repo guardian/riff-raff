@@ -1,5 +1,9 @@
 ### Release notes
 
+#### 20th August 2013
+
+Add API endpoint for stopping deploys.
+
 #### 19th August 2013
 
 Add API endpoint for starting deploys.
