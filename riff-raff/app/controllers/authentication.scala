@@ -40,7 +40,7 @@ object UserIdentity {
 }
 
 case class ApiIdentity(apiKey: ApiKey) extends Identity {
-  lazy val fullName = apiKey.application
+  lazy val fullName = s"API:${apiKey.application}"
 }
 
 case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime)
