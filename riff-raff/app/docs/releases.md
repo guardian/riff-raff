@@ -1,5 +1,9 @@
 ### Release notes
 
+#### 21st August 2013
+
+Add variable substitutions to hook URLs such that build numbers and projects can be encoded into the URL that is called.
+
 #### 20th August 2013
 
 Add API endpoint for stopping deploys.
