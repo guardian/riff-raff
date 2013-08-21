@@ -9,3 +9,13 @@ You configure a hook by mapping a project name and stage to a URL.  It is also p
  modifying the enabled state.
 
 Post deploy hooks allow you to instruct riff-raff to make a GET request to a URL after a deploy has completed.
+
+You can expand the following variables in your URLs by using this syntax: `%deploy.<variable>%`
+
+  * `build`
+  * `project`
+  * `stage`
+  * `recipe`
+  * `hosts` (comma separated list of hosts)
+  * `deployer`
+  * `uuid`
