@@ -62,35 +62,25 @@ trait BuildWatcher {
   def newBuilds(builds: List[Build])
 }
 
-object TeamCityBuilds extends LifecycleWithoutApp with Logging {
-  val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
-  val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
-  val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
+trait LocatorWatcher {
+  def locator: BuildLocator
+  def newBuilds(builds: List[Build])
+}
 
-  private val listeners = mutable.Buffer[BuildWatcher]()
-  def subscribe(sink: BuildWatcher) { listeners += sink }
-  def unsubscribe(sink: BuildWatcher) { listeners -= sink }
+trait BuildTracker {
+  def builds: List[Build]
+  def shutdown()
+}
 
-  def notifyListeners(newBuilds: List[Build]) {
-    if (!newBuilds.isEmpty) {
-      buildAgent.foreach{ agent =>
-        log.info("Queueing listener notification")
-        agent.queueUpdate(Update{
-          log.info("Notifying listeners")
-          listeners.foreach{ listener =>
-            try listener.newBuilds(newBuilds)
-            catch {
-              case e:Exception => log.error("BuildWatcher threw an exception", e)
-            }
-          }
-        })
-      }
-    }
-  }
+class BuildLocatorTracker(locator: BuildLocator,
+                          fullUpdatePeriod: FiniteDuration,
+                          pollingPeriod: FiniteDuration,
+                          pollingWindow: Duration,
+                          notify: List[Build] => Unit) extends BuildTracker with Logging {
 
   private val fullUpdate = PeriodicScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
-    val builds = Await.result(getSuccessfulBuilds, 1 minute)
-    if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
+    val builds = Await.result(getBuilds, 1 minute)
+    if (!currentBuilds.isEmpty) buildAgent.queueUpdate(Update(notify((builds.toSet diff currentBuilds.toSet).toList)))
     builds
   }
 
@@ -103,16 +93,93 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
         if (newBuilds.isEmpty)
           currentBuilds
         else {
-          notifyListeners(newBuilds)
+          buildAgent.queueUpdate(Update(notify(newBuilds)))
           (currentBuilds ++ newBuilds).sortBy(-_.id)
         }
       },pollingPeriod)
     }
   }
 
-  private var buildAgent:Option[ScheduledAgent[List[Build]]] = None
+  private val buildAgent: ScheduledAgent[List[Build]] = ScheduledAgent[List[Build]](Nil, fullUpdate, incrementalUpdate)
+  def builds: List[Build] = buildAgent.apply()
 
-  def builds: List[Build] = buildAgent.map(_.apply()).getOrElse(Nil)
+  def shutdown() {
+    buildAgent.shutdown()
+  }
+
+  def getBuilds: Future[List[Build]] = {
+    log.debug(s"Getting builds matching $locator")
+    val buildTypes = BuildTypeLocator.list
+    buildTypes.flatMap { fulfilledBuildTypes =>
+      log.debug(s"Found ${fulfilledBuildTypes.size} buildTypes")
+      val allBuilds = Future.sequence(fulfilledBuildTypes.map(_.builds(locator))).map(_.flatten)
+      allBuilds.map { result =>
+        log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
+        result
+      }
+    }
+  }
+
+  def getNewBuilds(currentBuilds:List[Build]): Future[List[Build]] = {
+    val knownBuilds = currentBuilds.map(_.id).toSet
+    val buildTypeMap = currentBuilds.map(b => b.buildType.id -> b.buildType).toMap
+    val getBuildType = (buildTypeId:String) => {
+      buildTypeMap.get(buildTypeId).orElse {
+        buildAgent.queueUpdate(fullUpdate)
+        log.warn("Unknown build type %s, queuing complete refresh" format buildTypeId)
+        None
+      }
+    }
+    val pollingWindowStart = new DateTime().minus(pollingWindow)
+    log.info("Querying TC for all builds since %s" format pollingWindowStart)
+    val builds = BuildSummary.listWithLookup(BuildLocator.sinceDate(pollingWindowStart).status("SUCCESS"), getBuildType)
+    builds.map { builds =>
+      log.debug("Found %d builds since %s" format (builds.size, pollingWindowStart))
+      val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
+      log.info("Discovered builds: \n%s" format newBuilds.mkString("\n"))
+      newBuilds
+    }
+  }
+}
+
+object TeamCityBuilds extends LifecycleWithoutApp with Logging {
+  val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
+  val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
+  val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
+
+  private val listeners = mutable.Buffer[BuildWatcher]()
+  def subscribe(sink: BuildWatcher) { listeners += sink }
+  def unsubscribe(sink: BuildWatcher) { listeners -= sink }
+
+  def subscribe(sink: LocatorWatcher) {
+    if (TeamCityWS.teamcityURL.isDefined) {
+      locatorTrackers += sink -> new BuildLocatorTracker(
+          sink.locator.status("SUCCESS"),
+          fullUpdatePeriod,
+          pollingPeriod,
+          pollingWindow,
+          builds => sink.newBuilds(builds)
+        )
+    }
+  }
+  def unsubscribe(sink: LocatorWatcher) {
+    locatorTrackers -= sink
+  }
+
+  def notifyNewBuilds(newBuilds: List[Build]) = {
+    log.info("Notifying listeners")
+    listeners.foreach{ listener =>
+      try listener.newBuilds(newBuilds)
+      catch {
+        case e:Exception => log.error("BuildWatcher threw an exception", e)
+      }
+    }
+  }
+
+  private var successfulBuildTracker:Option[BuildLocatorTracker] = None
+  private var locatorTrackers = Map.empty[LocatorWatcher, BuildLocatorTracker]
+
+  def builds: List[Build] = successfulBuildTracker.map(_.builds).getOrElse(Nil)
   def build(project: String, number: String) = builds.find(b => b.buildType.fullName == project && b.number == number)
   def buildTypes: Set[BuildType] = builds.buildTypes
 
@@ -129,47 +196,20 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
     }
   }
 
-
   def init() {
     if (TeamCityWS.teamcityURL.isDefined) {
-      buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate))
+      successfulBuildTracker = Some(
+        new BuildLocatorTracker(
+          BuildLocator.status("SUCCESS"),
+          fullUpdatePeriod,
+          pollingPeriod,
+          pollingWindow,
+          notifyNewBuilds
+        )
+      )
     }
   }
 
-  def shutdown() { buildAgent.foreach(_.shutdown()) }
-
-  private def getSuccessfulBuilds: Future[List[Build]] = {
-    log.debug("Getting successful builds")
-    val buildTypes = BuildTypeLocator.list
-    buildTypes.flatMap { fulfilledBuildTypes =>
-      log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
-      val allBuilds = Future.sequence(fulfilledBuildTypes.map(_.builds(BuildLocator.status("SUCCESS")))).map(_.flatten)
-      allBuilds.map { result =>
-        log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
-        result
-      }
-    }
-  }
-
-  private def getNewBuilds(currentBuilds: List[Build]): Future[List[Build]] = {
-    val knownBuilds = currentBuilds.map(_.id).toSet
-    val buildTypeMap = currentBuilds.map(b => b.buildType.id -> b.buildType).toMap
-    val getBuildType = (buildTypeId:String) => {
-      buildTypeMap.get(buildTypeId).orElse {
-        buildAgent.foreach(_.queueUpdate(fullUpdate))
-        log.warn("Unknown build type %s, queuing complete refresh" format buildTypeId)
-        None
-      }
-    }
-    val pollingWindowStart = (new DateTime()).minus(pollingWindow)
-    log.info("Querying TC for all builds since %s" format pollingWindowStart)
-    val builds = BuildSummary.listWithLookup(BuildLocator.sinceDate(pollingWindowStart).status("SUCCESS"), getBuildType)
-    builds.map { builds =>
-      log.debug("Found %d builds since %s" format (builds.size, pollingWindowStart))
-      val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
-      log.info("Discovered builds: \n%s" format newBuilds.mkString("\n"))
-      newBuilds
-    }
-  }
+  def shutdown() { successfulBuildTracker.foreach(_.shutdown()) }
 }
 

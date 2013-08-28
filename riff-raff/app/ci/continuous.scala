@@ -16,6 +16,9 @@ import org.joda.time.DateTime
 import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
+import akka.agent.Agent
+import ci.teamcity.TeamCity.BuildLocator
+import akka.actor.ActorSystem
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -90,20 +93,53 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
   }
 }
 
-object ContinuousDeployment extends LifecycleWithoutApp {
+object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
+  val system = ActorSystem("continuous-deployment")
   var buildWatcher: Option[ContinuousDeployment] = None
+  val tagWatcherAgent = Agent[Map[ContinuousDeploymentConfig, LocatorWatcher]](Map.empty)(system)
 
   def init() {
     if (buildWatcher.isEmpty) {
       buildWatcher = Some(new ContinuousDeployment(Domains))
       buildWatcher.foreach(TeamCityBuilds.subscribe)
     }
+    updateTrackers()
+  }
+
+  def updateTrackers() {
+    val configured = Persistence.store.getContinuousDeploymentList.filter(_.trigger == Trigger.BuildTagged).toSet
+    syncTrackers(configured)
+  }
+  def syncTrackers(targetConfigs: Set[ContinuousDeploymentConfig]) {
+    tagWatcherAgent.send{ tagWatchers =>
+      val running = tagWatchers.keys.toSet
+      val deleted = running -- targetConfigs
+      deleted.foreach{ toRemove =>
+        TeamCityBuilds.unsubscribe(tagWatchers(toRemove))
+      }
+      val created = targetConfigs -- running
+      val newTrackers = created.map { toCreate =>
+        val watcher = new LocatorWatcher {
+          val buildTypeId = TeamCityBuilds.builds.find(_.buildType.fullName == toCreate.projectName)
+          if (buildTypeId.isEmpty) log.error(s"Couldn't set up tag watcher as the build type ID for ${toCreate.projectName} wasn't found")
+          val locator: BuildLocator = BuildLocator.tag(toCreate.tag.get).buildTypeId(buildTypeId.get.buildType.id)
+
+          def newBuilds(builds: List[Build]) {
+            log.info(s"I would start the deploy of $builds to ${toCreate.stage} at this point...")
+          }
+        }
+        TeamCityBuilds.subscribe(watcher)
+        toCreate -> watcher
+      }
+      tagWatchers -- deleted ++ newTrackers
+    }
   }
 
   def shutdown() {
     buildWatcher.foreach(TeamCityBuilds.unsubscribe)
     buildWatcher = None
+    syncTrackers(Set.empty)
   }
 }
 

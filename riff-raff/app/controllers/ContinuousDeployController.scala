@@ -5,7 +5,7 @@ import play.api.data.Forms._
 import play.api.data.{FormError, Mapping, Form}
 import persistence.Persistence
 import java.util.UUID
-import ci.{Trigger, ContinuousDeploymentConfig}
+import ci.{ContinuousDeployment, Trigger, ContinuousDeploymentConfig}
 import play.api.data.format.Formatter
 import play.api.data.format.Formats._
 import org.joda.time.DateTime
@@ -57,6 +57,7 @@ object ContinuousDeployController extends Controller with Logging {
           form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), form.tag, request.identity.get.fullName, new DateTime()
         )
         Persistence.store.setContinuousDeployment(config)
+        ContinuousDeployment.updateTrackers()
         Redirect(routes.ContinuousDeployController.list())
       }
     )
@@ -73,6 +74,7 @@ object ContinuousDeployController extends Controller with Logging {
         action match {
           case "delete" =>
             Persistence.store.deleteContinuousDeployment(UUID.fromString(id))
+            ContinuousDeployment.updateTrackers()
         }
       }
     )
