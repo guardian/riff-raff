@@ -17,13 +17,21 @@ import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 
+object Trigger extends Enumeration {
+  type Mode = Value
+  val SuccessfulBuild = Value(1, "Successful build")
+  val BuildTagged = Value(2, "Build tagged")
+  val Disabled = Value(0, "Disabled")
+}
+
 case class ContinuousDeploymentConfig(
   id: UUID,
   projectName: String,
   stage: String,
   recipe: String,
   branchMatcher:Option[String],
-  enabled: Boolean,
+  trigger: Trigger.Mode,
+  tag: Option[String],
   user: String,
   lastEdited: DateTime = new DateTime()
 ) {
@@ -37,6 +45,7 @@ case class ContinuousDeploymentConfig(
       !olderBuilds.exists(_.id > build.id)
     }
   }
+  lazy val enabled = trigger != Trigger.Disabled
 }
 
 object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
@@ -48,22 +57,36 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
         "projectName" -> a.projectName,
         "stage" -> a.stage,
         "recipe" -> a.recipe,
-        "enabled" -> a.enabled,
+        "triggerMode" -> a.trigger.id,
         "user" -> a.user,
         "lastEdited" -> a.lastEdited
-      ) ++ (a.branchMatcher map ("branchMatcher" -> _))
+      ) ++
+        (a.branchMatcher map ("branchMatcher" -> _)) ++
+        (a.tag map ("tag" -> _))
       values.toMap
     }
-    def fromDBO(dbo: MongoDBObject) = Some(ContinuousDeploymentConfig(
-      id = dbo.as[UUID]("_id"),
-      projectName = dbo.as[String]("projectName"),
-      stage = dbo.as[String]("stage"),
-      recipe = dbo.as[String]("recipe"),
-      enabled = dbo.as[Boolean]("enabled"),
-      user = dbo.as[String]("user"),
-      lastEdited = dbo.as[DateTime]("lastEdited"),
-      branchMatcher = dbo.getAs[String]("branchMatcher")
-    ))
+    def fromDBO(dbo: MongoDBObject) = {
+      val enabledDB = dbo.getAs[Boolean]("enabled")
+      val triggerDB = dbo.getAs[Int]("triggerMode")
+      val triggerMode = (enabledDB, triggerDB) match {
+        case (_, Some(triggerModeId)) => Trigger(triggerModeId)
+        case (Some(true), None) => Trigger.SuccessfulBuild
+        case (Some(false), None) => Trigger.Disabled
+      }
+
+      Some(ContinuousDeploymentConfig(
+        id = dbo.as[UUID]("_id"),
+        projectName = dbo.as[String]("projectName"),
+        stage = dbo.as[String]("stage"),
+        recipe = dbo.as[String]("recipe"),
+        trigger = triggerMode,
+        tag = dbo.getAs[String]("tag"),
+        user = dbo.as[String]("user"),
+        lastEdited = dbo.as[DateTime]("lastEdited"),
+        branchMatcher = dbo.getAs[String]("branchMatcher")
+      ))
+
+    }
   }
 }
 

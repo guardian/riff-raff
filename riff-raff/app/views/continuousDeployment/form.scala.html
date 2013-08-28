@@ -1,7 +1,8 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
 @import helper.twitterBootstrap2._
+@import ci.Trigger._
 
-@main("Continuous Deployment", request, List("form-autocomplete")) {
+@main("Continuous Deployment", request, List("form-autocomplete", "ci-tag-disable")) {
 
 <h2>Continuous Deployment Configuration</h2>
 <hr/>
@@ -20,7 +21,13 @@ options = helper.options(deployment.DeployInfoManager.stageList.reverse),
 )
 @helper.inputText(configForm("recipe"), '_label -> "Recipe to Execute")
 @helper.inputText(configForm("branchMatcher"), '_label -> "Branch RegEx")
-@helper.checkbox(configForm("enabled"), '_label -> "Enabled")
+<legend>Trigger</legend>
+@helper.inputRadioGroup(
+    configForm("trigger"),
+    options = Seq(SuccessfulBuild, BuildTagged, Disabled).map(value => value.id.toString -> value.toString),
+    Symbol("data-radio") -> "trigger"
+)
+@helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag")
 
 <div class="actions">
     <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or

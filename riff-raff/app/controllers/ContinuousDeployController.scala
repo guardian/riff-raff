@@ -5,7 +5,7 @@ import play.api.data.Forms._
 import play.api.data.{FormError, Mapping, Form}
 import persistence.Persistence
 import java.util.UUID
-import ci.ContinuousDeploymentConfig
+import ci.{Trigger, ContinuousDeploymentConfig}
 import play.api.data.format.Formatter
 import play.api.data.format.Formats._
 import org.joda.time.DateTime
@@ -24,10 +24,10 @@ object ContinuousDeployController extends Controller with Logging {
     def unbind(key: String, value: UUID) = Map(key -> value.toString)
   })
 
-  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], enabled: Boolean)
+  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int, tag: Option[String])
   object ConfigForm {
     def apply(cd: ContinuousDeploymentConfig): ConfigForm =
-      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.enabled)
+      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id, cd.tag)
   }
 
   val continuousDeploymentForm = Form[ConfigForm](
@@ -37,7 +37,8 @@ object ContinuousDeployController extends Controller with Logging {
       "stage" -> nonEmptyText,
       "recipe" -> nonEmptyText,
       "branchMatcher" -> optional(text),
-      "enabled" -> boolean
+      "trigger" -> number,
+      "tag" -> optional(text)
     )(ConfigForm.apply)(ConfigForm.unapply)
   )
 
@@ -46,14 +47,14 @@ object ContinuousDeployController extends Controller with Logging {
     Ok(views.html.continuousDeployment.list(request, configs))
   }
   def form = AuthAction { implicit request =>
-    Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,true))))
+    Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id,None))))
   }
   def save = AuthAction { implicit request =>
     continuousDeploymentForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
       form => {
         val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, form.enabled, request.identity.get.fullName, new DateTime()
+          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), form.tag, request.identity.get.fullName, new DateTime()
         )
         Persistence.store.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
