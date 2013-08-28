@@ -198,7 +198,8 @@ case class BuildDetail(
   startDate: DateTime,
   finishDate: DateTime,
   pinInfo: Option[PinInfo],
-  revision: Option[Revision]
+  revision: Option[Revision],
+  tags: List[String]
 ) extends Build {
   def detail = Future.successful(this)
   def buildTypeId = buildType.id
@@ -219,7 +220,8 @@ object BuildDetail {
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
       pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
-      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
+      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_)),
+      tags = (build \ "tags" \ "tag").map(_.text).toList
     )
   }
 }
@@ -247,7 +249,8 @@ object TeamCity {
                            sinceDate: Option[DateTime] = None,
                            number: Option[String] = None,
                            pinned: Option[Boolean] = None,
-                           status: Option[String] = None
+                           status: Option[String] = None,
+                           tags: List[String] = Nil
                            ) extends Locator {
     lazy val params = Map(
       "branch" -> branch.map(_.toString),
@@ -257,7 +260,8 @@ object TeamCity {
       "number" -> number.map(encode),
       "pinned" -> pinned.map(_.toString),
       "status" -> status.map(encode),
-      "id" -> id.map(_.toString)
+      "id" -> id.map(_.toString),
+      "tags" -> (if (tags.isEmpty) None else Some(tags.mkString(",")))
     )
     def list: Future[List[BuildSummary]] = {
       if (buildTypeInstance.isDefined)
@@ -275,6 +279,7 @@ object TeamCity {
     def status(status:String): BuildLocator = copy(status=Some(status))
     def buildTypeId(buildTypeId: String) = copy(buildType=Some(BuildTypeLocator.id(buildTypeId)))
     def buildTypeInstance(buildType: BuildType) = copy(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
+    def tag(tag: String) = copy(tags=tag::tags)
   }
   object BuildLocator {
     def id(id: Int) = BuildLocator(id=Some(id))
@@ -285,6 +290,8 @@ object TeamCity {
     def number(buildNumber: String) = BuildLocator(number=Some(buildNumber))
     def pinned(pinned: Boolean) = BuildLocator(pinned=Some(pinned))
     def status(status: String) = BuildLocator(status=Some(status))
+    def tags(tags: List[String]) = BuildLocator(tags=tags)
+    def tag(tag: String) = tags(List(tag))
   }
 
   case class BranchLocator(branched: Option[String] = None) extends Locator {
