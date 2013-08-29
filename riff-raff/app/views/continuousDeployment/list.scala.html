@@ -1,5 +1,6 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[ci.ContinuousDeploymentConfig])
 @import org.joda.time.format.DateTimeFormat._
+@import ci.Trigger._
 
 @main("Continuous Deployment Configurations", request) {
 <h2>Continuous Deployment Configurations</h2>
@@ -17,7 +18,7 @@
                 <th>Branches</th>
                 <th>Target Stage</th>
                 <th>Recipe to execute</th>
-                <th>Enabled</th>
+                <th>Trigger</th>
                 <th></th>
                 <th></th>
             </tr>
@@ -30,7 +31,11 @@
                 <td>@config.branchRE.toString()</td>
                 <td>@config.stage</td>
                 <td>@config.recipe</td>
-                <td>@config.enabled</td>
+                <td>@config.trigger match {
+                    case SuccessfulBuild => { Build succeeds }
+                    case BuildTagged => { Build tagged with <strong>@config.tag.get</strong> }
+                    case Disabled => { Disabled }
+                }</td>
                 <td>
                     <a class="btn btn-mini" href="@routes.ContinuousDeployController.edit(config.id.toString)"><i class="icon-edit"></i> Edit</a>
                 </td>
