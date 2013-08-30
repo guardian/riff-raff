@@ -29,7 +29,7 @@ object Project extends Logging {
 
 case class BuildType(id: String, name: String, project: Project, webUrl: URL) {
   def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
-  def builds(locator: BuildLocator) = BuildSummary(locator.buildTypeId(id), this)
+  def builds(locator: BuildLocator, followNext: Boolean = false) = BuildSummary(locator.buildTypeId(id), this, followNext)
   lazy val fullName = "%s::%s" format (project.name, name)
 }
 object BuildType extends Logging {
@@ -97,20 +97,17 @@ case class BuildSummary(id: Int,
 object BuildSummary extends Logging {
   def wrapLookup(original: String => Option[BuildType]) = (id: String) => Future.successful(original(id))
 
-  def apply(locator: BuildLocator, buildType: BuildType): Future[List[BuildSummary]] = {
-    log.debug("Getting build summaries for %s, buildType %s" format (locator, buildType))
-    def lookup = (id: String) => { Some(buildType) }
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(lookup)) )
+  def apply(locator: BuildLocator, buildType: BuildType, followNext: Boolean = false): Future[List[BuildSummary]] = {
+    listWithLookup(locator, (id: String) => { Some(buildType) }, followNext)
   }
 
-  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType]): Future[List[BuildSummary]] = {
-    log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(buildTypeLookup)) )
+  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType], followNext:Boolean = false): Future[List[BuildSummary]] = {
+    listWithFuturedLookup(locator, wrapLookup(buildTypeLookup), followNext)
   }
 
-  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
+  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]], followNext:Boolean = false): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup) )
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext) )
   }
 
   private def apply(build: Node, buildTypeLookup: String => Future[Option[BuildType]]): Future[Option[BuildSummary]] = {
@@ -134,8 +131,14 @@ object BuildSummary extends Logging {
     buildSummary
   }
 
-  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
-    Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]], followNext: Boolean): Future[List[BuildSummary]] = {
+    val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+    (builds \ "@nextHref").headOption match {
+      case Some(continuationUrl) if followNext =>
+        val continuations = api.href(continuationUrl.text).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext))
+        Future.sequence(List(buildSummaries, continuations)).map(_.flatten)
+      case _ => buildSummaries
+    }
   }
 }
 
@@ -277,6 +280,8 @@ object TeamCity {
     def detail: Future[BuildDetail] = BuildDetail(this)
     def number(number:String): BuildLocator = copy(number=Some(number))
     def status(status:String): BuildLocator = copy(status=Some(status))
+    def sinceBuild(buildId: Int): BuildLocator = copy(sinceBuild=Some(buildId))
+    def sinceDate(date: DateTime):BuildLocator = copy(sinceDate=Some(date))
     def buildTypeId(buildTypeId: String) = copy(buildType=Some(BuildTypeLocator.id(buildTypeId)))
     def buildTypeInstance(buildType: BuildType) = copy(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
     def tag(tag: String) = copy(tags=tag::tags)
