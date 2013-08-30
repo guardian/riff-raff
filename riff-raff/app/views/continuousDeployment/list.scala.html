@@ -33,7 +33,7 @@
                 <td>@config.recipe</td>
                 <td>@config.trigger match {
                     case SuccessfulBuild => { Build succeeds }
-                    case BuildTagged => { Build tagged with <strong>@config.tag.get</strong> }
+                    case BuildTagged => { Build tagged with <span class="label">@config.tag.get</span> }
                     case Disabled => { Disabled }
                 }</td>
                 <td>
