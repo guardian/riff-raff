@@ -17,7 +17,7 @@ import org.joda.time.DateTime
 class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with DomainsTestHelper {
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
-    val params = continuousDeployment.getApplicableDeployParams(newBuildsList, contDeployConfigs).toSet
+    val params = continuousDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployConfigs).flatMap(continuousDeployment.getDeployParams).toSet
     params.size should be(2)
     params should be(Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
@@ -26,7 +26,7 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   }
 
   it should "work out the latest build for different branches" in {
-    val params = continuousDeployment.getApplicableDeployParams(newBuildsList, contDeployBranchConfigs).toSet
+    val params = continuousDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployBranchConfigs).flatMap(continuousDeployment.getDeployParams).toSet
     val expected = Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "391"), Stage("PROD"), RecipeName("default")),
@@ -37,9 +37,25 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   }
 
   it should "filter stages according to the domains configuration" in {
-    val params = nonProdCD.getApplicableDeployParams(List(td2B390), contDeployConfigs)
+    val params = nonProdCD.getMatchesForSuccessfulBuilds(List(td2B390), contDeployConfigs).flatMap(continuousDeployment.getDeployParams)
     params.size should be(1)
     params.head should be(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "390"), Stage("QA"), RecipeName("default")))
+  }
+
+  it should "not act on new tag events with successful build configs" in {
+    val params = continuousDeployment.getMatchesForBuildTagged(newBuildsList, "tag", contDeployConfigs).flatMap(continuousDeployment.getDeployParams).toSet
+    params.size should be(0)
+  }
+
+  it should "act on new tag events with BuildTagged" in {
+    val params = continuousDeployment.getMatchesForBuildTagged(newBuildsList, "tag", contDeployTagConfigs).flatMap(continuousDeployment.getDeployParams).toSet
+    params.size should be(1)
+    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy", "71"), Stage("PROD"), RecipeName("default"))))
+  }
+
+  it should "not act on a new tag event when the tag doesn't match the BuildTagged config" in {
+    val params = continuousDeployment.getMatchesForBuildTagged(newBuildsList, "otherTag", contDeployTagConfigs).flatMap(continuousDeployment.getDeployParams).toSet
+    params.size should be(0)
   }
 
   /* Test types */
@@ -50,8 +66,10 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers with Domains
   val td2QaEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", None, Trigger.SuccessfulBuild, None, "Test user")
   val td2QaBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", Some("branch"), Trigger.SuccessfulBuild, None, "Test user")
   val td2ProdBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", Some("master"), Trigger.SuccessfulBuild, None, "Test user")
+  val tdProdEnabledTag = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "PROD", "default", None, Trigger.BuildTagged, Some("tag"), "Test user")
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
+  val contDeployTagConfigs = Seq(tdProdEnabledTag)
 
   val nonProdConfig = Map(
     "domains.enabled" -> "true",

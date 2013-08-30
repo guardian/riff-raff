@@ -10,6 +10,7 @@ import magenta.Deployer
 import magenta.Stage
 import scala.Some
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.Persistence.store.getContinuousDeploymentList
 import deployment.DomainAction.Local
 import deployment.Domains
 import org.joda.time.DateTime
@@ -17,7 +18,6 @@ import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import akka.agent.Agent
-import ci.teamcity.TeamCity.BuildLocator
 import akka.actor.ActorSystem
 
 object Trigger extends Enumeration {
@@ -41,12 +41,19 @@ case class ContinuousDeploymentConfig(
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
     (build:Build) => build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
-  def findMatch(builds: List[Build]): Option[Build] = {
-    val potential = builds.filter(buildFilter).sortBy(-_.id)
-    potential.find { build =>
-      val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
-      !olderBuilds.exists(_.id > build.id)
-    }
+
+  def findMatchOnSuccessfulBuild(builds: List[Build]): Option[Build] = {
+    if (trigger == Trigger.SuccessfulBuild) {
+      builds.filter(buildFilter).sortBy(-_.id).find { build =>
+        val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
+        !olderBuilds.exists(_.id > build.id)
+      }
+    } else None
+  }
+  def findMatchOnBuildTagged(builds: List[Build], newTag: String): Option[Build] = {
+    if (trigger == Trigger.BuildTagged && tag.get == newTag) {
+      builds.filter(buildFilter).sortBy(-_.id).headOption
+    } else None
   }
   lazy val enabled = trigger != Trigger.Disabled
 }
@@ -97,36 +104,38 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   val system = ActorSystem("continuous-deployment")
   var buildWatcher: Option[ContinuousDeployment] = None
-  val tagWatcherAgent = Agent[Map[ContinuousDeploymentConfig, LocatorWatcher]](Map.empty)(system)
+  val tagWatcherAgent = Agent[Map[String, TagWatcher]](Map.empty)(system)
 
   def init() {
     if (buildWatcher.isEmpty) {
       buildWatcher = Some(new ContinuousDeployment(Domains))
       buildWatcher.foreach(TeamCityBuilds.subscribe)
     }
-    updateTrackers()
+    updateTagTrackers()
   }
 
-  def updateTrackers() {
-    val configured = Persistence.store.getContinuousDeploymentList.filter(_.trigger == Trigger.BuildTagged).toSet
-    syncTrackers(configured)
+  def updateTagTrackers() {
+    val configuredTags = Persistence.store.getContinuousDeploymentList.filter(_.trigger == Trigger.BuildTagged).flatMap(_.tag).toSet
+    syncTagTrackers(configuredTags)
   }
-  def syncTrackers(targetConfigs: Set[ContinuousDeploymentConfig]) {
+  def syncTagTrackers(targetTags: Set[String]) {
     tagWatcherAgent.send{ tagWatchers =>
+      log.info("Updating trackers")
+      log.debug(s"Desired tags: $targetTags")
       val running = tagWatchers.keys.toSet
-      val deleted = running -- targetConfigs
+      log.debug(s"Running trackers: $running")
+      val deleted = running -- targetTags
       deleted.foreach{ toRemove =>
         TeamCityBuilds.unsubscribe(tagWatchers(toRemove))
       }
-      val created = targetConfigs -- running
-      val newTrackers = created.map { toCreate =>
-        val watcher = new LocatorWatcher {
-          val buildTypeId = TeamCityBuilds.builds.find(_.buildType.fullName == toCreate.projectName)
-          if (buildTypeId.isEmpty) log.error(s"Couldn't set up tag watcher as the build type ID for ${toCreate.projectName} wasn't found")
-          val locator: BuildLocator = BuildLocator.tag(toCreate.tag.get).buildTypeId(buildTypeId.get.buildType.id)
-
+      log.debug(s"Deleted trackers: $deleted")
+      val required = targetTags -- running
+      log.debug(s"Required trackers: $required")
+      val newTrackers = required.map { toCreate =>
+        val watcher = new TagWatcher {
+          val tag = toCreate
           def newBuilds(builds: List[Build]) {
-            log.info(s"I would start the deploy of $builds to ${toCreate.stage} at this point...")
+            buildWatcher.foreach(_.newTags(builds, toCreate))
           }
         }
         TeamCityBuilds.subscribe(watcher)
@@ -139,7 +148,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   def shutdown() {
     buildWatcher.foreach(TeamCityBuilds.unsubscribe)
     buildWatcher = None
-    syncTrackers(Set.empty)
+    syncTagTrackers(Set.empty)
   }
 }
 
@@ -147,38 +156,51 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
 
-  def getApplicableDeployParams(builds: List[Build], configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
-    val enabledConfigs = configs.filter(_.enabled)
-
-    val allParams = enabledConfigs.flatMap { config =>
-      config.findMatch(builds).map { build =>
-        DeployParameters(
-          Deployer("Continuous Deployment"),
-          MagentaBuild(build.buildType.fullName,build.number),
-          Stage(config.stage),
-          RecipeName(config.recipe)
-        )
-      }
-    }
-    allParams.filter { params =>
-      domains.responsibleFor(params) match {
-        case Local() => true
-        case _ => false
-      }
+  def getMatchesForSuccessfulBuilds(builds: List[Build],
+                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+    configs.flatMap { config =>
+      config.findMatchOnSuccessfulBuild(builds).map(build => config -> build)
     }
   }
 
-  def newBuilds(newBuilds: List[Build]) {
-    log.info("New builds to consider for deployment %s" format newBuilds)
-    val deploysToRun = getApplicableDeployParams(newBuilds, Persistence.store.getContinuousDeploymentList)
-
-    deploysToRun.foreach{ params =>
-      if (conf.Configuration.continuousDeployment.enabled) {
-        log.info("Triggering deploy of %s" format params.toString)
-        DeployController.deploy(params)
-      } else
-        log.info("Would deploy %s" format params.toString)
+  def getMatchesForBuildTagged(builds: List[Build],
+                               tag: String,
+                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+    configs.flatMap { config =>
+      config.findMatchOnBuildTagged(builds, tag).map(build => config -> build)
     }
+  }
+
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, Build)): Option[DeployParameters] = {
+    val (config,build) = configBuildTuple
+    val params = DeployParameters(
+      Deployer("Continuous Deployment"),
+      MagentaBuild(build.buildType.fullName,build.number),
+      Stage(config.stage),
+      RecipeName(config.recipe)
+    )
+    domains.responsibleFor(params) match {
+      case Local() => Some(params)
+      case _ => None
+    }
+  }
+
+  def runDeploy(params: DeployParameters) {
+    if (conf.Configuration.continuousDeployment.enabled) {
+      log.info("Triggering deploy of %s" format params.toString)
+      DeployController.deploy(params)
+    } else
+      log.info("Would deploy %s" format params.toString)
+  }
+
+  def newBuilds(newBuilds: List[Build]) = {
+    log.info(s"New builds to consider for deployment $newBuilds")
+    getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
+  }
+
+  def newTags(newBuilds: List[Build], tag: String) = {
+    log.info(s"Builds just tagged with $tag to consider for deployment: $newBuilds")
+    getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
   }
 
 }
