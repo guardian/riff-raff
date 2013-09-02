@@ -4,6 +4,7 @@ package json
 import net.liftweb.json._
 import io.Source
 import java.io.File
+import org.joda.time.DateTime
 
 case class DeployInfoJsonInputFile(
   hosts: List[DeployInfoHost],
@@ -41,7 +42,7 @@ object DeployInfoJsonReader {
 
   def parse(f: File): DeployInfo = parse(Source.fromFile(f).mkString)
 
-  def parse(inputFile: DeployInfoJsonInputFile): DeployInfo = DeployInfo(inputFile)
+  def parse(inputFile: DeployInfoJsonInputFile): DeployInfo = DeployInfo(inputFile, Some(new DateTime()))
 
   def parse(json: JValue): DeployInfo = parse(Extraction.extract[DeployInfoJsonInputFile](json))
 

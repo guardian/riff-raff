@@ -1,14 +1,18 @@
 @(request: controllers.AuthenticatedRequest[AnyContent])
 @import deployment.DeployInfoManager._
 
-@main("Deployment Resources", request, List("deployinfo-app-tabs")) {
+@main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {
 
 <h2>Deployment Resources</h2>
+
+    <p><small>@deployInfo.createdAt match {
+        case Some(dt) => { Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time> }
+        case None => { No data yet }
+    }</small></p>
 
 @if(deployInfo.knownKeys.isEmpty) {
   <div class="alert">No data specified in deployment information</div>
 } else {
-
 @snippets.tabbable(deployInfo.knownKeys, pushParam = "key"){ key =>
     <table class="table table-striped">
     <thead><tr>

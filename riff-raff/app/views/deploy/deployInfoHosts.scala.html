@@ -2,9 +2,14 @@
 @import deployment.DeployInfoManager._
 @import html.helper.twitterBootstrap2.htmlTooltip
 
-@main("Deployment Hosts", request, List("deployinfo-app-tabs")) {
+@main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
 
 <h2>Deployment Hosts</h2>
+
+<p><small>@deployInfo.createdAt match {
+        case Some(dt) => { Last updated <time class="makeRelativeDate" datetime="@dt">at @org.joda.time.format.DateTimeFormat.mediumDateTime.print(dt)</time> }
+        case None => { No data yet }
+}</small></p>
 
 @if(deployInfo.hosts.isEmpty) {
     <div class="alert">No hosts specified in deployment information</div>
