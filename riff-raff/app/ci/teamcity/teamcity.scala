@@ -29,7 +29,7 @@ object Project extends Logging {
 
 case class BuildType(id: String, name: String, project: Project, webUrl: URL) {
   def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
-  def builds(locator: BuildLocator) = BuildSummary(locator.buildTypeId(id), this)
+  def builds(locator: BuildLocator, followNext: Boolean = false) = BuildSummary(locator.buildTypeId(id), this, followNext)
   lazy val fullName = "%s::%s" format (project.name, name)
 }
 object BuildType extends Logging {
@@ -97,20 +97,17 @@ case class BuildSummary(id: Int,
 object BuildSummary extends Logging {
   def wrapLookup(original: String => Option[BuildType]) = (id: String) => Future.successful(original(id))
 
-  def apply(locator: BuildLocator, buildType: BuildType): Future[List[BuildSummary]] = {
-    log.debug("Getting build summaries for %s, buildType %s" format (locator, buildType))
-    def lookup = (id: String) => { Some(buildType) }
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(lookup)) )
+  def apply(locator: BuildLocator, buildType: BuildType, followNext: Boolean = false): Future[List[BuildSummary]] = {
+    listWithLookup(locator, (id: String) => { Some(buildType) }, followNext)
   }
 
-  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType]): Future[List[BuildSummary]] = {
-    log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, wrapLookup(buildTypeLookup)) )
+  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType], followNext:Boolean = false): Future[List[BuildSummary]] = {
+    listWithFuturedLookup(locator, wrapLookup(buildTypeLookup), followNext)
   }
 
-  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
+  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]], followNext:Boolean = false): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup) )
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext) )
   }
 
   private def apply(build: Node, buildTypeLookup: String => Future[Option[BuildType]]): Future[Option[BuildSummary]] = {
@@ -134,8 +131,14 @@ object BuildSummary extends Logging {
     buildSummary
   }
 
-  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]]): Future[List[BuildSummary]] = {
-    Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]], followNext: Boolean): Future[List[BuildSummary]] = {
+    val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+    (builds \ "@nextHref").headOption match {
+      case Some(continuationUrl) if followNext =>
+        val continuations = api.href(continuationUrl.text).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext))
+        Future.sequence(List(buildSummaries, continuations)).map(_.flatten)
+      case _ => buildSummaries
+    }
   }
 }
 
@@ -198,7 +201,8 @@ case class BuildDetail(
   startDate: DateTime,
   finishDate: DateTime,
   pinInfo: Option[PinInfo],
-  revision: Option[Revision]
+  revision: Option[Revision],
+  tags: List[String]
 ) extends Build {
   def detail = Future.successful(this)
   def buildTypeId = buildType.id
@@ -219,7 +223,8 @@ object BuildDetail {
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
       pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
-      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
+      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_)),
+      tags = (build \ "tags" \ "tag").map(_.text).toList
     )
   }
 }
@@ -247,7 +252,8 @@ object TeamCity {
                            sinceDate: Option[DateTime] = None,
                            number: Option[String] = None,
                            pinned: Option[Boolean] = None,
-                           status: Option[String] = None
+                           status: Option[String] = None,
+                           tags: List[String] = Nil
                            ) extends Locator {
     lazy val params = Map(
       "branch" -> branch.map(_.toString),
@@ -257,7 +263,8 @@ object TeamCity {
       "number" -> number.map(encode),
       "pinned" -> pinned.map(_.toString),
       "status" -> status.map(encode),
-      "id" -> id.map(_.toString)
+      "id" -> id.map(_.toString),
+      "tags" -> (if (tags.isEmpty) None else Some(tags.mkString(",")))
     )
     def list: Future[List[BuildSummary]] = {
       if (buildTypeInstance.isDefined)
@@ -273,8 +280,11 @@ object TeamCity {
     def detail: Future[BuildDetail] = BuildDetail(this)
     def number(number:String): BuildLocator = copy(number=Some(number))
     def status(status:String): BuildLocator = copy(status=Some(status))
+    def sinceBuild(buildId: Int): BuildLocator = copy(sinceBuild=Some(buildId))
+    def sinceDate(date: DateTime):BuildLocator = copy(sinceDate=Some(date))
     def buildTypeId(buildTypeId: String) = copy(buildType=Some(BuildTypeLocator.id(buildTypeId)))
     def buildTypeInstance(buildType: BuildType) = copy(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
+    def tag(tag: String) = copy(tags=tag::tags)
   }
   object BuildLocator {
     def id(id: Int) = BuildLocator(id=Some(id))
@@ -285,6 +295,8 @@ object TeamCity {
     def number(buildNumber: String) = BuildLocator(number=Some(buildNumber))
     def pinned(pinned: Boolean) = BuildLocator(pinned=Some(pinned))
     def status(status: String) = BuildLocator(status=Some(status))
+    def tags(tags: List[String]) = BuildLocator(tags=tags)
+    def tag(tag: String) = tags(List(tag))
   }
 
   case class BranchLocator(branched: Option[String] = None) extends Locator {

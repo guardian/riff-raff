@@ -6,7 +6,7 @@ import play.api.{Routes, Logger}
 import io.Source
 
 trait Logging {
-  implicit val log = Logger(getClass)
+  implicit val log = Logger(getClass.getName.stripSuffix("$"))
 }
 
 trait MenuItem {

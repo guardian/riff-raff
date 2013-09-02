@@ -1,6 +1,6 @@
 package test
 
-import ci.ContinuousDeploymentConfig
+import ci.{Trigger, ContinuousDeploymentConfig}
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import persistence._
@@ -167,12 +167,13 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
     val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
     val lastTime = new DateTime(2013,1,8,17,20,0)
     val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
+    val configV2Dump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
 
-    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), true, "Test user", lastTime)
+    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), Trigger.SuccessfulBuild, None, "Test user", lastTime)
     val gratedConfig = config.toDBO
 
     val jsonConfig = JSON.serialize(gratedConfig)
-    val diff = compareJson(configDump, jsonConfig)
+    val diff = compareJson(configV2Dump, jsonConfig)
     diff.toString should be("")
     // TODO - check ordering as well?
     //jsonConfig should be(configDump)
@@ -182,6 +183,13 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
 
     val ungratedConfig = ContinuousDeploymentConfig.fromDBO(new MongoDBObject(ungratedDBObject))
     ungratedConfig should be(Some(config))
+
+    val ungratedV2DBObject = JSON.parse(configV2Dump).asInstanceOf[DBObject]
+    ungratedV2DBObject.toString should be(configV2Dump)
+
+    val ungratedV2Config = ContinuousDeploymentConfig.fromDBO(new MongoDBObject(ungratedV2DBObject))
+    ungratedV2Config should be(Some(config))
+
   }
 
 }
