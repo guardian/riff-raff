@@ -1,5 +1,11 @@
 ### Release notes
 
+#### 2nd September 2013
+
+Continuous deployment has been overhauled. Deploys can now be triggered either by a new build successfully completing
+or by an existing successful build being tagged. Note that in order for a newly tagged build to be picked up, the build
+itself must not be older than 10 days (this value is configurable).
+
 #### 21st August 2013
 
 Add variable substitutions to hook URLs such that build numbers and projects can be encoded into the URL that is called.

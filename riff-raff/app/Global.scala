@@ -25,11 +25,11 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
       DeployController,
       IrcClient,
       Alerta,
-      ContinuousDeployment,
       DeployMetrics,
       HooksClient,
       TeamCityBuilds,
       TeamCityBuildPinner,
+      ContinuousDeployment,
       SummariseDeploysHousekeeping
     )
 

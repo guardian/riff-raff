@@ -10,10 +10,12 @@ import scala.Predef._
 import collection.mutable
 import lifecycle.LifecycleWithoutApp
 import scala.Some
-import magenta.DeployParameters
-import concurrent.Future
-import concurrent.Await
+import concurrent.{ Future, Promise, promise, Await }
 import concurrent.ExecutionContext.Implicits.global
+import play.api.Logger
+import akka.agent.Agent
+import akka.actor.ActorSystem
+import scala.util.Random
 
 object `package` {
   implicit def listOfBuild2helpers(builds: List[Build]) = new {
@@ -62,114 +64,217 @@ trait BuildWatcher {
   def newBuilds(builds: List[Build])
 }
 
+trait TagWatcher {
+  def tag: String
+  def newBuilds(builds: List[Build])
+}
+
+trait ApiTracker[T] {
+  case class Result(diff: List[T], updated: List[T], previous: List[T])
+  private val promises = Agent[List[Promise[List[T]]]](Nil)(ActorSystem("teamcity-trackers"))
+
+  private val fullAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](startupDelay, fullUpdatePeriod) { case (flag, current) =>
+    val updated = fullUpdate(current)
+    val diff: Set[T] = updated.toSet diff current.toSet
+    trackerLog.info(s"[$name] Full update: discovered: ${diff.size}, total: ${updated.size}")
+    queueNotify(Result(diff.toList, updated, current))
+    (true, updated)
+  }
+
+  private val incrementalAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](incrementalUpdatePeriod + startupDelay, incrementalUpdatePeriod) { case (flag, current) =>
+    if (!flag) {
+      trackerLog.error(s"[$name] Nothing tracked yet, aborting incremental update")
+      (flag, current)
+    } else {
+      val result = incrementalUpdate(current)
+      if (!result.diff.isEmpty) {
+        trackerLog.info(s"[$name] Incremental update: discovered: ${result.diff.size}, total: ${result.updated.size}")
+        queueNotify(result)
+      } else {
+        trackerLog.debug(s"[$name] No changes")
+      }
+      (flag, result.updated)
+    }
+  }
+
+  private val agent: ScheduledAgent[(Boolean, List[T])] = ScheduledAgent[(Boolean, List[T])]((false, Nil), fullAgentUpdate, incrementalAgentUpdate)
+
+  /*
+   returns the current list, regardless of if the initial data has been fetched
+    */
+  def get(): List[T] = agent()._2
+  /*
+   return a future that is fulfilled as soon as there is valid data (immediately if we have fully initialised)
+    */
+  def future(): Future[List[T]] = {
+    agent() match {
+      case (true, data) =>
+        Future.successful(data)
+      case (false, _) =>
+        val p = promise[List[T]]()
+        promises.send { p :: _ }
+        p.future
+    }
+  }
+
+  def fullUpdatePeriod: FiniteDuration
+  def incrementalUpdatePeriod: FiniteDuration
+  def startupDelay: FiniteDuration
+
+  def fullUpdate(previous: List[T]): List[T]
+  def incrementalUpdate(previous: List[T]): Result = {
+    val updated = fullUpdate(previous)
+    Result((updated.toSet diff previous.toSet).toList, updated, previous)
+  }
+
+  def queueNotify(result: Result) {
+    agent.queueUpdate(Update{
+      notify(result.diff, result.previous)
+      promises.send { promisesMade =>
+        promisesMade.foreach(_.success(result.updated))
+        Nil
+      }
+    })
+  }
+
+  def notify(discovered: List[T], previous: List[T])
+  def shutdown() = agent.shutdown()
+  def trackerLog:Logger
+  def name:String
+}
+
+case class BuildLocatorTracker(locator: BuildLocator,
+                          buildTypeTracker: ApiTracker[BuildType],
+                          fullUpdatePeriod: FiniteDuration,
+                          incrementalUpdatePeriod: FiniteDuration,
+                          notifyHook: List[Build] => Unit,
+                          pollingWindow: Duration,
+                          startupDelay: FiniteDuration = 0L.seconds) extends ApiTracker[Build] with Logging {
+
+  def notify(discovered: List[Build], previous: List[Build]) = if (!previous.isEmpty) notifyHook(discovered)
+  def name = locator.toString
+
+  def fullUpdate(previous: List[Build]) = {
+    Await.result(getBuilds, incrementalUpdatePeriod * 20)
+  }
+
+  override def incrementalUpdate(previous: List[Build]) = {
+    Await.result(getNewBuilds(previous).map { newBuilds =>
+      if (newBuilds.isEmpty)
+        Result(Nil, previous, previous)
+      else
+        Result(newBuilds, (previous ++ newBuilds).sortBy(-_.id), previous)
+    },incrementalUpdatePeriod)
+  }
+
+  def getBuilds: Future[List[Build]] = {
+    log.debug(s"[$name] Getting builds")
+    val buildTypes = buildTypeTracker.future()
+    buildTypes.flatMap{ fulfilledBuildTypes =>
+      Future.sequence(fulfilledBuildTypes.map(_.builds(locator, followNext = true))).map(_.flatten)
+    }
+  }
+
+  def getNewBuilds(currentBuilds:List[Build]): Future[List[Build]] = {
+    val knownBuilds = currentBuilds.map(_.id).toSet
+    val locatorWithWindow = locator.sinceDate(new DateTime().minus(pollingWindow))
+    log.info(s"[$name] Querying with $locatorWithWindow")
+    val builds = BuildSummary.listWithLookup(locatorWithWindow, TeamCityBuilds.getBuildType, followNext = true)
+    builds.map { builds =>
+      val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
+      if (!newBuilds.isEmpty)
+        log.info(s"[$name] Discovered builds: \n${newBuilds.mkString("\n")}")
+      newBuilds
+    }
+  }
+
+  val trackerLog = log
+}
+
 object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
+  val tagPollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.tagging.pollingWindowMinutes)
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
   private val listeners = mutable.Buffer[BuildWatcher]()
+  private var locatorTrackers = Map.empty[TagWatcher, BuildLocatorTracker]
+
   def subscribe(sink: BuildWatcher) { listeners += sink }
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
 
-  def notifyListeners(newBuilds: List[Build]) {
-    if (!newBuilds.isEmpty) {
-      buildAgent.foreach{ agent =>
-        log.info("Queueing listener notification")
-        agent.queueUpdate(Update{
-          log.info("Notifying listeners")
-          listeners.foreach{ listener =>
-            try listener.newBuilds(newBuilds)
-            catch {
-              case e:Exception => log.error("BuildWatcher threw an exception", e)
-            }
-          }
-        })
+  def subscribe(sink: TagWatcher) {
+    if (TeamCityWS.teamcityURL.isDefined) {
+      val tracker = new BuildLocatorTracker(
+          BuildLocator.tag(sink.tag).status("SUCCESS"),
+          buildTypeTracker.get,
+          fullUpdatePeriod,
+          pollingPeriod,
+          builds => sink.newBuilds(builds),
+          tagPollingWindow,
+          Random.nextInt(conf.Configuration.teamcity.pollingPeriodSeconds).seconds
+        )
+      locatorTrackers += (sink -> tracker)
+    }
+  }
+
+  def unsubscribe(sink: TagWatcher) {
+    locatorTrackers.get(sink).foreach(_.shutdown())
+    locatorTrackers -= sink
+  }
+
+  def notifyNewBuilds(newBuilds: List[Build]) = {
+    log.info("Notifying listeners")
+    listeners.foreach{ listener =>
+      try listener.newBuilds(newBuilds)
+      catch {
+        case e:Exception => log.error("BuildWatcher threw an exception", e)
       }
     }
   }
 
-  private val fullUpdate = PeriodicScheduledAgentUpdate[List[Build]](0 seconds, fullUpdatePeriod) { currentBuilds =>
-    val builds = Await.result(getSuccessfulBuilds, 1 minute)
-    if (!currentBuilds.isEmpty) notifyListeners((builds.toSet diff currentBuilds.toSet).toList)
-    builds
-  }
+  private var buildTypeTracker: Option[ApiTracker[BuildType]] = None
+  private var successfulBuildTracker: Option[BuildLocatorTracker] = None
 
-  private val incrementalUpdate = PeriodicScheduledAgentUpdate[List[Build]](1 minute, pollingPeriod) { currentBuilds =>
-    if (currentBuilds.isEmpty) {
-      log.warn("No builds yet, aborting incremental update")
-      currentBuilds
-    } else {
-      Await.result(getNewBuilds(currentBuilds).map { newBuilds =>
-        if (newBuilds.isEmpty)
-          currentBuilds
-        else {
-          notifyListeners(newBuilds)
-          (currentBuilds ++ newBuilds).sortBy(-_.id)
-        }
-      },pollingPeriod)
-    }
-  }
-
-  private var buildAgent:Option[ScheduledAgent[List[Build]]] = None
-
-  def builds: List[Build] = buildAgent.map(_.apply()).getOrElse(Nil)
+  def builds: List[Build] = successfulBuildTracker.map(_.get()).getOrElse(Nil)
   def build(project: String, number: String) = builds.find(b => b.buildType.fullName == project && b.number == number)
-  def buildTypes: Set[BuildType] = builds.buildTypes
-
+  def buildTypes: Set[BuildType] = buildTypeTracker.map(_.get().toSet).getOrElse(Set.empty)
+  def getBuildType(id: String):Option[BuildType] = buildTypes.find(_.id == id)
   def successfulBuilds(projectName: String): List[Build] = builds.filter(_.buildType.fullName == projectName)
-
-  def transformLastSuccessful(params: DeployParameters): DeployParameters = {
-    if (params.build.id != "lastSuccessful")
-      params
-    else {
-      val builds = successfulBuilds(params.build.projectName)
-      builds.headOption.map{ latestBuild =>
-        params.copy(build = params.build.copy(id = latestBuild.number))
-      }.getOrElse(params)
+  def getLastSuccessful(projectName: String): Option[String] =
+    successfulBuilds(projectName).headOption.map{ latestBuild =>
+      latestBuild.number
     }
-  }
-
 
   def init() {
     if (TeamCityWS.teamcityURL.isDefined) {
-      buildAgent = Some(ScheduledAgent[List[Build]](List.empty[Build], fullUpdate, incrementalUpdate))
+      buildTypeTracker = Some(new ApiTracker[BuildType] {
+        def name = "BuildType tracker"
+        def fullUpdatePeriod = TeamCityBuilds.fullUpdatePeriod
+        def incrementalUpdatePeriod = pollingPeriod
+        def fullUpdate(previous: List[BuildType]) = {
+          Await.result(BuildTypeLocator.list, pollingPeriod / 2)
+        }
+        def notify(discovered: List[BuildType], previous: List[BuildType]) { }
+        def trackerLog = log
+        def startupDelay = 0L.seconds
+      })
+      successfulBuildTracker = Some(new BuildLocatorTracker(
+        BuildLocator.status("SUCCESS"),
+        buildTypeTracker.get,
+        fullUpdatePeriod,
+        pollingPeriod,
+        notifyNewBuilds,
+        pollingWindow
+      ))
     }
   }
 
-  def shutdown() { buildAgent.foreach(_.shutdown()) }
-
-  private def getSuccessfulBuilds: Future[List[Build]] = {
-    log.debug("Getting successful builds")
-    val buildTypes = BuildTypeLocator.list
-    buildTypes.flatMap { fulfilledBuildTypes =>
-      log.debug("Found %d buildTypes" format fulfilledBuildTypes.size)
-      val allBuilds = Future.sequence(fulfilledBuildTypes.map(_.builds(BuildLocator.status("SUCCESS")))).map(_.flatten)
-      allBuilds.map { result =>
-        log.info("Finished updating TC information (found %d buildTypes and %d successful builds)" format(fulfilledBuildTypes.size, result.size))
-        result
-      }
-    }
-  }
-
-  private def getNewBuilds(currentBuilds: List[Build]): Future[List[Build]] = {
-    val knownBuilds = currentBuilds.map(_.id).toSet
-    val buildTypeMap = currentBuilds.map(b => b.buildType.id -> b.buildType).toMap
-    val getBuildType = (buildTypeId:String) => {
-      buildTypeMap.get(buildTypeId).orElse {
-        buildAgent.foreach(_.queueUpdate(fullUpdate))
-        log.warn("Unknown build type %s, queuing complete refresh" format buildTypeId)
-        None
-      }
-    }
-    val pollingWindowStart = (new DateTime()).minus(pollingWindow)
-    log.info("Querying TC for all builds since %s" format pollingWindowStart)
-    val builds = BuildSummary.listWithLookup(BuildLocator.sinceDate(pollingWindowStart).status("SUCCESS"), getBuildType)
-    builds.map { builds =>
-      log.debug("Found %d builds since %s" format (builds.size, pollingWindowStart))
-      val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
-      log.info("Discovered builds: \n%s" format newBuilds.mkString("\n"))
-      newBuilds
-    }
+  def shutdown() {
+    successfulBuildTracker.foreach(_.shutdown())
+    buildTypeTracker.foreach(_.shutdown())
+    locatorTrackers.values.foreach(_.shutdown())
+    locatorTrackers = Map.empty
   }
 }
 
