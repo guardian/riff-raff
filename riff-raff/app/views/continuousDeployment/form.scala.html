@@ -27,7 +27,10 @@ options = helper.options(deployment.DeployInfoManager.stageList.reverse),
     options = Seq(SuccessfulBuild, BuildTagged, Disabled).map(value => value.id.toString -> value.toString),
     Symbol("data-radio") -> "trigger"
 )
-@helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag")
+@configForm("trigger").value match {
+    case Some("2") => { @helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag") }
+    case _ => { @helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag", 'disabled -> None) }
+}
 
 <div class="actions">
     <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
