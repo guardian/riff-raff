@@ -265,7 +265,8 @@ object Api extends Controller with Logging {
 
     import net.liftweb.json.{Serialization,NoTypeHints}
     implicit val format = Serialization.formats(NoTypeHints)
-    val filtered = DeployInfoManager.deployInfo.filterHosts { host =>
+    val deployInfo = DeployInfoManager.deployInfo
+    val filtered = deployInfo.filterHosts { host =>
         (filter.stage.isEmpty || filter.stage.get == host.stage) &&
           (filter.app.isEmpty || host.apps.exists(_.name == filter.app.get) ) &&
           (filter.hostList.isEmpty || filter.hostList.contains(host.name))
@@ -276,6 +277,7 @@ object Api extends Controller with Logging {
       "response" -> Json.obj(
         "status" -> "ok",
         "filter" -> toJson(query.toMap),
+        "updateTime" -> deployInfo.createdAt,
         "results" -> results
       )
     )
