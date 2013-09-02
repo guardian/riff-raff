@@ -1,6 +1,7 @@
 package magenta
 
 import json.{DeployInfoData, DeployInfoJsonInputFile, DeployInfoHost}
+import org.joda.time.DateTime
 
 package object fixtures {
   val CODE = Stage("CODE")
@@ -49,7 +50,7 @@ package object fixtures {
     val deployData = data.mapValues{ list =>
       list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
     }
-    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData))
+    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime()))
   }
 
 }
