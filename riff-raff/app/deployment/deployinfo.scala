@@ -52,7 +52,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
     val json = JsonParser.parse(deployInfoJson)
     val deployInfo = (json \ "response") match {
       case response:JObject => {
-        val updateTime = (response \ "updateTime").extractOpt[DateTime].map(d => new DateTime(d))
+        val updateTime = (response \ "updateTime").extractOpt[Long].map(d => new DateTime(d))
         DeployInfoJsonReader.parse(response \ "results").copy(createdAt = updateTime.orElse(Some(new DateTime())))
       }
       case _ => DeployInfoJsonReader.parse(deployInfoJson)
