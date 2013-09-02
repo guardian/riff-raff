@@ -2,9 +2,11 @@ processDates = ->
   $('time.makeRelativeDate').each ->
     element = $(this)
     thisMoment = moment(element.attr('datetime'))
-    relativeDate = thisMoment.fromNow()
-    actualDate = thisMoment.format('Do MMM YYYY H:mm:ss')
-    element.html("<span title='#{actualDate}'>#{relativeDate}</span>")
+    withinHours = element.attr('withinhours')
+    if withinHours and moment().diff(thisMoment, 'hours') < withinHours
+      relativeDate = thisMoment.fromNow()
+      actualDate = thisMoment.format('Do MMM YYYY H:mm:ss')
+      element.html("<span title='#{actualDate}'>#{relativeDate}</span>")
 
 $ ->
   processDates()
