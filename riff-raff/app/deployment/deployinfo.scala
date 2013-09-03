@@ -12,10 +12,9 @@ import java.io.{FileNotFoundException, File}
 import java.net.{URLConnection, URL, URLStreamHandler}
 import io.Source
 import lifecycle.LifecycleWithoutApp
-import net.liftweb.json.{DefaultFormats, NoTypeHints, Serialization, JsonParser}
-import net.liftweb.json.JsonAST.{JObject, JNothing}
+import net.liftweb.json.{DefaultFormats, JsonParser}
+import net.liftweb.json.JsonAST.JObject
 import org.joda.time.DateTime
-import java.util.Date
 
 object DeployInfoManager extends LifecycleWithoutApp with Logging {
   private val classpathHandler = new URLStreamHandler {
@@ -52,7 +51,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
     val json = JsonParser.parse(deployInfoJson)
     val deployInfo = (json \ "response") match {
       case response:JObject => {
-        val updateTime = (response \ "updateTime").extractOpt[Long].map(d => new DateTime(d))
+        val updateTime = (response \ "updateTime").extractOpt[String].map(s => new DateTime(s))
         DeployInfoJsonReader.parse(response \ "results").copy(createdAt = updateTime.orElse(Some(new DateTime())))
       }
       case _ => DeployInfoJsonReader.parse(deployInfoJson)
