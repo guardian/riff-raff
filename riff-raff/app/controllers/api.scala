@@ -2,7 +2,7 @@ package controllers
 
 import play.api.mvc.{BodyParser, Action, AnyContent, Controller}
 import play.api.mvc.Results._
-import org.joda.time.{DateMidnight, DateTime}
+import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data._
 import play.api.data.Forms._
@@ -16,6 +16,7 @@ import utils.Graph
 import magenta._
 import play.api.mvc.BodyParsers.parse
 import java.util.UUID
+import org.joda.time.format.ISODateTimeFormat
 
 case class ApiKey(
   application:String,
@@ -130,6 +131,10 @@ object ApiJsonEndpoint {
 
 object Api extends Controller with Logging {
 
+  implicit object DefaultJodaDateWrites extends Writes[org.joda.time.DateTime] {
+    def writes(d: org.joda.time.DateTime): JsValue = JsString(ISODateTimeFormat.dateTime.print(d))
+  }
+
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)
   )
@@ -219,7 +224,7 @@ object Api extends Controller with Logging {
 
   def record2apiResponse(deploy:Record)(implicit request: AuthenticatedRequest[AnyContent]) =
     Json.obj(
-      "time" -> deploy.time.getMillis,
+      "time" -> deploy.time,
       "uuid" -> deploy.uuid.toString,
       "taskType" -> deploy.taskType.toString,
       "projectName" -> deploy.parameters.build.projectName,

@@ -6,7 +6,7 @@ want to look at the documentation for [external deploy requests](externalRequest
 
 All requests to the API require authorisation in the form of an API key.  These can easily be obtained through the
 Riff-Raff web interface under the Configuration menu.  The key is always supplied as a GET or POST parameter called
-`key`.
+`key`. Where timestamps are provided or accepted, these are formatted in ISO8601.
 
 The API endpoints are all under /api.
 
@@ -48,7 +48,7 @@ the history section in the web GUI.  By default the most recent deploys will be 
                     status: "Failed",
                     logURL: "http://gnm41175:9000/deployment/view/19097f12-7a8d-4fc0-80bc-630f3cb43bdc",
                     taskType: "Deploy",
-                    time: 1358444866420,
+                    time: "2013-09-03T12:37:56.738+01:00",
                     tags: {
                         branch: "master"
                     }
