@@ -14,7 +14,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.GuDomainsConfiguration
+import deployment.{DeployMetricsActor, GuDomainsConfiguration}
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
@@ -177,6 +177,13 @@ object DeployMetrics extends LifecycleWithoutApp {
   def shutdown() { MessageBroker.unsubscribe(sink) }
 }
 
+object TaskMetrics {
+  object TaskTimer extends TimingMetric("riffraff", "task_run", "Tasks running", "Timing of deployment tasks")
+  object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
+  object TasksRunning extends GaugeMetric("riffraff", "running_tasks", "Running tasks", "Number of currently running tasks", () => DeployMetricsActor.runningTaskCount)
+  val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
+}
+
 object MessageMetrics {
   object IRCMessages extends TimingMetric(
     "messages", "irc_messages", "IRC messages", "messages sent to the IRC channel"
@@ -221,7 +228,8 @@ object Metrics {
     Seq(LoginCounter, FailedLoginCounter) ++
     RequestMetrics.asMetrics ++
     DeployMetrics.all ++
-    DatastoreMetrics.all
+    DatastoreMetrics.all ++
+    TaskMetrics.all
 }
 
 case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean = true) extends Switchable with Loggable {
