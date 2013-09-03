@@ -104,9 +104,13 @@ object DeployController extends Logging with LifecycleWithoutApp {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
 
-    val params = TeamCityBuilds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
-      requestedParams.copy(build = requestedParams.build.copy(id=latestId))
-    }.getOrElse(requestedParams)
+    val params = if (requestedParams.build.id != "lastSuccessful")
+      requestedParams
+    else {
+      TeamCityBuilds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
+        requestedParams.copy(build = requestedParams.build.copy(id=latestId))
+      }.getOrElse(requestedParams)
+    }
 
     Domains.assertResponsibleFor(params)
 
