@@ -18,7 +18,9 @@ import concurrent.Await
 import akka.util.Timeout
 import scalax.file.Path
 import magenta.teamcity.Artifact
-import conf.Configuration
+import conf.{TaskMetrics, Configuration}
+import org.joda.time.DateTime
+import scala.util.Try
 
 object DeployControlActor extends Logging {
   trait Event
@@ -62,6 +64,40 @@ object DeployControlActor extends Logging {
     } catch {
       case t:Throwable => None
     }
+  }
+}
+
+object DeployMetricsActor {
+  trait Message
+  case class TaskStart(deployId: UUID, taskId: Int, queueTime: DateTime, startTime: DateTime) extends Message
+  case class TaskComplete(deployId: UUID, taskId: Int, finishTime: DateTime) extends Message
+  case class TaskCountRequest() extends Message
+
+  lazy val system = ActorSystem("deploy-metrics")
+  lazy val deployMetricsProcessor = system.actorOf(Props[DeployMetricsActor])
+  def runningTaskCount: Int = {
+    implicit val timeout = Timeout(100 milliseconds)
+    val count = deployMetricsProcessor ? TaskCountRequest() mapTo manifest[Int]
+    Try {
+      Await.result(count, timeout.duration)
+    } getOrElse 0
+  }
+}
+
+class DeployMetricsActor extends Actor with Logging {
+  var runningTasks = Map.empty[(UUID, Int), DateTime]
+  import DeployMetricsActor._
+  def receive = {
+    case TaskStart(deployId, taskId, queueTime, startTime) =>
+      TaskMetrics.TaskStartLatency.recordTimeSpent(startTime.getMillis - queueTime.getMillis)
+      runningTasks += ((deployId, taskId) -> startTime)
+    case TaskComplete(deployId, taskId, finishTime) =>
+      runningTasks.get((deployId, taskId)).foreach { startTime =>
+        TaskMetrics.TaskTimer.recordTimeSpent(finishTime.getMillis - startTime.getMillis)
+      }
+      runningTasks -= (deployId -> taskId)
+    case TaskCountRequest() =>
+      sender ! runningTasks.size
   }
 }
 
@@ -155,7 +191,7 @@ class DeployCoordinator extends Actor with Logging {
         ifStopFlagClear(newState) {
           newState.firstTask.foreach { task =>
             log.debug("Starting first task")
-            runners ! RunTask(newState.record, newState.keyRing.get, task, newState.loggingContext)
+            runners ! RunTask(newState.record, newState.keyRing.get, task, newState.loggingContext, new DateTime())
           }
         }
       }
@@ -169,7 +205,7 @@ class DeployCoordinator extends Actor with Logging {
           state.nextTask(task) match {
             case Some(nextTask) =>
               log.debug("Running next task")
-              runners ! RunTask(state.record, state.keyRing.get, state.nextTask(task).get, state.loggingContext)
+              runners ! RunTask(state.record, state.keyRing.get, state.nextTask(task).get, state.loggingContext, new DateTime())
             case None =>
               MessageBroker.finishContext(state.loggingContext)
               log.debug("Cleaning up")
@@ -215,7 +251,7 @@ class DeployCoordinator extends Actor with Logging {
 
 object TaskRunner {
   trait Message
-  case class RunTask(record: Record, keyRing: KeyRing, task: UniqueTask, loggingContext:MessageBrokerContext) extends Message
+  case class RunTask(record: Record, keyRing: KeyRing, task: UniqueTask, loggingContext:MessageBrokerContext, queueTime: DateTime) extends Message
   case class TaskCompleted(record: Record, task: UniqueTask) extends Message
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
@@ -249,7 +285,9 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, keyring, task, loggingContext) => {
+    case RunTask(record, keyring, task, loggingContext, queueTime) => {
+      import DeployMetricsActor._
+      deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
       try {
         def stopFlagAsker: Boolean = {
@@ -273,6 +311,8 @@ class TaskRunner extends Actor with Logging {
         case t:Throwable =>
           log.debug("Sending failed message")
           sender ! TaskFailed(record, t)
+      } finally {
+        deployMetricsProcessor ! TaskComplete(record.uuid, task.id, new DateTime())
       }
     }
 
