@@ -131,11 +131,24 @@ object BuildSummary extends Logging {
     buildSummary
   }
 
+  val BrokenSinceDateMatcher = """^(.*sinceDate%3A\d{8}T\d{6})%20(\d{4}.*)$""".r
+
   def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]], followNext: Boolean): Future[List[BuildSummary]] = {
     val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
     (builds \ "@nextHref").headOption match {
       case Some(continuationUrl) if followNext =>
-        val continuations = api.href(continuationUrl.text).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext))
+        val fixedContinuationUrl = continuationUrl.text match {
+          case BrokenSinceDateMatcher(start,end) => s"$start%2B$end"
+          case other => other
+        }
+        val continuations = api.href(fixedContinuationUrl).get().flatMap{ data =>
+          if (data.status < 400)
+            BuildSummary(data.xml, buildTypeLookup, followNext)
+          else {
+            log.warn(s"Status ${data.status} when trying to get further results from $fixedContinuationUrl")
+            Future.successful(Nil)
+          }
+        }
         Future.sequence(List(buildSummaries, continuations)).map(_.flatten)
       case _ => buildSummaries
     }
