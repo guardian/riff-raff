@@ -131,7 +131,7 @@ object BuildSummary extends Logging {
     buildSummary
   }
 
-  val BrokenSinceDateMatcher = """^(.*sinceDate%3A\d{8}T\d{6})%20(\d{4}.*)$""".r
+  val BrokenSinceDateMatcher = """^(.*sinceDate:\d{8}T\d{6})\+(\d{4}.*)$""".r
 
   def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]], followNext: Boolean): Future[List[BuildSummary]] = {
     val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
