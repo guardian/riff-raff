@@ -23,6 +23,7 @@ import conf.AtomicSwitch
 import org.joda.time.{Interval, DateTime}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
+import scala.util.{Failure, Success}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -267,11 +268,17 @@ object Deployment extends Controller with Logging {
     val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
     val result = PreviewController.getPreview(previewUUID, parameters)
     result match {
-      case PreviewReady(preview) => Ok(views.html.deploy.previewContent(request, preview))
-      case PreviewFailed(exception) => Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-      case PreviewInProgress(startTime) =>
-        val duration = new org.joda.time.Duration(startTime, new DateTime())
-        Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
+      case Some(PreviewResult(future, startTime)) =>
+          future.value match {
+            case Some(Success(preview)) => Ok(views.html.deploy.previewContent(request, preview))
+            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
+            case None =>
+              val duration = new org.joda.time.Duration(startTime, new DateTime())
+              Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
+          }
+      case _ =>
+        val exception = new IllegalStateException("Future for preview wasn't found")
+        Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
     }
   }
 
