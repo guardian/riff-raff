@@ -14,47 +14,37 @@ import magenta.teamcity.Artifact
 import java.util.UUID
 import akka.agent.Agent
 import org.joda.time.DateTime
-import akka.actor.{Actor, Props, ActorSystem}
 import conf.Configuration
+import scala.concurrent._
+import akka.actor.ActorSystem
+import ExecutionContext.Implicits.global
 
-trait PreviewResult {
-  def completed: Boolean
+case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
+  def completed = future.isCompleted
+  def duration = new org.joda.time.Duration(startTime, new DateTime())
 }
-case class PreviewReady(preview: Preview) extends PreviewResult { val completed = true }
-case class PreviewFailed(exception: Exception) extends PreviewResult { val completed = true }
-case class PreviewInProgress(startTime: DateTime = new DateTime()) extends PreviewResult { val completed = false }
 
 object PreviewController {
   implicit lazy val system = ActorSystem("preview")
   val agent = Agent[Map[UUID, PreviewResult]](Map.empty)
-  lazy val actor = system.actorOf(Props[PreviewActor])
+
+  def cleanupPreviews() {
+    agent.send { resultMap =>
+      resultMap.filter { case (uuid, result) =>
+        !result.completed || result.duration.toStandardMinutes.getMinutes < 60
+      }
+    }
+  }
 
   def startPreview(parameters: DeployParameters): UUID = {
+    cleanupPreviews()
     val previewId = UUID.randomUUID()
-    val previewResult = PreviewInProgress(new DateTime())
-    agent.send{ _ + (previewId -> previewResult) }
-    actor ! (previewId, parameters)
+    val previewFuture = future { Preview(parameters) }
+    agent.send{ _ + (previewId -> PreviewResult(previewFuture)) }
     previewId
   }
 
-  def getPreview(id: UUID, parameters: DeployParameters): PreviewResult = {
-    val result = agent()(id)
-    if (result.completed) agent.send( _ - id )
-    result
-  }
-}
-
-class PreviewActor extends Actor {
-  def receive = {
-    case (id:UUID, parameters:DeployParameters) =>
-      try {
-        val result = Preview(parameters)
-        PreviewController.agent.send( _ + (id -> PreviewReady(result)))
-      } catch {
-        case e:Exception =>
-          PreviewController.agent.send( _ + (id -> PreviewFailed(e)))
-      }
-  }
+  def getPreview(id: UUID, parameters: DeployParameters): Option[PreviewResult] = agent().get(id)
 }
 
 object Preview {
