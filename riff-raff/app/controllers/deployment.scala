@@ -270,8 +270,14 @@ object Deployment extends Controller with Logging {
     result match {
       case Some(PreviewResult(future, startTime)) =>
           future.value match {
-            case Some(Success(preview)) => Ok(views.html.deploy.previewContent(request, preview))
-            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
+            case Some(Success(preview)) =>
+              try {
+                Ok(views.html.deploy.previewContent(request, preview))
+              } catch {
+                case exception:Exception =>
+                  Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
+              }
+            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
             case None =>
               val duration = new org.joda.time.Duration(startTime, new DateTime())
               Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))

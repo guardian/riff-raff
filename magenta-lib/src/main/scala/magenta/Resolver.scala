@@ -29,7 +29,7 @@ object Resolver {
   def resolveDetail( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String): RecipeTasksNode = {
-      val recipe = project.recipes(recipeName)
+      val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
       val recipeTasks = resolveRecipe(recipe)
       val children = recipe.dependsOn.map(resolveTree)
       RecipeTasksNode(recipeTasks, children)

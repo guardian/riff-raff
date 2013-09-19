@@ -63,10 +63,10 @@ object JsonReader {
     def parseAction(actionString: String) = {
       actionString.split("\\.") match {
         case Array(pkgName, actionName) =>
-          val pkg = availablePackages.get(pkgName).getOrElse(sys.error("Unknown package in action: " + actionString))
+          val pkg = availablePackages.get(pkgName).getOrElse(sys.error(s"Package '$pkgName' does not exist; cannot resolve action '$actionString'"))
           pkg.mkAction(actionName)
 
-        case _ => sys.error("Badly formed action name: " + actionString)
+        case _ => sys.error(s"Badly formed action name: '$actionString' - should be in <packageName>.<actionName> format")
       }
     }
 
