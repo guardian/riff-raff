@@ -62,8 +62,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object deployinfo {
     lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
     lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
-      DeployInfoMode.values.filter(_.toString.equalsIgnoreCase(name)).headOption
+      DeployInfoMode.values.find(_.toString.equalsIgnoreCase(name))
     }.getOrElse(DeployInfoMode.URL)
+    lazy val staleMinutes: Int = configuration.getIntegerProperty("deployinfo.staleMinutes", 15)
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")

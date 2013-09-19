@@ -4,7 +4,7 @@ import json.{DeployInfoHost, DeployInfoJsonInputFile}
 import tasks.Task
 import collection.SortedSet
 import java.util.UUID
-import org.joda.time.DateTime
+import org.joda.time.{Duration, DateTime}
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
@@ -37,7 +37,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
     else filterHosts(params.hostList contains _.name)
   }
 
-  def filterHosts(p: Host => Boolean) = DeployInfo(input.copy(hosts = input.hosts.filter(jsonHost => p(asHost(jsonHost)))), createdAt)
+  def filterHosts(p: Host => Boolean) = this.copy(input = input.copy(hosts = input.hosts.filter(jsonHost => p(asHost(jsonHost)))))
 
   val hosts = input.hosts.map(asHost)
   val data = input.data mapValues { dataList =>

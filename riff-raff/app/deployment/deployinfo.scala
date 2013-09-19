@@ -14,9 +14,16 @@ import io.Source
 import lifecycle.LifecycleWithoutApp
 import net.liftweb.json.{DefaultFormats, JsonParser}
 import net.liftweb.json.JsonAST.JObject
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, Duration}
 
 object DeployInfoManager extends LifecycleWithoutApp with Logging {
+
+  implicit class DeployInfoWithStale(di: DeployInfo) {
+    def stale: Boolean = {
+      di.createdAt.exists(new Duration(_, new DateTime).getStandardMinutes > Configuration.deployinfo.staleMinutes)
+    }
+  }
+
   private val classpathHandler = new URLStreamHandler {
     val classloader = getClass.getClassLoader
     override def openConnection(u: URL): URLConnection = {
@@ -72,6 +79,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   }
 
   def deployInfo = agent.map(_()).getOrElse(DeployInfo())
+  def stale = deployInfo.stale
 
   def stageList = deployInfo.knownHostStages.sorted(conf.Configuration.stages.ordering)
   def hostList = deployInfo.hosts
