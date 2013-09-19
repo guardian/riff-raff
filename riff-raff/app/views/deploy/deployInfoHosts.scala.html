@@ -6,10 +6,7 @@
 
 <h2>Deployment Hosts</h2>
 
-<p><small>@deployInfo.createdAt match {
-        case Some(dt) => { Last updated <time class="makeRelativeDate" datetime="@dt">at @org.joda.time.format.DateTimeFormat.mediumDateTime.print(dt)</time> }
-        case None => { No data yet }
-}</small></p>
+@snippets.deployInfoDateBox(deployInfo)
 
 @if(deployInfo.hosts.isEmpty) {
     <div class="alert">No hosts specified in deployment information</div>

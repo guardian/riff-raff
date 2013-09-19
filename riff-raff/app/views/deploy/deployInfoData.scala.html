@@ -5,10 +5,7 @@
 
 <h2>Deployment Resources</h2>
 
-    <p><small>@deployInfo.createdAt match {
-        case Some(dt) => { Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time> }
-        case None => { No data yet }
-    }</small></p>
+@snippets.deployInfoDateBox(deployInfo)
 
 @if(deployInfo.knownKeys.isEmpty) {
   <div class="alert">No data specified in deployment information</div>
