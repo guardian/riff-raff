@@ -12,6 +12,7 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import com.mongodb.casbah.Imports._
 import deployment.{Record, DeployFilter, DeployInfoManager}
+import DeployInfoManager._
 import utils.Graph
 import magenta._
 import play.api.mvc.BodyParsers.parse
@@ -283,6 +284,7 @@ object Api extends Controller with Logging {
         "status" -> "ok",
         "filter" -> toJson(query.toMap),
         "updateTime" -> deployInfo.createdAt,
+        "stale" -> deployInfo.stale,
         "results" -> results
       )
     )

@@ -1,0 +1,13 @@
+@(di:magenta.DeployInfo)
+@import deployment.DeployInfoManager._
+
+<p>@di.createdAt match {
+    case Some(dt) => {
+        @if(!di.stale) {
+            <small>Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time></small>
+        } else {
+            <div class="alert alert-error"><strong>WARNING</strong> Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time></div>
+        }
+    }
+    case None => { <small>No data yet</small> }
+}</p>
