@@ -17,6 +17,8 @@ deployment information
  - `deployinfo.mode` - How to interpret the location:
     - `URL` will interpret it as a URL holding the JSON data (using classpath: as the protocol will resolve something on the classpath).
     - `Execute` will interpret it as a local executable which will return JSON on stdout.
+ - `deployinfo.refreshSeconds` - The number of seconds between attempts to update the deployment information
+ - `deployinfo.timeoutSeconds` - When in `Execute` mode this will give up and attempt to kill the process if it hasn't exited after this number of seconds.
 
 auth
 ----

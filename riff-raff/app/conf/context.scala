@@ -65,6 +65,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       DeployInfoMode.values.find(_.toString.equalsIgnoreCase(name))
     }.getOrElse(DeployInfoMode.URL)
     lazy val staleMinutes: Int = configuration.getIntegerProperty("deployinfo.staleMinutes", 15)
+    lazy val refreshSeconds: Int = configuration.getIntegerProperty("deployinfo.refreshSeconds", 60)
+    lazy val timeoutSeconds: Int = configuration.getIntegerProperty("deployinfo.timeoutSeconds", 180)
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
