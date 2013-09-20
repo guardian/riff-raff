@@ -15,6 +15,10 @@ import lifecycle.LifecycleWithoutApp
 import net.liftweb.json.{DefaultFormats, JsonParser}
 import net.liftweb.json.JsonAST.JObject
 import org.joda.time.{DateTime, Duration}
+import scala.collection.mutable
+import scala.concurrent._
+import ExecutionContext.Implicits.global
+import java.util.concurrent.TimeoutException
 
 object DeployInfoManager extends LifecycleWithoutApp with Logging {
 
@@ -37,13 +41,25 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   private def getDeployInfo = {
     import sys.process._
     log.info("Populating deployinfo hosts...")
-    val deployInfoJson: String = Configuration.deployinfo.mode match {
+    val deployInfoJsonOption: Option[String] = Configuration.deployinfo.mode match {
       case DeployInfoMode.Execute =>
-        if (new File(Configuration.deployinfo.location).exists)
-          Configuration.deployinfo.location.!!
-        else {
+        if (new File(Configuration.deployinfo.location).exists) {
+          val buffer = mutable.Buffer[String]()
+          val process = Configuration.deployinfo.location.run(ProcessLogger( (s) => buffer += s, _ => ()))
+          try {
+            val futureExitValue = Await.result(future {
+              process.exitValue()
+            }, Configuration.deployinfo.timeoutSeconds.seconds)
+            if (futureExitValue == 0) Some(buffer.mkString("")) else None
+          } catch {
+            case t:TimeoutException =>
+              process.destroy()
+              log.error("The deployinfo process didn't finish quickly enough, tried to terminate the process")
+              None
+          }
+        } else {
           log.warn("No file found at '%s', defaulting to empty DeployInfo" format (Configuration.deployinfo.location))
-          ""
+          None
         }
       case DeployInfoMode.URL =>
         val url = Configuration.deployinfo.location match {
@@ -51,31 +67,35 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
           case otherURL => new URL(otherURL)
         }
         log.info("URL: %s" format url)
-        Source.fromURL(url).getLines.mkString
+        Some(Source.fromURL(url).getLines.mkString)
     }
 
-    implicit val formats = DefaultFormats
-    val json = JsonParser.parse(deployInfoJson)
-    val deployInfo = (json \ "response") match {
-      case response:JObject => {
-        val updateTime = (response \ "updateTime").extractOpt[String].map(s => new DateTime(s))
-        DeployInfoJsonReader.parse(response \ "results").copy(createdAt = updateTime.orElse(Some(new DateTime())))
+    deployInfoJsonOption.map{ deployInfoJson =>
+      implicit val formats = DefaultFormats
+      val json = JsonParser.parse(deployInfoJson)
+      val deployInfo = (json \ "response") match {
+        case response:JObject => {
+          val updateTime = (response \ "updateTime").extractOpt[String].map(s => new DateTime(s))
+          DeployInfoJsonReader.parse(response \ "results").copy(createdAt = updateTime.orElse(Some(new DateTime())))
+        }
+        case _ => DeployInfoJsonReader.parse(deployInfoJson)
       }
-      case _ => DeployInfoJsonReader.parse(deployInfoJson)
+
+
+      log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
+        deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
+
+      deployInfo
     }
-
-
-    log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
-      deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
-
-    deployInfo
   }
 
   val system = ActorSystem("deploy")
   var agent: Option[ScheduledAgent[DeployInfo]] = None
 
   def init() {
-    agent = Some(ScheduledAgent[DeployInfo](0 seconds, 1 minute, DeployInfo())(_ => getDeployInfo))
+    agent = Some(ScheduledAgent[DeployInfo](0 seconds, Configuration.deployinfo.refreshSeconds.seconds, DeployInfo()){ original =>
+      getDeployInfo.getOrElse(original)
+    })
   }
 
   def deployInfo = agent.map(_()).getOrElse(DeployInfo())

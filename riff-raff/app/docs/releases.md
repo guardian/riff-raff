@@ -1,5 +1,27 @@
 ### Release notes
 
+#### 20th September 2013
+
+Add a timeout to the deployinfo poller. It will now try to kill off a process that has not exited after a timeout
+period.
+
+#### 19th September 2013
+
+Fixed another preview failure case, such that failures are more usefully presented to the user.
+
+Highlight to the end user when deploys are stale and added a boolean field to the deployinfo API.
+
+#### 16th September 2013
+
+Change how previews are implemented so that failures are not silently dropped.
+
+#### 3rd September 2013
+
+Metrics for number of concurrent tasks and task start latency have been added to make it easier to identify performance
+ issues.
+
+API date-times are now returned in the ISO8601 format
+
 #### 2nd September 2013
 
 Continuous deployment has been overhauled. Deploys can now be triggered either by a new build successfully completing
