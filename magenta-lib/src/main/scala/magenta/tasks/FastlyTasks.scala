@@ -1,9 +1,9 @@
 package magenta.tasks
 
-import magenta.{ApiCredentials, MessageBroker, KeyRing, Package}
-import com.gu.FastlyAPIClient
+import magenta.{MessageBroker, KeyRing, Package}
 import java.io.File
 import net.liftweb.json._
+import com.gu.fastly.api.FastlyAPIClient
 
 case class UpdateFastlyConfig(pkg: Package) extends Task {
 
@@ -24,7 +24,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
 
   private def getActiveVersionNumber(client: FastlyAPIClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
-      val versionsJson = client.versions().get.getResponseBody
+      val versionsJson = client.versionList().get.getResponseBody
       val versions = parse(versionsJson).extract[List[Version]]
       val activeVersion = versions.filter(x => x.active.getOrElse(false) == true)(0)
       MessageBroker.info(s"Current activate version ${activeVersion.number}")
