@@ -10,7 +10,7 @@ import deployment.{PaginationView, DeployFilter}
 import magenta.{Build, RunState}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import notification.{HookAction, HookCriteria}
+import notification.{HookConfig, HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import com.mongodb.casbah.query.Imports._
@@ -70,6 +70,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
   val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
   val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
+  val hookConfigsCollection = database("%shookConfigs" format Configuration.mongo.collectionPrefix)
   val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
   val deployJsonCollection = database("%sdeployJson" format Configuration.mongo.collectionPrefix)
   val apiKeyCollection = database("%sapiKeys" format Configuration.mongo.collectionPrefix)
@@ -122,6 +123,44 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deletePostDeployHook(criteria: HookCriteria) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
       hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.toDBO))
+    }
+  }
+
+
+  override def getPostDeployHook(id: UUID): Option[HookConfig] =
+    logAndSquashExceptions[Option[HookConfig]](Some("Getting hook config for %s" format id), None) {
+      hookConfigsCollection.findOneByID(id).flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] =
+    logAndSquashExceptions[Iterable[HookConfig]](Some(s"Getting hook deploy configs for project $projectName and stage $stage"), Nil) {
+      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+        .toIterable.flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def getPostDeployHookList: Iterable[HookConfig] =
+    logAndSquashExceptions[Iterable[HookConfig]](Some("Getting all hook deploy configs"), Nil) {
+      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+        .toIterable.flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def setPostDeployHook(config: HookConfig) {
+    logAndSquashExceptions(Some(s"Saving hook deploy config: $config"),()) {
+      hookConfigsCollection.findAndModify(
+        query = MongoDBObject("_id" -> config.id),
+        update = config.toDBO,
+        upsert = true,
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew = false
+      )
+    }
+  }
+
+  override def deletePostDeployHook(id: UUID) {
+    logAndSquashExceptions(Some(s"Deleting post deploy hook $id"),()) {
+      hookConfigsCollection.findAndRemove(MongoDBObject("_id" -> id))
     }
   }
 

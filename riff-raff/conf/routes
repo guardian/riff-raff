@@ -48,8 +48,8 @@ POST    /deployment/continuous/:id/delete   controllers.ContinuousDeployControll
 GET     /deployment/hooks           controllers.Hooks.list
 GET     /deployment/hooks/new       controllers.Hooks.form
 POST    /deployment/hooks/save      controllers.Hooks.save
-GET     /deployment/hooks/edit      controllers.Hooks.edit(project:String, stage:String)
-POST    /deployment/hooks/delete    controllers.Hooks.delete
+GET     /deployment/hooks/edit      controllers.Hooks.edit(id)
+POST    /deployment/hooks/delete    controllers.Hooks.delete(id)
 
 # authentication endpoints
 GET     /profile                    controllers.Login.profile

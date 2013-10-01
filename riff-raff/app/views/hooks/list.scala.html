@@ -1,4 +1,5 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], hooks: Seq[(notification.HookCriteria, notification.HookAction)])
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], hooks: Seq[notification.HookConfig])
+@import org.joda.time.format.DateTimeFormat._
 
 @main("Post Deploy Hooks", request) {
 <h2>Post Deploy Hooks</h2>
@@ -11,6 +12,7 @@
     <table class="table table-condensed table-striped">
         <thead>
             <tr>
+                <th>Last edited</th>
                 <th>Project Name</th>
                 <th>Stage</th>
                 <th>URL</th>
@@ -20,20 +22,19 @@
             </tr>
         </thead>
         <tbody>
-          @for((criteria, action) <- hooks) {
-            <tr @if(!action.enabled){ class="error" }>
-                <td>@criteria.projectName</td>
-                <td>@criteria.stage</td>
-                <td>@action.url</td>
-                <td>@action.enabled</td>
+          @for(config <- hooks) {
+            <tr @if(!config.enabled){ class="error" }>
+                <td>@shortDateTime.print(config.lastEdited) by <span class="label">@config.user</span></td>
+                <td>@config.projectName</td>
+                <td>@config.stage</td>
+                <td>@config.url</td>
+                <td>@config.enabled</td>
                 <td>
-                    <a class="btn btn-mini" href="@routes.Hooks.edit(criteria.projectName,criteria.stage)"><i class="icon-edit"></i> Edit</a>
+                    <a class="btn btn-mini" href="@routes.Hooks.edit(config.id.toString)"><i class="icon-edit"></i> Edit</a>
                 </td>
                 <td>
-                    @helper.form(action=routes.Hooks.delete, 'class -> "form-make-inline") {
-                        <input type="hidden" name="projectName" value="@criteria.projectName"/>
-                        <input type="hidden" name="stage" value="@criteria.stage"/>
-                        <button class="btn btn-mini btn-danger" name="delete" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
+                    @helper.form(action=routes.Hooks.delete(config.id.toString), 'class -> "form-make-inline") {
+                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
                     }
                 </td>
             </tr>

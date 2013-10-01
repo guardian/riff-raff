@@ -4,7 +4,7 @@ import controllers.{DeployController, Logging}
 import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
 import lifecycle.LifecycleWithoutApp
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
 import deployment.TaskType
 import java.net.{URLEncoder, URL}
 import com.mongodb.casbah.commons.{Imports, MongoDBObject}
@@ -16,7 +16,34 @@ import play.api.libs.ws.WS
 import com.ning.http.client.Realm.AuthScheme
 import play.api.libs.concurrent.Execution.Implicits._
 import java.util.UUID
+import org.joda.time.DateTime
 
+case class HookConfig(id: UUID, projectName: String, stage: String, url: String, enabled: Boolean, lastEdited: DateTime, user:String)
+object HookConfig extends MongoSerialisable[HookConfig] {
+  def apply(projectName: String, stage: String, url: String, enabled: Boolean, updatedBy:String): HookConfig =
+    HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
+  implicit val hookFormat: MongoFormat[HookConfig] = new HookMongoFormat
+  private class HookMongoFormat extends MongoFormat[HookConfig] {
+    def toDBO(a: HookConfig) = MongoDBObject(
+      "_id" -> a.id,
+      "projectName" -> a.projectName,
+      "stage" -> a.stage,
+      "url" -> a.url,
+      "enabled" -> a.enabled,
+      "lastEdited" -> a.lastEdited,
+      "user" -> a.user
+    )
+    def fromDBO(dbo: MongoDBObject) = Some(HookConfig(
+      dbo.as[UUID]("_id"),
+      dbo.as[String]("projectName"),
+      dbo.as[String]("stage"),
+      dbo.as[String]("url"),
+      dbo.as[Boolean]("enabled"),
+      dbo.as[DateTime]("lastEdited"),
+      dbo.as[String]("user")
+    ))
+  }
+}
 
 case class HookCriteria(projectName: String, stage: String)
 object HookCriteria extends MongoSerialisable[HookCriteria] {
@@ -32,17 +59,18 @@ object HookCriteria extends MongoSerialisable[HookCriteria] {
 case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
 case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable[HookAction] {
-  val substitutionPoint = """%deploy\.([A-Za-z]+)%""".r
-  def request(uuid: UUID, parameters: DeployParameters) = {
+  val substitutionPoint = """%deploy\.([A-Za-z]+\.?)([A-Za-z-_]+)?%""".r
+  def request(record: DeployRecordDocument) = {
     val newUrl = substitutionPoint.replaceAllIn(url, (substitution) => {
       URLEncoder.encode(substitution.group(1).toLowerCase match {
-        case "build" => parameters.build.id
-        case "project" => parameters.build.projectName
-        case "stage" => parameters.stage.name
-        case "recipe" => parameters.recipe.name
-        case "hosts" => parameters.hostList.mkString(",")
-        case "deployer" => parameters.deployer.name
-        case "uuid" => uuid.toString
+        case "build" => record.parameters.buildId
+        case "project" => record.parameters.projectName
+        case "stage" => record.parameters.stage
+        case "recipe" => record.parameters.recipe
+        case "hosts" => record.parameters.hostList.mkString(",")
+        case "deployer" => record.parameters.deployer
+        case "uuid" => record.uuid.toString
+        case "tag." => Option(substitution.group(2)).flatMap(record.parameters.tags.get).getOrElse("")
       }, "utf-8")
     })
     val userInfo = Option(new URL(newUrl).getUserInfo).flatMap { ui =>
@@ -55,9 +83,9 @@ case class HookAction(url: String, enabled: Boolean) extends Logging with MongoS
     userInfo.map(ui => WS.url(newUrl).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(newUrl))
   }
 
-  def act(uuid: UUID, parameters: DeployParameters) {
+  def act(record: DeployRecordDocument) {
     if (enabled) {
-      val urlRequest = request(uuid, parameters)
+      val urlRequest = request(record)
       log.info("Calling %s" format urlRequest.url)
       urlRequest.get().map { response =>
         log.info("HTTP status code %d" format response.status)
@@ -118,10 +146,12 @@ class HooksClient extends Actor with Logging {
     case Finished(uuid, params) =>
       val criteria: HookCriteria = HookCriteria(params)
       try {
-        Persistence.store.getPostDeployHook(criteria).foreach{ _.act(uuid, params) }
+        Persistence.store.getPostDeployHook(criteria).foreach{
+          _.act(Persistence.store.readDeploy(uuid).get)
+        }
       } catch {
         case t:Throwable =>
-          log.warn("Exception caught whilst calling any post deploy hooks for %s" format criteria, t)
+          log.warn("Exception caught whilst processing post deploy hooks for %s" format criteria, t)
       }
   }
 }

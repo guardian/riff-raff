@@ -6,7 +6,9 @@ import notification.{HookCriteria, HookAction}
 import com.mongodb.casbah.Imports._
 import com.ning.http.client.Realm.AuthScheme
 import java.util.UUID
-import magenta.{Stage, Deployer, Build, DeployParameters}
+import magenta._
+import persistence.{ParametersDocument, DeployRecordDocument}
+import org.joda.time.DateTime
 
 class HooksTest extends FlatSpec with ShouldMatchers {
   "HookAction" should "serialise and deserialise" in {
@@ -19,26 +21,32 @@ class HooksTest extends FlatSpec with ShouldMatchers {
 
   it should "create an authenticated request" in {
     val action = HookAction("http://simon:bobbins@localhost:80/test", true)
-    val req = action.request(testUUID, testDeployParams)
+    val req = action.request(testDeployParams)
     req.auth should be(Some(("simon", "bobbins", AuthScheme.BASIC)))
   }
 
   it should "create a plain request" in {
     val action = HookAction("http://localhost:80/test", true)
-    val req = action.request(testUUID, testDeployParams)
+    val req = action.request(testDeployParams)
     req.auth should be(None)
   }
 
   it should "substitute parameters" in {
     val action = HookAction("http://localhost:80/test?build=%deploy.build%", true)
-    val req = action.request(testUUID, testDeployParams)
+    val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?build=23")
   }
 
   it should "escape substitute parameters" in {
     val action = HookAction("http://localhost:80/test?project=%deploy.project%", true)
-    val req = action.request(testUUID, testDeployParams)
+    val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?project=test%3A%3Aproject")
+  }
+
+  it should "substitute tag parameters" in {
+    val action = HookAction("http://localhost:80/test?build=%deploy.build%&sha=%deploy.tag.vcsRevision%", true)
+    val req = action.request(testDeployParams)
+    req.url should be("http://localhost:80/test?build=23&sha=9110598b83a908d7882ac4e3cd4b643d7d8bc54e")
   }
 
   "HookCriteria" should "serialise and deserialise" in {
@@ -50,9 +58,21 @@ class HooksTest extends FlatSpec with ShouldMatchers {
   }
 
   val testUUID = UUID.fromString("758fa00e-e9da-41e0-b31f-1af417e333a1")
-  val testDeployParams = DeployParameters(
-    Deployer("tester"),
-    Build("test::project", "23"),
-    Stage("TEST")
+  val startTime = new DateTime(2013,9,23,13,23,33)
+  val testDeployParams = DeployRecordDocument(
+    testUUID,
+    Some(testUUID.toString),
+    startTime,
+    ParametersDocument(
+      "Mr. Tester",
+      "Deploy",
+      "test::project",
+      "23",
+      "TEST",
+      "default",
+      List("host1.dom", "host2.dom"),
+      Map("vcsRevision" -> "9110598b83a908d7882ac4e3cd4b643d7d8bc54e", "riffraff-domain" -> "10-252-94-200")
+    ),
+    RunState.Completed
   )
 }
