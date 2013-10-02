@@ -1,62 +1,62 @@
 package controllers
 
 import java.net.{MalformedURLException, URL}
-import notification.{HookAction, HookCriteria}
+import notification.HookConfig
 import persistence.Persistence
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.mvc.Controller
+import java.util.UUID
+import utils.Forms.uuid
+import org.joda.time.DateTime
 
-case class HookForm(criteria: HookCriteria, action: HookAction)
+case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean)
 
 object Hooks extends Controller with Logging {
-
-  lazy val hookCriteriaMapping = mapping[HookCriteria,String,String]( "projectName" -> nonEmptyText,
-    "stage" -> nonEmptyText
-  )( HookCriteria.apply )( HookCriteria.unapply )
-
-  lazy val hookCriteriaForm = Form[HookCriteria](
-    hookCriteriaMapping
-  )
-
   lazy val hookForm = Form[HookForm](
     mapping(
-      "criteria" -> hookCriteriaMapping,
-      "action" -> mapping(
-        "url" -> nonEmptyText,
-        "enabled" -> boolean
-      )(HookAction.apply)(HookAction.unapply)
+      "id" -> uuid,
+      "projectName" -> nonEmptyText,
+      "stage" -> nonEmptyText,
+      "url" -> nonEmptyText,
+      "enabled" -> boolean
     )( HookForm.apply)(HookForm.unapply ).verifying(
-      "URL is invalid", form => try { new URL(form.action.url); true } catch { case e:MalformedURLException => false }
+      "URL is invalid", form => try { new URL(form.url); true } catch { case e:MalformedURLException => false }
     )
   )
 
   def list = AuthAction { implicit request =>
-    val hooks = Persistence.store.getPostDeployHooks.toSeq.sortBy(q => (q._1.projectName, q._1.stage))
+    val hooks = Persistence.store.getPostDeployHookList.toSeq.sortBy(q => (q.projectName, q.stage))
     Ok(views.html.hooks.list(request, hooks))
   }
   def form = AuthAction { implicit request =>
-    Ok(views.html.hooks.form(request,hookForm.fill(HookForm(HookCriteria("", ""), HookAction("",true)))))
+    Ok(views.html.hooks.form(request,hookForm.fill(HookForm(UUID.randomUUID(),"","","",enabled=true))))
   }
   def save = AuthAction { implicit request =>
     hookForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.hooks.form(request,formWithErrors)),
-      form => {
-        Persistence.store.setPostDeployHook(form.criteria, form.action)
+      f => {
+        val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.identity.get.fullName)
+        Persistence.store.setPostDeployHook(config)
         Redirect(routes.Hooks.list())
       }
     )
   }
-  def edit(projectName: String, stage: String) = AuthAction { implicit request =>
-    val criteria = HookCriteria(projectName, stage)
-    Persistence.store.getPostDeployHook(criteria).map{ action =>
-      Ok(views.html.hooks.form(request,hookForm.fill(HookForm(criteria,action))))
+  def edit(id: String) = AuthAction { implicit request =>
+    val uuid = UUID.fromString(id)
+    Persistence.store.getPostDeployHook(uuid).map{ hc =>
+      Ok(views.html.hooks.form(request,hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled))))
     }.getOrElse(Redirect(routes.Hooks.list()))
   }
-  def delete = AuthAction { implicit request =>
-    hookCriteriaForm.bindFromRequest().fold(
+  def delete(id: String) = AuthAction { implicit request =>
+    Form("action" -> nonEmptyText).bindFromRequest().fold(
       errors => {},
-      deleteCriteria => { Persistence.store.deletePostDeployHook(deleteCriteria) }
+      action => {
+        action match {
+          case "delete" =>
+            Persistence.store.deletePostDeployHook(UUID.fromString(id))
+        }
+      }
     )
     Redirect(routes.Hooks.list())
   }

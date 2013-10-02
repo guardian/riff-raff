@@ -19,3 +19,4 @@ You can expand the following variables in your URLs by using this syntax: `%depl
   * `hosts` (comma separated list of hosts)
   * `deployer`
   * `uuid`
+  * `tag.XXXX` - where XXXX is the name of an available tag

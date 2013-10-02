@@ -1,6 +1,6 @@
 package persistence
 
-import notification.{HookAction, HookCriteria}
+import notification.{HookConfig, HookAction, HookCriteria}
 import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{ApiKey, AuthorisationRecord, Logging}
@@ -35,6 +35,12 @@ trait DataStore extends DocumentStore {
   def getPostDeployHook(criteria: HookCriteria):Option[HookAction] = None
   def deletePostDeployHook(criteria: HookCriteria) {}
 
+  def getPostDeployHook(id: UUID): Option[HookConfig] = None
+  def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] = Nil
+  def getPostDeployHookList:Iterable[HookConfig] = Nil
+  def setPostDeployHook(config: HookConfig) {}
+  def deletePostDeployHook(id: UUID) {}
+
   def getAuthorisation(email: String): Option[AuthorisationRecord] = None
   def getAuthorisationList:List[AuthorisationRecord] = Nil
   def setAuthorisation(auth: AuthorisationRecord) {}
@@ -54,6 +60,10 @@ trait DataStore extends DocumentStore {
 
   def writeDeployJson(id: Build, json: String) {}
   def getDeployJson(id: Build): Option[String] = None
+
+  def writeKey(key:String, value:String) {}
+  def readKey(key:String): Option[String] = None
+  def deleteKey(key: String) {}
 }
 
 object Persistence extends Logging {
