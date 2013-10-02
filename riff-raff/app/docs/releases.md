@@ -1,5 +1,10 @@
 ### Release notes
 
+#### 2nd October 2013
+
+Change the deploy hooks so that multiple hooks can be added for a project and stage. Also added extra substitutions
+so that tags on a deploy can now be substituted into the URL
+
 #### 20th September 2013
 
 Add a timeout to the deployinfo poller. It will now try to kill off a process that has not exited after a timeout

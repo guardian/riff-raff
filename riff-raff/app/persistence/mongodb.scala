@@ -10,7 +10,7 @@ import deployment.{PaginationView, DeployFilter}
 import magenta.{Build, RunState}
 import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import notification.{HookAction, HookCriteria}
+import notification.{HookConfig, HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
 import org.joda.time.DateTime
 import com.mongodb.casbah.query.Imports._
@@ -67,13 +67,16 @@ object MongoDatastore extends Logging {
 }
 
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
-  val deployV2Collection = database("%sdeployV2" format Configuration.mongo.collectionPrefix)
-  val deployV2LogCollection = database("%sdeployV2Logs" format Configuration.mongo.collectionPrefix)
-  val hooksCollection = database("%shooks" format Configuration.mongo.collectionPrefix)
-  val authCollection = database("%sauth" format Configuration.mongo.collectionPrefix)
-  val deployJsonCollection = database("%sdeployJson" format Configuration.mongo.collectionPrefix)
-  val apiKeyCollection = database("%sapiKeys" format Configuration.mongo.collectionPrefix)
-  val continuousDeployCollection = database("%scontinuousDeploy" format Configuration.mongo.collectionPrefix)
+  def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
+  val deployV2Collection = getCollection("deployV2")
+  val deployV2LogCollection = getCollection("deployV2Logs")
+  val hooksCollection = getCollection("hooks")
+  val hookConfigsCollection = getCollection("hookConfigs")
+  val authCollection = getCollection("auth")
+  val deployJsonCollection = getCollection("deployJson")
+  val apiKeyCollection = getCollection("apiKeys")
+  val continuousDeployCollection = getCollection("continuousDeploy")
+  val keyValuesCollection = getCollection("keyValues")
 
   val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection,
     authCollection, deployJsonCollection, apiKeyCollection, continuousDeployCollection)
@@ -122,6 +125,44 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def deletePostDeployHook(criteria: HookCriteria) {
     logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
       hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.toDBO))
+    }
+  }
+
+
+  override def getPostDeployHook(id: UUID): Option[HookConfig] =
+    logAndSquashExceptions[Option[HookConfig]](Some("Getting hook config for %s" format id), None) {
+      hookConfigsCollection.findOneByID(id).flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] =
+    logAndSquashExceptions[Iterable[HookConfig]](Some(s"Getting hook deploy configs for project $projectName and stage $stage"), Nil) {
+      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+        .toIterable.flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def getPostDeployHookList: Iterable[HookConfig] =
+    logAndSquashExceptions[Iterable[HookConfig]](Some("Getting all hook deploy configs"), Nil) {
+      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+        .toIterable.flatMap(HookConfig.fromDBO(_))
+    }
+
+  override def setPostDeployHook(config: HookConfig) {
+    logAndSquashExceptions(Some(s"Saving hook deploy config: $config"),()) {
+      hookConfigsCollection.findAndModify(
+        query = MongoDBObject("_id" -> config.id),
+        update = config.toDBO,
+        upsert = true,
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew = false
+      )
+    }
+  }
+
+  override def deletePostDeployHook(id: UUID) {
+    logAndSquashExceptions(Some(s"Deleting post deploy hook $id"),()) {
+      hookConfigsCollection.findAndRemove(MongoDBObject("_id" -> id))
     }
   }
 
@@ -368,6 +409,31 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       case 0.0 =>
         val errorMessage = result.as[String]("errmsg")
         throw new IllegalArgumentException("Failed to execute mongo query: %s" format errorMessage)
+    }
+  }
+
+  override def writeKey(key: String, value: String) {
+    logAndSquashExceptions[Unit](Some(s"Writing value $value for key $key"), ()) {
+      keyValuesCollection.findAndModify(
+        query = MongoDBObject("key" -> key),
+        update = MongoDBObject("key" -> key, "value" -> value),
+        upsert = true,
+        fields = MongoDBObject(),
+        sort = MongoDBObject(),
+        remove = false,
+        returnNew = false
+      )
+    }
+  }
+
+  override def readKey(key: String): Option[String] =
+    logAndSquashExceptions[Option[String]](Some(s"Retrieving value for key $key"), None) {
+      keyValuesCollection.findOne(MongoDBObject("key" -> key)).flatMap(_.getAs[String]("value"))
+    }
+
+  override def deleteKey(key: String) {
+    logAndSquashExceptions[Unit](Some(s"Deleting key value pair for key $key"), ()) {
+      keyValuesCollection.findAndRemove(MongoDBObject("key" -> key))
     }
   }
 
