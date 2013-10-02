@@ -18,7 +18,53 @@ import play.api.libs.concurrent.Execution.Implicits._
 import java.util.UUID
 import org.joda.time.DateTime
 
-case class HookConfig(id: UUID, projectName: String, stage: String, url: String, enabled: Boolean, lastEdited: DateTime, user:String)
+case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
+
+case class HookConfig(id: UUID,
+                      projectName: String,
+                      stage: String,
+                      url: String,
+                      enabled: Boolean,
+                      lastEdited: DateTime,
+                      user:String) extends Logging {
+
+  val substitutionPoint = """%deploy\.([A-Za-z]+\.?)([A-Za-z-_]+)?%""".r
+  def request(record: DeployRecordDocument) = {
+    val newUrl = substitutionPoint.replaceAllIn(url, (substitution) => {
+      URLEncoder.encode(substitution.group(1).toLowerCase match {
+        case "build" => record.parameters.buildId
+        case "project" => record.parameters.projectName
+        case "stage" => record.parameters.stage
+        case "recipe" => record.parameters.recipe
+        case "hosts" => record.parameters.hostList.mkString(",")
+        case "deployer" => record.parameters.deployer
+        case "uuid" => record.uuid.toString
+        case "tag." => Option(substitution.group(2)).flatMap(record.parameters.tags.get).getOrElse("")
+      }, "utf-8")
+    })
+    val userInfo = Option(new URL(newUrl).getUserInfo).flatMap { ui =>
+      val elements = ui.split(':')
+      if (elements.length == 2)
+        Some(Auth(elements(0), elements(1)))
+      else
+        None
+    }
+    userInfo.map(ui => WS.url(newUrl).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(newUrl))
+  }
+
+  def act(record: DeployRecordDocument) {
+    if (enabled) {
+      val urlRequest = request(record)
+      log.info(s"Calling ${urlRequest.url}")
+      urlRequest.get().map { response =>
+        log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
+        log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
+      }
+    } else {
+      log.info("Hook disabled")
+    }
+  }
+}
 object HookConfig extends MongoSerialisable[HookConfig] {
   def apply(projectName: String, stage: String, url: String, enabled: Boolean, updatedBy:String): HookConfig =
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
@@ -56,46 +102,7 @@ object HookCriteria extends MongoSerialisable[HookCriteria] {
   }
 }
 
-case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
-
-case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable[HookAction] {
-  val substitutionPoint = """%deploy\.([A-Za-z]+\.?)([A-Za-z-_]+)?%""".r
-  def request(record: DeployRecordDocument) = {
-    val newUrl = substitutionPoint.replaceAllIn(url, (substitution) => {
-      URLEncoder.encode(substitution.group(1).toLowerCase match {
-        case "build" => record.parameters.buildId
-        case "project" => record.parameters.projectName
-        case "stage" => record.parameters.stage
-        case "recipe" => record.parameters.recipe
-        case "hosts" => record.parameters.hostList.mkString(",")
-        case "deployer" => record.parameters.deployer
-        case "uuid" => record.uuid.toString
-        case "tag." => Option(substitution.group(2)).flatMap(record.parameters.tags.get).getOrElse("")
-      }, "utf-8")
-    })
-    val userInfo = Option(new URL(newUrl).getUserInfo).flatMap { ui =>
-      val elements = ui.split(':')
-      if (elements.length == 2)
-        Some(Auth(elements(0), elements(1)))
-      else
-        None
-    }
-    userInfo.map(ui => WS.url(newUrl).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(newUrl))
-  }
-
-  def act(record: DeployRecordDocument) {
-    if (enabled) {
-      val urlRequest = request(record)
-      log.info("Calling %s" format urlRequest.url)
-      urlRequest.get().map { response =>
-        log.info("HTTP status code %d" format response.status)
-        log.debug("HTTP response body %s" format response.body)
-      }
-    } else {
-      log.info("Hook disabled")
-    }
-  }
-}
+case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable[HookAction]
 object HookAction extends MongoSerialisable[HookAction] {
   implicit val actionFormat: MongoFormat[HookAction] = new ActionMongoFormat
   private class ActionMongoFormat extends MongoFormat[HookAction] {
@@ -104,8 +111,7 @@ object HookAction extends MongoSerialisable[HookAction] {
   }
 }
 
-
-object HooksClient extends LifecycleWithoutApp {
+object HooksClient extends LifecycleWithoutApp with Logging {
   trait Event
   case class Finished(uuid: UUID, params: DeployParameters)
 
@@ -129,7 +135,29 @@ object HooksClient extends LifecycleWithoutApp {
     }
   }
 
+  def doMigration() {
+    val MIGRATED_KEY = "migratedToHookConfig"
+    if (Persistence.store.readKey(MIGRATED_KEY).isEmpty) {
+      log.info("Migrating deploy hooks to V2")
+      val oldHooks = Persistence.store.getPostDeployHooks
+      val newHooks = Persistence.store.getPostDeployHookList
+      assert(newHooks.isEmpty, "New hooks collection not empty")
+      log.info(s"Migrating ${oldHooks.size} hooks")
+      oldHooks.foreach{ case (criteria, action) =>
+        val config = HookConfig(criteria.projectName, criteria.stage, action.url, action.enabled, "Migration")
+        log.info(s"Migrating criteria $criteria and action $action as config $config")
+        Persistence.store.setPostDeployHook(config)
+      }
+      val migratedHooks = Persistence.store.getPostDeployHookList
+      log.info(s"Found ${migratedHooks.size} migrated hooks")
+      assert(oldHooks.size == migratedHooks.size, "Migration failed")
+      Persistence.store.writeKey(MIGRATED_KEY, "true")
+      log.info("Migration of deploy hooks to V2 completed successfully!")
+    }
+  }
+
   def init() {
+    doMigration()
     MessageBroker.subscribe(sink)
   }
 
@@ -144,14 +172,13 @@ class HooksClient extends Actor with Logging {
 
   def receive = {
     case Finished(uuid, params) =>
-      val criteria: HookCriteria = HookCriteria(params)
-      try {
-        Persistence.store.getPostDeployHook(criteria).foreach{
-          _.act(Persistence.store.readDeploy(uuid).get)
+      Persistence.store.getPostDeployHook(params.build.projectName, params.stage.name).foreach { config =>
+        try {
+          config.act(Persistence.store.readDeploy(uuid).get)
+        } catch {
+          case t:Throwable =>
+            log.warn(s"Exception caught whilst processing post deploy hooks for $config", t)
         }
-      } catch {
-        case t:Throwable =>
-          log.warn("Exception caught whilst processing post deploy hooks for %s" format criteria, t)
       }
   }
 }

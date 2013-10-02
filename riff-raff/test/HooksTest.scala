@@ -2,7 +2,7 @@ package test
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import notification.{HookCriteria, HookAction}
+import notification.{HookConfig, HookCriteria, HookAction}
 import com.mongodb.casbah.Imports._
 import com.ning.http.client.Realm.AuthScheme
 import java.util.UUID
@@ -20,31 +20,31 @@ class HooksTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "create an authenticated request" in {
-    val action = HookAction("http://simon:bobbins@localhost:80/test", true)
+    val action = HookConfig("testProject", "TEST", "http://simon:bobbins@localhost:80/test", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.auth should be(Some(("simon", "bobbins", AuthScheme.BASIC)))
   }
 
   it should "create a plain request" in {
-    val action = HookAction("http://localhost:80/test", true)
+    val action = HookConfig("testProject", "TEST", "http://localhost:80/test", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.auth should be(None)
   }
 
   it should "substitute parameters" in {
-    val action = HookAction("http://localhost:80/test?build=%deploy.build%", true)
+    val action = HookConfig("testProject", "TEST", "http://localhost:80/test?build=%deploy.build%", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?build=23")
   }
 
   it should "escape substitute parameters" in {
-    val action = HookAction("http://localhost:80/test?project=%deploy.project%", true)
+    val action = HookConfig("testProject", "TEST", "http://localhost:80/test?project=%deploy.project%", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?project=test%3A%3Aproject")
   }
 
   it should "substitute tag parameters" in {
-    val action = HookAction("http://localhost:80/test?build=%deploy.build%&sha=%deploy.tag.vcsRevision%", true)
+    val action = HookConfig("testProject", "TEST", "http://localhost:80/test?build=%deploy.build%&sha=%deploy.tag.vcsRevision%", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?build=23&sha=9110598b83a908d7882ac4e3cd4b643d7d8bc54e")
   }
