@@ -136,7 +136,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
 
   override def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] =
     logAndSquashExceptions[Iterable[HookConfig]](Some(s"Getting hook deploy configs for project $projectName and stage $stage"), Nil) {
-      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
+      hookConfigsCollection.find(MongoDBObject("projectName" -> projectName, "stage" -> stage))
         .toIterable.flatMap(HookConfig.fromDBO(_))
     }
 
