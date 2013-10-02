@@ -1,9 +1,9 @@
 package magenta.tasks
 
-import magenta.{ApiCredentials, MessageBroker, KeyRing, Package}
-import com.gu.FastlyAPIClient
+import magenta.{MessageBroker, KeyRing, Package}
 import java.io.File
 import net.liftweb.json._
+import com.gu.fastly.api.FastlyApiClient
 
 case class UpdateFastlyConfig(pkg: Package) extends Task {
 
@@ -22,9 +22,9 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def getActiveVersionNumber(client: FastlyAPIClient, stopFlag: => Boolean): Int = {
+  private def getActiveVersionNumber(client: FastlyApiClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
-      val versionsJson = client.versions().get.getResponseBody
+      val versionsJson = client.versionList().get.getResponseBody
       val versions = parse(versionsJson).extract[List[Version]]
       val activeVersion = versions.filter(x => x.active.getOrElse(false) == true)(0)
       MessageBroker.info(s"Current activate version ${activeVersion.number}")
@@ -34,7 +34,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def clone(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Int = {
+  private def clone(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Int = {
     if (!stopFlag) {
       val cloned = client.versionClone(versionNumber).get.getResponseBody
       val clonedVersion = parse(cloned).extract[Version]
@@ -45,7 +45,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean) = {
+  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean) = {
     if (!stopFlag) {
       val vclListJson = client.vclList(versionNumber).get.getResponseBody
 
@@ -58,7 +58,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyAPIClient, stopFlag: => Boolean) = {
+  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, stopFlag: => Boolean) = {
     if (!stopFlag) {
       val vclFilesToUpload = srcDir.listFiles().toList
       vclFilesToUpload.foreach {
@@ -73,7 +73,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def activateVersion(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean) = {
+  private def activateVersion(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean) = {
     if (validateNewConfigFor(versionNumber, client, stopFlag)) {
       client.versionActivate(versionNumber).get
       MessageBroker.info(s"Fastly version $versionNumber is now active")
@@ -82,7 +82,7 @@ case class UpdateFastlyConfig(pkg: Package) extends Task {
     }
   }
 
-  private def validateNewConfigFor(versionNumber: Int, client: FastlyAPIClient, stopFlag: => Boolean): Boolean = {
+  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Boolean = {
     if (!stopFlag) {
 
       MessageBroker.info("Waiting 5 seconds for the VCL to compile")
@@ -109,16 +109,16 @@ case class Vcl(name: String)
 
 object FastlyApiClientProvider {
 
-  private var fastlyApiClients = Map[String, FastlyAPIClient]()
+  private var fastlyApiClients = Map[String, FastlyApiClient]()
 
-  def get(keyRing: KeyRing): Option[FastlyAPIClient] = {
+  def get(keyRing: KeyRing): Option[FastlyApiClient] = {
 
     keyRing.apiCredentials.get("fastly").map { credentials =>
         val serviceId = credentials.id
         val apiKey = credentials.secret
 
         if (fastlyApiClients.get(serviceId).isEmpty) {
-          this.fastlyApiClients += (serviceId -> new FastlyAPIClient(apiKey, serviceId))
+          this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey, serviceId))
         }
         return fastlyApiClients.get(serviceId)
     }
