@@ -139,6 +139,10 @@ trait EC2 extends AWS {
 
   def describe(instance: ASGInstance)(implicit keyRing: KeyRing) = client.describeInstances(
     new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
+
+  def setElasticIPOfInstance(instanceId: String, elasticIP: String)(implicit keyRing: KeyRing) = {
+    client.associateAddress(new AssociateAddressRequest(instanceId, elasticIP))
+  }
 }
 
 object EC2 extends EC2 {

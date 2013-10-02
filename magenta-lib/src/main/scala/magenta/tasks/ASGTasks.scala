@@ -88,6 +88,21 @@ case class ResumeAlarmNotifications(packageName: String, stage: Stage) extends A
   lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
 }
 
+case class SetElasticIPOfAnInstance(packageName: String, stage: Stage, elasticIP: String) extends ASGTask {
+
+  override def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+    val instanceId = asg.getInstances.head.getInstanceId
+    MessageBroker.info(s"Giving instance $instanceId the elastic IP $elasticIP...")
+    try {
+      EC2.setElasticIPOfInstance(instanceId, elasticIP)
+    } catch {
+      case e: Exception => MessageBroker.fail(s"Failed to associate elastic IP $elasticIP with instance $instanceId", e)
+    }
+  }
+
+  lazy val description = s"Associating elastic IP $elasticIP with a single instance in the group"
+}
+
 trait ASGTask extends Task with ASG {
   def packageName: String
   def stage: Stage
