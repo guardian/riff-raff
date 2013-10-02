@@ -87,8 +87,7 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
   }
 }
 
-case class AutoScaling(pkg: Package) extends PackageType {
-  val name = "auto-scaling-with-ELB"
+trait AutoScalable extends PackageType {
 
   override val defaultData = Map[String, JValue](
     "secondsToWait" -> 15 * 60,
@@ -98,7 +97,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
   lazy val bucket = pkg.stringData("bucket")
 
-  override val perAppActions: AppActionDefinition = {
+  override def perAppActions: AppActionDefinition = {
     case "deploy" => (_, parameters) => {
       List(
         CheckGroupSize(pkg.name, parameters.stage),
@@ -115,8 +114,37 @@ case class AutoScaling(pkg: Package) extends PackageType {
     }
     case "uploadArtifacts" => (_, parameters) =>
       List(
-      S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
-    )
+        S3Upload(parameters.stage, bucket, new File(packageArtifactDir))
+      )
+  }
+}
+
+case class AutoScaling(pkg: Package) extends AutoScalable {
+  val name = "auto-scaling-with-ELB"
+
+  override val perAppActions: AppActionDefinition = super.perAppActions
+}
+
+/*
+ For use when deploying an autoscaling group in the case where one of the instances in the group must have an elastic IP.
+ */
+case class AutoScalingWithAnElasticIP(pkg: Package) extends AutoScalable {
+  val name = "auto-scaling-with-ELB-using-EIP"
+
+  override val perAppActions: AppActionDefinition = {
+
+    case "deploy" => (deployInfo, parameters) => {
+      pkg.data.get("elasticIP").foldLeft {
+        super.perAppActions("deploy")(deployInfo, parameters)
+      } {
+        (tasks, elasticIPJson) =>
+          val elasticIP = elasticIPJson.asInstanceOf[JString].values
+          val setElasticIP = SetElasticIPOfAnInstance(pkg.name, parameters.stage, elasticIP)
+          tasks :+ setElasticIP
+      }
+    }
+
+    case other => super.perAppActions(other)
   }
 }
 
