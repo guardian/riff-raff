@@ -47,7 +47,7 @@ case class HealthcheckGrace(duration: Long) extends Task {
 }
 
 case class WaitForStabilization(packageName: String, stage: Stage, duration: Long) extends ASGTask
-    with RepeatedPollingCheck {
+    with SlowRepeatedPollingCheck {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     check(stopFlag) {
