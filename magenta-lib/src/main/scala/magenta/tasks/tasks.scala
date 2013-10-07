@@ -183,7 +183,7 @@ case class CheckUrls(host: Host, port: String, paths: List[String], duration: Lo
   }
 }
 
-trait RepeatedPollingCheck {
+trait PollingCheck {
   def duration: Long
 
   def check(stopFlag: => Boolean)(theCheck: => Boolean) {
@@ -196,8 +196,7 @@ trait RepeatedPollingCheck {
         } else {
           val remainingTime = expiry - System.currentTimeMillis()
           if (remainingTime > 0) {
-            val exponent = math.min(currentAttempt, 8)
-            val sleepyTime = math.min(math.pow(2,exponent).toLong*100, 25000)
+            val sleepyTime = calculateSleepTime(currentAttempt)
             MessageBroker.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
             Thread.sleep(sleepyTime)
             checkAttempt(currentAttempt + 1)
@@ -209,6 +208,21 @@ trait RepeatedPollingCheck {
     }
     checkAttempt(1)
   }
+
+  def calculateSleepTime(currentAttempt: Int): Long
+}
+
+trait RepeatedPollingCheck extends PollingCheck {
+
+  def calculateSleepTime(currentAttempt: Int): Long = {
+    val exponent = math.min(currentAttempt, 8)
+    math.min(math.pow(2,exponent).toLong*100, 25000)
+  }
+}
+
+trait SlowRepeatedPollingCheck extends PollingCheck {
+
+  def calculateSleepTime(currentAttempt: Int): Long = 30000
 }
 
 
