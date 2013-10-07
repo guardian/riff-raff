@@ -27,7 +27,6 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
       HealthcheckGrace(0),
       WaitForStabilization("app", PROD, 15 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
       ResumeAlarmNotifications("app", PROD)
     ))
   }
@@ -52,7 +51,6 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
       HealthcheckGrace(30000),
       WaitForStabilization("app", PROD, 3 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
       ResumeAlarmNotifications("app", PROD)
     ))
   }
