@@ -17,7 +17,7 @@ import utils.Graph
 import magenta._
 import play.api.mvc.BodyParsers.parse
 import java.util.UUID
-import org.joda.time.format.ISODateTimeFormat
+import utils.Json.DefaultJodaDateWrites
 
 case class ApiKey(
   application:String,
@@ -131,10 +131,6 @@ object ApiJsonEndpoint {
 }
 
 object Api extends Controller with Logging {
-
-  implicit object DefaultJodaDateWrites extends Writes[org.joda.time.DateTime] {
-    def writes(d: org.joda.time.DateTime): JsValue = JsString(ISODateTimeFormat.dateTime.print(d))
-  }
 
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)

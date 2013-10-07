@@ -15,6 +15,8 @@ import deployment.TaskType
 import play.api.libs.ws.WS
 import play.api.libs.json._
 import lifecycle.LifecycleWithoutApp
+import org.joda.time.{DateTimeZone, DateTime}
+import utils.Json.DefaultJodaDateWrites
 
 /*
  Send deploy events to alerta (and graphite)
@@ -43,11 +45,11 @@ object Alerta extends Logging with LifecycleWithoutApp {
       if (DeployController.get(uuid).taskType == TaskType.Deploy)
         message.stack.top match {
           case StartContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters)))
+            sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters, message.stack.time)))
           case FailContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters)))
+            sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters, message.stack.time)))
           case FinishContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters)))
+            sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters, message.stack.time)))
           case _ =>
         }
     }
@@ -90,7 +92,7 @@ object DeployEvent extends Enumeration {
 }
 
 object AlertaEvent {
-  def apply(event:DeployEvent.Value, uuid:UUID, params:DeployParameters): JsValue  = {
+  def apply(event:DeployEvent.Value, uuid:UUID, params:DeployParameters, timestamp: DateTime): JsValue  = {
     val environment = params.stage.name
     val project = params.build.projectName
     val build = params.build.id
@@ -113,7 +115,8 @@ object AlertaEvent {
       "correlatedEvents" -> DeployEvent.values.map(_.toString).toList,
       "summary" -> s"$event of $project build $build in $environment",
       "type" -> "deployAlert",
-      "moreInfo" -> s"${Configuration.urls.publicPrefix}${routes.Deployment.viewUUID(uuid.toString).url}"
+      "moreInfo" -> s"${Configuration.urls.publicPrefix}${routes.Deployment.viewUUID(uuid.toString).url}",
+      "createTime" -> timestamp.toDateTime(DateTimeZone.UTC)
     )
   }
 }
