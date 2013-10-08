@@ -1,5 +1,5 @@
-The Riff-Raff API
-=================
+API
+===
 
 Riff-Raff has a basic API for querying deploy history and starting deploys.  Depending on your use case you might also
 want to look at the documentation for [external deploy requests](externalRequest).

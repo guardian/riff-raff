@@ -72,16 +72,91 @@ object Application extends Controller with Logging {
     Ok(views.html.deploy.deployInfoAbout(request))
   }
 
-  def documentation(resource: String) = NonAuthAction { request =>
+  val Prev = """.*prev:(\S+).*""".r
+  val Next = """.*next:(\S+).*""".r
+
+  def getMarkdownLines(resource: String):List[String] = {
+    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    log.info(s"Getting page for $realResource")
     try {
-      val realResource = if (resource.isEmpty || resource.last == '/') "%sindex" format resource else resource
-      log.info("Getting page for %s" format realResource)
-      val url = getClass.getResource("/docs/%s.md" format realResource)
-      log.info("Resolved URL %s" format url)
-      val markDown = Source.fromURL(url).mkString
-      Ok(views.html.markdown(request, "Documentation for %s" format realResource, markDown))
+      val url = getClass.getResource(s"/docs/$realResource.md")
+      log.info(s"Resolved URL $url")
+      Source.fromURL(url).getLines().toList
     } catch {
-      case e:Throwable => NotFound(views.html.notFound(request,"No documentation found for %s" format resource,Some(e)))
+      case e:Throwable =>
+        log.warn(s"$resource is not a valid page of documentation")
+        Nil
+    }
+  }
+
+  case class Link(title:String, call:Call, url:String)
+  object Link {
+    def apply(url:String):Option[Link] = {
+      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
+        Link(prevTitle, routes.Application.documentation(url), url)
+      }
+    }
+  }
+
+  def makeAbsolute(resource:String, relative:String): String = {
+    if (relative.isEmpty)
+      resource
+    else if (relative.startsWith("/"))
+      relative
+    else {
+      val base = if (resource.endsWith("/")) resource else resource.split("/").init.mkString("","/","/")
+      if (relative.startsWith("../")) {
+        makeAbsolute(resource.split("/").init.init.mkString("","/","/"),relative.stripPrefix("../"))
+      } else {
+        base + relative
+      }
+    }
+  }
+
+  def getNextPrevFromHeader(resource: String, lines: List[String]):(Option[Link], Option[Link]) = {
+    val header = lines.head
+    val prev = header match {
+      case Prev(prevUrl) => Link(makeAbsolute(resource, prevUrl))
+      case _ => None
+    }
+    val next = header match {
+      case Next(nextUrl) => Link(makeAbsolute(resource, nextUrl))
+      case _ => None
+    }
+    log.info(s"Header is $header $prev $next")
+    (next,prev)
+  }
+
+  def getMarkdownTitle(lines: List[String]):Option[String] = {
+    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
+  }
+
+  def documentation(resource: String) = {
+    if (resource.endsWith(".png")) {
+      Assets.at("/docs",resource)
+    } else {
+      NonAuthAction { request =>
+        if (resource.endsWith("/index")) {
+          Redirect(routes.Application.documentation(resource.stripSuffix("index")))
+        } else {
+          val markDownLines = getMarkdownLines(resource)
+          if (markDownLines.isEmpty) {
+              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
+          } else {
+            val markDown = markDownLines.mkString("\n")
+
+            val title = getMarkdownTitle(markDownLines).getOrElse(resource)
+            val (next,prev) = getNextPrevFromHeader(resource,markDownLines)
+
+            val hierarchy = resource.split('/').filterNot(_.isEmpty).init
+            val breadcrumbs = hierarchy.foldLeft(List(Link("Documentation",routes.Application.documentation(""),""))){ (acc, crumb) =>
+              acc ++ Link(List(acc.last.url.stripSuffix("/"),crumb).filterNot(_.isEmpty).mkString("","/","/"))
+            } ++ Some(Link(title, routes.Application.documentation(resource), resource))
+
+            Ok(views.html.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+          }
+        }
+      }
     }
   }
 

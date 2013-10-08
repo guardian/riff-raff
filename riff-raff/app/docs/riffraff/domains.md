@@ -1,5 +1,5 @@
-Riff-raff Domains
-=================
+Domains
+=======
 
 The purpose of riff-raff domains is to facilitate deployment responsibility.
 

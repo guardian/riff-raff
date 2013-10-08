@@ -1,4 +1,4 @@
-Riff-raff, AWS credentials and S3 uploads
+Riff-Raff, AWS credentials and S3 uploads
 =========================================
 
 Riff-raff needs to talk to AWS from time to time.  At the time of writing this is for uploading artifacts and static
