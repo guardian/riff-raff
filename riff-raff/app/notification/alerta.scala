@@ -17,6 +17,7 @@ import play.api.libs.json._
 import lifecycle.LifecycleWithoutApp
 import org.joda.time.{DateTimeZone, DateTime}
 import utils.Json.DefaultJodaDateWrites
+import scala.util.{Failure, Success}
 
 /*
  Send deploy events to alerta (and graphite)
@@ -36,6 +37,7 @@ object Alerta extends Logging with LifecycleWithoutApp {
     }
 
   def sendMessage(event: Event) {
+    log.debug(s"Queuing alerta event $event")
     actor.foreach(_ ! event)
   }
 
@@ -72,7 +74,13 @@ class AlertaController extends Actor with Logging {
     case Notify(event) => {
       try {
         endpoints.foreach { ep =>
-          WS.url(ep).post(event)
+          log.debug(s"Sending alerta event $event to $ep")
+          WS.url(ep).post(event).onComplete{
+            case Success(response) =>
+              log.debug(s"Successfully sent alerta event $event to $ep")
+            case Failure(exception) =>
+              log.error(s"Exception whilst dispatching alerta event $event to $ep", exception)
+          }
         }
       } catch {
         case e:Throwable => log.error("Exception whilst dispatching event", e)
