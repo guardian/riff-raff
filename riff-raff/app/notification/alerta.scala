@@ -1,7 +1,7 @@
 package notification
 
 import magenta._
-import java.util.{Date, UUID}
+import java.util.UUID
 import magenta.FailContext
 import magenta.Deploy
 import magenta.FinishContext
@@ -18,6 +18,8 @@ import lifecycle.LifecycleWithoutApp
 import org.joda.time.{DateTimeZone, DateTime}
 import utils.Json.DefaultJodaDateWrites
 import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
+import ExecutionContext.Implicits.global
 
 /*
  Send deploy events to alerta (and graphite)
