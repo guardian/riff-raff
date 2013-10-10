@@ -1,8 +1,8 @@
+<!--- prev:externalRequest next:dashboards -->
 Riff-Raff, AWS credentials and S3 uploads
 =========================================
 
-Riff-raff needs to talk to AWS from time to time.  At the time of writing this is for uploading artifacts and static
- files to S3 buckets.
+Riff-raff needs to talk to AWS from time to time. This document mainly covers
 
 Telling riff-raff about S3 credentials
 --------------------------------------
@@ -10,27 +10,32 @@ Telling riff-raff about S3 credentials
 There are two steps to let riff-raff know about a new set of credentials.  The secret access key is stored in the
 properties file managed by websys, keyed from the access key.
 
-Riff-raff decides which access key to use based on information available in the deployment info json file that is
-parsed at runtime.  This file contains a host section, but also a key section - like you see below.
+Riff-raff decides which access key to use based on information available in the
+[deployment info json file](../magenta-lib/deployinfo) that is parsed at runtime.  This file contains a `host` section,
+but also a `data` section - like you see below.
 
     {
-        "hosts":[
-            {"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
-            {"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
-            {"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"}
-        ],
-        "keys":[
-            {"app":"microapp-cache", "stage":"CODE", "accesskey":"AAA"},
-            {"app":"frontend-article", "stage":"CODE", "accesskey":"CCC"},
-            {"app":"frontend-.*", "stage":"CODE", "accesskey":"BBB"},
-            {"app":"frontend-gallery", "stage":"CODE", "accesskey":"SHADOWED"},
-            {"app":".*", "stage":".*", "accesskey":"DDD"}
+      "hosts":[
+        {"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
+        {"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
+        {"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"}
+      ],
+      "data": {
+        "credentials:aws": [
+          {"app":"microapp-cache", "stage":"CODE", "value":"AAA"},
+          {"app":"frontend-article", "stage":"CODE", "value":"CCC"},
+          {"app":"frontend-.*", "stage":"CODE", "value":"BBB"},
+          {"app":"frontend-gallery", "stage":"CODE", "value":"SHADOWED"},
+          {"app":".*", "stage":".*", "value":"DDD"}
         ]
+      }
     }
 
-The key section is processed in order and the first match for the app being deployed and the stage being deployed to
-is used.  The app and stage values are regular expressions.  Note that order is important - in the above example
-frontend-gallery being deployed to CODE will use key BBB, rather than SHADOWED.
+In this particular case we are interested in the `credentials:aws` section. The dicts in this section are processed in
+order and the first match for the app being deployed and the stage being deployed to is selected.  The app and stage
+values are regular expressions.  Note that order is important - in the above example frontend-gallery being deployed to
+CODE will use key BBB, rather than SHADOWED because it arrives at that entry first even though the latter entry
+is more specific.
 
 Allowing riff-raff access to your bucket
 ----------------------------------------

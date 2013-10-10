@@ -148,10 +148,12 @@ object Application extends Controller with Logging {
             val title = getMarkdownTitle(markDownLines).getOrElse(resource)
             val (next,prev) = getNextPrevFromHeader(resource,markDownLines)
 
-            val hierarchy = resource.split('/').filterNot(_.isEmpty).init
-            val breadcrumbs = hierarchy.foldLeft(List(Link("Documentation",routes.Application.documentation(""),""))){ (acc, crumb) =>
-              acc ++ Link(List(acc.last.url.stripSuffix("/"),crumb).filterNot(_.isEmpty).mkString("","/","/"))
-            } ++ Some(Link(title, routes.Application.documentation(resource), resource))
+            val breadcrumbs = {
+              val hierarchy = resource.split('/').filterNot(_.isEmpty).dropRight(1)
+              hierarchy.foldLeft(List(Link("Documentation",routes.Application.documentation(""),""))){ (acc, crumb) =>
+                acc ++ Link(List(acc.last.url.stripSuffix("/"),crumb).filterNot(_.isEmpty).mkString("","/","/"))
+              } ++ Some(Link(title, routes.Application.documentation(resource), resource))
+            }
 
             Ok(views.html.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
           }

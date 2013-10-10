@@ -1,3 +1,4 @@
+<!--- prev:index next:auth -->
 Properties
 ==========
 
@@ -9,6 +10,10 @@ basics
 ------
 
  - `urls.publicPrefix` - The public URL prefix used to use when generating URLs in notifications
+ - `stages.order` - A comma separated list of stages that override the default alphabetical order of stages shown in the
+ web UI, any stages that are not mentioned explicitly will be sorted to the bottom of the list
+ - `concurrency.maxDeploys` - The number of deploys that can run at once, once this is reached deploys will be queued in
+ a **Waiting** state until another deploy finishes
 
 deployment information
 ----------------------
@@ -34,6 +39,12 @@ credentials
  - `sshKey.path` - path to the passphrase free SSH key to use during deployments
  - `credentials.<service>.XXXXX` - the secret key to accompany access key `XXXXX` for the named service (e.g. credentials.aws.ACCESSKEY=SECRETACCESSKEY)
 
+continuous deployment
+---------------------
+
+ - `continuousDeployment.enabled` - By default the continuous deployment mechanism is disabled (to prevent development
+ on Riff-Raff triggering deploys); to enable set this property to `true`
+
 continuous integration
 ----------------------
 
@@ -42,9 +53,11 @@ continuous integration
  - `teamcity.password` - Password for the specified user - if not specified guest authentication will be used
  - `teamcity.pinSuccessfulDeploys` - Set to `true` if Riff Raff should pin builds after a successful deploy
  - `teamcity.pinStages` - Comma separated list of stages that limits which deploys will result in the artifact being pinned
+ - `teamcity.maximumPinsPerProject` - The number of pins that should be retained, when there are more than this number pinned then older pins will be removed
  - `teamcity.pollingWindowMinutes` - Set this to be over the length of the longest running builds.  Used by the incremental updater to be smart about what it asks for.
  - `teamcity.pollingPeriodSeconds` - Number of seconds between incremental updates of TeamCity builds
  - `teamcity.fullUpdatePeriodSeconds` - Number of seconds between full updates of TeamCity builds (includes new projects and configurations)
+ - `teamcity.tagging.pollingWindowMinutes` - Continuous deploys triggered by a new tag will only pick up new tags on builds that are not older than this value - defaults to 10 days
 
 database
 --------
@@ -58,7 +71,7 @@ notifications
  - `irc.host` - IRC host to connect to
  - `irc.channel` - Channel messages should be sent to
  - `irc.name` - Nick used by Riff-Raff in channel
- - `mq.queueTargets` - List of RabbitMQ targets (comma separated list) to send notifications to in the format of `<server>:<port>/<queueName>`
+ - `alerta.endpoints` - List of [alerta](https://github.com/guardian/alerta) API endpoints that should be notified of deployment start, complete and fail events
 
 domains
 -------
