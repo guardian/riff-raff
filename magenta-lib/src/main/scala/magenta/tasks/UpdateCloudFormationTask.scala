@@ -11,7 +11,7 @@ case class UpdateCloudFormationTask(stackName: String, template: Path) extends T
     CloudFormation.updateStack(stackName, template.string)(credentials)
   }
 
-  def description = s"Updating CloudFormation stack: $stackName"
+  def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
   def verbose = description
 }
 
@@ -22,7 +22,11 @@ trait CloudFormation extends AWS {
     )
   }
   def updateStack(name: String, templateBody: String)(implicit keyRing: KeyRing) = client.updateStack(
-    new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody)
+    new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(
+      "AWS::IAM::Role",
+      "AWS::IAM::Policy",
+      "AWS::IAM::InstanceProfile"
+    )
   )
 }
 
