@@ -12,9 +12,6 @@ object JValueExtractable {
     def extract(json: JValue) = extractOption(JString.unapply)(json)
   }
   implicit object IntExtractable extends JValueExtractable[Int]  {
-    def extract(json: JValue) = {
-      val t = JInt.unapply(_)
-      extractOption(t.andThen(i => i.map(_.toInt)))(json)
-    }
+    def extract(json: JValue) = extractOption(JInt.unapply _ andThen (_.map(_.toInt)))(json)
   }
 }
