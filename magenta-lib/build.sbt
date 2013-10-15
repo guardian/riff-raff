@@ -19,5 +19,6 @@ libraryDependencies ++= Seq(
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
     "com.gu" %% "management" % "5.27",
-    "com.gu" %% "fastly-api-client" % "0.1.3"
+    "com.gu" %% "fastly-api-client" % "0.1.3",
+    "com.chuusai" % "shapeless" % "2.0.0-M1" cross CrossVersion.full
 )
