@@ -12,7 +12,9 @@ trait PackageType {
 }
 
 object PackageType {
-  def all: Seq[PackageType] = Seq(ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp)
+  def all: Seq[PackageType] = Seq(
+    ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy
+  )
 }
 
 case class Param[T](name: String, default: Option[T] = None, defaultFromPackage: Package => Option[T] = (_: Package) => None) {
