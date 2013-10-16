@@ -6,10 +6,10 @@ import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
 import magenta.PatternValue
 
-object AmazonWebServicesS3 extends PackageType {
+object S3 extends PackageType {
   val name = "aws-s3"
 
-  def params = Seq(bucket, bucketResource, prefixPackage, prefixPackage, cacheControl)
+  val params = Seq(bucket, bucketResource, prefixPackage, prefixPackage, cacheControl)
 
   val prefixStage = Param("prefixStage", Some(true))
   val prefixPackage = Param("prefixPackage", Some(true))
