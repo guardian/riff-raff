@@ -76,8 +76,8 @@ trait ApiTracker[T] {
   private val fullAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](startupDelay, fullUpdatePeriod) { case (flag, current) =>
     Try {
       val updateResult = fullUpdate(current)
-      if (updateResult.isEmpty)
-        throw new IllegalStateException("Full update found 0 results")
+      if (updateResult.isEmpty && !current.isEmpty)
+        throw new IllegalStateException("Full update found 0 results (yet we currently have results)")
       else
         Result((updateResult.toSet diff current.toSet).toList, updateResult, current)
     } map { result =>
