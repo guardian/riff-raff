@@ -6,7 +6,6 @@ import net.liftweb.json.JsonAST._
 import net.liftweb.json.Implicits._
 import java.io.File
 import scala.PartialFunction
-import magenta.json.JValueExtractable
 
 trait PackageType {
   def name: String
@@ -189,8 +188,8 @@ abstract class WebappPackageType extends PackageType {
         BlockFirewall(host as user) ::
         copyRoots.map(root => CopyFile(host as user, s"$packageArtifactDir/$root", s"/$containerName-apps/$serviceName/$root", copyMode)) :::
         Restart(host as user, serviceName) ::
-        WaitForPort(host, port, waitDuration) ::
-        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds) ::
+        WaitForPort(host, port.toInt, waitDuration) ::
+        CheckUrls(host, port.toInt, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds) ::
         UnblockFirewall(host as user) ::
         Nil
       }
@@ -200,8 +199,8 @@ abstract class WebappPackageType extends PackageType {
         List(
           BlockFirewall(host as user),
           Restart(host as user, serviceName),
-          WaitForPort(host, port, waitDuration),
-          CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
+          WaitForPort(host, port.toInt, waitDuration),
+          CheckUrls(host, port.toInt, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
           UnblockFirewall(host as user)
         )
       }
@@ -263,8 +262,8 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
         CompressedCopy(host as user, appVersionPath, destDir),
         Link(host as user, appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
         ApacheGracefulRestart(host as user),
-        WaitForPort(host, port, 1 minute),
-        CheckUrls(host, port, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
+        WaitForPort(host, port.toInt, 1 minute),
+        CheckUrls(host, port.toInt, healthCheckPaths, checkDuration, checkUrlReadTimeoutSeconds),
         UnblockFirewall(host as user)
       )
     }

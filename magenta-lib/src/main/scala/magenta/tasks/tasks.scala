@@ -140,7 +140,7 @@ case class UnblockFirewall(host: Host) extends RemoteShellTask {
   def commandLine =  CommandLocator conditional "unblock-load-balancer"
 }
 
-case class WaitForPort(host: Host, port: String, duration: Long) extends Task with RepeatedPollingCheck {
+case class WaitForPort(host: Host, port: Int, duration: Long) extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
@@ -148,7 +148,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
     check(stopFlag) {
       try {
-        new Socket(host.name, port.toInt).close()
+        new Socket(host.name, port).close()
         true
       } catch {
         case e: IOException => false
@@ -157,7 +157,7 @@ case class WaitForPort(host: Host, port: String, duration: Long) extends Task wi
   }
 }
 
-case class CheckUrls(host: Host, port: String, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
+case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
     extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "check [%s] on %s" format(paths, host)

@@ -12,11 +12,10 @@ trait PackageType {
 }
 
 object PackageType {
-  def all: Seq[PackageType] = Seq(ElasticSearch, S3, AutoScaling)
+  def all: Seq[PackageType] = Seq(ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp)
 }
 
-
-case class Param[T](name: String, default: Option[T] = None) {
+case class Param[T](name: String, default: Option[T] = None, defaultFromPackage: Package => Option[T] = (_: Package) => None) {
   def get(pkg: Package)(implicit extractable: JValueExtractable[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
   def apply(pkg: Package)(implicit extractable: JValueExtractable[T]): T =
