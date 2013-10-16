@@ -13,7 +13,7 @@ trait PackageType {
 
 object PackageType {
   def all: Seq[PackageType] = Seq(
-    ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly
+    ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly, UnzipToDocroot
   )
 }
 
