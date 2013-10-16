@@ -1,6 +1,9 @@
 package magenta.json
 
-import net.liftweb.json.JsonAST.{JInt, JString, JValue}
+import net.liftweb.json.JsonAST._
+import net.liftweb.json.JsonAST.JString
+import net.liftweb.json.JsonAST.JInt
+import net.liftweb.json.JsonAST.JBool
 
 trait JValueExtractable[T] {
   def extract(json: JValue): Option[T]
@@ -13,5 +16,11 @@ object JValueExtractable {
   }
   implicit object IntExtractable extends JValueExtractable[Int]  {
     def extract(json: JValue) = extractOption(JInt.unapply _ andThen (_.map(_.toInt)))(json)
+  }
+  implicit object BooleanExtractable extends JValueExtractable[Boolean] {
+    def extract(json: JValue) = extractOption(JBool.unapply)(json)
+  }
+  implicit def ListExtractable[T](implicit jve: JValueExtractable[T]) = new JValueExtractable[List[T]] {
+    def extract(json: JValue) = extractOption(JArray.unapply)(json) map (_.flatMap(jve.extract(_)))
   }
 }

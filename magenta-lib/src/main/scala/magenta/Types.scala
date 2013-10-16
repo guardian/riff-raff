@@ -146,49 +146,6 @@ case class ElasticSearch(pkg: Package) extends PackageType {
   }
 }
 
-object ElasticSearch extends PackType {
-
-  def name = "elasticsearch"
-
-  val params = Seq(bucket, secondsToWait)
-  val bucket = Param[String]("bucket")
-  val secondsToWait = Param("secondsToWait", Some(15 * 60))
-
-//  Params(
-//    bucket[String],
-//    maxWait(15.minutes)
-//  )
-
-  def perAppActions = {
-    case "deploy" => (pkg) => (_, parameters) => {
-      List(
-        TagCurrentInstancesWithTerminationTag(name, parameters.stage),
-        DoubleSize(name, parameters.stage),
-        WaitForElasticSearchClusterGreen(name, parameters.stage, secondsToWait(pkg) * 1000),
-        CullElasticSearchInstancesWithTerminationTag(name, parameters.stage, secondsToWait(pkg) * 1000)
-      )
-    }
-    case "uploadArtifacts" => (pkg) => (_, parameters) =>
-      List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
-      )
-  }
-}
-
-case class Param[T](name: String, default: Option[T] = None) {
-  def get(pkg: Package)(implicit extractable: JValueExtractable[T]): Option[T] =
-    pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
-  def apply(pkg: Package)(implicit extractable: JValueExtractable[T]): T =
-    get(pkg).orElse(default).getOrElse(throw new NoSuchElementException())
-}
-
-trait PackType {
-  def name: String
-  def params: Seq[Param[_]]
-  def perAppActions: PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]]
-  def perHostActions: PartialFunction[String, Package => Host => List[Task]] = PartialFunction.empty
-}
-
 abstract class WebappPackageType extends PackageType {
   def containerName: String
 
