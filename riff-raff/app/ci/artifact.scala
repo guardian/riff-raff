@@ -15,7 +15,7 @@ import concurrent.ExecutionContext.Implicits.global
 import play.api.Logger
 import akka.agent.Agent
 import akka.actor.ActorSystem
-import scala.util.Random
+import scala.util.{Try, Random}
 
 object `package` {
   implicit def listOfBuild2helpers(builds: List[Build]) = new {
@@ -74,11 +74,21 @@ trait ApiTracker[T] {
   private val promises = Agent[List[Promise[List[T]]]](Nil)(ActorSystem("teamcity-trackers"))
 
   private val fullAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](startupDelay, fullUpdatePeriod) { case (flag, current) =>
-    val updated = fullUpdate(current)
-    val diff: Set[T] = updated.toSet diff current.toSet
-    trackerLog.info(s"[$name] Full update: discovered: ${diff.size}, total: ${updated.size}")
-    queueNotify(Result(diff.toList, updated, current))
-    (true, updated)
+    Try {
+      val updateResult = fullUpdate(current)
+      if (updateResult.isEmpty)
+        throw new IllegalStateException("Full update found 0 results")
+      else
+        Result((updateResult.toSet diff current.toSet).toList, updateResult, current)
+    } map { result =>
+      trackerLog.info(s"[$name] Full update: discovered: ${result.diff.size}, total: ${result.updated.size}")
+      queueNotify(result)
+      (true, result.updated)
+    } recover {
+      case e:Exception =>
+        trackerLog.warn(s"[$name] Ignoring update.", e)
+        (flag, current)
+    } get
   }
 
   private val incrementalAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](incrementalUpdatePeriod + startupDelay, incrementalUpdatePeriod) { case (flag, current) =>
