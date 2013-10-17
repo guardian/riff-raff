@@ -19,7 +19,7 @@ import magenta.Host
 import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import java.util.UUID
-import magenta.packages.PatternValue
+import magenta.deployment_type.PatternValue
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{

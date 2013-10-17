@@ -1,11 +1,11 @@
-package magenta.packages
+package magenta.deployment_type
 
 import magenta.{MessageBroker, App, Host}
 import java.io.File
 import magenta.tasks.{ExtractToDocroots, CopyFile}
 
 
-object UnzipToDocroot  extends PackageType {
+object UnzipToDocroot  extends DeploymentType {
   val name = "unzip-docroot"
 
   val params = Seq(user, zip, docrootType, locationInDocroot)
