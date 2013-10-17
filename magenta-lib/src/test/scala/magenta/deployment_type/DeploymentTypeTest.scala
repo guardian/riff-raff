@@ -2,17 +2,33 @@ package magenta
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import tasks._
 import java.io.File
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST._
 import fixtures._
-import magenta.deployment_type.{Django, ExecutableJarWebapp, S3, PatternValue}
-import magenta.tasks.S3
+import magenta.deployment_type._
+import magenta.tasks.S3Upload
+import magenta.tasks.ApacheGracefulRestart
+import magenta.tasks.UnblockFirewall
+import net.liftweb.json.JsonAST.JField
+import magenta.deployment_type.PatternValue
+import net.liftweb.json.JsonAST.JObject
+import magenta.tasks.CheckUrls
+import net.liftweb.json.JsonAST.JString
+import magenta.tasks.CompressedCopy
+import magenta.tasks.BlockFirewall
+import magenta.deployment_type.S3
+import magenta.tasks.Link
+import scala.Some
+import magenta.tasks.WaitForPort
+import net.liftweb.json.JsonAST.JArray
 
+class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
-class PackageTypeTest extends FlatSpec with ShouldMatchers {
+  "Deployment types" should "all include every param in the params List" in {
+    pending
+  }
 
   "Amazon Web Services S3" should "have a uploadStaticFiles action" in {
 

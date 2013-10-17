@@ -10,7 +10,6 @@ import java.io.File
 import tasks._
 import tasks.CopyFile
 import magenta.Package
-import magenta.deployment_type.UnzipToDocroot
 
 class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
   test("copies to host based on deployInfo data") {
