@@ -1,4 +1,4 @@
-package magenta.packages
+package magenta.deployment_type
 
 import magenta._
 import magenta.json.JValueExtractable
@@ -7,7 +7,7 @@ import magenta.DeployParameters
 import magenta.Host
 import magenta.Package
 
-trait PackageType {
+trait DeploymentType {
   def name: String
   def params: Seq[Param[_]]
   def perAppActions: PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]]
@@ -38,8 +38,8 @@ trait PackageType {
   }
 }
 
-object PackageType {
-  def all: Seq[PackageType] = Seq(
+object DeploymentType {
+  def all: Seq[DeploymentType] = Seq(
     ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly, UnzipToDocroot
   )
 }

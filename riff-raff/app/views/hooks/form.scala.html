@@ -16,7 +16,7 @@ hookForm("stage"),
 options = helper.options(deployment.DeployInfoManager.stageList.reverse),
 '_default -> "--- Choose a stage ---",
 '_label -> "Stage",
-'_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
+'_error -> hookForm.globalError.map(_.withMessage("Please select deployment_type stage"))
 )
 @helper.inputText(hookForm("url"), '_label -> "Hook target URL (GET)", 'class -> "buildForm")
 @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")

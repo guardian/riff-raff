@@ -3,7 +3,7 @@ package persistence
 import java.util.UUID
 import org.joda.time.DateTime
 import magenta._
-import deployment.{Record, TaskType}
+import deployment_type.{Record, TaskType}
 import com.mongodb.{BasicDBList, DBObject}
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}

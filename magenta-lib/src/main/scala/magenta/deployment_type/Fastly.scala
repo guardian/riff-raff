@@ -1,8 +1,8 @@
-package magenta.packages
+package magenta.deployment_type
 
 import magenta.tasks.UpdateFastlyConfig
 
-object Fastly  extends PackageType {
+object Fastly  extends DeploymentType {
   val name = "fastly"
 
   def perAppActions = {

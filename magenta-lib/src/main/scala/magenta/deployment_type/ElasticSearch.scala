@@ -1,9 +1,9 @@
-package magenta.packages
+package magenta.deployment_type
 
 import magenta.tasks._
 import java.io.File
 
-object ElasticSearch extends PackageType {
+object ElasticSearch extends DeploymentType {
   def name = "elasticsearch"
 
   val params = Seq(bucket, secondsToWait)

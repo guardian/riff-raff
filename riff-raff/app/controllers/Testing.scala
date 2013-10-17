@@ -3,7 +3,7 @@ package controllers
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import deployment.{DeployInfoManager, DeployV2Record, TaskType}
+import deployment_type.{DeployInfoManager, DeployV2Record, TaskType}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form

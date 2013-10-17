@@ -6,7 +6,7 @@ import net.liftweb.json.Diff
 import org.joda.time.DateTime
 import java.util.UUID
 import magenta._
-import deployment.{DeployV2Record, TaskType}
+import deployment_type.{DeployV2Record, TaskType}
 import persistence.{RecordConverter, LogDocument, DeployRecordDocument}
 import java.io.File
 

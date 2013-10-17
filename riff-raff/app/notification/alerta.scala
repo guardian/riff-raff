@@ -11,7 +11,7 @@ import controllers.{DeployController, routes, Logging}
 import conf.Configuration
 import scala.Some
 import magenta.DeployParameters
-import deployment.TaskType
+import deployment_type.TaskType
 import play.api.libs.ws.WS
 import play.api.libs.json._
 import lifecycle.LifecycleWithoutApp

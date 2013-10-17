@@ -12,7 +12,7 @@ import tasks.WaitForPort
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST.{JArray, JString}
-import magenta.packages.ResinWebapp
+import magenta.deployment_type.ResinWebapp
 
 class ResinWebappTest extends FlatSpec with ShouldMatchers {
   "resin web app package type" should "have a deploy action" in {

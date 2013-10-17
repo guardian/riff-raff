@@ -8,7 +8,7 @@ import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST._
 import fixtures._
-import magenta.packages.{Django, ExecutableJarWebapp, S3, PatternValue}
+import magenta.deployment_type.{Django, ExecutableJarWebapp, S3, PatternValue}
 import magenta.tasks.S3
 
 

@@ -171,9 +171,9 @@ object Api extends Controller with Logging {
   }
 
   def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
-    val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
+    val filter = deployment_type.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
     val count = DeployController.countDeploys(filter)
-    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
+    val pagination = deployment_type.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false)
 
     def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
@@ -236,9 +236,9 @@ object Api extends Controller with Logging {
 
 
   def history = ApiJsonEndpoint("history") { implicit request =>
-    val filter = deployment.DeployFilter.fromRequest(request)
+    val filter = deployment_type.DeployFilter.fromRequest(request)
     val count = DeployController.countDeploys(filter)
-    val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
+    val pagination = deployment_type.DeployFilterPagination.fromRequest.withItemCount(Some(count))
     val deployList = DeployController.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
 
     val deploys = deployList.map{ record2apiResponse }
@@ -259,7 +259,7 @@ object Api extends Controller with Logging {
   def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
     assert(!DeployInfoManager.deployInfo.hosts.isEmpty, "No deploy information available")
 
-    val filter = deployment.HostFilter.fromRequest
+    val filter = deployment_type.HostFilter.fromRequest
     val query:List[(String,JsValue)] = Nil ++
       filter.stage.map("stage" -> toJson(_)) ++
       filter.app.map("app" -> toJson(_)) ++

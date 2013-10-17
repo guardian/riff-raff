@@ -5,7 +5,7 @@ import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
 import lifecycle.LifecycleWithoutApp
 import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
-import deployment.TaskType
+import deployment_type.TaskType
 import java.net.{URLEncoder, URL}
 import com.mongodb.casbah.commons.{Imports, MongoDBObject}
 import magenta.FinishContext
