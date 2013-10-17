@@ -128,11 +128,11 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
   val oneRecipeName = RecipeName("one")
 
-  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
+  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"))
 
   val baseRecipe = Recipe("one",
-    actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
-    actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
+    actionsBeforeApp = basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one")(stubPackage) :: Nil,
     dependsOn = Nil)
 
   val baseMockRecipe = Recipe("one",

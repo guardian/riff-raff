@@ -7,8 +7,9 @@ import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST.JValue
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
+import magenta.packages.AutoScaling
 
-class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
+class AutoScalingTest extends FlatSpec with ShouldMatchers {
   "auto-scaling with ELB package type" should "have a deploy action" in {
     val data: Map[String, JValue] = Map(
       "bucket" -> "asg-bucket"
@@ -16,9 +17,7 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val p = Package("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
 
-    val autoscaling = new AutoScaling(p)
-
-    autoscaling.perAppActions("deploy")(DeployInfo(), parameters()) should be (List(
+    AutoScaling.perAppActions("deploy")(p)(DeployInfo(), parameters()) should be (List(
       CheckGroupSize("app", PROD),
       SuspendAlarmNotifications("app", PROD),
       TagCurrentInstancesWithTerminationTag("app", PROD),
@@ -40,9 +39,7 @@ class AutoScalingWithELBPackageTypeTest extends FlatSpec with ShouldMatchers {
 
     val p = Package("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
 
-    val autoscaling = new AutoScaling(p)
-
-    autoscaling.perAppActions("deploy")(DeployInfo(), parameters()) should be (List(
+    AutoScaling.perAppActions("deploy")(p)(DeployInfo(), parameters()) should be (List(
       CheckGroupSize("app", PROD),
       SuspendAlarmNotifications("app", PROD),
       TagCurrentInstancesWithTerminationTag("app", PROD),

@@ -15,7 +15,12 @@ object JValueExtractable {
     def extract(json: JValue) = extractOption(JString.unapply)(json)
   }
   implicit object IntExtractable extends JValueExtractable[Int]  {
-    def extract(json: JValue) = extractOption(JInt.unapply _ andThen (_.map(_.toInt)))(json)
+    def extract(json: JValue) = json match {
+      case JInt(bigInt) => Some(bigInt.toInt)
+      // Backwards compatible shim
+      case JString(intString) => Some(intString.toInt)
+      case _ => None
+    }
   }
   implicit object BooleanExtractable extends JValueExtractable[Boolean] {
     def extract(json: JValue) = extractOption(JBool.unapply)(json)

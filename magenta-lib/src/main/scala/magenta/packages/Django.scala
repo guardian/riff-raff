@@ -9,7 +9,7 @@ object Django extends PackageType {
 
   val user = Param("user", Some("django"))
   val port = Param("port", Some(80))
-  val healthCheckPaths = Param[List[String]]("healthcheck_paths")
+  val healthCheckPaths = Param("healthcheck_paths", Some(List.empty[String]))
   val checkseconds = Param("checkseconds", Some(120))
   val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds", Some(5))
 

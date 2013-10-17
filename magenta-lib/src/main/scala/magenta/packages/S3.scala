@@ -4,7 +4,6 @@ import net.liftweb.json.JsonAST._
 import java.io.File
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
-import magenta.PatternValue
 
 object S3 extends PackageType {
   val name = "aws-s3"
@@ -54,3 +53,6 @@ object S3 extends PackageType {
   }
 }
 
+case class PatternValue(pattern: String, value: String) {
+  lazy val regex = pattern.r
+}

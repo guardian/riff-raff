@@ -10,6 +10,7 @@ import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import java.net.URL
+import magenta.packages.PatternValue
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
