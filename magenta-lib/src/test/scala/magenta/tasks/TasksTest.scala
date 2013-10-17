@@ -19,6 +19,7 @@ import magenta.Host
 import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import java.util.UUID
+import magenta.deployment_type.PatternValue
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -70,14 +71,14 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   "waitForPort task" should "fail after timeout" in {
-    val task = WaitForPort(Host("localhost"), "9998", 200 millis)
+    val task = WaitForPort(Host("localhost"), 9998, 200 millis)
     evaluating {
       task.execute(fakeKeyRing)
     } should produce [FailException]
   }
 
   it should "connect to open port" in {
-    val task = WaitForPort(Host("localhost"), "9998", 200 millis)
+    val task = WaitForPort(Host("localhost"), 9998, 200 millis)
     spawn {
       val server = new ServerSocket(9998)
       server.accept().close()
@@ -87,7 +88,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "connect to an open port after a short time" in {
-    val task = WaitForPort(Host("localhost"), "9997", 1 seconds)
+    val task = WaitForPort(Host("localhost"), 9997, 1 seconds)
     spawn {
       Thread.sleep(600 millis)
       val server = new ServerSocket(9997)
@@ -99,14 +100,14 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
 
   "check_url task" should "fail after timeout" in {
-    val task = CheckUrls(Host("localhost"), "9997",List("/"), 200 millis, 5)
+    val task = CheckUrls(Host("localhost"), 9997,List("/"), 200 millis, 5)
     evaluating {
       task.execute(fakeKeyRing)
     } should produce [FailException]
   }
 
   it should "get a 200 OK" in {
-    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis, 5)
+    val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
     spawn {
       new TestServer().withResponse("HTTP/1.0 200 OK")
     }
@@ -115,7 +116,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "fail on a 404 NOT FOUND" in {
-    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis, 5)
+    val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
     spawn {
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
@@ -125,7 +126,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "fail on a 500 ERROR" in {
-    val task = CheckUrls(Host("localhost"), "9997", List("/"), 200 millis, 5)
+    val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
     spawn {
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
