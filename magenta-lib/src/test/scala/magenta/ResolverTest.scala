@@ -2,7 +2,7 @@ package magenta
 
 
 import fixtures._
-import fixtures.StubDeploymentType
+import fixtures.StubPackageType
 import fixtures.StubPerAppAction
 import fixtures.StubPerHostAction
 import fixtures.StubTask
@@ -203,7 +203,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "observe ordering of hosts in deployInfo irrespective of connection user" in {
-    val pkgTypeWithUser = StubDeploymentType(
+    val pkgTypeWithUser = StubPackageType(
       perHostActions = {
         case "deploy" => pkg => host => List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
       }

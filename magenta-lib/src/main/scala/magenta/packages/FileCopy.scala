@@ -1,8 +1,8 @@
-package magenta.deployment_type
+package magenta.packages
 
 import magenta.tasks.CopyFile
 
-object FileCopy extends DeploymentType {
+object FileCopy extends PackageType {
   val name = "file"
 
   override def perHostActions = {

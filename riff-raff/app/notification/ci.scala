@@ -4,7 +4,7 @@ import ci.TeamCityBuilds
 import lifecycle.LifecycleWithoutApp
 import magenta._
 import controllers.{routes, Logging, DeployController}
-import deployment_type.TaskType
+import deployment.TaskType
 import magenta.MessageWrapper
 import magenta.FinishContext
 import magenta.Deploy

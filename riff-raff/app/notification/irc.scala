@@ -9,7 +9,7 @@ import magenta._
 import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 import java.util.UUID
 import lifecycle.LifecycleWithoutApp
-import deployment_type.TaskType
+import deployment.TaskType
 
 object IrcClient extends LifecycleWithoutApp {
   trait Event

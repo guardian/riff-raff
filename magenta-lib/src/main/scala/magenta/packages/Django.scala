@@ -1,8 +1,8 @@
-package magenta.deployment_type
+package magenta.packages
 
 import magenta.tasks._
 
-object Django extends DeploymentType {
+object Django extends PackageType {
   val name = "django-webapp"
 
   val params = Seq(user, port, healthCheckPaths, checkseconds, checkUrlReadTimeoutSeconds)

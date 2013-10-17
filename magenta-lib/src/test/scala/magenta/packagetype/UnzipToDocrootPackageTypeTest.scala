@@ -1,5 +1,5 @@
 package magenta
-package deployment_type
+package packagetype
 
 import fixtures._
 import org.scalatest.FunSuite
@@ -10,7 +10,7 @@ import java.io.File
 import tasks._
 import tasks.CopyFile
 import magenta.Package
-import magenta.deployment_type.UnzipToDocroot
+import magenta.packages.UnzipToDocroot
 
 class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
   test("copies to host based on deployInfo data") {

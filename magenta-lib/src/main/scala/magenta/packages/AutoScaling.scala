@@ -1,9 +1,9 @@
-package magenta.deployment_type
+package magenta.packages
 
 import magenta.tasks._
 import java.io.File
 
-object AutoScaling  extends DeploymentType {
+object AutoScaling  extends PackageType {
   val name = "autoscaling"
 
   val params = Seq(bucket, secondsToWait, healthcheckGrace)

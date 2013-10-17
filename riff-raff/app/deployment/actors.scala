@@ -45,7 +45,7 @@ object DeployControlActor extends Logging {
 
   lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
 
-  import deployment_type.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
+  import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
 
   def interruptibleDeploy(record: Record) {
     log.debug("Sending start deploy mesage to co-ordinator")

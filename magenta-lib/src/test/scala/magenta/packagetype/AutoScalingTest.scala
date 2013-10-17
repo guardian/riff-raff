@@ -7,7 +7,7 @@ import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST.JValue
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import magenta.deployment_type.AutoScaling
+import magenta.packages.AutoScaling
 
 class AutoScalingTest extends FlatSpec with ShouldMatchers {
   "auto-scaling with ELB package type" should "have a deploy action" in {

@@ -14,7 +14,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment_type.{DeployMetricsActor, GuDomainsConfiguration}
+import deployment.{DeployMetricsActor, GuDomainsConfiguration}
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._

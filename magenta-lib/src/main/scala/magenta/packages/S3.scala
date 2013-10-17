@@ -1,11 +1,11 @@
-package magenta.deployment_type
+package magenta.packages
 
 import net.liftweb.json.JsonAST._
 import java.io.File
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
 
-object S3 extends DeploymentType {
+object S3 extends PackageType {
   val name = "aws-s3"
 
   val params = Seq(bucket, bucketResource, prefixPackage, prefixPackage, cacheControl)

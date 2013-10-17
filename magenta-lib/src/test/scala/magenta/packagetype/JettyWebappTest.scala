@@ -15,7 +15,7 @@ import tasks.WaitForPort
 import net.liftweb.json.JsonAST.JArray
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import magenta.deployment_type.JettyWebapp
+import magenta.packages.JettyWebapp
 
 class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   "jetty web app package type" should "have a deploy action" in {

@@ -1,11 +1,11 @@
-package magenta.deployment_type
+package magenta.packages
 
 import net.liftweb.json.JsonAST.{JArray, JValue}
 import magenta.tasks._
 import java.io.File
 import magenta.{Host, Package}
 
-trait WebApp extends DeploymentType {
+trait WebApp extends PackageType {
   def containerName: String
 
   lazy val name = containerName + "-webapp"

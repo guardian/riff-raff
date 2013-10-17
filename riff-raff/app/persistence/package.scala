@@ -1,7 +1,7 @@
 package persistence
 
 import magenta._
-import deployment_type.{PaginationView, DeployFilter}
+import deployment.{PaginationView, DeployFilter}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
