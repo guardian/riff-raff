@@ -11,27 +11,25 @@ package object fixtures {
 
   val deployinfoSingleHost = stubDeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
 
-  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"), Set(app1))
+  val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"))
 
   val baseRecipe = Recipe("one",
-    actionsBeforeApp = basePackageType.mkAction("init_action_one") :: Nil,
-    actionsPerHost = basePackageType.mkAction("action_one") :: Nil,
+    actionsBeforeApp = basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,
+    actionsPerHost = basePackageType.mkAction("action_one")(stubPackage) :: Nil,
     dependsOn = Nil)
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
-  def stubPackage() = Package("stub project", Set(), Map(), "stub-package-type", null)
+  def stubPackage = Package("stub project", Set(app1), Map(), "stub-package-type", null)
 
-  def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String],
-                      apps: Set[App]) = StubPackageType(
+  def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String]) = StubDeploymentType(
     perAppActions = {
-      case name if (perAppActionNames.contains(name)) => (_,_) => List(StubTask(name + " per app task"))
+      case name if (perAppActionNames.contains(name)) => pkg => (_,_) => List(StubTask(name + " per app task"))
     },
     perHostActions = {
-      case name if (perHostActionNames.contains(name))=> host =>
+      case name if (perHostActionNames.contains(name)) => pkg => host =>
         List(StubTask(name + " per host task on " + host.name, Some(host)))
-    },
-    pkg = stubPackage().copy(pkgApps = apps)
+    }
   )
 
   def testParams() = DeployParameters(
