@@ -13,7 +13,12 @@
         </ul>
         <h1>@title</h1>
         @sections.map { case (sectionTitle, html) =>
-            <h2>@sectionTitle</h2>
+            <ul>
+                <li><a href="#@sectionTitle.replaceAll("""\W""","")">@sectionTitle</a></li>
+            </ul>
+        }
+        @sections.map { case (sectionTitle, html) =>
+            <h2 id="@sectionTitle.replaceAll("""\W""","")">@sectionTitle</h2>
             @html
         }
 

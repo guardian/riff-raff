@@ -171,7 +171,7 @@ object Application extends Controller with Logging {
                       case (_, _) => None
                     }
                     (param.name, param.documentation, defaultValue)
-                  }
+                  }.sortBy(_._3.isDefined)
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
                   (dt.name, typeDocumentation)
                 }
