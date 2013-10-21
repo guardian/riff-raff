@@ -4,14 +4,28 @@ import magenta.tasks._
 
 object Django extends DeploymentType {
   val name = "django-webapp"
+  val documentation =
+    """
+      |Deploys a Guardian django web application to a set of servers.
+      |
+      |This deploy type deploys a Django based web application. The target servers are assumed to be configured
+      |using the usual Guardian configuration for a Django WSGI application running under Apache httpd. For each server
+      |that is running the application the following steps are carried out:
+      |
+      | - block firewall
+      | - copy package files to a versioned directory under `/django-apps/`
+      | - create a new symlink to make the new versioned directory the new default
+      | - gracefully restart httpd
+      | - wait for the application port to open
+      | - wait until all `healthcheck_paths` return healthy HTTP status
+      | - unblock firewall
+    """.stripMargin
 
-  val params = Seq(user, port, healthCheckPaths, checkseconds, checkUrlReadTimeoutSeconds)
-
-  val user = Param("user", Some("django"))
-  val port = Param("port", Some(80))
-  val healthCheckPaths = Param("healthcheck_paths", Some(List.empty[String]))
-  val checkseconds = Param("checkseconds", Some(120))
-  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds", Some(5))
+  val user = Param("user").default("django")
+  val port = Param("port").default(80)
+  val healthCheckPaths = Param("healthcheck_paths").default(List.empty[String])
+  val checkseconds = Param("checkseconds").default(120)
+  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds").default(5)
 
   override def perHostActions = {
     case "deploy" => pkg => host => {

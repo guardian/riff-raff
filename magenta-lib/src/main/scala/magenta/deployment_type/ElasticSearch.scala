@@ -5,10 +5,14 @@ import java.io.File
 
 object ElasticSearch extends DeploymentType {
   def name = "elasticsearch"
+  val documentation =
+    """
+      |A specialised version of the `autoscaling` deployment type that has a specialise health check process to
+      |ensure that the resulting ElasticSearch cluster is green.
+    """.stripMargin
 
-  val params = Seq(bucket, secondsToWait)
   val bucket = Param[String]("bucket")
-  val secondsToWait = Param("secondsToWait", Some(15 * 60))
+  val secondsToWait = Param("secondsToWait").default(15 * 60)
 
   //  Params(
   //    bucket[String],

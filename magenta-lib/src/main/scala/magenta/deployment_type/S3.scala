@@ -7,11 +7,14 @@ import magenta.tasks.S3Upload
 
 object S3 extends DeploymentType {
   val name = "aws-s3"
+  val documentation =
+    """
+      |Provides one deploy action that uploads the package files to an S3 bucket. In order for this to work, magenta
+      |must have credentials that are valid to write to the bucket in the sepcified location.
+    """.stripMargin
 
-  val params = Seq(bucket, bucketResource, prefixPackage, prefixPackage, cacheControl)
-
-  val prefixStage = Param("prefixStage", Some(true))
-  val prefixPackage = Param("prefixPackage", Some(true))
+  val prefixStage = Param("prefixStage").default(true)
+  val prefixPackage = Param("prefixPackage").default(true)
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket")

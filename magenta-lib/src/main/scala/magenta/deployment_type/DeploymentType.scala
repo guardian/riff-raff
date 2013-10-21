@@ -6,10 +6,19 @@ import magenta.tasks.Task
 import magenta.DeployParameters
 import magenta.Host
 import magenta.Package
+import scala.collection.mutable
 
 trait DeploymentType {
   def name: String
-  def params: Seq[Param[_]]
+  def documentation: String
+
+  implicit val register = new ParamRegister {
+    def add(param: Param[_]) = {
+      paramsList += param.name -> param
+    }
+  }
+  val paramsList = mutable.Map.empty[String, Param[_]]
+  lazy val params = paramsList.values.toSeq
   def perAppActions: PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]]
   def perHostActions: PartialFunction[String, Package => Host => List[Task]] = PartialFunction.empty
 
@@ -44,9 +53,25 @@ object DeploymentType {
   )
 }
 
-case class Param[T](name: String, default: Option[T] = None, defaultFromPackage: Package => Option[T] = (_: Package) => None) {
+trait ParamRegister {
+  def add(param: Param[_])
+}
+
+case class Param[T](name: String,
+                    documentation: String = "_undocumented_",
+                    defaultValue: Option[T] = None,
+                    defaultValueFromPackage: Option[Package => T] = None)(implicit register:ParamRegister) {
+  register.add(this)
+
   def get(pkg: Package)(implicit extractable: JValueExtractable[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
   def apply(pkg: Package)(implicit extractable: JValueExtractable[T]): T =
-    get(pkg).orElse(default).orElse(defaultFromPackage(pkg)).getOrElse(throw new NoSuchElementException())
+    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse(throw new NoSuchElementException())
+
+  def default(default: T) = {
+    this.copy(defaultValue = Some(default))
+  }
+  def defaultFromPackage(defaultFromPackage: Package => T) = {
+    this.copy(defaultValueFromPackage = Some((p: Package) => defaultFromPackage(p)))
+  }
 }

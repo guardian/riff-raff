@@ -1,4 +1,6 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], title: String, markDown: String, breadcrumbs: List[controllers.Application.Link], prev: Option[controllers.Application.Link], next: Option[controllers.Application.Link])
+@(request: controllers.AuthenticatedRequest[AnyContent], title: String, markDown: String,
+        breadcrumbs: List[controllers.Application.Link], prev: Option[controllers.Application.Link],
+        next: Option[controllers.Application.Link])
 
 @main(title, request) {
     <div class='container'>

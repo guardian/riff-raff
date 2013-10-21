@@ -3,94 +3,94 @@
 # ~~~~
 
 # Home page
-GET     /                           controllers.Application.index
+GET         /                                               controllers.Application.index
 
-GET     /deployinfo/about           controllers.Application.deployInfoAbout
-GET     /deployinfo/data            controllers.Application.deployInfoData
-GET     /deployinfo/hosts           controllers.Application.deployInfoHosts(app?="")
+GET         /deployinfo/about                               controllers.Application.deployInfoAbout
+GET         /deployinfo/data                                controllers.Application.deployInfoData
+GET         /deployinfo/hosts                               controllers.Application.deployInfoHosts(app?="")
 
 # Docs
-GET     /docs/                      controllers.Application.documentation(resource="")
-GET     /docs/*resource             controllers.Application.documentation(resource)
+GET         /docs/                                          controllers.Application.documentation(resource="")
+GET         /docs/*resource                                 controllers.Application.documentation(resource)
 
 # Deployment pages
-GET     /deployment/request controllers.Deployment.deploy
-POST    /deployment/request controllers.Deployment.processForm
-POST    /deployment/:uuid/stop    controllers.Deployment.stop(uuid)
-GET     /deployment/confirm controllers.Deployment.deployConfirmation(parametersJson:String)
-GET     /deployment/externalRequest controllers.Deployment.deployConfirmationWithParameters
+GET         /deployment/request                             controllers.Deployment.deploy
+POST        /deployment/request                             controllers.Deployment.processForm
+POST        /deployment/:uuid/stop                          controllers.Deployment.stop(uuid)
+GET         /deployment/confirm                             controllers.Deployment.deployConfirmation(parametersJson:String)
+GET         /deployment/externalRequest                     controllers.Deployment.deployConfirmationWithParameters
 
-GET     /deployment/history controllers.Deployment.history
-GET     /deployment/history/update controllers.Deployment.historyContent
+GET         /deployment/history                             controllers.Deployment.history
+GET         /deployment/history/update                      controllers.Deployment.historyContent
 
-GET     /deployment/view/:uuid      controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
-POST    /deployment/markAsFailed    controllers.Deployment.markAsFailed
-GET     /deployment/updates/:uuid   controllers.Deployment.updatesUUID(uuid:String)
+GET         /deployment/view/:uuid                          controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
+POST        /deployment/markAsFailed                        controllers.Deployment.markAsFailed
+GET         /deployment/updates/:uuid                       controllers.Deployment.updatesUUID(uuid:String)
 
-GET     /deployment/request/autoComplete/project   controllers.Deployment.autoCompleteProject(term:String)
-GET     /deployment/request/autoComplete/build   controllers.Deployment.autoCompleteBuild(project:String,term:String)
-GET     /deployment/request/history   controllers.Deployment.projectHistory(project:String)
+GET         /deployment/request/autoComplete/project        controllers.Deployment.autoCompleteProject(term:String)
+GET         /deployment/request/autoComplete/build          controllers.Deployment.autoCompleteBuild(project:String,term:String)
+GET         /deployment/request/history                     controllers.Deployment.projectHistory(project:String)
 
-GET     /deployment/preview         controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
-GET     /deployment/preview/content  controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
+GET         /deployment/preview                             controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
+GET         /deployment/preview/content                     controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
-GET     /deployment/dashboard           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)
-GET     /deployment/dashboard/content   controllers.Deployment.dashboardContent(projects:String, search:Boolean?=false)
+GET         /deployment/dashboard                           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)
+GET         /deployment/dashboard/content                   controllers.Deployment.dashboardContent(projects:String, search:Boolean?=false)
 
 # Continuous deployment
-GET     /deployment/continuous              controllers.ContinuousDeployController.list
-GET     /deployment/continuous/new          controllers.ContinuousDeployController.form
-POST    /deployment/continuous/save     controllers.ContinuousDeployController.save
-GET     /deployment/continuous/:id/edit     controllers.ContinuousDeployController.edit(id)
-POST    /deployment/continuous/:id/delete   controllers.ContinuousDeployController.delete(id)
+GET         /deployment/continuous                          controllers.ContinuousDeployController.list
+GET         /deployment/continuous/new                      controllers.ContinuousDeployController.form
+POST        /deployment/continuous/save                     controllers.ContinuousDeployController.save
+GET         /deployment/continuous/:id/edit                 controllers.ContinuousDeployController.edit(id)
+POST        /deployment/continuous/:id/delete               controllers.ContinuousDeployController.delete(id)
 
 # Post deploy hooks
-GET     /deployment/hooks           controllers.Hooks.list
-GET     /deployment/hooks/new       controllers.Hooks.form
-POST    /deployment/hooks/save      controllers.Hooks.save
-GET     /deployment/hooks/edit      controllers.Hooks.edit(id)
-POST    /deployment/hooks/delete    controllers.Hooks.delete(id)
+GET         /deployment/hooks                               controllers.Hooks.list
+GET         /deployment/hooks/new                           controllers.Hooks.form
+POST        /deployment/hooks/save                          controllers.Hooks.save
+GET         /deployment/hooks/edit                          controllers.Hooks.edit(id)
+POST        /deployment/hooks/delete                        controllers.Hooks.delete(id)
 
 # authentication endpoints
-GET     /profile                    controllers.Login.profile
-GET     /login                      controllers.Login.login
-GET     /loginAction                controllers.Login.loginAction
-GET     /openIDCallback             controllers.Login.openIDCallback
-GET     /logout                     controllers.Login.logout
+GET         /profile                                        controllers.Login.profile
+GET         /login                                          controllers.Login.login
+GET         /loginAction                                    controllers.Login.loginAction
+GET         /openIDCallback                                 controllers.Login.openIDCallback
+GET         /logout                                         controllers.Login.logout
 
-GET     /auth/list                  controllers.Login.authList
-GET     /auth/new                   controllers.Login.authForm
-POST    /auth/delete                controllers.Login.authDelete
-POST    /auth/save                  controllers.Login.authSave
+GET         /auth/list                                      controllers.Login.authList
+GET         /auth/new                                       controllers.Login.authForm
+POST        /auth/delete                                    controllers.Login.authDelete
+POST        /auth/save                                      controllers.Login.authSave
 
 # api endpoints
-GET     /apiKeys/list               controllers.Api.listKeys
-GET     /apiKeys/create             controllers.Api.createKeyForm
-POST    /apiKeys/create             controllers.Api.createKey
-POST    /apiKeys/delete             controllers.Api.delete
+GET         /apiKeys/list                                   controllers.Api.listKeys
+GET         /apiKeys/create                                 controllers.Api.createKeyForm
+POST        /apiKeys/create                                 controllers.Api.createKey
+POST        /apiKeys/delete                                 controllers.Api.delete
 
-GET     /api/history                controllers.Api.history
-GET     /api/deployinfo             controllers.Api.deployinfo
-GET     /api/deploy/view            controllers.Api.view(uuid:String)
-POST    /api/deploy/request         controllers.Api.deploy
-POST    /api/deploy/stop            controllers.Api.stop
+GET         /api/history                                    controllers.Api.history
+GET         /api/deployinfo                                 controllers.Api.deployinfo
+GET         /api/deploy/view                                controllers.Api.view(uuid:String)
+POST        /api/deploy/request                             controllers.Api.deploy
+POST        /api/deploy/stop                                controllers.Api.stop
 
-GET     /api/historyGraph                controllers.Api.historyGraph
+GET         /api/historyGraph                               controllers.Api.historyGraph
 
 # Testing pages (for changing styling without running deploys)
-GET     /testing/reportTestPartial  controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)
-GET     /testing/form   controllers.Testing.form
-POST    /testing/formPost  controllers.Testing.formPost
-GET     /testing/uuidList   controllers.Testing.uuidList(limit:Int ?= 500)
-POST    /testing/actionUUID   controllers.Testing.actionUUID
-GET     /testing/view/:uuid controllers.Testing.debugLogViewer(uuid)
-GET     /testing/addStringUUID  controllers.Testing.transferAllUUIDs
-GET     /testing/testcharset    controllers.Testing.testcharset
-GET     /testing/deployinfo     controllers.Testing.hosts
-GET     /teamcity       controllers.Deployment.teamcity
+GET         /testing/reportTestPartial                      controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)
+GET         /testing/form                                   controllers.Testing.form
+POST        /testing/formPost                               controllers.Testing.formPost
+GET         /testing/uuidList                               controllers.Testing.uuidList(limit:Int ?= 500)
+POST        /testing/actionUUID                             controllers.Testing.actionUUID
+GET         /testing/view/:uuid                             controllers.Testing.debugLogViewer(uuid)
+GET         /testing/addStringUUID                          controllers.Testing.transferAllUUIDs
+GET         /testing/testcharset                            controllers.Testing.testcharset
+GET         /testing/deployinfo                             controllers.Testing.hosts
+GET         /teamcity                                       controllers.Deployment.teamcity
 
 # Javascript routing
-GET     /assets/javascripts/routes          controllers.Application.javascriptRoutes
+GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes
 
 # Map static resources from the /public folder to the /assets URL path
-GET     /assets/*file               controllers.Assets.at(path="/public", file)
+GET         /assets/*file                                   controllers.Assets.at(path="/public", file)

@@ -1,31 +1,44 @@
 package magenta.deployment_type
 
-import net.liftweb.json.JsonAST.{JArray, JValue}
 import magenta.tasks._
 import java.io.File
 import magenta.{Host, Package}
 
 trait WebApp extends DeploymentType {
   def containerName: String
+  def documentation: String =
+    """
+      |The WebApp trait deploys JVM based web applications that are deployed by copying over a new artifact (a WAR or
+      |executable JAR) and restarting a container.
+      |
+      |The deploy type does the following for each host that is being deployed to:
+      |
+      | - block the firewall
+      | - copy the new artifact over to the target host
+      | - execute the container's restart command
+      | - wait for the container's port to open again
+      | - wait for all `heathcheck_paths` to return a healthy HTTP status code
+      | - unblock the firewall
+      |
+      |Two actions are provided: `deploy` and `restart`. These are identical except that in the latter case the actual
+      |copying of the artifact to the target host is not carried out, resulting in a rolling restart of all hosts.
+    """.stripMargin
 
   lazy val name = containerName + "-webapp"
   lazy val defaultUser: Option[String] = None
 
-  val params = Seq(user, port, servicename, bucket, waitseconds, checkseconds, healthcheck_paths,
-    checkUrlReadTimeoutSeconds, copyRoots, copyMode)
-
-  val user = Param("user", Some(defaultUser.getOrElse(containerName)))
-  val port = Param("port", Some(8080))
-  val servicename = Param("servicename", defaultFromPackage = pkg => Some(pkg.name))
+  val user = Param("user").default(defaultUser.getOrElse(containerName))
+  val port = Param("port").default(8080)
+  val servicename = Param("servicename").defaultFromPackage(_.name)
   val bucket = Param[String]("bucket")
-  val waitseconds = Param("waitseconds", Some(60))
-  val checkseconds = Param("checkseconds", Some(120))
-  val healthcheck_paths = Param("healthcheck_paths", defaultFromPackage = pkg =>
-    Some(List(s"/${servicename(pkg)}/management/healthcheck"))
-  )
-  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds", Some(5))
-  val copyRoots = Param("copyRoots", Some(List("")))
-  val copyMode = Param("copyMode", Some("additive"))
+  val waitseconds = Param("waitseconds").default(60)
+  val checkseconds = Param("checkseconds").default(120)
+  val healthcheck_paths = Param("healthcheck_paths").defaultFromPackage{ pkg =>
+    List(s"/${servicename(pkg)}/management/healthcheck")
+  }
+  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds").default(5)
+  val copyRoots = Param("copyRoots").default(List(""))
+  val copyMode = Param("copyMode").default("additive")
 
   override def perHostActions = {
     case "deploy" => pkg => host => {

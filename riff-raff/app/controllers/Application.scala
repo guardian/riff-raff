@@ -4,6 +4,9 @@ import play.api.mvc._
 
 import play.api.{Routes, Logger}
 import io.Source
+import magenta.deployment_type.DeploymentType
+import magenta.{App, Package}
+import java.io.File
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -155,7 +158,27 @@ object Application extends Controller with Logging {
               } ++ Some(Link(title, routes.Application.documentation(resource), resource))
             }
 
-            Ok(views.html.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+            resource match {
+              case "magenta-lib/types" =>
+                val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
+                  val paramDocs = dt.params.sortBy(_.name).map{ param =>
+                    val defaultValue = (param.defaultValue, param.defaultValueFromPackage) match {
+                      case (Some(default), _) => Some(default.toString)
+                      case (None, Some(pkgFunction)) =>
+                        Some(pkgFunction(
+                          Package("<packageName>",Set(App("<app>")),Map.empty,"<deploymentType>",new File("<file>"))
+                        ).toString)
+                      case (_, _) => None
+                    }
+                    (param.name, param.documentation, defaultValue)
+                  }
+                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
+                  (dt.name, typeDocumentation)
+                }
+                Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))
+              case _ =>
+                Ok(views.html.documentation.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+            }
           }
         }
       }

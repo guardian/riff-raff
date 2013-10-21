@@ -1,0 +1,23 @@
+@(typeDescription: String, paramsDescriptions: Seq[(String,String,Option[String])])
+
+@docs.MarkDown.toHtml(typeDescription)
+
+@if(!paramsDescriptions.isEmpty) {
+    <h4>Parameters</h4>
+<table class="table table-condensed">
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Description</th>
+            <th>Default</th>
+        </tr>
+    </thead>
+    @paramsDescriptions.map { case (name, desc, default) =>
+    <tr>
+      <td>@name</td>
+      <td>@docs.MarkDown.toHtml(desc)</td>
+      <td><em>@default.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+    </tr>
+    }
+</table>
+}

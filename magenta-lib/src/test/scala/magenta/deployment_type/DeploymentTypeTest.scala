@@ -26,8 +26,9 @@ import net.liftweb.json.JsonAST.JArray
 
 class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
-  "Deployment types" should "all include every param in the params List" in {
-    pending
+  "Deployment types" should "automatically register params in the params Seq" in {
+    S3.params should have size(5)
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","bucketResource","cacheControl"))
   }
 
   "Amazon Web Services S3" should "have a uploadStaticFiles action" in {

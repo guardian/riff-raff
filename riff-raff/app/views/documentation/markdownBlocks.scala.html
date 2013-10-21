@@ -1,0 +1,21 @@
+@(request: controllers.AuthenticatedRequest[AnyContent],
+        title: String,
+        breadcrumbs: List[controllers.Application.Link],
+        sections: Seq[(String, Html)])
+
+@main(title, request) {
+    <div class='container'>
+        <ul class='breadcrumb'>
+            @breadcrumbs.init.map { crumb =>
+                <li><a href='@crumb.call'>@crumb.title</a> <span class='divider'>/</span></li>
+            }
+            <li class='active'>@breadcrumbs.last.title</li>
+        </ul>
+        <h1>@title</h1>
+        @sections.map { case (sectionTitle, html) =>
+            <h2>@sectionTitle</h2>
+            @html
+        }
+
+    </div>
+}

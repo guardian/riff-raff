@@ -23,6 +23,7 @@ case class StubDeploymentType(override val perHostActions:
                             PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]] = Map.empty
                             ) extends DeploymentType {
   def name = "stub-package-type"
-  def params = Seq()
+
+  val documentation = "Documentation for the testing stub"
 }
 
