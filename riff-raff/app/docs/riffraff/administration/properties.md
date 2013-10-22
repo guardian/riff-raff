@@ -42,8 +42,9 @@ credentials
 continuous deployment
 ---------------------
 
- - `continuousDeployment.enabled` - By default the continuous deployment mechanism is disabled (to prevent development
- on Riff-Raff triggering deploys); to enable set this property to `true`
+ - `continuousDeployment.enabled` - By default continuous deployment is disabled (a message is logged instead of
+ starting a deploy - to prevent rogue or development instances of Riff-Raff automatically starting deployments);
+ to enable set this property to `true` (you want to do this on your production instance)
 
 continuous integration
 ----------------------

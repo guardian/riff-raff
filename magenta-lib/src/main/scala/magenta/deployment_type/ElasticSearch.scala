@@ -17,11 +17,6 @@ object ElasticSearch extends DeploymentType {
       | (also used as the wait time for the instance termination)"""
   ).default(15 * 60)
 
-  //  Params(
-  //    bucket[String],
-  //    maxWait(15.minutes)
-  //  )
-
   def perAppActions = {
     case "deploy" => (pkg) => (_, parameters) => {
       List(
