@@ -11,16 +11,60 @@ object S3 extends DeploymentType {
     """
       |Provides one deploy action that uploads the package files to an S3 bucket. In order for this to work, magenta
       |must have credentials that are valid to write to the bucket in the sepcified location.
+      |
+      |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
+      |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
     """.stripMargin
 
-  val prefixStage = Param("prefixStage").default(true)
-  val prefixPackage = Param("prefixPackage").default(true)
+  val prefixStage = Param("prefixStage",
+    "Prefix the S3 bucket key with the target stage").default(true)
+  val prefixPackage = Param("prefixPackage",
+    "Prefix the S3 bucket key with the package name").default(true)
 
   //required configuration, you cannot upload without setting these
-  val bucket = Param[String]("bucket")
-  val bucketResource = Param[String]("bucketResource")
+  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
+  val bucketResource = Param[String]("bucketResource",
+    """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
+      |
+      |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
+      |regardless of the target stage.
+    """.stripMargin
+  )
 
-  val cacheControl = Param[List[PatternValue]]("cacheControl")
+  val cacheControl = Param[List[PatternValue]]("cacheControl",
+    """
+      |Set the cache control header for the uploaded files. This can take two forms, but in either case the format of
+      |the cache control value itself must be a valid HTTP `Cache-Control` value such as `public, max-age=315360000`.
+      |
+      |In the first form the cacheControl parameter is set to a JSON string and the value will apply to all files
+      |uploaded to the S3 bucket.
+      |
+      |In the second form the cacheControl parameter is set to an array of JSON objects, each of which have `pattern`
+      |and `value` keys. `pattern` is a Java regular expression whilst `value` must be a valid `Cache-Control` header.
+      |For each file being uploaded, the array of regular expressions is evaluated against the file path and name. The
+      |first regular expression that matches the file is used to determine the cache control value. If there is no match
+      |then no cache control will be set.
+      |
+      |In the example below, if the file path matches either of the first two regular expressions then the cache control
+      |header will be set to ten years (i.e. never expire). If neither of the first two match then the catch all regular
+      |expression of the last object will match, setting the cache control header to one hour.
+      |
+      |    "cacheControl": [
+      |      {
+      |        "pattern": "^js/lib/",
+      |        "value": "max-age=315360000"
+      |      },
+      |      {
+      |        "pattern": "^\d*\.\d*\.\d*/",
+      |        "value": "max-age=315360000"
+      |      },
+      |      {
+      |        "pattern": ".*",
+      |        "value": "max-age=3600"
+      |      }
+      |    ]
+    """.stripMargin
+  )
 
   implicit object PatternValueExtractable extends JValueExtractable[List[PatternValue]] {
     def extract(json: JValue) = json match {

@@ -29,7 +29,7 @@ object AutoScaling  extends DeploymentType {
     """
       |S3 bucket name to upload artifact into.
       |
-      |The path in the bucket is `<packageName>/<stage>/<fileName>`.
+      |The path in the bucket is `<stage>/<packageName>/<fileName>`.
     """.stripMargin
   )
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)

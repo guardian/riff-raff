@@ -21,11 +21,15 @@ object Django extends DeploymentType {
       | - unblock firewall
     """.stripMargin
 
-  val user = Param("user").default("django")
-  val port = Param("port").default(80)
-  val healthCheckPaths = Param("healthcheck_paths").default(List.empty[String])
-  val checkseconds = Param("checkseconds").default(120)
-  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds").default(5)
+  val user = Param("user", "User account on the target hosts to use for executing remote commands").default("django")
+  val port = Param("port", "Application port used for carrying out post deployment healthchecks").default(80)
+  val healthCheckPaths = Param("healthcheck_paths",
+    "List of application paths that must return a healthy HTTP response, appended to `http://<targetHost>:<port>`"
+  ).default(List.empty[String])
+  val checkseconds = Param("checkseconds",
+    "Number of seconds to wait for each healthcheck path to become healthy").default(120)
+  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds",
+    "Read timeout (in seconds) used when checking health check paths").default(5)
 
   override def perHostActions = {
     case "deploy" => pkg => host => {

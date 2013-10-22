@@ -27,18 +27,54 @@ trait WebApp extends DeploymentType {
   lazy val name = containerName + "-webapp"
   lazy val defaultUser: Option[String] = None
 
-  val user = Param("user").default(defaultUser.getOrElse(containerName))
-  val port = Param("port").default(8080)
-  val servicename = Param("servicename").defaultFromPackage(_.name)
-  val bucket = Param[String]("bucket")
-  val waitseconds = Param("waitseconds").default(60)
-  val checkseconds = Param("checkseconds").default(120)
-  val healthcheck_paths = Param("healthcheck_paths").defaultFromPackage{ pkg =>
-    List(s"/${servicename(pkg)}/management/healthcheck")
-  }
-  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds").default(5)
-  val copyRoots = Param("copyRoots").default(List(""))
-  val copyMode = Param("copyMode").default("additive")
+  val user = Param("user",
+    "User account on the target hosts to use for executing remote commands"
+  ).default(defaultUser.getOrElse(containerName))
+  val port = Param("port", "Application port used for carrying out post deployment healthchecks").default(8080)
+  val servicename = Param("servicename",
+    """
+      |The name of the **service** to restart on the target hosts, typically restarted using
+      |`sudo service <servicename> restart`
+      |""".stripMargin
+  ).defaultFromPackage(_.name)
+  val bucket = Param[String]("bucket",
+    "When the `uploadArtifacts` action is used, this specifies the target S3 bucket")
+  val waitseconds = Param("waitseconds",
+    "Number of seconds to wait for the application port to start accepting connections after restart").default(60)
+  val checkseconds = Param("checkseconds",
+    "Number of seconds to wait for each healthcheck path to become healthy").default(120)
+  val healthcheck_paths = Param("healthcheck_paths",
+    "List of application paths that must return a healthy HTTP response, appended to `http://<targetHost>:<port>`"
+  ).defaultFromPackage{ pkg => List(s"/${servicename(pkg)}/management/healthcheck") }
+  val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds",
+    "Read timeout (in seconds) used when checking health check paths").default(5)
+  val copyRoots = Param("copyRoots",
+    """
+      |Specify a list of directory roots that should be copied over to the target hosts. This defaults to a single
+      |root of `""` which in effect uses the root of the package directory. This is designed to be used in conjunction
+      |with `copyMode=mirror` in order to isolate which directories on the target host can have files removed during
+      |the copy task.
+      |
+      |As an example, you might specify copy roots of `webapps` and `solr/conf` and copy mode of mirror. In this case
+      |files under both these directories will be mirrored from the matching directories in the package. However, if
+      |copy roots were not explicitly specified then any files in the parent directory or in `solr` that were not in
+      |the package would also be removed.
+    """.stripMargin
+  ).default(List(""))
+  val copyMode = Param("copyMode",
+    """
+      |Controls the mode of the underlying rsync command that is used to copy files to the target hosts.
+      |
+      | - `additive`: Copies files from the `copyRoots` to the target host path, files with the same name on the target
+      | will be overwritten but otherwise the copy will be non-destructive. Equivalent to rsync flags of `-rpv`.
+      | - `mirror`: Copies files from the `copyRoots` to the target host path, each root will be mirrored to the target
+      | host, overwriting existing files and removing any files that are on the target host but not in the copy root.
+      | Equivalent of using rsync with the flags `-rpv --delete --delete-after`.
+      |
+      |This is useful when configuration or data files must be removed. Use in conjunction with `copyRoots` to control
+      |more precisely which directories on the target host are affected.
+    """.stripMargin
+  ).default("additive")
 
   override def perHostActions = {
     case "deploy" => pkg => host => {

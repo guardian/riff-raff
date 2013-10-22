@@ -11,8 +11,11 @@ object ElasticSearch extends DeploymentType {
       |ensure that the resulting ElasticSearch cluster is green.
     """.stripMargin
 
-  val bucket = Param[String]("bucket")
-  val secondsToWait = Param("secondsToWait").default(15 * 60)
+  val bucket = Param[String]("bucket", "S3 bucket that the artifact should be uploaded into")
+  val secondsToWait = Param("secondsToWait",
+    """Number of seconds to wait for the ElasticSearch cluster to become green
+      | (also used as the wait time for the instance termination)"""
+  ).default(15 * 60)
 
   //  Params(
   //    bucket[String],
