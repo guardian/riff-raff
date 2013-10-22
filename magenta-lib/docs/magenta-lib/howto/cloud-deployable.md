@@ -2,7 +2,7 @@
 How to deploy to the cloud
 --------------------------
 
-To deploy to the cloud, follow the above steps, but declare your package type as autoscaling.
+To deploy to the cloud, follow the above steps, but declare your deployment type as autoscaling.
 You'll need to provide a `bucket` data to say where to put the artifact in S3.
 
 The deploy will then do the following:

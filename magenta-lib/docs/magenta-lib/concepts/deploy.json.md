@@ -93,17 +93,18 @@ deploy to be carried out.
 
 A package has four valid keys:
 
- - `type` - this is a mandatory field that specifies which package type in magenta to instantiate
+ - `type` - this is a mandatory field that specifies which deployment type in magenta to instantiate (choose from
+ the [types that are implemented](../types))
  - `apps` - takes an array of strings of apps (typically only one, default: package name) - this is used to
  lookup infrastructure resources such as instances, credentials or autoscaling groups depending on the deployment type
- - `data` - a dict (default: empty) that contains parameters for the package type
+ - `data` - a dict (default: empty) that contains parameters for the deployment type
  - `fileName` - takes a string (default: package name) that determines where the associated files are in the
  artifacts.zip file - for example, in the example above for the package `frontend-article` the default location
  for associated files would be `/packages/frontend-article/`; this overrides the subdirectory name so that multiple
  packages can use the same set of files
 
 An example of when you might use `fileName` is if you were to add a second package that deployed the application using
-a different package type. You might do this if you were transitioning from one deployment mechanism to another. Such
+a different deployment type. You might do this if you were transitioning from one deployment mechanism to another. Such
 a package might look like this:
 
     frontend-article-autoscaling: {

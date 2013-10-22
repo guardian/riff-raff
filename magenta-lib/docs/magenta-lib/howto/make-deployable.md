@@ -36,14 +36,14 @@ type.
 
 * Type:
 
-  The type of package.  The various package types define what the deployable
-  actions are for this package.  For example the jetty-webapp type, we block
+  The type of package.  The various deployment types define what the deployable
+  actions are for this package.  For example the `jetty-webapp` type, we block
   the container, copy the files, restart the container, test the ports, test a
   set of urls and unblock.
 
 * Data:
 
-  Overridable data for the package-type.  Each package type might have specific
+  Overridable data for the package-type.  Each deployment type might have specific
   data, for example, at the guardian we might run multiple jetty-webapp
   instances on the same server, and so the packages can override the port that
   it expects the server to be listening on when it has finished restarting.
