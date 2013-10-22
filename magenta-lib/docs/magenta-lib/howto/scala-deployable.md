@@ -40,4 +40,3 @@ You are using Scala, SBT and so on, so you can apply the following rules.
 
  * Run `./sbt dist` locally and check that the artifact.zip is created correctly
  * Update the teamcity build to use the dist target
- * Ensure that the systems team have made your servers available as APP-ROLE in the deployinfo

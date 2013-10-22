@@ -36,7 +36,7 @@ type.
 
 * Type:
 
-  The type of package.  The various deployment types define what the deployable
+  The type of deployment.  The various deployment types define what the deployable
   actions are for this package.  For example the `jetty-webapp` type, we block
   the container, copy the files, restart the container, test the ports, test a
   set of urls and unblock.

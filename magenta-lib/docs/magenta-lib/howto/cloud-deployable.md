@@ -10,6 +10,7 @@ The deploy will then do the following:
 Take the package and upload it to the bucket you specified into the directory:
 `<bucket>/<stage>` - it will use the <package> directory from the artifact.
 So Content-Api-Concierge has a deploy.json like
+
 ```json
     "packages": {
         "content-api-concierge": {
@@ -21,10 +22,14 @@ So Content-Api-Concierge has a deploy.json like
         }
     },
 ```
+
 It will upload the file to s3://content-api-dist/<STAGE>/content-api-concierge
 
-It will then look for an AutoscalingGroup that has two tags: one with the key 'Role' and the name of the package as the value and the other with the key 'Stage' and the name of the stage you're deploying to as the value.
+It will then look for an AutoscalingGroup that has two tags: one with the key 'Role' and the name of the package as the
+value and the other with the key 'Stage' and the name of the stage you're deploying to as the value.
+
 In cloudformation you could use this:
+
 ```json
         "AutoscalingGroup":{
             "Type":"AWS::AutoScaling::AutoScalingGroup",
@@ -46,7 +51,8 @@ In cloudformation you could use this:
 
 ```
 
-In order to do all of this, You'll need an AWS key for deploying, which needs the AccessKey and SecretKey provided to RiffRaff via the configuration file, and you'll need to create the user in your IAM profile with permissions like:
+In order to do all of this, You'll need an AWS key for deploying, which needs the AccessKey and SecretKey provided
+to RiffRaff via the configuration file, and you'll need to create the user in your IAM profile with permissions like:
 
 ```json
 {
