@@ -12,12 +12,11 @@
             <li class='active'>@breadcrumbs.last.title</li>
         </ul>
         <h1>@title</h1>
-
+        <ul class="nav nav-pills">
             @sections.map { case (sectionTitle, html) =>
-            <ul>
                 <li><a href="#@sectionTitle.replaceAll("""\W""","")">@sectionTitle</a></li>
-            </ul>
-        }
+            }
+        </ul>
         @sections.map { case (sectionTitle, html) =>
             <hr/>
             <h2 id="@sectionTitle.replaceAll("""\W""","")">@sectionTitle</h2>
