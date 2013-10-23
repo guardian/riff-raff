@@ -6,23 +6,26 @@ import magenta.{Host, Package}
 
 trait WebApp extends DeploymentType {
   def containerName: String
+  def webAppDocumentation: String
   def documentation: String =
-    """
-      |The WebApp trait deploys JVM based web applications that are deployed by copying over a new artifact (a WAR or
-      |executable JAR) and restarting a container.
-      |
-      |The deploy type does the following for each host that is being deployed to:
-      |
-      | - block the firewall
-      | - copy the new artifact over to the target host
-      | - execute the container's restart command
-      | - wait for the container's port to open again
-      | - wait for all `heathcheck_paths` to return a healthy HTTP status code
-      | - unblock the firewall
-      |
-      |Two actions are provided: `deploy` and `restart`. These are identical except that in the latter case the actual
-      |copying of the artifact to the target host is not carried out, resulting in a rolling restart of all hosts.
-    """.stripMargin
+    webAppDocumentation +
+      """
+        |
+        |The WebApp trait deploys JVM based web applications that are deployed by copying over a new artifact (a WAR or
+        |executable JAR) and restarting a container.
+        |
+        |The deploy type does the following for each host that is being deployed to:
+        |
+        | - block the firewall
+        | - copy the new artifact over to the target host
+        | - execute the container's restart command
+        | - wait for the container's port to open again
+        | - wait for all `heathcheck_paths` to return a healthy HTTP status code
+        | - unblock the firewall
+        |
+        |Two actions are provided: `deploy` and `restart`. These are identical except that in the latter case the actual
+        |copying of the artifact to the target host is not carried out, resulting in a rolling restart of all hosts.
+      """.stripMargin
 
   lazy val name = containerName + "-webapp"
   lazy val defaultUser: Option[String] = None
@@ -119,14 +122,30 @@ trait WebApp extends DeploymentType {
 }
 
 object ExecutableJarWebapp extends WebApp {
+  val webAppDocumentation: String =
+    s"""
+      |The $name deployment type extends the WebApp trait in order to deploy an executable jar
+      |onto a target host.
+    """.stripMargin
+
   override lazy val defaultUser = Some("jvmuser")
   lazy val containerName = "executable-jar"
 }
 
 object JettyWebapp extends WebApp {
+  val webAppDocumentation: String =
+    s"""
+      |The $name deployment type extends the WebApp trait in order to deploy an application into a Jetty container.
+    """.stripMargin
+
   lazy val containerName = "jetty"
 }
 
 object ResinWebapp extends WebApp {
+  val webAppDocumentation =
+    s"""
+      |The $name deployment type extends the WebApp trait in order to deploy an application into a Resin container.
+    """.stripMargin
+
   lazy val containerName = "resin"
 }
