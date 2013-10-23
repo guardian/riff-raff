@@ -106,7 +106,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
         WaitForStabilization(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
-        HealthcheckGrace(pkg.data.int("healthcheckGrace").toInt * 1000),
+        HealthcheckGrace(pkg.data.int("healthcheckGrace") * 1000),
         WaitForStabilization(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
         ResumeAlarmNotifications(pkg.name, parameters.stage)
@@ -134,8 +134,8 @@ case class ElasticSearch(pkg: Package) extends PackageType {
       List(
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
-        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.data.int("secondsToWait").toInt * 1000),
-        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, pkg.data.int("secondsToWait").toInt * 1000)
+        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000)
       )
     }
     case "uploadArtifacts" => (_, parameters) =>
@@ -171,7 +171,7 @@ abstract class WebappPackageType extends PackageType {
     if (paths.isEmpty) List("/%s/management/healthcheck" format serviceName)
     else paths
   }
-  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds").toInt
+  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds")
   val TRAILING_SLASH = """^(.*/)$""".r
 
   lazy val copyRoots = pkg.data.stringArray("copyRoots").map {
@@ -249,7 +249,7 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
   lazy val port = pkg.data.string("port")
   lazy val healthCheckPaths = pkg.data.stringArray("healthcheck_paths")
   lazy val checkDuration = pkg.data.int("checkseconds").seconds
-  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds").toInt
+  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds")
 
   // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
   lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
