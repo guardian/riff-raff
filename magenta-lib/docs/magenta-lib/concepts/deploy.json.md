@@ -14,9 +14,9 @@ order to infer defaults. As a result of this, it is possible to have a very
 minimal deployment file.
 
     {
-      packages: {
-        riff-raff: {
-          type: "executable-jar-webapp"
+      "packages": {
+        "riff-raff": {
+          "type": "executable-jar-webapp"
         }
       }
     }
@@ -35,35 +35,35 @@ A longer example
 A larger example is below, this time with two packages and three recipes.
 
     {
-      packages: {
-        frontend-article: {
-          type: "executable-jar-webapp",
-          apps: [ "frontend::article" ],
-          data: {
-            healthcheck_paths: [ "management/healthcheck", "/" ]
+      "packages": {
+        "frontend-article": {
+          "type": "executable-jar-webapp",
+          "apps": [ "frontend::article" ],
+          "data": {
+            "healthcheck_paths": [ "management/healthcheck", "/" ]
           }
         },
-        frontend-static: {
-          type: "aws-s3",
-          apps: [ "aws-s3" ],
-          data: {
-            bucket: "frontend-static",
-            cacheControl: "public, max-age=315360000"
+        "frontend-static": {
+          "type": "aws-s3",
+          "apps": [ "aws-s3" ],
+          "data": {
+            "bucket": "frontend-static",
+            "cacheControl": "public, max-age=315360000"
           }
         }
       },
-      recipes: {
-        default: {
-          depends: [
+      "recipes": {
+        "default": {
+          "depends": [
             "staticFilesUpload",
             "deploy"
           ]
         },
-        deploy: {
-          actionsPerHost: ["frontend-article.deploy"]
+        "deploy": {
+          "actionsPerHost": ["frontend-article.deploy"]
         },
-        staticFilesUpload: {
-          actionsBeforeApp: ["frontend-static.uploadStaticFiles"]
+        "staticFilesUpload": {
+          "actionsBeforeApp": ["frontend-static.uploadStaticFiles"]
         }
       }
     }
@@ -107,12 +107,12 @@ An example of when you might use `fileName` is if you were to add a second packa
 a different deployment type. You might do this if you were transitioning from one deployment mechanism to another. Such
 a package might look like this:
 
-    frontend-article-autoscaling: {
-      type: "autoscaling",
-      apps: [ "frontend::article" ],
-      fileName: "frontend-article",
-      data: {
-        healthcheck_paths: [ "management/healthcheck", "/" ]
+    "frontend-article-autoscaling": {
+      "type": "autoscaling",
+      "apps": [ "frontend::article" ],
+      "fileName": "frontend-article",
+      "data": {
+        "healthcheck_paths": [ "management/healthcheck", "/" ]
       }
     }
 
