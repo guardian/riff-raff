@@ -1,5 +1,6 @@
-Riff-raff Domains
-=================
+<!--- prev:auth -->
+Domains
+=======
 
 The purpose of riff-raff domains is to facilitate deployment responsibility.
 

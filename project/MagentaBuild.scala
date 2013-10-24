@@ -43,7 +43,7 @@ object MagentaBuild extends Build {
     )
     .settings(
       playExternalAssets <++= (baseDirectory) { base =>
-        val mdPathFinder = (root:File) => root ** "*.md"
+        val mdPathFinder = (root:File) => root ** ("*.md" || "*.png")
         val docsPrefix: String = "docs"
         Seq(
            (base / "app" / "docs", mdPathFinder, docsPrefix),

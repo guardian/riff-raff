@@ -1,0 +1,29 @@
+@(request: controllers.AuthenticatedRequest[AnyContent], title: String, markDown: String,
+        breadcrumbs: List[controllers.Application.Link], prev: Option[controllers.Application.Link],
+        next: Option[controllers.Application.Link])
+
+@main(title, request) {
+    <div class='container'>
+    <ul class='breadcrumb'>
+        @breadcrumbs.init.map { crumb =>
+          <li><a href='@crumb.call'>@crumb.title</a> <span class='divider'>/</span></li>
+        }
+        <li class='active'>@breadcrumbs.last.title</li>
+    </ul>
+    @if(prev.isDefined || next.isDefined) {
+    <ul class='pager'>
+        @prev.map { previousLink =>
+        <li class='previous'>
+            <a href='@previousLink.call'>&larr; @previousLink.title</a>
+        </li>
+        }
+        @next.map { nextLink =>
+        <li class='next'>
+            <a href='@nextLink.call'>@nextLink.title &rarr;</a>
+        </li>
+        }
+    </ul>
+    }
+    @docs.MarkDown.toHtml(markDown)
+    </div>
+}

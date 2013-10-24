@@ -4,6 +4,9 @@ import play.api.mvc._
 
 import play.api.{Routes, Logger}
 import io.Source
+import magenta.deployment_type.DeploymentType
+import magenta.{App, Package}
+import java.io.File
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -72,16 +75,113 @@ object Application extends Controller with Logging {
     Ok(views.html.deploy.deployInfoAbout(request))
   }
 
-  def documentation(resource: String) = NonAuthAction { request =>
+  val Prev = """.*prev:(\S+).*""".r
+  val Next = """.*next:(\S+).*""".r
+
+  def getMarkdownLines(resource: String):List[String] = {
+    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    log.info(s"Getting page for $realResource")
     try {
-      val realResource = if (resource.isEmpty || resource.last == '/') "%sindex" format resource else resource
-      log.info("Getting page for %s" format realResource)
-      val url = getClass.getResource("/docs/%s.md" format realResource)
-      log.info("Resolved URL %s" format url)
-      val markDown = Source.fromURL(url).mkString
-      Ok(views.html.markdown(request, "Documentation for %s" format realResource, markDown))
+      val url = getClass.getResource(s"/docs/$realResource.md")
+      log.info(s"Resolved URL $url")
+      Source.fromURL(url).getLines().toList
     } catch {
-      case e:Throwable => NotFound(views.html.notFound(request,"No documentation found for %s" format resource,Some(e)))
+      case e:Throwable =>
+        log.warn(s"$resource is not a valid page of documentation")
+        Nil
+    }
+  }
+
+  case class Link(title:String, call:Call, url:String)
+  object Link {
+    def apply(url:String):Option[Link] = {
+      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
+        Link(prevTitle, routes.Application.documentation(url), url)
+      }
+    }
+  }
+
+  def makeAbsolute(resource:String, relative:String): String = {
+    if (relative.isEmpty)
+      resource
+    else if (relative.startsWith("/"))
+      relative
+    else {
+      val base = if (resource.endsWith("/")) resource else resource.split("/").init.mkString("","/","/")
+      if (relative.startsWith("../")) {
+        makeAbsolute(resource.split("/").init.init.mkString("","/","/"),relative.stripPrefix("../"))
+      } else {
+        base + relative
+      }
+    }
+  }
+
+  def getNextPrevFromHeader(resource: String, lines: List[String]):(Option[Link], Option[Link]) = {
+    val header = lines.head
+    val prev = header match {
+      case Prev(prevUrl) => Link(makeAbsolute(resource, prevUrl))
+      case _ => None
+    }
+    val next = header match {
+      case Next(nextUrl) => Link(makeAbsolute(resource, nextUrl))
+      case _ => None
+    }
+    log.info(s"Header is $header $prev $next")
+    (next,prev)
+  }
+
+  def getMarkdownTitle(lines: List[String]):Option[String] = {
+    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
+  }
+
+  def documentation(resource: String) = {
+    if (resource.endsWith(".png")) {
+      Assets.at("/docs",resource)
+    } else {
+      NonAuthAction { request =>
+        if (resource.endsWith("/index")) {
+          Redirect(routes.Application.documentation(resource.stripSuffix("index")))
+        } else {
+          val markDownLines = getMarkdownLines(resource)
+          if (markDownLines.isEmpty) {
+              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
+          } else {
+            val markDown = markDownLines.mkString("\n")
+
+            val title = getMarkdownTitle(markDownLines).getOrElse(resource)
+            val (next,prev) = getNextPrevFromHeader(resource,markDownLines)
+
+            val breadcrumbs = {
+              val hierarchy = resource.split('/').filterNot(_.isEmpty).dropRight(1)
+              hierarchy.foldLeft(List(Link("Documentation",routes.Application.documentation(""),""))){ (acc, crumb) =>
+                acc ++ Link(List(acc.last.url.stripSuffix("/"),crumb).filterNot(_.isEmpty).mkString("","/","/"))
+              } ++ Some(Link(title, routes.Application.documentation(resource), resource))
+            }
+
+            resource match {
+              case "magenta-lib/types" =>
+                val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
+                  val paramDocs = dt.params.sortBy(_.name).map{ param =>
+                    val defaultValue = (param.defaultValue, param.defaultValueFromPackage) match {
+                      case (Some(default), _) => Some(default.toString)
+                      case (None, Some(pkgFunction)) =>
+                        Some(pkgFunction(
+                          Package("<packageName>",Set(App("<app>")),Map.empty,"<deploymentType>",new File("<file>"))
+                        ).toString)
+                      case (_, _) => None
+                    }
+                    (param.name, param.documentation, defaultValue)
+                  }.sortBy(_._3.isDefined)
+                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
+                  (dt.name, typeDocumentation)
+                }
+                Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))
+              case _ =>
+                Ok(views.html.documentation.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+            }
+          }
+        }
+      }
     }
   }
 
