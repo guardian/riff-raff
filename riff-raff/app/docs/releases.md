@@ -1,5 +1,12 @@
 ### Release notes
 
+#### 24th October 2013
+
+Massively overhaul documentation - this included changing how the package types and parameters are implemented
+under the hood so that they can be documented dynamically.
+
+**Note: the _asg-elb_ alias for the _autoscaling_ deployment type has been removed**
+
 #### 2nd October 2013
 
 Change the deploy hooks so that multiple hooks can be added for a project and stage. Also added extra substitutions
