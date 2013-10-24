@@ -65,8 +65,12 @@ case class Param[T](name: String,
 
   def get(pkg: Package)(implicit extractable: JValueExtractable[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
-  def apply(pkg: Package)(implicit extractable: JValueExtractable[T]): T =
-    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse(throw new NoSuchElementException())
+  def apply(pkg: Package)(implicit extractable: JValueExtractable[T], manifest: Manifest[T]): T =
+    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse{
+      throw new NoSuchElementException(
+        s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
+      )
+    }
 
   def default(default: T) = {
     this.copy(defaultValue = Some(default))

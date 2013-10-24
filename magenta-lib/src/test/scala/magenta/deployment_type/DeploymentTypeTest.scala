@@ -31,6 +31,22 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","bucketResource","cacheControl"))
   }
 
+  it should "throw a NoSuchElementException if a required parameter is missing" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "bucket-1234"
+    )
+
+    val p = Package("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+
+    val thrown = evaluating {
+      S3.perAppActions("uploadStaticFiles")(p)(deployinfoSingleHost, parameters(Stage("CODE"))) should be (
+        List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+      )
+    } should produce [NoSuchElementException]
+
+    thrown.getMessage should equal ("Package myapp [aws-s3] requires parameter cacheControl of type List")
+  }
+
   "Amazon Web Services S3" should "have a uploadStaticFiles action" in {
 
     val data: Map[String, JValue] = Map(
@@ -63,7 +79,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       )
     )
   }
-  
+
   "executable web app package type" should "have a default user of jvmuser" in {
     
     val webappPackage =  Package("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
