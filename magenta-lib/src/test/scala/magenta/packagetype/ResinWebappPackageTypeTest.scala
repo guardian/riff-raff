@@ -32,10 +32,10 @@ class ResinWebappPackageTypeTest extends FlatSpec with ShouldMatchers {
 
   it should "allow port to be overriden" in {
     val basic = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
-    basic.data.int("port") should be (8080)
+    basic.data.string("port") should be ("8080")
 
     val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "resin-webapp", new File("/tmp/packages/webapp"))
-    overridden.data.int("port") should be (80)
+    overridden.data.string("port") should be ("80")
   }
 
   it should "allow urls to check after deploy" in {
