@@ -38,13 +38,13 @@ case class Package(
   object data {
 
     def string(key: String): String =
-      stringOpt(key) getOrElse missing(key)
+      stringOpt(key) getOrElse missing(key, "string")
 
     def stringOpt(key: String): Option[String] =
       _data.get(key) collect { case JString(s) => s }
 
     def bigInt(key: String): BigInt =
-      bigIntOpt(key) getOrElse missing(key)
+      bigIntOpt(key) getOrElse missing(key, "number")
 
     def bigIntOpt(key: String): Option[BigInt] =
       _data.get(key) collect { case JInt(i) => i }
@@ -54,7 +54,7 @@ case class Package(
     def long(key: String): Long = bigInt(key).toLong
 
     def boolean(key: String): Boolean =
-      booleanOpt(key) getOrElse missing(key)
+      booleanOpt(key) getOrElse missing(key, "boolean")
 
     def booleanOpt(key: String): Option[Boolean] =
       _data.get(key) collect { case JBool(b) => b }
@@ -72,7 +72,8 @@ case class Package(
         JField("value", JString(value)) <- patternValue
       } yield PatternValue(regex, value)
 
-    private def missing(key: String): Nothing = throw new NoSuchElementException(key)
+    private def missing(key: String, `type`: String): Nothing =
+      throw new NoSuchElementException(s"""Expected field "$key" of type ${`type`}""")
   }
 
   val apps = pkgApps
