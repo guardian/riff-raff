@@ -2,6 +2,10 @@
 How do I make my scala project deployable?
 ==========================================
 
+**Warning: This documentation is for an old version of SBT and shows somewhat bad practice,
+please only use it as a starting point and talk to Phil Wills or Simon Hildrew for why it is
+a bad thing.**
+
 You are using Scala, SBT and so on, so you can apply the following rules.
 
  * Ensure you are using SBT 0.11.2 (or later)
