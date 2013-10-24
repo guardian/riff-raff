@@ -54,15 +54,15 @@ case class AmazonWebServicesS3(pkg: Package) extends PackageType {
 
   lazy val staticDir = pkg.srcDir.getPath + "/"
 
-  lazy val prefixStage = pkg.booleanData("prefixStage")
-  lazy val prefixPackage = pkg.booleanData("prefixPackage")
+  lazy val prefixStage = pkg.data.boolean("prefixStage")
+  lazy val prefixPackage = pkg.data.boolean("prefixPackage")
 
   //required configuration, you cannot upload without setting these
-  lazy val bucket = pkg.stringDataOption("bucket")
-  lazy val bucketResource = pkg.stringDataOption("bucketResource")
+  lazy val bucket = pkg.data.stringOpt("bucket")
+  lazy val bucketResource = pkg.data.stringOpt("bucketResource")
 
-  lazy val cacheControl = pkg.stringDataOption("cacheControl")
-  lazy val cacheControlPatterns = cacheControl.map(cc => List(PatternValue(".*", cc))).getOrElse(pkg.arrayPatternValueData("cacheControl"))
+  lazy val cacheControl = pkg.data.stringOpt("cacheControl")
+  lazy val cacheControlPatterns = cacheControl.map(cc => List(PatternValue(".*", cc))).getOrElse(pkg.data.arrayPatternValue("cacheControl"))
 
   override val perAppActions: AppActionDefinition = {
     case "uploadStaticFiles" => (deployInfo, parameters) =>
@@ -96,7 +96,7 @@ case class AutoScaling(pkg: Package) extends PackageType {
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
-  lazy val bucket = pkg.stringData("bucket")
+  lazy val bucket = pkg.data.string("bucket")
 
   override val perAppActions: AppActionDefinition = {
     case "deploy" => (_, parameters) => {
@@ -105,9 +105,9 @@ case class AutoScaling(pkg: Package) extends PackageType {
         SuspendAlarmNotifications(pkg.name, parameters.stage),
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
-        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
-        HealthcheckGrace(pkg.intData("healthcheckGrace").toInt * 1000),
-        WaitForStabilization(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
+        HealthcheckGrace(pkg.data.int("healthcheckGrace") * 1000),
+        WaitForStabilization(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
         ResumeAlarmNotifications(pkg.name, parameters.stage)
       )
@@ -127,15 +127,15 @@ case class ElasticSearch(pkg: Package) extends PackageType {
   )
 
   lazy val packageArtifactDir = pkg.srcDir.getPath + "/"
-  lazy val bucket = pkg.stringData("bucket")
+  lazy val bucket = pkg.data.string("bucket")
 
   override val perAppActions: AppActionDefinition = {
     case "deploy" => (_, parameters) => {
       List(
         TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
         DoubleSize(pkg.name, parameters.stage),
-        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000),
-        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, pkg.intData("secondsToWait").toInt * 1000)
+        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, pkg.data.int("secondsToWait") * 1000)
       )
     }
     case "uploadArtifacts" => (_, parameters) =>
@@ -159,28 +159,28 @@ abstract class WebappPackageType extends PackageType {
     "copyMode" -> "additive"
   )
 
-  lazy val user: String = pkg.stringData("user")
-  lazy val port = pkg.stringData("port")
-  lazy val serviceName = pkg.stringData("servicename")
+  lazy val user: String = pkg.data.string("user")
+  lazy val port = pkg.data.string("port")
+  lazy val serviceName = pkg.data.string("servicename")
   lazy val packageArtifactDir = pkg.srcDir.getPath
-  lazy val bucket = pkg.stringData("bucket")
-  lazy val waitDuration = pkg.intData("waitseconds").toLong.seconds
-  lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
+  lazy val bucket = pkg.data.string("bucket")
+  lazy val waitDuration = pkg.data.int("waitseconds").seconds
+  lazy val checkDuration = pkg.data.int("checkseconds").seconds
   lazy val healthCheckPaths = {
-    val paths = pkg.arrayStringData("healthcheck_paths")
+    val paths = pkg.data.stringArray("healthcheck_paths")
     if (paths.isEmpty) List("/%s/management/healthcheck" format serviceName)
     else paths
   }
-  lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
+  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds")
   val TRAILING_SLASH = """^(.*/)$""".r
-  lazy val copyRoots = pkg.arrayStringData("copyRoots").map{ root =>
-    root match {
-      case "" => root
+
+  lazy val copyRoots = pkg.data.stringArray("copyRoots").map {
+      case "" => ""
       case TRAILING_SLASH(withSlash) => withSlash
       case noTrailingSlash => s"$noTrailingSlash/"
     }
-  }
-  lazy val copyMode = pkg.stringData("copyMode")
+
+  lazy val copyMode = pkg.data.string("copyMode")
 
   override val perHostActions: HostActionDefinition = {
     case "deploy" => {
@@ -245,11 +245,11 @@ case class DjangoWebappPackageType(pkg: Package) extends PackageType {
     "checkUrlReadTimeoutSeconds" -> 5
   )
 
-  lazy val user = pkg.stringData("user")
-  lazy val port = pkg.stringData("port")
-  lazy val healthCheckPaths = pkg.arrayStringData("healthcheck_paths")
-  lazy val checkDuration = pkg.intData("checkseconds").toLong.seconds
-  lazy val checkUrlReadTimeoutSeconds = pkg.intData("checkUrlReadTimeoutSeconds").toInt
+  lazy val user = pkg.data.string("user")
+  lazy val port = pkg.data.string("port")
+  lazy val healthCheckPaths = pkg.data.stringArray("healthcheck_paths")
+  lazy val checkDuration = pkg.data.int("checkseconds").seconds
+  lazy val checkUrlReadTimeoutSeconds = pkg.data.int("checkUrlReadTimeoutSeconds")
 
   // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
   lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)

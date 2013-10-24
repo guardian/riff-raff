@@ -12,11 +12,11 @@ case class UnzipToDocrootPackageType(pkg: Package) extends PackageType {
     "locationInDocroot" -> ""
   )
 
-  lazy val user = pkg.stringData("user")
-  lazy val zipInPkg = pkg.stringData("zip")
+  lazy val user = pkg.data.string("user")
+  lazy val zipInPkg = pkg.data.string("zip")
   lazy val zipLocation = new File(pkg.srcDir, zipInPkg)
-  lazy val docrootType = pkg.stringData("docrootType")
-  lazy val locationInDocroot = pkg.stringData("locationInDocroot")
+  lazy val docrootType = pkg.data.string("docrootType")
+  lazy val locationInDocroot = pkg.data.string("locationInDocroot")
 
   override def perAppActions: AppActionDefinition = {
 

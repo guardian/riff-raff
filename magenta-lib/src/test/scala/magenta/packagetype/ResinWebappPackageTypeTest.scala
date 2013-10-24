@@ -32,19 +32,18 @@ class ResinWebappPackageTypeTest extends FlatSpec with ShouldMatchers {
 
   it should "allow port to be overriden" in {
     val basic = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
-    basic.data("port") should be (JString("8080"))
-    basic.stringData("port") should be ("8080")
+    basic.data.string("port") should be ("8080")
 
     val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "resin-webapp", new File("/tmp/packages/webapp"))
-    overridden.data("port") should be (JString("80"))
-    overridden.stringData("port") should be ("80")
+    overridden.data.string("port") should be ("80")
   }
 
   it should "allow urls to check after deploy" in {
-    val urls = JArray(List("/test", "/xx"))
+    val urls = List("/test", "/xx")
+    val urlsJson = JArray(urls map (JString(_)))
 
-    val basic = Package("webapp", Set.empty, Map("healthcheck_paths" -> urls), "resin-webapp", new File("/tmp/packages/webapp"))
-    basic.data("healthcheck_paths") should be (urls)
+    val basic = Package("webapp", Set.empty, Map("healthcheck_paths" -> urlsJson), "resin-webapp", new File("/tmp/packages/webapp"))
+    basic.data.stringArray("healthcheck_paths") should be (urls)
   }
 
   it should "check urls when specified" in {
@@ -54,6 +53,7 @@ class ResinWebappPackageTypeTest extends FlatSpec with ShouldMatchers {
     val p = Package("webapp", Set.empty, Map("healthcheck_paths" -> urls_json), "resin-webapp", new File("/tmp/packages/webapp"))
     val resin = new ResinWebappPackageType(p)
     val host = Host("host_name")
+
 
     resin.perHostActions("deploy")(host) should be (List(
       BlockFirewall(host as "resin"),

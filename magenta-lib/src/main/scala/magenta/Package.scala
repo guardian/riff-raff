@@ -33,23 +33,47 @@ case class Package(
     case unknown => sys.error("Package type %s of package %s is unknown" format (unknown, name))
   }
 
-  lazy val data = pkgType.defaultData ++ pkgSpecificData
-  def stringData(key: String): String = data(key) match { case JString(s) => s case _ => throw new NoSuchElementException() }
-  def stringDataOption(key: String): Option[String] = data.get(key) flatMap { case JString(s) => Some(s) case _ => None }
-  def intData(key: String): BigInt = data(key) match { case JInt(i) => i case _ => throw new NoSuchElementException() }
-  def booleanData(key: String): Boolean = data(key) match { case JBool(b) => b case _ => throw new NoSuchElementException() }
-  def arrayStringData(key: String) = data.getOrElse(key, List.empty) match {
-    case JArray(l) => l flatMap { case JString(s) => Some(s) case _ => None }
-    case _ => List.empty
-  }
+  lazy val _data: Map[String, JValue] = pkgType.defaultData ++ pkgSpecificData
 
-  def arrayPatternValueData(key: String):List[PatternValue] = {
-    for {
-      JArray(patternValues) <- data(key)
-      JObject(patternValue) <- patternValues
-      JField("pattern", JString(regex)) <- patternValue
-      JField("value", JString(value)) <- patternValue
-    } yield PatternValue(regex, value)
+  object data {
+
+    def string(key: String): String =
+      stringOpt(key) getOrElse missing(key, "string")
+
+    def stringOpt(key: String): Option[String] =
+      _data.get(key) collect { case JString(s) => s }
+
+    def bigInt(key: String): BigInt =
+      bigIntOpt(key) getOrElse missing(key, "number")
+
+    def bigIntOpt(key: String): Option[BigInt] =
+      _data.get(key) collect { case JInt(i) => i }
+
+    def int(key: String): Int = bigInt(key).toInt
+
+    def long(key: String): Long = bigInt(key).toLong
+
+    def boolean(key: String): Boolean =
+      booleanOpt(key) getOrElse missing(key, "boolean")
+
+    def booleanOpt(key: String): Option[Boolean] =
+      _data.get(key) collect { case JBool(b) => b }
+
+    def stringArray(key: String): List[String] =
+      _data.get(key)
+        .collect { case JArray(l) => l collect { case JString(s) => s } }
+        .getOrElse(Nil)
+
+    def arrayPatternValue(key: String): List[PatternValue] =
+      for {
+        JArray(patternValues) <- _data(key)
+        JObject(patternValue) <- patternValues
+        JField("pattern", JString(regex)) <- patternValue
+        JField("value", JString(value)) <- patternValue
+      } yield PatternValue(regex, value)
+
+    private def missing(key: String, `type`: String): Nothing =
+      throw new NoSuchElementException(s"""Expected field "$key" of type ${`type`}""")
   }
 
   val apps = pkgApps
