@@ -1,16 +1,17 @@
 @(request: controllers.AuthenticatedRequest[AnyContent])
-@import deployment.DeployInfoManager._
+@import _root_.resources.LookupSelector
 
 @main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {
 
 <h2>Deployment Resources</h2>
 
-@snippets.deployInfoDateBox(deployInfo)
+@defining(LookupSelector()) { lookup =>
+@snippets.lookupDateBox(lookup)
 
-@if(deployInfo.knownKeys.isEmpty) {
-  <div class="alert">No data specified in deployment information</div>
+@if(lookup.data.keys.isEmpty) {
+  <div class="alert">No data available in lookup service</div>
 } else {
-@snippets.tabbable(deployInfo.knownKeys, pushParam = "key"){ key =>
+@snippets.tabbable(lookup.data.keys, pushParam = "key"){ key =>
     <table class="table table-striped">
     <thead><tr>
         <th>App</th>
@@ -19,7 +20,7 @@
         <th>Comment</th>
     </tr></thead>
     <tbody>
-        @deployInfo.dataForKey(key).map { data =>
+        @lookup.data.get(key).map { data =>
             <tr>
                 <td>@data.app.toString</td>
                 <td>@data.stage.toString</td>
@@ -29,6 +30,7 @@
         }
     </tbody>
     </table>
+}
 }
 }
 }

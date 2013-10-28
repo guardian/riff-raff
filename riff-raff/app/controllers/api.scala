@@ -1,5 +1,6 @@
 package controllers
 
+import _root_.resources.LookupSelector
 import play.api.mvc.{BodyParser, Action, AnyContent, Controller}
 import play.api.mvc.Results._
 import org.joda.time.DateTime
@@ -257,7 +258,7 @@ object Api extends Controller with Logging {
   }
 
   def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
-    assert(!DeployInfoManager.deployInfo.hosts.isEmpty, "No deploy information available")
+    assert(!LookupSelector().instances.all.isEmpty, "No deploy information available")
 
     val filter = deployment.HostFilter.fromRequest
     val query:List[(String,JsValue)] = Nil ++

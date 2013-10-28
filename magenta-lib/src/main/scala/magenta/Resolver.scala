@@ -2,6 +2,7 @@ package magenta
 
 import tasks.Task
 import HostList._
+import magenta.resources.Lookup
 
 
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
@@ -23,10 +24,10 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[Task] =
-    resolveDetail(project, deployInfo, parameters).flatMap(_.tasks)
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters): List[Task] =
+    resolveDetail(project, resourceLookup, parameters).flatMap(_.tasks)
 
-  def resolveDetail( project: Project, deployInfo: DeployInfo, parameters: DeployParameters): List[RecipeTasks] = {
+  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
@@ -41,19 +42,19 @@ object Resolver {
     }
 
     def resolveRecipe(recipe: Recipe): RecipeTasks = {
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(deployInfo, parameters) }
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters) }
 
       val perHostTasks = {
         for {
           action <- recipe.actionsPerHost
-          tasks <- action.resolve(deployInfo.forParams(parameters), parameters)
+          tasks <- action.resolve(resourceLookup, parameters)
         } yield {
           tasks
         }
       }
 
       val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
-      val taskHostsInOriginalOrder = deployInfo.hosts.filter(h => taskHosts.contains(h.copy(connectAs = None)))
+      val taskHostsInOriginalOrder = resourceLookup.instances.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
       val groupedHosts = DeployInfo.transposeHostsByGroup(taskHostsInOriginalOrder)
       val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
         t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)

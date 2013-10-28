@@ -65,9 +65,9 @@ object Main extends scala.App {
 
     var deployInfoExecutable = "/opt/bin/deployinfo.json"
 
-    lazy val deployInfo = {
+    lazy val lookup = {
       import sys.process._
-      DeployInfoJsonReader.parse(deployInfoExecutable.!!)
+      DeployInfoJsonReader.parse(deployInfoExecutable.!!).asLookup
     }
 
     private var _localArtifactDir: Option[File] = None
@@ -156,7 +156,7 @@ object Main extends scala.App {
 
           MessageBroker.verbose("Loaded: " + project)
 
-          val context = DeployContext(parameters,project,Config.deployInfo)
+          val context = DeployContext(parameters,project,Config.lookup)
 
           if (Config.dryRun) {
 

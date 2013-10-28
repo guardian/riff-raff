@@ -2,6 +2,7 @@ package magenta
 
 import json.{DeployInfoData, DeployInfoJsonInputFile, DeployInfoHost}
 import org.joda.time.DateTime
+import magenta.resources.Lookup
 
 package object fixtures {
   val CODE = Stage("CODE")
@@ -9,7 +10,7 @@ package object fixtures {
 
   val app1 = App("the_role")
 
-  val deployinfoSingleHost = stubDeployInfo(List(Host("the_host", stage=CODE.name).app(app1)))
+  val lookupSingleHost = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)))
 
   val basePackageType = stubPackageType(Seq("init_action_one"), Seq("action_one"))
 
@@ -41,14 +42,14 @@ package object fixtures {
   def parameters(stage: Stage = PROD, version: String = "version") =
     DeployParameters(Deployer("tester"), Build("project", version), stage)
 
-  def stubDeployInfo(hosts: List[Host] = Nil, data: Map[String, List[Data]] = Map.empty): DeployInfo = {
+  def stubLookup(hosts: List[Host] = Nil, data: Map[String, List[Datum]] = Map.empty): Lookup = {
     val deployHosts = hosts.flatMap{ host => host.apps.map{app =>
       DeployInfoHost(host.name, app.name, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
     }}
     val deployData = data.mapValues{ list =>
       list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
     }
-    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime()))
+    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime())).asLookup
   }
 
 }

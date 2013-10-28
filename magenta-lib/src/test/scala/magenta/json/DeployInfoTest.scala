@@ -116,18 +116,18 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
   it should "match an exact app and stage" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",App("microapp-cache"),"CODE") should be(Some(Data("microapp-cache","CODE","AAA",None)))
+    di.firstMatchingData("credentials:aws",App("microapp-cache"),"CODE") should be(Some(Datum("microapp-cache","CODE","AAA",None)))
   }
 
   it should "match on a regex" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",App("frontend-front"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-front"),"CODE") should be(Some(Datum("frontend-.*","CODE","BBB",None)))
   }
 
   it should "match the first in the list" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",App("frontend-article"),"CODE") should be(Some(Data("frontend-article","CODE","CCC",None)))
-    di.firstMatchingData("credentials:aws",App("frontend-gallery"),"CODE") should be(Some(Data("frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-article"),"CODE") should be(Some(Datum("frontend-article","CODE","CCC",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-gallery"),"CODE") should be(Some(Datum("frontend-.*","CODE","BBB",None)))
   }
 
   it should "not match bigger app or stage names" in {

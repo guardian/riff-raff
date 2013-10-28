@@ -1,5 +1,6 @@
 package controllers
 
+import _root_.resources.LookupSelector
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
@@ -82,7 +83,7 @@ object Testing extends Controller with Logging {
       (TestForm.unapply)
   )
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${DeployInfoManager.deployInfo.hosts.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().instances.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>
