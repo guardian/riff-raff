@@ -22,9 +22,9 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       SuspendAlarmNotifications("app", PROD),
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", Stage("PROD")),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
+      WaitForStabilizationTask("app", PROD, 15 * 60 * 1000),
       HealthcheckGrace(0),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
+      WaitForStabilizationTask("app", PROD, 15 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
       ResumeAlarmNotifications("app", PROD)
     ))
@@ -44,9 +44,9 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       SuspendAlarmNotifications("app", PROD),
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", PROD),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
+      WaitForStabilizationTask("app", PROD, 3 * 60 * 1000),
       HealthcheckGrace(30000),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
+      WaitForStabilizationTask("app", PROD, 3 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
       ResumeAlarmNotifications("app", PROD)
     ))

@@ -91,6 +91,9 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
+object S3Upload {
+
+}
 
 case class S3Upload( stage: Stage,
                      bucket: String,

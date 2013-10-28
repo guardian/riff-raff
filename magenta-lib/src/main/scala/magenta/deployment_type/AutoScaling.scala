@@ -38,13 +38,13 @@ object AutoScaling  extends DeploymentType {
   def perAppActions = {
     case "deploy" => (pkg) => (_, parameters) => {
       List(
-        CheckGroupSize(pkg.name, parameters.stage),
+        CheckGroupSize(pkg, parameters),
         SuspendAlarmNotifications(pkg.name, parameters.stage),
-        TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters),
         DoubleSize(pkg.name, parameters.stage),
-        WaitForStabilization(pkg.name, parameters.stage, secondsToWait(pkg) * 1000),
+        WaitForStabilization(secondsToWait)(pkg, parameters),
         HealthcheckGrace(healthcheckGrace(pkg) * 1000),
-        WaitForStabilization(pkg.name, parameters.stage, secondsToWait(pkg) * 1000),
+        WaitForStabilization(secondsToWait)(pkg, parameters),
         CullInstancesWithTerminationTag(pkg.name, parameters.stage),
         ResumeAlarmNotifications(pkg.name, parameters.stage)
       )
