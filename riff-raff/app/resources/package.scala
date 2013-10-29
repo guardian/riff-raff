@@ -1,8 +1,8 @@
 package resources
 
-import magenta.resources.Lookup
 import org.joda.time.{DateTime, Duration}
 import conf.Configuration
+import magenta.Lookup
 
 object `package` {
   implicit class LookupWithStale(lookup: Lookup) {

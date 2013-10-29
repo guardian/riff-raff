@@ -10,8 +10,6 @@ import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
 import java.util.UUID
 import scala.Some
-import magenta.resources.Lookup
-
 
 class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 

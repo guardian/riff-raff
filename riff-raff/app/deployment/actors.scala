@@ -274,7 +274,10 @@ class TaskRunner extends Actor with Logging {
           val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector())
           if (context.tasks.isEmpty)
             MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
-          val keyRing = DeployInfoManager.keyRing(context)
+          val keyRing = KeyRing(
+            sshCredentials = SystemUser(keyFile = Configuration.sshKey.file),
+            apiCredentials = LookupSelector().credentials(context.stage, context.project.applications)
+          )
           MessageBroker.verbose(s"Keyring contents: $keyRing")
 
           sender ! DeployReady(record, artifactDir, context, keyRing)

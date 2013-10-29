@@ -2,13 +2,14 @@ package magenta
 
 import json.{DeployInfoData, DeployInfoJsonInputFile, DeployInfoHost}
 import org.joda.time.DateTime
-import magenta.resources.Lookup
 
 package object fixtures {
   val CODE = Stage("CODE")
   val PROD = Stage("PROD")
 
   val app1 = App("the_role")
+
+  val lookupEmpty = stubLookup()
 
   val lookupSingleHost = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)))
 
@@ -25,10 +26,10 @@ package object fixtures {
 
   def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String]) = StubDeploymentType(
     perAppActions = {
-      case name if (perAppActionNames.contains(name)) => pkg => (_,_) => List(StubTask(name + " per app task"))
+      case name if perAppActionNames.contains(name) => pkg => (_,_) => List(StubTask(name + " per app task"))
     },
     perHostActions = {
-      case name if (perHostActionNames.contains(name)) => pkg => host =>
+      case name if perHostActionNames.contains(name) => pkg => host =>
         List(StubTask(name + " per host task on " + host.name, Some(host)))
     }
   )
@@ -49,7 +50,12 @@ package object fixtures {
     val deployData = data.mapValues{ list =>
       list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
     }
-    DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime())).asLookup
+    DeployInfoLookupShim(
+      DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime())),
+      new SecretProvider {
+        def lookup(service: String, account: String): Option[String] = None
+      }
+    )
   }
 
 }

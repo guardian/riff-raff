@@ -1,9 +1,6 @@
 package magenta
 
 import tasks.Task
-import HostList._
-import magenta.resources.Lookup
-
 
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
   lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs=None)).distinct

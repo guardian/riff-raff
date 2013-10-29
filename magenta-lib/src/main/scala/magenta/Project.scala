@@ -5,7 +5,6 @@ import tasks.Task
 import collection.SortedSet
 import java.util.UUID
 import org.joda.time.{Duration, DateTime}
-import magenta.resources.{Instances, Data, Lookup}
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
@@ -62,23 +61,6 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
   def firstMatchingData(key: String, app:App, stage:String): Option[Datum] = {
     val matchingList = data.getOrElse(key, List.empty)
     matchingList.find(data => data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined)
-  }
-
-  lazy val asLookup: Lookup = new Lookup {
-    def lastUpdated: DateTime = DeployInfo.this.createdAt.getOrElse(new DateTime(0L))
-
-    def instances: Instances = new Instances {
-      def get(app: App, stage: Stage): List[Host] = hosts.filter { host =>
-        host.stage == stage.name && host.apps.contains(app)
-      }
-      def all: List[Host] = hosts
-    }
-
-    def data: Data = new Data {
-      def keys: List[String] = knownKeys
-      def all: Map[String, List[Datum]] = DeployInfo.this.data
-      def datum(key: String, app: App, stage: Stage): Option[Datum] = firstMatchingData(key, app, stage.name)
-    }
   }
 }
 

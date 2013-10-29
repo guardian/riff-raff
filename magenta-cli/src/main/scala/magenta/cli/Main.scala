@@ -67,7 +67,14 @@ object Main extends scala.App {
 
     lazy val lookup = {
       import sys.process._
-      DeployInfoJsonReader.parse(deployInfoExecutable.!!).asLookup
+      val deployInfo = DeployInfoJsonReader.parse(deployInfoExecutable.!!)
+      DeployInfoLookupShim(
+        deployInfo,
+        new SecretProvider {
+          def lookup(service: String, account: String): Option[String] =
+            Some(System.console.readPassword(s"Secret required to continue with deploy\nPlease enter secret for $service account $account:").toString)
+        }
+      )
     }
 
     private var _localArtifactDir: Option[File] = None

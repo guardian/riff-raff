@@ -1,11 +1,9 @@
 package resources
 
-import magenta.{Stage, Datum, Host, App}
-import magenta.resources.{Data, Instances, Lookup}
+import magenta._
 import org.joda.time.DateTime
 
 object PrismLookup extends Lookup {
-
   def lastUpdated: DateTime = ???
 
   def data = new Data {
@@ -18,4 +16,8 @@ object PrismLookup extends Lookup {
     def get(app: App, stage: Stage): List[Host] = ???
     def all: List[Host] = ???
   }
+
+  def stages: List[String] = ???
+
+  def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials] = ???
 }

@@ -3,7 +3,7 @@ package fixtures
 
 import tasks.Task
 import magenta.deployment_type.DeploymentType
-import magenta.resources.Lookup
+import magenta.Lookup
 
 case class StubTask(description: String, override val taskHost: Option[Host] = None) extends Task {
   def execute(keyRing: KeyRing, stopFlag: =>  Boolean) { }

@@ -3,11 +3,7 @@ package magenta.deployment_type
 import magenta._
 import magenta.json.JValueExtractable
 import magenta.tasks.Task
-import magenta.DeployParameters
-import magenta.Host
-import magenta.Package
 import scala.collection.mutable
-import magenta.resources.Lookup
 
 trait DeploymentType {
   def name: String

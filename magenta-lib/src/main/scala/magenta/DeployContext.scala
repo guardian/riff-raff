@@ -2,7 +2,6 @@ package magenta
 
 import tasks.Task
 import java.util.UUID
-import magenta.resources.Lookup
 
 object DeployContext {
   def apply(parameters: DeployParameters, project: Project, resourceLookup: Lookup): DeployContext = {

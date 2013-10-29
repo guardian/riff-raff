@@ -14,7 +14,7 @@
 @helper.inputText(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
 @helper.select(
 configForm("stage"),
-options = helper.options(deployment.DeployInfoManager.stageList.reverse),
+options = helper.options(resources.LookupSelector().stages),
 '_default -> "--- Choose a stage ---",
 '_label -> "Stage",
 '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
