@@ -3,21 +3,21 @@ package magenta
 import org.joda.time.DateTime
 
 trait Data {
-  def keys: List[String]
-  def all: Map[String,List[Datum]]
-  def get(key:String): List[Datum] = all.get(key).getOrElse(Nil)
+  def keys: Seq[String]
+  def all: Map[String,Seq[Datum]]
+  def get(key:String): Seq[Datum] = all.get(key).getOrElse(Nil)
   def datum(key: String, app: App, stage: Stage): Option[Datum]
 }
 
 trait Instances {
-  def all:List[Host]
-  def get(app: App, stage: Stage):List[Host]
+  def all:Seq[Host]
+  def get(app: App, stage: Stage):Seq[Host]
 }
 
 trait Lookup {
   def lastUpdated: DateTime
   def instances: Instances
-  def stages: List[String]
+  def stages: Seq[String]
   def data: Data
   def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials]
 }
@@ -26,26 +26,11 @@ trait SecretProvider {
   def lookup(service: String, account: String): Option[String]
 }
 
-case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretProvider) extends Lookup {
-  def lastUpdated: DateTime = deployInfo.createdAt.getOrElse(new DateTime(0L))
-
-  def instances: Instances = new Instances {
-    def get(app: App, stage: Stage): List[Host] = all.filter { host =>
-      host.stage == stage.name && host.apps.contains(app)
-    }
-    def all: List[Host] = deployInfo.hosts
-  }
-
-  def data: Data = new Data {
-    def keys: List[String] = deployInfo.knownKeys
-    def all: Map[String, List[Datum]] = deployInfo.data
-    def datum(key: String, app: App, stage: Stage): Option[Datum] = deployInfo.firstMatchingData(key, app, stage.name)
-  }
-
-  def stages = deployInfo.knownHostStages
-
+trait MagentaCredentials {
+  def data: Data
+  def secretProvider: SecretProvider
   def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials] =
-    apps.toList.flatMap {
+    apps.toSeq.flatMap {
       app => {
         val KeyPattern = """credentials:(.*)""".r
         val apiCredentials = data.keys flatMap {
@@ -60,4 +45,23 @@ case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretPr
         apiCredentials
       }
     }.distinct.toMap
+}
+
+case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretProvider) extends Lookup with MagentaCredentials {
+  def lastUpdated: DateTime = deployInfo.createdAt.getOrElse(new DateTime(0L))
+
+  def instances: Instances = new Instances {
+    def get(app: App, stage: Stage): Seq[Host] = all.filter { host =>
+      host.stage == stage.name && host.apps.contains(app)
+    }
+    def all: Seq[Host] = deployInfo.hosts
+  }
+
+  def data: Data = new Data {
+    def keys: Seq[String] = deployInfo.knownKeys
+    def all: Map[String, Seq[Datum]] = deployInfo.data
+    def datum(key: String, app: App, stage: Stage): Option[Datum] = deployInfo.firstMatchingData(key, app, stage.name)
+  }
+
+  def stages = deployInfo.knownHostStages
 }

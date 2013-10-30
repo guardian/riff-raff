@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], hosts: Map[String,List[magenta.Host]], lookup: Lookup)
+@(request: controllers.AuthenticatedRequest[AnyContent], hosts: Map[String,Seq[magenta.Host]], lookup: Lookup)
 @import html.helper.twitterBootstrap2.htmlTooltip
 
 @main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
@@ -22,7 +22,7 @@
         <th>Hosts</th>
     </tr></thead>
     <tbody>
-        @hosts(stage).groupBy(_.apps).map { case (appSet, hosts) =>
+        @hosts(stage).groupBy(_.apps).toList.sortBy(_._1.head.name).map { case (appSet, hosts) =>
             <tr>
             <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@hosts.size)</td>
             <td>

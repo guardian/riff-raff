@@ -16,18 +16,17 @@ object LookupSelector {
     }
   )
 
+  lazy val secretProvider = new SecretProvider {
+                              def lookup(service: String, account: String): Option[String] =
+                                conf.Configuration.credentials.lookupSecret(service, account)
+                            }
+
   def apply():Lookup =
     if (enablePrism.isSwitchedOn) {
       PrismLookup
     } else {
       new Lookup {
-        val lookupDelegate = DeployInfoLookupShim(
-          DeployInfoManager.deployInfo,
-          new SecretProvider {
-            def lookup(service: String, account: String): Option[String] =
-              conf.Configuration.credentials.lookupSecret(service, account)
-          }
-        )
+        val lookupDelegate = DeployInfoLookupShim(DeployInfoManager.deployInfo, secretProvider)
         def lastUpdated: DateTime = lookupDelegate.lastUpdated
         def instances: Instances = lookupDelegate.instances
         def data: Data = lookupDelegate.data

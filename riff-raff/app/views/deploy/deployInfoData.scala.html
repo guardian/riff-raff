@@ -11,7 +11,7 @@
 @if(lookup.data.keys.isEmpty) {
   <div class="alert">No data available in lookup service</div>
 } else {
-@snippets.tabbable(lookup.data.keys, pushParam = "key"){ key =>
+@snippets.tabbable(lookup.data.keys.sorted, pushParam = "key"){ key =>
     <table class="table table-striped">
     <thead><tr>
         <th>App</th>

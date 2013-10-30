@@ -43,7 +43,7 @@ package object fixtures {
   def parameters(stage: Stage = PROD, version: String = "version") =
     DeployParameters(Deployer("tester"), Build("project", version), stage)
 
-  def stubLookup(hosts: List[Host] = Nil, data: Map[String, List[Datum]] = Map.empty): Lookup = {
+  def stubLookup(hosts: Seq[Host] = Nil, data: Map[String, Seq[Datum]] = Map.empty): Lookup = {
     val deployHosts = hosts.flatMap{ host => host.apps.map{app =>
       DeployInfoHost(host.name, app.name, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
     }}
@@ -51,7 +51,7 @@ package object fixtures {
       list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
     }
     DeployInfoLookupShim(
-      DeployInfo(DeployInfoJsonInputFile(deployHosts,None,deployData), Some(new DateTime())),
+      DeployInfo(DeployInfoJsonInputFile(deployHosts.toList,None,deployData.mapValues(_.toList)), Some(new DateTime())),
       new SecretProvider {
         def lookup(service: String, account: String): Option[String] = None
       }

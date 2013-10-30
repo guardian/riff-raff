@@ -92,6 +92,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object lookup {
     lazy val source = configuration.getStringProperty("lookup.source", "deployinfo")
     lazy val staleMinutes: Int = configuration.getIntegerProperty("lookup.staleMinutes", 15)
+    lazy val prismUrl = configuration.getStringProperty("lookup.prismUrl").getOrException("Prism URL not specified")
   }
 
   object mongo {
