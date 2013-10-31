@@ -93,6 +93,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val source = configuration.getStringProperty("lookup.source", "deployinfo")
     lazy val staleMinutes: Int = configuration.getIntegerProperty("lookup.staleMinutes", 15)
     lazy val prismUrl = configuration.getStringProperty("lookup.prismUrl").getOrException("Prism URL not specified")
+    lazy val validation = configuration.getStringProperty("lookup.validation","false") == "true"
   }
 
   object mongo {
@@ -269,6 +270,6 @@ case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean 
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = Healthcheck.switch :: LookupSelector.enablePrism :: DeployController.enableSwitches
+  val all: Seq[Switchable] = Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
 }
 

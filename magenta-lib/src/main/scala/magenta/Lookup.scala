@@ -15,6 +15,7 @@ trait Instances {
 }
 
 trait Lookup {
+  def name: String
   def lastUpdated: DateTime
   def instances: Instances
   def stages: Seq[String]
@@ -48,6 +49,8 @@ trait MagentaCredentials {
 }
 
 case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretProvider) extends Lookup with MagentaCredentials {
+  val name = "DeployInfo shim"
+
   def lastUpdated: DateTime = deployInfo.createdAt.getOrElse(new DateTime(0L))
 
   def instances: Instances = new Instances {

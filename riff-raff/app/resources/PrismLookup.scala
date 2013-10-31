@@ -1,7 +1,7 @@
 package resources
 
 import magenta._
-import org.joda.time.DateTime
+import org.joda.time.{DateTimeZone, DateTime}
 import play.api.libs.ws.WS
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -9,6 +9,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 import utils.Json._
+import org.joda.time.format.DateTimeFormat
 
 object PrismLookup extends Lookup with MagentaCredentials {
   object prism {
@@ -21,6 +22,8 @@ object PrismLookup extends Lookup with MagentaCredentials {
       Await.result(result, Duration.Inf)
     }
   }
+
+  val formatter = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss 'UTC' yyyy")
 
   implicit val datumReads = Json.reads[Datum]
   implicit val hostReads = (
@@ -39,13 +42,15 @@ object PrismLookup extends Lookup with MagentaCredentials {
       stage = stage,
       tags = Map(
         "group" -> group,
-        "created_at" -> createdAt.toString,
+        "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
         "instancename" -> instanceName,
         "internalname" -> internalName,
         "dnsname" -> dnsName
       )
     )
   }
+
+  def name = "Prism"
 
   def lastUpdated: DateTime = prism.get("/empty"){ json => (json \ "lastUpdated").as[DateTime] }
 
