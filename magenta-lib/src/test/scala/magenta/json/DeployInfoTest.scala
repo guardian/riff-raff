@@ -32,7 +32,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
   "host transposing" should "retain host ordering with no groups" in {
     val hosts = List(Host("test1"), Host("test2"), Host("test3"))
-    DeployInfo.transposeHostsByGroup(hosts) should be(hosts)
+    hosts.transposeBy(_.tags.getOrElse("group","")) should be(hosts)
   }
 
   it should "retain host ordering with one group" in {
@@ -41,7 +41,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
       Host("test2", tags=Map("group"->"one")),
       Host("test3", tags=Map("group"->"one"))
     )
-    DeployInfo.transposeHostsByGroup(hosts) should be(hosts)
+    hosts.transposeBy(_.tags.getOrElse("group","")) should be(hosts)
   }
 
   it should "interleave two groups of identical length" in {
@@ -57,7 +57,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
       Host("test2", tags=Map("group"->"one")),
       Host("test4", tags=Map("group"->"two"))
     )
-    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+    hosts.transposeBy(_.tags.getOrElse("group","")) should be(orderedHosts)
   }
 
   it should "interleave two groups different lengths" in {
@@ -75,7 +75,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
       Host("test4", tags=Map("group"->"two")),
       Host("test5", tags=Map("group"->"two"))
     )
-    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+    hosts.transposeBy(_.tags.getOrElse("group","")) should be(orderedHosts)
   }
 
   it should "interleave three groups different lengths" in {
@@ -105,7 +105,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
       Host("test9", tags=Map("group"->"one")),
       Host("testA", tags=Map("group"->"one"))
     )
-    DeployInfo.transposeHostsByGroup(hosts) should be(orderedHosts)
+    hosts.transposeBy(_.tags.getOrElse("group","")) should be(orderedHosts)
   }
 
   "deploy info" should "provide a distinct list of host attributes" in {
