@@ -6,20 +6,27 @@ import play.api.libs.ws.WS
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import play.api.libs.concurrent.Execution.Implicits._
 import utils.Json._
 import org.joda.time.format.DateTimeFormat
+import scala.util.control.NonFatal
+import controllers.Logging
 
 object PrismLookup extends Lookup with MagentaCredentials {
-  object prism {
+  object prism extends Logging {
     val url = conf.Configuration.lookup.prismUrl
-    def get[T](path: String)(block: JsValue => T): T = {
+    def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
       val result = WS.url(s"$url$path").get().map(_.json).map { json =>
         block(json)
       }
-      // TODO: Improve error handling and use a sane timeout
-      Await.result(result, Duration.Inf)
+      try {
+        Await.result(result, 3 seconds)
+      } catch {
+        case NonFatal(e) =>
+          log.warn(s"Call to prism failed ($retriesLeft retries left)", e)
+          if (retriesLeft > 0) get(path,retriesLeft-1)(block) else throw e
+      }
     }
   }
 
