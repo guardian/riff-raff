@@ -1,5 +1,10 @@
 ### Release notes
 
+#### 1st November 2013
+
+Introduce new abstraction layer for looking up infrastructure information. This is implemented for both the internal
+ "DeployInfo" mechanism and also for the new Prism service with selection of which to use being placed behind a switch.
+
 #### 24th October 2013
 
 Massively overhaul documentation - this included changing how the package types and parameters are implemented
