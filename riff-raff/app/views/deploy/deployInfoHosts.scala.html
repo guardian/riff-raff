@@ -26,7 +26,7 @@
             <tr>
             <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@hosts.size)</td>
             <td>
-            @hosts.map{ host =>
+            @hosts.transposeBy(_.tags.getOrElse("group","")).map{ host =>
                 @snippets.hostWithTooltip(host, placement="left")
             }
             </td>

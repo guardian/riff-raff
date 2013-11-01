@@ -52,7 +52,7 @@ object Resolver {
 
       val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
       val taskHostsInOriginalOrder = resourceLookup.instances.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
-      val groupedHosts = DeployInfo.transposeHostsByGroup(taskHostsInOriginalOrder)
+      val groupedHosts = taskHostsInOriginalOrder.transposeBy(_.tags.getOrElse("group",""))
       val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
         t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
       )

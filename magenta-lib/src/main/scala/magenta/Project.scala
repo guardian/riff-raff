@@ -4,20 +4,10 @@ import json.{DeployInfoHost, DeployInfoJsonInputFile}
 import tasks.Task
 import collection.SortedSet
 import java.util.UUID
-import org.joda.time.{Duration, DateTime}
+import org.joda.time.DateTime
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
-
-  def transpose[A](xs: Seq[Seq[A]]): Seq[Seq[A]] = xs.filter(_.nonEmpty) match {
-    case Nil => Nil
-    case ys: Seq[Seq[A]] => ys.map{ _.head } +: transpose(ys.map{ _.tail })
-  }
-
-  def transposeHostsByGroup(hosts: Seq[Host]): Seq[Host] = {
-    val listOfGroups = hosts.groupBy(_.tags.get("group").getOrElse("")).toList.sortBy(_._1).map(_._2)
-    transpose(listOfGroups).fold(Nil)(_ ++ _)
-  }
 }
 
 case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime]) {
@@ -55,8 +45,11 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
   def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
   def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
 
-  lazy val stageAppToHostMap: Map[(String,Set[App]),Seq[Host]] = hosts.groupBy(host => (host.stage,host.apps)).mapValues(DeployInfo.transposeHostsByGroup)
-  def stageAppToDataMap(key: String): Map[(String,String),List[Datum]] = data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
+  lazy val stageAppToHostMap: Map[(String,Set[App]),Seq[Host]] =
+    hosts.groupBy(host => (host.stage,host.apps)).mapValues(_.transposeBy(_.tags.getOrElse("group","")))
+
+  def stageAppToDataMap(key: String): Map[(String,String),List[Datum]] =
+    data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
 
   def firstMatchingData(key: String, app:App, stage:String): Option[Datum] = {
     val matchingList = data.getOrElse(key, List.empty)
