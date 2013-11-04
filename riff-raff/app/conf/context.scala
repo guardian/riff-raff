@@ -1,5 +1,6 @@
 package conf
 
+import _root_.resources.LookupSelector
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
@@ -86,6 +87,13 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object logging {
     lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
+  }
+
+  object lookup {
+    lazy val source = configuration.getStringProperty("lookup.source", "deployinfo")
+    lazy val staleMinutes: Int = configuration.getIntegerProperty("lookup.staleMinutes", 15)
+    lazy val prismUrl = configuration.getStringProperty("lookup.prismUrl").getOrException("Prism URL not specified")
+    lazy val validation = configuration.getStringProperty("lookup.validation","false") == "true"
   }
 
   object mongo {
@@ -262,6 +270,6 @@ case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean 
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = Healthcheck.switch :: DeployController.enableSwitches
+  val all: Seq[Switchable] = Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
 }
 

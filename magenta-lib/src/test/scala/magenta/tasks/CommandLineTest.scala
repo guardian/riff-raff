@@ -64,6 +64,6 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
   val app2 = App("the_2nd_role")
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), CODE, RecipeName(baseRecipe.name))
-  val context = DeployContext(parameters, project(baseRecipe), deployinfoSingleHost)
+  val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
 
 }

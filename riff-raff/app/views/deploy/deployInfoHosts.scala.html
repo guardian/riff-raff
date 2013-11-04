@@ -1,29 +1,32 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], filter: String)
-@import deployment.DeployInfoManager._
+@(request: controllers.AuthenticatedRequest[AnyContent], hosts: Map[String,Seq[magenta.Host]], lookup: Lookup)
 @import html.helper.twitterBootstrap2.htmlTooltip
 
 @main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
 
 <h2>Deployment Hosts</h2>
 
-@snippets.deployInfoDateBox(deployInfo)
+@snippets.lookupDateBox(lookup)
 
-@if(deployInfo.hosts.isEmpty) {
-    <div class="alert">No hosts specified in deployment information</div>
+@if(hosts.isEmpty) {
+    @if(lookup.instances.all.isEmpty) {
+        <div class="alert">No hosts specified in deployment information</div>
+    } else {
+        <div class="alert">No hosts match filter</div>
+    }
 } else {
 
-@snippets.tabbable(stageList.reverse.filter(s => deployInfo.knownHostApps(s).filter(_.exists(_.name.matches(filter)))), pushParam="stage"){ stage =>
+@snippets.tabbable(lookup.stages.filter(hosts.contains), pushParam="stage"){ stage =>
     <table class="table table-condensed table-striped">
     <thead><tr>
         <th>App</th>
         <th>Hosts</th>
     </tr></thead>
     <tbody>
-        @deployInfo.knownHostApps(stage).filter(_.exists(_.name.matches(filter))).map { appSet =>
+        @hosts(stage).groupBy(_.apps).toList.sortBy(_._1.head.name).map { case (appSet, hosts) =>
             <tr>
-            <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@deployInfo.stageAppToHostMap((stage,appSet)).size)</td>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@hosts.size)</td>
             <td>
-            @deployInfo.stageAppToHostMap((stage,appSet)).map{ host =>
+            @hosts.transposeBy(_.tags.getOrElse("group","")).map{ host =>
                 @snippets.hostWithTooltip(host, placement="left")
             }
             </td>

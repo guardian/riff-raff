@@ -7,6 +7,7 @@ import io.Source
 import magenta.deployment_type.DeploymentType
 import magenta.{App, Package}
 import java.io.File
+import resources.LookupSelector
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -68,7 +69,11 @@ object Application extends Controller with Logging {
   }
 
   def deployInfoHosts(appFilter: String) = AuthAction { request =>
-    Ok(views.html.deploy.deployInfoHosts(request, "(?i).*%s.*" format appFilter))
+    val lookup = LookupSelector()
+    val hosts = lookup.instances.all.filter { host =>
+      host.apps.exists(_.name.matches(s"(?i).*${appFilter}.*"))
+    }.groupBy(_.stage)
+    Ok(views.html.deploy.deployInfoHosts(request, hosts, lookup))
   }
 
   def deployInfoAbout = AuthAction { request =>

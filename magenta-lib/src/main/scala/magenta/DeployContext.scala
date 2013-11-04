@@ -4,15 +4,15 @@ import tasks.Task
 import java.util.UUID
 
 object DeployContext {
-  def apply(parameters: DeployParameters, project: Project, deployInfo: DeployInfo): DeployContext = {
+  def apply(parameters: DeployParameters, project: Project, resourceLookup: Lookup): DeployContext = {
     val uuid = MessageBroker.deployID.getOrElse(UUID.randomUUID())
-    DeployContext(parameters, project, deployInfo, uuid)
+    DeployContext(parameters, project, resourceLookup, uuid)
   }
 
-  def apply(parameters: DeployParameters, project: Project, deployInfo: DeployInfo, uuid: UUID): DeployContext = {
+  def apply(parameters: DeployParameters, project: Project, resourceLookup: Lookup, uuid: UUID): DeployContext = {
     val tasks = {
       MessageBroker.info("Resolving tasks...")
-      val taskList = Resolver.resolve(project, deployInfo, parameters)
+      val taskList = Resolver.resolve(project, resourceLookup, parameters)
       MessageBroker.taskList(taskList)
       taskList
     }

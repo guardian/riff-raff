@@ -1,5 +1,6 @@
 package controllers
 
+import _root_.resources.LookupSelector
 import ci._
 import play.api.mvc.Controller
 import play.api.data.Form
@@ -205,8 +206,8 @@ object Deployment extends Controller with Logging {
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
         log.info("Host list: %s" format form.hosts)
-        val defaultRecipe = DeployInfoManager.deployInfo
-          .firstMatchingData("default-recipe", App(form.project), form.stage)
+        val defaultRecipe = LookupSelector().data
+          .datum("default-recipe", App(form.project), Stage(form.stage))
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),

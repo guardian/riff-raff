@@ -79,11 +79,11 @@ object S3 extends DeploymentType {
   }
 
   def perAppActions = {
-    case "uploadStaticFiles" => (pkg) => (deployInfo, parameters) => {
+    case "uploadStaticFiles" => (pkg) => (resourceLookup, parameters) => {
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
         assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")
-        val data = deployInfo.firstMatchingData(bucketResource(pkg), pkg.apps.head, parameters.stage.name)
+        val data = resourceLookup.data.datum(bucketResource(pkg), pkg.apps.head, parameters.stage)
         assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${parameters.stage.name})")
         data.get.value
       }

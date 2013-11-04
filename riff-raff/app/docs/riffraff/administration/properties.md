@@ -24,6 +24,10 @@ deployment information
     - `Execute` will interpret it as a local executable which will return JSON on stdout.
  - `deployinfo.refreshSeconds` - The number of seconds between attempts to update the deployment information
  - `deployinfo.timeoutSeconds` - When in `Execute` mode this will give up and attempt to kill the process if it hasn't exited after this number of seconds.
+ - `lookup.prismUrl` - The url of the Prism endpoint
+ - `lookup.source` - Whether to use the internal `deployinfo` or external `prism` endpoint
+ - `lookup.staleMinutes` - The age of lookup information in minutes that we consider to be stale
+ - `lookup.validation` - When `true`, query non-active backend and compare the results with the active backend - logging any differences
 
 auth
 ----

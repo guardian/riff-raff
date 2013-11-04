@@ -98,21 +98,24 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
     })
   }
 
-  def deployInfo = agent.map(_()).getOrElse(DeployInfo())
-  def stale = deployInfo.stale
+  @deprecated(message = "All use of deploy info should be done via the LookupSelector", since = "750")
+  def deployInfo = deployInfoInternal
 
-  def stageList = deployInfo.knownHostStages.sorted(conf.Configuration.stages.ordering)
-  def hostList = deployInfo.hosts
-  def dataList = deployInfo.data
+  private def deployInfoInternal = agent.map(_()).getOrElse(DeployInfo())
+  def stale = deployInfoInternal.stale
+
+  def stageList = deployInfoInternal.knownHostStages.sorted(conf.Configuration.stages.ordering)
+  def hostList = deployInfoInternal.hosts
+  def dataList = deployInfoInternal.data
 
   def credentials(stage: String, apps: Set[App]): Map[String, ApiCredentials] = {
     apps.toList.flatMap {
       app => {
         val KeyPattern = """credentials:(.*)""".r
-        val apiCredentials = deployInfo.data.keys flatMap { key =>
+        val apiCredentials = deployInfoInternal.data.keys flatMap { key =>
           key match {
             case KeyPattern(service) =>
-              deployInfo.firstMatchingData(key, app, stage).flatMap { data =>
+              deployInfoInternal.firstMatchingData(key, app, stage).flatMap { data =>
                 Configuration.credentials.lookupSecret(service, data.value).map{ secret =>
                   (service, ApiCredentials(service, data.value, secret, data.comment))
                 }

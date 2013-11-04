@@ -4,20 +4,10 @@ import json.{DeployInfoHost, DeployInfoJsonInputFile}
 import tasks.Task
 import collection.SortedSet
 import java.util.UUID
-import org.joda.time.{Duration, DateTime}
+import org.joda.time.DateTime
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
-
-  def transpose[A](xs: List[List[A]]): List[List[A]] = xs.filter(_.nonEmpty) match {
-    case Nil => Nil
-    case ys: List[List[A]] => ys.map{ _.head }::transpose(ys.map{ _.tail })
-  }
-
-  def transposeHostsByGroup(hosts: List[Host]): List[Host] = {
-    val listOfGroups = hosts.groupBy(_.tags.get("group").getOrElse("")).toList.sortBy(_._1).map(_._2)
-    transpose(listOfGroups).fold(Nil)(_ ::: _)
-  }
 }
 
 case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime]) {
@@ -41,7 +31,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
 
   val hosts = input.hosts.map(asHost)
   val data = input.data mapValues { dataList =>
-    dataList.map { data => Data(data.app, data.stage, data.value, data.comment) }
+    dataList.map { data => Datum(data.app, data.stage, data.value, data.comment) }
   }
 
   lazy val knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
@@ -51,14 +41,17 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
 
   lazy val knownKeys: List[String] = data.keys.toList.sorted
 
-  def dataForKey(key: String): List[Data] = data.get(key).getOrElse(List.empty)
+  def dataForKey(key: String): List[Datum] = data.get(key).getOrElse(List.empty)
   def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
   def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
 
-  lazy val stageAppToHostMap: Map[(String,Set[App]),List[Host]] = hosts.groupBy(host => (host.stage,host.apps)).mapValues(DeployInfo.transposeHostsByGroup)
-  def stageAppToDataMap(key: String): Map[(String,String),List[Data]] = data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
+  lazy val stageAppToHostMap: Map[(String,Set[App]),Seq[Host]] =
+    hosts.groupBy(host => (host.stage,host.apps)).mapValues(_.transposeBy(_.tags.getOrElse("group","")))
 
-  def firstMatchingData(key: String, app:App, stage:String): Option[Data] = {
+  def stageAppToDataMap(key: String): Map[(String,String),List[Datum]] =
+    data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
+
+  def firstMatchingData(key: String, app:App, stage:String): Option[Datum] = {
     val matchingList = data.getOrElse(key, List.empty)
     matchingList.find(data => data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined)
   }
@@ -82,7 +75,7 @@ case class Host(
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 }
 
-case class Data(
+case class Datum(
   app: String,
   stage: String,
   value: String,
@@ -120,7 +113,7 @@ object HostList {
 trait Action {
   def apps: Set[App]
   def description: String
-  def resolve(deployInfo: DeployInfo, params: DeployParameters): List[Task]
+  def resolve(resourceLookup: Lookup, params: DeployParameters): List[Task]
 }
 
 case class App(name: String)
@@ -149,8 +142,10 @@ object DefaultRecipe {
 case class Deployer(name: String)
 
 case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = DefaultRecipe(), hostList: List[String] = Nil) {
-  def toDeployContext(uuid: UUID, project: Project, deployInfo: DeployInfo): DeployContext = {
-    DeployContext(this,project, deployInfo, uuid)
+
+  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup): DeployContext = {
+    DeployContext(this,project, resourceLookup, uuid)
   }
-  def toDeployContext(project: Project, deployInfo: DeployInfo): DeployContext = DeployContext(this,project, deployInfo)
+  def toDeployContext(project: Project, resourceLookup: Lookup): DeployContext = DeployContext(this,project, resourceLookup)
+  def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)
 }

@@ -1,4 +1,4 @@
-@(tabs: List[String], activeTab: Option[String] = None, pushParam:String="tab")(tabContent: String => Html)
+@(tabs: Seq[String], activeTab: Option[String] = None, pushParam:String="tab")(tabContent: String => Html)
 
 @defining(activeTab.filter(tabs.contains).getOrElse(tabs.head)) { active =>
     <div class="tabbable tabs-left">

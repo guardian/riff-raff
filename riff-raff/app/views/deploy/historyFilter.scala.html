@@ -10,7 +10,7 @@
                 <ul class="dropdown-menu">
                     <li@if(!view.filter.stage.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStage(None)).q}">All</a></li>
                     <li class="divider"></li>
-                    @for(stage <- deployment.DeployInfoManager.stageList.reverse) {
+                    @for(stage <- resources.LookupSelector().stages) {
                         <li @if(Some(stage)==view.filter.stage){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStage(Some(stage))).q}">@stage</a></li>
                     }
                 </ul>

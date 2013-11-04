@@ -3,9 +3,6 @@ package magenta.deployment_type
 import magenta._
 import magenta.json.JValueExtractable
 import magenta.tasks.Task
-import magenta.DeployParameters
-import magenta.Host
-import magenta.Package
 import scala.collection.mutable
 
 trait DeploymentType {
@@ -19,23 +16,27 @@ trait DeploymentType {
   }
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
-  def perAppActions: PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]]
+  def perAppActions: PartialFunction[String, Package => (Lookup, DeployParameters) => List[Task]]
   def perHostActions: PartialFunction[String, Package => Host => List[Task]] = PartialFunction.empty
 
   def mkAction(actionName: String)(pkg: Package): Action = {
 
     if (perHostActions.isDefinedAt(actionName))
       new PackageAction(pkg, actionName)  {
-        def resolve(deployInfo: DeployInfo, parameters: DeployParameters) = {
-          val hostsForApps = deployInfo.hosts.filter(h => (h.apps intersect apps).nonEmpty)
+        def resolve(resourceLookup: Lookup, parameters: DeployParameters) = {
+          val hostsForApps = apps.toList.flatMap { app =>
+            resourceLookup.instances.get(app, parameters.stage)
+          } filter { instance =>
+            parameters.matchingHost(instance.name)
+          }
           hostsForApps flatMap (perHostActions(actionName)(pkg)(_))
         }
       }
 
     else if (perAppActions.isDefinedAt(actionName))
       new PackageAction(pkg, actionName) {
-        def resolve(deployInfo: DeployInfo, parameters: DeployParameters) =
-          perAppActions(actionName)(pkg)(deployInfo, parameters)
+        def resolve(resourceLookup: Lookup, parameters: DeployParameters) =
+          perAppActions(actionName)(pkg)(resourceLookup, parameters)
       }
 
     else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
