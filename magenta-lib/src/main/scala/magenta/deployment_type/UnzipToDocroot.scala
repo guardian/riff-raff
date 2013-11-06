@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.{MessageBroker, App, Host}
 import java.io.File
-import magenta.tasks.{ExtractToDocroots, CopyFile}
+import magenta.tasks.{ExtractToDocroots, CopyFileTask}
 
 
 object UnzipToDocroot  extends DeploymentType {
@@ -35,7 +35,7 @@ object UnzipToDocroot  extends DeploymentType {
       val host = Host(resourceLookup.data.datum("ddm", App("r2"), params.stage).
         getOrElse(MessageBroker.fail("no data found for ddm in " + params.stage.name)).value)
       List(
-        CopyFile(host as user(pkg), zipLocation.getPath, "/tmp"),
+        CopyFileTask(host as user(pkg), zipLocation.getPath, "/tmp"),
         ExtractToDocroots(host as user(pkg), "/tmp/" + zipLocation.getName, docrootType(pkg), locationInDocroot(pkg))
       )
     }

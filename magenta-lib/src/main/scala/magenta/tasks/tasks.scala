@@ -22,7 +22,13 @@ object CopyFile {
   val MIRROR_MODE = "mirror"
   lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
 }
-case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
+
+case class CopyFile(dest: String)  extends HostAction {
+  def description = s"Copy package files to $dest using rsync"
+  def apply(pkg: Package, host: Host) = CopyFileTask(host, pkg.srcDir.getPath, dest)
+}
+
+case class CopyFileTask(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
@@ -50,7 +56,7 @@ case class CopyFile(host: Host, source: String, dest: String, copyMode: String =
 case class CompressedCopy(host: Host, source: Option[File], dest: String) extends CompositeTask with CompressedFilename {
   val tasks = Seq(
     Compress(source),
-    CopyFile(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
+    CopyFileTask(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
     Decompress(host, dest, source)
   )
 

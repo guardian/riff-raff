@@ -13,10 +13,6 @@ object CheckGroupSize extends ApplicationAction {
   lazy val description = "Check there is enough capacity to deploy"
 }
 
-trait ApplicationAction extends ((Package, DeployParameters) => Task) {
-  def description: String
-}
-
 case class CheckGroupSize(packageName: String, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     val doubleCapacity = asg.getDesiredCapacity * 2

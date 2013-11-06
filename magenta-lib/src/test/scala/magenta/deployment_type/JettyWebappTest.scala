@@ -7,7 +7,7 @@ import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import tasks.BlockFirewall
 import tasks.CheckUrls
-import tasks.CopyFile
+import tasks.CopyFileTask
 import tasks.Restart
 import tasks.UnblockFirewall
 import net.liftweb.json.JsonAST.JString
@@ -25,7 +25,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
       BlockFirewall(host as "jetty"),
-      CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
@@ -50,7 +50,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
       BlockFirewall(host as "jetty"),
-      CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, urls, 2 minutes, 5),
@@ -66,13 +66,13 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should (contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/")
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/")
     ) and contain[Task] (
       Restart(host as "jetty", "webapp")
     ))
 
     JettyWebapp.perHostActions("deploy")(p2)(host) should (contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/microapps/")
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/microapps/")
     ) and contain[Task] (
       Restart(host as "jetty", "microapps")
     ))
@@ -87,9 +87,9 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("webapp", Set.empty, Map("copyRoots" -> JArray(List("solr/conf/", "app"))), "jetty-webapp", new File("/tmp/packages/webapp"))
     val host = Host("host_name")
     JettyWebapp.perHostActions("deploy")(p)(host) should (contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/solr/conf/", "/jetty-apps/webapp/solr/conf/")
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/solr/conf/", "/jetty-apps/webapp/solr/conf/")
     ) and contain[Task] (
-      CopyFile(host as "jetty", "/tmp/packages/webapp/app/", "/jetty-apps/webapp/app/")
+      CopyFileTask(host as "jetty", "/tmp/packages/webapp/app/", "/jetty-apps/webapp/app/")
     ))
   }
 
@@ -99,8 +99,8 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
       BlockFirewall(host as "jetty"),
-      CopyFile(host as "jetty", "/tmp/packages/d2index/solr/conf/", "/jetty-apps/d2index/solr/conf/", CopyFile.MIRROR_MODE),
-      CopyFile(host as "jetty", "/tmp/packages/d2index/webapp/", "/jetty-apps/d2index/webapp/", CopyFile.MIRROR_MODE),
+      CopyFileTask(host as "jetty", "/tmp/packages/d2index/solr/conf/", "/jetty-apps/d2index/solr/conf/", CopyFile.MIRROR_MODE),
+      CopyFileTask(host as "jetty", "/tmp/packages/d2index/webapp/", "/jetty-apps/d2index/webapp/", CopyFile.MIRROR_MODE),
       Restart(host as "jetty", "d2index"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, List("/d2index/management/healthcheck"), 2 minutes, 5),

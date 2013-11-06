@@ -115,7 +115,7 @@ trait WebApp extends DeploymentType {
         case TRAILING_SLASH(withSlash) => withSlash
         case noTrailingSlash => s"$noTrailingSlash/"
       }
-      CopyFile(host as user(pkg), s"${pkg.srcDir.getPath}/$rootWithTrailingSlash",
+      CopyFileTask(host as user(pkg), s"${pkg.srcDir.getPath}/$rootWithTrailingSlash",
         s"/$containerName-apps/${servicename(pkg)}/$rootWithTrailingSlash", copyMode(pkg))
     }
   }

@@ -183,7 +183,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   "CopyFile task" should "specify custom remote shell for rsync if key-file specified" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+    val task = CopyFileTask(Host("foo.com"), "/source", "/dest")
 
     val command = task.commandLine(KeyRing(SystemUser(Some(new File("key")))))
 
@@ -191,7 +191,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "specify custom remote shell without keyfile if no key-file specified" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest")
+    val task = CopyFileTask(Host("foo.com"), "/source", "/dest")
 
     val command = task.commandLine(KeyRing(SystemUser(None)))
 
@@ -199,7 +199,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "honour additive mode" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.ADDITIVE_MODE)
+    val task = CopyFileTask(Host("foo.com"), "/source", "/dest", CopyFile.ADDITIVE_MODE)
 
     val command = task.commandLine(KeyRing(SystemUser(None)))
 
@@ -207,7 +207,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "honour mirror mode" in {
-    val task = CopyFile(Host("foo.com"), "/source", "/dest", CopyFile.MIRROR_MODE)
+    val task = CopyFileTask(Host("foo.com"), "/source", "/dest", CopyFile.MIRROR_MODE)
 
     val command = task.commandLine(KeyRing(SystemUser(None)))
 
