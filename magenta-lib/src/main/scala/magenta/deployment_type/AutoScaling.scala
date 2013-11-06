@@ -39,19 +39,19 @@ object AutoScaling  extends DeploymentType {
     case "deploy" => (pkg) => (_, parameters) => {
       List(
         CheckGroupSize(pkg, parameters),
-        SuspendAlarmNotifications(pkg.name, parameters.stage),
+        SuspendAlarmNotifications(pkg, parameters),
         TagCurrentInstancesWithTerminationTag(pkg, parameters),
-        DoubleSize(pkg.name, parameters.stage),
+        DoubleSize(pkg, parameters),
         WaitForStabilization(secondsToWait)(pkg, parameters),
-        HealthcheckGrace(healthcheckGrace(pkg) * 1000),
+        HealthcheckGrace(healthcheckGrace)(pkg, parameters),
         WaitForStabilization(secondsToWait)(pkg, parameters),
-        CullInstancesWithTerminationTag(pkg.name, parameters.stage),
-        ResumeAlarmNotifications(pkg.name, parameters.stage)
+        CullInstancesWithTerminationTag(pkg, parameters),
+        ResumeAlarmNotifications(pkg, parameters)
       )
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
+        S3Upload(bucket)(pkg, parameters)
       )
   }
 }

@@ -3,7 +3,7 @@ package magenta.deployment_type
 import net.liftweb.json.JsonAST._
 import java.io.File
 import magenta.json.JValueExtractable
-import magenta.tasks.S3Upload
+import magenta.tasks.S3UploadTask
 
 object S3 extends DeploymentType {
   val name = "aws-s3"
@@ -88,7 +88,7 @@ object S3 extends DeploymentType {
         data.get.value
       }
       List(
-        S3Upload(parameters.stage,
+        S3UploadTask(parameters.stage,
           bucketName,
           new File(pkg.srcDir.getPath + "/"),
           cacheControl(pkg),

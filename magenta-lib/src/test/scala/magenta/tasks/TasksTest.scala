@@ -219,7 +219,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val fileToUpload = new File("/foo/bar/the-jar.jar")
 
 
-    val task = new S3Upload(Stage("CODE"), "bucket", fileToUpload) with StubS3
+    val task = new S3UploadTask(Stage("CODE"), "bucket", fileToUpload) with StubS3
 
     task.execute(fakeKeyRing)
     val s3Client = task.s3client(fakeKeyRing)
@@ -232,7 +232,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
     val baseDir = createTempDir()
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir)
 
     val file = new File("/file/path")
 
@@ -253,7 +253,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val baseDir = new File("/foo/bar/something").getParentFile
     val child = new File(baseDir, "the/file/name.txt")
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir)
 
     task.toKey(child) should be ("CODE/bar/the/file/name.txt")
   }
@@ -262,7 +262,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val baseDir = new File("/foo/bar/something").getParentFile
     val child = new File(baseDir, "the/file/name.txt")
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false)
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir, prefixStage = false)
 
     task.toKey(child) should be ("bar/the/file/name.txt")
   }
@@ -271,7 +271,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val baseDir = new File("/foo/bar/something").getParentFile
     val child = new File(baseDir, "the/file/name.txt")
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixPackage = false)
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir, prefixPackage = false)
 
     task.toKey(child) should be ("CODE/the/file/name.txt")
   }
@@ -280,7 +280,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val baseDir = new File("/foo/bar/something").getParentFile
     val child = new File(baseDir, "the/file/name.txt")
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, prefixStage = false, prefixPackage = false)
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir, prefixStage = false, prefixPackage = false)
 
     task.toKey(child) should be ("the/file/name.txt")
   }
@@ -299,7 +299,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
 
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir) with StubS3 {
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir) with StubS3 {
       override val bucket = "bucket"
     }
 
@@ -326,7 +326,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     fileThree.createNewFile()
 
     val cacheControlPatterns = List(PatternValue("^package/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val task = new S3Upload(Stage("CODE"), "bucket", baseDir, cacheControlPatterns) with StubS3 {
+    val task = new S3UploadTask(Stage("CODE"), "bucket", baseDir, cacheControlPatterns) with StubS3 {
       override val bucket = "bucket"
     }
 

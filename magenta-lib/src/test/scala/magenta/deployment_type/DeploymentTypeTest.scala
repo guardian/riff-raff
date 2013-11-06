@@ -8,7 +8,7 @@ import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST._
 import fixtures._
 import magenta.deployment_type._
-import magenta.tasks.S3Upload
+import magenta.tasks.S3UploadTask
 import magenta.tasks.ApacheGracefulRestart
 import magenta.tasks.UnblockFirewall
 import net.liftweb.json.JsonAST.JField
@@ -40,7 +40,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     val thrown = evaluating {
       S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
-        List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+        List(S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
       )
     } should produce [NoSuchElementException]
 
@@ -57,7 +57,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
-      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+      List(S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
     )
   }
 
@@ -74,7 +74,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
       List(
-        S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
+        S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
           List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
       )
     )

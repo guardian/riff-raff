@@ -23,7 +23,7 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", Stage("PROD")),
       WaitForStabilizationTask("app", PROD, 15 * 60 * 1000),
-      HealthcheckGrace(0),
+      HealthcheckGraceTask(0),
       WaitForStabilizationTask("app", PROD, 15 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
       ResumeAlarmNotifications("app", PROD)
@@ -45,7 +45,7 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       TagCurrentInstancesWithTerminationTag("app", PROD),
       DoubleSize("app", PROD),
       WaitForStabilizationTask("app", PROD, 3 * 60 * 1000),
-      HealthcheckGrace(30000),
+      HealthcheckGraceTask(30000),
       WaitForStabilizationTask("app", PROD, 3 * 60 * 1000),
       CullInstancesWithTerminationTag("app", PROD),
       ResumeAlarmNotifications("app", PROD)

@@ -103,7 +103,7 @@ trait WebApp extends DeploymentType {
   def perAppActions = {
     case "uploadArtifacts" => pkg => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath))
+        S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath))
       )
   }
 

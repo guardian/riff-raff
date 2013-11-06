@@ -10,7 +10,7 @@ import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import java.net.URL
-import magenta.deployment_type.PatternValue
+import magenta.deployment_type.{Param, PatternValue}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -91,11 +91,13 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
-object S3Upload {
-
+case class S3Upload(bucket: Param[String]) extends TaskFactory {
+  def description = "Upload the package to S3"
+  def apply(pkg: Package, parameters: DeployParameters) =
+    S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
 }
 
-case class S3Upload( stage: Stage,
+case class S3UploadTask( stage: Stage,
                      bucket: String,
                      file: File,
                      cacheControlPatterns: List[PatternValue] = Nil,

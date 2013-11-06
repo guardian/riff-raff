@@ -5,7 +5,6 @@ import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 import magenta.KeyRing
 import magenta.Stage
-import scala.Some
 import magenta.Package
 import magenta.deployment_type.Param
 
@@ -43,17 +42,26 @@ case class TagCurrentInstancesWithTerminationTag(packageName: String, stage: Sta
   lazy val description = TagCurrentInstancesWithTerminationTag.description
 }
 
+object DoubleSize extends TaskFactory {
+  def description = "Double the size of the auto-scaling group"
+  def apply(pkg: Package, parameters: DeployParameters) = DoubleSize(pkg.name, parameters.stage)
+}
+
 case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     desiredCapacity(asg.getAutoScalingGroupName, asg.getDesiredCapacity * 2)
   }
 
-  lazy val description = "Double the size of the auto-scaling group for package: %s, stage: %s" format (
-    packageName, stage.name)
+  lazy val description = s"${DoubleSize.description} for package: $packageName, stage: ${stage.name}"
 }
 
-case class HealthcheckGrace(duration: Long) extends Task {
+case class HealthcheckGrace(healthcheckGrace: Param[Int]) extends TaskFactory {
+  def description = s"Grace period to wait before checking status"
+  def apply(pkg: Package, parameters: DeployParameters) = HealthcheckGraceTask(healthcheckGrace(pkg) * 1000)
+}
+
+case class HealthcheckGraceTask(duration: Long) extends Task {
 
   def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
     Thread.sleep(duration)
@@ -83,6 +91,11 @@ case class WaitForStabilizationTask(packageName: String, stage: Stage, duration:
 //  WaitForStabilization.description
 }
 
+object CullInstancesWithTerminationTag extends TaskFactory {
+  def description = "Terminate instances with the termination tag for this deploy"
+  def apply(pkg: Package, parameters: DeployParameters) = CullInstancesWithTerminationTag(pkg.name, parameters.stage)
+}
+
 case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
@@ -95,13 +108,23 @@ case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) ex
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
+object SuspendAlarmNotifications extends TaskFactory {
+  def description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
+  def apply(pkg: Package, parameters: DeployParameters) = SuspendAlarmNotifications(pkg.name, parameters.stage)
+}
+
 case class SuspendAlarmNotifications(packageName: String, stage: Stage) extends ASGTask {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     suspendAlarmNotifications(asg.getAutoScalingGroupName)
   }
 
-  lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
+  lazy val description = SuspendAlarmNotifications.description
+}
+
+object ResumeAlarmNotifications extends TaskFactory {
+  def description = "Resuming Alarm Notifications - group will scale on any configured alarms"
+  def apply(pkg: Package, parameters: DeployParameters) = ResumeAlarmNotifications(pkg.name, parameters.stage)
 }
 
 case class ResumeAlarmNotifications(packageName: String, stage: Stage) extends ASGTask {
@@ -110,7 +133,7 @@ case class ResumeAlarmNotifications(packageName: String, stage: Stage) extends A
     resumeAlarmNotifications(asg.getAutoScalingGroupName)
   }
 
-  lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
+  lazy val description = ResumeAlarmNotifications.description
 }
 
 trait ASGTask extends Task with ASG {
