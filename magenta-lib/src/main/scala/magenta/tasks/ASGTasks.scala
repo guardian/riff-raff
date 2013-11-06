@@ -10,7 +10,7 @@ import magenta.deployment_type.Param
 
 object CheckGroupSize extends TaskFactory {
   def apply(pkg: Package, parameters: DeployParameters) = CheckGroupSize(pkg.name, parameters.stage)
-  lazy val description = "Checking there is enough capacity to deploy"
+  lazy val description = "Check there is enough capacity to deploy"
 }
 
 trait TaskFactory extends ((Package, DeployParameters) => Task) {
@@ -57,7 +57,7 @@ case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
 }
 
 case class HealthcheckGrace(healthcheckGrace: Param[Int]) extends TaskFactory {
-  def description = s"Grace period to wait before checking status"
+  def description = s"Wait for a grace period before checking status"
   def apply(pkg: Package, parameters: DeployParameters) = HealthcheckGraceTask(healthcheckGrace(pkg) * 1000)
 }
 
@@ -109,7 +109,7 @@ case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) ex
 }
 
 object SuspendAlarmNotifications extends TaskFactory {
-  def description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
+  def description = "Suspend alarm notifications - group will no longer scale on any configured alarms"
   def apply(pkg: Package, parameters: DeployParameters) = SuspendAlarmNotifications(pkg.name, parameters.stage)
 }
 
