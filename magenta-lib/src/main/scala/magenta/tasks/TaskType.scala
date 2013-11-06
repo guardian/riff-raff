@@ -2,10 +2,10 @@ package magenta.tasks
 
 import magenta.{Host, DeployParameters, Package}
 
-trait ApplicationAction extends ((Package, DeployParameters) => Task) {
+trait ApplicationTaskType extends ((Package, DeployParameters) => Task) {
   def description: String
 }
 
-trait HostAction extends ((Package, Host) => Task) {
+trait HostTaskType extends ((Package, Host) => Task) {
   def description: String
 }
