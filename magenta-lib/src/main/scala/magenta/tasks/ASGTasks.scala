@@ -8,12 +8,12 @@ import magenta.Stage
 import magenta.Package
 import magenta.deployment_type.Param
 
-object CheckGroupSize extends TaskFactory {
+object CheckGroupSize extends ApplicationAction {
   def apply(pkg: Package, parameters: DeployParameters) = CheckGroupSize(pkg.name, parameters.stage)
   lazy val description = "Check there is enough capacity to deploy"
 }
 
-trait TaskFactory extends ((Package, DeployParameters) => Task) {
+trait ApplicationAction extends ((Package, DeployParameters) => Task) {
   def description: String
 }
 
@@ -29,7 +29,7 @@ case class CheckGroupSize(packageName: String, stage: Stage) extends ASGTask {
   lazy val description = CheckGroupSize.description
 }
 
-object TagCurrentInstancesWithTerminationTag extends TaskFactory {
+object TagCurrentInstancesWithTerminationTag extends ApplicationAction {
   def description = "Tag existing instances of the auto-scaling group for termination"
   def apply(pkg: Package, parameters: DeployParameters) = TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage)
 }
@@ -42,7 +42,7 @@ case class TagCurrentInstancesWithTerminationTag(packageName: String, stage: Sta
   lazy val description = TagCurrentInstancesWithTerminationTag.description
 }
 
-object DoubleSize extends TaskFactory {
+object DoubleSize extends ApplicationAction {
   def description = "Double the size of the auto-scaling group"
   def apply(pkg: Package, parameters: DeployParameters) = DoubleSize(pkg.name, parameters.stage)
 }
@@ -56,7 +56,7 @@ case class DoubleSize(packageName: String, stage: Stage) extends ASGTask {
   lazy val description = s"${DoubleSize.description} for package: $packageName, stage: ${stage.name}"
 }
 
-case class HealthcheckGrace(healthcheckGrace: Param[Int]) extends TaskFactory {
+case class HealthcheckGrace(healthcheckGrace: Param[Int]) extends ApplicationAction {
   def description = s"Wait for a grace period before checking status"
   def apply(pkg: Package, parameters: DeployParameters) = HealthcheckGraceTask(healthcheckGrace(pkg) * 1000)
 }
@@ -72,7 +72,7 @@ case class HealthcheckGraceTask(duration: Long) extends Task {
   def description = verbose
 }
 
-case class WaitForStabilization(secondsToWait: Param[Int]) extends TaskFactory {
+case class WaitForStabilization(secondsToWait: Param[Int]) extends ApplicationAction {
   def description = "Check the desired number of hosts in ASG are up and in ELB"
   def apply(pkg: Package, parameters: DeployParameters) =
     WaitForStabilizationTask(pkg.name, parameters.stage, secondsToWait(pkg) * 1000)
@@ -91,7 +91,7 @@ case class WaitForStabilizationTask(packageName: String, stage: Stage, duration:
 //  WaitForStabilization.description
 }
 
-object CullInstancesWithTerminationTag extends TaskFactory {
+object CullInstancesWithTerminationTag extends ApplicationAction {
   def description = "Terminate instances with the termination tag for this deploy"
   def apply(pkg: Package, parameters: DeployParameters) = CullInstancesWithTerminationTag(pkg.name, parameters.stage)
 }
@@ -108,7 +108,7 @@ case class CullInstancesWithTerminationTag(packageName: String, stage: Stage) ex
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
-object SuspendAlarmNotifications extends TaskFactory {
+object SuspendAlarmNotifications extends ApplicationAction {
   def description = "Suspend alarm notifications - group will no longer scale on any configured alarms"
   def apply(pkg: Package, parameters: DeployParameters) = SuspendAlarmNotifications(pkg.name, parameters.stage)
 }
@@ -122,7 +122,7 @@ case class SuspendAlarmNotifications(packageName: String, stage: Stage) extends 
   lazy val description = SuspendAlarmNotifications.description
 }
 
-object ResumeAlarmNotifications extends TaskFactory {
+object ResumeAlarmNotifications extends ApplicationAction {
   def description = "Resuming Alarm Notifications - group will scale on any configured alarms"
   def apply(pkg: Package, parameters: DeployParameters) = ResumeAlarmNotifications(pkg.name, parameters.stage)
 }

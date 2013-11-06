@@ -91,7 +91,7 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
-case class S3Upload(bucket: Param[String]) extends TaskFactory {
+case class S3Upload(bucket: Param[String]) extends ApplicationAction {
   def description = "Upload the package to S3"
   def apply(pkg: Package, parameters: DeployParameters) =
     S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
