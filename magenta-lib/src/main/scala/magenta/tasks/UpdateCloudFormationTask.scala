@@ -3,7 +3,7 @@ package magenta.tasks
 import magenta.KeyRing
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
-import com.amazonaws.services.cloudformation.model.UpdateStackRequest
+import com.amazonaws.services.cloudformation.model.{Parameter, UpdateStackRequest}
 import scalax.file.Path
 
 case class UpdateCloudFormationTask(stackName: String, template: Path) extends Task {
@@ -22,11 +22,8 @@ trait CloudFormation extends AWS {
     )
   }
   def updateStack(name: String, templateBody: String)(implicit keyRing: KeyRing) = client.updateStack(
-    new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(
-      "AWS::IAM::Role",
-      "AWS::IAM::Policy",
-      "AWS::IAM::InstanceProfile"
-    )
+    new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM")
+      .withParameters(new Parameter().withParameterKey("").withParameterValue(""))
   )
 }
 
