@@ -1,8 +1,7 @@
 package magenta.deployment_type
 
 import magenta.tasks._
-import java.io.File
-import magenta.{DeployParameters, DeployInfo, Package}
+import magenta.{Lookup, DeployParameters, DeployInfo, DeploymentPackage}
 
 object AutoScaling  extends DeploymentType {
   val name = "autoscaling"
@@ -49,7 +48,7 @@ object AutoScaling  extends DeploymentType {
   def perAppActions = {
     val pfs = for {
       (name, actions) <- applicationActions
-    } yield new PartialFunction[String, Package => (DeployInfo, DeployParameters) => List[Task]] {
+    } yield new PartialFunction[String, DeploymentPackage => (Lookup, DeployParameters) => List[Task]] {
       def apply(name: String) = (pkg) => (_, parameters) => actions map (_(pkg, parameters))
       def isDefinedAt(actionName: String) = actionName == name
     }

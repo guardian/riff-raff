@@ -25,7 +25,7 @@ object CopyFile {
 
 case class CopyFile(dest: String)  extends HostTaskType {
   def description = s"Copy package files to $dest using rsync"
-  def apply(pkg: Package, host: Host) = CopyFileTask(host, pkg.srcDir.getPath, dest)
+  def apply(pkg: DeploymentPackage, host: Host) = CopyFileTask(host, pkg.srcDir.getPath, dest)
 }
 
 case class CopyFileTask(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
@@ -99,7 +99,7 @@ trait CompressedFilename {
 
 case class S3Upload(bucket: Param[String]) extends ApplicationTaskType {
   def description = "Upload the package to S3"
-  def apply(pkg: Package, parameters: DeployParameters) =
+  def apply(pkg: DeploymentPackage, parameters: DeployParameters) =
     S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
 }
 
