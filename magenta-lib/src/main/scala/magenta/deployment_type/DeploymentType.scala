@@ -16,10 +16,10 @@ trait DeploymentType {
   }
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
-  def perAppActions: PartialFunction[String, Package => (Lookup, DeployParameters) => List[Task]]
-  def perHostActions: PartialFunction[String, Package => Host => List[Task]] = PartialFunction.empty
+  def perAppActions: PartialFunction[String, DeploymentPackage => (Lookup, DeployParameters) => List[Task]]
+  def perHostActions: PartialFunction[String, DeploymentPackage => Host => List[Task]] = PartialFunction.empty
 
-  def mkAction(actionName: String)(pkg: Package): Action = {
+  def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
 
     if (perHostActions.isDefinedAt(actionName))
       new PackageAction(pkg, actionName)  {
@@ -42,7 +42,7 @@ trait DeploymentType {
     else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
   }
 
-  abstract case class PackageAction(pkg: Package, actionName: String) extends Action {
+  abstract case class PackageAction(pkg: DeploymentPackage, actionName: String) extends Action {
     def apps = pkg.apps
     def description = pkg.name + "." + actionName
   }
@@ -61,12 +61,12 @@ trait ParamRegister {
 case class Param[T](name: String,
                     documentation: String = "_undocumented_",
                     defaultValue: Option[T] = None,
-                    defaultValueFromPackage: Option[Package => T] = None)(implicit register:ParamRegister) {
+                    defaultValueFromPackage: Option[DeploymentPackage => T] = None)(implicit register:ParamRegister) {
   register.add(this)
 
-  def get(pkg: Package)(implicit extractable: JValueExtractable[T]): Option[T] =
+  def get(pkg: DeploymentPackage)(implicit extractable: JValueExtractable[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
-  def apply(pkg: Package)(implicit extractable: JValueExtractable[T], manifest: Manifest[T]): T =
+  def apply(pkg: DeploymentPackage)(implicit extractable: JValueExtractable[T], manifest: Manifest[T]): T =
     get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse{
       throw new NoSuchElementException(
         s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
@@ -76,7 +76,7 @@ case class Param[T](name: String,
   def default(default: T) = {
     this.copy(defaultValue = Some(default))
   }
-  def defaultFromPackage(defaultFromPackage: Package => T) = {
-    this.copy(defaultValueFromPackage = Some((p: Package) => defaultFromPackage(p)))
+  def defaultFromPackage(defaultFromPackage: DeploymentPackage => T) = {
+    this.copy(defaultValueFromPackage = Some((p: DeploymentPackage) => defaultFromPackage(p)))
   }
 }

@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.tasks._
 import java.io.File
-import magenta.{Host, Package}
+import magenta.{Host, DeploymentPackage}
 
 trait WebApp extends DeploymentType {
   def containerName: String
@@ -107,7 +107,7 @@ trait WebApp extends DeploymentType {
       )
   }
 
-  def rootCopies(pkg: Package, host: Host) = {
+  def rootCopies(pkg: DeploymentPackage, host: Host) = {
     val TRAILING_SLASH = """^(.*/)$""".r
     copyRoots(pkg).map{ root =>
       val rootWithTrailingSlash = root match {

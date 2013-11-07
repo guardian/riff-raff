@@ -4,7 +4,7 @@ import java.io.File
 import net.liftweb.json.JsonAST._
 import magenta.deployment_type.DeploymentType
 
-case class Package(
+case class DeploymentPackage(
   name: String,
   pkgApps: Set[App],
   pkgSpecificData: Map[String, JValue],

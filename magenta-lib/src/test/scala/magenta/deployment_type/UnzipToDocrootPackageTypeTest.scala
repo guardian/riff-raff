@@ -9,7 +9,7 @@ import net.liftweb.json.Implicits._
 import java.io.File
 import tasks._
 import tasks.CopyFile
-import magenta.Package
+import magenta.DeploymentPackage
 
 class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
   test("copies to host based on deployInfo data") {
@@ -20,7 +20,7 @@ class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
       "locationInDocroot" -> "the-app/static"
     )
 
-    val p = Package("app", Set.empty, packageData, UnzipToDocroot.name, new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("app", Set.empty, packageData, UnzipToDocroot.name, new File("/tmp/packages/webapp"))
 
     val diData = Map("ddm" -> List(Datum("*", PROD.name, "ddm.domain", None)))
 

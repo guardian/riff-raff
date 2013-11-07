@@ -126,7 +126,7 @@ case class Recipe(
 )
 
 case class Project(
-  packages: Map[String, Package] = Map.empty,
+  packages: Map[String, DeploymentPackage] = Map.empty,
   recipes: Map[String, Recipe] = Map.empty
 ) {
   lazy val applications = packages.values.flatMap(_.apps).toSet

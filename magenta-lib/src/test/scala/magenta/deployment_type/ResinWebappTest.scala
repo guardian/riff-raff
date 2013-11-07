@@ -16,7 +16,7 @@ import magenta.deployment_type.ResinWebapp
 
 class ResinWebappTest extends FlatSpec with ShouldMatchers {
   "resin web app package type" should "have a deploy action" in {
-    val p = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
 
     val host = Host("host_name")
 
@@ -31,10 +31,10 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "allow port to be overriden" in {
-    val basic = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
+    val basic = DeploymentPackage("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
     ResinWebapp.port(basic) should be (8080)
 
-    val overridden = Package("webapp", Set.empty, Map("port" -> "80"), "resin-webapp", new File("/tmp/packages/webapp"))
+    val overridden = DeploymentPackage("webapp", Set.empty, Map("port" -> "80"), "resin-webapp", new File("/tmp/packages/webapp"))
     ResinWebapp.port(overridden) should be (80)
   }
 
@@ -42,7 +42,7 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     val urls = List("/test", "/xx")
     val urls_json = JArray(urls map { JString(_)})
 
-    val p = Package("webapp", Set.empty, Map("healthcheck_paths" -> urls_json), "resin-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Set.empty, Map("healthcheck_paths" -> urls_json), "resin-webapp", new File("/tmp/packages/webapp"))
     val host = Host("host_name")
 
     ResinWebapp.perHostActions("deploy")(p)(host) should be (List(
@@ -56,11 +56,11 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "allow wait and check times to be overriden" in {
-    val basic = Package("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
+    val basic = DeploymentPackage("webapp", Set.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
     ResinWebapp.waitseconds(basic) should be (60)
     ResinWebapp.checkseconds(basic) should be (120)
 
-    val overridden = Package("webapp", Set.empty, Map("waitseconds" -> 120, "checkseconds" -> 60), "resin-webapp", new File("/tmp/packages/webapp"))
+    val overridden = DeploymentPackage("webapp", Set.empty, Map("waitseconds" -> 120, "checkseconds" -> 60), "resin-webapp", new File("/tmp/packages/webapp"))
     ResinWebapp.waitseconds(overridden) should be(120)
     ResinWebapp.checkseconds(overridden) should be(60)
   }

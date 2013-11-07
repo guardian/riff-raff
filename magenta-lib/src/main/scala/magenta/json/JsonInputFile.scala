@@ -48,7 +48,7 @@ object JsonReader {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
   }
   
-  def defaultRecipes(packages: Map[String, Package]) =
+  def defaultRecipes(packages: Map[String, DeploymentPackage]) =
     Map("default" -> JsonRecipe(actions = packages.values.map(_.name + ".deploy").toList))
 
   private def parse(input: JsonInputFile, artifactSrcDir: File): Project = {
@@ -59,7 +59,7 @@ object JsonReader {
   }
 
 
-  private def parseRecipe(name: String, jsonRecipe: JsonRecipe, availablePackages: Map[String, Package]) = {
+  private def parseRecipe(name: String, jsonRecipe: JsonRecipe, availablePackages: Map[String, DeploymentPackage]) = {
     def parseAction(actionString: String) = {
       actionString.split("\\.") match {
         case Array(pkgName, actionName) =>
@@ -79,7 +79,7 @@ object JsonReader {
   }
 
   private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =
-    Package(
+    DeploymentPackage(
       name,
       jsonPackage.apps match {
         case Nil => Set(App(name))

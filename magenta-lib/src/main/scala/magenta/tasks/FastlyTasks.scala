@@ -1,11 +1,11 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, KeyRing, Package}
+import magenta.{MessageBroker, KeyRing, DeploymentPackage}
 import java.io.File
 import net.liftweb.json._
 import com.gu.fastly.api.FastlyApiClient
 
-case class UpdateFastlyConfig(pkg: Package) extends Task {
+case class UpdateFastlyConfig(pkg: DeploymentPackage) extends Task {
 
   implicit val formats = DefaultFormats
 
