@@ -6,9 +6,9 @@ import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model.{Parameter, UpdateStackRequest}
 import scalax.file.Path
 
-case class UpdateCloudFormationTask(stackName: String, template: Path) extends Task {
+case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String]) extends Task {
   def execute(credentials: KeyRing, stopFlag: => Boolean) = if (!stopFlag) {
-    CloudFormation.updateStack(stackName, template.string)(credentials)
+    CloudFormation.updateStack(stackName, template.string, parameters)(credentials)
   }
 
   def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
@@ -21,10 +21,14 @@ trait CloudFormation extends AWS {
       classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
     )
   }
-  def updateStack(name: String, templateBody: String)(implicit keyRing: KeyRing) = client.updateStack(
-    new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM")
-      .withParameters(new Parameter().withParameterKey("").withParameterValue(""))
-  )
+  def updateStack(name: String, templateBody: String, parameters: Map[String, String])(implicit keyRing: KeyRing) =
+    client.updateStack(
+      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM").withParameters(
+        parameters map {
+          case (k, v) => new Parameter().withParameterKey(k).withParameterValue(v)
+        } toSeq: _*
+      )
+    )
 }
 
 object CloudFormation extends CloudFormation

@@ -50,7 +50,8 @@ trait DeploymentType {
 
 object DeploymentType {
   def all: Seq[DeploymentType] = Seq(
-    ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly, UnzipToDocroot
+    ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly,
+    UnzipToDocroot, CloudFormation
   )
 }
 
