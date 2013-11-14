@@ -11,7 +11,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import java.io.File
 import scala.Some
-import tasks.{Task, CopyFile}
+import tasks.{Task, CopyFileTask}
 
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
@@ -44,7 +44,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
     tasks.size should be (1)
     tasks should be (List(
-      CopyFile(host, "/tmp/packages/htmlapp", "/")
+      CopyFileTask(host, "/tmp/packages/htmlapp", "/")
     ))
   }
 

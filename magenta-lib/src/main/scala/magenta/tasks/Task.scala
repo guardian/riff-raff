@@ -7,7 +7,7 @@ trait Task {
   def execute(sshCredentials: KeyRing) { execute(sshCredentials, false) }
 
   // name of this task: normally no need to override this method
-  def name = getClass.getSimpleName
+  def name = getClass.getSimpleName.stripSuffix("Task")
 
   // end-user friendly description of this task
   // (will normally be prefixed by name before display)

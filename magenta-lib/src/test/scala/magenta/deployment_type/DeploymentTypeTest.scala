@@ -8,20 +8,20 @@ import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST._
 import fixtures._
 import magenta.deployment_type._
-import magenta.tasks.S3Upload
-import magenta.tasks.ApacheGracefulRestart
-import magenta.tasks.UnblockFirewall
+import magenta.tasks.S3UploadTask
+import magenta.tasks.ApacheGracefulRestartTask
+import magenta.tasks.UnblockFirewallTask
 import net.liftweb.json.JsonAST.JField
 import magenta.deployment_type.PatternValue
 import net.liftweb.json.JsonAST.JObject
-import magenta.tasks.CheckUrls
+import magenta.tasks.CheckUrlsTask
 import net.liftweb.json.JsonAST.JString
 import magenta.tasks.CompressedCopy
-import magenta.tasks.BlockFirewall
+import magenta.tasks.BlockFirewallTask
 import magenta.deployment_type.S3
 import magenta.tasks.Link
 import scala.Some
-import magenta.tasks.WaitForPort
+import magenta.tasks.WaitForPortTask
 import net.liftweb.json.JsonAST.JArray
 
 class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
@@ -40,7 +40,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     val thrown = evaluating {
       S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
-        List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+        List(S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
       )
     } should produce [NoSuchElementException]
 
@@ -57,7 +57,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
-      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+      List(S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
     )
   }
 
@@ -74,7 +74,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
       List(
-        S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
+        S3UploadTask(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
           List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
       )
     )
@@ -106,13 +106,13 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     Django.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "django"),
+      BlockFirewallTask(host as "django"),
       CompressedCopy(host as "django", Some(specificBuildFile), "/django-apps/"),
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
-      ApacheGracefulRestart(host as "django"),
-      WaitForPort(host, 80, 1 minute),
-      CheckUrls(host, 80, List.empty, 120000, 5),
-      UnblockFirewall(host as "django")
+      ApacheGracefulRestartTask(host as "django"),
+      WaitForPortTask(host, 80, 1 minute),
+      CheckUrlsTask(host, 80, List.empty, 120000, 5),
+      UnblockFirewallTask(host as "django")
     ))
   }
 

@@ -4,6 +4,7 @@ import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JInt
 import net.liftweb.json.JsonAST.JBool
+import java.io.File
 
 trait JValueExtractable[T] {
   def extract(json: JValue): Option[T]
@@ -27,5 +28,8 @@ object JValueExtractable {
   }
   implicit def ListExtractable[T](implicit jve: JValueExtractable[T]) = new JValueExtractable[List[T]] {
     def extract(json: JValue) = extractOption(JArray.unapply)(json) map (_.flatMap(jve.extract(_)))
+  }
+  implicit object FileExtractable extends JValueExtractable[File] {
+    def extract(json: JValue) = extractOption(JString.unapply)(json) map (new File(_))
   }
 }

@@ -1,9 +1,14 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, KeyRing, DeploymentPackage}
+import magenta.{DeployParameters, MessageBroker, KeyRing, DeploymentPackage}
 import java.io.File
 import net.liftweb.json._
 import com.gu.fastly.api.FastlyApiClient
+
+object UpdateFastlyConfig extends ApplicationTaskType {
+  def description = "Update Fastly configuration"
+  def apply(pkg: DeploymentPackage, parameters: DeployParameters) = UpdateFastlyConfig(pkg)
+}
 
 case class UpdateFastlyConfig(pkg: DeploymentPackage) extends Task {
 

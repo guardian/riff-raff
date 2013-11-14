@@ -10,7 +10,7 @@ import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import java.net.URL
-import magenta.deployment_type.PatternValue
+import magenta.deployment_type.{Param, PatternValue}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -22,7 +22,13 @@ object CopyFile {
   val MIRROR_MODE = "mirror"
   lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
 }
-case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
+
+case class CopyFile(dest: String)  extends HostTaskType {
+  def description = s"Copy package files to $dest using rsync"
+  def apply(pkg: DeploymentPackage, host: Host) = CopyFileTask(host, pkg.srcDir.getPath, dest)
+}
+
+case class CopyFileTask(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
@@ -47,10 +53,18 @@ case class CopyFile(host: Host, source: String, dest: String, copyMode: String =
   }
 }
 
+case class CopyChildDirectory(user: Param[String], destDir: String) extends HostTaskType {
+  def description = s"Copy the child directory of the source pacakge to ${destDir} on the remote host"
+
+  // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
+  override def apply(pkg: DeploymentPackage, host: Host) =
+    CompressedCopy(host as user(pkg), Option(pkg.srcDir.listFiles()).flatMap(_.headOption), destDir)
+}
+
 case class CompressedCopy(host: Host, source: Option[File], dest: String) extends CompositeTask with CompressedFilename {
   val tasks = Seq(
     Compress(source),
-    CopyFile(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
+    CopyFileTask(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
     Decompress(host, dest, source)
   )
 
@@ -91,8 +105,13 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
+case class S3Upload(bucket: Param[String]) extends ApplicationTaskType {
+  def description = "Upload the package to S3"
+  def apply(pkg: DeploymentPackage, parameters: DeployParameters) =
+    S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
+}
 
-case class S3Upload( stage: Stage,
+case class S3UploadTask( stage: Stage,
                      bucket: String,
                      file: File,
                      cacheControlPatterns: List[PatternValue] = Nil,
@@ -129,7 +148,12 @@ case class S3Upload( stage: Stage,
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
 }
 
-case class BlockFirewall(host: Host) extends RemoteShellTask {
+case class BlockFirewall(user: Param[String]) extends HostTaskType{
+  def description = "Run block-load-balancer if such a command exists"
+  def apply(pkg: DeploymentPackage, host: Host) = BlockFirewallTask(host as user(pkg))
+}
+
+case class BlockFirewallTask(host: Host) extends RemoteShellTask {
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
@@ -137,11 +161,21 @@ case class Restart(host: Host, appName: String) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, "restart")
 }
 
-case class UnblockFirewall(host: Host) extends RemoteShellTask {
+case class UnblockFirewall(user: Param[String]) extends HostTaskType{
+  def description = "Run unblock-load-balancer if such a command exists"
+  def apply(pkg: DeploymentPackage, host: Host) = UnblockFirewallTask(host as user(pkg))
+}
+
+case class UnblockFirewallTask(host: Host) extends RemoteShellTask {
   def commandLine =  CommandLocator conditional "unblock-load-balancer"
 }
 
-case class WaitForPort(host: Host, port: Int, duration: Long) extends Task with RepeatedPollingCheck {
+case class WaitForPort(port: Param[Int], duration: Param[Int]) extends HostTaskType{
+  def description = "Wait until a socket connection can be established"
+  override def apply(pkg: DeploymentPackage, host: Host) = WaitForPortTask(host, port(pkg), duration(pkg) * 1000)
+}
+
+case class WaitForPortTask(host: Host, port: Int, duration: Long) extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
@@ -158,7 +192,12 @@ case class WaitForPort(host: Host, port: Int, duration: Long) extends Task with 
   }
 }
 
-case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
+case class CheckUrls(port: Param[Int], paths: Param[List[String]], duration: Param[Int], timeout: Param[Int]) extends HostTaskType{
+  def description = "Check application URLs return a HTTP 200 status"
+  override def apply(pkg: DeploymentPackage, host: Host) = CheckUrlsTask(host, port(pkg), paths(pkg), duration(pkg) * 1000, timeout(pkg))
+}
+
+case class CheckUrlsTask(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
     extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "check [%s] on %s" format(paths, host)
@@ -243,11 +282,24 @@ case class EchoHello(host: Host) extends ShellTask {
   def description = "to " + host.name
 }
 
+case class LinkChildDirectory(user: Param[String], destDir: String) extends HostTaskType {
+  def description = s"Link the child directory of the source pacakge to ${destDir} on the remote host"
+
+  // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
+  override def apply(pkg: DeploymentPackage, host: Host) =
+    Link(host as user(pkg), Option(pkg.srcDir.listFiles()).flatMap(_.headOption).map(destDir + _.getName), destDir + pkg.name)
+}
+
 case class Link(host: Host, target: Option[String], linkName: String) extends RemoteShellTask {
   def commandLine = List("ln", "-sfn", target.getOrElse(throw new FileNotFoundException()), linkName)
 }
 
-case class ApacheGracefulRestart(host: Host) extends RemoteShellTask {
+case class ApacheGracefulRestart(user: Param[String]) extends HostTaskType {
+  def description = "Perform a graceful restart of Apache"
+  override def apply(pkg: DeploymentPackage, host: Host) = ApacheGracefulRestartTask(host as user(pkg))
+}
+
+case class ApacheGracefulRestartTask(host: Host) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
 }
 

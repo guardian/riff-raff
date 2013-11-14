@@ -81,21 +81,21 @@ trait WebApp extends DeploymentType {
 
   override def perHostActions = {
     case "deploy" => pkg => host => {
-      BlockFirewall(host as user(pkg)) ::
+      BlockFirewallTask(host as user(pkg)) ::
       rootCopies(pkg, host) :::
       Restart(host as user(pkg), servicename(pkg)) ::
-      WaitForPort(host, port(pkg), waitseconds(pkg) * 1000) ::
-      CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
-      UnblockFirewall(host as user(pkg)) ::
+      WaitForPortTask(host, port(pkg), waitseconds(pkg) * 1000) ::
+      CheckUrlsTask(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
+      UnblockFirewallTask(host as user(pkg)) ::
       Nil
     }
     case "restart" => pkg => host => {
       List(
-        BlockFirewall(host as user(pkg)),
+        BlockFirewallTask(host as user(pkg)),
         Restart(host as user(pkg), servicename(pkg)),
-        WaitForPort(host, port(pkg), waitseconds(pkg) * 1000),
-        CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
-        UnblockFirewall(host as user(pkg))
+        WaitForPortTask(host, port(pkg), waitseconds(pkg) * 1000),
+        CheckUrlsTask(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
+        UnblockFirewallTask(host as user(pkg))
       )
     }
   }
@@ -103,7 +103,7 @@ trait WebApp extends DeploymentType {
   def perAppActions = {
     case "uploadArtifacts" => pkg => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath))
+        S3UploadTask(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath))
       )
   }
 
@@ -115,7 +115,7 @@ trait WebApp extends DeploymentType {
         case TRAILING_SLASH(withSlash) => withSlash
         case noTrailingSlash => s"$noTrailingSlash/"
       }
-      CopyFile(host as user(pkg), s"${pkg.srcDir.getPath}/$rootWithTrailingSlash",
+      CopyFileTask(host as user(pkg), s"${pkg.srcDir.getPath}/$rootWithTrailingSlash",
         s"/$containerName-apps/${servicename(pkg)}/$rootWithTrailingSlash", copyMode(pkg))
     }
   }

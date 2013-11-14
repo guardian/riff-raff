@@ -10,7 +10,7 @@ object FileCopy extends DeploymentType {
     """.stripMargin
 
   override def perHostActions = {
-    case "deploy" => pkg => host => List(CopyFile(host, pkg.srcDir.getPath, "/"))
+    case "deploy" => pkg => host => List(CopyFile("/")(pkg, host))
   }
 
   def perAppActions = PartialFunction.empty
