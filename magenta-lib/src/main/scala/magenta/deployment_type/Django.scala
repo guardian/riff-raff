@@ -1,6 +1,7 @@
 package magenta.deployment_type
 
 import magenta.tasks._
+import java.io.File
 
 object Django extends DeploymentType {
   val name = "django-webapp"
@@ -23,6 +24,8 @@ object Django extends DeploymentType {
 
   val user = Param("user", "User account on the target hosts to use for executing remote commands").default("django")
   val port = Param("port", "Application port used for carrying out post deployment healthchecks").default(80)
+  val portWaitSeconds = Param("portWaitSeconds",
+    "Maximum number of seconds to wait for the application port to become available").default(60)
   val healthCheckPaths = Param("healthcheck_paths",
     "List of application paths that must return a healthy HTTP response, appended to `http://<targetHost>:<port>`"
   ).default(List.empty[String])
@@ -34,16 +37,15 @@ object Django extends DeploymentType {
   override def perHostActions = {
     case "deploy" => pkg => host => {
       val destDir = "/django-apps/"
-      // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
-      lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
+
       List(
-        BlockFirewall(host as user(pkg)),
-        CompressedCopy(host as user(pkg), appVersionPath, destDir),
-        Link(host as user(pkg), appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
-        ApacheGracefulRestart(host as user(pkg)),
-        WaitForPort(host, port(pkg), 60 * 1000),
-        CheckUrls(host, port(pkg), healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
-        UnblockFirewall(host as user(pkg))
+        BlockFirewall(user)(pkg, host),
+        CopyChildDirectory(user, destDir)(pkg, host),
+        LinkChildDirectory(user, destDir)(pkg, host),
+        ApacheGracefulRestart(user)(pkg, host),
+        WaitForPort(port, portWaitSeconds)(pkg, host),
+        CheckUrls(port, healthCheckPaths, checkseconds, checkUrlReadTimeoutSeconds)(pkg, host),
+        UnblockFirewall(user)(pkg, host)
       )
     }
   }

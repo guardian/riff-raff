@@ -4,11 +4,11 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import java.io.File
 import tasks._
-import tasks.BlockFirewall
-import tasks.CheckUrls
+import tasks.BlockFirewallTask
+import tasks.CheckUrlsTask
 import tasks.CopyFileTask
 import tasks.Restart
-import tasks.WaitForPort
+import tasks.WaitForPortTask
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST.{JArray, JString}
@@ -21,12 +21,12 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     ResinWebapp.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "resin"),
+      BlockFirewallTask(host as "resin"),
       CopyFileTask(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
-      UnblockFirewall(host as "resin")
+      WaitForPortTask(host, 8080, 1 minute),
+      CheckUrlsTask(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
+      UnblockFirewallTask(host as "resin")
     ))
   }
 
@@ -46,12 +46,12 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     ResinWebapp.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "resin"),
+      BlockFirewallTask(host as "resin"),
       CopyFileTask(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, urls, 2 minutes, 5),
-      UnblockFirewall(host as "resin")
+      WaitForPortTask(host, 8080, 1 minute),
+      CheckUrlsTask(host, 8080, urls, 2 minutes, 5),
+      UnblockFirewallTask(host as "resin")
     ))
   }
 

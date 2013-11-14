@@ -5,13 +5,13 @@ import tasks._
 import net.liftweb.json.JsonAST.{JArray, JString}
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
-import tasks.BlockFirewall
-import tasks.CheckUrls
+import tasks.BlockFirewallTask
+import tasks.CheckUrlsTask
 import tasks.CopyFileTask
 import tasks.Restart
-import tasks.UnblockFirewall
+import tasks.UnblockFirewallTask
 import net.liftweb.json.JsonAST.JString
-import tasks.WaitForPort
+import tasks.WaitForPortTask
 import net.liftweb.json.JsonAST.JArray
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
@@ -24,12 +24,12 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "jetty"),
+      BlockFirewallTask(host as "jetty"),
       CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
-      UnblockFirewall(host as "jetty")
+      WaitForPortTask(host, 8080, 1 minute),
+      CheckUrlsTask(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
+      UnblockFirewallTask(host as "jetty")
     ))
   }
 
@@ -49,12 +49,12 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "jetty"),
+      BlockFirewallTask(host as "jetty"),
       CopyFileTask(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
       Restart(host as "jetty", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, urls, 2 minutes, 5),
-      UnblockFirewall(host as "jetty")
+      WaitForPortTask(host, 8080, 1 minute),
+      CheckUrlsTask(host, 8080, urls, 2 minutes, 5),
+      UnblockFirewallTask(host as "jetty")
     ))
 
   }
@@ -98,13 +98,13 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
-      BlockFirewall(host as "jetty"),
+      BlockFirewallTask(host as "jetty"),
       CopyFileTask(host as "jetty", "/tmp/packages/d2index/solr/conf/", "/jetty-apps/d2index/solr/conf/", CopyFile.MIRROR_MODE),
       CopyFileTask(host as "jetty", "/tmp/packages/d2index/webapp/", "/jetty-apps/d2index/webapp/", CopyFile.MIRROR_MODE),
       Restart(host as "jetty", "d2index"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, List("/d2index/management/healthcheck"), 2 minutes, 5),
-      UnblockFirewall(host as "jetty")
+      WaitForPortTask(host, 8080, 1 minute),
+      CheckUrlsTask(host, 8080, List("/d2index/management/healthcheck"), 2 minutes, 5),
+      UnblockFirewallTask(host as "jetty")
     ))
   }
 }

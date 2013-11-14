@@ -81,21 +81,21 @@ trait WebApp extends DeploymentType {
 
   override def perHostActions = {
     case "deploy" => pkg => host => {
-      BlockFirewall(host as user(pkg)) ::
+      BlockFirewallTask(host as user(pkg)) ::
       rootCopies(pkg, host) :::
       Restart(host as user(pkg), servicename(pkg)) ::
-      WaitForPort(host, port(pkg), waitseconds(pkg) * 1000) ::
-      CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
-      UnblockFirewall(host as user(pkg)) ::
+      WaitForPortTask(host, port(pkg), waitseconds(pkg) * 1000) ::
+      CheckUrlsTask(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
+      UnblockFirewallTask(host as user(pkg)) ::
       Nil
     }
     case "restart" => pkg => host => {
       List(
-        BlockFirewall(host as user(pkg)),
+        BlockFirewallTask(host as user(pkg)),
         Restart(host as user(pkg), servicename(pkg)),
-        WaitForPort(host, port(pkg), waitseconds(pkg) * 1000),
-        CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
-        UnblockFirewall(host as user(pkg))
+        WaitForPortTask(host, port(pkg), waitseconds(pkg) * 1000),
+        CheckUrlsTask(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
+        UnblockFirewallTask(host as user(pkg))
       )
     }
   }
