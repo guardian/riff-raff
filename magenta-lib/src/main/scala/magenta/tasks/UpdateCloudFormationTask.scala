@@ -1,14 +1,14 @@
 package magenta.tasks
 
-import magenta.KeyRing
+import magenta.{Stage, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model.{Parameter, UpdateStackRequest}
 import scalax.file.Path
 
-case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String]) extends Task {
+case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage) extends Task {
   def execute(credentials: KeyRing, stopFlag: => Boolean) = if (!stopFlag) {
-    CloudFormation.updateStack(stackName, template.string, parameters)(credentials)
+    CloudFormation.updateStack(stackName, template.string, parameters + ("Stage" -> stage.name))(credentials)
   }
 
   def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
