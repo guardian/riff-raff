@@ -70,6 +70,17 @@ database
  - `mongo.uri` - A mongo [standard connection string](http://www.mongodb.org/display/DOCS/Connections)
  - `mongo.collectionPrefix` - Prefix on created collections (allows multiple Riff-Raff instances to use the same mongo database).  Must only contain characters valid in a collection name (letters, underscore, numbers - although not first character).
 
+freeze
+------
+
+Configure a change freeze (this disables deploys via the API, continuous deploys and presents a warning before
+letting uses deploy via the web interface).
+
+ - `freeze.startDate` - A ISO-8601 format date indicating the start of a change freeze
+ - `freeze.endDate` - A ISO-8601 format date indicating the start of a change freeze
+ - `freeze.stages` - The stages that should be considered as frozen (comma separated)
+ - `freeze.message` - A message to be displayed to users being warned that they are in a change freeze
+
 notifications
 -------------
 

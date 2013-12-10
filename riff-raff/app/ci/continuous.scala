@@ -19,6 +19,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import akka.agent.Agent
 import akka.actor.ActorSystem
+import utils.ChangeFreeze
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -187,10 +188,14 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def runDeploy(params: DeployParameters) {
     if (conf.Configuration.continuousDeployment.enabled) {
-      log.info("Triggering deploy of %s" format params.toString)
-      DeployController.deploy(params)
+      if (!ChangeFreeze.frozen(params.stage.name)) {
+        log.info(s"Triggering deploy of ${params.toString}")
+        DeployController.deploy(params)
+      } else {
+        log.info(s"Due to change freeze, continuous deployment is skipping ${params.toString}")
+      }
     } else
-      log.info("Would deploy %s" format params.toString)
+      log.info(s"Would deploy %{params.toString}")
   }
 
   def newBuilds(newBuilds: List[Build]) = {

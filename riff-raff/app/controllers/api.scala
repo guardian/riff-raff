@@ -14,7 +14,7 @@ import play.api.libs.functional.syntax._
 import com.mongodb.casbah.Imports._
 import deployment.{Record, DeployFilter, DeployInfoManager}
 import DeployInfoManager._
-import utils.Graph
+import utils.{ChangeFreeze, Graph}
 import magenta._
 import play.api.mvc.BodyParsers.parse
 import java.util.UUID
@@ -313,6 +313,8 @@ object Api extends Controller with Logging {
           recipe,
           hosts
         )
+        assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
+
         val deployId = DeployController.deploy(params)
         Json.obj(
           "response" -> Json.obj(

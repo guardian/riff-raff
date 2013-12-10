@@ -6,7 +6,7 @@
 <div class="clearfix"><p>&nbsp;</p></div>
 
 <div class="span6">
-@helper.form(routes.Deployment.processForm, 'id -> "modalConfirm", 'class -> "well") {
+@helper.form(routes.Deployment.processForm, 'class -> "well") {
     <fieldset>
         <legend>What would you like to deploy?</legend>
 @helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "buildForm")
@@ -22,7 +22,7 @@ helper.options(resources.LookupSelector().stages.toList),
 
 <div class="actions">
     <button name="action" type="submit" value="preview" class="btn">Preview...</button>
-    <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
+    <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
     <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
 </div>
     </fieldset>
@@ -32,4 +32,6 @@ helper.options(resources.LookupSelector().stages.toList),
 <div class="span6" id="deploy-info"></div>
 
 <div class="clearfix"></div>
+
+@snippets.changeFreezeDialog()
 }

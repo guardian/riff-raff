@@ -172,12 +172,6 @@ case class UuidForm(uuid:String, action:String)
 
 object Deployment extends Controller with Logging {
 
-  def changeFreeze[A](defrosted: A, frozen: A):A = {
-    val freezeInterval = new Interval(new DateTime(2012,12,19,0,1,0), new DateTime(2013,1,7,0,0,0))
-    val now = new DateTime()
-    if (freezeInterval.contains(now)) frozen else defrosted
-  }
-
   lazy val uuidForm = Form[UuidForm](
     mapping(
       "uuid" -> text(36,36),

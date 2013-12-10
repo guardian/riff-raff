@@ -1,9 +1,16 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[ci.ContinuousDeploymentConfig])
+@import utils.ChangeFreeze
 @import org.joda.time.format.DateTimeFormat._
 @import ci.Trigger._
 
 @main("Continuous Deployment Configurations", request) {
 <h2>Continuous Deployment Configurations</h2>
+@if(ChangeFreeze.frozen) {
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">Change Freeze</h4>
+        <p>There is currently a change freeze. This means that continuous deploys for @ChangeFreeze.stages.mkString(", ") are disabled.</p>
+    </div>
+}
 <hr/>
 <p><a class="btn btn-inverse" href="@routes.ContinuousDeployController.form()"><i class="icon-plus icon-white"></i> Add new configuration</a></p>
 <div class="content">
