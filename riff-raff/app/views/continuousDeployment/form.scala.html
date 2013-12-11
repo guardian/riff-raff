@@ -8,8 +8,18 @@
 <hr/>
 
 @helper.form(action=routes.ContinuousDeployController.save) {
-
 @snippets.inputHidden(configForm("id"))
+
+    @if(configForm.hasGlobalErrors) {
+        <div class="alert alert-error">
+            <h4>Error</h4>
+            <ul>
+            @configForm.globalErrors.map { error =>
+              <li>@error.message</li>
+            }
+            </ul>
+        </div>
+    }
 
 @helper.inputText(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
 @helper.select(

@@ -26,7 +26,10 @@ object ContinuousDeployController extends Controller with Logging {
       "branchMatcher" -> optional(text),
       "trigger" -> number,
       "tag" -> optional(text)
-    )(ConfigForm.apply)(ConfigForm.unapply)
+    )(ConfigForm.apply)(ConfigForm.unapply).verifying(
+      error = s"Tag must be specified when trigger is ${Trigger.BuildTagged}",
+      constraint = { config => if (config.trigger == Trigger.BuildTagged.id) config.tag.isDefined else true }
+    )
   )
 
   def list = AuthAction { implicit request =>
