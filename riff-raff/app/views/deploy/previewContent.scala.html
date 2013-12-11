@@ -85,14 +85,14 @@
 
     <input type="hidden" name="project" value="@preview.projectName"/>
     <input type="hidden" name="build" value="@preview.build"/>
-    <input type="hidden" name="stage" value="@preview.stage"/>
+    <input id="stage" type="hidden" name="stage" value="@preview.stage"/>
     <input type="hidden" name="recipe" value="@preview.recipe"/>
 
         <hr/>
 
     <div class="actions">
         <button name="action" type="submit" value="preview" class="btn">Preview...</button>
-        <button name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
+        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
         <a href="@routes.Deployment.deploy()" class="btn btn-inverse">Cancel</a>
     </div>
 

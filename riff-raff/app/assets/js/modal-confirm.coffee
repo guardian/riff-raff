@@ -1,9 +1,27 @@
-checkAndConfirm = ->
-  if $('#stage').val() == "PROD"
-    confirm("Digital Development is in change freeze until Monday the 7th of January 2013.\n\nAny deploys prior to this should be reviewed by your product manager or Mike Blakemore and discussed with Web Systems.\n\nPress OK if you still want to proceed or Cancel to abort.")
-  else
-    true
+clickFromModalDialog = false
+
+bindToButtons = ->
+  $('#modalConfirm').click =>
+    if clickFromModalDialog
+      true
+    else
+      stageList = $('#freezeModal').data("stages").split(",")
+      if jQuery.inArray($('#stage').val(), stageList) >= 0
+        $('#freezeModal').modal()
+        false
+      else
+        true
+
+  $('#freezeProceed').click =>
+    clickFromModalDialog = true
+    $('#modalConfirm').click()
+
+  $('#freezeCancel').click =>
+    $('#freezeModal').modal('hide')
 
 $ ->
-  $('#modalConfirm').submit => checkAndConfirm()
-
+  if (window.autoRefresh)
+    window.autoRefresh.postRefresh ->
+      bindToButtons()
+  else
+    bindToButtons()

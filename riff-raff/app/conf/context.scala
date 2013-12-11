@@ -19,6 +19,7 @@ import deployment.{DeployMetricsActor, GuDomainsConfiguration}
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
+import org.joda.time.format.ISODateTimeFormat
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -71,6 +72,14 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
+
+  object freeze {
+    private val formatter = ISODateTimeFormat.dateTime()
+    lazy val startDate = configuration.getStringProperty("freeze.startDate").map(formatter.parseDateTime)
+    lazy val endDate = configuration.getStringProperty("freeze.endDate").map(formatter.parseDateTime)
+    lazy val message = configuration.getStringProperty("freeze.message", "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
+    lazy val stages = configuration.getStringPropertiesSplitByComma("freeze.stages")
+  }
 
   object housekeeping {
     lazy val summariseDeploysAfterDays = configuration.getIntegerProperty("housekeeping.summariseDeploysAfterDays", 90)
