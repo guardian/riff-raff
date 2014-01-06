@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{ Instance => ASGInstance, _ }
 import com.amazonaws.services.ec2.AmazonEC2Client
@@ -13,6 +13,9 @@ import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
 import magenta.{Stage, KeyRing}
 import scala.collection.JavaConversions._
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
+import com.amazonaws.services.cloudformation.model.UpdateStackRequest
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
@@ -158,4 +161,16 @@ trait AWS {
   def credentials(keyRing: KeyRing): BasicAWSCredentials = {
     keyRing.apiCredentials.get("aws").map{ credentials => new BasicAWSCredentials(credentials.id,credentials.secret) }.getOrElse{ envCredentials }
   }
+  def provider(keyRing: KeyRing): AWSCredentialsProvider = new AWSCredentialsProviderChain(
+    new AWSCredentialsProvider {
+      def refresh() {}
+      def getCredentials = keyRing.apiCredentials.get("aws") map {
+          credentials => new BasicAWSCredentials(credentials.id,credentials.secret)
+      } get
+    },
+    new AWSCredentialsProvider {
+      def refresh() {}
+      def getCredentials = envCredentials
+    }
+  )
 }

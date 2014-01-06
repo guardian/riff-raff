@@ -28,4 +28,15 @@ object JValueExtractable {
   implicit def ListExtractable[T](implicit jve: JValueExtractable[T]) = new JValueExtractable[List[T]] {
     def extract(json: JValue) = extractOption(JArray.unapply)(json) map (_.flatMap(jve.extract(_)))
   }
+  implicit def MapExtractable[V](implicit jve: JValueExtractable[V]) = new JValueExtractable[Map[String,V]] {
+    def extract(json: JValue) = {
+      val kvs: List[(String, Option[V])] = for {
+        JObject(fields) <- json
+        field <- fields
+        JField(k, v) <- field
+      } yield k -> jve.extract(v)
+      if (kvs.isEmpty || !kvs.forall{case (_, x) => x.isDefined}) None
+      else Some(Map(kvs: _*).mapValues(_.get))
+    }
+  }
 }
