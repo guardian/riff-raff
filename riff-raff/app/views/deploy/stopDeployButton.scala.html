@@ -13,7 +13,7 @@
                     </button>
                 } else {
                     <button name="action" type="button" value="@record.uuid" class="stop-deploy-button refresh-disabled-hide btn btn-danger">
-                        <i class="icon-minus-sign icon-white"></i> Stop this Deploy
+                        <i class="glyphicon glyphicon-minus-sign glyphicon glyphicon-white"></i> Stop this Deploy
                     </button>
                 }
             }
@@ -24,7 +24,7 @@
                 data-placement="left"
                 href="@urlPrefix@routes.Deployment.viewUUID(record.uuid.toString).url"
                 class="btn btn-primary pull-right stop-deploy-hide">
-            <i class="icon-search icon-white"></i> View log on "@name"</a>
+            <i class="glyphicon glyphicon-search glyphicon glyphicon-white"></i> View log on "@name"</a>
         }
     }
     }

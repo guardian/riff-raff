@@ -3,7 +3,7 @@
 @main("Authorisation List", request) {
     <h2>Authorisation List</h2>
     <hr/>
-    <p><a class="btn btn-inverse" href="@routes.Login.authForm()"><i class="icon-plus icon-white"></i> Add authorisation</a></p>
+    <p><a class="btn btn-warning" href="@routes.Login.authForm()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add authorisation</a></p>
     <div class="content">
     @if(authList.isEmpty) {
         <div class="alert alert-warning"><strong>No authorisations.</strong></div>
@@ -25,7 +25,7 @@
                     <td><span class="label">@auth.approvedBy</span></td>
                     <td>
                     @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
-                        <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="icon-trash icon-white"></i> Delete</button>
+                        <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                     </td>
                 </tr>

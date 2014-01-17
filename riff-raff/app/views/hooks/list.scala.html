@@ -4,7 +4,7 @@
 @main("Post Deploy Hooks", request) {
 <h2>Post Deploy Hooks</h2>
 <hr/>
-<p><a class="btn btn-inverse" href="@routes.Hooks.form()"><i class="icon-plus icon-white"></i> Add new hook</a></p>
+<p><a class="btn btn-warning" href="@routes.Hooks.form()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new hook</a></p>
 <div class="content">
     @if(hooks.isEmpty) {
         <div class="alert alert-warning"><strong>No deploy hooks.</strong></div>
@@ -30,11 +30,11 @@
                 <td>@config.url</td>
                 <td>@config.enabled</td>
                 <td>
-                    <a class="btn btn-mini" href="@routes.Hooks.edit(config.id.toString)"><i class="icon-edit"></i> Edit</a>
+                    <a class="btn btn-mini" href="@routes.Hooks.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
                 </td>
                 <td>
                     @helper.form(action=routes.Hooks.delete(config.id.toString), 'class -> "form-make-inline") {
-                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
+                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                 </td>
             </tr>

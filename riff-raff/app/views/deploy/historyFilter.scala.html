@@ -2,9 +2,9 @@
 @import deployment.TaskType
 @import magenta.RunState
 
-<div class="navbar">
+<div class="navbar navbar-default">
     <div class="navbar-inner">
-        <ul class="nav">
+        <ul class="nav navbar-nav">
             <li class="dropdown@if(view.filter.stage.isDefined){ active}">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Stage@view.filter.stage.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
@@ -40,8 +40,8 @@
                 <div class="dropdown-menu floating-form">
                     <div class="input-append floating-form">
                         <input id="projectName" type="text" name="projectName" size="30" value="@view.filter.projectName.getOrElse("")"/>
-                        <button class="btn" id="projectNameGo"><i class="icon-filter"></i></button>
-                        <a class="btn" href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withProjectName(None)).q}"><i class="icon-remove"></i></a>
+                        <button class="btn" id="projectNameGo"><i class="glyphicon glyphicon-filter"></i></button>
+                        <a class="btn" href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withProjectName(None)).q}"><i class="glyphicon glyphicon-remove"></i></a>
                     </div>
                 </div>
             </li>
@@ -49,7 +49,7 @@
 
         @if(!view.filter.default) {
         <ul class="nav">
-            <li><a href="@routes.Deployment.history()?@{view.replaceFilter(_ => DeployFilter()).q}"><i class="icon-remove"></i> Clear all filters</a></li>
+            <li><a href="@routes.Deployment.history()?@{view.replaceFilter(_ => DeployFilter()).q}"><i class="glyphicon glyphicon-remove"></i> Clear all filters</a></li>
         </ul>
         }
 

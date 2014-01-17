@@ -1,35 +1,36 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
-@import helper.twitterBootstrap2._
+@import helper.twitterBootstrap._
 
 @main("Deploy request", request, List("form-autocomplete")) {
 
 <div class="clearfix"><p>&nbsp;</p></div>
 
-<div class="span6">
+<div class="col-md-6">
 @helper.form(routes.Deployment.processForm, 'class -> "well") {
     <fieldset>
         <legend>What would you like to deploy?</legend>
-@helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "buildForm")
-@helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "buildForm")
+@helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
+@helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
 @helper.select(
 deployForm("stage"),
 helper.options(resources.LookupSelector().stages.toList),
 '_default -> "--- Choose a stage ---",
 '_label -> "stage",
 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
-'id -> "stage"
+'id -> "stage",
+'class -> "form-control"
 )
 
 <div class="actions">
-    <button name="action" type="submit" value="preview" class="btn">Preview...</button>
+    <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
     <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-    <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+    <a href="@routes.Application.index()" class="btn btn-warning">Cancel</a>
 </div>
     </fieldset>
 }
 </div>
 
-<div class="span6" id="deploy-info"></div>
+<div class="col-md-6" id="deploy-info"></div>
 
 <div class="clearfix"></div>
 

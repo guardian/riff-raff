@@ -3,7 +3,7 @@
 @main("API keys", request) {
     <h2>API keys</h2>
     <hr/>
-    <p><a class="btn btn-inverse" href="@routes.Api.createKeyForm()"><i class="icon-plus icon-white"></i> Create new API key</a></p>
+    <p><a class="btn btn-warning" href="@routes.Api.createKeyForm()"><i class="glyphicon glyphicon-plus glyphicon-white"></i> Create new API key</a></p>
     <div class="content">
     @if(keyList.isEmpty) {
         <div class="alert alert-warning"><strong>No API keys.</strong></div>
@@ -31,7 +31,7 @@
                     <td>@key.totalCalls</td>
                     <td>
                     @helper.form(routes.Api.delete(), 'class -> "modal-form") {
-                        <button class="btn btn-mini btn-danger" name="key" value="@key.key"><i class="icon-trash icon-white"></i> Delete</button>
+                        <button class="btn btn-mini btn-danger" name="key" value="@key.key"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                     </td>
                 </tr>

@@ -1,15 +1,14 @@
 @(menuBarItems: Html)
 
-<div class="navbar navbar-fixed-top">
-    <div class="navbar-inner">
-        <div class="container-fluid">
-            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </a>
-            <a class="brand" href="/">Riff Raff</a>
-            @menuBarItems
-        </div>
+<nav class="navbar navbar-fixed-top navbar-default">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="glyphicon icon-bar"></span>
+            <span class="glyphicon icon-bar"></span>
+            <span class="glyphicon icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="/">Riff Raff</a>
     </div>
-</div>
+    @menuBarItems
+</nav>

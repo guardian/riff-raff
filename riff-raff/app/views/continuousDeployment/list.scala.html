@@ -12,7 +12,7 @@
     </div>
 }
 <hr/>
-<p><a class="btn btn-inverse" href="@routes.ContinuousDeployController.form()"><i class="icon-plus icon-white"></i> Add new configuration</a></p>
+<p><a class="btn btn-warning" href="@routes.ContinuousDeployController.form()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new configuration</a></p>
 <div class="content">
     @if(configs.isEmpty) {
         <div class="alert alert-warning"><strong>No configurations.</strong></div>
@@ -44,11 +44,11 @@
                     case Disabled => { Disabled }
                 }</td>
                 <td>
-                    <a class="btn btn-mini" href="@routes.ContinuousDeployController.edit(config.id.toString)"><i class="icon-edit"></i> Edit</a>
+                    <a class="btn btn-mini" href="@routes.ContinuousDeployController.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
                 </td>
                 <td>
                     @helper.form(action=routes.ContinuousDeployController.delete(config.id.toString), 'class -> "form-make-inline") {
-                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="icon-trash icon-white"></i> Delete</button>
+                        <button class="btn btn-mini btn-danger" name="action" value="delete"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                 </td>
             </tr>

@@ -2,9 +2,9 @@
 
 @menubar{
             @if(request.identity.isDefined) {
-            <div class="btn-group pull-right">
-                <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-                    <i class="icon-user"></i> @request.identity.get.fullName
+            <div class="btn-group pull-right hidden-xs">
+                <a class="btn dropdown-toggle btn-default" data-toggle="dropdown" href="#">
+                    <i class="glyphicon glyphicon-user"></i> @request.identity.get.fullName
                     <span class="caret"></span>
                 </a>
                 <ul class="dropdown-menu">
@@ -18,11 +18,9 @@
                 <a class="btn btn-primary" href="@Menu.loginMenuItem.target">@Menu.loginMenuItem.title</a>
             </ul>
             }
-            <div class="nav-collapse">
-                <ul class="nav">
-                    @for(item <- Menu.menuItems) {
-                    @menubaritem(request,item)
-                    }
-                </ul>
-            </div><!--/.nav-collapse -->
+            <ul class="nav navbar-nav navbar-collapse collapse">
+                @for(item <- Menu.menuItems) {
+                @menubaritem(request,item)
+                }
+            </ul>
 }

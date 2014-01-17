@@ -2,12 +2,12 @@
 
 @main("Login", request) {
 <div class="row-fluid">
-    <div class="span6">
+    <div class="col-md-6">
         <h1>Login</h1>
 
         <p>Please click the button to login with your google account.</p>
     </div>
-    <div class="span6">
+    <div class="col-md-6">
         @if(error.isDefined) {
         <div class="alert alert-error">
             <p>@error.get</p>

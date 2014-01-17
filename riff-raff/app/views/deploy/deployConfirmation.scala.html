@@ -14,7 +14,7 @@
 </div>
 
     @defining(deployForm.data.keys.toList.sorted) { fields =>
-        <div class="span6">
+        <div class="col-md-6">
         <table class="table">
             @fields.map { fieldName =>
                 <tr>
@@ -34,7 +34,7 @@
 
             <div class="actions">
                 <button name="confirmation" type="submit" value="confirm" class="btn btn-primary">Confirm</button> or
-                <a href="@routes.Application.index()" class="btn btn-inverse">Cancel</a>
+                <a href="@routes.Application.index()" class="btn btn-warning">Cancel</a>
             </div>
         }
     }

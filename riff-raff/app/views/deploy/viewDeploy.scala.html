@@ -8,13 +8,13 @@
     }
 </style>
 <div class="row-fluid">
-<div class="span8">
+<div class="col-md-8">
 <h2>@record.taskType of deploy for @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
     <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
 }
 </div>
-<div class="span4">
+<div class="col-md-4">
 @if(record.isStalled) {
     <div class="alert alert-error pull-left">
     It looks like this deploy has stalled (no activity for at least 15 minutes).
@@ -23,7 +23,7 @@
     failed.
     @helper.form(action=routes.Deployment.markAsFailed, 'class -> "form-make-inline pull-right") {
         <input type="hidden" name="uuid" value="@record.uuid"/>
-        <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="icon-remove icon-white"></i> Mark as Failed</button>
+        <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="glyphicon glyphicon-remove glyphicon glyphicon-white"></i> Mark as Failed</button>
     }
 </div>
 }

@@ -68,7 +68,7 @@
     @if(preview.hosts.isEmpty) {
         <div><em>No hosts found</em></div>
     } else {
-    <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-inverse" id="checkbox-select-none">None</button>
+    <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-warning" id="checkbox-select-none">None</button>
     <div>
         @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.name).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
             <div>
@@ -93,7 +93,7 @@
     <div class="actions">
         <button name="action" type="submit" value="preview" class="btn">Preview...</button>
         <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-        <a href="@routes.Deployment.deploy()" class="btn btn-inverse">Cancel</a>
+        <a href="@routes.Deployment.deploy()" class="btn btn-warning">Cancel</a>
     </div>
 
     <div class="ajax-refresh-disabled pull-left"></div>

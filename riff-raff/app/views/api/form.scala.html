@@ -10,7 +10,7 @@
         @helper.inputText(apiForm("application"), '_label -> "Application that will use this key", 'class -> "buildForm")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Create</button> or
-            <a href="@routes.Api.listKeys()" class="btn btn-inverse">Cancel</a>
+            <a href="@routes.Api.listKeys()" class="btn btn-warning">Cancel</a>
         </div>
     }
 }
