@@ -33,14 +33,14 @@
         <tbody>
           @for(config <- configs) {
             <tr @if(!config.enabled){ class="error" }>
-                <td>@shortDateTime.print(config.lastEdited) by <span class="label">@config.user</span></td>
+                <td>@shortDateTime.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.branchRE.toString()</td>
                 <td>@config.stage</td>
                 <td>@config.recipe</td>
                 <td>@config.trigger match {
                     case SuccessfulBuild => { Build succeeds }
-                    case BuildTagged => { Build tagged with <span class="label">@config.tag.getOrElse{&nbsp;}</span> }
+                    case BuildTagged => { Build tagged with <span class="label label-default">@config.tag.getOrElse{&nbsp;}</span> }
                     case Disabled => { Disabled }
                 }</td>
                 <td>

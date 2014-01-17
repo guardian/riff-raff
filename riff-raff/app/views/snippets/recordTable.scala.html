@@ -23,7 +23,7 @@
     @records.map{ record =>
     <tr class="rowlink">
         <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@org.joda.time.format.DateTimeFormat.mediumDateTime.print(record.time)</time></td>
-        <td><span class="label">@record.deployerName</span></td>
+        <td><span class="label label-default">@record.deployerName</span></td>
         <td><a href="@routes.Deployment.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
         <td>@record.buildId</td>
@@ -46,14 +46,14 @@
             @defining(record.taskType) { taskType =>
                 @taskType match {
                     case TaskType.Deploy => { }
-                    case TaskType.Preview => { <span class="label label-inverse">Preview</span> }
+                    case TaskType.Preview => { <span class="label label-info">Preview</span> }
                 }
             }
             @defining(record.state) { state =>
             @state match {
             case RunState.Completed => { <span class="label label-success">Completed</span> }
-            case RunState.Failed => { <span class="label label-important">Failed</span> }
-            case RunState.NotRunning => { <span class="label">Waiting</span> }
+            case RunState.Failed => { <span class="label label-danger">Failed</span> }
+            case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
             case _ => {<span class="label label-info">Running</span>}
             }
             }

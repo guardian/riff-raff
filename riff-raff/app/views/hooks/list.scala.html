@@ -24,7 +24,7 @@
         <tbody>
           @for(config <- hooks) {
             <tr @if(!config.enabled){ class="error" }>
-                <td>@shortDateTime.print(config.lastEdited) by <span class="label">@config.user</span></td>
+                <td>@shortDateTime.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.stage</td>
                 <td>@config.url</td>

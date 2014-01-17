@@ -22,7 +22,7 @@
                 <tr>
                     <td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(auth.approvedDate)</td>
                     <td>@auth.email</td>
-                    <td><span class="label">@auth.approvedBy</span></td>
+                    <td><span class="label label-default">@auth.approvedBy</span></td>
                     <td>
                     @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
                         <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
