@@ -2,7 +2,6 @@
 @grayDark:              #333;
 @baseFontSize:          14px;
 @baseLineHeight:        20px;
-@iconSpritePath:        "/assets/images/glyphicons-halflings.png";
 @monoFontFamily:        Monaco, Menlo, Consolas, "Courier New", monospace;
 #font {
   #family {
@@ -54,10 +53,6 @@ table.table-auto-width {
   padding-right: 20px;
 }
 
-input[type=text].buildForm {
-  width: 400px;
-}
-
 ul.magenta-reporttree,
 ul.magenta-list {
     list-style: none;
@@ -66,7 +61,7 @@ ul.magenta-list {
 .magenta-timestamp {
   display:none
 }
-.message-taskrun .magenta-timestamp {
+.magenta-timestamp {
   display:inline
 }
 
@@ -96,8 +91,7 @@ ul.magenta-list {
   font-weight: bold;
 }
 
-.preview-task,
-.message-taskrun {
+.preview-task{
   font-weight: bold;
   &:before {
     content: "";
@@ -107,7 +101,6 @@ ul.magenta-list {
     padding-right: 5px;
     line-height: 14px;
     vertical-align: text-top;
-    background-image: url(@iconSpritePath);
     background-position: -432px 0;
     background-repeat: no-repeat;
   }
@@ -135,7 +128,6 @@ ul.magenta-list {
         margin-left: 10px;
         line-height: 14px;
         vertical-align: text-top;
-        background-image: url(@iconSpritePath);
         background-position: -288px 0;
         background-repeat: no-repeat;
     }

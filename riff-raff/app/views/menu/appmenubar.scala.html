@@ -2,19 +2,21 @@
 
 @menubar{
             @if(request.identity.isDefined) {
-            <div class="btn-group pull-right hidden-xs">
-                <a class="btn dropdown-toggle btn-default" data-toggle="dropdown" href="#">
-                    <i class="glyphicon glyphicon-user"></i> @request.identity.get.fullName
-                    <span class="caret"></span>
-                </a>
-                <ul class="dropdown-menu">
-                    <li><a href="@routes.Login.profile()">Profile</a></li>
-                    <li class="divider"></li>
-                    <li><a href="@routes.Login.logout()">Sign Out</a></li>
-                </ul>
-            </div>
+            <ul class="btn-group pull-right hidden-xs nav navbar-nav">
+                <li>
+                    <a class="btn dropdown-toggle btn-default" data-toggle="dropdown" href="#">
+                        <i class="glyphicon glyphicon-user"></i> @request.identity.get.fullName
+                        <span class="caret"></span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="@routes.Login.profile()">Profile</a></li>
+                        <li class="divider"></li>
+                        <li><a href="@routes.Login.logout()">Sign Out</a></li>
+                    </ul>
+                </li>
+            </ul>
             } else {
-            <ul class="nav pull-right">
+            <ul class="nav navbar-nav pull-right">
                 <a class="btn btn-primary" href="@Menu.loginMenuItem.target">@Menu.loginMenuItem.title</a>
             </ul>
             }

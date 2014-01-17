@@ -1,5 +1,4 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
-@import helper.twitterBootstrap2._
 @import ci.Trigger._
 
 @main("Continuous Deployment", request, List("form-autocomplete", "ci-tag-disable")) {
