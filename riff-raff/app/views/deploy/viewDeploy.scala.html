@@ -7,7 +7,7 @@
     display:@if(!verbose) {none} else {list-item};
     }
 </style>
-<div class="row-fluid">
+<div class="row">
 <div class="col-md-8">
 <h2>@record.taskType of deploy for @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>

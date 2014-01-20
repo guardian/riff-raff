@@ -1,3 +1,4 @@
-@(title: String, request: controllers.AuthenticatedRequest[AnyContent], scripts: List[String] = Nil)(content: Html)
+@(title: String, request: controllers.AuthenticatedRequest[AnyContent],
+        scripts: List[String] = Nil, subNav: Html = Html.empty)(content: Html)
 
-@page(title, scripts)(menu.appmenubar(request))(content)
+@page(title, scripts)(menu.appmenubar(request), subNav)(content)

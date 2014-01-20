@@ -1,4 +1,4 @@
-@(title: String, scripts: List[String] = Nil)(menuBar: Html)(content: Html)
+@(title: String, scripts: List[String] = Nil)(menuBar: Html, subNav: Html)(content: Html)
 
 <!DOCTYPE html>
 
@@ -40,6 +40,8 @@
 <body>
 
 @menuBar
+
+@subNav
 
 <div class="container">
     @content

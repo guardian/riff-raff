@@ -1,9 +1,7 @@
 @(error: Throwable)
 @import conf.Configuration._
 
-@page("Error"){
-@menu.menubar{&nbsp;}
-}{
+@page("Error")(menu.menubar(Html.empty), Html.empty){
 
 <h2>Dammit! Janet!</h2>
 

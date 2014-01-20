@@ -1,6 +1,6 @@
 @(implicit request: AuthenticatedRequest[AnyContent], pagination: deployment.Pagination)
 <div class="text-center">
-    <ul class="pagination pagination-centered pagination-sm">
+    <ul class="pagination pagination-sm">
         <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.first(routes.Deployment.history())">««</a></li>
         <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.previous(routes.Deployment.history())">«</a></li>
         @for(page <- pagination.pageList) {

@@ -3,26 +3,16 @@
         breadcrumbs: List[controllers.Application.Link],
         sections: Seq[(String, Html)])
 
-@main(title, request) {
-    <div class='container'>
-        <ul class='breadcrumb'>
-            @breadcrumbs.init.map { crumb =>
-                <li><a href='@crumb.call'>@crumb.title</a> <span class='divider'>/</span></li>
-            }
-            <li class='active'>@breadcrumbs.last.title</li>
-        </ul>
-        <h1>@title</h1>
-        <ul class="nav nav-pills">
-            @sections.map { case (sectionTitle, html) =>
-                <li><a href="#@sectionTitle.replaceAll("""\W""","")">@sectionTitle</a></li>
-            }
-        </ul>
+@main(title, request, Nil, breadcrumb(breadcrumbs)) {
+    <h1>@title</h1>
+    <ul class="nav nav-pills">
         @sections.map { case (sectionTitle, html) =>
-            <hr/>
-            <h2 id="@sectionTitle.replaceAll("""\W""","")">@sectionTitle</h2>
-            @html
+            <li><a href="#@sectionTitle.replaceAll("""\W""","")">@sectionTitle</a></li>
         }
-
-
-    </div>
+    </ul>
+    @sections.map { case (sectionTitle, html) =>
+        <hr/>
+        <h2 id="@sectionTitle.replaceAll("""\W""","")">@sectionTitle</h2>
+        @html
+    }
 }
