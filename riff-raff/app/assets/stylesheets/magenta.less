@@ -91,18 +91,13 @@ ul.magenta-list {
   font-weight: bold;
 }
 
-.preview-task{
+.preview-task, .message-taskrun {
   font-weight: bold;
   &:before {
-    content: "";
-    display: inline-block;
-    width: 14px;
-    height: 14px;
+    font-family: 'Glyphicons Halflings';
+    content: "\e019";
     padding-right: 5px;
-    line-height: 14px;
     vertical-align: text-top;
-    background-position: -432px 0;
-    background-repeat: no-repeat;
   }
 }
 
@@ -121,15 +116,10 @@ ul.magenta-list {
 
 .state-completed {
     &:after {
-        content: "";
-        display: inline-block;
-        width: 14px;
-        height: 14px;
+        content: "\e013";
+        font-family: 'Glyphicons Halflings';
         margin-left: 10px;
-        line-height: 14px;
         vertical-align: text-top;
-        background-position: -288px 0;
-        background-repeat: no-repeat;
     }
 }
 
