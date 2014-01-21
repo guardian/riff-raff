@@ -16,7 +16,7 @@
 </div>
 <div class="col-md-4">
 @if(record.isStalled) {
-    <div class="alert alert-error pull-left">
+    <div class="alert alert-danger pull-left">
     It looks like this deploy has stalled (no activity for at least 15 minutes).
     It might be legitimately stuck and failing to time out on the current task.  Alternately, riff-raff might have
     fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having

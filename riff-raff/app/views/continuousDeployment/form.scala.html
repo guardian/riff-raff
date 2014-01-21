@@ -10,7 +10,7 @@
 @snippets.inputHidden(configForm("id"))
 
     @if(configForm.hasGlobalErrors) {
-        <div class="alert alert-error">
+        <div class="alert alert-danger">
             <h4>Error</h4>
             <ul>
             @configForm.globalErrors.map { error =>

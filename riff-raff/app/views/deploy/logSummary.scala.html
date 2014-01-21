@@ -8,7 +8,7 @@
 case RunState.NotRunning => { <div class="alert alert-info"><h4 class="alert-heading">Waiting to run</h4></div> }
 case RunState.Completed => { <div class="alert alert-success"><h4 class="alert-heading">@record.taskType completed</h4></div> }
 case RunState.Failed => {
-<div class="alert alert-error">
+<div class="alert alert-danger">
     <h4 class="alert-heading">@record.taskType failed</h4>
     @defining(java.util.UUID.randomUUID.toString) { id =>
         @record.report.failureMessage.map{ fail =>

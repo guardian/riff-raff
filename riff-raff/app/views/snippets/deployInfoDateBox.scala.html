@@ -6,7 +6,7 @@
         @if(!di.stale) {
             <small>Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time></small>
         } else {
-            <div class="alert alert-error"><strong>WARNING</strong> Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time></div>
+            <div class="alert alert-danger"><strong>WARNING</strong> Last updated <time class="makeRelativeDate" datetime="@dt">at @dt</time></div>
         }
     }
     case None => { <small>No data yet</small> }

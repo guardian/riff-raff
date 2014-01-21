@@ -57,7 +57,7 @@
             <tr>
             <td>Other recipes in artifact</td>
             <td><ul>@preview.allRecipes.filterNot(preview.recipeNames.contains).map { recipe =>
-                <li><a class="btn btn-small" href="@preview.withRecipe(recipe)">@recipe</a></li>
+                <li><a class="btn btn-default btn-small" href="@preview.withRecipe(recipe)">@recipe</a></li>
             }</ul></td>
             </tr>
             }
@@ -68,7 +68,7 @@
     @if(preview.hosts.isEmpty) {
         <div><em>No hosts found</em></div>
     } else {
-    <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-warning" id="checkbox-select-none">None</button>
+    <button type="button" class="btn btn-default btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-warning" id="checkbox-select-none">None</button>
     <div>
         @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.name).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
             <div>
@@ -91,7 +91,7 @@
         <hr/>
 
     <div class="actions">
-        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
+        <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
         <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
         <a href="@routes.Deployment.deploy()" class="btn btn-warning">Cancel</a>
     </div>
