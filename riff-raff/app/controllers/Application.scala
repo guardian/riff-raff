@@ -35,16 +35,16 @@ case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Ca
 object Menu {
   lazy val menuItems = Seq(
     SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
-    SingleMenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true),
-    DropDownMenuItem("Deployment Info", deployInfoMenu),
-    SingleMenuItem("Deploy", routes.Deployment.deploy()),
     SingleMenuItem("History", routes.Deployment.history()),
+    SingleMenuItem("Deploy", routes.Deployment.deploy()),
+    DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.Hooks.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys())
-    ))
+    )),
+    SingleMenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true)
   )
 
   lazy val deployInfoMenu = Seq(

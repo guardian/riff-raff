@@ -6,12 +6,20 @@
     <h2>Welcome to the Guardian deployment tool.</h2>
 
     @if(request.isAuthenticated && irc.isConfigured) {
-        <div class="alert alert-info">Deployment information can also be seen in the @irc.channel IRC channel on @irc.host</div>
+        <div class="panel panel-info">
+            <div class="panel-body">
+                Deployment information can also be seen in the @irc.channel IRC channel on @irc.host
+            </div>
+        </div>
 
     }
 
-    Documentation is <a href='@routes.Application.documentation(resource="")'>here</a>.
-
-    @docs.MarkDown.toHtml(releaseNotes)
-
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            <h3 class="panel-title">Release notes</h3>
+        </div>
+        <div class="panel-body">
+            @docs.MarkDown.toHtml(releaseNotes)
+        </div>
+    </div>
 }

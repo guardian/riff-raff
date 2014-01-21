@@ -17,7 +17,7 @@
     @if(configs.isEmpty) {
         <div class="alert alert-warning"><strong>No configurations.</strong></div>
     } else {
-    <table class="table table-condensed table-striped">
+    <table class="table table-condensed">
         <thead>
             <tr>
                 <th>Last edited</th>
@@ -32,7 +32,7 @@
         </thead>
         <tbody>
           @for(config <- configs) {
-            <tr @if(!config.enabled){ class="error" }>
+            <tr @if(config.trigger == Disabled){ class="danger" }>
                 <td>@shortDateTime.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.branchRE.toString()</td>
