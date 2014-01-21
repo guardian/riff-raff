@@ -43,13 +43,13 @@
         <table class="table table-condensed deployment-list">
             <tr>
             <td>Current recipe</td>
-            <td><ul><li><a class="btn btn-small btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
+            <td><ul><li><a class="btn btn-sm btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
             </tr>
             @if(preview.recipeNames.size>1){
             <tr>
             <td>Dependent recipes</td>
             <td><ul>@preview.recipeNames.filterNot(_==preview.recipe).map { recipe =>
-                <li><a class="btn btn-small btn-success" href="@preview.withRecipe(recipe)">@recipe</a></li>
+                <li><a class="btn btn-sm btn-success" href="@preview.withRecipe(recipe)">@recipe</a></li>
             }</ul></td>
             </tr>
             }
@@ -57,7 +57,7 @@
             <tr>
             <td>Other recipes in artifact</td>
             <td><ul>@preview.allRecipes.filterNot(preview.recipeNames.contains).map { recipe =>
-                <li><a class="btn btn-small" href="@preview.withRecipe(recipe)">@recipe</a></li>
+                <li><a class="btn btn-default btn-sm" href="@preview.withRecipe(recipe)">@recipe</a></li>
             }</ul></td>
             </tr>
             }
@@ -68,7 +68,7 @@
     @if(preview.hosts.isEmpty) {
         <div><em>No hosts found</em></div>
     } else {
-    <button type="button" class="btn btn-small" id="checkbox-select-all">All</button> <button type="button" class="btn btn-small btn-inverse" id="checkbox-select-none">None</button>
+    <button type="button" class="btn btn-default" id="checkbox-select-all"><span class="glyphicon glyphicon-ok"></span> All</button> <button type="button" class="btn btn-default" id="checkbox-select-none"><span class="glyphicon glyphicon-remove"></span> None</button>
     <div>
         @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.name).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
             <div>
@@ -91,9 +91,9 @@
         <hr/>
 
     <div class="actions">
-        <button name="action" type="submit" value="preview" class="btn">Preview...</button>
+        <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
         <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-        <a href="@routes.Deployment.deploy()" class="btn btn-inverse">Cancel</a>
+        <a href="@routes.Deployment.deploy()" class="btn btn-danger">Cancel</a>
     </div>
 
     <div class="ajax-refresh-disabled pull-left"></div>

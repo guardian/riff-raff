@@ -5,11 +5,11 @@
 }
 @defining(record.state) { state =>
 @state match {
-case RunState.NotRunning => { <div class="alert alert-info"><h4 class="alert-heading">Waiting to run</h4></div> }
-case RunState.Completed => { <div class="alert alert-success"><h4 class="alert-heading">@record.taskType completed</h4></div> }
+case RunState.NotRunning => { <div class="alert alert-info"><p class="lead">Waiting to run</p></div> }
+case RunState.Completed => { <div class="alert alert-success"><p class="lead">@record.taskType completed</p></div> }
 case RunState.Failed => {
-<div class="alert alert-error">
-    <h4 class="alert-heading">@record.taskType failed</h4>
+<div class="alert alert-danger">
+    <p class="lead">@record.taskType failed</p>
     @defining(java.util.UUID.randomUUID.toString) { id =>
         @record.report.failureMessage.map{ fail =>
             <strong>@fail.detail.name</strong> @fail.detail.message <a data-toggle="collapse" href="#@id">Show exception details</a>

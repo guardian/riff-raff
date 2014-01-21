@@ -1,15 +1,13 @@
 @(error: Throwable)
 @import conf.Configuration._
 
-@page("Error"){
-@menu.menubar{&nbsp;}
-}{
+@page("Error")(menu.menubar(Html.empty), Html.empty){
 
 <h2>Dammit! Janet!</h2>
 
 <p>I love you, but something has gone terribly wrong and I just don't feel at all well.</p>
 
-<div class="alert alert-error">
+<div class="alert alert-danger">
     @errorPageException(error)
 </div>
 

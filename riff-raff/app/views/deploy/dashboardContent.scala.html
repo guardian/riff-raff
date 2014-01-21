@@ -1,5 +1,5 @@
 @(deployRecords:List[(String,Map[String,deployment.Record])])
-@import html.helper.twitterBootstrap2.htmlTooltip
+@import html.helper.magenta.htmlTooltip
 @defining(deployRecords.flatMap(_._2.values).map(_.stage.name).distinct.sorted(conf.Configuration.stages.ordering)) { stages =>
 
     <table class="table">

@@ -1,4 +1,10 @@
-### Release notes
+#### 21st January 2014
+
+Update UI to Twitter Bootstrap 3. Tweak a few bits of the API.
+
+#### 6th January 2014
+
+Add a new deployment type for updating AWS cloudformation templates.
 
 #### 1st November 2013
 

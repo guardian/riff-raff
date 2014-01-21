@@ -7,7 +7,7 @@
 <p>@message</p>
 
 @throwable.map{ error =>
-<div class="alert alert-error">
+<div class="alert alert-danger">
     <h4 class="alert-heading">@error.toString</h4>
     <pre>@error.getStackTraceString</pre>
 </div>

@@ -1,0 +1,8 @@
+@(breadcrumbs: List[controllers.Application.Link])
+
+<ol class='breadcrumb breadcrumb-top'>
+    @breadcrumbs.init.map { crumb =>
+        <li><a href='@crumb.call'>@crumb.title</a></li>
+    }
+<li class='active'>@breadcrumbs.last.title</li>
+</ol>

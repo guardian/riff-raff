@@ -3,12 +3,12 @@
 @main("Authorisation List", request) {
     <h2>Authorisation List</h2>
     <hr/>
-    <p><a class="btn btn-inverse" href="@routes.Login.authForm()"><i class="icon-plus icon-white"></i> Add authorisation</a></p>
+    <p><a class="btn btn-primary" href="@routes.Login.authForm()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add authorisation</a></p>
     <div class="content">
     @if(authList.isEmpty) {
         <div class="alert alert-warning"><strong>No authorisations.</strong></div>
     } else {
-        <table class="table table-condensed table-striped">
+        <table class="table table-condensed">
             <thead>
                 <tr>
                     <th>Date added</th>
@@ -22,10 +22,10 @@
                 <tr>
                     <td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(auth.approvedDate)</td>
                     <td>@auth.email</td>
-                    <td><span class="label">@auth.approvedBy</span></td>
+                    <td><span class="label label-default">@auth.approvedBy</span></td>
                     <td>
                     @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
-                        <button class="btn btn-mini btn-danger" name="email" value="@auth.email"><i class="icon-trash icon-white"></i> Delete</button>
+                        <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                     </td>
                 </tr>
