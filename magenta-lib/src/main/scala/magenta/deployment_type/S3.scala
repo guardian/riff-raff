@@ -5,7 +5,7 @@ import java.io.File
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
 
-object S3 extends DeploymentType {
+object S3 extends DeploymentType with S3UploadParams {
   val name = "aws-s3"
   val documentation =
     """
@@ -21,8 +21,6 @@ object S3 extends DeploymentType {
   val prefixPackage = Param("prefixPackage",
     "Prefix the S3 bucket key with the package name").default(true)
 
-  //required configuration, you cannot upload without setting these
-  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
   val bucketResource = Param[String]("bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
       |
@@ -93,7 +91,8 @@ object S3 extends DeploymentType {
           new File(pkg.srcDir.getPath + "/"),
           cacheControl(pkg),
           prefixStage = prefixStage(pkg),
-          prefixPackage = prefixPackage(pkg)
+          prefixPackage = prefixPackage(pkg),
+          publicAcl = publicAcl(pkg)
         )
       )
     }
@@ -102,4 +101,23 @@ object S3 extends DeploymentType {
 
 case class PatternValue(pattern: String, value: String) {
   lazy val regex = pattern.r
+}
+
+trait S3UploadParams { this: DeploymentType =>
+
+  val bucket = Param[String]("bucket",
+    """
+      |S3 bucket name to upload artifact into.
+      |
+      |The path in the bucket is `<stage>/<packageName>/<fileName>`.
+    """.stripMargin
+  )
+
+  val publicAcl = Param[Boolean]("publicAcl",
+    """
+      |Whether the uploaded artifacts should be publicly accessible. The default is true.
+      |
+      |Making the artifacts publicly accessible is achieved by applying the Public Canned ACL to each individual object.
+    """.stripMargin,
+    Some(true))
 }

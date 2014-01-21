@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object ElasticSearch extends DeploymentType {
+object ElasticSearch extends DeploymentType with S3UploadParams {
   def name = "elasticsearch"
   val documentation =
     """
@@ -11,7 +11,6 @@ object ElasticSearch extends DeploymentType {
       |ensure that the resulting ElasticSearch cluster is green.
     """.stripMargin
 
-  val bucket = Param[String]("bucket", "S3 bucket that the artifact should be uploaded into")
   val secondsToWait = Param("secondsToWait",
     """Number of seconds to wait for the ElasticSearch cluster to become green
       | (also used as the wait time for the instance termination)"""
@@ -28,7 +27,7 @@ object ElasticSearch extends DeploymentType {
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
+        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicAcl = publicAcl(pkg))
       )
   }
 }

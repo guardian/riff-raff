@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object AutoScaling  extends DeploymentType {
+object AutoScaling  extends DeploymentType with S3UploadParams {
   val name = "autoscaling"
   val documentation =
     """
@@ -25,13 +25,6 @@ object AutoScaling  extends DeploymentType {
       |in the package directory to the specified bucket. `deploy` carries out the auto-scaling group rotation.
     """.stripMargin
 
-  val bucket = Param[String]("bucket",
-    """
-      |S3 bucket name to upload artifact into.
-      |
-      |The path in the bucket is `<stage>/<packageName>/<fileName>`.
-    """.stripMargin
-  )
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabalise").default(0)
 
@@ -51,7 +44,7 @@ object AutoScaling  extends DeploymentType {
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"))
+        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicAcl = publicAcl(pkg))
       )
   }
 }
