@@ -102,7 +102,12 @@ case class S3Upload( stage: Stage,
 
   private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
 
-  private val describe = "Upload %s %s to S3" format ( if (file.isDirectory) "directory" else "file", file )
+  private val describe = {
+    val fileDesc = if (file.isDirectory) "directory" else "file"
+    val aclDesc = if (publicAcl) " with public ACL" else ""
+    s"Upload $fileDesc $file to S3$aclDesc"
+  }
+
   def description = describe
   def verbose = describe
 
