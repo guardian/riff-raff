@@ -40,6 +40,8 @@ trait WebApp extends DeploymentType with S3UploadParams {
       |`sudo service <servicename> restart`
       |""".stripMargin
   ).defaultFromPackage(_.name)
+  val bucket = Param[String]("bucket",
+    "When the `uploadArtifacts` action is used, this specifies the target S3 bucket")
   val waitseconds = Param("waitseconds",
     "Number of seconds to wait for the application port to start accepting connections after restart").default(60)
   val checkseconds = Param("checkseconds",

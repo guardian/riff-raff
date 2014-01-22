@@ -21,6 +21,8 @@ object S3 extends DeploymentType with S3UploadParams {
   val prefixPackage = Param("prefixPackage",
     "Prefix the S3 bucket key with the package name").default(true)
 
+  //required configuration, you cannot upload without setting these
+  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
   val bucketResource = Param[String]("bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
       |
@@ -104,14 +106,6 @@ case class PatternValue(pattern: String, value: String) {
 }
 
 trait S3UploadParams { this: DeploymentType =>
-
-  val bucket = Param[String]("bucket",
-    """
-      |S3 bucket name to upload artifact into.
-      |
-      |The path in the bucket is `<stage>/<packageName>/<fileName>`.
-    """.stripMargin
-  )
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)",
