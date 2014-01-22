@@ -8,7 +8,7 @@ import com.amazonaws.services.ec2.model.{ Tag => EC2Tag, _ }
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.{ Instance => ELBInstance, _ }
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.CannedAccessControlList.{PublicRead, Private}
+import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
 import magenta.{Stage, KeyRing}
@@ -22,8 +22,8 @@ object S3 {
   def putObjectRequest(bucket: String, key: String, file: File, cacheControlHeader: Option[String], publicAcl: Boolean) = {
     val metaData = new ObjectMetadata
     cacheControlHeader foreach { metaData.setCacheControl(_) }
-    val acl = if (publicAcl) PublicRead else Private
-    new PutObjectRequest(bucket, key, file).withCannedAcl(acl).withMetadata(metaData)
+    val req = new PutObjectRequest(bucket, key, file).withMetadata(metaData)
+    if (publicAcl) req.withCannedAcl(PublicRead) else req
   }
 }
 

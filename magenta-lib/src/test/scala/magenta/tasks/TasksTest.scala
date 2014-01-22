@@ -229,21 +229,21 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val artifact = new File(baseDir, "artifact")
     artifact.createNewFile()
 
-    val taskWithPublicAcl = new S3Upload(Stage("CODE"), "bucket", baseDir)
+    val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
 
-    taskWithPublicAcl.requests should not be ('empty)
-    for (request <- taskWithPublicAcl.requests) {
+    task.requests should not be ('empty)
+    for (request <- task.requests) {
       request.getBucketName should be ("bucket")
       request.getCannedAcl should be (CannedAccessControlList.PublicRead)
       request.getFile should be (artifact)
       request.getKey should be ("CODE/" + baseDir.getName + "/artifact")
     }
 
-    val taskWithPrivateAcl = taskWithPublicAcl.copy(publicAcl = false)
+    val taskWithoutAcl = task.copy(publicAcl = false)
 
-    taskWithPrivateAcl.requests should not be ('empty)
-    for (request <- taskWithPrivateAcl.requests) {
-      request.getCannedAcl should be (CannedAccessControlList.Private)
+    taskWithoutAcl.requests should not be ('empty)
+    for (request <- taskWithoutAcl.requests) {
+      request.getCannedAcl should be (null)
     }
   }
 
