@@ -5,8 +5,6 @@ import ci._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
-import deployment.Domains.responsibleFor
-import deployment.DomainAction._
 import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
@@ -15,16 +13,16 @@ import magenta.Build
 import akka.agent.Agent
 import akka.util.Timeout
 import scala.concurrent.duration._
-import play.api.libs.json.Json
-import org.joda.time.format.DateTimeFormat
 import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
-import org.joda.time.{Interval, DateTime}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
 import scala.util.{Failure, Success}
+import org.joda.time.DateTime
+import play.api.libs.json.Json
+import org.joda.time.format.DateTimeFormat
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -52,8 +50,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def create(recordType: TaskType.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val hostNameMetadata = Map(Record.RIFFRAFF_DOMAIN -> conf.Configuration.domains.identityName,
-                               Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
+    val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = DeployV2Record(recordType, uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
@@ -113,8 +110,6 @@ object DeployController extends Logging with LifecycleWithoutApp {
         requestedParams.copy(build = requestedParams.build.copy(id=latestId))
       }.getOrElse(requestedParams)
     }
-
-    Domains.assertResponsibleFor(params)
 
     enableDeploysSwitch.whileOnYield {
       val record = DeployController.create(mode, params)
@@ -213,17 +208,8 @@ object Deployment extends Controller with Logging {
           case "preview" =>
             Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
           case "deploy" =>
-            responsibleFor(parameters) match {
-              case Local() =>
-                val uuid = DeployController.deploy(parameters)
-                Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case Remote(_, urlPrefix) =>
-                implicit val formWrites = Json.writes[DeployParameterForm]
-                val call = routes.Deployment.deployConfirmation(Json.toJson(form).toString)
-                Redirect(urlPrefix+call.url)
-              case Noop() =>
-                throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")
-            }
+              val uuid = DeployController.deploy(parameters)
+              Redirect(routes.Deployment.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }
       }
