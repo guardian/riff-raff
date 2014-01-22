@@ -239,7 +239,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       request.getKey should be ("CODE/" + baseDir.getName + "/artifact")
     }
 
-    val taskWithoutAcl = task.copy(publicAcl = false)
+    val taskWithoutAcl = task.copy(publicReadAcl = false)
 
     taskWithoutAcl.requests should not be ('empty)
     for (request <- taskWithoutAcl.requests) {

@@ -98,13 +98,13 @@ case class S3Upload( stage: Stage,
                      cacheControlPatterns: List[PatternValue] = Nil,
                      prefixStage: Boolean = true,
                      prefixPackage: Boolean = true,
-                     publicAcl: Boolean = true) extends Task with S3 {
+                     publicReadAcl: Boolean = true) extends Task with S3 {
 
   private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
 
   private val describe = {
     val fileDesc = if (file.isDirectory) "directory" else "file"
-    val aclDesc = if (publicAcl) " with public ACL" else ""
+    val aclDesc = if (publicReadAcl) " with public ACL" else ""
     s"Upload $fileDesc $file to S3$aclDesc"
   }
 
@@ -116,7 +116,7 @@ case class S3Upload( stage: Stage,
   lazy val totalSize = filesToCopy.map(_.length).sum
 
   lazy val requests = filesToCopy map { file =>
-    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(toRelative(file)), publicAcl)
+    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(toRelative(file)), publicReadAcl)
   }
 
   def execute(keyRing: KeyRing, stopFlag: =>  Boolean)  {

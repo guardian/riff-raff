@@ -14,7 +14,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size(6)
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","publicAcl","bucketResource","cacheControl"))
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","publicReadAcl","bucketResource","cacheControl"))
   }
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {

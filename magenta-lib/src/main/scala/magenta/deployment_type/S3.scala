@@ -92,7 +92,7 @@ object S3 extends DeploymentType with S3UploadParams {
           cacheControl(pkg),
           prefixStage = prefixStage(pkg),
           prefixPackage = prefixPackage(pkg),
-          publicAcl = publicAcl(pkg)
+          publicReadAcl = publicReadAcl(pkg)
         )
       )
     }
@@ -113,11 +113,9 @@ trait S3UploadParams { this: DeploymentType =>
     """.stripMargin
   )
 
-  val publicAcl = Param[Boolean]("publicAcl",
+  val publicReadAcl = Param[Boolean]("publicReadAcl",
     """
-      |Whether the uploaded artifacts should be publicly accessible. The default is true.
-      |
-      |Making the artifacts publicly accessible is achieved by applying the Public Canned ACL to each individual object.
+      |Whether the uploaded artifacts should be given the PublicRead Canned ACL.
     """.stripMargin,
     Some(true))
 }

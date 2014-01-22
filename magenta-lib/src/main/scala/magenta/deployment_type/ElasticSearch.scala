@@ -27,7 +27,7 @@ object ElasticSearch extends DeploymentType with S3UploadParams {
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicAcl = publicAcl(pkg))
+        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicReadAcl = publicReadAcl(pkg))
       )
   }
 }

@@ -19,11 +19,11 @@ trait S3 extends AWS {
 }
 
 object S3 {
-  def putObjectRequest(bucket: String, key: String, file: File, cacheControlHeader: Option[String], publicAcl: Boolean) = {
+  def putObjectRequest(bucket: String, key: String, file: File, cacheControlHeader: Option[String], publicReadAcl: Boolean) = {
     val metaData = new ObjectMetadata
     cacheControlHeader foreach { metaData.setCacheControl(_) }
     val req = new PutObjectRequest(bucket, key, file).withMetadata(metaData)
-    if (publicAcl) req.withCannedAcl(PublicRead) else req
+    if (publicReadAcl) req.withCannedAcl(PublicRead) else req
   }
 }
 
