@@ -108,6 +108,6 @@ case class PatternValue(pattern: String, value: String) {
 trait S3AclParams { this: DeploymentType =>
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)",
-    Some(true))
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+    ).default(true)
 }
