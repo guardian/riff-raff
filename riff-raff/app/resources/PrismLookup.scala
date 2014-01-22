@@ -57,23 +57,25 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       )
     )
   }
+  implicit val dataReads = (
+    (__ \ "key").read[String] and
+      (__ \ "values").read[Seq[Datum]]
+    ) tupled
 
   def name = "Prism"
 
-  def lastUpdated: DateTime = prism.get("/empty"){ json => (json \ "lastUpdated").as[DateTime] }
+  def lastUpdated: DateTime = prism.get("/sources?resource=instance"){ json =>
+    val sourceCreatedAt = json \ "data" match {
+      case JsArray(sources) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
+      case _ => Seq(new DateTime(0))
+    }
+    sourceCreatedAt.minBy(_.getMillis)
+  }
 
   def data = new Data {
     def keys: Seq[String] = prism.get("/data/keys"){ json => (json \ "data" \ "keys").as[Seq[String]] }
-    def all: Map[String, Seq[Datum]] = prism.get("/data/list"){ json =>
-      json \ "data" \ "data" match {
-        case JsObject(fields) => fields.flatMap {
-          case (key, JsArray(data)) =>
-            Some(key -> data.map(datum => datum.as[Datum]))
-          case _ =>
-            None
-        }.toMap
-        case _ => Map.empty
-      }
+    def all: Map[String, Seq[Datum]] = prism.get("/data?_expand"){ json =>
+      (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
     }
     def datum(key: String, app: App, stage: Stage): Option[Datum] =
       prism.get(s"/data/lookup/$key?app=${app.name}&stage=${stage.name}"){ json => (json \ "data").asOpt[Datum] }
