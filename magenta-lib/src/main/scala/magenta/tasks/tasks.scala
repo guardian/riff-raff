@@ -104,7 +104,7 @@ case class S3Upload( stage: Stage,
 
   private val describe = {
     val fileDesc = if (file.isDirectory) "directory" else "file"
-    val aclDesc = if (publicReadAcl) " with public ACL" else ""
+    val aclDesc = if (publicReadAcl) " with public read ACL" else ""
     s"Upload $fileDesc $file to S3$aclDesc"
   }
 
