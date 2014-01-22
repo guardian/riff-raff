@@ -5,11 +5,11 @@
     <table>
         <tbody>
             <tr>
-                <td><strong>Name:</strong></td><td>@host.name</td>
+                <td class='text-right'><strong>Name:</strong></td><td class='text-left'>@host.name</td>
             </tr>
         @host.tags.map { case (key, value) =>
         <tr>
-            <td><strong>@key:</strong></td><td>@value</td>
+            <td class='text-right'><strong>@key:</strong></td><td class='text-left'>@value</td>
         </tr>
         }
         </tbody>
