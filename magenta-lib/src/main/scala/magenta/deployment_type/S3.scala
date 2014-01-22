@@ -114,8 +114,6 @@ trait S3UploadParams { this: DeploymentType =>
   )
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
-    """
-      |Whether the uploaded artifacts should be given the PublicRead Canned ACL.
-    """.stripMargin,
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)",
     Some(true))
 }
