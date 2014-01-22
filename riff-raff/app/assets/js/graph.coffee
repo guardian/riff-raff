@@ -50,7 +50,7 @@ graph = (args) ->
 
   $.getJSON dataURL, (data) ->
     graphArgs.series = tidyData(data.response.series)
-    console.log(graphArgs.series)
+    # console.log(graphArgs.series)
 
     # first time creation
     unless graphWidth?
@@ -60,11 +60,11 @@ graph = (args) ->
         if nameLength > labelLength
           labelLength = nameLength
       legendWidth = labelLength * 6.5 + 50
-      console.log(legendWidth)
-      graphMargins = $(container).position().left + 90
-      console.log(graphMargins)
-      graphWidth = $(window).width() - legendWidth - graphMargins
-      console.log(graphWidth)
+      # console.log(legendWidth)
+      # graphMargins = $(container).position().left
+      # console.log(graphMargins)
+      graphWidth = $(container).width() - legendWidth - 50
+      # console.log(graphWidth)
 
     graphArgs.width = graphWidth
 
