@@ -13,17 +13,17 @@ import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
 import magenta.{Stage, KeyRing}
 import scala.collection.JavaConversions._
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
-import com.amazonaws.services.cloudformation.model.UpdateStackRequest
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
+}
 
-  def putObjectRequestWithPublicRead(bucket: String, key: String, file: File, cacheControlHeader: Option[String]) = {
+object S3 {
+  def putObjectRequest(bucket: String, key: String, file: File, cacheControlHeader: Option[String], publicReadAcl: Boolean) = {
     val metaData = new ObjectMetadata
     cacheControlHeader foreach { metaData.setCacheControl(_) }
-    new PutObjectRequest(bucket, key, file).withCannedAcl(PublicRead).withMetadata(metaData)
+    val req = new PutObjectRequest(bucket, key, file).withMetadata(metaData)
+    if (publicReadAcl) req.withCannedAcl(PublicRead) else req
   }
 }
 

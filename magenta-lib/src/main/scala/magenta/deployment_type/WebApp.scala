@@ -4,7 +4,7 @@ import magenta.tasks._
 import java.io.File
 import magenta.{Host, DeploymentPackage}
 
-trait WebApp extends DeploymentType {
+trait WebApp extends DeploymentType with S3AclParams {
   def containerName: String
   def webAppDocumentation: String
   def documentation: String =
@@ -103,7 +103,7 @@ trait WebApp extends DeploymentType {
   def perAppActions = {
     case "uploadArtifacts" => pkg => (_, parameters) =>
       List(
-        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath))
+        S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath), publicReadAcl = publicReadAcl(pkg))
       )
   }
 

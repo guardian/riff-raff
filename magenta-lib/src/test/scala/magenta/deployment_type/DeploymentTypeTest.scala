@@ -7,28 +7,14 @@ import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
 import net.liftweb.json.JsonAST._
 import fixtures._
-import magenta.deployment_type._
-import magenta.tasks.S3Upload
-import magenta.tasks.ApacheGracefulRestart
-import magenta.tasks.UnblockFirewall
-import net.liftweb.json.JsonAST.JField
-import magenta.deployment_type.PatternValue
-import net.liftweb.json.JsonAST.JObject
-import magenta.tasks.CheckUrls
-import net.liftweb.json.JsonAST.JString
-import magenta.tasks.CompressedCopy
-import magenta.tasks.BlockFirewall
-import magenta.deployment_type.S3
-import magenta.tasks.Link
-import scala.Some
-import magenta.tasks.WaitForPort
-import net.liftweb.json.JsonAST.JArray
+import magenta.deployment_type.{S3, Django, ExecutableJarWebapp, PatternValue}
+import magenta.tasks._
 
 class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size(5)
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","bucketResource","cacheControl"))
+    S3.params should have size(6)
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","bucket","publicReadAcl","bucketResource","cacheControl"))
   }
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {

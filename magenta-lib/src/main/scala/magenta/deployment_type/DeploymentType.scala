@@ -20,8 +20,7 @@ trait DeploymentType {
   def perHostActions: PartialFunction[String, DeploymentPackage => Host => List[Task]] = PartialFunction.empty
 
   def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
-
-    if (perHostActions.isDefinedAt(actionName))
+    perHostActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName)  {
         def resolve(resourceLookup: Lookup, parameters: DeployParameters) = {
           val hostsForApps = apps.toList.flatMap { app =>
@@ -29,17 +28,15 @@ trait DeploymentType {
           } filter { instance =>
             parameters.matchingHost(instance.name)
           }
-          hostsForApps flatMap (perHostActions(actionName)(pkg)(_))
+          hostsForApps flatMap (action(pkg)(_))
         }
       }
-
-    else if (perAppActions.isDefinedAt(actionName))
+    } orElse perAppActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName) {
         def resolve(resourceLookup: Lookup, parameters: DeployParameters) =
-          perAppActions(actionName)(pkg)(resourceLookup, parameters)
+          action(pkg)(resourceLookup, parameters)
       }
-
-    else sys.error("Action %s is not supported on package %s of type %s" format (actionName, pkg.name, name))
+    } getOrElse sys.error(s"Action $actionName is not supported on package ${pkg.name} of type $name")
   }
 
   abstract case class PackageAction(pkg: DeploymentPackage, actionName: String) extends Action {

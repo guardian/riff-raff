@@ -12,12 +12,8 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import java.io.{File, OutputStreamWriter}
 import com.amazonaws.services.s3.model.{CannedAccessControlList, PutObjectRequest}
-import scala._
-import scala.Predef._
 import org.mockito.Matchers.any
 import magenta.Host
-import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
-import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import java.util.UUID
 import magenta.deployment_type.PatternValue
 
@@ -229,24 +225,26 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   }
 
   it should "create an upload request with correct permissions" in {
-
     val baseDir = createTempDir()
+    val artifact = new File(baseDir, "artifact")
+    artifact.createNewFile()
 
     val task = new S3Upload(Stage("CODE"), "bucket", baseDir)
 
-    val file = new File("/file/path")
+    task.requests should not be ('empty)
+    for (request <- task.requests) {
+      request.getBucketName should be ("bucket")
+      request.getCannedAcl should be (CannedAccessControlList.PublicRead)
+      request.getFile should be (artifact)
+      request.getKey should be ("CODE/" + baseDir.getName + "/artifact")
+    }
 
-    val request = task.putObjectRequestWithPublicRead("bucket", "foo/bar", file, Some("no-cache"))
+    val taskWithoutAcl = task.copy(publicReadAcl = false)
 
-    request.getBucketName should be ("bucket")
-
-    request.getCannedAcl should be (CannedAccessControlList.PublicRead)
-
-    request.getFile should be (file)
-
-    request.getKey should be ("foo/bar")
-
-    request.getMetadata.getCacheControl should be ("no-cache")
+    taskWithoutAcl.requests should not be ('empty)
+    for (request <- taskWithoutAcl.requests) {
+      request.getCannedAcl should be (null)
+    }
   }
 
   it should "correctly convert a file to a key" in {
@@ -335,7 +333,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
-  private def createTempDir() = {
+  private def createTempDir(): File = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
     file.mkdir()
@@ -363,7 +361,7 @@ class TestServer(port:Int = 9997) {
     val server = new ServerSocket(port)
     val socket = server.accept()
     val osw = new OutputStreamWriter(socket.getOutputStream)
-    osw.write("%s\r\n\r\n" format (response));
+    osw.write("%s\r\n\r\n" format (response))
     osw.flush()
     socket.close()
     server.close()
