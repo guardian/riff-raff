@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object AutoScaling  extends DeploymentType with S3UploadParams {
+object AutoScaling  extends DeploymentType with S3AclParams {
   val name = "autoscaling"
   val documentation =
     """

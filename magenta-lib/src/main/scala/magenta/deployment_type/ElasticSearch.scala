@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object ElasticSearch extends DeploymentType with S3UploadParams {
+object ElasticSearch extends DeploymentType with S3AclParams {
   def name = "elasticsearch"
   val documentation =
     """

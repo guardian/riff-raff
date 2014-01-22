@@ -5,7 +5,7 @@ import java.io.File
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
 
-object S3 extends DeploymentType with S3UploadParams {
+object S3 extends DeploymentType with S3AclParams {
   val name = "aws-s3"
   val documentation =
     """
@@ -105,7 +105,7 @@ case class PatternValue(pattern: String, value: String) {
   lazy val regex = pattern.r
 }
 
-trait S3UploadParams { this: DeploymentType =>
+trait S3AclParams { this: DeploymentType =>
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)",

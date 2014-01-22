@@ -4,7 +4,7 @@ import magenta.tasks._
 import java.io.File
 import magenta.{Host, DeploymentPackage}
 
-trait WebApp extends DeploymentType with S3UploadParams {
+trait WebApp extends DeploymentType with S3AclParams {
   def containerName: String
   def webAppDocumentation: String
   def documentation: String =
