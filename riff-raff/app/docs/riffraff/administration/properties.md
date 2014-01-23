@@ -88,8 +88,3 @@ notifications
  - `irc.channel` - Channel messages should be sent to
  - `irc.name` - Nick used by Riff-Raff in channel
  - `alerta.endpoints` - List of [alerta](https://github.com/guardian/alerta) API endpoints that should be notified of deployment start, complete and fail events
-
-domains
--------
-
-See documentation in [Riff-raff domains](domains)

@@ -15,7 +15,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{DeployMetricsActor, GuDomainsConfiguration}
+import deployment.DeployMetricsActor
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
@@ -70,8 +70,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val refreshSeconds: Int = configuration.getIntegerProperty("deployinfo.refreshSeconds", 60)
     lazy val timeoutSeconds: Int = configuration.getIntegerProperty("deployinfo.timeoutSeconds", 180)
   }
-
-  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
 
   object freeze {
     private val formatter = ISODateTimeFormat.dateTime()

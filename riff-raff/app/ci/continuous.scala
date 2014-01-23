@@ -11,8 +11,6 @@ import magenta.Stage
 import scala.Some
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import persistence.Persistence.store.getContinuousDeploymentList
-import deployment.DomainAction.Local
-import deployment.Domains
 import org.joda.time.DateTime
 import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
@@ -109,7 +107,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   def init() {
     if (buildWatcher.isEmpty) {
-      buildWatcher = Some(new ContinuousDeployment(Domains))
+      buildWatcher = Some(new ContinuousDeployment())
       buildWatcher.foreach(TeamCityBuilds.subscribe)
     }
     updateTagTrackers()
@@ -153,7 +151,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   }
 }
 
-class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
+class ContinuousDeployment extends BuildWatcher with Logging {
 
   type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
 
@@ -172,18 +170,14 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
     }
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, Build)): Option[DeployParameters] = {
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, Build)): DeployParameters = {
     val (config,build) = configBuildTuple
-    val params = DeployParameters(
+    DeployParameters(
       Deployer("Continuous Deployment"),
       MagentaBuild(build.buildType.fullName,build.number),
       Stage(config.stage),
       RecipeName(config.recipe)
     )
-    domains.responsibleFor(params) match {
-      case Local() => Some(params)
-      case _ => None
-    }
   }
 
   def runDeploy(params: DeployParameters) {
@@ -200,12 +194,12 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def newBuilds(newBuilds: List[Build]) = {
     log.info(s"New builds to consider for deployment $newBuilds")
-    getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
+    getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).map(b => runDeploy(getDeployParams(b)))
   }
 
   def newTags(newBuilds: List[Build], tag: String) = {
     log.info(s"Builds just tagged with $tag to consider for deployment: $newBuilds")
-    getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
+    getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).map(b => runDeploy(getDeployParams(b)))
   }
 
 }
