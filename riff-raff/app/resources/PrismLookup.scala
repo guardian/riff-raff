@@ -13,6 +13,7 @@ import org.joda.time.format.DateTimeFormat
 import scala.util.control.NonFatal
 import controllers.Logging
 import scala.util.{Failure, Success, Try}
+import java.net.URLEncoder
 
 object PrismLookup extends Lookup with MagentaCredentials with Logging {
   object prism extends Logging {
@@ -78,7 +79,9 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
     }
     def datum(key: String, app: App, stage: Stage): Option[Datum] =
-      prism.get(s"/data/lookup/$key?app=${app.name}&stage=${stage.name}"){ json => (json \ "data").asOpt[Datum] }
+      prism.get(s"/data/lookup/${key.urlEncode}?app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"){ json =>
+        (json \ "data").asOpt[Datum] 
+      }
   }
 
   def instances = new Instances {
@@ -109,7 +112,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
     }
 
     def get(app: App, stage: Stage): Seq[Host] =
-      prism.get(s"/instances?_expand&stage=${stage.name}&mainclasses=${app.name}")(parseHosts)
+      prism.get(s"/instances?_expand&stage=${stage.name.urlEncode}&mainclasses=${app.name.urlEncode}")(parseHosts)
     def all: Seq[Host] = prism.get("/instances?_expand")(parseHosts)
   }
 
