@@ -43,19 +43,41 @@ package object fixtures {
   def parameters(stage: Stage = PROD, version: String = "version") =
     DeployParameters(Deployer("tester"), Build("project", version), stage)
 
-  def stubLookup(hosts: Seq[Host] = Nil, data: Map[String, Seq[Datum]] = Map.empty): Lookup = {
-    val deployHosts = hosts.flatMap{ host => host.apps.map{app =>
-      DeployInfoHost(host.name, app.toString, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
-    }}
-    val deployData = data.mapValues{ list =>
-      list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))
-    }
-    DeployInfoLookupShim(
-      DeployInfo(DeployInfoJsonInputFile(deployHosts.toList,None,deployData.mapValues(_.toList)), Some(new DateTime())),
-      new SecretProvider {
-        def lookup(service: String, account: String): Option[String] = None
+  def stubLookup(hosts: Seq[Host] = Nil, resourceData: Map[String, Seq[Datum]] = Map.empty): Lookup = {
+    new Lookup {
+      def stages: Seq[String] = hosts.map(_.stage).distinct
+      def lastUpdated: DateTime = new DateTime()
+      def data: Data = new Data {
+        def datum(key: String, app: App, stage: Stage): Option[Datum] = {
+          val matchingList = resourceData.getOrElse(key, List.empty)
+          app match {
+            case LegacyApp(name) =>
+              matchingList.filter(_.stack.isEmpty).find{data =>
+                data.appRegex.findFirstMatchIn(name).isDefined && data.stageRegex.findFirstMatchIn(stage.name).isDefined
+              }
+            case StackApp(stackName, appName) =>
+              matchingList.filter(_.stack.isDefined).find{data =>
+                data.stackRegex.exists(_.findFirstMatchIn(appName).isDefined) &&
+                  data.appRegex.findFirstMatchIn(appName).isDefined &&
+                  data.stageRegex.findFirstMatchIn(stage.name).isDefined
+              }
+          }
+        }
+        def all: Map[String, Seq[Datum]] = resourceData
+        def keys: Seq[String] = resourceData.keys.toSeq
       }
-    )
+
+      def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials] = ???
+
+      def name: String = "stub"
+
+      def instances: Instances = new Instances {
+        def get(app: App, stage: Stage): Seq[Host] = {
+          hosts.filter{ host => host.stage == stage.name && host.apps.contains(app) }
+        }
+        def all: Seq[Host] = hosts
+      }
+    }
   }
 
 }

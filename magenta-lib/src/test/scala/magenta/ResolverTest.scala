@@ -18,6 +18,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   val simpleExample = """
   {
+    "stack": "web",
     "packages":{
       "htmlapp":{ "type":"file", "apps":["apache"]  }
     },
@@ -35,13 +36,10 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   "resolver" should "parse json into actions that can be executed" in {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
-    println(parsed)
     val deployRecipe = parsed.recipes("htmlapp-only")
-    println(deployRecipe)
 
-    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(LegacyApp("apache"))
+    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(StackApp("web","apache"))
     val lookup = stubLookup(host :: Nil)
-    println(lookup)
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe))
 
@@ -53,10 +51,10 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   val app2 = LegacyApp("the_2nd_role")
 
-  val host = Host("the_host", stage = CODE.name, tags=Map("group" -> "")).app(app1)
+  val host = Host("the_host", stage = CODE.name).app(app1)
 
-  val host1 = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(app1)
-  val host2 = Host("host2", stage = CODE.name, tags=Map("group" -> "")).app(app1)
+  val host1 = Host("host1", stage = CODE.name).app(app1)
+  val host2 = Host("host2", stage = CODE.name).app(app1)
 
   val lookupTwoHosts = stubLookup(List(host1, host2))
 
