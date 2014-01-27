@@ -14,6 +14,7 @@ order to infer defaults. As a result of this, it is possible to have a very
 minimal deployment file.
 
     {
+      "stack": "deployment",
       "packages": {
         "riff-raff": {
           "type": "executable-jar-webapp"
@@ -24,7 +25,7 @@ minimal deployment file.
 A whole bunch of information is assumed by convention in this example:
 
  - No recipe exists - in this situation the _'default recipe'_ calls the `deploy` action on **all** packages
- - The app name is inferred to be the same as the package name (riff-raff)
+ - The app name is inferred to be the same as the package name, scoped by the stack name (deployment::riff-raff)
  - The default port for the `executable-jar-webapp` type is 8080
  - the default healthcheck URL for the `executable-jar-webapp` is /management/healthcheck
  - the `executable-jar-webapp` will deploy the JAR file found at packages/riff-raff/riff-raff.jar
@@ -35,10 +36,11 @@ A longer example
 A larger example is below, this time with two packages and three recipes.
 
     {
+      "stack": "frontend",
       "packages": {
         "frontend-article": {
           "type": "executable-jar-webapp",
-          "apps": [ "frontend::article" ],
+          "apps": [ "article" ],
           "data": {
             "healthcheck_paths": [ "management/healthcheck", "/" ]
           }
@@ -70,6 +72,16 @@ A larger example is below, this time with two packages and three recipes.
 
 This deploys an application which uses the `executable-jar-app` to deploy the actual application but also deploys
  static files to an S3 bucket.
+
+### Looking at stack
+
+Riff-Raff is built around the idea of stacks and apps. A stack is a group of applications that are logically grouped
+together to provide a service or product. Some examples might be *deployment*, *content-api" and *discussion*. These
+should correlate to swim-lanes. It is not possible to deploy to two different stacks in a single deployment - this is
+ by design.
+
+Stack is used to look up resources such as AWS keys and hosts in addition to the app name and the stage being deployed
+to.
 
 ### Looking at the recipes
 
@@ -109,7 +121,7 @@ a package might look like this:
 
     "frontend-article-autoscaling": {
       "type": "autoscaling",
-      "apps": [ "frontend::article" ],
+      "apps": [ "article" ],
       "fileName": "frontend-article",
       "data": {
         "healthcheck_paths": [ "management/healthcheck", "/" ]
