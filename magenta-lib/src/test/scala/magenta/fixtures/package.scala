@@ -7,7 +7,7 @@ package object fixtures {
   val CODE = Stage("CODE")
   val PROD = Stage("PROD")
 
-  val app1 = App("the_role")
+  val app1 = LegacyApp("the_role")
 
   val lookupEmpty = stubLookup()
 
@@ -45,7 +45,7 @@ package object fixtures {
 
   def stubLookup(hosts: Seq[Host] = Nil, data: Map[String, Seq[Datum]] = Map.empty): Lookup = {
     val deployHosts = hosts.flatMap{ host => host.apps.map{app =>
-      DeployInfoHost(host.name, app.name, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
+      DeployInfoHost(host.name, app.toString, host.tags.get("group").getOrElse(""), host.stage, None, None, None, None)
     }}
     val deployData = data.mapValues{ list =>
       list.map(data => DeployInfoData(data.app, data.stage, data.value, data.comment))

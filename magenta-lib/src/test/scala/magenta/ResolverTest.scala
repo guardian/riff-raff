@@ -31,14 +31,17 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       }
     }
   }
-"""
+                      """
 
   "resolver" should "parse json into actions that can be executed" in {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
+    println(parsed)
     val deployRecipe = parsed.recipes("htmlapp-only")
+    println(deployRecipe)
 
-    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app("apache")
+    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(LegacyApp("apache"))
     val lookup = stubLookup(host :: Nil)
+    println(lookup)
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe))
 
@@ -48,7 +51,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  val app2 = App("the_2nd_role")
+  val app2 = LegacyApp("the_2nd_role")
 
   val host = Host("the_host", stage = CODE.name, tags=Map("group" -> "")).app(app1)
 
@@ -66,7 +69,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app("other_app") +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
+      stubLookup(Host("other_host").app(StackApp("web","other_app")) +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
