@@ -163,12 +163,6 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
   
-  it should "provide a list of all apps for a recipe" in  {
-    val recipe = Recipe("recipe", actionsPerHost = StubPerHostAction("action", Set(app1)) :: Nil)
-    
-    Resolver.possibleApps(project(recipe), recipe.name) should be (app1.name)
-  }
-
   it should "disable the recipe if no hosts found and actions require some" in {
     val recipeTasks = Resolver.resolveDetail(project(baseRecipe), stubLookup(List()), parameters(baseRecipe))
     recipeTasks.length should be(1)

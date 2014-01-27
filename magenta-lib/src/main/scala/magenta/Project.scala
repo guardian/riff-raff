@@ -19,7 +19,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
         host.dnsname.map("dnsname" -> _) ++
         host.instancename.map("instancename" -> _) ++
         host.internalname.map("internalname" -> _)
-    Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
+    Host(host.hostname, Set(LegacyApp(host.app)), host.stage, tags = tags.toMap)
   }
 
   def forParams(params: DeployParameters): DeployInfo = {
@@ -31,11 +31,11 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
 
   val hosts = input.hosts.map(asHost)
   val data = input.data mapValues { dataList =>
-    dataList.map { data => Datum(data.app, data.stage, data.value, data.comment) }
+    dataList.map { data => Datum(None, data.app, data.stage, data.value, data.comment) }
   }
 
   lazy val knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
-  lazy val knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.name < _.toList.head.name)
+  lazy val knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.toString < _.toList.head.toString)
 
   def knownHostApps(stage: String): List[Set[App]] = knownHostApps.filter(stageAppToHostMap.contains(stage, _))
 
@@ -53,7 +53,19 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
 
   def firstMatchingData(key: String, app:App, stage:String): Option[Datum] = {
     val matchingList = data.getOrElse(key, List.empty)
-    matchingList.find(data => data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined)
+    app match {
+      case LegacyApp(name) =>
+        matchingList.filter(_.stack.isEmpty).find{data =>
+          data.appRegex.findFirstMatchIn(name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined
+        }
+      case StackApp(stackName, appName) =>
+        matchingList.filter(_.stack.isDefined).find{data =>
+          data.stackRegex.exists(_.findFirstMatchIn(appName).isDefined) &&
+          data.appRegex.findFirstMatchIn(appName).isDefined &&
+            data.stageRegex.findFirstMatchIn(stage).isDefined
+        }
+    }
+
   }
 }
 
@@ -64,8 +76,7 @@ case class Host(
     connectAs: Option[String] = None,
     tags: Map[String, String] = Map.empty)
 {
-  def app(name: String) = this.copy(apps = apps + App(name))
-  def app(app: App) = this.copy(apps= apps + app)
+  def app(app: App) = this.copy(apps = apps + app)
 
   def as(user: String) = this.copy(connectAs = Some(user))
 
@@ -76,27 +87,21 @@ case class Host(
 }
 
 case class Datum(
+  stack: Option[String],
   app: String,
   stage: String,
   value: String,
   comment: Option[String]
 ) {
+  lazy val stackRegex = stack.map(s => s"^$s$$".r)
   lazy val appRegex = ("^%s$" format app).r
   lazy val stageRegex = ("^%s$" format stage).r
 }
 
 case class HostList(hosts: List[Host]) {
-  def supportedApps = {
-    val apps = for {
-      host <- hosts
-      app <- host.apps
-    } yield app.name
-    SortedSet(apps: _*).mkString(", ")
-  }
-
   def dump = hosts
     .sortBy { _.name }
-    .map { h => " %s: %s" format (h.name, h.apps.map { _.name } mkString ", ") }
+    .map { h => s" ${h.name}: ${h.apps.map(_.toString).mkString(", ")}" }
     .mkString("\n")
 
   def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
@@ -116,7 +121,39 @@ trait Action {
   def resolve(resourceLookup: Lookup, params: DeployParameters): List[Task]
 }
 
-case class App(name: String)
+trait App {}
+object App {
+  def apply(stack:Option[String], app:String): App = {
+    stack.map{s =>
+      StackApp(s, app)
+    } getOrElse {
+      LegacyApp(app)
+    }
+  }
+  // takes a set of apps, assumed to be all the same type
+  def stackAppTuple(apps: Set[App]): (Option[String], String) = {
+    apps.headOption match {
+      case Some(LegacyApp(_)) =>
+        val appNames = apps.map{
+          case LegacyApp(app) => app
+        }.toSeq.sorted.mkString(", ")
+        (None, appNames)
+      case Some(StackApp(stack, _)) =>
+        val appNames = apps.map{
+          case StackApp(_, app) => app
+        }.toSeq.sorted.mkString(", ")
+        (Some(stack), appNames)
+      case _ =>
+        (None, "none")
+    }
+  }
+}
+case class LegacyApp(name: String) extends App {
+  override lazy val toString: String = name
+}
+case class StackApp(stack: String, app:String) extends App {
+  override lazy val toString: String = s"$stack::$app"
+}
 
 case class Recipe(
   name: String,
