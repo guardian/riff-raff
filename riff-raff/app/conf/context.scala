@@ -4,7 +4,7 @@ import _root_.resources.LookupSelector
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.{ Management => PlayManagement }
+import com.gu.management.play.{Management => PlayManagement, RequestMetrics}
 import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
@@ -161,7 +161,7 @@ object Management extends PlayManagement {
   )
 }
 
-object RequestMetrics extends com.gu.management.play.RequestMetrics.Standard
+object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends LifecycleWithoutApp {
   val runningDeploys = mutable.Buffer[UUID]()
@@ -244,7 +244,7 @@ object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
-    RequestMetrics.asMetrics ++
+    PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all ++
     TaskMetrics.all

@@ -21,5 +21,5 @@ cat /dev/null | java -Xmx1G -XX:MaxPermSize=250m -XX:+UseCompressedOops \
     -Dbuild.vcs.number="$BUILD_VCS_NUMBER" \
     -Dsbt.boot.directory=$SBT_BOOT_DIR \
     $PROXY_CONF \
-    -jar sbt-launch-*.jar "$@"
+    -jar sbt-launch.jar "$@"
 

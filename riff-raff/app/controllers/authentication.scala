@@ -11,7 +11,6 @@ import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import org.joda.time.DateTime
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
-import com.mongodb.DBObject
 import play.api.data._
 import play.api.data.Forms._
 import deployment.DeployFilter
@@ -59,9 +58,9 @@ trait AuthorisationValidator {
   def isAuthorised(id: UserIdentity) = authorisationError(id).isEmpty
   def authorisationError(id: UserIdentity): Option[String] = {
     if (!emailDomainWhitelist.isEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
-      Some("The e-mail address domain you used to login to Riff-Raff (%s) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator." format id.email)
+      Some(s"The e-mail address domain you used to login to Riff-Raff (${id.email}) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
     } else if (emailWhitelistEnabled && !emailWhitelistContains(id.email)) {
-      Some("The e-mail address you used to login to Riff-Raff (%s) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator." format id.email)
+      Some(s"The e-mail address you used to login to Riff-Raff (${id.email}) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator.")
     } else {
       None
     }
@@ -76,7 +75,7 @@ object AuthenticatedRequest {
 
 class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request) {
   lazy val isAuthenticated = identity.isDefined
-  lazy val betaUser = identity.map(_.fullName=="Simon Hildrew").getOrElse(false)
+  lazy val betaUser = identity.exists(_.fullName=="Simon Hildrew")
 }
 
 object NonAuthAction {
@@ -166,54 +165,50 @@ object Login extends Controller with Logging {
     Ok(views.html.auth.login(request, error))
   }
 
-  def loginAction = Action { implicit request =>
-    val secureConnection = request.headers.get("X-Forwarded-Proto").map(_ == "https").getOrElse(false)
-    AsyncResult(
-      OpenID
-        .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
-        .map { url =>
-            LoginCounter.recordCount(1)
-            Redirect(url)
-        }
-        .recover {
-        case t => Redirect(routes.Login.login).flashing(("error" -> "Unknown error: %s ".format(t.getMessage)))
-        }
-    )
+  def loginAction = Action.async { implicit request =>
+    val secureConnection = request.headers.get("X-Forwarded-Proto").exists(_ == "https")
+    OpenID
+      .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
+      .map { url =>
+        LoginCounter.recordCount(1)
+        Redirect(url)
+      }
+      .recover {
+        case t => Redirect(routes.Login.login).flashing("error" -> s"Unknown error: ${t.getMessage}")
+      }
   }
 
-  def openIDCallback = Action { implicit request =>
-    AsyncResult(
-      OpenID.verifiedId.map{ info =>
-          val credentials = UserIdentity(
-            info.id,
-            info.attributes.get("email").get,
-            info.attributes.get("firstname").get,
-            info.attributes.get("lastname").get
-          )
-          if (validator.isAuthorised(credentials)) {
-            Redirect(session.get("loginFromUrl").getOrElse("/")).withSession {
-              session + (UserIdentity.KEY -> credentials.writeJson) - "loginFromUrl"
-            }
-          } else {
-            FailedLoginCounter.recordCount(1)
-            Redirect(routes.Login.login).flashing(
-              ("error" -> (validator.authorisationError(credentials).get))
-            ).withSession(session - UserIdentity.KEY)
+  def openIDCallback = Action.async { implicit request =>
+    OpenID.verifiedId.map{ info =>
+        val credentials = UserIdentity(
+          info.id,
+          info.attributes.get("email").get,
+          info.attributes.get("firstname").get,
+          info.attributes.get("lastname").get
+        )
+        if (validator.isAuthorised(credentials)) {
+          Redirect(session.get("loginFromUrl").getOrElse("/")).withSession {
+            session + (UserIdentity.KEY -> credentials.writeJson) - "loginFromUrl"
           }
-        } recover {
-        case t => {
-          // Here you should look at the error, and give feedback to the user
+        } else {
           FailedLoginCounter.recordCount(1)
-          val message = t match {
-            case e:OpenIDError => "Failed to login (%s): %s" format (e.id, e.message)
-            case other => "Unknown login failure: %s" format t.toString
-          }
           Redirect(routes.Login.login).flashing(
-            ("error" -> (message))
-          )
+            "error" -> validator.authorisationError(credentials).get
+          ).withSession(session - UserIdentity.KEY)
         }
+      } recover {
+      case t => {
+        // Here you should look at the error, and give feedback to the user
+        FailedLoginCounter.recordCount(1)
+        val message = t match {
+          case e:OpenIDError => s"Failed to login (${e.id}): ${e.message}"
+          case other => s"Unknown login failure: ${t.toString}"
+        }
+        Redirect(routes.Login.login).flashing(
+          "error" -> message
+        )
       }
-    )
+    }
   }
 
   def logout = Action { implicit request =>
@@ -248,7 +243,7 @@ object Login extends Controller with Logging {
 
   def authDelete = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
-      log.info("%s deleted authorisation for %s" format (request.identity.get.fullName, email))
+      log.info(s"${request.identity.get.fullName} deleted authorisation for $email")
       Persistence.store.deleteAuthorisation(email)
     } )
     Redirect(routes.Login.authList())

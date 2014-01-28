@@ -9,5 +9,5 @@ fi
 java -Xmx768M -XX:+UseCompressedOops -XX:MaxPermSize=384m \
 	-Dsbt.boot.directory=$SBT_BOOT_DIR \
 	$SBT_EXTRA_PARAMS \
-	-jar `dirname $0`/sbt-launch-*.jar "$@"
+	-jar `dirname $0`/sbt-launch.jar "$@"
 
