@@ -145,7 +145,10 @@ object DetailConversions {
       val fields:List[(String,Any)] =
         List(
           "name" -> a.name,
-          "apps" -> a.apps.map(app => MongoDBObject("name" -> app.name)).toList,
+          "apps" -> a.apps.map {
+            case LegacyApp(name) => MongoDBObject("name" -> name)
+            case StackApp(stack,app) => MongoDBObject("stack" -> stack, "app" -> app)
+          }.toList,
           "stage" -> a.stage
         ) ++ a.connectAs.map("connectAs" ->)
       fields.toMap
@@ -153,7 +156,13 @@ object DetailConversions {
 
     def fromDBO(dbo: MongoDBObject) = Some(Host(
       name = dbo.as[String]("name"),
-      apps = dbo.as[List[DBObject]]("apps").map(dbo => App(dbo.as[String]("name"))).toSet,
+      apps = dbo.as[List[DBObject]]("apps").map{dbo =>
+        (dbo.getAs[String]("name"),dbo.getAs[String]("stack"),dbo.getAs[String]("app")) match {
+          case (Some(name), None, None) => LegacyApp(name)
+          case (None, Some(stack), Some(app)) => StackApp(stack, app)
+          case other => throw new IllegalArgumentException(s"Don't know how to construct App from tuple $other")
+        }
+      }.toSet,
       stage = dbo.as[String]("stage"),
       connectAs = dbo.getAs[String]("connectAs")
     ))

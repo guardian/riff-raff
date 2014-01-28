@@ -65,15 +65,6 @@ object Resolver {
     filteredTree.toList.distinct
   }
 
-  def possibleApps(project: Project, recipeName: String): String = {
-    val recipe = project.recipes(recipeName)
-    val appNames = for {
-      action <- recipe.actionsPerHost
-      app <- action.apps
-    } yield app.name
-    appNames.mkString(", ")
-  }
-
 }
 class NoHostsFoundException extends Exception("No hosts found")
 

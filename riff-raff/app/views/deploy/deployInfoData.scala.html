@@ -15,6 +15,7 @@
                 @snippets.tabbable(data.keys.toSeq.sorted, pushParam = "key"){ key =>
                     <table class="table">
                     <thead><tr>
+                        <th>Stack</th>
                         <th>App</th>
                         <th>Stage</th>
                         <th>Value</th>
@@ -23,6 +24,7 @@
                     <tbody>
                         @data(key).map { value =>
                             <tr>
+                                <td>@value.stack.getOrElse{ <span class='label label-warning'>none</span> }</td>
                                 <td>@value.app.toString</td>
                                 <td>@value.stage.toString</td>
                                 <td>@value.value</td>

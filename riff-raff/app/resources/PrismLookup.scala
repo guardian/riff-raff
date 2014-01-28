@@ -38,16 +38,25 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
   implicit val hostReads = (
       (__ \ "name").read[String] and
       (__ \ "mainclasses").read[Set[String]] and
+      (__ \ "stack").readNullable[String] and
+      (__ \ "app").readNullable[Seq[String]] and
       (__ \ "stage").read[String] and
       (__ \ "group").read[String] and
       (__ \ "createdAt").read[DateTime] and
-        (__ \ "instanceName").read[String] and
-        (__ \ "internalName").read[String] and
-        (__ \ "dnsName").read[String]
-    ){ (name:String, mainclasses:Set[String], stage: String, group: String, createdAt: DateTime, instanceName: String, internalName: String, dnsName: String) =>
+      (__ \ "instanceName").read[String] and
+      (__ \ "internalName").read[String] and
+      (__ \ "dnsName").read[String]
+    ){ (name:String, mainclasses:Set[String], stack:Option[String], app:Option[Seq[String]],
+        stage: String, group: String, createdAt: DateTime,
+        instanceName: String, internalName: String, dnsName: String) =>
+    val appSet:Set[App] = if (stack.isDefined && app.isDefined) {
+      app.get.map(appName => StackApp(stack.get, appName)).toSet
+    } else {
+      mainclasses.map(LegacyApp)
+    }
     Host(
       name = name,
-      apps = mainclasses.map(App),
+      apps = appSet,
       stage = stage,
       tags = Map(
         "group" -> group,
@@ -78,10 +87,16 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
     def all: Map[String, Seq[Datum]] = prism.get("/data?_expand"){ json =>
       (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
     }
-    def datum(key: String, app: App, stage: Stage): Option[Datum] =
-      prism.get(s"/data/lookup/${key.urlEncode}?app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"){ json =>
-        (json \ "data").asOpt[Datum] 
+    def datum(key: String, app: App, stage: Stage): Option[Datum] = {
+      val query = app match {
+        case LegacyApp(appName) =>
+          s"/data/lookup/${key.urlEncode}?app=${appName.urlEncode}&stage=${stage.name.urlEncode}"
+        case StackApp(stackName, appName) =>
+          s"/data/lookup/${key.urlEncode}?stack=${stackName.urlEncode}&app=${appName.urlEncode}&stage=${stage.name.urlEncode}"
       }
+      prism.get(query){ json => (json \ "data").asOpt[Datum] }
+    }
+
   }
 
   def instances = new Instances {
@@ -111,8 +126,16 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       }
     }
 
-    def get(app: App, stage: Stage): Seq[Host] =
-      prism.get(s"/instances?_expand&stage=${stage.name.urlEncode}&mainclasses=${app.name.urlEncode}")(parseHosts)
+    def get(app: App, stage: Stage): Seq[Host] = {
+      val query = app match {
+        case LegacyApp(appName) =>
+          s"/instances?_expand&stage=${stage.name.urlEncode}&mainclasses=${appName.urlEncode}"
+        case StackApp(stackName, appName) =>
+          s"/instances?_expand&stage=${stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${appName.urlEncode}"
+      }
+      prism.get(query)(parseHosts)
+    }
+
     def all: Seq[Host] = prism.get("/instances?_expand")(parseHosts)
   }
 

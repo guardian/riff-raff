@@ -194,14 +194,14 @@ object Deployment extends Controller with Logging {
     deployForm.bindFromRequest().fold(
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
-        log.info("Host list: %s" format form.hosts)
+        log.info(s"Host list: ${form.hosts}")
         val defaultRecipe = LookupSelector().data
-          .datum("default-recipe", App(form.project), Stage(form.stage))
+          .datum("default-recipe", LegacyApp(form.project), Stage(form.stage))
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
-          recipe = form.recipe.map(RecipeName(_)).getOrElse(defaultRecipe),
+          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
           hostList = form.hosts)
 
         form.action match {

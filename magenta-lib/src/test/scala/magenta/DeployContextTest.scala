@@ -122,8 +122,8 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     }
   }
 
-  val app1 = App("the_role")
-  val app2 = App("the_2nd_role")
+  val app1 = StackApp("stack", "the_role")
+  val app2 = LegacyApp("the_2nd_role")
 
   val oneRecipeName = RecipeName("one")
 
