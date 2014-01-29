@@ -103,7 +103,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   val system = ActorSystem("continuous-deployment")
   var buildWatcher: Option[ContinuousDeployment] = None
-  val tagWatcherAgent = Agent[Map[String, TagWatcher]](Map.empty)(system)
+  val tagWatcherAgent = Agent[Map[String, TagWatcher]](Map.empty)(system.dispatcher)
 
   def init() {
     if (buildWatcher.isEmpty) {

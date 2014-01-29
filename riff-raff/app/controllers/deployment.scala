@@ -18,12 +18,11 @@ import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.concurrent.Akka
 import scala.util.{Failure, Success}
 import org.joda.time.DateTime
 import play.api.libs.json.Json
 import org.joda.time.format.DateTimeFormat
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -92,8 +91,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   def cleanup(uuid: UUID) {
     log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
-      val timeout = Timeout(10 seconds)
-      val record = allDeploys(uuid).await(timeout)
+      val record = Await.result(allDeploys(uuid).future(), 10 seconds)
       log.debug(s"Done removing deploy record $uuid from internal caches")
       allDeploys - record.uuid
     }
@@ -157,8 +155,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def await(uuid: UUID): Record = {
-    val timeout = Timeout(5 second)
-    library.await(timeout)(uuid).await(timeout)
+    Await.result(library.future().flatMap(_(uuid).future()),5 seconds)
   }
 }
 

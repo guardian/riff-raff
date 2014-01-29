@@ -6,7 +6,6 @@ import controllers.Logging
 import lifecycle.LifecycleWithoutApp
 import scala.concurrent.duration._
 import org.joda.time.{DateTime, Interval, LocalDate, LocalTime}
-import play.api.libs.concurrent.Execution.Implicits._
 
 object ScheduledAgent extends LifecycleWithoutApp {
   val scheduleSystem = ActorSystem("scheduled-agent")
@@ -72,7 +71,8 @@ object DailyScheduledAgentUpdate {
 
 class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: ScheduledAgentUpdate[T]*) extends Logging {
 
-  val agent = Agent[T](initialValue)(system)
+  val agent = Agent[T](initialValue)(system.dispatcher)
+  implicit val executionContext = system.dispatcher
 
   val cancellablesAgent = Agent[Map[ScheduledAgentUpdate[T],Cancellable]]{
     updates.map { update =>
@@ -86,7 +86,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
       }
       update -> cancellable
     }.toMap
-  }(system)
+  }(system.dispatcher)
 
   def scheduleNext(update: DailyScheduledAgentUpdate[T]): Cancellable = {
     val delay = update.timeToNextExecution
