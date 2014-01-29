@@ -54,7 +54,6 @@ case class ContinuousDeploymentConfig(
       builds.filter(buildFilter).sortBy(-_.id).headOption
     } else None
   }
-  lazy val enabled = trigger != Trigger.Disabled
 }
 
 object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
@@ -153,25 +152,22 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
 class ContinuousDeployment extends BuildWatcher with Logging {
 
-  type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
-
-  def getMatchesForSuccessfulBuilds(builds: List[Build],
-                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+  def deployParamsForSuccessfulBuilds(builds: List[Build],
+                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     configs.flatMap { config =>
-      config.findMatchOnSuccessfulBuild(builds).map(build => config -> build)
+      config.findMatchOnSuccessfulBuild(builds).map(build => getDeployParams(config, build))
     }
   }
 
-  def getMatchesForBuildTagged(builds: List[Build],
+  def deployParamsForTaggedBuilds(builds: List[Build],
                                tag: String,
-                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     configs.flatMap { config =>
-      config.findMatchOnBuildTagged(builds, tag).map(build => config -> build)
+      config.findMatchOnBuildTagged(builds, tag).map(build => getDeployParams(config, build))
     }
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, Build)): DeployParameters = {
-    val (config,build) = configBuildTuple
+  def getDeployParams(config: ContinuousDeploymentConfig, build: Build): DeployParameters = {
     DeployParameters(
       Deployer("Continuous Deployment"),
       MagentaBuild(build.buildType.fullName,build.number),
@@ -194,12 +190,12 @@ class ContinuousDeployment extends BuildWatcher with Logging {
 
   def newBuilds(newBuilds: List[Build]) = {
     log.info(s"New builds to consider for deployment $newBuilds")
-    getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).map(b => runDeploy(getDeployParams(b)))
+    deployParamsForSuccessfulBuilds(newBuilds, getContinuousDeploymentList) foreach (runDeploy)
   }
 
   def newTags(newBuilds: List[Build], tag: String) = {
     log.info(s"Builds just tagged with $tag to consider for deployment: $newBuilds")
-    getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).map(b => runDeploy(getDeployParams(b)))
+    deployParamsForTaggedBuilds(newBuilds, tag, getContinuousDeploymentList) foreach (runDeploy)
   }
 
 }
