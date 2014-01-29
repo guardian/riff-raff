@@ -12,7 +12,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.10.0",
   "org.mongodb" %% "casbah" % "2.6.0",
   "org.pircbotx" % "pircbotx" % "1.7",
-  "com.typesafe.akka" %% "akka-agent" % "2.1.2",
+  "com.typesafe.akka" %% "akka-agent" % "2.2.0",
   "org.clapper" %% "markwrap" % "1.0.0",
   "com.rabbitmq" % "amqp-client" % "2.8.7",
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
