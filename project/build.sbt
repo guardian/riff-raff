@@ -4,3 +4,5 @@ resolvers ++= Seq(
 )
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.7")
+
+addSbtPlugin("com.gu" % "sbt-teamcity-test-reporting-plugin" % "1.5")

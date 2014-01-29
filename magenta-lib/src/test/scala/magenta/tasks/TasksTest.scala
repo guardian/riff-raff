@@ -5,7 +5,6 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import java.net.ServerSocket
 import net.liftweb.util.TimeHelpers._
-import scala.concurrent.ops._
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
 import com.amazonaws.auth.BasicAWSCredentials
@@ -16,6 +15,8 @@ import org.mockito.Matchers.any
 import magenta.Host
 import java.util.UUID
 import magenta.deployment_type.PatternValue
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
@@ -75,7 +76,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "connect to open port" in {
     val task = WaitForPort(Host("localhost"), 9998, 200 millis)
-    spawn {
+    Future {
       val server = new ServerSocket(9998)
       server.accept().close()
       server.close()
@@ -85,7 +86,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "connect to an open port after a short time" in {
     val task = WaitForPort(Host("localhost"), 9997, 1 seconds)
-    spawn {
+    Future {
       Thread.sleep(600 millis)
       val server = new ServerSocket(9997)
       server.accept().close()
@@ -104,7 +105,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "get a 200 OK" in {
     val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
-    spawn {
+    Future {
       new TestServer().withResponse("HTTP/1.0 200 OK")
     }
     task.execute(fakeKeyRing)
@@ -113,7 +114,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "fail on a 404 NOT FOUND" in {
     val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
-    spawn {
+    Future {
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
     evaluating {
@@ -123,7 +124,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   it should "fail on a 500 ERROR" in {
     val task = CheckUrls(Host("localhost"), 9997, List("/"), 200 millis, 5)
-    spawn {
+    Future {
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
     evaluating {

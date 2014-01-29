@@ -23,6 +23,7 @@ import scala.util.{Failure, Success}
 import org.joda.time.DateTime
 import play.api.libs.json.Json
 import org.joda.time.format.DateTimeFormat
+import scala.concurrent.Future
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -75,8 +76,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def attachMetaData(record: Record) {
-    import play.api.Play.current
-    val metaData = Akka.future {
+    val metaData = Future {
       ContinuousIntegration.getMetaData(record.buildName, record.buildId)
     }
     metaData.map { md =>
@@ -90,11 +90,11 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def cleanup(uuid: UUID) {
-    log.debug("Queuing removal of deploy record %s from internal caches" format uuid)
+    log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
       val timeout = Timeout(10 seconds)
       val record = allDeploys(uuid).await(timeout)
-      log.debug("Done removing deploy record %s from internal caches" format uuid)
+      log.debug(s"Done removing deploy record $uuid from internal caches")
       allDeploys - record.uuid
     }
   }

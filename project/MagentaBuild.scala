@@ -3,8 +3,8 @@ import Keys._
 import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
-import PlayKeys._
-import com.gu.deploy.PlayArtifact._
+import play.Keys._
+import com.gu.deploy.MagentaArtifact._
 
 object MagentaBuild extends Build {
   lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
@@ -20,7 +20,7 @@ object MagentaBuild extends Build {
   def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
 
   def magentaPlayProject(name: String) = play.Project(name, magentaVersion, path=file(name))
-    .settings( playArtifactDistSettings: _* )
+    .settings( magentaArtifactSettings: _* )
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
@@ -43,7 +43,7 @@ object MagentaBuild extends Build {
     )
     .settings(
       playExternalAssets <++= (baseDirectory) { base =>
-        val mdPathFinder = (root:File) => root ** ("*.md" || "*.png")
+        val mdPathFinder = (root:File) => root ** (FileFilter.globFilter("*.md") || FileFilter.globFilter("*.png"))
         val docsPrefix: String = "docs"
         Seq(
            (base / "app" / "docs", mdPathFinder, docsPrefix),

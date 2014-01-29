@@ -1,19 +1,20 @@
 import collection.mutable
-import conf.RiffRaffRequestMeasurementMetrics
-import conf.DeployMetrics
+import conf.{PlayRequestMetrics, DeployMetrics}
 import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
 import notification.{Alerta, TeamCityBuildPinner, HooksClient, IrcClient}
 import persistence.SummariseDeploysHousekeeping
-import play.api.mvc.{Result, RequestHeader, WithFilters}
+import play.api.mvc.{SimpleResult, Result, RequestHeader, WithFilters}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
 import ci.{TeamCityBuilds, ContinuousDeployment}
+import play.filters.gzip.GzipFilter
+import scala.concurrent.Future
 import utils.ScheduledAgent
 import play.api.Application
 
-object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _*) with Logging {
+object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
 
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
@@ -54,9 +55,9 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
     }
   }
 
-  override def onError(request: RequestHeader, t: Throwable): Result = {
+  override def onError(request: RequestHeader, t: Throwable): Future[SimpleResult] = {
     log.error("Error whilst trying to serve request", t)
     val reportException = if (t.getCause != null) t.getCause else t
-    InternalServerError(views.html.errorPage(reportException))
+    Future.successful(InternalServerError(views.html.errorPage(reportException)))
   }
 }
