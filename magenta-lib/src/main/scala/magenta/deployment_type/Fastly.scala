@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.tasks.UpdateFastlyConfig
+import magenta.tasks.{PurgeFromFastly, UpdateFastlyConfig}
 
 object Fastly  extends DeploymentType {
   val name = "fastly"
@@ -12,4 +12,19 @@ object Fastly  extends DeploymentType {
   def perAppActions = {
     case "deploy" => pkg => (_, parameters) => List(UpdateFastlyConfig(pkg))
   }
+}
+
+object FastlyPurge extends DeploymentType {
+  val urls = Param[List[String]]("urls")
+
+  def perAppActions = {
+    case "purge" => pkg => (_, _) => List(PurgeFromFastly(urls(pkg)))
+  }
+
+  def documentation =
+    """
+      |Purges the files specified from the [fastly](http://www.fastly.com/) CDN caches via their API
+    """.stripMargin
+
+  def name = "fastly-purge"
 }
