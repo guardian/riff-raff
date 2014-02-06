@@ -55,7 +55,10 @@ case class WaitForStabilization(packageName: String, stage: Stage, duration: Lon
       try {
         isStabilized(refresh(asg))
       } catch {
-        case e: AmazonServiceException if isRateExceeded(e) => false
+        case e: AmazonServiceException if isRateExceeded(e) => {
+          MessageBroker.info(e.getMessage)
+          false
+        }
       }
     }
 
