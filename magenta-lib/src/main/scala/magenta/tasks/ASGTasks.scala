@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import magenta.{MessageBroker, Stage, KeyRing}
+import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 
@@ -51,8 +52,15 @@ case class WaitForStabilization(packageName: String, stage: Stage, duration: Lon
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     check(stopFlag) {
-      isStabilized(refresh(asg))
+      try {
+        isStabilized(refresh(asg))
+      } catch {
+        case e: AmazonServiceException if isRateExceeded(e) => false
+      }
     }
+
+    //found this out by good old trial and error
+    def isRateExceeded(e: AmazonServiceException) = e.getStatusCode == 400 && e.getErrorCode == "Throttling"
   }
 
   lazy val description: String = "Check the desired number of hosts in ASG are up and in ELB"
