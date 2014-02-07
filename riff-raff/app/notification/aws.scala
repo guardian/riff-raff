@@ -71,12 +71,6 @@ object AWS extends Logging with LifecycleWithoutApp {
   }
 }
 
-object DeployEvent extends Enumeration {
-  val Start = Value("DeployStarted")
-  val Complete = Value("DeployCompleted")
-  val Fail = Value("DeployFailed")
-}
-
 object AWSEvent {
   def apply(event:DeployEvent.Value, uuid:UUID, params:DeployParameters, timestamp: DateTime): JsValue  = {
     val project = params.build.projectName
