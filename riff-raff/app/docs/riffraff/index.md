@@ -10,6 +10,7 @@ User guide
  - [External deploy requests](externalRequest) - how to help a user start a deploy
  - [AWS S3 bucket configuration for uploads](s3buckets)
  - [Dashboards](dashboards) - simple deployment matrix
+ - [AWS SNS Topic](aws-sns) - riff-raff can publish notifications to an AWS SNS topic
 
 Administration
 --------------
