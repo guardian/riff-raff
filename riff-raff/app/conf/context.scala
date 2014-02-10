@@ -111,8 +111,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object notifications {
     object aws {
-      lazy val isConfigured = topicUrn.isDefined && accessKey.isDefined && secretKey.isDefined
-      lazy val topicUrn = configuration.getStringProperty("notifications.aws.topicUrn")
+      lazy val isConfigured = topicArn.isDefined && accessKey.isDefined && secretKey.isDefined
+      lazy val topicArn = configuration.getStringProperty("notifications.aws.topicArn")
       lazy val topicRegion = configuration.getStringProperty("notifications.aws.topicRegion")
       lazy val accessKey = configuration.getStringProperty("notifications.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("notifications.aws.secretKey")
