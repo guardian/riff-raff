@@ -25,7 +25,7 @@ import com.amazonaws.regions.RegionUtils
  */
 
 object AWS extends Logging with LifecycleWithoutApp {
-  val snsClient = (aws.accessKey, aws.secretKey, aws.topicUrn, aws.topicRegion) match {
+  val snsClient = (aws.accessKey, aws.secretKey, aws.topicArn, aws.topicRegion) match {
     case (Some(accessKey), Some(secretKey), Some(_), region) => {
       val creds = new BasicAWSCredentials(accessKey, secretKey)
       val client = new AmazonSNSAsyncClient(creds)
@@ -37,7 +37,7 @@ object AWS extends Logging with LifecycleWithoutApp {
 
   def sendMessage(event: JsValue) {
     snsClient.foreach { client =>
-      val request = new PublishRequest(aws.topicUrn.get, event.toString())
+      val request = new PublishRequest(aws.topicArn.get, event.toString())
       log.info(s"Queuing event to send to AWS")
       client.publishAsync(request, new AsyncHandler[PublishRequest,PublishResult] {
         def onSuccess(request: PublishRequest, result: PublishResult) {
