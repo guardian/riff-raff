@@ -1,4 +1,4 @@
-<!--- prev:s3buckets -->
+<!--- prev:s3buckets next:aws-sns -->
 Dashboards
 ==========
 

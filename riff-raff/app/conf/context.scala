@@ -109,6 +109,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
   }
 
+  object notifications {
+    object aws {
+      lazy val isConfigured = topicUrn.isDefined && accessKey.isDefined && secretKey.isDefined
+      lazy val topicUrn = configuration.getStringProperty("notifications.aws.topicUrn")
+      lazy val topicRegion = configuration.getStringProperty("notifications.aws.topicRegion")
+      lazy val accessKey = configuration.getStringProperty("notifications.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("notifications.aws.secretKey")
+    }
+  }
+
   object sshKey {
     lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
     lazy val file: Option[File] = path map (new File(_))
