@@ -18,24 +18,27 @@ import conf.Configuration.notifications.aws
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import com.amazonaws.services.sns.model.{PublishResult, PublishRequest}
 import com.amazonaws.handlers.AsyncHandler
+import com.amazonaws.regions.RegionUtils
 
 /*
  Send deploy events to alerta (and graphite)
  */
 
 object AWS extends Logging with LifecycleWithoutApp {
-  val snsClient = (aws.accessKey, aws.secretKey, aws.topicName) match {
-    case (Some(accessKey), Some(secretKey), Some(topicName), Some(region)) => {
+  val snsClient = (aws.accessKey, aws.secretKey, aws.topicUrn, aws.topicRegion) match {
+    case (Some(accessKey), Some(secretKey), Some(_), region) => {
       val creds = new BasicAWSCredentials(accessKey, secretKey)
-      Some(new AmazonSNSAsyncClient(creds))
+      val client = new AmazonSNSAsyncClient(creds)
+      region.foreach(r => client.setRegion(RegionUtils.getRegion(r)))
+      Some(client)
     }
     case _ => None
   }
 
   def sendMessage(event: JsValue) {
     snsClient.foreach { client =>
-      val request = new PublishRequest(aws.topicName.get, event.toString())
-      log.info(s"Queuing event to send to AWS $event")
+      val request = new PublishRequest(aws.topicUrn.get, event.toString())
+      log.info(s"Queuing event to send to AWS")
       client.publishAsync(request, new AsyncHandler[PublishRequest,PublishResult] {
         def onSuccess(request: PublishRequest, result: PublishResult) {
           log.info(s"Successfully published message to AWS topic: $result")
