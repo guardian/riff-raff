@@ -116,7 +116,7 @@ object AlertaEvent {
       "group" -> "Deploys",
       "severity" -> severityMap(event),
       "service" -> List(project.split(":").head),
-      "tags" -> List("release:%s" format build, "user:%s" format user),
+      "tags" -> Map("release" -> build, "user" -> user),
       "text" -> s"Deploy of $project ${adjectiveMap(event)}",
       "value" -> s"Release $build",
       "event" -> event.toString,
