@@ -83,8 +83,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "generate tasks only for hosts with app per action" in {
     val multiRoleRecipe = {
-      val doubleAppPackage = stubPackage.copy(pkgApps = Set(app1, app2))
-      val appTwoPackage = stubPackage.copy(pkgApps = Set(app2))
+      val doubleAppPackage = stubPackage.copy(pkgApps = Seq(app1, app2))
+      val appTwoPackage = stubPackage.copy(pkgApps = Seq(app2))
 
       val doubleAppPackageType = stubPackageType(Seq("init_action_one"), Seq("action_two"))
       val appTwoPackageType = stubPackageType(Seq(), Seq("action_three"))
@@ -203,7 +203,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
         case "deploy" => pkg => host => List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
       }
     )
-    val pkg = stubPackage.copy(pkgApps = Set(app1, app2))
+    val pkg = stubPackage.copy(pkgApps = Seq(app1, app2))
     val recipe = Recipe("with-user",
       actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")(pkg)))
 

@@ -68,9 +68,9 @@ class JsonReaderTest extends FlatSpec with ShouldMatchers {
     parsed.applications should be (Set(StackApp("content-api", "index-builder"), StackApp("content-api", "api"), StackApp("content-api", "solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Set(StackApp("content-api", "index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
-    parsed.packages("api") should be (DeploymentPackage("api", Set(StackApp("content-api", "api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
-    parsed.packages("solr") should be (DeploymentPackage("solr", Set(StackApp("content-api", "solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
+    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(StackApp("content-api", "index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
+    parsed.packages("api") should be (DeploymentPackage("api", Seq(StackApp("content-api", "api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
+    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(StackApp("content-api", "solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
 
     val recipes = parsed.recipes
     recipes.size should be (4)

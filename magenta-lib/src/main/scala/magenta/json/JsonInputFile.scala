@@ -83,8 +83,8 @@ object JsonReader {
     DeploymentPackage(
       name,
       jsonPackage.apps match {
-        case Nil => Set(App(stackName, name))
-        case x => x.map(App(stackName, _)).toSet
+        case Nil => Seq(App(stackName, name))
+        case x => x.map(App(stackName, _))
       },
       jsonPackage.safeData,
       jsonPackage.`type`,

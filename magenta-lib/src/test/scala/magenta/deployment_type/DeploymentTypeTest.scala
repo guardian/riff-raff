@@ -22,7 +22,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       "bucket" -> "bucket-1234"
     )
 
-    val p = DeploymentPackage("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     val thrown = evaluating {
       S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
@@ -40,7 +40,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       "cacheControl" -> "no-cache"
     )
 
-    val p = DeploymentPackage("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
       List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
@@ -56,7 +56,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       ))
     )
 
-    val p = DeploymentPackage("myapp", Set.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE"))) should be (
       List(
@@ -68,13 +68,13 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
   "executable web app package type" should "have a default user of jvmuser" in {
     
-    val webappPackage =  DeploymentPackage("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
+    val webappPackage =  DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
 
     ExecutableJarWebapp.user(webappPackage) should be ("jvmuser")
   }
   
   it should "inherit defaults from base webapp" in {
-    val webappPackage = DeploymentPackage("foo", Set.empty, Map.empty, "executable-jar-webapp", new File("."))
+    val webappPackage = DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
 
     ExecutableJarWebapp.port(webappPackage) should be (8080)
     ExecutableJarWebapp.servicename(webappPackage) should be ("foo")
@@ -88,7 +88,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     }
     val specificBuildFile = File.createTempFile("webbapp-build.7", "", webappDirectory)
 
-    val p = DeploymentPackage("webapp", Set.empty, Map.empty, "django-webapp", webappDirectory)
+    val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "django-webapp", webappDirectory)
     val host = Host("host_name")
 
     Django.perHostActions("deploy")(p)(host) should be (List(

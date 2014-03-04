@@ -116,7 +116,7 @@ object HostList {
  until it's resolved against a particular host.
  */
 trait Action {
-  def apps: Set[App]
+  def apps: Seq[App]
   def description: String
   def resolve(resourceLookup: Lookup, params: DeployParameters): List[Task]
 }

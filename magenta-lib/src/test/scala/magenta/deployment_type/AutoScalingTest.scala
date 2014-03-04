@@ -15,7 +15,7 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       "bucket" -> "asg-bucket"
     )
 
-    val p = DeploymentPackage("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("app", Seq.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
       CheckGroupSize("app", PROD),
@@ -37,7 +37,7 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       "healthcheckGrace" -> 30
     )
 
-    val p = DeploymentPackage("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("app", Seq.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
       CheckGroupSize("app", PROD),

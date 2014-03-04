@@ -10,11 +10,11 @@ case class StubTask(description: String, override val taskHost: Option[Host] = N
   def verbose = "stub(%s)" format description
 }
 
-case class StubPerHostAction(description: String, apps: Set[App]) extends Action {
+case class StubPerHostAction(description: String, apps: Seq[App]) extends Action {
   def resolve(resourceLookup: Lookup, params: DeployParameters) = throw new UnsupportedOperationException
 }
 
-case class StubPerAppAction(description: String, apps: Set[App]) extends Action {
+case class StubPerAppAction(description: String, apps: Seq[App]) extends Action {
   def resolve(resourceLookup: Lookup, params: DeployParameters) = throw new UnsupportedOperationException
 }
 

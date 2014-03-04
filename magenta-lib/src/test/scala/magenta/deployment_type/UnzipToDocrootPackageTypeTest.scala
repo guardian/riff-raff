@@ -20,7 +20,7 @@ class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
       "locationInDocroot" -> "the-app/static"
     )
 
-    val p = DeploymentPackage("app", Set.empty, packageData, UnzipToDocroot.name, new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("app", Seq.empty, packageData, UnzipToDocroot.name, new File("/tmp/packages/webapp"))
 
     val diData = Map("ddm" -> List(Datum(None, "*", PROD.name, "ddm.domain", None)))
 
