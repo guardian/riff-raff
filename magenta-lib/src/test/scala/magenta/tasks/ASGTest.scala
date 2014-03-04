@@ -2,7 +2,7 @@ package magenta.tasks
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import magenta.{SystemUser, Stage, KeyRing}
+import magenta.{LegacyApp, SystemUser, Stage, KeyRing}
 import org.scalatest.mock.MockitoSugar
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, LifecycleState, AutoScalingGroup, DescribeAutoScalingGroupsResult, TagDescription}
@@ -21,15 +21,14 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val desiredGroup = AutoScalingGroup(("App" -> "example"), ("Stage" -> "PROD"))
 
-    when (asgClientMock.describeAutoScalingGroups) thenReturn (
+    when (asgClientMock.describeAutoScalingGroups) thenReturn
       new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
         desiredGroup,
         AutoScalingGroup(("App" -> "other"), ("Stage" -> "PROD")),
         AutoScalingGroup(("App" -> "example"), ("Stage" -> "TEST"))
       ))
-    )
 
-    asg.withPackageAndStage("example", Stage("PROD")) should be (Some(desiredGroup))
+    asg.groupForAppAndStage(Seq(LegacyApp("example")), Stage("PROD")) should be (desiredGroup)
   }
 
   it should "find the matching auto-scaling group with Role tagging" in {
@@ -48,7 +47,7 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
       ))
     )
 
-    asg.withPackageAndStage("example", Stage("PROD")) should be (Some(desiredGroup))
+    asg.groupForAppAndStage(Seq(LegacyApp("example")), Stage("PROD")) should be (desiredGroup)
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {

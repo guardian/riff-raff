@@ -15,18 +15,20 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       "bucket" -> "asg-bucket"
     )
 
-    val p = DeploymentPackage("app", Seq.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val app = Seq(LegacyApp("app"))
+
+    val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize("app", PROD),
-      SuspendAlarmNotifications("app", PROD),
-      TagCurrentInstancesWithTerminationTag("app", PROD),
-      DoubleSize("app", Stage("PROD")),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
+      CheckGroupSize(app, PROD),
+      SuspendAlarmNotifications(app, PROD),
+      TagCurrentInstancesWithTerminationTag(app, PROD),
+      DoubleSize(app, Stage("PROD")),
+      WaitForStabilization(app, PROD, 15 * 60 * 1000),
       HealthcheckGrace(0),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
-      CullInstancesWithTerminationTag("app", PROD),
-      ResumeAlarmNotifications("app", PROD)
+      WaitForStabilization(app, PROD, 15 * 60 * 1000),
+      CullInstancesWithTerminationTag(app, PROD),
+      ResumeAlarmNotifications(app, PROD)
     ))
   }
 
@@ -37,18 +39,20 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       "healthcheckGrace" -> 30
     )
 
-    val p = DeploymentPackage("app", Seq.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val app = Seq(LegacyApp("app"))
+
+    val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize("app", PROD),
-      SuspendAlarmNotifications("app", PROD),
-      TagCurrentInstancesWithTerminationTag("app", PROD),
-      DoubleSize("app", PROD),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
+      CheckGroupSize(app, PROD),
+      SuspendAlarmNotifications(app, PROD),
+      TagCurrentInstancesWithTerminationTag(app, PROD),
+      DoubleSize(app, PROD),
+      WaitForStabilization(app, PROD, 3 * 60 * 1000),
       HealthcheckGrace(30000),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
-      CullInstancesWithTerminationTag("app", PROD),
-      ResumeAlarmNotifications("app", PROD)
+      WaitForStabilization(app, PROD, 3 * 60 * 1000),
+      CullInstancesWithTerminationTag(app, PROD),
+      ResumeAlarmNotifications(app, PROD)
     ))
   }
 }

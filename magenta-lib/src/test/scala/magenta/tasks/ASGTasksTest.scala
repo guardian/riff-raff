@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import com.amazonaws.services.autoscaling.model.{UpdateAutoScalingGroupRequest, SetDesiredCapacityRequest, AutoScalingGroup}
+import com.amazonaws.services.autoscaling.model.{SetDesiredCapacityRequest, AutoScalingGroup}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import magenta._
 import org.mockito.Mockito._
@@ -15,9 +15,9 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val task = new DoubleSize("app", Stage("PROD")) {
+    val task = new DoubleSize(Seq(LegacyApp("app")), Stage("PROD")) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = Some(asg)
+      override def groupForAppAndStage(apps: Seq[App],  stage: Stage)(implicit keyRing: KeyRing) = asg
     }
 
     task.execute(fakeKeyRing)
@@ -33,9 +33,9 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val task = new CheckGroupSize("app", Stage("PROD")) {
+    val task = new CheckGroupSize(Seq(LegacyApp("app")), Stage("PROD")) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing) = Some(asg)
+      override def groupForAppAndStage(apps: Seq[App], stage: Stage)(implicit keyRing: KeyRing) = asg
     }
 
     val thrown = intercept[FailException](task.execute(fakeKeyRing))
