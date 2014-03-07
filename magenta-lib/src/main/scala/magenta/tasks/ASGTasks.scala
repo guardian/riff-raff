@@ -1,11 +1,13 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, Stage, KeyRing, App}
+import magenta._
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
+import magenta.KeyRing
+import magenta.Stage
 
-case class CheckGroupSize(apps: Seq[App], stage: Stage) extends ASGTask {
+case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     val doubleCapacity = asg.getDesiredCapacity * 2
     if (asg.getMaxSize < doubleCapacity) {
@@ -18,7 +20,7 @@ case class CheckGroupSize(apps: Seq[App], stage: Stage) extends ASGTask {
   lazy val description = "Checking there is enough capacity to deploy"
 }
 
-case class TagCurrentInstancesWithTerminationTag(apps: Seq[App], stage: Stage) extends ASGTask {
+case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate")
   }
@@ -26,13 +28,13 @@ case class TagCurrentInstancesWithTerminationTag(apps: Seq[App], stage: Stage) e
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
 }
 
-case class DoubleSize(apps: Seq[App], stage: Stage) extends ASGTask {
+case class DoubleSize(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     desiredCapacity(asg.getAutoScalingGroupName, asg.getDesiredCapacity * 2)
   }
 
-  lazy val description = s"Double the size of the auto-scaling group in $stage for apps ${apps.mkString(", ")}"
+  lazy val description = s"Double the size of the auto-scaling group in $stage for apps ${pkg.apps.mkString(", ")}"
 }
 
 case class HealthcheckGrace(duration: Long) extends Task {
@@ -46,7 +48,7 @@ case class HealthcheckGrace(duration: Long) extends Task {
   def description = verbose
 }
 
-case class WaitForStabilization(apps: Seq[App], stage: Stage, duration: Long) extends ASGTask
+case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, duration: Long) extends ASGTask
     with SlowRepeatedPollingCheck {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
@@ -68,7 +70,7 @@ case class WaitForStabilization(apps: Seq[App], stage: Stage, duration: Long) ex
   lazy val description: String = "Check the desired number of hosts in ASG are up and in ELB"
 }
 
-case class CullInstancesWithTerminationTag(apps: Seq[App], stage: Stage) extends ASGTask {
+case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     for (instance <- asg.getInstances) {
       if (EC2.hasTag(instance, "Magenta", "Terminate")) {
@@ -80,7 +82,7 @@ case class CullInstancesWithTerminationTag(apps: Seq[App], stage: Stage) extends
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
-case class SuspendAlarmNotifications(apps: Seq[App], stage: Stage) extends ASGTask {
+case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     suspendAlarmNotifications(asg.getAutoScalingGroupName)
@@ -89,7 +91,7 @@ case class SuspendAlarmNotifications(apps: Seq[App], stage: Stage) extends ASGTa
   lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
 }
 
-case class ResumeAlarmNotifications(apps: Seq[App], stage: Stage) extends ASGTask {
+case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage) extends ASGTask {
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
     resumeAlarmNotifications(asg.getAutoScalingGroupName)
@@ -99,7 +101,7 @@ case class ResumeAlarmNotifications(apps: Seq[App], stage: Stage) extends ASGTas
 }
 
 trait ASGTask extends Task with ASG {
-  def apps: Seq[App]
+  def pkg: DeploymentPackage
   def stage: Stage
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing)
@@ -107,7 +109,7 @@ trait ASGTask extends Task with ASG {
   override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
     implicit val key = keyRing
 
-    val group = groupForAppAndStage(apps, stage)
+    val group = groupForAppAndStage(pkg, stage)
     execute(group, stopFlag)
   }
 

@@ -38,15 +38,15 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   def perAppActions = {
     case "deploy" => (pkg) => (_, parameters) => {
       List(
-        CheckGroupSize(pkg.apps, parameters.stage),
-        SuspendAlarmNotifications(pkg.apps, parameters.stage),
-        TagCurrentInstancesWithTerminationTag(pkg.apps, parameters.stage),
-        DoubleSize(pkg.apps, parameters.stage),
-        WaitForStabilization(pkg.apps, parameters.stage, secondsToWait(pkg) * 1000),
+        CheckGroupSize(pkg, parameters.stage),
+        SuspendAlarmNotifications(pkg, parameters.stage),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage),
+        DoubleSize(pkg, parameters.stage),
+        WaitForStabilization(pkg, parameters.stage, secondsToWait(pkg) * 1000),
         HealthcheckGrace(healthcheckGrace(pkg) * 1000),
-        WaitForStabilization(pkg.apps, parameters.stage, secondsToWait(pkg) * 1000),
-        CullInstancesWithTerminationTag(pkg.apps, parameters.stage),
-        ResumeAlarmNotifications(pkg.apps, parameters.stage)
+        WaitForStabilization(pkg, parameters.stage, secondsToWait(pkg) * 1000),
+        CullInstancesWithTerminationTag(pkg, parameters.stage),
+        ResumeAlarmNotifications(pkg, parameters.stage)
       )
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>

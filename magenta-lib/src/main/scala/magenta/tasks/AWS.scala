@@ -83,14 +83,16 @@ trait ASG extends AWS {
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def groupForAppAndStage(apps: Seq[App], stage: Stage)(implicit keyRing: KeyRing): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage)(implicit keyRing: KeyRing): AutoScalingGroup = {
+    case class ASGMatch(app:App, matches:List[AutoScalingGroup])
+
     implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
         tag.getKey == key && tag.getValue == value
       }
       def matchApp(app: App) = {
         app match {
-          case LegacyApp(name) => hasTag("Role", name) || hasTag("App", name)
+          case LegacyApp(name) => hasTag("Role", pkg.name) || hasTag("App", pkg.name)
           case StackApp(stackName, appName) => hasTag("Stack", stackName) && hasTag("App", appName)
           case _ => false
         }
@@ -99,15 +101,14 @@ trait ASG extends AWS {
 
     val groups = client.describeAutoScalingGroups().getAutoScalingGroups.toList
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
-    val appToMatchingGroups = apps.map { app =>
-      app -> filteredByStage.filter(_.matchApp(app))
-    } filterNot {
-      _._2.isEmpty
+    val appToMatchingGroups = pkg.apps.flatMap { app =>
+      val matches = filteredByStage.filter(_.matchApp(app))
+      if (matches.isEmpty) None else Some(ASGMatch(app, matches))
     }
 
-    val appMatch:(App, List[AutoScalingGroup]) = appToMatchingGroups match {
+    val appMatch:ASGMatch = appToMatchingGroups match {
       case Seq() =>
-        MessageBroker.fail(s"No autoscaling group found in ${stage.name} with tags matching any app in ${apps.mkString(", ")}")
+        MessageBroker.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
       case Seq(onlyMatch) => onlyMatch
       case firstMatch +: otherMatches =>
         MessageBroker.info(s"More than one app matches an autoscaling group, the first in the list will be used")
@@ -115,10 +116,10 @@ trait ASG extends AWS {
     }
 
     appMatch match {
-      case (_, List(singleGroup)) =>
+      case ASGMatch(_, List(singleGroup)) =>
         MessageBroker.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
         singleGroup
-      case (app, groupList) =>
+      case ASGMatch(app, groupList) =>
         MessageBroker.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }

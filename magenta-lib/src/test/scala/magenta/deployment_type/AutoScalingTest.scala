@@ -20,15 +20,15 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize(app, PROD),
-      SuspendAlarmNotifications(app, PROD),
-      TagCurrentInstancesWithTerminationTag(app, PROD),
-      DoubleSize(app, Stage("PROD")),
-      WaitForStabilization(app, PROD, 15 * 60 * 1000),
+      CheckGroupSize(p, PROD),
+      SuspendAlarmNotifications(p, PROD),
+      TagCurrentInstancesWithTerminationTag(p, PROD),
+      DoubleSize(p, Stage("PROD")),
+      WaitForStabilization(p, PROD, 15 * 60 * 1000),
       HealthcheckGrace(0),
-      WaitForStabilization(app, PROD, 15 * 60 * 1000),
-      CullInstancesWithTerminationTag(app, PROD),
-      ResumeAlarmNotifications(app, PROD)
+      WaitForStabilization(p, PROD, 15 * 60 * 1000),
+      CullInstancesWithTerminationTag(p, PROD),
+      ResumeAlarmNotifications(p, PROD)
     ))
   }
 
@@ -44,15 +44,15 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
     AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize(app, PROD),
-      SuspendAlarmNotifications(app, PROD),
-      TagCurrentInstancesWithTerminationTag(app, PROD),
-      DoubleSize(app, PROD),
-      WaitForStabilization(app, PROD, 3 * 60 * 1000),
+      CheckGroupSize(p, PROD),
+      SuspendAlarmNotifications(p, PROD),
+      TagCurrentInstancesWithTerminationTag(p, PROD),
+      DoubleSize(p, PROD),
+      WaitForStabilization(p, PROD, 3 * 60 * 1000),
       HealthcheckGrace(30000),
-      WaitForStabilization(app, PROD, 3 * 60 * 1000),
-      CullInstancesWithTerminationTag(app, PROD),
-      ResumeAlarmNotifications(app, PROD)
+      WaitForStabilization(p, PROD, 3 * 60 * 1000),
+      CullInstancesWithTerminationTag(p, PROD),
+      ResumeAlarmNotifications(p, PROD)
     ))
   }
 }
