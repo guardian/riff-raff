@@ -171,7 +171,7 @@ object Application extends Controller with Logging {
                       case (Some(default), _) => Some(default.toString)
                       case (None, Some(pkgFunction)) =>
                         Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Set(StackApp("<stack>","<app>")),Map.empty,"<deploymentType>",new File("<file>"))
+                          DeploymentPackage("<packageName>",Seq(StackApp("<stack>","<app>")),Map.empty,"<deploymentType>",new File("<file>"))
                         ).toString)
                       case (_, _) => None
                     }

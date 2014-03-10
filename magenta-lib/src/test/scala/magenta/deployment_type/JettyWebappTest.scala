@@ -19,7 +19,7 @@ import magenta.deployment_type.JettyWebapp
 
 class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   "jetty web app package type" should "have a deploy action" in {
-    val p = DeploymentPackage("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
 
     val host = Host("host_name")
 
@@ -34,10 +34,10 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   }
 
   it should "allow port to be overriden" in {
-    val basic = DeploymentPackage("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
+    val basic = DeploymentPackage("webapp", Seq.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
     JettyWebapp.port(basic) should be (8080)
 
-    val overridden = DeploymentPackage("webapp", Set.empty, Map("port" -> "80"), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val overridden = DeploymentPackage("webapp", Seq.empty, Map("port" -> "80"), "jetty-webapp", new File("/tmp/packages/webapp"))
     JettyWebapp.port(overridden) should be (80)
   }
 
@@ -45,7 +45,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     val urls = List("/test", "/xx")
     val urls_json = JArray(urls map { JString(_)})
 
-    val p = DeploymentPackage("webapp", Set.empty, Map("healthcheck_paths" -> urls_json), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Seq.empty, Map("healthcheck_paths" -> urls_json), "jetty-webapp", new File("/tmp/packages/webapp"))
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(
@@ -60,8 +60,8 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   }
 
   it should "allow servicename to be overridden for copy and restart" in {
-    val p = DeploymentPackage("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
-    val p2 = DeploymentPackage("webapp", Set.empty, Map("servicename"->"microapps"), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p2 = DeploymentPackage("webapp", Seq.empty, Map("servicename"->"microapps"), "jetty-webapp", new File("/tmp/packages/webapp"))
 
     val host = Host("host_name")
 
@@ -79,12 +79,12 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   }
 
   it should "have useful default copyRoots" in {
-    val p = DeploymentPackage("webapp", Set.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))
     JettyWebapp.copyRoots(p) should be(List(""))
   }
 
   it should "add missing slashes" in {
-    val p = DeploymentPackage("webapp", Set.empty, Map("copyRoots" -> JArray(List("solr/conf/", "app"))), "jetty-webapp", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("webapp", Seq.empty, Map("copyRoots" -> JArray(List("solr/conf/", "app"))), "jetty-webapp", new File("/tmp/packages/webapp"))
     val host = Host("host_name")
     JettyWebapp.perHostActions("deploy")(p)(host) should (contain[Task] (
       CopyFile(host as "jetty", "/tmp/packages/webapp/solr/conf/", "/jetty-apps/webapp/solr/conf/")
@@ -94,7 +94,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
   }
 
   it should "have multiple copy file tasks for multiple roots in mirror mode" in {
-    val p = DeploymentPackage("d2index", Set.empty, Map("copyRoots" -> JArray(List("solr/conf/", "webapp")), "copyMode" -> CopyFile.MIRROR_MODE), "jetty-webapp", new File("/tmp/packages/d2index"))
+    val p = DeploymentPackage("d2index", Seq.empty, Map("copyRoots" -> JArray(List("solr/conf/", "webapp")), "copyMode" -> CopyFile.MIRROR_MODE), "jetty-webapp", new File("/tmp/packages/d2index"))
     val host = Host("host_name")
 
     JettyWebapp.perHostActions("deploy")(p)(host) should be (List(

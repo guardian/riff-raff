@@ -20,13 +20,14 @@ object ElasticSearch extends DeploymentType with S3AclParams {
   def perAppActions = {
     case "deploy" => (pkg) => (_, parameters) => {
       List(
-        CheckGroupSize(pkg.name, parameters.stage),
-        SuspendAlarmNotifications(pkg.name, parameters.stage),
-        TagCurrentInstancesWithTerminationTag(pkg.name, parameters.stage),
-        DoubleSize(pkg.name, parameters.stage),
-        WaitForElasticSearchClusterGreen(pkg.name, parameters.stage, secondsToWait(pkg) * 1000),
-        CullElasticSearchInstancesWithTerminationTag(pkg.name, parameters.stage, secondsToWait(pkg) * 1000),
-        ResumeAlarmNotifications(pkg.name, parameters.stage)
+        CheckGroupSize(pkg, parameters.stage),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, secondsToWait(pkg) * 1000),
+        SuspendAlarmNotifications(pkg, parameters.stage),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage),
+        DoubleSize(pkg, parameters.stage),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, secondsToWait(pkg) * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, secondsToWait(pkg) * 1000),
+        ResumeAlarmNotifications(pkg, parameters.stage)
       )
     }
     case "uploadArtifacts" => (pkg) => (_, parameters) =>

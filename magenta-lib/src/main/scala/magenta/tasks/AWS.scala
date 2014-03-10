@@ -11,7 +11,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
-import magenta.{Stage, KeyRing}
+import magenta._
 import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
@@ -83,21 +83,45 @@ trait ASG extends AWS {
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def withPackageAndStage(packageName: String, stage: Stage)(implicit keyRing: KeyRing): Option[AutoScalingGroup] = {
-    implicit def autoscalingGroup2HasTag(asg: AutoScalingGroup) = new {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage)(implicit keyRing: KeyRing): AutoScalingGroup = {
+    case class ASGMatch(app:App, matches:List[AutoScalingGroup])
+
+    implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
-          tag.getKey == key && tag.getValue == value
+        tag.getKey == key && tag.getValue == value
+      }
+      def matchApp(app: App) = {
+        app match {
+          case LegacyApp(name) => hasTag("Role", pkg.name) || hasTag("App", pkg.name)
+          case StackApp(stackName, appName) => hasTag("Stack", stackName) && hasTag("App", appName)
+          case _ => false
         }
+      }
     }
 
     val groups = client.describeAutoScalingGroups().getAutoScalingGroups.toList
-    val filteredByPackageAndStage = groups filter {
-      _.hasTag("Stage", stage.name)
-    } filter { group =>
-      group.hasTag("App", packageName) || group.hasTag("Role", packageName)
+    val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
+    val appToMatchingGroups = pkg.apps.flatMap { app =>
+      val matches = filteredByStage.filter(_.matchApp(app))
+      if (matches.isEmpty) None else Some(ASGMatch(app, matches))
     }
 
-    filteredByPackageAndStage.headOption
+    val appMatch:ASGMatch = appToMatchingGroups match {
+      case Seq() =>
+        MessageBroker.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
+      case Seq(onlyMatch) => onlyMatch
+      case firstMatch +: otherMatches =>
+        MessageBroker.info(s"More than one app matches an autoscaling group, the first in the list will be used")
+        firstMatch
+    }
+
+    appMatch match {
+      case ASGMatch(_, List(singleGroup)) =>
+        MessageBroker.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
+        singleGroup
+      case ASGMatch(app, groupList) =>
+        MessageBroker.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+    }
   }
 }
 
