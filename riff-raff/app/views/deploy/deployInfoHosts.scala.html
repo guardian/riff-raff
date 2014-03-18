@@ -26,11 +26,7 @@
     <tbody>
         @hosts(stage).groupBy(_.apps).toList.sortBy(_._1.head.toString).map { case (appSet, hosts) =>
             <tr>
-            @defining(App.stackAppTuple(appSet)) { case (stackOption, app) =>
-                <td><strong>@stackOption.getOrElse{ <span class='label label-warning'>none</span> }</strong></td>
-                <td><strong>@app</strong></td>
-            }
-            <td>(@hosts.size)</td>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong> (@hosts.size)</td>
             <td>
             @hosts.transposeBy(_.tags.getOrElse("group","")).map{ host =>
                 @snippets.hostWithTooltip(host, placement="left")

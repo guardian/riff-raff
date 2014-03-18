@@ -12,6 +12,7 @@ import magenta.Stage
 import magenta.tasks.ElasticSearchNode
 
 case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+                                           (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck {
 
   val description = "Wait for the elasticsearch cluster status to be green"
@@ -20,7 +21,7 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val instance = EC2(asg.getInstances().headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
@@ -32,9 +33,10 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
 }
 
 case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+                                                       (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
     val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
 

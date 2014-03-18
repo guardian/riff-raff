@@ -20,18 +20,20 @@ trait Lookup {
   def instances: Instances
   def stages: Seq[String]
   def data: Data
-  def credentials(stage: Stage, apps: Set[App], stack: Stack): Map[String, ApiCredentials]
+  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing
 }
 
 trait SecretProvider {
+  def sshCredentials: SshCredentials
   def lookup(service: String, account: String): Option[String]
 }
 
 trait MagentaCredentials {
   def data: Data
   def secretProvider: SecretProvider
-  def credentials(stage: Stage, apps: Set[App], stack: Stack): Map[String, ApiCredentials] =
-    apps.toSeq.flatMap {
+  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
+    sshCredentials = secretProvider.sshCredentials,
+    apiCredentials = apps.toSeq.flatMap {
       app => {
         val KeyPattern = """credentials:(.*)""".r
         val apiCredentials = data.keys flatMap {
@@ -46,6 +48,7 @@ trait MagentaCredentials {
         apiCredentials
       }
     }.distinct.toMap
+  )
 }
 
 case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretProvider) extends Lookup with MagentaCredentials {

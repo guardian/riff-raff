@@ -10,6 +10,9 @@ object Fastly  extends DeploymentType {
     """.stripMargin
 
   def perAppActions = {
-    case "deploy" => pkg => (_, parameters, _) => List(UpdateFastlyConfig(pkg))
+    case "deploy" => pkg => (lookup, parameters, stack) => {
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      List(UpdateFastlyConfig(pkg))
+    }
   }
 }

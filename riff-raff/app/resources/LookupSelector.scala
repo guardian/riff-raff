@@ -5,6 +5,7 @@ import magenta._
 import org.joda.time.DateTime
 import com.gu.management.DefaultSwitch
 import controllers.Logging
+import conf.Configuration
 
 object LookupSelector {
   lazy val switches = Seq(enablePrism, enableValidation)
@@ -27,7 +28,8 @@ object LookupSelector {
   lazy val secretProvider = new SecretProvider {
                               def lookup(service: String, account: String): Option[String] =
                                 conf.Configuration.credentials.lookupSecret(service, account)
-                            }
+    override def sshCredentials = SystemUser(keyFile = Configuration.sshKey.file)
+  }
 
   def deployInfoLookup = new Lookup {
     val lookupDelegate = DeployInfoLookupShim(DeployInfoManager.deployInfo, secretProvider)
@@ -36,7 +38,7 @@ object LookupSelector {
     def instances: Instances = lookupDelegate.instances
     def data: Data = lookupDelegate.data
     def stages = lookupDelegate.stages.sorted(conf.Configuration.stages.ordering).reverse
-    def credentials(stage: Stage, apps: Set[App], stack: Stack) = lookupDelegate.credentials(stage, apps, stack)
+    def keyRing(stage: Stage, apps: Set[App], stack: Stack) = lookupDelegate.keyRing(stage, apps, stack)
   }
 
   def apply():Lookup = {
@@ -119,6 +121,6 @@ case class LookupValidator(primary:Lookup, validation:Lookup) extends Lookup wit
     def keys: Seq[String] = lookupWithSeqDiff[String](_.data.keys)
   }
 
-  def credentials(stage: Stage, apps: Set[App], stack: Stack): Map[String, ApiCredentials] =
-    primary.credentials(stage, apps, stack)
+  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing =
+    primary.keyRing(stage, apps, stack)
 }

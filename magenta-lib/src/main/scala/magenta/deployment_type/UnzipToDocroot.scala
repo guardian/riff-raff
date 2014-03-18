@@ -31,6 +31,7 @@ object UnzipToDocroot  extends DeploymentType {
 
   def perAppActions = {
     case "deploy" => pkg => (resourceLookup, params, stack) => {
+      implicit val keyRing = resourceLookup.keyRing(params.stage, pkg.apps.toSet, stack)
       lazy val zipLocation = new File(pkg.srcDir, zip(pkg))
       val host = Host(resourceLookup.data.datum("ddm", App("r2"), params.stage, stack).
         getOrElse(MessageBroker.fail("no data found for ddm in " + params.stage.name)).value)

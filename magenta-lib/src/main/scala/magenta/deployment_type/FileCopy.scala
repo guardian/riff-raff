@@ -10,7 +10,10 @@ object FileCopy extends DeploymentType {
     """.stripMargin
 
   override def perHostActions = {
-    case "deploy" => pkg => host => List(CopyFile(host, pkg.srcDir.getPath, "/"))
+    case "deploy" => pkg => (host, keyRing) => {
+      implicit val key = keyRing
+      List(CopyFile(host, pkg.srcDir.getPath, "/"))
+    }
   }
 
   def perAppActions = PartialFunction.empty

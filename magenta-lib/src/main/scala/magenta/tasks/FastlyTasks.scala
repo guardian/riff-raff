@@ -5,11 +5,11 @@ import java.io.File
 import net.liftweb.json._
 import com.gu.fastly.api.FastlyApiClient
 
-case class UpdateFastlyConfig(pkg: DeploymentPackage) extends Task {
+case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyRing) extends Task {
 
   implicit val formats = DefaultFormats
 
-  override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
+  override def execute(stopFlag: => Boolean) {
 
     FastlyApiClientProvider.get(keyRing).map {
       client =>

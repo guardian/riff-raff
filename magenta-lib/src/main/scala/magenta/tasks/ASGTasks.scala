@@ -7,8 +7,8 @@ import collection.JavaConversions._
 import magenta.KeyRing
 import magenta.Stage
 
-case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val doubleCapacity = asg.getDesiredCapacity * 2
     if (asg.getMaxSize < doubleCapacity) {
       MessageBroker.fail(
@@ -20,26 +20,26 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack) ex
   lazy val description = "Checking there is enough capacity to deploy"
 }
 
-case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
-    EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate")
+case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+    EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate")(keyRing)
   }
 
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
 }
 
-case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
+case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
-    desiredCapacity(asg.getAutoScalingGroupName, asg.getDesiredCapacity * 2)
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+    desiredCapacity(asg.getAutoScalingGroupName, asg.getDesiredCapacity * 2)(keyRing)
   }
 
   lazy val description = s"Double the size of the auto-scaling group in $stage for apps ${pkg.apps.mkString(", ")}"
 }
 
-case class HealthcheckGrace(duration: Long) extends Task {
+case class HealthcheckGrace(duration: Long)(implicit val keyRing: KeyRing) extends Task {
 
-  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
+  def execute(stopFlag: => Boolean) {
     Thread.sleep(duration)
   }
 
@@ -48,10 +48,10 @@ case class HealthcheckGrace(duration: Long) extends Task {
   def description = verbose
 }
 
-case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long) extends ASGTask
+case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     check(stopFlag) {
       try {
         isStabilized(refresh(asg))
@@ -70,11 +70,11 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
   lazy val description: String = "Check the desired number of hosts in ASG are up and in ELB"
 }
 
-case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     for (instance <- asg.getInstances) {
-      if (EC2.hasTag(instance, "Magenta", "Terminate")) {
-        cull(asg, instance)
+      if (EC2.hasTag(instance, "Magenta", "Terminate")(keyRing)) {
+        cull(asg, instance)(keyRing)
       }
     }
   }
@@ -82,19 +82,19 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
-case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
+case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
-    suspendAlarmNotifications(asg.getAutoScalingGroupName)
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+    suspendAlarmNotifications(asg.getAutoScalingGroupName)(keyRing)
   }
 
   lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
 }
 
-case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack) extends ASGTask {
+case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
-    resumeAlarmNotifications(asg.getAutoScalingGroupName)
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+    resumeAlarmNotifications(asg.getAutoScalingGroupName)(keyRing)
   }
 
   lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
@@ -105,9 +105,9 @@ trait ASGTask extends Task with ASG {
   def stage: Stage
   def stack: Stack
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing)
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)
 
-  override def execute(keyRing: KeyRing, stopFlag: => Boolean) {
+  override def execute(stopFlag: => Boolean) {
     implicit val key = keyRing
 
     val group = groupForAppAndStage(pkg, stage, stack)

@@ -80,6 +80,7 @@ object S3 extends DeploymentType with S3AclParams {
 
   def perAppActions = {
     case "uploadStaticFiles" => (pkg) => (resourceLookup, parameters, stack) => {
+      implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
         assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")

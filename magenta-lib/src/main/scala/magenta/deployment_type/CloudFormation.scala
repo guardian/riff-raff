@@ -13,13 +13,16 @@ object CloudFormation extends DeploymentType {
   val templateParameters = Param[Map[String, String]]("templateParameters").default(Map.empty)
 
   override def perAppActions = {
-    case "updateStack" => pkg => (_, parameters, _) => List(
-      UpdateCloudFormationTask(
-        if (appendStageToStackName(pkg)) s"${stackName(pkg)}-${parameters.stage.name}" else stackName(pkg),
-        Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
-        templateParameters(pkg),
-        parameters.stage
+    case "updateStack" => pkg => (lookup, parameters, stack) => {
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      List(
+        UpdateCloudFormationTask(
+          if (appendStageToStackName(pkg)) s"${stackName(pkg)}-${parameters.stage.name}" else stackName(pkg),
+          Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
+          templateParameters(pkg),
+          parameters.stage
+        )
       )
-    )
+    }
   }
 }

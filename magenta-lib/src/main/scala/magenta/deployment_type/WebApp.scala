@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.tasks._
 import java.io.File
-import magenta.{Host, DeploymentPackage}
+import magenta.{KeyRing, Host, DeploymentPackage}
 
 trait WebApp extends DeploymentType with S3AclParams {
   def containerName: String
@@ -80,7 +80,9 @@ trait WebApp extends DeploymentType with S3AclParams {
   ).default("additive")
 
   override def perHostActions = {
-    case "deploy" => pkg => host => {
+    case "deploy" => pkg => (host, keyRing) => {
+      implicit val key = keyRing
+
       BlockFirewall(host as user(pkg)) ::
       rootCopies(pkg, host) :::
       Restart(host as user(pkg), servicename(pkg)) ::
@@ -89,7 +91,8 @@ trait WebApp extends DeploymentType with S3AclParams {
       UnblockFirewall(host as user(pkg)) ::
       Nil
     }
-    case "restart" => pkg => host => {
+    case "restart" => pkg => (host, keyRing) => {
+      implicit val key = keyRing
       List(
         BlockFirewall(host as user(pkg)),
         Restart(host as user(pkg), servicename(pkg)),
@@ -101,13 +104,14 @@ trait WebApp extends DeploymentType with S3AclParams {
   }
 
   def perAppActions = {
-    case "uploadArtifacts" => pkg => (_, parameters, _) =>
+    case "uploadArtifacts" => pkg => (lookup, parameters, stack) =>
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
         S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath), publicReadAcl = publicReadAcl(pkg))
       )
   }
 
-  def rootCopies(pkg: DeploymentPackage, host: Host) = {
+  def rootCopies(pkg: DeploymentPackage, host: Host)(implicit keyRing: KeyRing) = {
     val TRAILING_SLASH = """^(.*/)$""".r
     copyRoots(pkg).map{ root =>
       val rootWithTrailingSlash = root match {
