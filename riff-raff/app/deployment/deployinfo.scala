@@ -108,14 +108,14 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   def hostList = deployInfoInternal.hosts
   def dataList = deployInfoInternal.data
 
-  def credentials(stage: String, apps: Set[App]): Map[String, ApiCredentials] = {
+  def credentials(stage: Stage, apps: Set[App], stack: Stack): Map[String, ApiCredentials] = {
     apps.toList.flatMap {
       app => {
         val KeyPattern = """credentials:(.*)""".r
         val apiCredentials = deployInfoInternal.data.keys flatMap { key =>
           key match {
             case KeyPattern(service) =>
-              deployInfoInternal.firstMatchingData(key, app, stage).flatMap { data =>
+              deployInfoInternal.firstMatchingData(key, app, stage, stack).flatMap { data =>
                 Configuration.credentials.lookupSecret(service, data.value).map{ secret =>
                   (service, ApiCredentials(service, data.value, secret, data.comment))
                 }
@@ -126,11 +126,6 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
         apiCredentials
       }
     }.distinct.toMap
-  }
-
-  def keyRing(context:DeployContext): KeyRing = {
-    KeyRing( SystemUser(keyFile = Configuration.sshKey.file),
-                credentials(context.stage.name, context.project.applications))
   }
 
   def shutdown() {

@@ -45,6 +45,7 @@ object RecordConverter {
       buildId = sourceParams.build.id,
       stage = sourceParams.stage.name,
       recipe = sourceParams.recipe.name,
+      stacks = sourceParams.stacks.map(_.name).toList,
       hostList = sourceParams.hostList,
       deployType = record.taskType.toString,
       tags = record.metaData
@@ -60,6 +61,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     Build(deploy.parameters.projectName, deploy.parameters.buildId),
     Stage(deploy.parameters.stage),
     RecipeName(deploy.parameters.recipe),
+    deploy.parameters.stacks.map(NamedStack(_)),
     deploy.parameters.hostList
   )
 

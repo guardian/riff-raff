@@ -13,7 +13,7 @@ object CloudFormation extends DeploymentType {
   val templateParameters = Param[Map[String, String]]("templateParameters").default(Map.empty)
 
   override def perAppActions = {
-    case "updateStack" => pkg => (_, parameters) => List(
+    case "updateStack" => pkg => (_, parameters, _) => List(
       UpdateCloudFormationTask(
         if (appendStageToStackName(pkg)) s"${stackName(pkg)}-${parameters.stage.name}" else stackName(pkg),
         Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),

@@ -19,7 +19,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
         host.dnsname.map("dnsname" -> _) ++
         host.instancename.map("instancename" -> _) ++
         host.internalname.map("internalname" -> _)
-    Host(host.hostname, Set(LegacyApp(host.app)), host.stage, tags = tags.toMap)
+    Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
   }
 
   def forParams(params: DeployParameters): DeployInfo = {
@@ -51,18 +51,18 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
   def stageAppToDataMap(key: String): Map[(String,String),List[Datum]] =
     data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
 
-  def firstMatchingData(key: String, app:App, stage:String): Option[Datum] = {
+  def firstMatchingData(key: String, app:App, stage: Stage, stack: Stack): Option[Datum] = {
     val matchingList = data.getOrElse(key, List.empty)
-    app match {
-      case LegacyApp(name) =>
+    stack match {
+      case UnnamedStack =>
         matchingList.filter(_.stack.isEmpty).find{data =>
-          data.appRegex.findFirstMatchIn(name).isDefined && data.stageRegex.findFirstMatchIn(stage).isDefined
+          data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage.name).isDefined
         }
-      case StackApp(stackName, appName) =>
+      case NamedStack(stackName) =>
         matchingList.filter(_.stack.isDefined).find{data =>
-          data.stackRegex.exists(_.findFirstMatchIn(appName).isDefined) &&
-          data.appRegex.findFirstMatchIn(appName).isDefined &&
-            data.stageRegex.findFirstMatchIn(stage).isDefined
+          data.stackRegex.exists(_.findFirstMatchIn(app.name).isDefined) &&
+          data.appRegex.findFirstMatchIn(app.name).isDefined &&
+            data.stageRegex.findFirstMatchIn(stage.name).isDefined
         }
     }
 
@@ -118,42 +118,29 @@ object HostList {
 trait Action {
   def apps: Seq[App]
   def description: String
-  def resolve(resourceLookup: Lookup, params: DeployParameters): List[Task]
+  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack): List[Task]
 }
 
-trait App {}
-object App {
-  def apply(stack:Option[String], app:String): App = {
-    stack.map{s =>
-      StackApp(s, app)
-    } getOrElse {
-      LegacyApp(app)
-    }
-  }
+case class App (name: String) {
   // takes a set of apps, assumed to be all the same type
   def stackAppTuple(apps: Set[App]): (Option[String], String) = {
     apps.headOption match {
-      case Some(LegacyApp(_)) =>
+      case Some(App(_)) =>
         val appNames = apps.map{
-          case LegacyApp(app) => app
+          case App(app) => app
         }.toSeq.sorted.mkString(", ")
         (None, appNames)
-      case Some(StackApp(stack, _)) =>
-        val appNames = apps.map{
-          case StackApp(_, app) => app
-        }.toSeq.sorted.mkString(", ")
-        (Some(stack), appNames)
       case _ =>
         (None, "none")
     }
   }
 }
-case class LegacyApp(name: String) extends App {
-  override lazy val toString: String = name
-}
-case class StackApp(stack: String, app:String) extends App {
-  override lazy val toString: String = s"$stack::$app"
-}
+//case class LegacyApp(name: String) extends App {
+//  override lazy val toString: String = name
+//}
+//case class StackApp(stack: String, app:String) extends App {
+//  override lazy val toString: String = s"$stack::$app"
+//}
 
 case class Recipe(
   name: String,
@@ -164,7 +151,8 @@ case class Recipe(
 
 case class Project(
   packages: Map[String, DeploymentPackage] = Map.empty,
-  recipes: Map[String, Recipe] = Map.empty
+  recipes: Map[String, Recipe] = Map.empty,
+  defaultStacks: Seq[Stack] = Seq()
 ) {
   lazy val applications = packages.values.flatMap(_.apps).toSet
 }
@@ -176,11 +164,23 @@ object DefaultRecipe {
   def apply() = RecipeName("default")
 }
 
+sealed trait Stack
+case class NamedStack(name: String) extends Stack
+case object UnnamedStack extends Stack
+
 case class Deployer(name: String)
 
-case class DeployParameters(deployer: Deployer, build: Build, stage: Stage, recipe: RecipeName = DefaultRecipe(), hostList: List[String] = Nil) {
+case class DeployParameters(
+                             deployer: Deployer,
+                             build: Build,
+                             stage: Stage,
+                             recipe: RecipeName = DefaultRecipe(),
+                             stacks: Seq[NamedStack] = Seq(),
+                             hostList: List[String] = Nil
+                             ) {
 
   def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup): DeployContext = {
+
     DeployContext(this,project, resourceLookup, uuid)
   }
   def toDeployContext(project: Project, resourceLookup: Lookup): DeployContext = DeployContext(this,project, resourceLookup)

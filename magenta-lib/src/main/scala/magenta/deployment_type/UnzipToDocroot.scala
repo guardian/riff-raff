@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.{LegacyApp, MessageBroker, Host}
+import magenta.{App, MessageBroker, Host}
 import java.io.File
 import magenta.tasks.{ExtractToDocroots, CopyFile}
 
@@ -30,9 +30,9 @@ object UnzipToDocroot  extends DeploymentType {
   ).default("")
 
   def perAppActions = {
-    case "deploy" => pkg => (resourceLookup, params) => {
+    case "deploy" => pkg => (resourceLookup, params, stack) => {
       lazy val zipLocation = new File(pkg.srcDir, zip(pkg))
-      val host = Host(resourceLookup.data.datum("ddm", LegacyApp("r2"), params.stage).
+      val host = Host(resourceLookup.data.datum("ddm", App("r2"), params.stage, stack).
         getOrElse(MessageBroker.fail("no data found for ddm in " + params.stage.name)).value)
       List(
         CopyFile(host as user(pkg), zipLocation.getPath, "/tmp"),

@@ -1,13 +1,17 @@
 package magenta.tasks
 
-import magenta.{DeploymentPackage, KeyRing, Stage, App}
+import magenta._
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 import dispatch.classic._
 import net.liftweb.json._
 import java.net.ConnectException
+import magenta.DeploymentPackage
+import magenta.KeyRing
+import magenta.Stage
+import magenta.tasks.ElasticSearchNode
 
-case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, duration: Long)
+case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
   extends ASGTask with RepeatedPollingCheck {
 
   val description = "Wait for the elasticsearch cluster status to be green"
@@ -27,7 +31,7 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
   }
 }
 
-case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, duration: Long)
+case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
   extends ASGTask with RepeatedPollingCheck{
 
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {

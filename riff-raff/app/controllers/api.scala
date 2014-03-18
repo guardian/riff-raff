@@ -311,6 +311,7 @@ object Api extends Controller with Logging {
           Build(project, build),
           Stage(stage),
           recipe,
+          Nil,
           hosts
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")

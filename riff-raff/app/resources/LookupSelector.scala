@@ -36,7 +36,7 @@ object LookupSelector {
     def instances: Instances = lookupDelegate.instances
     def data: Data = lookupDelegate.data
     def stages = lookupDelegate.stages.sorted(conf.Configuration.stages.ordering).reverse
-    def credentials(stage: Stage, apps: Set[App]) = lookupDelegate.credentials(stage, apps)
+    def credentials(stage: Stage, apps: Set[App], stack: Stack) = lookupDelegate.credentials(stage, apps, stack)
   }
 
   def apply():Lookup = {
@@ -104,19 +104,21 @@ case class LookupValidator(primary:Lookup, validation:Lookup) extends Lookup wit
   def lookupWithOptionDiff[T] = lookupWithDiff[Option[T]](new OptionDiff[T]())
 
   def instances: Instances = new Instances {
-    def get(app: App, stage: Stage): Seq[Host] = lookupWithSeqDiff[Host](_.instances.get(app,stage))
+    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] =
+      lookupWithSeqDiff[Host](_.instances.get(pkg, app, parameters, stack))
     def all: Seq[Host] = lookupWithSeqDiff[Host](_.instances.all)
   }
 
   def stages: Seq[String] = lookupWithSeqDiff[String](_.stages)
 
   def data: Data = new Data {
-    def datum(key: String, app: App, stage: Stage): Option[Datum] =
-      lookupWithDiff[Option[Datum]](new OptionDiff[Datum]())(_.data.datum(key,app,stage))
+    def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] =
+      lookupWithDiff[Option[Datum]](new OptionDiff[Datum]())(_.data.datum(key, app, stage, stack))
 
     def all: Map[String, Seq[Datum]] = lookupWithDiff[Map[String, Seq[Datum]]](MapDiff)(_.data.all)
     def keys: Seq[String] = lookupWithSeqDiff[String](_.data.keys)
   }
 
-  def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials] = primary.credentials(stage,apps)
+  def credentials(stage: Stage, apps: Set[App], stack: Stack): Map[String, ApiCredentials] =
+    primary.credentials(stage, apps, stack)
 }

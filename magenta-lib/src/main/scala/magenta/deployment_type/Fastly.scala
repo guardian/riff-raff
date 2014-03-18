@@ -10,6 +10,6 @@ object Fastly  extends DeploymentType {
     """.stripMargin
 
   def perAppActions = {
-    case "deploy" => pkg => (_, parameters) => List(UpdateFastlyConfig(pkg))
+    case "deploy" => pkg => (_, parameters, _) => List(UpdateFastlyConfig(pkg))
   }
 }

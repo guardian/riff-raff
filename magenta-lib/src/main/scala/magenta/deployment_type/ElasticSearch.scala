@@ -18,19 +18,19 @@ object ElasticSearch extends DeploymentType with S3AclParams {
   ).default(15 * 60)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (_, parameters) => {
+    case "deploy" => (pkg) => (_, parameters, stack) => {
       List(
-        CheckGroupSize(pkg, parameters.stage),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, secondsToWait(pkg) * 1000),
-        SuspendAlarmNotifications(pkg, parameters.stage),
-        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage),
-        DoubleSize(pkg, parameters.stage),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, secondsToWait(pkg) * 1000),
-        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, secondsToWait(pkg) * 1000),
-        ResumeAlarmNotifications(pkg, parameters.stage)
+        CheckGroupSize(pkg, parameters.stage, stack),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        SuspendAlarmNotifications(pkg, parameters.stage, stack),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
+        DoubleSize(pkg, parameters.stage, stack),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (_, parameters) =>
+    case "uploadArtifacts" => (pkg) => (_, parameters, _) =>
       List(
         S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicReadAcl = publicReadAcl(pkg))
       )

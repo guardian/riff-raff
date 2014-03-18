@@ -101,7 +101,7 @@ trait WebApp extends DeploymentType with S3AclParams {
   }
 
   def perAppActions = {
-    case "uploadArtifacts" => pkg => (_, parameters) =>
+    case "uploadArtifacts" => pkg => (_, parameters, _) =>
       List(
         S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath), publicReadAcl = publicReadAcl(pkg))
       )
