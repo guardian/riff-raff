@@ -148,7 +148,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       def host = Host("some-host") as "resin"
 
       def commandLine = CommandLine(List("ls", "-l"))
-      def keyRing = ???
+      def keyRing = KeyRing(SystemUser(None))
     }
 
     remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "resin@some-host", "ls -l")))
@@ -165,7 +165,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
       }
 
       def commandLine = null
-      def keyRing = ???
+      def keyRing = KeyRing(SystemUser(None))
     }
     
     remoteTask.execute()
