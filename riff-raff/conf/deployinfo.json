@@ -10,5 +10,10 @@
         {"group":"a", "stage":"PROD", "app":"related-information", "hostname":"genhost01.dc-1.gnl"},
         {"group":"a", "stage":"LOCAL", "app":"microapp-cache", "hostname":"localhost"}
     ],
-    "data":{}
+    "data":{
+        "credentials:aws": [
+            { "app": "status-app", "stack": "ophan", "stage": "PROD", "value": "AKIAI533DJGONJEIWW3A" },
+            { "app": "status-app", "stack": "content-api", "stage": "PROD",  "value": "AKIAJSVUIZQU22HQS33Q" }
+        ]
+    }
 }

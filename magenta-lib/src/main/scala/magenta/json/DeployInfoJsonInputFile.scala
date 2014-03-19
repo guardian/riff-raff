@@ -33,6 +33,7 @@ case class DeployInfoKey(
 case class DeployInfoData(
   app: String,
   stage: String,
+  stack: Option[String],
   value: String,
   comment: Option[String]
 )

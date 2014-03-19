@@ -31,7 +31,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
 
   val hosts = input.hosts.map(asHost)
   val data = input.data mapValues { dataList =>
-    dataList.map { data => Datum(None, data.app, data.stage, data.value, data.comment) }
+    dataList.map { data => Datum(data.stack, data.app, data.stage, data.value, data.comment) }
   }
 
   lazy val knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
@@ -56,13 +56,14 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
     stack match {
       case UnnamedStack =>
         matchingList.filter(_.stack.isEmpty).find{data =>
-          data.appRegex.findFirstMatchIn(app.name).isDefined && data.stageRegex.findFirstMatchIn(stage.name).isDefined
+          data.appRegex.findFirstMatchIn(app.name).isDefined &&
+          data.stageRegex.findFirstMatchIn(stage.name).isDefined
         }
       case NamedStack(stackName) =>
         matchingList.filter(_.stack.isDefined).find{data =>
-          data.stackRegex.exists(_.findFirstMatchIn(app.name).isDefined) &&
+          data.stackRegex.exists(_.findFirstMatchIn(stackName).isDefined) &&
           data.appRegex.findFirstMatchIn(app.name).isDefined &&
-            data.stageRegex.findFirstMatchIn(stage.name).isDefined
+          data.stageRegex.findFirstMatchIn(stage.name).isDefined
         }
     }
 
