@@ -12,6 +12,8 @@ import tasks.CopyFile
 import magenta.DeploymentPackage
 
 class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+
   test("copies to host based on deployInfo data") {
     val packageData: Map[String, JValue] = Map(
       "user" -> "ddm-user",
@@ -24,10 +26,11 @@ class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
 
     val diData = Map("ddm" -> List(Datum(None, "*", PROD.name, "ddm.domain", None)))
 
-    UnzipToDocroot.perAppActions("deploy")(p)(stubLookup(resourceData = diData), parameters()) should be (List(
-      CopyFile(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/packages/webapp/dir/files.zip", "/tmp"),
-      ExtractToDocroots(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/files.zip", "static", "the-app/static")
-    ))
+    UnzipToDocroot.perAppActions("deploy")(p)(stubLookup(resourceData = diData), parameters(), UnnamedStack) should be (
+      List(
+        CopyFile(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/packages/webapp/dir/files.zip", "/tmp"),
+        ExtractToDocroots(Host("ddm.domain", connectAs = Some("ddm-user")), "/tmp/files.zip", "static", "the-app/static")
+      ))
   }
 
 }

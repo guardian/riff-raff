@@ -15,6 +15,7 @@ import tasks.{Task, CopyFile}
 
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   val simpleExample = """
   {
@@ -38,7 +39,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(StackApp("web","apache"))
+    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(App("apache"))
     val lookup = stubLookup(host :: Nil)
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe))
@@ -49,7 +50,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  val app2 = LegacyApp("the_2nd_role")
+  val app2 = App("the_2nd_role")
 
   val host = Host("the_host", stage = CODE.name).app(app1)
 
@@ -67,7 +68,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app(StackApp("web","other_app")) +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
+      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -200,7 +201,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   it should "observe ordering of hosts in deployInfo irrespective of connection user" in {
     val pkgTypeWithUser = StubDeploymentType(
       perHostActions = {
-        case "deploy" => pkg => host => List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
+        case "deploy" => pkg => (host, keyRing) =>
+          List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
       }
     )
     val pkg = stubPackage.copy(pkgApps = Seq(app1, app2))

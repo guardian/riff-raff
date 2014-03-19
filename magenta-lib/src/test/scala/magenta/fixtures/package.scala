@@ -7,7 +7,7 @@ package object fixtures {
   val CODE = Stage("CODE")
   val PROD = Stage("PROD")
 
-  val app1 = LegacyApp("the_role")
+  val app1 = App("the_role")
 
   val lookupEmpty = stubLookup()
 
@@ -26,10 +26,10 @@ package object fixtures {
 
   def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String]) = StubDeploymentType(
     perAppActions = {
-      case name if perAppActionNames.contains(name) => pkg => (_,_) => List(StubTask(name + " per app task"))
+      case name if perAppActionNames.contains(name) => pkg => (_,_, _) => List(StubTask(name + " per app task"))
     },
     perHostActions = {
-      case name if perHostActionNames.contains(name) => pkg => host =>
+      case name if perHostActionNames.contains(name) => pkg => (host, _) =>
         List(StubTask(name + " per host task on " + host.name, Some(host)))
     }
   )
@@ -48,18 +48,19 @@ package object fixtures {
       def stages: Seq[String] = hosts.map(_.stage).distinct
       def lastUpdated: DateTime = new DateTime()
       def data: Data = new Data {
-        def datum(key: String, app: App, stage: Stage): Option[Datum] = {
+        def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
           val matchingList = resourceData.getOrElse(key, List.empty)
-          app match {
-            case LegacyApp(name) =>
+          stack match {
+            case UnnamedStack =>
               matchingList.filter(_.stack.isEmpty).find{data =>
-                data.appRegex.findFirstMatchIn(name).isDefined && data.stageRegex.findFirstMatchIn(stage.name).isDefined
+                data.appRegex.findFirstMatchIn(app.name).isDefined &&
+                data.stageRegex.findFirstMatchIn(stage.name).isDefined
               }
-            case StackApp(stackName, appName) =>
+            case NamedStack(stackName) =>
               matchingList.filter(_.stack.isDefined).find{data =>
-                data.stackRegex.exists(_.findFirstMatchIn(appName).isDefined) &&
-                  data.appRegex.findFirstMatchIn(appName).isDefined &&
-                  data.stageRegex.findFirstMatchIn(stage.name).isDefined
+                data.stackRegex.exists(_.findFirstMatchIn(stackName).isDefined) &&
+                data.appRegex.findFirstMatchIn(app.name).isDefined &&
+                data.stageRegex.findFirstMatchIn(stage.name).isDefined
               }
           }
         }
@@ -72,11 +73,13 @@ package object fixtures {
       def name: String = "stub"
 
       def instances: Instances = new Instances {
-        def get(app: App, stage: Stage): Seq[Host] = {
-          hosts.filter{ host => host.stage == stage.name && host.apps.contains(app) }
+        def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
+          hosts.filter{ host => host.stage == params.stage.name && host.apps.contains(app) }
         }
         def all: Seq[Host] = hosts
       }
+
+      def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing(SystemUser(None))
     }
   }
 

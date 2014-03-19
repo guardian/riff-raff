@@ -27,7 +27,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     parsed.data.values.map(_.size).reduce(_+_) should be (5)
 
     val host = parsed.hosts(0)
-    host should be (Host("machost01.dc-code.gnl", Set(LegacyApp("microapp-cache")), CODE.name, tags = Map("group" -> "a")))
+    host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE.name, tags = Map("group" -> "a")))
    }
 
   "host transposing" should "retain host ordering with no groups" in {
@@ -116,26 +116,26 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
   it should "match an exact app and stage" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",LegacyApp("microapp-cache"),"CODE") should be(Some(Datum(None, "microapp-cache","CODE","AAA",None)))
+    di.firstMatchingData("credentials:aws",App("microapp-cache"),Stage("CODE"), UnnamedStack) should be(Some(Datum(None, "microapp-cache","CODE","AAA",None)))
   }
 
   it should "match on a regex" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",LegacyApp("frontend-front"),"CODE") should be(Some(Datum(None, "frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-front"),Stage("CODE"), UnnamedStack) should be(Some(Datum(None, "frontend-.*","CODE","BBB",None)))
   }
 
   it should "match the first in the list" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",LegacyApp("frontend-article"),"CODE") should be(Some(Datum(None, "frontend-article","CODE","CCC",None)))
-    di.firstMatchingData("credentials:aws",LegacyApp("frontend-gallery"),"CODE") should be(Some(Datum(None, "frontend-.*","CODE","BBB",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-article"),Stage("CODE"), UnnamedStack) should be(Some(Datum(None, "frontend-article","CODE","CCC",None)))
+    di.firstMatchingData("credentials:aws",App("frontend-gallery"),Stage("CODE"), UnnamedStack) should be(Some(Datum(None, "frontend-.*","CODE","BBB",None)))
   }
 
   it should "not match bigger app or stage names" in {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
-    di.firstMatchingData("credentials:aws",LegacyApp("frontend-article"),"CODE2") should be(None)
-    di.firstMatchingData("credentials:aws",LegacyApp("frontend-article"),"NEWCODE") should be(None)
-    di.firstMatchingData("credentials:aws",LegacyApp("new-microapp-cache"),"CODE") should be(None)
-    di.firstMatchingData("credentials:aws",LegacyApp("microapp-cache-again"),"CODE") should be(None)
+    di.firstMatchingData("credentials:aws",App("frontend-article"),Stage("CODE2"), UnnamedStack) should be(None)
+    di.firstMatchingData("credentials:aws",App("frontend-article"),Stage("NEWCODE"), UnnamedStack) should be(None)
+    di.firstMatchingData("credentials:aws",App("new-microapp-cache"),Stage("CODE"), UnnamedStack) should be(None)
+    di.firstMatchingData("credentials:aws",App("microapp-cache-again"),Stage("CODE"), UnnamedStack) should be(None)
   }
 
   it should "provide a list of hosts filtered by stage" in {
@@ -143,8 +143,8 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
     di.forParams(testParams().copy(stage = Stage("CODE"))).hosts should be(
       List(
-        Host("machost01.dc-code.gnl",Set(LegacyApp("microapp-cache")), CODE.name,None,Map("group" -> "a")),
-        Host("machost51.dc-code.gnl",Set(LegacyApp("microapp-cache")), CODE.name,None,Map("group" -> "b"))
+        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None,Map("group" -> "a")),
+        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None,Map("group" -> "b"))
       )
     )
   }
@@ -153,7 +153,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
     di.forParams(testParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
-      List(Host("machost01.dc-code.gnl",Set(LegacyApp("microapp-cache")), CODE.name,None, Map("group" -> "a"))))
+      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None, Map("group" -> "a"))))
   }
 
 }

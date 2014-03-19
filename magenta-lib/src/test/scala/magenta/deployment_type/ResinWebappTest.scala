@@ -15,12 +15,14 @@ import net.liftweb.json.JsonAST.{JArray, JString}
 import magenta.deployment_type.ResinWebapp
 
 class ResinWebappTest extends FlatSpec with ShouldMatchers {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+
   "resin web app package type" should "have a deploy action" in {
     val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "resin-webapp", new File("/tmp/packages/webapp"))
 
     val host = Host("host_name")
 
-    ResinWebapp.perHostActions("deploy")(p)(host) should be (List(
+    ResinWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
@@ -45,7 +47,7 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("webapp", Seq.empty, Map("healthcheck_paths" -> urls_json), "resin-webapp", new File("/tmp/packages/webapp"))
     val host = Host("host_name")
 
-    ResinWebapp.perHostActions("deploy")(p)(host) should be (List(
+    ResinWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Restart(host as "resin", "webapp"),
