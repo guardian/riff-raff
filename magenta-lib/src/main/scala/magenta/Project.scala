@@ -5,6 +5,7 @@ import tasks.Task
 import collection.SortedSet
 import java.util.UUID
 import org.joda.time.DateTime
+import scala.math.Ordering.OptionOrdering
 
 object DeployInfo {
   def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
@@ -19,7 +20,7 @@ case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime])
         host.dnsname.map("dnsname" -> _) ++
         host.instancename.map("instancename" -> _) ++
         host.internalname.map("internalname" -> _)
-    Host(host.hostname, Set(App(host.app)), host.stage, tags = tags.toMap)
+    Host(host.hostname, Set(App(host.app)), host.stage, host.stack, tags = tags.toMap)
   }
 
   def forParams(params: DeployParameters): DeployInfo = {
@@ -74,6 +75,7 @@ case class Host(
     name: String,
     apps: Set[App] = Set.empty,
     stage: String = "NO_STAGE",
+    stack: Option[String] = None,
     connectAs: Option[String] = None,
     tags: Map[String, String] = Map.empty)
 {
@@ -85,6 +87,13 @@ case class Host(
   def @:(user: String) = as(user)
 
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
+}
+
+object Host {
+  def isValidForStack(host: Host, stack: Stack) = stack match {
+    case NamedStack(name) => host.stack.exists(_ == name)
+    case UnnamedStack => true
+  }
 }
 
 case class Datum(
@@ -99,16 +108,27 @@ case class Datum(
   lazy val stageRegex = ("^%s$" format stage).r
 }
 
-case class HostList(hosts: List[Host]) {
+case class HostList(hosts: Seq[Host]) {
   def dump = hosts
     .sortBy { _.name }
     .map { h => s" ${h.name}: ${h.apps.map(_.toString).mkString(", ")}" }
     .mkString("\n")
 
   def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
+
+  def byStackAndApp = {
+    implicit val appOrder: Ordering[App] = Ordering.by(_.name)
+    implicit val hostOrder: Ordering[Host] = Ordering.by(_.name)
+    implicit def someBeforeNone[T](implicit ord: Ordering[T]): Ordering[Option[T]] =
+      new OptionOrdering[T] { val optionOrdering = ord.reverse }.reverse
+    implicit def setOrder[T](implicit ord: Ordering[T]): Ordering[Set[T]] = Ordering.by(_.toIterable)
+    implicit def seqOrder[T](implicit ord: Ordering[T]): Ordering[Seq[T]] = Ordering.by(_.toIterable)
+
+    hosts.groupBy(h => (h.stack, h.apps)).toSeq.sorted
+  }
 }
 object HostList {
-  implicit def listOfHostsAsHostList(hosts: List[Host]): HostList = new HostList(hosts)
+  implicit def listOfHostsAsHostList(hosts: Seq[Host]): HostList = new HostList(hosts)
   implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 
@@ -122,26 +142,7 @@ trait Action {
   def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack): List[Task]
 }
 
-case class App (name: String) {
-  // takes a set of apps, assumed to be all the same type
-  def stackAppTuple(apps: Set[App]): (Option[String], String) = {
-    apps.headOption match {
-      case Some(App(_)) =>
-        val appNames = apps.map{
-          case App(app) => app
-        }.toSeq.sorted.mkString(", ")
-        (None, appNames)
-      case _ =>
-        (None, "none")
-    }
-  }
-}
-//case class LegacyApp(name: String) extends App {
-//  override lazy val toString: String = name
-//}
-//case class StackApp(stack: String, app:String) extends App {
-//  override lazy val toString: String = s"$stack::$app"
-//}
+case class App (name: String)
 
 case class Recipe(
   name: String,

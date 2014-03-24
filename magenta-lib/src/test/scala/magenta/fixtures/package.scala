@@ -74,7 +74,11 @@ package object fixtures {
 
       def instances: Instances = new Instances {
         def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
-          hosts.filter{ host => host.stage == params.stage.name && host.apps.contains(app) }
+          hosts.filter{ host =>
+            host.stage == params.stage.name &&
+            host.apps.contains(app) &&
+            Host.isValidForStack(host, stack)
+          }
         }
         def all: Seq[Host] = hosts
       }

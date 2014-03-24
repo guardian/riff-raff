@@ -58,6 +58,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       name = name,
       apps = appSet,
       stage = stage,
+      stack = stack,
       tags = Map(
         "group" -> group,
         "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
