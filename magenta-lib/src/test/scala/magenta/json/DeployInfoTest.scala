@@ -9,22 +9,24 @@ import fixtures._
 class DeployInfoTest  extends FlatSpec with ShouldMatchers {
   val deployInfoSample = """
   {"hosts":[
-{"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
-{"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
-{"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"}
+    {"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
+    {"group":"b", "stage":"CODE", "app":"microapp-cache", "hostname":"machost51.dc-code.gnl"},
+    {"group":"a", "stage":"QA", "app":"microapp-cache", "hostname":"machost01.dc-qa.gnl"}
   ],
   "data":{ "credentials:aws": [
-  {"app":"microapp-cache", "stage":"CODE", "value":"AAA"},
-  {"app":"frontend-article", "stage":"CODE", "value":"CCC"},
-  {"app":"frontend-.*", "stage":"CODE", "value":"BBB"},
-  {"app":"frontend-gallery", "stage":"CODE", "value":"SHADOWED"},
-  {"app":"microapp-cache", "stage":".*", "value":"DDD"}
+    {"app":"microapp-cache", "stage":"CODE", "value":"AAA"},
+    {"app":"frontend-article", "stage":"CODE", "value":"CCC"},
+    {"app":"frontend-.*", "stage":"CODE", "value":"BBB"},
+    {"app":"frontend-gallery", "stage":"CODE", "value":"SHADOWED"},
+    {"app":"microapp-cache", "stage":".*", "value":"DDD"},
+    {"app":"status-app", "stage":"PROD", "stack":"ophan", "value":"ophan-status"},
+    {"app":"status-app", "stage":"PROD", "stack":"contentapi", "value":"capi-status"}
   ]}}"""
 
   "json parser" should "parse deployinfo json" in {
     val parsed = DeployInfoJsonReader.parse(deployInfoSample)
     parsed.hosts.size should be (3)
-    parsed.data.values.map(_.size).reduce(_+_) should be (5)
+    parsed.data.values.map(_.size).reduce(_+_) should be (7)
 
     val host = parsed.hosts(0)
     host should be (Host("machost01.dc-code.gnl", Set(App("microapp-cache")), CODE.name, tags = Map("group" -> "a")))
@@ -136,6 +138,14 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     di.firstMatchingData("credentials:aws",App("frontend-article"),Stage("NEWCODE"), UnnamedStack) should be(None)
     di.firstMatchingData("credentials:aws",App("new-microapp-cache"),Stage("CODE"), UnnamedStack) should be(None)
     di.firstMatchingData("credentials:aws",App("microapp-cache-again"),Stage("CODE"), UnnamedStack) should be(None)
+  }
+
+  it should "filter based on named stacks" in {
+    val di = DeployInfoJsonReader.parse(deployInfoSample)
+    di.firstMatchingData("credentials:aws",App("status-app"),PROD, NamedStack("ophan")) should be(
+      Some(Datum(Some("ophan"), "status-app", "PROD", "ophan-status", None)))
+    di.firstMatchingData("credentials:aws",App("status-app"),PROD, NamedStack("contentapi")) should be(
+      Some(Datum(Some("contentapi"), "status-app", "PROD", "capi-status", None)))
   }
 
   it should "provide a list of hosts filtered by stage" in {
