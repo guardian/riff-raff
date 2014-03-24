@@ -22,6 +22,8 @@ package object fixtures {
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
+  def project(recipe: Recipe, stacks: Stack*) = Project(Map.empty, Map(recipe.name -> recipe), defaultStacks = stacks)
+
   def stubPackage = DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null)
 
   def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String]) = StubDeploymentType(

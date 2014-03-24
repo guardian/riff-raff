@@ -217,6 +217,22 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
+  it should "resolve tasks from multiple stacks" in {
+    val pkgType = StubDeploymentType(
+      perAppActions = {
+        case "deploy" => pkg => (lookup, params, stack) =>
+          List(StubTask("stacked", stack = Some(stack)))
+      }
+    )
+    val recipe = Recipe("stacked",
+      actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
+
+    Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe)) should be (List(
+      StubTask("stacked", stack = Some(NamedStack("foo"))),
+      StubTask("stacked", stack = Some(NamedStack("bar")))
+    ))
+  }
+
   def parameters(recipe: Recipe) =
     DeployParameters(Deployer("Tester"), Build("project", "build"), CODE, RecipeName(recipe.name))
 }

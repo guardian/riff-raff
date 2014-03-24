@@ -5,7 +5,7 @@ import tasks.Task
 import magenta.deployment_type.DeploymentType
 import magenta.Lookup
 
-case class StubTask(description: String, override val taskHost: Option[Host] = None) extends Task {
+case class StubTask(description: String, override val taskHost: Option[Host] = None, stack: Option[Stack] = None) extends Task {
   def execute(stopFlag: =>  Boolean) { }
   def verbose = "stub(%s)" format description
   def keyRing = KeyRing(SystemUser(None))
