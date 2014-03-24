@@ -143,8 +143,8 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
 
     di.forParams(testParams().copy(stage = Stage("CODE"))).hosts should be(
       List(
-        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None,Map("group" -> "a")),
-        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None,Map("group" -> "b"))
+        Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None, None, Map("group" -> "a")),
+        Host("machost51.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None, None,Map("group" -> "b"))
       )
     )
   }
@@ -153,7 +153,7 @@ class DeployInfoTest  extends FlatSpec with ShouldMatchers {
     val di = DeployInfoJsonReader.parse(deployInfoSample)
 
     di.forParams(testParams().copy(stage = CODE,hostList = List("machost01.dc-code.gnl"))).hosts should be(
-      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None, Map("group" -> "a"))))
+      List(Host("machost01.dc-code.gnl",Set(App("microapp-cache")), CODE.name,None, None, Map("group" -> "a"))))
   }
 
 }
