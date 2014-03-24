@@ -60,7 +60,7 @@ case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretPr
     def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = all.filter { host =>
       host.stage == parameters.stage.name &&
       host.apps.contains(app) &&
-      Host.isValidForStack(host, stack)
+      host.isValidForStack(stack)
     }
     def all: Seq[Host] = deployInfo.hosts
   }

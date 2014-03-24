@@ -87,11 +87,9 @@ case class Host(
   def @:(user: String) = as(user)
 
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
-}
 
-object Host {
-  def isValidForStack(host: Host, stack: Stack) = stack match {
-    case NamedStack(name) => host.stack.exists(_ == name)
+  def isValidForStack(s: Stack) = s match {
+    case NamedStack(name) => stack.exists(_ == name)
     case UnnamedStack => true
   }
 }

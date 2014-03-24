@@ -77,7 +77,7 @@ package object fixtures {
           hosts.filter{ host =>
             host.stage == params.stage.name &&
             host.apps.contains(app) &&
-            Host.isValidForStack(host, stack)
+            host.isValidForStack(stack)
           }
         }
         def all: Seq[Host] = hosts
