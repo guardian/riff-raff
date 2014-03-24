@@ -9,7 +9,6 @@ import magenta._
 import akka.actor.{Actor, ActorRef, Props, ActorSystem}
 import java.util.UUID
 import lifecycle.LifecycleWithoutApp
-import deployment.TaskType
 
 object IrcClient extends LifecycleWithoutApp {
   trait Event
@@ -24,19 +23,18 @@ object IrcClient extends LifecycleWithoutApp {
 
   val sink = new MessageSink {
     def message(message: MessageWrapper) {
-      if (DeployController.get(message.context.deployId).taskType == TaskType.Deploy)
-        message.stack.top match {
-          case StartContext(Deploy(parameters)) =>
-            sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
-              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-          case FailContext(Deploy(parameters)) =>
-            sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
-              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-          case FinishContext(Deploy(parameters)) =>
-            sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
-              (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-          case _ =>
-        }
+      message.stack.top match {
+        case StartContext(Deploy(parameters)) =>
+          sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+        case FailContext(Deploy(parameters)) =>
+          sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+        case FinishContext(Deploy(parameters)) =>
+          sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
+            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+        case _ =>
+      }
     }
   }
 

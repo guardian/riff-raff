@@ -1,5 +1,4 @@
 @(view: deployment.DeployFilterPagination)
-@import deployment.TaskType
 @import magenta.RunState
 
 <div class="navbar navbar-default">
@@ -22,16 +21,6 @@
                     <li class="divider"></li>
                     @for(status <- RunState.values.toList.filterNot(_==RunState.ChildRunning).sortBy(_.toString)) {
                         <li @if(Some(status)==view.filter.status){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStatus(Some(status))).q}">@status</a></li>
-                    }
-                </ul>
-            </li>
-            <li class="dropdown@if(view.filter.task.isDefined){ active}">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown">Task@view.filter.task.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li@if(!view.filter.task.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withTask(None)).q}">All</a></li>
-                    <li class="divider"></li>
-                    @for(task <- TaskType.values.toList.sortBy(_.toString)) {
-                        <li @if(Some(task)==view.filter.task){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withTask(Some(task))).q}">@task</a></li>
                     }
                 </ul>
             </li>

@@ -224,7 +224,6 @@ object Api extends Controller with Logging {
     Json.obj(
       "time" -> deploy.time,
       "uuid" -> deploy.uuid.toString,
-      "taskType" -> deploy.taskType.toString,
       "projectName" -> deploy.parameters.build.projectName,
       "build" -> deploy.parameters.build.id,
       "stage" -> deploy.parameters.stage.name,

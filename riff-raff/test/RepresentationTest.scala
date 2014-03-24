@@ -92,7 +92,7 @@ class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities wit
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "Deploy", "test-project", "1", "CODE", "test-recipe", Nil, Map("branch"->"master")),
+        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Map("branch"->"master")),
         RunState.Completed
       )
     )

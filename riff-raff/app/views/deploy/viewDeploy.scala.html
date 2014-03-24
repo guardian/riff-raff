@@ -1,7 +1,7 @@
 @(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import magenta.RunState
 
-@main("%s for %s" format (record.taskType, record.buildName), request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
+@main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
 <style>
     span.message-verbose {
     display:@if(!verbose) {none} else {list-item};
@@ -9,7 +9,7 @@
 </style>
 <div class="row">
 <div class="col-md-8">
-<h2>@record.taskType of deploy for @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
+<h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage</h2>
 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
     <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
 }

@@ -65,7 +65,6 @@ class HooksTest extends FlatSpec with ShouldMatchers {
     startTime,
     ParametersDocument(
       "Mr. Tester",
-      "Deploy",
       "test::project",
       "23",
       "TEST",
