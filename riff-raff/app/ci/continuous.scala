@@ -12,12 +12,13 @@ import scala.Some
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import persistence.Persistence.store.getContinuousDeploymentList
 import org.joda.time.DateTime
-import teamcity.Build
+import teamcity.TeamcityBuild
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import akka.agent.Agent
 import akka.actor.ActorSystem
 import utils.ChangeFreeze
+import rx.lang.scala.{Subscription, Observable}
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -37,9 +38,9 @@ case class ContinuousDeploymentConfig(
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
-    (build:Build) => build.buildType.fullName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
+    (build:CIBuild) => build.projectName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
 
-  def findMatchOnSuccessfulBuild(builds: List[Build]): Option[Build] = {
+  def findMatchOnSuccessfulBuild(builds: List[CIBuild]): Option[CIBuild] = {
     if (trigger == Trigger.SuccessfulBuild) {
       builds.filter(buildFilter).sortBy(-_.id).find { build =>
         val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
@@ -89,37 +90,29 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
   }
 }
 
-object ContinuousDeployment extends LifecycleWithoutApp with Logging {
+object ReactiveDeployment extends LifecycleWithoutApp with Logging {
+  import play.api.libs.concurrent.Execution.Implicits._
 
-  val system = ActorSystem("continuous-deployment")
-  var buildWatcher: Option[ContinuousDeployment] = None
+  var sub: Option[Subscription] = None
 
   def init() {
-    if (buildWatcher.isEmpty) {
-      buildWatcher = Some(new ContinuousDeployment())
-      buildWatcher.foreach(TeamCityBuilds.subscribe)
-    }
+    val builds = NotFirstBatch(Unseen(Builds.teamcity))
+    sub = Some(builds.subscribe { b =>
+      getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
+        runDeploy(getDeployParams(x))
+      }
+    })
   }
 
   def shutdown() {
-    buildWatcher.foreach(TeamCityBuilds.unsubscribe)
-    buildWatcher = None
-  }
-}
-
-class ContinuousDeployment extends BuildWatcher with Logging {
-
-  def deployParamsForSuccessfulBuilds(builds: List[Build],
-                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
-    configs.flatMap { config =>
-      config.findMatchOnSuccessfulBuild(builds).map(build => getDeployParams(config, build))
-    }
+    sub.foreach(_.unsubscribe())
   }
 
-  def getDeployParams(config: ContinuousDeploymentConfig, build: Build): DeployParameters = {
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
+    val (config,build) = configBuildTuple
     DeployParameters(
       Deployer("Continuous Deployment"),
-      MagentaBuild(build.buildType.fullName,build.number),
+      MagentaBuild(build.projectName,build.number),
       Stage(config.stage),
       RecipeName(config.recipe)
     )
@@ -134,11 +127,20 @@ class ContinuousDeployment extends BuildWatcher with Logging {
         log.info(s"Due to change freeze, continuous deployment is skipping ${params.toString}")
       }
     } else
-      log.info(s"Would deploy %{params.toString}")
+      log.info(s"Would deploy ${params.toString}")
   }
 
-  def newBuilds(newBuilds: List[Build]) = {
-    log.info(s"New builds to consider for deployment $newBuilds")
-    deployParamsForSuccessfulBuilds(newBuilds, getContinuousDeploymentList) foreach (runDeploy)
+  def getMatchesForSuccessfulBuilds(build: Iterable[CIBuild], configs: Iterable[ContinuousDeploymentConfig])
+    : Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
+    configs.flatMap { config =>
+      config.findMatchOnSuccessfulBuild(build.toList).map(build => config -> build)
+    }
   }
+}
+
+trait CIBuild {
+  def projectName: String
+  def branchName: String
+  def number: String
+  def id: Long
 }

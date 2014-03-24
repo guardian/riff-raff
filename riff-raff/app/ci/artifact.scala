@@ -2,22 +2,20 @@ package ci
 
 import teamcity._
 import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
-import utils.{VCSInfo, Update, PeriodicScheduledAgentUpdate, ScheduledAgent}
+import utils.{VCSInfo, PeriodicScheduledAgentUpdate, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.{Duration, DateTime}
 import controllers.Logging
-import scala.Predef._
-import collection.mutable
 import lifecycle.LifecycleWithoutApp
-import scala.Some
 import concurrent.{ Future, Promise, promise, Await }
 import play.api.Logger
 import akka.agent.Agent
 import Context._
-import scala.util.{Try, Random}
+import scala.util.Try
+
 
 object `package` {
-  implicit def listOfBuild2helpers(builds: List[Build]) = new {
+  implicit def listOfBuild2helpers(builds: List[TeamcityBuild]) = new {
     def buildTypes: Set[teamcity.BuildType] = builds.map(_.buildType).toSet
   }
 
@@ -59,10 +57,6 @@ object ContinuousIntegration {
   }
 }
 
-trait BuildWatcher {
-  def newBuilds(builds: List[Build])
-}
-
 trait ApiTracker[T] {
   case class Result(diff: List[T], updated: List[T], previous: List[T])
   private val promises = Agent[List[Promise[List[T]]]](Nil)
@@ -76,7 +70,6 @@ trait ApiTracker[T] {
         Result((updateResult.toSet diff current.toSet).toList, updateResult, current)
     } map { result =>
       trackerLog.info(s"[$name] Full update: discovered: ${result.diff.size}, total: ${result.updated.size}")
-      queueNotify(result)
       (true, result.updated)
     } recover {
       case e:Exception =>
@@ -93,7 +86,6 @@ trait ApiTracker[T] {
       val result = incrementalUpdate(current)
       if (!result.diff.isEmpty) {
         trackerLog.info(s"[$name] Incremental update: discovered: ${result.diff.size}, total: ${result.updated.size}")
-        queueNotify(result)
       } else {
         trackerLog.debug(s"[$name] No changes")
       }
@@ -131,17 +123,6 @@ trait ApiTracker[T] {
     Result((updated.toSet diff previous.toSet).toList, updated, previous)
   }
 
-  def queueNotify(result: Result) {
-    agent.queueUpdate(Update{
-      notify(result.diff, result.previous)
-      promises.send { promisesMade =>
-        promisesMade.foreach(_.success(result.updated))
-        Nil
-      }
-    })
-  }
-
-  def notify(discovered: List[T], previous: List[T])
   def shutdown() = agent.shutdown()
   def trackerLog:Logger
   def name:String
@@ -151,18 +132,16 @@ case class BuildLocatorTracker(locator: BuildLocator,
                           buildTypeTracker: ApiTracker[BuildType],
                           fullUpdatePeriod: FiniteDuration,
                           incrementalUpdatePeriod: FiniteDuration,
-                          notifyHook: List[Build] => Unit,
                           pollingWindow: Duration,
-                          startupDelay: FiniteDuration = 0L.seconds) extends ApiTracker[Build] with Logging {
+                          startupDelay: FiniteDuration = 0L.seconds) extends ApiTracker[TeamcityBuild] with Logging {
 
-  def notify(discovered: List[Build], previous: List[Build]) = if (!previous.isEmpty) notifyHook(discovered)
   def name = locator.toString
 
-  def fullUpdate(previous: List[Build]) = {
+  def fullUpdate(previous: List[TeamcityBuild]) = {
     Await.result(getBuilds, incrementalUpdatePeriod * 20)
   }
 
-  override def incrementalUpdate(previous: List[Build]) = {
+  override def incrementalUpdate(previous: List[TeamcityBuild]) = {
     Await.result(getNewBuilds(previous).map { newBuilds =>
       if (newBuilds.isEmpty)
         Result(Nil, previous, previous)
@@ -171,7 +150,7 @@ case class BuildLocatorTracker(locator: BuildLocator,
     },incrementalUpdatePeriod)
   }
 
-  def getBuilds: Future[List[Build]] = {
+  def getBuilds: Future[List[TeamcityBuild]] = {
     log.debug(s"[$name] Getting builds")
     val buildTypes = buildTypeTracker.future()
     buildTypes.flatMap{ fulfilledBuildTypes =>
@@ -179,7 +158,7 @@ case class BuildLocatorTracker(locator: BuildLocator,
     }
   }
 
-  def getNewBuilds(currentBuilds:List[Build]): Future[List[Build]] = {
+  def getNewBuilds(currentBuilds:List[TeamcityBuild]): Future[List[TeamcityBuild]] = {
     val knownBuilds = currentBuilds.map(_.id).toSet
     val locatorWithWindow = locator.sinceDate(new DateTime().minus(pollingWindow))
     log.info(s"[$name] Querying with $locatorWithWindow")
@@ -200,29 +179,14 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
-  private val listeners = mutable.Buffer[BuildWatcher]()
-
-  def subscribe(sink: BuildWatcher) { listeners += sink }
-  def unsubscribe(sink: BuildWatcher) { listeners -= sink }
-
-  def notifyNewBuilds(newBuilds: List[Build]) = {
-    log.info("Notifying listeners")
-    listeners.foreach{ listener =>
-      try listener.newBuilds(newBuilds)
-      catch {
-        case e:Exception => log.error("BuildWatcher threw an exception", e)
-      }
-    }
-  }
-
   private var buildTypeTracker: Option[ApiTracker[BuildType]] = None
   private var successfulBuildTracker: Option[BuildLocatorTracker] = None
 
-  def builds: List[Build] = successfulBuildTracker.map(_.get()).getOrElse(Nil)
+  def builds: List[TeamcityBuild] = successfulBuildTracker.map(_.get()).getOrElse(Nil)
   def build(project: String, number: String) = builds.find(b => b.buildType.fullName == project && b.number == number)
   def buildTypes: Set[BuildType] = buildTypeTracker.map(_.get().toSet).getOrElse(Set.empty)
   def getBuildType(id: String):Option[BuildType] = buildTypes.find(_.id == id)
-  def successfulBuilds(projectName: String): List[Build] = builds.filter(_.buildType.fullName == projectName)
+  def successfulBuilds(projectName: String): List[TeamcityBuild] = builds.filter(_.buildType.fullName == projectName)
   def getLastSuccessful(projectName: String): Option[String] =
     successfulBuilds(projectName).headOption.map{ latestBuild =>
       latestBuild.number
@@ -246,7 +210,6 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
         buildTypeTracker.get,
         fullUpdatePeriod,
         pollingPeriod,
-        notifyNewBuilds,
         pollingWindow
       ))
     }
@@ -257,4 +220,3 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
     buildTypeTracker.foreach(_.shutdown())
   }
 }
-

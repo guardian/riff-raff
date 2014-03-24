@@ -12,6 +12,7 @@ import ci.teamcity.TeamCity.{api, BuildLocator, ProjectLocator}
 import controllers.Logging
 import concurrent.{ExecutionContext, Future}
 import ExecutionContext.Implicits.global
+import ci.CIBuild
 
 case class Project(id: String, name: String) {
   def buildTypes: Future[List[BuildType]] = BuildType(this)
@@ -53,15 +54,12 @@ object BuildType extends Logging {
   }
 }
 
-trait Build extends Logging {
-  def id: Int
-  def number: String
+trait TeamcityBuild extends CIBuild with Logging {
   def status: String
   def webUrl: URL
   def buildTypeId: String
   def startDate: DateTime
   def buildType: BuildType
-  def branchName: String
   def defaultBranch: Option[Boolean]
   def detail: Future[BuildDetail]
   def pin(text: String): Future[Response] = {
@@ -80,9 +78,10 @@ trait Build extends Logging {
     }
     buildPinCall
   }
+  def projectName = buildType.fullName
 }
 
-case class BuildSummary(id: Int,
+case class BuildSummary(id: Long,
                         number: String,
                         buildTypeId: String,
                         status: String,
@@ -91,7 +90,7 @@ case class BuildSummary(id: Int,
                         defaultBranch: Option[Boolean],
                         startDate: DateTime,
                         buildType: BuildType
-                         ) extends Build {
+                         ) extends TeamcityBuild {
   def detail: Future[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
 }
 object BuildSummary extends Logging {
@@ -204,7 +203,7 @@ object Revision {
 }
 
 case class BuildDetail(
-  id: Int,
+  id: Long,
   number: String,
   buildType: BuildType,
   status: String,
@@ -215,7 +214,7 @@ case class BuildDetail(
   finishDate: DateTime,
   pinInfo: Option[PinInfo],
   revision: Option[Revision]
-) extends Build {
+) extends TeamcityBuild {
   def detail = Future.successful(this)
   def buildTypeId = buildType.id
 }
@@ -255,7 +254,7 @@ object TeamCity {
   }
 
   case class BuildLocator(
-                           id: Option[Int] = None,
+                           id: Option[Long] = None,
                            branch: Option[BranchLocator] = Some(BranchLocator(branched = Some("any"))),
                            buildType: Option[BuildTypeLocator] = None,
                            buildTypeInstance: Option[BuildType] = None,
@@ -295,7 +294,7 @@ object TeamCity {
     def buildTypeInstance(buildType: BuildType) = copy(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
   }
   object BuildLocator {
-    def id(id: Int) = BuildLocator(id=Some(id))
+    def id(id: Long) = BuildLocator(id=Some(id))
     def buildTypeId(buildTypeId: String) = BuildLocator(buildType=Some(BuildTypeLocator.id(buildTypeId)))
     def buildTypeInstance(buildType: BuildType) = BuildLocator(buildType=Some(BuildTypeLocator.id(buildType.id)), buildTypeInstance=Some(buildType))
     def sinceBuild(buildId: Int) = BuildLocator(sinceBuild=Some(buildId))

@@ -2,7 +2,7 @@ package test
 
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import ci.{Trigger, ContinuousDeploymentConfig, ContinuousDeployment}
+import ci.{ReactiveDeployment, Trigger, ContinuousDeploymentConfig}
 import java.util.UUID
 import magenta.{Build => MagentaBuild}
 import magenta.DeployParameters
@@ -16,7 +16,7 @@ import org.joda.time.DateTime
 class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
-    val params = continuousDeployment.deployParamsForSuccessfulBuilds(newBuildsList, contDeployConfigs).toSet
+    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
     params.size should be(2)
     params should be(Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
@@ -25,7 +25,7 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "work out the latest build for different branches" in {
-    val params = continuousDeployment.deployParamsForSuccessfulBuilds(newBuildsList, contDeployBranchConfigs).toSet
+    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployBranchConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
     val expected = Set(
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "391"), Stage("PROD"), RecipeName("default")),
@@ -45,8 +45,6 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
   val td2ProdBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", Some("master"), Trigger.SuccessfulBuild, "Test user")
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
-
-  val continuousDeployment = new ContinuousDeployment()
 
   val url = new URL("http://riffraff.gnl/test")
 
