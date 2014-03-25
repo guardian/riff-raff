@@ -37,21 +37,25 @@ In action
 Screenshots don't do a lot to show how Riff-Raff works in practice - but here are
 a handful anyway, just to give a hint.
 
-### The deploy history view - this shows all deploys that have ever been done (in this case filtered on PROD and projects containing 'mobile')
+***
 
 ![Deploy history](contrib/img/deployment_history.png)
+The deploy history view - this shows all deploys that have ever been done (in this case filtered on PROD and projects containing 'mobile')
 
-### This is what a single deploy looks like - displaying the overall result and the list of tasks that were executed.
+***
 
 ![Deploy log](contrib/img/deployment_view.png)
+This is what a single deploy looks like - displaying the overall result and the list of tasks that were executed.
 
-### The simple form for requesting a deploy can be seen here (further options are available after previewing)
+***
 
 ![Request a deploy](contrib/img/deployment_request.png)
+The simple form for requesting a deploy can be seen here (further options are available after previewing)
 
-### Riff-Raff polls our build server frequently and can be configured to automatically start a deploy for newly completed builds
+***
 
 ![Continuous deployment configuration](contrib/img/deployment_continuous.png)
+Riff-Raff polls our build server frequently and can be configured to automatically start a deploy for newly completed builds
 
 How do I run Riff-Raff locally if I want to hack on it?
 -------------------------------------------------------
