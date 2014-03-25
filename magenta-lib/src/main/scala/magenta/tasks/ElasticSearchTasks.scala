@@ -9,7 +9,6 @@ import java.net.ConnectException
 import magenta.DeploymentPackage
 import magenta.KeyRing
 import magenta.Stage
-import magenta.tasks.ElasticSearchNode
 
 case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
                                            (implicit val keyRing: KeyRing)
