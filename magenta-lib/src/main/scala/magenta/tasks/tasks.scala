@@ -22,7 +22,8 @@ object CopyFile {
   val MIRROR_MODE = "mirror"
   lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
 }
-case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE) extends ShellTask {
+case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE)
+                   (implicit val keyRing: KeyRing) extends ShellTask {
   override val taskHost = Some(host)
   val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
 
@@ -42,12 +43,14 @@ case class CopyFile(host: Host, source: String, dest: String, copyMode: String =
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 
-  override def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
+  override def execute(stopFlag: =>  Boolean) {
     commandLine(keyRing).run()
   }
 }
 
-case class CompressedCopy(host: Host, source: Option[File], dest: String) extends CompositeTask with CompressedFilename {
+case class CompressedCopy(host: Host, source: Option[File], dest: String)(implicit val keyRing: KeyRing)
+  extends CompositeTask with CompressedFilename {
+
   val tasks = Seq(
     Compress(source),
     CopyFile(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
@@ -64,13 +67,13 @@ case class CompressedCopy(host: Host, source: Option[File], dest: String) extend
 
 trait CompositeTask extends Task {
   def tasks: Seq[Task]
-  def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {
-    for (task <- tasks) { if (!stopFlag) task.execute(sshCredentials, stopFlag) }
+  def execute(stopFlag: => Boolean) {
+    for (task <- tasks) { if (!stopFlag) task.execute(stopFlag) }
   }
 }
 
 
-case class Compress(source:  Option[File]) extends ShellTask with CompressedFilename {
+case class Compress(source:  Option[File])(implicit val keyRing: KeyRing) extends ShellTask with CompressedFilename {
   def commandLine: CommandLine = {
     CommandLine("tar" :: "--bzip2" :: "--directory" :: sourceFile.getParent :: "-cf" :: compressedPath :: sourceFile.getName :: Nil)
   }
@@ -78,7 +81,7 @@ case class Compress(source:  Option[File]) extends ShellTask with CompressedFile
   def description: String = "Compress %s to %s" format (source, compressedName)
 }
 
-case class Decompress(host: Host, dest: String, source: Option[File]) extends RemoteShellTask with CompressedFilename {
+case class Decompress(host: Host, dest: String, source: Option[File])(implicit val keyRing: KeyRing) extends RemoteShellTask with CompressedFilename {
   def commandLine: CommandLine = {
     CommandLine("tar" :: "--bzip2" :: "--directory" :: dest :: "-xf" :: dest + compressedName:: Nil)
   }
@@ -98,7 +101,8 @@ case class S3Upload( stage: Stage,
                      cacheControlPatterns: List[PatternValue] = Nil,
                      prefixStage: Boolean = true,
                      prefixPackage: Boolean = true,
-                     publicReadAcl: Boolean = true) extends Task with S3 {
+                     publicReadAcl: Boolean = true)
+                   (implicit val keyRing: KeyRing) extends Task with S3 {
 
   private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
 
@@ -119,7 +123,7 @@ case class S3Upload( stage: Stage,
     S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(toRelative(file)), publicReadAcl)
   }
 
-  def execute(keyRing: KeyRing, stopFlag: =>  Boolean)  {
+  def execute(stopFlag: =>  Boolean)  {
     val client = s3client(keyRing)
     MessageBroker.verbose("Starting upload of %d files (%d bytes) to S3" format (requests.size, totalSize))
     requests.par foreach { client.putObject }
@@ -135,24 +139,24 @@ case class S3Upload( stage: Stage,
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
 }
 
-case class BlockFirewall(host: Host) extends RemoteShellTask {
+case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
-case class Restart(host: Host, appName: String) extends RemoteShellTask {
+case class Restart(host: Host, appName: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, "restart")
 }
 
-case class UnblockFirewall(host: Host) extends RemoteShellTask {
+case class UnblockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine =  CommandLocator conditional "unblock-load-balancer"
 }
 
-case class WaitForPort(host: Host, port: Int, duration: Long) extends Task with RepeatedPollingCheck {
+case class WaitForPort(host: Host, port: Int, duration: Long)(implicit val keyRing: KeyRing) extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
+  def execute(stopFlag: =>  Boolean) {
     check(stopFlag) {
       try {
         new Socket(host.name, port).close()
@@ -164,13 +168,13 @@ case class WaitForPort(host: Host, port: Int, duration: Long) extends Task with 
   }
 }
 
-case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)
+case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)(implicit val keyRing: KeyRing)
     extends Task with RepeatedPollingCheck {
   override def taskHost = Some(host)
   def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute(keyRing: KeyRing, stopFlag: =>  Boolean) {
+  def execute(stopFlag: =>  Boolean) {
     for (path <- paths) {
       val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
       MessageBroker.verbose("Checking %s" format url)
@@ -233,9 +237,9 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 }
 
 
-case class SayHello(host: Host) extends Task {
+case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   override def taskHost = Some(host)
-  def execute(keyRing: KeyRing, stopFlag: => Boolean) {
+  def execute(stopFlag: => Boolean) {
     MessageBroker.info("Hello to " + host.name + "!")
   }
 
@@ -243,21 +247,21 @@ case class SayHello(host: Host) extends Task {
   def verbose = fullDescription
 }
 
-case class EchoHello(host: Host) extends ShellTask {
+case class EchoHello(host: Host)(implicit val keyRing: KeyRing) extends ShellTask {
   override def taskHost = Some(host)
   def commandLine = List("echo", "hello to " + host.name)
   def description = "to " + host.name
 }
 
-case class Link(host: Host, target: Option[String], linkName: String) extends RemoteShellTask {
+case class Link(host: Host, target: Option[String], linkName: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("ln", "-sfn", target.getOrElse(throw new FileNotFoundException()), linkName)
 }
 
-case class ApacheGracefulRestart(host: Host) extends RemoteShellTask {
+case class ApacheGracefulRestart(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
 }
 
-case class Mkdir(host: Host, path: String) extends RemoteShellTask {
+case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 

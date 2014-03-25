@@ -83,18 +83,17 @@ trait ASG extends AWS {
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage)(implicit keyRing: KeyRing): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit keyRing: KeyRing): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
         tag.getKey == key && tag.getValue == value
       }
-      def matchApp(app: App) = {
-        app match {
-          case LegacyApp(name) => hasTag("Role", pkg.name) || hasTag("App", pkg.name)
-          case StackApp(stackName, appName) => hasTag("Stack", stackName) && hasTag("App", appName)
-          case _ => false
+      def matchApp(app: App, stack: Stack): Boolean = {
+        stack match {
+          case UnnamedStack => hasTag("Role", pkg.name) || hasTag("App", pkg.name)
+          case NamedStack(stackName) => hasTag("Stack", stackName) && hasTag("App", app.name)
         }
       }
     }
@@ -102,7 +101,7 @@ trait ASG extends AWS {
     val groups = client.describeAutoScalingGroups().getAutoScalingGroups.toList
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
     val appToMatchingGroups = pkg.apps.flatMap { app =>
-      val matches = filteredByStage.filter(_.matchApp(app))
+      val matches = filteredByStage.filter(_.matchApp(app, stack))
       if (matches.isEmpty) None else Some(ASGMatch(app, matches))
     }
 

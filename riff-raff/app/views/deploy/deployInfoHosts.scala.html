@@ -1,5 +1,6 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], hosts: Map[String,Seq[magenta.Host]], lookup: Lookup)
 @import html.helper.magenta.htmlTooltip
+@import magenta.HostList._
 
 @main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
 
@@ -24,12 +25,10 @@
         <th>Hosts</th>
     </tr></thead>
     <tbody>
-        @hosts(stage).groupBy(_.apps).toList.sortBy(_._1.head.toString).map { case (appSet, hosts) =>
+        @hosts(stage).byStackAndApp.map { case ((stackOption, appSet), hosts) =>
             <tr>
-            @defining(App.stackAppTuple(appSet)) { case (stackOption, app) =>
-                <td><strong>@stackOption.getOrElse{ <span class='label label-warning'>none</span> }</strong></td>
-                <td><strong>@app</strong></td>
-            }
+            <td><strong>@stackOption.getOrElse{ <span class='label label-warning'>none</span> }</strong></td>
+            <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
             <td>(@hosts.size)</td>
             <td>
             @hosts.transposeBy(_.tags.getOrElse("group","")).map{ host =>

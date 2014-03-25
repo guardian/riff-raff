@@ -17,6 +17,7 @@ case class DeployInfoHost(
   app: String,
   group: String,
   stage: String,
+  stack: Option[String],
   instancename: Option[String],
   internalname: Option[String],
   dnsname: Option[String],
@@ -33,6 +34,7 @@ case class DeployInfoKey(
 case class DeployInfoData(
   app: String,
   stage: String,
+  stack: Option[String],
   value: String,
   comment: Option[String]
 )

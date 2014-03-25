@@ -32,7 +32,8 @@ object Django extends DeploymentType {
     "Read timeout (in seconds) used when checking health check paths").default(5)
 
   override def perHostActions = {
-    case "deploy" => pkg => host => {
+    case "deploy" => pkg => (host, keyRing) => {
+      implicit val key = keyRing
       val destDir = "/django-apps/"
       // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
       lazy val appVersionPath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)

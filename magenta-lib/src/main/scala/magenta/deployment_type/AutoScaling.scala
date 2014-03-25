@@ -36,20 +36,22 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabalise").default(0)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (_, parameters) => {
+    case "deploy" => (pkg) => (lookup, parameters, stack) => {
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
-        CheckGroupSize(pkg, parameters.stage),
-        SuspendAlarmNotifications(pkg, parameters.stage),
-        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage),
-        DoubleSize(pkg, parameters.stage),
-        WaitForStabilization(pkg, parameters.stage, secondsToWait(pkg) * 1000),
+        CheckGroupSize(pkg, parameters.stage, stack),
+        SuspendAlarmNotifications(pkg, parameters.stage, stack),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
+        DoubleSize(pkg, parameters.stage, stack),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
         HealthcheckGrace(healthcheckGrace(pkg) * 1000),
-        WaitForStabilization(pkg, parameters.stage, secondsToWait(pkg) * 1000),
-        CullInstancesWithTerminationTag(pkg, parameters.stage),
-        ResumeAlarmNotifications(pkg, parameters.stage)
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        CullInstancesWithTerminationTag(pkg, parameters.stage, stack),
+        ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (_, parameters) =>
+    case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
         S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicReadAcl = publicReadAcl(pkg))
       )
