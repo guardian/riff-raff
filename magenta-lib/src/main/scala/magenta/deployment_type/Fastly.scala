@@ -21,7 +21,10 @@ object FastlyPurge extends DeploymentType {
   val urls = Param[List[String]]("urls")
 
   def perAppActions = {
-    case "purge" => pkg => (_, _) => List(PurgeFromFastly(urls(pkg)))
+    case "purge" => pkg => (lookup, parameters, stack) => {
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      List(PurgeFromFastly(urls(pkg)))
+    }
   }
 
   def documentation =

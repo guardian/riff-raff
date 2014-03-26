@@ -103,11 +103,11 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
 
 }
 
-case class PurgeFromFastly(urls: Seq[String]) extends Task{
+case class PurgeFromFastly(urls: Seq[String])(implicit val keyRing: KeyRing) extends Task{
   def verbose = s"Purge $urls from Fastly caches"
   def description = "Purge files from Fastly caches"
 
-  def execute(keyRing: KeyRing, stopFlag: => Boolean) = {
+  def execute(stopFlag: => Boolean) = {
     FastlyApiClientProvider.get(keyRing).map { client =>
       urls.foreach(url => client.purge(url).get)
     }
