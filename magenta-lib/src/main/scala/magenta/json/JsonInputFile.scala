@@ -7,6 +7,7 @@ import java.io.{FileNotFoundException, File}
 
 
 case class JsonInputFile(
+  defaultStacks: List[String],
   packages: Map[String, JsonPackage],
   recipes: Option[Map[String, JsonRecipe]]
 )
@@ -55,7 +56,7 @@ object JsonReader {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifactSrcDir) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
-    Project(packages, recipes)
+    Project(packages, recipes, input.defaultStacks.map(NamedStack(_)))
   }
 
 
@@ -82,8 +83,8 @@ object JsonReader {
     DeploymentPackage(
       name,
       jsonPackage.apps match {
-        case Nil => Set(App(name))
-        case x => x.map(App).toSet
+        case Nil => Seq(App(name))
+        case x => x.map(App(_))
       },
       jsonPackage.safeData,
       jsonPackage.`type`,

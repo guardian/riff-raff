@@ -48,6 +48,7 @@ case class ParametersDocument(
   buildId: String,
   stage: String,
   recipe: String,
+  stacks: List[String],
   hostList: List[String],
   tags: Map[String,String]
 )
@@ -64,6 +65,7 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
           "buildId" -> a.buildId,
           "stage" -> a.stage,
           "recipe" -> a.recipe,
+          "stacks" -> a.stacks,
           "hostList" -> a.hostList,
           "tags" -> a.tags
         )
@@ -76,6 +78,7 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       buildId = dbo.as[String]("buildId"),
       stage = dbo.as[String]("stage"),
       recipe = dbo.as[String]("recipe"),
+      stacks = dbo.getAsOrElse[MongoDBList]("stacks", MongoDBList()).map(_.asInstanceOf[String]).toList,
       hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
       tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
     ))
@@ -145,7 +148,7 @@ object DetailConversions {
       val fields:List[(String,Any)] =
         List(
           "name" -> a.name,
-          "apps" -> a.apps.map(app => MongoDBObject("name" -> app.name)).toList,
+          "apps" -> a.apps.map(a => MongoDBObject("name" -> a.name)).toList,
           "stage" -> a.stage
         ) ++ a.connectAs.map("connectAs" ->)
       fields.toMap
@@ -153,7 +156,13 @@ object DetailConversions {
 
     def fromDBO(dbo: MongoDBObject) = Some(Host(
       name = dbo.as[String]("name"),
-      apps = dbo.as[List[DBObject]]("apps").map(dbo => App(dbo.as[String]("name"))).toSet,
+      apps = dbo.as[List[DBObject]]("apps").map{dbo =>
+        (dbo.getAs[String]("name"),dbo.getAs[String]("stack"),dbo.getAs[String]("app")) match {
+          case (Some(name), None, None) => App(name)
+          case (None, Some(stack), Some(app)) => App(app)
+          case other => throw new IllegalArgumentException(s"Don't know how to construct App from tuple $other")
+        }
+      }.toSet,
       stage = dbo.as[String]("stage"),
       connectAs = dbo.getAs[String]("connectAs")
     ))

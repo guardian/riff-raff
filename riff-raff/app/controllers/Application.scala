@@ -71,7 +71,8 @@ object Application extends Controller with Logging {
   def deployInfoHosts(appFilter: String) = AuthAction { request =>
     val lookup = LookupSelector()
     val hosts = lookup.instances.all.filter { host =>
-      host.apps.exists(_.name.matches(s"(?i).*${appFilter}.*"))
+      host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
+      request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
     }.groupBy(_.stage)
     Ok(views.html.deploy.deployInfoHosts(request, hosts, lookup))
   }
@@ -171,7 +172,7 @@ object Application extends Controller with Logging {
                       case (Some(default), _) => Some(default.toString)
                       case (None, Some(pkgFunction)) =>
                         Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Set(App("<app>")),Map.empty,"<deploymentType>",new File("<file>"))
+                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>",new File("<file>"))
                         ).toString)
                       case (_, _) => None
                     }

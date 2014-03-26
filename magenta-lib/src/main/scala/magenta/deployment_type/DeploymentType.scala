@@ -16,25 +16,28 @@ trait DeploymentType {
   }
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
-  def perAppActions: PartialFunction[String, DeploymentPackage => (Lookup, DeployParameters) => List[Task]]
-  def perHostActions: PartialFunction[String, DeploymentPackage => Host => List[Task]] = PartialFunction.empty
+  def perAppActions: PartialFunction[String, DeploymentPackage =>
+    (Lookup, DeployParameters, Stack) => List[Task]]
+  def perHostActions: PartialFunction[String, DeploymentPackage =>
+    (Host, KeyRing) => List[Task]] = PartialFunction.empty
 
   def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
     perHostActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName)  {
-        def resolve(resourceLookup: Lookup, parameters: DeployParameters) = {
+        def resolve(resourceLookup: Lookup, parameters: DeployParameters, stack: Stack) = {
           val hostsForApps = apps.toList.flatMap { app =>
-            resourceLookup.instances.get(app, parameters.stage)
+            resourceLookup.instances.get(pkg, app, parameters, stack)
           } filter { instance =>
             parameters.matchingHost(instance.name)
           }
-          hostsForApps flatMap (action(pkg)(_))
+          hostsForApps flatMap (action(pkg)(_,
+            resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)))
         }
       }
     } orElse perAppActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName) {
-        def resolve(resourceLookup: Lookup, parameters: DeployParameters) =
-          action(pkg)(resourceLookup, parameters)
+        def resolve(resourceLookup: Lookup, parameters: DeployParameters, stack: Stack) =
+          action(pkg)(resourceLookup, parameters, stack)
       }
     } getOrElse sys.error(s"Action $actionName is not supported on package ${pkg.name} of type $name")
   }

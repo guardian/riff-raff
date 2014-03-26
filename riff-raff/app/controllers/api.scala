@@ -271,7 +271,7 @@ object Api extends Controller with Logging {
     val deployInfo = DeployInfoManager.deployInfo
     val filtered = deployInfo.filterHosts { host =>
         (filter.stage.isEmpty || filter.stage.get == host.stage) &&
-          (filter.app.isEmpty || host.apps.exists(_.name == filter.app.get) ) &&
+          (filter.app.isEmpty || host.apps.exists(_.toString == filter.app.get) ) &&
           (filter.hostList.isEmpty || filter.hostList.contains(host.name))
       }
     val results = Json.parse(Serialization.write(filtered.input))
@@ -311,6 +311,7 @@ object Api extends Controller with Logging {
           Build(project, build),
           Stage(stage),
           recipe,
+          Nil,
           hosts
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")

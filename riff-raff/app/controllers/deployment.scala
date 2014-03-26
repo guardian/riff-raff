@@ -5,8 +5,6 @@ import ci._
 import play.api.mvc.Controller
 import play.api.data.Form
 import deployment._
-import deployment.Domains.responsibleFor
-import deployment.DomainAction._
 import play.api.data.Forms._
 import java.util.UUID
 import akka.actor.ActorSystem
@@ -15,16 +13,16 @@ import magenta.Build
 import akka.agent.Agent
 import akka.util.Timeout
 import scala.concurrent.duration._
-import play.api.libs.json.Json
-import org.joda.time.format.DateTimeFormat
 import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import conf.AtomicSwitch
-import org.joda.time.{Interval, DateTime}
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.concurrent.Akka
 import scala.util.{Failure, Success}
+import org.joda.time.DateTime
+import play.api.libs.json.Json
+import org.joda.time.format.DateTimeFormat
+import scala.concurrent.{Await, Future}
 
 object DeployController extends Logging with LifecycleWithoutApp {
   val sink = new MessageSink {
@@ -52,8 +50,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   def create(recordType: TaskType.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val hostNameMetadata = Map(Record.RIFFRAFF_DOMAIN -> conf.Configuration.domains.identityName,
-                               Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
+    val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = DeployV2Record(recordType, uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
@@ -78,8 +75,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def attachMetaData(record: Record) {
-    import play.api.Play.current
-    val metaData = Akka.future {
+    val metaData = Future {
       ContinuousIntegration.getMetaData(record.buildName, record.buildId)
     }
     metaData.map { md =>
@@ -93,11 +89,10 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def cleanup(uuid: UUID) {
-    log.debug("Queuing removal of deploy record %s from internal caches" format uuid)
+    log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
-      val timeout = Timeout(10 seconds)
-      val record = allDeploys(uuid).await(timeout)
-      log.debug("Done removing deploy record %s from internal caches" format uuid)
+      val record = Await.result(allDeploys(uuid).future(), 10 seconds)
+      log.debug(s"Done removing deploy record $uuid from internal caches")
       allDeploys - record.uuid
     }
   }
@@ -113,8 +108,6 @@ object DeployController extends Logging with LifecycleWithoutApp {
         requestedParams.copy(build = requestedParams.build.copy(id=latestId))
       }.getOrElse(requestedParams)
     }
-
-    Domains.assertResponsibleFor(params)
 
     enableDeploysSwitch.whileOnYield {
       val record = DeployController.create(mode, params)
@@ -162,8 +155,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def await(uuid: UUID): Record = {
-    val timeout = Timeout(5 second)
-    library.await(timeout)(uuid).await(timeout)
+    Await.result(library.future().flatMap(_(uuid).future()),5 seconds)
   }
 }
 
@@ -199,31 +191,22 @@ object Deployment extends Controller with Logging {
     deployForm.bindFromRequest().fold(
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
-        log.info("Host list: %s" format form.hosts)
+        log.info(s"Host list: ${form.hosts}")
         val defaultRecipe = LookupSelector().data
-          .datum("default-recipe", App(form.project), Stage(form.stage))
+          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
-          recipe = form.recipe.map(RecipeName(_)).getOrElse(defaultRecipe),
+          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
           hostList = form.hosts)
 
         form.action match {
           case "preview" =>
             Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
           case "deploy" =>
-            responsibleFor(parameters) match {
-              case Local() =>
-                val uuid = DeployController.deploy(parameters)
-                Redirect(routes.Deployment.viewUUID(uuid.toString))
-              case Remote(_, urlPrefix) =>
-                implicit val formWrites = Json.writes[DeployParameterForm]
-                val call = routes.Deployment.deployConfirmation(Json.toJson(form).toString)
-                Redirect(urlPrefix+call.url)
-              case Noop() =>
-                throw new IllegalArgumentException("There isn't a domain in the riff-raff configuration that can run this deploy")
-            }
+              val uuid = DeployController.deploy(parameters)
+              Redirect(routes.Deployment.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }
       }
@@ -252,7 +235,7 @@ object Deployment extends Controller with Logging {
 
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Nil, hostList)
     val previewId = PreviewController.startPreview(parameters)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
@@ -260,7 +243,9 @@ object Deployment extends Controller with Logging {
   def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val previewUUID = UUID.fromString(previewId)
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val parameters = DeployParameters(
+      Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
+    )
     val result = PreviewController.getPreview(previewUUID, parameters)
     result match {
       case Some(PreviewResult(future, startTime)) =>

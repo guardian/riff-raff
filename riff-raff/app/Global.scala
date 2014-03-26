@@ -1,19 +1,20 @@
 import collection.mutable
-import conf.RiffRaffRequestMeasurementMetrics
-import conf.DeployMetrics
+import conf.{PlayRequestMetrics, DeployMetrics}
 import controllers.Logging
 import deployment.DeployInfoManager
 import lifecycle.Lifecycle
-import notification.{Alerta, TeamCityBuildPinner, HooksClient, IrcClient}
+import notification._
 import persistence.SummariseDeploysHousekeeping
-import play.api.mvc.{Result, RequestHeader, WithFilters}
+import play.api.mvc.{SimpleResult, RequestHeader, WithFilters}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
 import ci.{TeamCityBuilds, ContinuousDeployment}
+import play.filters.gzip.GzipFilter
+import scala.concurrent.Future
 import utils.ScheduledAgent
 import play.api.Application
 
-object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _*) with Logging {
+object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
 
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
@@ -25,6 +26,7 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
       DeployController,
       IrcClient,
       Alerta,
+      AWS,
       DeployMetrics,
       HooksClient,
       TeamCityBuilds,
@@ -33,7 +35,7 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
       SummariseDeploysHousekeeping
     )
 
-    log.info("Calling init() on Lifecycle singletons: %s" format lifecycleSingletons.map(_.getClass.getName).mkString(", "))
+    log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
     lifecycleSingletons foreach { singleton =>
       try {
         singleton.init(app)
@@ -44,7 +46,7 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
   }
 
   override def onStop(app: Application) {
-    log.info("Calling shutdown() on Lifecycle singletons: %s" format lifecycleSingletons.reverse.map(_.getClass.getName).mkString(", "))
+    log.info(s"Calling shutdown() on Lifecycle singletons: ${lifecycleSingletons.reverse.map(_.getClass.getName).mkString(", ")}")
     lifecycleSingletons.reverse.foreach { singleton =>
       try {
         singleton.shutdown(app)
@@ -54,9 +56,9 @@ object Global extends WithFilters(RiffRaffRequestMeasurementMetrics.asFilters: _
     }
   }
 
-  override def onError(request: RequestHeader, t: Throwable): Result = {
+  override def onError(request: RequestHeader, t: Throwable): Future[SimpleResult] = {
     log.error("Error whilst trying to serve request", t)
     val reportException = if (t.getCause != null) t.getCause else t
-    InternalServerError(views.html.errorPage(reportException))
+    Future.successful(InternalServerError(views.html.errorPage(reportException)))
   }
 }

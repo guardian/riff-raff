@@ -11,8 +11,6 @@ import magenta.Stage
 import scala.Some
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import persistence.Persistence.store.getContinuousDeploymentList
-import deployment.DomainAction.Local
-import deployment.Domains
 import org.joda.time.DateTime
 import teamcity.Build
 import com.mongodb.casbah.commons.MongoDBObject
@@ -56,7 +54,6 @@ case class ContinuousDeploymentConfig(
       builds.filter(buildFilter).sortBy(-_.id).headOption
     } else None
   }
-  lazy val enabled = trigger != Trigger.Disabled
 }
 
 object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
@@ -105,11 +102,11 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   val system = ActorSystem("continuous-deployment")
   var buildWatcher: Option[ContinuousDeployment] = None
-  val tagWatcherAgent = Agent[Map[String, TagWatcher]](Map.empty)(system)
+  val tagWatcherAgent = Agent[Map[String, TagWatcher]](Map.empty)(system.dispatcher)
 
   def init() {
     if (buildWatcher.isEmpty) {
-      buildWatcher = Some(new ContinuousDeployment(Domains))
+      buildWatcher = Some(new ContinuousDeployment())
       buildWatcher.foreach(TeamCityBuilds.subscribe)
     }
     updateTagTrackers()
@@ -153,37 +150,30 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   }
 }
 
-class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
+class ContinuousDeployment extends BuildWatcher with Logging {
 
-  type ProjectCdMap = Map[String, Set[ContinuousDeploymentConfig]]
-
-  def getMatchesForSuccessfulBuilds(builds: List[Build],
-                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+  def deployParamsForSuccessfulBuilds(builds: List[Build],
+                                    configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     configs.flatMap { config =>
-      config.findMatchOnSuccessfulBuild(builds).map(build => config -> build)
+      config.findMatchOnSuccessfulBuild(builds).map(build => getDeployParams(config, build))
     }
   }
 
-  def getMatchesForBuildTagged(builds: List[Build],
+  def deployParamsForTaggedBuilds(builds: List[Build],
                                tag: String,
-                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, Build)] = {
+                               configs: Iterable[ContinuousDeploymentConfig]): Iterable[DeployParameters] = {
     configs.flatMap { config =>
-      config.findMatchOnBuildTagged(builds, tag).map(build => config -> build)
+      config.findMatchOnBuildTagged(builds, tag).map(build => getDeployParams(config, build))
     }
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, Build)): Option[DeployParameters] = {
-    val (config,build) = configBuildTuple
-    val params = DeployParameters(
+  def getDeployParams(config: ContinuousDeploymentConfig, build: Build): DeployParameters = {
+    DeployParameters(
       Deployer("Continuous Deployment"),
       MagentaBuild(build.buildType.fullName,build.number),
       Stage(config.stage),
       RecipeName(config.recipe)
     )
-    domains.responsibleFor(params) match {
-      case Local() => Some(params)
-      case _ => None
-    }
   }
 
   def runDeploy(params: DeployParameters) {
@@ -200,12 +190,12 @@ class ContinuousDeployment(domains: Domains) extends BuildWatcher with Logging {
 
   def newBuilds(newBuilds: List[Build]) = {
     log.info(s"New builds to consider for deployment $newBuilds")
-    getMatchesForSuccessfulBuilds(newBuilds, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
+    deployParamsForSuccessfulBuilds(newBuilds, getContinuousDeploymentList) foreach (runDeploy)
   }
 
   def newTags(newBuilds: List[Build], tag: String) = {
     log.info(s"Builds just tagged with $tag to consider for deployment: $newBuilds")
-    getMatchesForBuildTagged(newBuilds, tag, getContinuousDeploymentList).flatMap{ getDeployParams }.foreach(runDeploy)
+    deployParamsForTaggedBuilds(newBuilds, tag, getContinuousDeploymentList) foreach (runDeploy)
   }
 
 }

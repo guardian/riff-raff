@@ -1,4 +1,4 @@
-<!--- next:domains prev:properties -->
+<!--- prev:properties -->
 Authentication and Authorisation
 ================================
 

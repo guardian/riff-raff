@@ -70,7 +70,7 @@
     } else {
     <button type="button" class="btn btn-default" id="checkbox-select-all"><span class="glyphicon glyphicon-ok"></span> All</button> <button type="button" class="btn btn-default" id="checkbox-select-none"><span class="glyphicon glyphicon-remove"></span> None</button>
     <div>
-        @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.name).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
+        @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.toString).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
             <div>
                 <ul class="magenta-list deployment-list">
                     <li><span class="preview-host"><strong>@hostGroupEntry._1:</strong></span></li>

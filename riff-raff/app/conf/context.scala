@@ -4,7 +4,7 @@ import _root_.resources.LookupSelector
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.{ Management => PlayManagement }
+import com.gu.management.play.{Management => PlayManagement, RequestMetrics}
 import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
@@ -15,7 +15,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{DeployMetricsActor, GuDomainsConfiguration}
+import deployment.DeployMetricsActor
 import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
@@ -71,8 +71,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val timeoutSeconds: Int = configuration.getIntegerProperty("deployinfo.timeoutSeconds", 180)
   }
 
-  lazy val domains = GuDomainsConfiguration(configuration, prefix = "domains")
-
   object freeze {
     private val formatter = ISODateTimeFormat.dateTime()
     lazy val startDate = configuration.getStringProperty("freeze.startDate").map(formatter.parseDateTime)
@@ -109,6 +107,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val isConfigured = uri.isDefined
     lazy val uri = configuration.getStringProperty("mongo.uri")
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
+  }
+
+  object notifications {
+    object aws {
+      lazy val isConfigured = topicArn.isDefined && accessKey.isDefined && secretKey.isDefined
+      lazy val topicArn = configuration.getStringProperty("notifications.aws.topicArn")
+      lazy val topicRegion = configuration.getStringProperty("notifications.aws.topicRegion")
+      lazy val accessKey = configuration.getStringProperty("notifications.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("notifications.aws.secretKey")
+    }
   }
 
   object sshKey {
@@ -163,7 +171,7 @@ object Management extends PlayManagement {
   )
 }
 
-object RequestMetrics extends com.gu.management.play.RequestMetrics.Standard
+object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends LifecycleWithoutApp {
   val runningDeploys = mutable.Buffer[UUID]()
@@ -246,7 +254,7 @@ object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
-    RequestMetrics.asMetrics ++
+    PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all ++
     TaskMetrics.all

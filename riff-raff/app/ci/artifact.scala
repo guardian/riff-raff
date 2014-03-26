@@ -11,10 +11,9 @@ import collection.mutable
 import lifecycle.LifecycleWithoutApp
 import scala.Some
 import concurrent.{ Future, Promise, promise, Await }
-import concurrent.ExecutionContext.Implicits.global
 import play.api.Logger
 import akka.agent.Agent
-import akka.actor.ActorSystem
+import Context._
 import scala.util.{Try, Random}
 
 object `package` {
@@ -71,7 +70,7 @@ trait TagWatcher {
 
 trait ApiTracker[T] {
   case class Result(diff: List[T], updated: List[T], previous: List[T])
-  private val promises = Agent[List[Promise[List[T]]]](Nil)(ActorSystem("teamcity-trackers"))
+  private val promises = Agent[List[Promise[List[T]]]](Nil)
 
   private val fullAgentUpdate = PeriodicScheduledAgentUpdate[(Boolean, List[T])](startupDelay, fullUpdatePeriod) { case (flag, current) =>
     Try {

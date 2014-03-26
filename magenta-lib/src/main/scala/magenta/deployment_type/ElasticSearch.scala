@@ -18,15 +18,21 @@ object ElasticSearch extends DeploymentType with S3AclParams {
   ).default(15 * 60)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (_, parameters) => {
+    case "deploy" => (pkg) => (lookup, parameters, stack) => {
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
-        TagCurrentInstancesWithTerminationTag(name, parameters.stage),
-        DoubleSize(name, parameters.stage),
-        WaitForElasticSearchClusterGreen(name, parameters.stage, secondsToWait(pkg) * 1000),
-        CullElasticSearchInstancesWithTerminationTag(name, parameters.stage, secondsToWait(pkg) * 1000)
+        CheckGroupSize(pkg, parameters.stage, stack),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        SuspendAlarmNotifications(pkg, parameters.stage, stack),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
+        DoubleSize(pkg, parameters.stage, stack),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (_, parameters) =>
+    case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
+      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
         S3Upload(parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicReadAcl = publicReadAcl(pkg))
       )

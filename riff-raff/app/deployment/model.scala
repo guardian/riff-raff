@@ -48,20 +48,18 @@ trait Record {
   def lastActivityTime: DateTime
 
   def isStalled: Boolean = {
-    recordState.map { state =>
-      state match {
-        case RunState.Running =>
-          val stalledThreshold = (new DateTime()).minus(new Duration(15*60*1000))
-          lastActivityTime.isBefore(stalledThreshold)
-        case _ => false
-      }
-    }.getOrElse(false)
+    recordState.exists {
+      case RunState.Running =>
+        val stalledThreshold = (new DateTime()).minus(new Duration(15 * 60 * 1000))
+        lastActivityTime.isBefore(stalledThreshold)
+      case _ => false
+    }
   }
 
-  lazy val isMarkedAsFailed = recordState.map {
+  lazy val isMarkedAsFailed = recordState.exists {
     case RunState.Failed => true
     case _ => false
-  }.getOrElse(false)
+  }
 
   def isSummarised: Boolean
 
@@ -79,6 +77,27 @@ trait Record {
   lazy val computedMetaData = vcsInfo.map(_.map).getOrElse(Map.empty)
 
   lazy val vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
+
+  lazy val totalTasks: Option[Int] = {
+    val taskListMessages:Seq[TaskList] = report.allMessages.flatMap{
+      case SimpleMessageState(list@TaskList(tasks), _, _) => Some(list)
+      case _ => None
+    }
+    assert(taskListMessages.size <= 1, "More than one TaskList in report")
+    taskListMessages.headOption.map(_.taskList.size)
+  }
+
+  lazy val completedTasks: Int = {
+    report.allMessages.count {
+      case FinishMessageState(StartContext(TaskRun(task)), _, _, _) => true
+      case _ => false
+    }
+  }
+
+  lazy val completedPercentage: Int =
+    totalTasks.map{total =>
+      (completedTasks * 100) / total
+    }.getOrElse(0)
 }
 
 object DeployV2Record {

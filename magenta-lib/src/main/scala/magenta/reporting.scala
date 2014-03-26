@@ -77,7 +77,7 @@ case class FailMessageState(startContext: StartContext, fail: FailContext, time:
 
 object DeployReport {
   def wrapperToTree(node: MessageWrapper, all: List[MessageWrapper]): ReportTree = {
-    val allChildren = all.filter(_.context.parentId.map(_ == node.messageId).getOrElse(false))
+    val allChildren = all.filter(_.context.parentId.exists(_ == node.messageId))
 
     val isEndContextMessage = (wrapper:MessageWrapper) => wrapper.stack.top.isInstanceOf[FinishContext] ||
                                                           wrapper.stack.top.isInstanceOf[FailContext]

@@ -15,6 +15,7 @@ import ci.teamcity.BuildType
 import ci.teamcity.TeamCity.BuildLocator
 import play.api.libs.concurrent.Promise
 import play.api.libs.concurrent.Execution.Implicits._
+import scala.concurrent.Future
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
@@ -53,7 +54,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
       log.debug("Found %d pinned builds for %s" format (builds.size, buildType.id))
       if (builds.size > maxPinned) {
         log.debug("Getting pin information")
-        Promise.sequence(builds.map(_.detail)).map { detailedBuilds =>
+        Future.sequence(builds.map(_.detail)).map { detailedBuilds =>
           log.debug("Got details for %d builds: %s" format (detailedBuilds.size, detailedBuilds.mkString("\n")))
           detailedBuilds.filter(_.pinInfo.get.user.username == tcUserName).sortBy(-_.pinInfo.get.timestamp.getMillis).drop(maxPinned).map { buildToUnpin =>
             log.debug("Unpinning %s" format buildToUnpin)

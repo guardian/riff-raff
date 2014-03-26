@@ -7,12 +7,12 @@
     <h1>@title</h1>
     <ul class="nav nav-pills">
         @sections.map { case (sectionTitle, html) =>
-            <li><a href="#@sectionTitle.replaceAll("""\W""","")">@sectionTitle</a></li>
+            <li><a href="#@sectionTitle.replaceAll("\\W","")">@sectionTitle</a></li>
         }
     </ul>
     @sections.map { case (sectionTitle, html) =>
         <hr/>
-        <h2 id="@sectionTitle.replaceAll("""\W""","")">@sectionTitle</h2>
+        <h2 id="@sectionTitle.replaceAll("\\W","")">@sectionTitle</h2>
         @html
     }
 }
