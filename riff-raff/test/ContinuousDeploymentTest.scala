@@ -35,34 +35,16 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
     params should be(expected)
   }
 
-  it should "not act on new tag events with successful build configs" in {
-    val params = continuousDeployment.deployParamsForTaggedBuilds(newBuildsList, "tag", contDeployConfigs).toSet
-    params.size should be(0)
-  }
-
-  it should "act on new tag events with BuildTagged" in {
-    val params = continuousDeployment.deployParamsForTaggedBuilds(newBuildsList, "tag", contDeployTagConfigs).toSet
-    params.size should be(1)
-    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy", "71"), Stage("PROD"), RecipeName("default"))))
-  }
-
-  it should "not act on a new tag event when the tag doesn't match the BuildTagged config" in {
-    val params = continuousDeployment.deployParamsForTaggedBuilds(newBuildsList, "otherTag", contDeployTagConfigs).toSet
-    params.size should be(0)
-  }
-
   /* Test types */
 
-  val tdProdEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "PROD", "default", None, Trigger.SuccessfulBuild, None, "Test user")
-  val tdCodeDisabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "CODE", "default", None, Trigger.Disabled, None, "Test user")
-  val td2ProdDisabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", None, Trigger.Disabled, None, "Test user")
-  val td2QaEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", None, Trigger.SuccessfulBuild, None, "Test user")
-  val td2QaBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", Some("branch"), Trigger.SuccessfulBuild, None, "Test user")
-  val td2ProdBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", Some("master"), Trigger.SuccessfulBuild, None, "Test user")
-  val tdProdEnabledTag = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "PROD", "default", None, Trigger.BuildTagged, Some("tag"), "Test user")
+  val tdProdEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "PROD", "default", None, Trigger.SuccessfulBuild, "Test user")
+  val tdCodeDisabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "CODE", "default", None, Trigger.Disabled, "Test user")
+  val td2ProdDisabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", None, Trigger.Disabled, "Test user")
+  val td2QaEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", None, Trigger.SuccessfulBuild, "Test user")
+  val td2QaBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "QA", "default", Some("branch"), Trigger.SuccessfulBuild, "Test user")
+  val td2ProdBranchEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy2", "PROD", "default", Some("master"), Trigger.SuccessfulBuild, "Test user")
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
-  val contDeployTagConfigs = Seq(tdProdEnabledTag)
 
   val continuousDeployment = new ContinuousDeployment()
 

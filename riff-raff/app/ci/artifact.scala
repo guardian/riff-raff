@@ -63,11 +63,6 @@ trait BuildWatcher {
   def newBuilds(builds: List[Build])
 }
 
-trait TagWatcher {
-  def tag: String
-  def newBuilds(builds: List[Build])
-}
-
 trait ApiTracker[T] {
   case class Result(diff: List[T], updated: List[T], previous: List[T])
   private val promises = Agent[List[Promise[List[T]]]](Nil)
@@ -202,35 +197,13 @@ case class BuildLocatorTracker(locator: BuildLocator,
 
 object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
-  val tagPollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.tagging.pollingWindowMinutes)
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
   private val listeners = mutable.Buffer[BuildWatcher]()
-  private var locatorTrackers = Map.empty[TagWatcher, BuildLocatorTracker]
 
   def subscribe(sink: BuildWatcher) { listeners += sink }
   def unsubscribe(sink: BuildWatcher) { listeners -= sink }
-
-  def subscribe(sink: TagWatcher) {
-    if (TeamCityWS.teamcityURL.isDefined) {
-      val tracker = new BuildLocatorTracker(
-          BuildLocator.tag(sink.tag).status("SUCCESS"),
-          buildTypeTracker.get,
-          fullUpdatePeriod,
-          pollingPeriod,
-          builds => sink.newBuilds(builds),
-          tagPollingWindow,
-          Random.nextInt(conf.Configuration.teamcity.pollingPeriodSeconds).seconds
-        )
-      locatorTrackers += (sink -> tracker)
-    }
-  }
-
-  def unsubscribe(sink: TagWatcher) {
-    locatorTrackers.get(sink).foreach(_.shutdown())
-    locatorTrackers -= sink
-  }
 
   def notifyNewBuilds(newBuilds: List[Build]) = {
     log.info("Notifying listeners")
@@ -282,8 +255,6 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   def shutdown() {
     successfulBuildTracker.foreach(_.shutdown())
     buildTypeTracker.foreach(_.shutdown())
-    locatorTrackers.values.foreach(_.shutdown())
-    locatorTrackers = Map.empty
   }
 }
 
