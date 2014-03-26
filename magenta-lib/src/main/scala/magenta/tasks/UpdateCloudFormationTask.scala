@@ -6,9 +6,10 @@ import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model.{Parameter, UpdateStackRequest}
 import scalax.file.Path
 
-case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage) extends Task {
-  def execute(credentials: KeyRing, stopFlag: => Boolean) = if (!stopFlag) {
-    CloudFormation.updateStack(stackName, template.string, parameters + ("Stage" -> stage.name))(credentials)
+case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage)
+                                   (implicit val keyRing: KeyRing) extends Task {
+  def execute(stopFlag: => Boolean) = if (!stopFlag) {
+    CloudFormation.updateStack(stackName, template.string, parameters + ("Stage" -> stage.name))
   }
 
   def description = s"Updating CloudFormation stack: $stackName with ${template.name}"

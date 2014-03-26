@@ -73,6 +73,10 @@ object Main extends scala.App {
         new SecretProvider {
           def lookup(service: String, account: String): Option[String] =
             Some(System.console.readPassword(s"Secret required to continue with deploy\nPlease enter secret for $service account $account:").toString)
+          def sshCredentials = if (Config.jvmSsh) {
+            val passphrase = System.console.readPassword("Please enter your passphrase:")
+            PassphraseProvided(System.getenv("USER"), passphrase.toString, Config.keyLocation)
+          } else SystemUser(keyFile = Config.keyLocation)
         }
       )
     }
@@ -144,7 +148,7 @@ object Main extends scala.App {
     try {
       withTemporaryDirectory { tmpDir =>
         val build = Build(Config.project.get, Config.build.get)
-        val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Config.host.toList)
+        val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Nil, Config.host.toList)
         MessageBroker.deployContext(UUID.randomUUID(), parameters) {
 
           MessageBroker.info("[using %s build %s]" format (programName, programVersion))
@@ -172,12 +176,7 @@ object Main extends scala.App {
 
           } else {
 
-            val credentials = if (Config.jvmSsh) {
-              val passphrase = System.console.readPassword("Please enter your passphrase:")
-              PassphraseProvided(System.getenv("USER"), passphrase.toString, Config.keyLocation)
-            } else SystemUser(keyFile = Config.keyLocation)
-
-            context.execute(KeyRing(credentials))
+            context.execute()
           }
         }
       }

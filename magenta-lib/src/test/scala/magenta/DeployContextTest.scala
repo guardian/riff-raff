@@ -45,10 +45,10 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseMockRecipe), lookupSingleHost)
     val keyRing = mock[KeyRing]
-    context.execute(keyRing)
+    context.execute()
     val task = context.tasks.head
 
-    verify(task, times(1)).execute(keyRing)
+    verify(task, times(1)).execute()
   }
 
   it should ("send taskStart and taskFinish messages for each task") in {
@@ -70,7 +70,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val keyRing = mock[KeyRing]
 
-    context.execute(keyRing)
+    context.execute()
 
     sink.messages.filter(_.getClass == classOf[Deploy]) should have size (1)
     sink.messages.filter(_.getClass == classOf[TaskRun]) should have size (2)
@@ -97,7 +97,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val keyRing = mock[KeyRing]
 
-    context.execute(keyRing)
+    context.execute()
 
     sink.messages.head.getClass should be(classOf[Deploy])
     sink.finished.last.getClass should be(classOf[Deploy])
@@ -107,7 +107,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   val CODE = Stage("CODE")
 
   case class MockStubPerHostAction(description: String, apps: Seq[App]) extends Action {
-    def resolve(resourceLookup: Lookup, params: DeployParameters) = {
+    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(Some(resourceLookup.instances.all.head))
       task :: Nil
@@ -115,15 +115,15 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   }
 
   case class MockStubPerAppAction(description: String, apps: Seq[App]) extends Action {
-    def resolve(resourceLookup: Lookup, params: DeployParameters) = {
+    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(None)
       task :: Nil
     }
   }
 
-  val app1 = StackApp("stack", "the_role")
-  val app2 = LegacyApp("the_2nd_role")
+  val app1 = App("the_role")
+  val app2 = App("the_2nd_role")
 
   val oneRecipeName = RecipeName("one")
 

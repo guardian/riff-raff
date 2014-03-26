@@ -108,8 +108,7 @@ case class DeployRunState(
   record: Record,
   loggingContext: MessageBrokerContext,
   artifactDir: Option[File] = None,
-  context: Option[DeployContext] = None,
-  keyRing: Option[KeyRing] = None
+  context: Option[DeployContext] = None
 ) {
   lazy val taskList = context.map(_.tasks.zipWithIndex.map(t => UniqueTask(t._2, t._1))).getOrElse(Nil)
   def firstTask = taskList.headOption
@@ -181,18 +180,17 @@ class DeployCoordinator extends Actor with Logging {
       log.debug("Processing deploy stop request")
       stopFlagMap += (uuid -> Some(userName))
 
-    case DeployReady(record, artifactDir, deployContext, keyRing) =>
+    case DeployReady(record, artifactDir, deployContext) =>
       deployStateMap.get(record.uuid).foreach  { state =>
         val newState = state.copy(
           artifactDir = Some(artifactDir),
-          context = Some(deployContext),
-          keyRing = Some(keyRing)
+          context = Some(deployContext)
         )
         deployStateMap += (record.uuid -> newState)
         ifStopFlagClear(newState) {
           newState.firstTask.foreach { task =>
             log.debug("Starting first task")
-            runners ! RunTask(newState.record, newState.keyRing.get, task, newState.loggingContext, new DateTime())
+            runners ! RunTask(newState.record, task, newState.loggingContext, new DateTime())
           }
         }
       }
@@ -206,7 +204,7 @@ class DeployCoordinator extends Actor with Logging {
           state.nextTask(task) match {
             case Some(nextTask) =>
               log.debug("Running next task")
-              runners ! RunTask(state.record, state.keyRing.get, state.nextTask(task).get, state.loggingContext, new DateTime())
+              runners ! RunTask(state.record, state.nextTask(task).get, state.loggingContext, new DateTime())
             case None =>
               MessageBroker.finishContext(state.loggingContext)
               log.debug("Cleaning up")
@@ -252,12 +250,12 @@ class DeployCoordinator extends Actor with Logging {
 
 object TaskRunner {
   trait Message
-  case class RunTask(record: Record, keyRing: KeyRing, task: UniqueTask, loggingContext:MessageBrokerContext, queueTime: DateTime) extends Message
+  case class RunTask(record: Record, task: UniqueTask, loggingContext:MessageBrokerContext, queueTime: DateTime) extends Message
   case class TaskCompleted(record: Record, task: UniqueTask) extends Message
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
   case class PrepareDeploy(record: Record, loggingContext: MessageBrokerContext) extends Message
-  case class DeployReady(record: Record, artifactDir: File, context: DeployContext, keyRing: KeyRing) extends Message
+  case class DeployReady(record: Record, artifactDir: File, context: DeployContext) extends Message
   case class RemoveArtifact(artifactDir: File) extends Message
 }
 
@@ -274,13 +272,8 @@ class TaskRunner extends Actor with Logging {
           val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector())
           if (context.tasks.isEmpty)
             MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
-          val keyRing = KeyRing(
-            sshCredentials = SystemUser(keyFile = Configuration.sshKey.file),
-            apiCredentials = LookupSelector().credentials(context.stage, context.project.applications)
-          )
-          MessageBroker.verbose(s"Keyring contents: $keyRing")
 
-          sender ! DeployReady(record, artifactDir, context, keyRing)
+          sender ! DeployReady(record, artifactDir, context)
         }
       } catch {
         case t:Throwable =>
@@ -289,7 +282,7 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, keyring, task, loggingContext, queueTime) => {
+    case RunTask(record, task, loggingContext, queueTime) => {
       import DeployMetricsActor._
       deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
@@ -306,7 +299,7 @@ class TaskRunner extends Actor with Logging {
         }
         MessageBroker.withContext(loggingContext) {
           MessageBroker.taskContext(task.task) {
-            task.task.execute(keyring, stopFlagAsker)
+            task.task.execute(stopFlagAsker)
           }
         }
         log.debug("Sending completed message")

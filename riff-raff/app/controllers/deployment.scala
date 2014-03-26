@@ -193,7 +193,7 @@ object Deployment extends Controller with Logging {
       form => {
         log.info(s"Host list: ${form.hosts}")
         val defaultRecipe = LookupSelector().data
-          .datum("default-recipe", LegacyApp(form.project), Stage(form.stage))
+          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
           Build(form.project,form.build.toString),
@@ -232,7 +232,7 @@ object Deployment extends Controller with Logging {
 
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Nil, hostList)
     val previewId = PreviewController.startPreview(parameters)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
@@ -240,7 +240,9 @@ object Deployment extends Controller with Logging {
   def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
     val previewUUID = UUID.fromString(previewId)
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), hostList)
+    val parameters = DeployParameters(
+      Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
+    )
     val result = PreviewController.getPreview(previewUUID, parameters)
     result match {
       case Some(PreviewResult(future, startTime)) =>

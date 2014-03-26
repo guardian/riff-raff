@@ -50,14 +50,15 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
         stage: String, group: String, createdAt: DateTime,
         instanceName: String, internalName: String, dnsName: String) =>
     val appSet:Set[App] = if (stack.isDefined && app.isDefined) {
-      app.get.map(appName => StackApp(stack.get, appName)).toSet
+      app.get.map(appName => App(appName)).toSet
     } else {
-      mainclasses.map(LegacyApp)
+      mainclasses.map(App(_))
     }
     Host(
       name = name,
       apps = appSet,
       stage = stage,
+      stack = stack,
       tags = Map(
         "group" -> group,
         "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
@@ -87,12 +88,12 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
     def all: Map[String, Seq[Datum]] = prism.get("/data?_expand"){ json =>
       (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
     }
-    def datum(key: String, app: App, stage: Stage): Option[Datum] = {
-      val query = app match {
-        case LegacyApp(appName) =>
-          s"/data/lookup/${key.urlEncode}?app=${appName.urlEncode}&stage=${stage.name.urlEncode}"
-        case StackApp(stackName, appName) =>
-          s"/data/lookup/${key.urlEncode}?stack=${stackName.urlEncode}&app=${appName.urlEncode}&stage=${stage.name.urlEncode}"
+    def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
+      val query = stack match {
+        case UnnamedStack =>
+          s"/data/lookup/${key.urlEncode}?app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
+        case NamedStack(stackName) =>
+          s"/data/lookup/${key.urlEncode}?stack=${stackName.urlEncode}&app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
       }
       prism.get(query){ json => (json \ "data").asOpt[Datum] }
     }
@@ -126,12 +127,12 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       }
     }
 
-    def get(app: App, stage: Stage): Seq[Host] = {
-      val query = app match {
-        case LegacyApp(appName) =>
-          s"/instances?_expand&stage=${stage.name.urlEncode}&mainclasses=${appName.urlEncode}"
-        case StackApp(stackName, appName) =>
-          s"/instances?_expand&stage=${stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${appName.urlEncode}"
+    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = {
+      val query = stack match {
+        case UnnamedStack =>
+          s"/instances?_expand&stage=${parameters.stage.name.urlEncode}&mainclasses=${app.name.urlEncode}"
+        case NamedStack(stackName) =>
+          s"/instances?_expand&stage=${parameters.stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${app.name.urlEncode}"
       }
       prism.get(query)(parseHosts)
     }

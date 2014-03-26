@@ -12,18 +12,21 @@ import org.scalatest.mock.MockitoSugar
 import java.io.File
 
 class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+
   it should "double the size of the autoscaling group" in {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(LegacyApp("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
 
-    val task = new DoubleSize(p, Stage("PROD")) {
+    val task = new DoubleSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def groupForAppAndStage(pkg: DeploymentPackage,  stage: Stage)(implicit keyRing: KeyRing) = asg
+      override def groupForAppAndStage(pkg: DeploymentPackage,  stage: Stage, stack: Stack)
+                                      (implicit keyRing: KeyRing) = asg
     }
 
-    task.execute(fakeKeyRing)
+    task.execute()
 
     verify(asgClientMock).setDesiredCapacity(
       new SetDesiredCapacityRequest().withAutoScalingGroupName("test").withDesiredCapacity(6)
@@ -36,18 +39,17 @@ class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
 
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(LegacyApp("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
 
-    val task = new CheckGroupSize(p, Stage("PROD")) {
+    val task = new CheckGroupSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage)(implicit keyRing: KeyRing) = asg
+      override def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)
+                                      (implicit keyRing: KeyRing) = asg
     }
 
-    val thrown = intercept[FailException](task.execute(fakeKeyRing))
+    val thrown = intercept[FailException](task.execute())
 
     thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
 
   }
-
-  val fakeKeyRing = KeyRing(SystemUser(None))
 }

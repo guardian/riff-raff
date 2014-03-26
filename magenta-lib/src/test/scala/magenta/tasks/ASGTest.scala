@@ -11,13 +11,12 @@ import org.mockito.Mockito._
 import collection.JavaConversions._
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, InstanceState, DescribeInstanceHealthResult, DescribeInstanceHealthRequest}
-import magenta.LegacyApp
-import magenta.SystemUser
-import magenta.KeyRing
-import magenta.Stage
+import magenta.{App, SystemUser, KeyRing, Stage}
 import java.io.File
 
 class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+
   it should "find the matching auto-scaling group with App tagging" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
     val asg = new ASG {
@@ -33,8 +32,8 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         AutoScalingGroup("App" -> "example", "Stage" -> "TEST")
       ))
 
-    val p = DeploymentPackage("example", Seq(LegacyApp("app")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
-    asg.groupForAppAndStage(p, Stage("PROD")) should be (desiredGroup)
+    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    asg.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
   }
 
   it should "find the matching auto-scaling group with Role tagging" in {
@@ -52,8 +51,8 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         AutoScalingGroup(("Role" -> "example"), ("Stage" -> "TEST"))
       ))
 
-    val p = DeploymentPackage("example", Seq(LegacyApp("app")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
-    asg.groupForAppAndStage(p, Stage("PROD")) should be (desiredGroup)
+    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    asg.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
   }
 
   it should "find the matching auto-scaling group with Stack and App tags" in {
@@ -74,8 +73,8 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(StackApp("contentapi", "logcabin")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
-    asg.groupForAppAndStage(p, Stage("PROD")) should be (desiredGroup)
+    val p = DeploymentPackage("example", Seq(App("logcabin")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags" in {
@@ -96,8 +95,8 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(StackApp("contentapi", "logcabin"), StackApp("contentapi", "elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
-    asg.groupForAppAndStage(p, Stage("PROD")) should be (desiredGroup)
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
   }
 
   it should "fail if more than one ASG matches the Stack and App tags" in {
@@ -119,10 +118,10 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(StackApp("contentapi", "logcabin"), StackApp("contentapi", "elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
 
     evaluating {
-      asg.groupForAppAndStage(p, Stage("PROD")) should be (desiredGroup)
+      asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
     } should produce [FailException]
   }
 
@@ -186,6 +185,4 @@ class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
       case (key, value) => new TagDescription().withKey(key).withValue(value)
     }).withLoadBalancerNames(elbName)
   }
-
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
 }

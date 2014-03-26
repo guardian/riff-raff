@@ -27,13 +27,13 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Proj
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  def execute(keyRing: KeyRing) {
+  def execute() {
     MessageBroker.deployContext(uuid, parameters) {
       if (tasks.isEmpty) MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
       tasks.foreach { task =>
         MessageBroker.taskContext(task) {
-          task.execute(keyRing)
+          task.execute()
         }
       }
     }
