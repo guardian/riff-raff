@@ -143,8 +143,8 @@ case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends Remo
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
-case class Restart(host: Host, appName: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("sudo", "/sbin/service", appName, "restart")
+case class Restart(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine = List("sudo", "/sbin/service", appName, command)
 }
 
 case class UnblockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
@@ -265,4 +265,10 @@ case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extend
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
+case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine = List("/bin/rm", path)
+}
 
+case class InstallRpm(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs", path)
+}
