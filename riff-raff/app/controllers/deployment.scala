@@ -192,6 +192,8 @@ object Deployment extends Controller with Logging {
       errors => BadRequest(views.html.deploy.form(request,errors)),
       form => {
         log.info(s"Host list: ${form.hosts}")
+       // val stack = form.stack.map(NamedStack(_)).getOrElse(UnnamedStack)
+        //val stacks = form.stack.map(NamedStack(_)).toSeq
         val defaultRecipe = LookupSelector().data
           .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())

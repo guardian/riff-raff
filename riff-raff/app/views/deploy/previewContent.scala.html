@@ -45,6 +45,13 @@
             <td>Current recipe</td>
             <td><ul><li><a class="btn btn-sm btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
             </tr>
+            <tr>
+            <td>Specific stacks</td>
+            <td><ul>@preview.stackNames.map { stack =>
+                <li><a class="btn btn-sm btn-success" href="to-do">@stack</a></li>
+            }</ul></td>
+            </tr>
+            </tr>
             @if(preview.recipeNames.size>1){
             <tr>
             <td>Dependent recipes</td>

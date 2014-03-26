@@ -80,6 +80,7 @@ object Preview {
 
 case class Preview(project: Project, parameters: DeployParameters) {
   lazy val lookup = LookupSelector()
+  lazy val stackNames = Resolver.resolveStacks(project, parameters)
   lazy val recipeNames = recipeTasks.map(_.recipe.name)
   lazy val allRecipes = project.recipes.values.map(_.name).toList.sorted
   lazy val dependantRecipes = recipeNames.filterNot(_ == recipe)
