@@ -45,13 +45,6 @@
             <td>Current recipe</td>
             <td><ul><li><a class="btn btn-sm btn-primary" href="@preview.withRecipe(preview.recipe)">@preview.recipe</a></li></ul></td>
             </tr>
-            <tr>
-            <td>Specific stacks</td>
-            <td><ul>@preview.stackNames.map { stack =>
-                <li><a class="btn btn-sm btn-success" href="to-do">@stack</a></li>
-            }</ul></td>
-            </tr>
-            </tr>
             @if(preview.recipeNames.size>1){
             <tr>
             <td>Dependent recipes</td>
@@ -70,6 +63,18 @@
             }
         </table>
     </div>
+
+    @if(!preview.stacks.isEmpty){
+    <h4>Select stacks</h4>
+    <button type="button" class="btn btn-default checkbox-select-all" id="checkbox-stacks-select-all"><span class="glyphicon glyphicon-ok"></span> All</button> <button type="button" class="btn btn-default checkbox-select-none" id="checkbox-stack-select-none"><span class="glyphicon glyphicon-remove"></span> None</button>
+    <div>
+        <ul class="magenta-list deployment-list">
+            @preview.stacks.zipWithIndex.map { stack =>
+            <li><span class="preview-host"><input type="checkbox" class="checkbox-select" name="stacks[@stack._2]" value="@stack._1" checked/>@stack._1</span></li>
+            }
+        </ul>
+    </div>
+    }
 
     <h4>Select hosts</h4>
     @if(preview.hosts.isEmpty) {
