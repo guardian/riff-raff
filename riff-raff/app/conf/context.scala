@@ -140,9 +140,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
     lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 60)
     lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
-    object tagging {
-      lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.tagging.pollingWindowMinutes", 14400)
-    }
   }
 
   object urls {
