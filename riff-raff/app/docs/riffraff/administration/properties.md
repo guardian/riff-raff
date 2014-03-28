@@ -62,7 +62,6 @@ continuous integration
  - `teamcity.pollingWindowMinutes` - Set this to be over the length of the longest running builds.  Used by the incremental updater to be smart about what it asks for.
  - `teamcity.pollingPeriodSeconds` - Number of seconds between incremental updates of TeamCity builds
  - `teamcity.fullUpdatePeriodSeconds` - Number of seconds between full updates of TeamCity builds (includes new projects and configurations)
- - `teamcity.tagging.pollingWindowMinutes` - Continuous deploys triggered by a new tag will only pick up new tags on builds that are not older than this value - defaults to 10 days
 
 database
 --------
