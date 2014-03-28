@@ -145,6 +145,8 @@ case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends Remo
 
 case class Restart(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, command)
+
+  override lazy val description = s" of $appName using $command command"
 }
 
 case class UnblockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
@@ -267,8 +269,10 @@ case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extend
 
 case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("/bin/rm", path)
+  override lazy val description = s"$path from ${host.name}"
 }
 
 case class InstallRpm(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs", path)
+  override lazy val description = s"$path on ${host.name}"
 }

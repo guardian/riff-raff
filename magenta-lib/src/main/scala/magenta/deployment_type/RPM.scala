@@ -37,12 +37,18 @@ object RPM extends DeploymentType {
   val serviceCommand = Param("serviceCommand",
     "The command used to restart the service").default("restart")
 
+  def randomString(length:Int) = {
+    val r = new Random()
+    val chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLNMOPQRSTUVWXYZ"
+    (0 until 10).map(i => chars.charAt(Math.abs(r.nextInt()) % chars.length)).mkString
+  }
+
   override def perHostActions = {
     case "deploy" => pkg => (host, keyRing) => {
       implicit val key = keyRing
       // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
       lazy val rpmFilePath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
-      lazy val remoteTmpRpm = s"/tmp/riffraff-rpm-${pkg.name}-${new Random().nextString(10)}.rpm"
+      lazy val remoteTmpRpm = s"/tmp/riffraff-rpm-${pkg.name}-${randomString(10)}.rpm"
 
       BlockFirewall(host as user(pkg)) ::
       CopyFile(host as user(pkg), rpmFilePath.toString, remoteTmpRpm) ::
@@ -50,7 +56,7 @@ object RPM extends DeploymentType {
       RemoveFile(host as user(pkg), remoteTmpRpm) ::
       services(pkg).map(service => Restart(host as user(pkg), service, serviceCommand(pkg))) :::
       port.get(pkg).toList.map(p => WaitForPort(host, p, 60 * 1000)) :::
-      CheckUrls(host, port(pkg), healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
+      port.get(pkg).toList.map(p => CheckUrls(host, p, healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg))) :::
       UnblockFirewall(host as user(pkg)) ::
       Nil
     }
