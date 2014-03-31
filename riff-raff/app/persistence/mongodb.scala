@@ -282,6 +282,15 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {
+    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivivty:$lastActivityTime"), ()) {
+      val fields =
+        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime) ++
+        totalTasks.map("totalTasks" ->)
+      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
+    }
+  }
+
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
       deployV2Collection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))

@@ -9,8 +9,6 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % "6.0" exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % "5.31",
   "com.gu" %% "configuration" % "3.10",
-  "org.scala-lang" % "scala-reflect" % "2.10.0",
-  "org.mongodb" %% "casbah" % "2.6.0",
   "org.pircbotx" % "pircbotx" % "1.7",
   "com.typesafe.akka" %% "akka-agent" % "2.2.0",
   "org.clapper" %% "markwrap" % "1.0.0",
