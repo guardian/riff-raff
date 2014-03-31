@@ -7,13 +7,13 @@ import java.util.UUID
 
 class ReportingTest extends FlatSpec with ShouldMatchers {
 
-  "Deploy Report V2" should "build an empty report from an empty list" in {
+  "Deploy Report" should "build an empty report from an empty list" in {
     val report = DeployReport(Nil, titleTime = Some(testTime))
     report.isRunning should be (false)
     report should be (tree(""))
   }
 
-  it should "build a no-op V2 deploy report" in {
+  it should "build a no-op deploy report" in {
     val stacks = startDeployWrapper :: finishDeployWrapper :: Nil
     val report = DeployReport(stacks, titleTime = Some(testTime))
     report.isRunning should be (false)
@@ -21,7 +21,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
   }
 
 
-  it should "build a one-op V2 deploy report" in {
+  it should "build a one-op deploy report" in {
     val stacks = startDeployWrapper :: wrapper(Some(deployMessageId), stack(infoMsg, deploy)) :: finishDeployWrapper :: Nil
     val report = DeployReport(stacks, titleTime = Some(testTime))
 
@@ -30,7 +30,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     report should be (tree("", tree(startDeploy, finishDep, tree(infoMsg))))
   }
 
-  it should "build a complex V2 report" in {
+  it should "build a complex report" in {
     val report = DeployReport(messageWrappers, titleTime = Some(testTime))
 
     report.size should be (5)
@@ -41,7 +41,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  it should "build a partial V2 report" in {
+  it should "build a partial report" in {
     val partialStacks = messageWrappers.take(5)
     val report = DeployReport(partialStacks, titleTime = Some(testTime))
     report.size should be (5)
@@ -52,7 +52,7 @@ class ReportingTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  it should "build a nested partial V2 report" in {
+  it should "build a nested partial report" in {
     val partialStacks = messageWrappers.take(4)
     val report = DeployReport(partialStacks, titleTime = Some(testTime))
     report.size should be (5)

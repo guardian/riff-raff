@@ -110,7 +110,7 @@ object Testing extends Controller with Logging {
   }
 
   def uuidList(limit:Int) = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
   }
 
@@ -141,7 +141,7 @@ object Testing extends Controller with Logging {
           }
           case "deleteV2" => {
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-            Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))
+            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           }
           case "addStringUUID" => {
@@ -155,7 +155,7 @@ object Testing extends Controller with Logging {
   }
 
   def transferAllUUIDs = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployV2UUIDsWithoutStringUUIDs
+    val allDeploys = Persistence.store.getDeployUUIDsWithoutStringUUIDs
     allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
   }

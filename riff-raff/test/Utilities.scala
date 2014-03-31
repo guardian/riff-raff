@@ -32,8 +32,8 @@ trait PersistenceTestInstances {
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
   lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
   lazy val testParamsWithHosts = parameters.copy(hostList=List("host1", "host2"))
-  lazy val testRecordV2 = DeployRecord(testTime, TaskType.Deploy, testUUID, parameters, Map("branch"->"master"), messageWrappers)
-  lazy val testDocument = RecordConverter(testRecordV2).deployDocument
+  lazy val testRecord = DeployRecord(testTime, TaskType.Deploy, testUUID, parameters, Map("branch"->"master"), messageWrappers)
+  lazy val testDocument = RecordConverter(testRecord).deployDocument
 
   lazy val comprehensiveDeployRecord = {
     val time = new DateTime(2012,11,8,17,20,0)

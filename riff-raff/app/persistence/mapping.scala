@@ -102,13 +102,13 @@ trait DocumentStore {
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {}
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
-  def getDeployV2UUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
-  def countDeploysV2(filter: Option[DeployFilter]): Int = 0
-  def deleteDeployLogV2(uuid: UUID) {}
+  def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
+  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
+  def countDeploys(filter: Option[DeployFilter]): Int = 0
+  def deleteDeployLog(uuid: UUID) {}
   def getLastCompletedDeploy(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
-  def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
+  def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
   def findProjects(): List[String] = Nil
@@ -161,25 +161,25 @@ object DocumentStoreConverter extends Logging {
       }
     } catch {
       case e:Exception =>
-        log.error(s"Couldn't get DeployV2Record for $uuid", e)
+        log.error(s"Couldn't get DeployRecord for $uuid", e)
         None
     }
   }
 
   def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Seq[DeployRecord] = {
-    documentStore.getDeploysV2(filter, pagination).toSeq.flatMap{ deployDocument =>
+    documentStore.getDeploys(filter, pagination).toSeq.flatMap{ deployDocument =>
       try {
         val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
         Some(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
       } catch {
         case e:Exception =>
-          log.error(s"Couldn't get DeployV2Record for ${deployDocument.uuid}", e)
+          log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)
           None
       }
     }
   }
 
-  def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploysV2(filter)
+  def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploys(filter)
 
   def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
     documentStore.getLastCompletedDeploy(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
