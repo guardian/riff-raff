@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-logback" % "5.31",
   "com.gu" %% "configuration" % "3.10",
   "org.scala-lang" % "scala-reflect" % "2.10.0",
+  "org.mongodb" %% "casbah" % "2.6.0",
   "org.pircbotx" % "pircbotx" % "1.7",
   "com.typesafe.akka" %% "akka-agent" % "2.2.0",
   "org.clapper" %% "markwrap" % "1.0.0",
