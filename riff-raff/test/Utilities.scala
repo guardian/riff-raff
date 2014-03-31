@@ -6,7 +6,7 @@ import net.liftweb.json.Diff
 import org.joda.time.DateTime
 import java.util.UUID
 import magenta._
-import deployment.{DeployV2Record, TaskType}
+import deployment.{DeployRecord, TaskType}
 import persistence.{RecordConverter, LogDocument, DeployRecordDocument}
 import java.io.File
 
@@ -32,8 +32,8 @@ trait PersistenceTestInstances {
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
   lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
   lazy val testParamsWithHosts = parameters.copy(hostList=List("host1", "host2"))
-  lazy val testRecordV2 = DeployV2Record(testTime, TaskType.Deploy, testUUID, parameters, Map("branch"->"master"), messageWrappers)
-  lazy val testDocument = RecordConverter(testRecordV2).deployDocument
+  lazy val testRecord = DeployRecord(testTime, TaskType.Deploy, testUUID, parameters, Map("branch"->"master"), messageWrappers)
+  lazy val testDocument = RecordConverter(testRecord).deployDocument
 
   lazy val comprehensiveDeployRecord = {
     val time = new DateTime(2012,11,8,17,20,0)
@@ -41,7 +41,7 @@ trait PersistenceTestInstances {
     val parameters = DeployParameters(
       Deployer("Tester"), Build("test::project", "1"), Stage("TEST"), RecipeName("test-recipe"), Nil,
       List("testhost1", "testhost2"))
-    DeployV2Record(time, TaskType.Deploy, uuid, parameters, Map("branch"->"test"), messageWrappers)
+    DeployRecord(time, TaskType.Deploy, uuid, parameters, Map("branch"->"test"), messageWrappers)
   }
 
   def stack( messages: Message * ): MessageStack = {

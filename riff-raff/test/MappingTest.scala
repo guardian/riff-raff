@@ -8,8 +8,8 @@ import controllers.Logging
 import java.util.UUID
 
 class MappingTest extends FlatSpec with ShouldMatchers with Utilities with PersistenceTestInstances with Logging {
-  "RecordV2Converter" should "transform a deploy record into a deploy document" in {
-    RecordConverter(testRecordV2).deployDocument should be(
+  "RecordConverter" should "transform a deploy record into a deploy document" in {
+    RecordConverter(testRecord).deployDocument should be(
       DeployRecordDocument(
         testUUID,
         Some(testUUID.toString),
@@ -21,12 +21,12 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
   }
 
   it should "transform a deploy record into a set of log documents" in {
-    val logDocuments = RecordConverter(testRecordV2).logDocuments
+    val logDocuments = RecordConverter(testRecord).logDocuments
     logDocuments should have size 6
   }
 
   it should "build a set of log documents that are a valid tree" in {
-    val logDocuments = RecordConverter(testRecordV2).logDocuments
+    val logDocuments = RecordConverter(testRecord).logDocuments
     val tree = LogDocumentTree(logDocuments)
     tree.roots should have size 1
 
@@ -37,9 +37,9 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
   }
 
   it should "transfer the deploy UUID into the log documents" in {
-    val logDocuments = RecordConverter(testRecordV2).logDocuments
+    val logDocuments = RecordConverter(testRecord).logDocuments
     logDocuments.foreach{ doc =>
-      doc.deploy should be(testRecordV2.uuid)
+      doc.deploy should be(testRecord.uuid)
     }
   }
 
@@ -115,8 +115,8 @@ class MappingTest extends FlatSpec with ShouldMatchers with Utilities with Persi
   }
 
   it should "invert the action of RecordConverter" in {
-    val converter = RecordConverter(testRecordV2)
+    val converter = RecordConverter(testRecord)
     val record = DocumentConverter(converter.deployDocument, converter.logDocuments).deployRecord
-    record should be(testRecordV2.copy(recordState = Some(RunState.Completed)))
+    record should be(testRecord.copy(recordState = Some(RunState.Completed)))
   }
 }
