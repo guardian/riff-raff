@@ -2,24 +2,14 @@ package persistence
 
 import java.util.UUID
 import org.joda.time.DateTime
-import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import controllers.Logging
-import deployment.{DeployFilter, DeployV2Record, PaginationView}
+import deployment.{DeployFilter, DeployRecord, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
 
-trait RecordConverter {
-  def uuid:UUID
-  def startTime:DateTime
-  def params: ParametersDocument
-  def status:RunState.Value
-  lazy val deployDocument = DeployRecordDocument(uuid, Some(uuid.toString), startTime, params, status)
-  def logDocuments:Seq[LogDocument]
-}
-
-case class RecordV2Converter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends RecordConverter with Logging {
-  def +(newWrapper: MessageWrapper): RecordV2Converter = copy(messages = messages ::: List(newWrapper))
-  def +(newStatus: RunState.Value): RecordV2Converter = copy(status = newStatus)
+case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
+  def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
+  def +(newStatus: RunState.Value): RecordConverter = copy(status = newStatus)
 
   def apply(message: MessageWrapper): Option[LogDocument] = {
     val stackId=message.messageId
@@ -28,16 +18,18 @@ case class RecordV2Converter(uuid:UUID, startTime:DateTime, params: ParametersDo
 
   def apply: (DeployRecordDocument, Seq[LogDocument]) = (deployDocument, logDocuments)
 
+  lazy val deployDocument = DeployRecordDocument(uuid, Some(uuid.toString), startTime, params, status)
+
   lazy val logDocuments = {
     val logDocumentSeq: Seq[LogDocument] = messages.map(LogDocument(_))
     val ids = logDocumentSeq.map(_.id)
-    if (ids.size != ids.toSet.size) log.error("Key collision detected in log of deploy %s" format uuid)
+    if (ids.size != ids.toSet.size) log.error(s"Key collision detected in log of deploy $uuid")
     logDocumentSeq
   }
 }
 
 object RecordConverter {
-  def apply(record: DeployV2Record): RecordV2Converter = {
+  def apply(record: DeployRecord): RecordConverter = {
     val sourceParams = record.parameters
     val params = ParametersDocument(
       deployer = sourceParams.deployer.name,
@@ -50,7 +42,7 @@ object RecordConverter {
       deployType = record.taskType.toString,
       tags = record.metaData
     )
-    RecordV2Converter(record.uuid, record.time, params, record.state, record.messages)
+    RecordConverter(record.uuid, record.time, params, record.state, record.messages)
   }
 }
 
@@ -66,14 +58,17 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
   )
 
   lazy val deployRecord =
-    DeployV2Record(
+    DeployRecord(
       deploy.startTime,
       deploy.deployTypeEnum,
       deploy.uuid,
       parameters,
       deploy.parameters.tags,
       messageWrappers,
-      Some(deploy.status)
+      Some(deploy.status),
+      deploy.totalTasks,
+      deploy.completedTasks,
+      deploy.lastActivityTime
     )
 
   lazy val messageWrappers: List[MessageWrapper] = {
@@ -104,15 +99,16 @@ trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument) {}
   def writeLog(log: LogDocument) {}
   def updateStatus(uuid: UUID, status: RunState.Value) {}
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {}
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
-  def getDeployV2UUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
-  def countDeploysV2(filter: Option[DeployFilter]): Int = 0
-  def deleteDeployLogV2(uuid: UUID) {}
+  def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
+  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
+  def countDeploys(filter: Option[DeployFilter]): Int = 0
+  def deleteDeployLog(uuid: UUID) {}
   def getLastCompletedDeploy(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
-  def getDeployV2UUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
+  def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
   def findProjects(): List[String] = Nil
@@ -122,7 +118,7 @@ trait DocumentStore {
 object DocumentStoreConverter extends Logging {
   val documentStore: DocumentStore = Persistence.store
 
-  def saveDeploy(record: DeployV2Record) {
+  def saveDeploy(record: DeployRecord) {
     if (!record.messages.isEmpty) throw new IllegalArgumentException
     val converter = RecordConverter(record)
     documentStore.writeDeploy(converter.deployDocument)
@@ -133,7 +129,15 @@ object DocumentStoreConverter extends Logging {
     documentStore.writeLog(LogDocument(message))
   }
 
-  def updateDeployStatus(record: DeployV2Record) {
+  def updateDeploySummary(record: DeployRecord) {
+    updateDeploySummary(record.uuid, record.totalTasks, record.completedTasks, record.lastActivityTime)
+  }
+
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {
+    documentStore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime)
+  }
+
+  def updateDeployStatus(record: DeployRecord) {
     updateDeployStatus(record.uuid, record.state)
   }
 
@@ -148,7 +152,7 @@ object DocumentStoreConverter extends Logging {
   def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
   def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid)
 
-  def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployV2Record] = {
+  def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
       val deployDocument = getDeployDocument(uuid)
       val logDocuments = if (fetchLog) getDeployLogs(uuid) else Nil
@@ -157,27 +161,27 @@ object DocumentStoreConverter extends Logging {
       }
     } catch {
       case e:Exception =>
-        log.error("Couldn't get DeployV2Record for %s" format uuid, e)
+        log.error(s"Couldn't get DeployRecord for $uuid", e)
         None
     }
   }
 
-  def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Seq[DeployV2Record] = {
-    documentStore.getDeploysV2(filter, pagination).toSeq.flatMap{ deployDocument =>
+  def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Seq[DeployRecord] = {
+    documentStore.getDeploys(filter, pagination).toSeq.flatMap{ deployDocument =>
       try {
         val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
         Some(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
       } catch {
         case e:Exception =>
-          log.error("Couldn't get DeployV2Record for %s" format deployDocument.uuid, e)
+          log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)
           None
       }
     }
   }
 
-  def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploysV2(filter)
+  def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploys(filter)
 
-  def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployV2Record] =
+  def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
     documentStore.getLastCompletedDeploy(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
 
   def findProjects(): List[String] = documentStore.findProjects()

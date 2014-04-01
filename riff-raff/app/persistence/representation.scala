@@ -3,12 +3,20 @@ package persistence
 import java.util.UUID
 import org.joda.time.DateTime
 import magenta._
-import deployment.{Record, TaskType}
-import com.mongodb.{BasicDBList, DBObject}
+import deployment.TaskType
+import com.mongodb.DBObject
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 
-case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value, summarised: Option[Boolean] = None) {
+case class DeployRecordDocument(uuid:UUID,
+                                stringUUID:Option[String],
+                                startTime: DateTime,
+                                parameters: ParametersDocument,
+                                status: RunState.Value,
+                                summarised: Option[Boolean] = None,
+                                totalTasks: Option[Int] = None,
+                                completedTasks: Option[Int] = None,
+                                lastActivityTime: Option[DateTime] = None) {
   lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
 }
 object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
@@ -24,7 +32,9 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
           "startTime" -> a.startTime,
           "parameters" -> a.parameters.toDBO,
           "status" -> a.status.toString
-        ) ++ a.stringUUID.map("stringUUID" -> _) ++ a.summarised.map("summarised" -> _)
+        ) ++ a.stringUUID.map("stringUUID" ->) ++ a.summarised.map("summarised" -> _) ++
+             a.totalTasks.map("totalTasks" ->) ++ a.completedTasks.map("completedTasks" ->) ++
+             a.lastActivityTime.map("lastActivityTime" ->)
       fields.toMap
     }
     def fromDBO(dbo: MongoDBObject) =
@@ -35,7 +45,10 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
         startTime = dbo.as[DateTime]("startTime"),
         parameters = pd,
         status = RunState.withName(dbo.as[String]("status")),
-        summarised = dbo.getAs[Boolean]("summarised")
+        summarised = dbo.getAs[Boolean]("summarised"),
+        totalTasks = dbo.getAs[Int]("totalTasks"),
+        completedTasks = dbo.getAs[Int]("completedTasks"),
+        lastActivityTime = dbo.getAs[DateTime]("lastActivityTime")
       )
     )
   }
@@ -270,7 +283,7 @@ object MessageDocument {
       case FinishContext(message) => FinishContextDocument()
       case FailContext(message) => FailContextDocument()
       case _ =>
-        throw new IllegalArgumentException("Don't know how to serialise Message of type %s" format from.getClass.getName)
+        throw new IllegalArgumentException(s"Don't know how to serialise Message of type ${from.getClass.getName}")
     }
   }
   def from(dbo:DBObject): MessageDocument = {
@@ -289,7 +302,7 @@ object MessageDocument {
       case "persistence.FinishContextDocument" => FinishContextDocument()
       case "persistence.FailContextDocument" => FailContextDocument()
       case hint =>
-        throw new IllegalArgumentException("Don't know how to construct MessageDocument of type %s" format hint)
+        throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
     }
   }
 }

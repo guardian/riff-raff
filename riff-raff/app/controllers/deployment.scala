@@ -46,12 +46,12 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   implicit val system = ActorSystem("deploy")
 
-  val library = Agent(Map.empty[UUID,Agent[DeployV2Record]])
+  val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
   def create(recordType: TaskType.Value, params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
-    val record = DeployV2Record(recordType, uuid, params) ++ hostNameMetadata
+    val record = DeployRecord(recordType, uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
     attachMetaData(record)
@@ -64,6 +64,8 @@ object DeployController extends Logging with LifecycleWithoutApp {
         val updated = record + wrapper
         DocumentStoreConverter.saveMessage(wrapper)
         if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
+        if (record.totalTasks != updated.totalTasks || record.completedTasks != updated.completedTasks)
+          DocumentStoreConverter.updateDeploySummary(updated)
         updated
       }
       wrapper.stack.messages match {

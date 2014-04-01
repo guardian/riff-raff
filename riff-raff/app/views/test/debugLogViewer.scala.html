@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployV2Record)
+@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.DeployRecord)
 
 @main("Debug Viewer", request) {
 <h2>Table of messages for @record.uuid</h2>

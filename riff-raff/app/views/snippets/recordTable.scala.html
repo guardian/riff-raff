@@ -54,7 +54,9 @@
             case RunState.Completed => { <span class="label label-success">Completed</span> }
             case RunState.Failed => { <span class="label label-danger">Failed</span> }
             case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
-            case _ => {<span class="label label-info">Running</span>}
+            case _ => {
+                <span class="label label-info">Running (@record.completedPercentage%)</span>
+            }
             }
             }
             }
