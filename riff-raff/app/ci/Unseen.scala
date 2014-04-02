@@ -27,10 +27,11 @@ object NotFirstBatch {
 class BoundedSet[T](queue: Queue[T], maxSize: Int) {
   def +(elem: T): BoundedSet[T] = {
     if (contains(elem)) {
-      this
+      val currentPos = queue.indexOf(elem)
+      new BoundedSet((queue.slice(0, currentPos) ++ queue.slice(currentPos + 1, queue.size)).enqueue(elem), maxSize)
     } else {
       if (queue.size < maxSize) new BoundedSet[T](queue.enqueue(elem), maxSize)
-      else new BoundedSet[T](queue.dequeue._2.enqueue(elem), maxSize)
+      else new BoundedSet(queue.dequeue._2.enqueue(elem), maxSize)
     }
   }
   def contains(elem: T): Boolean = queue.toSet.contains(elem)

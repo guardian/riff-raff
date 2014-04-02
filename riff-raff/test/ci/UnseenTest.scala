@@ -50,4 +50,10 @@ class UnseenTest extends FunSuite with ShouldMatchers {
     set.contains(2) should be (true)
     set.contains(1) should be (true)
   }
+
+  test("bounded set should keep the most recent regardless of dupes")  {
+    val set = BoundedSet[Int](2) + 1 + 2 + 2 + 2 + 1 + 3
+    set.contains(3) should be (true)
+    set.contains(1) should be (true)
+  }
 }
