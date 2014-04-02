@@ -1,8 +1,6 @@
 $ ->
   window.autoRefresh.postRefresh ->
-    $(".checkbox-select-all").click (e) ->
+    $('*[data-checkbox-target]').click (e) ->
       e.preventDefault()
-      $(".checkbox-select").prop('checked', true)
-    $(".checkbox-select-none").click (e) ->
-      e.preventDefault()
-      $(".checkbox-select").prop('checked', false)
+      target = $(this).data("checkbox-target")
+      $(target).prop('checked', $(this).data("checkbox-state"))
