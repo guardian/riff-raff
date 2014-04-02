@@ -36,6 +36,8 @@ object RPM extends DeploymentType {
     "Services to restart after RPM installation").defaultFromPackage(pkg => List(pkg.name))
   val serviceCommand = Param("serviceCommand",
     "The command used to restart the service").default("restart")
+  val noFileDigest = Param("noFileDigest",
+    "Disable per-file digest checking at installation").default(false)
 
   def randomString(length:Int) = {
     val r = new Random()
@@ -47,12 +49,12 @@ object RPM extends DeploymentType {
     case "deploy" => pkg => (host, keyRing) => {
       implicit val key = keyRing
       // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
-      lazy val rpmFilePath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption)
+      lazy val rpmFilePath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption).map(_.toString).getOrElse("UnknownDuringPreview")
       lazy val remoteTmpRpm = s"/tmp/riffraff-rpm-${pkg.name}-${randomString(10)}.rpm"
 
       BlockFirewall(host as user(pkg)) ::
-      CopyFile(host as user(pkg), rpmFilePath.toString, remoteTmpRpm) ::
-      InstallRpm(host as user(pkg), remoteTmpRpm) ::
+      CopyFile(host as user(pkg), rpmFilePath, remoteTmpRpm) ::
+      InstallRpm(host as user(pkg), remoteTmpRpm, noFileDigest(pkg)) ::
       RemoveFile(host as user(pkg), remoteTmpRpm) ::
       services(pkg).map(service => Restart(host as user(pkg), service, serviceCommand(pkg))) :::
       port.get(pkg).toList.map(p => WaitForPort(host, p, 60 * 1000)) :::

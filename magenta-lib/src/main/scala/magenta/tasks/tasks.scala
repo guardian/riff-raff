@@ -272,7 +272,8 @@ case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) e
   override lazy val description = s"$path from ${host.name}"
 }
 
-case class InstallRpm(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs", path)
+case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  val extraFlags = if (noFileDigest) List("--nofiledigest") else Nil
+  def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs") ++ extraFlags + path
   override lazy val description = s"$path on ${host.name}"
 }
