@@ -25,11 +25,15 @@ object NotFirstBatch {
 }
 
 class BoundedSet[T](queue: Queue[T], maxSize: Int) {
-  def +(elem: T) = {
-    if (queue.size < maxSize) new BoundedSet[T](queue.enqueue(elem), maxSize)
-    else new BoundedSet[T](queue.dequeue._2.enqueue(elem), maxSize)
+  def +(elem: T): BoundedSet[T] = {
+    if (contains(elem)) {
+      this
+    } else {
+      if (queue.size < maxSize) new BoundedSet[T](queue.enqueue(elem), maxSize)
+      else new BoundedSet[T](queue.dequeue._2.enqueue(elem), maxSize)
+    }
   }
-  def contains(elem: T) = queue.toSet.contains(elem)
+  def contains(elem: T): Boolean = queue.toSet.contains(elem)
 }
 
 object BoundedSet {

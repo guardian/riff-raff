@@ -43,4 +43,11 @@ class UnseenTest extends FunSuite with ShouldMatchers {
     set.contains(2) should be (true)
     set.contains(1) should be (false)
   }
+
+  test("bounded set's capacity isn't affected by duplicates") {
+    val set = BoundedSet[Int](5) + 1 + 2 + 2 + 2 + 2 + 3
+
+    set.contains(2) should be (true)
+    set.contains(1) should be (true)
+  }
 }
