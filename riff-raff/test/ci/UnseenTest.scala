@@ -32,28 +32,26 @@ class UnseenTest extends FunSuite with ShouldMatchers {
 
   test("bounded set obeys contains") {
     val set = BoundedSet[Int](5) + 1 + 2
-    set.contains(1) should be (true)
-    set.contains(2) should be (true)
+    Seq(1,2) map (i => set.contains(i) should be (true))
     set.contains(3) should be (false)
   }
 
   test("bounded set should dump first element if overflows") {
     val set = BoundedSet[Int](5) + 1 + 2 + 3 + 4 + 5 + 6
 
-    set.contains(2) should be (true)
+    Seq(2,3,4,5,6) map (i => set.contains(i) should be (true))
     set.contains(1) should be (false)
   }
 
   test("bounded set's capacity isn't affected by duplicates") {
     val set = BoundedSet[Int](5) + 1 + 2 + 2 + 2 + 2 + 3
 
-    set.contains(2) should be (true)
-    set.contains(1) should be (true)
+    Seq(1,2,3) map (i => set.contains(i) should be (true))
   }
 
   test("bounded set should keep the most recent regardless of dupes")  {
     val set = BoundedSet[Int](2) + 1 + 2 + 2 + 2 + 1 + 3
-    set.contains(3) should be (true)
-    set.contains(1) should be (true)
+
+    Seq(1,3) map (i => set.contains(i) should be (true))
   }
 }
