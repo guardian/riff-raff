@@ -29,4 +29,18 @@ class UnseenTest extends FunSuite with ShouldMatchers {
     val notFirstUnseen = NotFirstBatch(Unseen(Observable.timer(0.millis, 100.millis).take(6).map(_.toInt).map(stuff(_))))
     notFirstUnseen.toBlockingObservable.toList should be(List(Seq(3,4), Seq(), Seq(5)))
   }
+
+  test("bounded set obeys contains") {
+    val set = BoundedSet[Int](5) + 1 + 2
+    set.contains(1) should be (true)
+    set.contains(2) should be (true)
+    set.contains(3) should be (false)
+  }
+
+  test("bounded set should dump first element if overflows") {
+    val set = BoundedSet[Int](5) + 1 + 2 + 3 + 4 + 5 + 6
+
+    set.contains(2) should be (true)
+    set.contains(1) should be (false)
+  }
 }
