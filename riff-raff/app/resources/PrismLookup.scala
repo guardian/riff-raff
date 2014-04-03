@@ -36,36 +36,39 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   implicit val datumReads = Json.reads[Datum]
   implicit val hostReads = (
-      (__ \ "name").read[String] and
-      (__ \ "mainclasses").read[Set[String]] and
+      (__ \ "dnsName").read[String] and
+      (__ \ "mainclasses").readNullable[Set[String]] and
       (__ \ "stack").readNullable[String] and
       (__ \ "app").readNullable[Seq[String]] and
       (__ \ "stage").read[String] and
       (__ \ "group").read[String] and
       (__ \ "createdAt").read[DateTime] and
-      (__ \ "instanceName").read[String] and
-      (__ \ "internalName").read[String] and
+      (__ \ "instanceName").readNullable[String] and
+      (__ \ "internalName").readNullable[String] and
       (__ \ "dnsName").read[String]
-    ){ (name:String, mainclasses:Set[String], stack:Option[String], app:Option[Seq[String]],
+    ){ (name:String, mainclasses:Option[Set[String]], stack:Option[String], app:Option[Seq[String]],
         stage: String, group: String, createdAt: DateTime,
-        instanceName: String, internalName: String, dnsName: String) =>
+        instanceName: Option[String], internalName: Option[String], dnsName: String) =>
     val appSet:Set[App] = if (stack.isDefined && app.isDefined) {
       app.get.map(appName => App(appName)).toSet
     } else {
-      mainclasses.map(App(_))
+      mainclasses.map(_.map(App)).getOrElse(Set.empty)
+    }
+    val tags = {
+      Map(
+        "group" -> group,
+        "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
+        "dnsname" -> dnsName
+      ) ++
+        instanceName.map("instancename" ->) ++
+        internalName.map("internalname" ->)
     }
     Host(
       name = name,
       apps = appSet,
       stage = stage,
       stack = stack,
-      tags = Map(
-        "group" -> group,
-        "created_at" -> formatter.print(createdAt.toDateTime(DateTimeZone.UTC)),
-        "instancename" -> instanceName,
-        "internalname" -> internalName,
-        "dnsname" -> dnsName
-      )
+      tags = tags
     )
   }
   implicit val dataReads = (
@@ -101,8 +104,8 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
   }
 
   def instances = new Instances {
-    def parseHosts(json: JsValue):Seq[Host] = {
-      val tryHosts = (json \ "data" \ "instances").as[JsArray].value.map { jsHost =>
+    def parseHosts(json: JsValue, entity: String = "instances"):Seq[Host] = {
+      val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
         Try {
           val host = jsHost.as[Host]
           host.apps match {
@@ -118,7 +121,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
         case f@Failure(e) => Some(f)
         case _ => None
       }
-      if (errors.size > 0) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) instance records that could not be parsed in Prism response")
+      if (errors.size > 0) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
       if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
 
       tryHosts.flatMap {
@@ -127,17 +130,23 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
       }
     }
 
-    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = {
+    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack, entity: String): Seq[Host] = {
       val query = stack match {
         case UnnamedStack =>
-          s"/instances?_expand&stage=${parameters.stage.name.urlEncode}&mainclasses=${app.name.urlEncode}"
+          s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&mainclasses=${app.name.urlEncode}"
         case NamedStack(stackName) =>
-          s"/instances?_expand&stage=${parameters.stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${app.name.urlEncode}"
+          s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${app.name.urlEncode}"
       }
-      prism.get(query)(parseHosts)
+      prism.get(query)(js => parseHosts(js, entity))
     }
 
-    def all: Seq[Host] = prism.get("/instances?_expand")(parseHosts)
+    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = {
+      get(pkg, app, parameters, stack, "instances") ++
+        get(pkg, app, parameters, stack, "hardware")
+    }
+
+    def all: Seq[Host] = prism.get("/instances?_expand")(js => parseHosts(js, "instances")) ++
+                            prism.get("/hardware?_expand")(js => parseHosts(js, "hardware"))
   }
 
   def stages: Seq[String] = prism.get("/stages"){ json => (json \ "data" \ "stages").as[Seq[String]] }
