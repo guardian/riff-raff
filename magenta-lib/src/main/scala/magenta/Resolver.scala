@@ -55,10 +55,7 @@ object Resolver {
       RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
     }
 
-    val stacks = parameters.stacks match {
-      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
-      case s => s
-    }
+    val stacks = resolveStacks(project, parameters)
 
     for {
       stack <- stacks.toList
@@ -70,6 +67,13 @@ object Resolver {
     } yield tasks
   }
 
+
+  def resolveStacks(project: Project, parameters: DeployParameters): Seq[Stack] = {
+    parameters.stacks match {
+      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
+      case s => s
+    }
+  }
 }
 class NoHostsFoundException extends Exception("No hosts found")
 

@@ -80,7 +80,10 @@ object Preview {
 
 case class Preview(project: Project, parameters: DeployParameters) {
   lazy val lookup = LookupSelector()
-  lazy val recipeNames = recipeTasks.map(_.recipe.name)
+  lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
+    case NamedStack(s) => s
+  }
+  lazy val recipeNames = recipeTasks.map(_.recipe.name).distinct
   lazy val allRecipes = project.recipes.values.map(_.name).toList.sorted
   lazy val dependantRecipes = recipeNames.filterNot(_ == recipe)
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
@@ -107,5 +110,5 @@ case class Preview(project: Project, parameters: DeployParameters) {
   val recipe = parameters.recipe.name
   val hostList = parameters.hostList.mkString(",")
 
-  def withRecipe(newRecipe: String) = routes.Deployment.preview(projectName, build, stage, newRecipe, "")
+  def withRecipe(newRecipe: String) = routes.Deployment.preview(projectName, build, stage, newRecipe, "", "")
 }

@@ -161,7 +161,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 }
 
-case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String])
+case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
 object Deployment extends Controller with Logging {
@@ -181,7 +181,8 @@ object Deployment extends Controller with Logging {
       "stage" -> text,
       "recipe" -> optional(text),
       "action" -> nonEmptyText,
-      "hosts" -> list(text)
+      "hosts" -> list(text),
+      "stacks" -> list(text)
     )(DeployParameterForm)(DeployParameterForm.unapply)
   )
 
@@ -201,11 +202,12 @@ object Deployment extends Controller with Logging {
           Build(form.project,form.build.toString),
           Stage(form.stage),
           recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
+          stacks = form.stacks.map(NamedStack(_)).toSeq,
           hostList = form.hosts)
 
         form.action match {
           case "preview" =>
-            Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(",")))
+            Redirect(routes.Deployment.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
           case "deploy" =>
               val uuid = DeployController.deploy(parameters)
               Redirect(routes.Deployment.viewUUID(uuid.toString))
@@ -235,9 +237,10 @@ object Deployment extends Controller with Logging {
     }
   }
 
-  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String) = AuthAction { implicit request =>
+  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks:String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Nil, hostList)
+    val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
+    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
     val previewId = PreviewController.startPreview(parameters)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
