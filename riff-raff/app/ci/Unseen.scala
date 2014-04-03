@@ -1,20 +1,15 @@
 package ci
 
 import rx.lang.scala.Observable
-import akka.agent.Agent
-import scala.concurrent.ExecutionContext
 import scala.collection.immutable.Queue
 
 object Unseen {
-  def apply[T](obs: Observable[Iterable[T]])(implicit ec: ExecutionContext): Observable[Iterable[T]] = {
-    val seen = Agent(BoundedSet[T](10000))
-
-    val fresh = obs.map(i => i.filter(!seen().contains(_)))
-
-    Observable[Iterable[T]] { s =>
-      s.add(fresh.subscribe(s.onNext, s.onError, () => s.onCompleted()))
-      s.add(fresh.subscribe(i => i.foreach(e => seen.alter(_ + e))))
-    }
+  def apply[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
+    obs.scan((Seq[T]().toIterable, BoundedSet[T](10000))) {
+      case ((_, seen), current) => (current.filterNot(seen.contains), current.foldLeft(seen)(_ + _))
+    } map {
+      case (elems, _) => elems
+    } drop (1)
   }
 }
 

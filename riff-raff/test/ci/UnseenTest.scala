@@ -7,7 +7,6 @@ import scala.concurrent.ExecutionContext
 import concurrent.duration._
 
 class UnseenTest extends FunSuite with ShouldMatchers {
-  import ExecutionContext.Implicits.global
   test("should only provide unseen elements") {
     val unseen = Unseen(Observable.interval(100.millis).take(5).map(_ % 3).map(Seq(_)))
     unseen.toBlockingObservable.toList should be(List(Seq(0),Seq(1),Seq(2), Seq(), Seq()))
