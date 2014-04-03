@@ -3,8 +3,7 @@ package persistence
 import java.util.UUID
 import org.joda.time.DateTime
 import magenta._
-import deployment.TaskType
-import com.mongodb.DBObject
+import com.mongodb.{BasicDBList, DBObject}
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 
@@ -16,9 +15,8 @@ case class DeployRecordDocument(uuid:UUID,
                                 summarised: Option[Boolean] = None,
                                 totalTasks: Option[Int] = None,
                                 completedTasks: Option[Int] = None,
-                                lastActivityTime: Option[DateTime] = None) {
-  lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
-}
+                                lastActivityTime: Option[DateTime] = None)
+
 object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
@@ -56,7 +54,6 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
 
 case class ParametersDocument(
   deployer: String,
-  deployType: String,
   projectName: String,
   buildId: String,
   stage: String,
@@ -73,7 +70,6 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       val fields:List[(String,Any)] =
         List(
           "deployer" -> a.deployer,
-          "deployType" -> a.deployType,
           "projectName" -> a.projectName,
           "buildId" -> a.buildId,
           "stage" -> a.stage,
@@ -86,7 +82,6 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
     }
     def fromDBO(dbo: MongoDBObject) = Some(ParametersDocument(
       deployer = dbo.as[String]("deployer"),
-      deployType = dbo.as[String]("deployType"),
       projectName = dbo.as[String]("projectName"),
       buildId = dbo.as[String]("buildId"),
       stage = dbo.as[String]("stage"),

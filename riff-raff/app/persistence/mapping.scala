@@ -39,7 +39,6 @@ object RecordConverter {
       recipe = sourceParams.recipe.name,
       stacks = sourceParams.stacks.map(_.name).toList,
       hostList = sourceParams.hostList,
-      deployType = record.taskType.toString,
       tags = record.metaData
     )
     RecordConverter(record.uuid, record.time, params, record.state, record.messages)
@@ -60,7 +59,6 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
   lazy val deployRecord =
     DeployRecord(
       deploy.startTime,
-      deploy.deployTypeEnum,
       deploy.uuid,
       parameters,
       deploy.parameters.tags,

@@ -11,11 +11,6 @@ import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
 
-object TaskType extends Enumeration {
-  val Deploy = Value("Deploy")
-  val Preview = Value("Preview")
-}
-
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
   val RIFFRAFF_DOMAIN = "riffraff-domain"
@@ -23,7 +18,6 @@ object Record {
 
 trait Record {
   def time: DateTime
-  def taskType: TaskType.Value
   def uuid: UUID
   def parameters: DeployParameters
   def metaData: Map[String, String]
@@ -110,16 +104,14 @@ trait Record {
 }
 
 object DeployRecord {
-  def apply(taskType: TaskType.Value,
-            uuid: UUID,
+  def apply(uuid: UUID,
             parameters: DeployParameters ): DeployRecord = {
     val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
-    DeployRecord(new DateTime(), taskType, uuid, parameters, metaData)
+    DeployRecord(new DateTime(), uuid, parameters, metaData)
   }
 }
 
 case class DeployRecord(time: DateTime,
-                          taskType: TaskType.Value,
                            uuid: UUID,
                            parameters: DeployParameters,
                            metaData: Map[String, String] = Map.empty,

@@ -4,7 +4,7 @@ import _root_.resources.LookupSelector
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import deployment.{DeployRecord, TaskType}
+import deployment.DeployRecord
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
@@ -71,7 +71,7 @@ object Testing extends Controller with Logging {
     )
 
 
-    val report = DeployRecord(new DateTime(), TaskType.Deploy, logUUID, parameters, messages=input.toList.take(take))
+    val report = DeployRecord(new DateTime(), logUUID, parameters, messages=input.toList.take(take))
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }

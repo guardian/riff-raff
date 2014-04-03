@@ -17,7 +17,6 @@ case class DeployFilter(
   stage: Option[String] = None,
   deployer: Option[String] = None,
   status: Option[RunState.Value] = None,
-  task: Option[TaskType.Value] = None,
   maxDaysAgo: Option[Int] = None ) extends QueryStringBuilder {
 
   lazy val queryStringParams: List[(String, String)] = {
@@ -26,7 +25,6 @@ case class DeployFilter(
       stage.map("stage" -> _.toString) ++
       deployer.map("deployer" -> _.toString) ++
       status.map("status" -> _.toString) ++
-      task.map("task" -> _.toString) ++
       maxDaysAgo.map("maxDaysAgo" -> _.toString)
   }
 
@@ -34,7 +32,6 @@ case class DeployFilter(
   def withStage(stage: Option[String]) = this.copy(stage=stage)
   def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
   def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
-  def withTask(task: Option[TaskType.Value]) = this.copy(task=task)
   def withMaxDaysAgo(maxDaysAgo: Option[Int]) = this.copy(maxDaysAgo=maxDaysAgo)
 
   lazy val default = this == DeployFilter()
@@ -53,16 +50,11 @@ object DeployFilter {
       param("status").map(RunState.withName)
     } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for status parameter")}
 
-    val taskType = try {
-      param("task").map(TaskType.withName)
-    } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for task parameter")}
-
     val filter = DeployFilter(
       projectName = param("projectName"),
       stage = param("stage"),
       deployer = param("deployer"),
       status = statusType,
-      task = taskType,
       maxDaysAgo = param("maxDaysAgo").map(_.toInt)
     )
 
@@ -174,7 +166,6 @@ case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationVi
   def withStage(stage: Option[String]) = this.copy(filter=filter.withStage(stage))
   def withDeployer(deployer: Option[String]) = this.copy(filter=filter.withDeployer(deployer))
   def withStatus(status: Option[RunState.Value]) = this.copy(filter=filter.withStatus(status))
-  def withTask(task: Option[TaskType.Value]) = this.copy(filter=filter.withTask(task))
   def withPage(page: Int): DeployFilterPagination = this.copy(pagination=pagination.withPage(page))
   def withPageSize(size: Option[Int]) = this.copy(pagination=pagination.withPageSize(size))
 

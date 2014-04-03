@@ -48,10 +48,10 @@ object DeployController extends Logging with LifecycleWithoutApp {
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def create(recordType: TaskType.Value, params: DeployParameters): Record = {
+  def create(params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
-    val record = DeployRecord(recordType, uuid, params) ++ hostNameMetadata
+    val record = DeployRecord(uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
     attachMetaData(record)
@@ -99,7 +99,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
   }
 
-  def deploy(requestedParams: DeployParameters, mode: TaskType.Value = TaskType.Deploy): UUID = {
+  def deploy(requestedParams: DeployParameters): UUID = {
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
 
@@ -112,7 +112,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
     }
 
     enableDeploysSwitch.whileOnYield {
-      val record = DeployController.create(mode, params)
+      val record = DeployController.create(params)
       DeployControlActor.interruptibleDeploy(record)
       record.uuid
     } getOrElse {
@@ -231,10 +231,7 @@ object Deployment extends Controller with Logging {
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
-    record.taskType match {
-      case TaskType.Deploy => Ok(views.html.deploy.logContent(request, record))
-      case TaskType.Preview => Ok(views.html.deploy.oldPreviewContent(request,record))
-    }
+    Ok(views.html.deploy.logContent(request, record))
   }
 
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks:String) = AuthAction { implicit request =>
