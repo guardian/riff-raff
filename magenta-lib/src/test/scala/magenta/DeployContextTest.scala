@@ -19,7 +19,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       context.tasks should be(List(
         StubTask("init_action_one per app task"),
-        StubTask("action_one per host task on the_host", lookupSingleHost.instances.all.headOption)
+        StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
       ))
     }
   }
@@ -109,7 +109,7 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   case class MockStubPerHostAction(description: String, apps: Seq[App]) extends Action {
     def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack) = {
       val task = mock[Task]
-      when(task.taskHost).thenReturn(Some(resourceLookup.instances.all.head))
+      when(task.taskHost).thenReturn(Some(resourceLookup.hosts.all.head))
       task :: Nil
     }
   }

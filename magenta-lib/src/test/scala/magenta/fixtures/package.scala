@@ -49,7 +49,7 @@ package object fixtures {
     new Lookup {
       def stages: Seq[String] = hosts.map(_.stage).distinct
       def lastUpdated: DateTime = new DateTime()
-      def data: Data = new Data {
+      def data: DataLookup = new DataLookup {
         def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
           val matchingList = resourceData.getOrElse(key, List.empty)
           stack match {
@@ -74,7 +74,7 @@ package object fixtures {
 
       def name: String = "stub"
 
-      def instances: Instances = new Instances {
+      def hosts: HostLookup = new HostLookup {
         def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
           hosts.filter{ host =>
             host.stage == params.stage.name &&

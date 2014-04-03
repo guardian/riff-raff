@@ -89,7 +89,7 @@ case class Preview(project: Project, parameters: DeployParameters) {
   lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
-  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.instances.all.contains).distinct
+  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {

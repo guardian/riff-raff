@@ -86,7 +86,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
     sourceCreatedAt.minBy(_.getMillis)
   }
 
-  def data = new Data {
+  def data = new DataLookup {
     def keys: Seq[String] = prism.get("/data/keys"){ json => (json \ "data" \ "keys").as[Seq[String]] }
     def all: Map[String, Seq[Datum]] = prism.get("/data?_expand"){ json =>
       (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
@@ -103,7 +103,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   }
 
-  def instances = new Instances {
+  def hosts = new HostLookup {
     def parseHosts(json: JsValue, entity: String = "instances"):Seq[Host] = {
       val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
         Try {
