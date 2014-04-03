@@ -70,7 +70,7 @@ object Application extends Controller with Logging {
 
   def deployInfoHosts(appFilter: String) = AuthAction { request =>
     val lookup = LookupSelector()
-    val hosts = lookup.instances.all.filter { host =>
+    val hosts = lookup.hosts.all.filter { host =>
       host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
       request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
     }.groupBy(_.stage)

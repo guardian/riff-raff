@@ -46,7 +46,7 @@ object Resolver {
       }
 
       val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
-      val taskHostsInOriginalOrder = resourceLookup.instances.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
+      val taskHostsInOriginalOrder = resourceLookup.hosts.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
       val groupedHosts = taskHostsInOriginalOrder.transposeBy(_.tags.getOrElse("group",""))
       val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
         t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
@@ -55,10 +55,7 @@ object Resolver {
       RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
     }
 
-    val stacks = parameters.stacks match {
-      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
-      case s => s
-    }
+    val stacks = resolveStacks(project, parameters)
 
     for {
       stack <- stacks.toList
@@ -70,6 +67,13 @@ object Resolver {
     } yield tasks
   }
 
+
+  def resolveStacks(project: Project, parameters: DeployParameters): Seq[Stack] = {
+    parameters.stacks match {
+      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
+      case s => s
+    }
+  }
 }
 class NoHostsFoundException extends Exception("No hosts found")
 

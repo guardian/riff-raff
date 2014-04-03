@@ -68,8 +68,8 @@ object MongoDatastore extends Logging {
 
 class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
-  val deployV2Collection = getCollection("deployV2")
-  val deployV2LogCollection = getCollection("deployV2Logs")
+  val deployCollection = getCollection("deployV2")
+  val deployLogCollection = getCollection("deployV2Logs")
   val hooksCollection = getCollection("hooks")
   val hookConfigsCollection = getCollection("hookConfigs")
   val authCollection = getCollection("auth")
@@ -78,7 +78,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val continuousDeployCollection = getCollection("continuousDeploy")
   val keyValuesCollection = getCollection("keyValues")
 
-  val collections = List(deployV2Collection, deployV2LogCollection, hooksCollection,
+  val collections = List(deployCollection, deployLogCollection, hooksCollection,
     authCollection, deployJsonCollection, apiKeyCollection, continuousDeployCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
@@ -93,8 +93,8 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def collectionStats: Map[String, CollectionStats] = collections.map(coll => (coll.name, collectionStats(coll))).toMap
 
   // ensure indexes
-  deployV2Collection.ensureIndex("startTime")
-  deployV2LogCollection.ensureIndex("deploy")
+  deployCollection.ensureIndex("startTime")
+  deployLogCollection.ensureIndex("deploy")
   apiKeyCollection.ensureIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
   override def getPostDeployHooks = hooksCollection.find().flatMap{ dbo =>
@@ -272,35 +272,44 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def writeDeploy(deploy: DeployRecordDocument) {
     logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
       val gratedDeploy = deploy.toDBO
-      deployV2Collection.insert(gratedDeploy, WriteConcern.Safe)
+      deployCollection.insert(gratedDeploy, WriteConcern.Safe)
     }
   }
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
-      deployV2Collection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
+      deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
+    }
+  }
+
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {
+    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivivty:$lastActivityTime"), ()) {
+      val fields =
+        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime) ++
+        totalTasks.map("totalTasks" ->)
+      deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
     }
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
-      deployV2Collection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))
+      deployCollection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))
     }
 
   override def writeLog(log: LogDocument) {
     logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
-      deployV2LogCollection.insert(log.toDBO, WriteConcern.Safe)
+      deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
     }
   }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
       val criteria = MongoDBObject("deploy" -> uuid)
-      deployV2LogCollection.find(criteria).toIterable.flatMap(LogDocument.fromDBO(_))
+      deployLogCollection.find(criteria).toIterable.flatMap(LogDocument.fromDBO(_))
     }
 
-  override def getDeployV2UUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    val cursor = deployV2Collection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
+  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
@@ -309,26 +318,26 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getDeploysV2(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
+  override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
-    val cursor = deployV2Collection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
+    val cursor = deployCollection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
     cursor.toIterable.flatMap { DeployRecordDocument.fromDBO(_) }
   }
 
-  override def countDeploysV2(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
+  override def countDeploys(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
-    deployV2Collection.count(criteria).toInt
+    deployCollection.count(criteria).toInt
   }
 
-  override def deleteDeployLogV2(uuid: UUID) {
+  override def deleteDeployLog(uuid: UUID) {
     logAndSquashExceptions(None,()) {
-      deployV2Collection.findAndRemove(MongoDBObject("_id" -> uuid))
-      deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
+      deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
+      deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    deployV2Collection.find(
+    deployCollection.find(
       MongoDBObject(
         "startTime" -> MongoDBObject("$lt" -> dateTime),
         "summarised" -> MongoDBObject("$ne" -> true)
@@ -346,14 +355,14 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
         $set(("parameters.tags.%s" format tag) -> value)
       }.fold(MongoDBObject())(_ ++ _)
       if (update.size > 0)
-        deployV2Collection.update( MongoDBObject("_id" -> uuid), update )
+        deployCollection.update( MongoDBObject("_id" -> uuid), update )
     }
   }
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
-      deployV2Collection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
-      deployV2LogCollection.remove(MongoDBObject("deploy" -> uuid))
+      deployCollection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
+      deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
 
@@ -391,7 +400,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     )
     val pipeline = pipeBuilder.result()
     log.debug("Aggregate query: %s" format pipeline.toString)
-    val result = database.command(MongoDBObject("aggregate" -> deployV2Collection.name, "pipeline" -> pipeline))
+    val result = database.command(MongoDBObject("aggregate" -> deployCollection.name, "pipeline" -> pipeline))
     val ok = result.as[Double]("ok")
     ok match {
       case 1.0 =>
@@ -438,13 +447,13 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   }
 
   override def findProjects(): List[String] = logAndSquashExceptions[List[String]](None,Nil) {
-    deployV2Collection.distinct("parameters.projectName").map(_.asInstanceOf[String]).toList
+    deployCollection.distinct("parameters.projectName").map(_.asInstanceOf[String]).toList
   }
 
   override def addStringUUID(uuid: UUID) {
     val setStringUUID = $set("stringUUID" -> uuid.toString)
     logAndSquashExceptions(Some("Updating stringUUID for %s" format uuid),()) {
-      deployV2Collection.findAndModify(
+      deployCollection.findAndModify(
         query = MongoDBObject("_id" -> uuid),
         fields = MongoDBObject(),
         sort = MongoDBObject(),
@@ -456,8 +465,8 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getDeployV2UUIDsWithoutStringUUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
-    val cursor = deployV2Collection.find(MongoDBObject("stringUUID" -> MongoDBObject("$exists" -> false)), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
+  override def getDeployUUIDsWithoutStringUUIDs = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+    val cursor = deployCollection.find(MongoDBObject("stringUUID" -> MongoDBObject("$exists" -> false)), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     cursor.toIterable.map { dbo =>
       val uuid = dbo.getAs[UUID]("_id").get
       val dateTime = dbo.getAs[DateTime]("startTime")

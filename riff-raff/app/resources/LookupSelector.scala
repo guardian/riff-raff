@@ -36,8 +36,8 @@ object LookupSelector {
     val lookupDelegate = DeployInfoLookupShim(DeployInfoManager.deployInfo, secretProvider)
     val name = "DeployInfo riffraff shim"
     def lastUpdated: DateTime = lookupDelegate.lastUpdated
-    def instances: Instances = lookupDelegate.instances
-    def data: Data = lookupDelegate.data
+    def hosts: HostLookup = lookupDelegate.hosts
+    def data: DataLookup = lookupDelegate.data
     def stages = lookupDelegate.stages.sorted(conf.Configuration.stages.ordering).reverse
     def keyRing(stage: Stage, apps: Set[App], stack: Stack) = lookupDelegate.keyRing(stage, apps, stack)
   }
@@ -106,15 +106,15 @@ case class LookupValidator(primary:Lookup, validation:Lookup) extends Lookup wit
   def lookupWithSeqDiff[T] = lookupWithDiff[Seq[T]](new SeqDiff[T]())
   def lookupWithOptionDiff[T] = lookupWithDiff[Option[T]](new OptionDiff[T]())
 
-  def instances: Instances = new Instances {
+  def hosts: HostLookup = new HostLookup {
     def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] =
-      lookupWithSeqDiff[Host](_.instances.get(pkg, app, parameters, stack))
-    def all: Seq[Host] = lookupWithSeqDiff[Host](_.instances.all)
+      lookupWithSeqDiff[Host](_.hosts.get(pkg, app, parameters, stack))
+    def all: Seq[Host] = lookupWithSeqDiff[Host](_.hosts.all)
   }
 
   def stages: Seq[String] = lookupWithSeqDiff[String](_.stages)
 
-  def data: Data = new Data {
+  def data: DataLookup = new DataLookup {
     def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] =
       lookupWithDiff[Option[Datum]](new OptionDiff[Datum]())(_.data.datum(key, app, stage, stack))
 

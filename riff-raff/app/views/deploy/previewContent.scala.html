@@ -64,18 +64,36 @@
         </table>
     </div>
 
+    @if(!preview.stacks.isEmpty){
+    <h4>Select stacks</h4>
+    <button type="button" class="btn btn-default" data-checkbox-target=".checkbox-stacks" data-checkbox-state="true">
+        <span class="glyphicon glyphicon-ok"></span> All</button>
+    <button type="button" class="btn btn-default" data-checkbox-target=".checkbox-stacks" data-checkbox-state="false">
+        <span class="glyphicon glyphicon-remove"></span> None</button>
+    <div>
+        <ul class="magenta-list deployment-list">
+            @preview.stacks.zipWithIndex.map { stack =>
+            <li><span class="preview-host"><input type="checkbox" class="checkbox-stacks" name="stacks[@stack._2]" value="@stack._1" checked/>@stack._1</span></li>
+            }
+        </ul>
+    </div>
+    }
+
     <h4>Select hosts</h4>
     @if(preview.hosts.isEmpty) {
         <div><em>No hosts found</em></div>
     } else {
-    <button type="button" class="btn btn-default" id="checkbox-select-all"><span class="glyphicon glyphicon-ok"></span> All</button> <button type="button" class="btn btn-default" id="checkbox-select-none"><span class="glyphicon glyphicon-remove"></span> None</button>
+    <button type="button" class="btn btn-default" data-checkbox-target=".checkbox-hosts" data-checkbox-state="true">
+        <span class="glyphicon glyphicon-ok"></span> All</button>
+    <button type="button" class="btn btn-default" data-checkbox-target=".checkbox-hosts" data-checkbox-state="false">
+        <span class="glyphicon glyphicon-remove"></span> None</button>
     <div>
         @preview.allHosts.zipWithIndex.groupBy(_._1.apps.toList.map(_.toString).sorted.mkString(",")).toList.sortBy(_._1).map { hostGroupEntry =>
             <div>
                 <ul class="magenta-list deployment-list">
                     <li><span class="preview-host"><strong>@hostGroupEntry._1:</strong></span></li>
                     @hostGroupEntry._2.map { hostTuple =>
-                    <li><span class="preview-host"><input type="checkbox" class="checkbox-select" name="hosts[@hostTuple._2]" value="@hostTuple._1.name" @if(preview.hosts.contains(hostTuple._1)){checked="true"}/>@hostTuple._1.name</span></li>
+                    <li><span class="preview-host"><input type="checkbox" class="checkbox-hosts" name="hosts[@hostTuple._2]" value="@hostTuple._1.name" @if(preview.hosts.contains(hostTuple._1)){checked="true"}/>@hostTuple._1.name</span></li>
                     }
                 </ul>
             </div>

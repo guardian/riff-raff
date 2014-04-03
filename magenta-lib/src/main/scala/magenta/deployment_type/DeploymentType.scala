@@ -26,7 +26,7 @@ trait DeploymentType {
       new PackageAction(pkg, actionName)  {
         def resolve(resourceLookup: Lookup, parameters: DeployParameters, stack: Stack) = {
           val hostsForApps = apps.toList.flatMap { app =>
-            resourceLookup.instances.get(pkg, app, parameters, stack)
+            resourceLookup.hosts.get(pkg, app, parameters, stack)
           } filter { instance =>
             parameters.matchingHost(instance.name)
           }
@@ -51,7 +51,7 @@ trait DeploymentType {
 object DeploymentType {
   def all: Seq[DeploymentType] = Seq(
     ElasticSearch, S3, AutoScaling, ExecutableJarWebapp, JettyWebapp, ResinWebapp, FileCopy, Django, Fastly,
-    UnzipToDocroot, CloudFormation
+    UnzipToDocroot, CloudFormation, RPM
   )
 }
 

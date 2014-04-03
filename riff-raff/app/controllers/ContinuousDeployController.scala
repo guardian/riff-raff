@@ -11,10 +11,10 @@ import utils.Forms.uuid
 
 object ContinuousDeployController extends Controller with Logging {
 
-  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int, tag: Option[String])
+  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
   object ConfigForm {
     def apply(cd: ContinuousDeploymentConfig): ConfigForm =
-      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id, cd.tag)
+      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id)
   }
 
   val continuousDeploymentForm = Form[ConfigForm](
@@ -24,12 +24,8 @@ object ContinuousDeployController extends Controller with Logging {
       "stage" -> nonEmptyText,
       "recipe" -> nonEmptyText,
       "branchMatcher" -> optional(text),
-      "trigger" -> number,
-      "tag" -> optional(text)
-    )(ConfigForm.apply)(ConfigForm.unapply).verifying(
-      error = s"Tag must be specified when trigger is ${Trigger.BuildTagged}",
-      constraint = { config => if (config.trigger == Trigger.BuildTagged.id) config.tag.isDefined else true }
-    )
+      "trigger" -> number
+    )(ConfigForm.apply)(ConfigForm.unapply)
   )
 
   def list = AuthAction { implicit request =>
@@ -37,17 +33,16 @@ object ContinuousDeployController extends Controller with Logging {
     Ok(views.html.continuousDeployment.list(request, configs))
   }
   def form = AuthAction { implicit request =>
-    Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id,None))))
+    Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
   }
   def save = AuthAction { implicit request =>
     continuousDeploymentForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
       form => {
         val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), form.tag, request.identity.get.fullName, new DateTime()
+          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.identity.get.fullName, new DateTime()
         )
         Persistence.store.setContinuousDeployment(config)
-        ContinuousDeployment.updateTagTrackers()
         Redirect(routes.ContinuousDeployController.list())
       }
     )
@@ -64,7 +59,6 @@ object ContinuousDeployController extends Controller with Logging {
         action match {
           case "delete" =>
             Persistence.store.deleteContinuousDeployment(UUID.fromString(id))
-            ContinuousDeployment.updateTagTrackers()
         }
       }
     )
