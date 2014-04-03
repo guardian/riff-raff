@@ -45,9 +45,9 @@ package object fixtures {
   def parameters(stage: Stage = PROD, version: String = "version") =
     DeployParameters(Deployer("tester"), Build("project", version), stage)
 
-  def stubLookup(hosts: Seq[Host] = Nil, resourceData: Map[String, Seq[Datum]] = Map.empty): Lookup = {
+  def stubLookup(hostsSeq: Seq[Host] = Nil, resourceData: Map[String, Seq[Datum]] = Map.empty): Lookup = {
     new Lookup {
-      def stages: Seq[String] = hosts.map(_.stage).distinct
+      def stages: Seq[String] = hostsSeq.map(_.stage).distinct
       def lastUpdated: DateTime = new DateTime()
       def data: DataLookup = new DataLookup {
         def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
@@ -76,13 +76,13 @@ package object fixtures {
 
       def hosts: HostLookup = new HostLookup {
         def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
-          hosts.filter{ host =>
+          hostsSeq.filter{ host =>
             host.stage == params.stage.name &&
             host.apps.contains(app) &&
             host.isValidForStack(stack)
           }
         }
-        def all: Seq[Host] = hosts
+        def all: Seq[Host] = hostsSeq
       }
 
       def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing(SystemUser(None))
