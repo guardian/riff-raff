@@ -68,7 +68,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
+      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))

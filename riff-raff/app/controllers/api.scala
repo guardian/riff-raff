@@ -258,7 +258,7 @@ object Api extends Controller with Logging {
   }
 
   def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
-    assert(!LookupSelector().instances.all.isEmpty, "No deploy information available")
+    assert(!LookupSelector().hosts.all.isEmpty, "No deploy information available")
 
     val filter = deployment.HostFilter.fromRequest
     val query:List[(String,JsValue)] = Nil ++

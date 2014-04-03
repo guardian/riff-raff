@@ -87,7 +87,7 @@ object Testing extends Controller with Logging {
       (TestForm.unapply)
   )
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().instances.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>

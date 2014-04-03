@@ -9,7 +9,7 @@
 @snippets.lookupDateBox(lookup)
 
 @if(hosts.isEmpty) {
-    @if(lookup.instances.all.isEmpty) {
+    @if(lookup.hosts.all.isEmpty) {
         <div class="alert">No hosts specified in deployment information</div>
     } else {
         <div class="alert">No hosts match filter</div>
