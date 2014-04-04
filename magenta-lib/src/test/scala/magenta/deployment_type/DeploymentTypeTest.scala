@@ -27,7 +27,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     val thrown = evaluating {
       S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
-        List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+        List(S3Upload(UnnamedStack, Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
       )
     } should produce [NoSuchElementException]
 
@@ -44,7 +44,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
-      List(S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
+      List(S3Upload(UnnamedStack, Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
     )
   }
 
@@ -61,7 +61,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
 
     S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
       List(
-        S3Upload(Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
+        S3Upload(UnnamedStack, Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
           List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
       )
     )

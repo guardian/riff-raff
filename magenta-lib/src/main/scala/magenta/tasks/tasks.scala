@@ -95,10 +95,12 @@ trait CompressedFilename {
 }
 
 
-case class S3Upload( stage: Stage,
+case class S3Upload( stack: Stack,
+                     stage: Stage,
                      bucket: String,
                      file: File,
                      cacheControlPatterns: List[PatternValue] = Nil,
+                     prefixStack: Boolean = true,
                      prefixStage: Boolean = true,
                      prefixPackage: Boolean = true,
                      publicReadAcl: Boolean = true)
@@ -131,7 +133,14 @@ case class S3Upload( stage: Stage,
   }
 
   def toRelative(file: File) = file.getAbsolutePath.replace(base, "")
-  def toKey(file: File) = (if (prefixStage) stage.name + "/" else "") + toRelative(file)
+  def toKey(file: File) = {
+    val stageName = if (prefixStage) stage.name + "/" else ""
+    val stackName = stack match {
+      case NamedStack(s) if prefixStack => s + "/"
+      case _ => ""
+    }
+    s"$stackName$stageName${toRelative(file)}"
+  }
 
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
 
