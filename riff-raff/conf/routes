@@ -31,7 +31,7 @@ GET         /deployment/request/autoComplete/project        controllers.Deployme
 GET         /deployment/request/autoComplete/build          controllers.Deployment.autoCompleteBuild(project:String,term:String)
 GET         /deployment/request/history                     controllers.Deployment.projectHistory(project:String)
 
-GET         /deployment/preview                             controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String)
+GET         /deployment/preview                             controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
 GET         /deployment/preview/content                     controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
 GET         /deployment/dashboard                           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)

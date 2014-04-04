@@ -40,7 +40,6 @@
                 <td>@config.recipe</td>
                 <td>@config.trigger match {
                     case SuccessfulBuild => { Build succeeds }
-                    case BuildTagged => { Build tagged with <span class="label label-default">@config.tag.getOrElse{&nbsp;}</span> }
                     case Disabled => { Disabled }
                 }</td>
                 <td>

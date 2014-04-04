@@ -7,11 +7,10 @@ import magenta.Deploy
 import magenta.FinishContext
 import magenta.StartContext
 import akka.actor._
-import controllers.{DeployController, routes, Logging}
+import controllers.{routes, Logging}
 import conf.Configuration
 import scala.Some
 import magenta.DeployParameters
-import deployment.TaskType
 import play.api.libs.ws.WS
 import play.api.libs.json._
 import lifecycle.LifecycleWithoutApp
@@ -46,16 +45,15 @@ object Alerta extends Logging with LifecycleWithoutApp {
   lazy val sink = new MessageSink {
     def message(message: MessageWrapper) {
       val uuid = message.context.deployId
-      if (DeployController.get(uuid).taskType == TaskType.Deploy)
-        message.stack.top match {
-          case StartContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters, message.stack.time)))
-          case FailContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters, message.stack.time)))
-          case FinishContext(Deploy(parameters)) =>
-            sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters, message.stack.time)))
-          case _ =>
-        }
+      message.stack.top match {
+        case StartContext(Deploy(parameters)) =>
+          sendMessage(Notify(AlertaEvent(DeployEvent.Start, uuid, parameters, message.stack.time)))
+        case FailContext(Deploy(parameters)) =>
+          sendMessage(Notify(AlertaEvent(DeployEvent.Fail, uuid, parameters, message.stack.time)))
+        case FinishContext(Deploy(parameters)) =>
+          sendMessage(Notify(AlertaEvent(DeployEvent.Complete, uuid, parameters, message.stack.time)))
+        case _ =>
+      }
     }
   }
 
@@ -116,7 +114,7 @@ object AlertaEvent {
       "group" -> "Deploys",
       "severity" -> severityMap(event),
       "service" -> List(project.split(":").head),
-      "tags" -> List("release:%s" format build, "user:%s" format user),
+      "tags" -> Map("release" -> build, "user" -> user),
       "text" -> s"Deploy of $project ${adjectiveMap(event)}",
       "value" -> s"Release $build",
       "event" -> event.toString,

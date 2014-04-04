@@ -3,8 +3,7 @@ package notification
 import ci.TeamCityBuilds
 import lifecycle.LifecycleWithoutApp
 import magenta._
-import controllers.{routes, Logging, DeployController}
-import deployment.TaskType
+import controllers.{routes, Logging}
 import magenta.MessageWrapper
 import magenta.FinishContext
 import magenta.Deploy
@@ -13,7 +12,6 @@ import conf.Configuration
 import java.util.UUID
 import ci.teamcity.BuildType
 import ci.teamcity.TeamCity.BuildLocator
-import play.api.libs.concurrent.Promise
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 
@@ -26,13 +24,12 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
   val sink = if (!pinningEnabled) None else Some(new MessageSink {
     def message(message: MessageWrapper) {
-      if (DeployController.get(message.context.deployId).taskType == TaskType.Deploy)
-        message.stack.top match {
-          case FinishContext(Deploy(parameters)) =>
-            if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
-              pinBuild(message.context.deployId, parameters.build)
-          case _ =>
-        }
+      message.stack.top match {
+        case FinishContext(Deploy(parameters)) =>
+          if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
+            pinBuild(message.context.deployId, parameters.build)
+        case _ =>
+      }
     }
   })
 

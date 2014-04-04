@@ -65,11 +65,11 @@ class HooksTest extends FlatSpec with ShouldMatchers {
     startTime,
     ParametersDocument(
       "Mr. Tester",
-      "Deploy",
       "test::project",
       "23",
       "TEST",
       "default",
+      Nil,
       List("host1.dom", "host2.dom"),
       Map("vcsRevision" -> "9110598b83a908d7882ac4e3cd4b643d7d8bc54e", "riffraff-domain" -> "10-252-94-200")
     ),

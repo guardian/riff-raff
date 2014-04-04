@@ -1,7 +1,7 @@
 package magenta
 
 import org.joda.time.DateTime
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
+import org.joda.time.format.DateTimeFormat
 import java.util.UUID
 
 object RunState extends Enumeration {
@@ -92,29 +92,9 @@ object DeployReport {
     ReportTree(messageState, children.map(wrapperToTree(_,all)))
   }
 
-  def v2(list: List[MessageWrapper], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
+  def apply(list: List[MessageWrapper], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
     val time = titleTime.getOrElse( list.headOption.map(_.stack.time).getOrElse( new DateTime() ))
     ReportTree(Report(title, time), list.headOption.map(root => List(wrapperToTree(root,list))).getOrElse(Nil))
-  }
-
-  def apply(messageList: List[MessageStack], title: String = "", titleTime: Option[DateTime] = None): ReportTree = {
-    val time = titleTime.getOrElse( messageList.headOption.map(_.time).getOrElse( new DateTime() ))
-
-    messageList.foldLeft(
-      ReportTree(Report(title, time))
-    ) { (acc:ReportTree,stack:MessageStack) =>
-      stack.top match {
-        case finish:FinishContext => acc.map { state =>
-          if (state.message != finish.originalMessage) state
-          else FinishMessageState(state.startContext, finish, stack.time)
-        }
-        case fail:FailContext => acc.map { state =>
-          if (state.message != fail.originalMessage) state
-          else FailMessageState(state.startContext, fail, stack.time)
-        }
-        case _ => acc.appendChild(stack.messages.reverse, stack.time)
-      }
-    }
   }
 }
 
@@ -185,7 +165,7 @@ case class ReportTree(messageState: MessageState, children: List[ReportTree] = N
     render(Nil)
   }
   def render(position: List[Int]): Seq[String] = {
-    val messageRender = "%s:%s [%s]" format (position.reverse.mkString("."), message, cascadeState.toString)
+    val messageRender = s"${position.reverse.mkString(".")}:$message [${cascadeState.toString}]"
     val childrenRender = children.zipWithIndex.flatMap{ case (tree: ReportTree, index: Int) => tree.render(index+1 :: position) }
     messageRender :: childrenRender
   }

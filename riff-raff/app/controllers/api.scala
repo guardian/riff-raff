@@ -224,7 +224,6 @@ object Api extends Controller with Logging {
     Json.obj(
       "time" -> deploy.time,
       "uuid" -> deploy.uuid.toString,
-      "taskType" -> deploy.taskType.toString,
       "projectName" -> deploy.parameters.build.projectName,
       "build" -> deploy.parameters.build.id,
       "stage" -> deploy.parameters.stage.name,
@@ -258,7 +257,7 @@ object Api extends Controller with Logging {
   }
 
   def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
-    assert(!LookupSelector().instances.all.isEmpty, "No deploy information available")
+    assert(!LookupSelector().hosts.all.isEmpty, "No deploy information available")
 
     val filter = deployment.HostFilter.fromRequest
     val query:List[(String,JsValue)] = Nil ++
@@ -311,6 +310,7 @@ object Api extends Controller with Logging {
           Build(project, build),
           Stage(stage),
           recipe,
+          Nil,
           hosts
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")

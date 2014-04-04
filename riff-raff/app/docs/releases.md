@@ -1,3 +1,7 @@
+#### 10th February 2014
+
+Add the ability to publish messages on an AWS SNS topic.
+
 #### 21st January 2014
 
 Update UI to Twitter Bootstrap 3. Tweak a few bits of the API.

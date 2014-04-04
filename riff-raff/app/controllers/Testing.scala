@@ -4,7 +4,7 @@ import _root_.resources.LookupSelector
 import play.api.mvc.Controller
 import magenta._
 import collection.mutable.ArrayBuffer
-import deployment.{DeployV2Record, TaskType}
+import deployment.DeployRecord
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
@@ -20,14 +20,18 @@ object Testing extends Controller with Logging {
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
 
     val testTask1 = new Task {
-      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
+      def execute(stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
+
+      def keyRing = ???
     }
     val testTask2 = new Task {
-      def execute(sshCredentials: KeyRing, stopFlag: => Boolean) {}
+      def execute(stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
+
+      def keyRing = ???
     }
 
 
@@ -67,7 +71,7 @@ object Testing extends Controller with Logging {
     )
 
 
-    val report = DeployV2Record(new DateTime(), TaskType.Deploy, logUUID, parameters, messages=input.toList.take(take))
+    val report = DeployRecord(new DateTime(), logUUID, parameters, messages=input.toList.take(take))
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }
@@ -83,7 +87,7 @@ object Testing extends Controller with Logging {
       (TestForm.unapply)
   )
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().instances.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>
@@ -106,7 +110,7 @@ object Testing extends Controller with Logging {
   }
 
   def uuidList(limit:Int) = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployV2UUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
   }
 
@@ -137,7 +141,7 @@ object Testing extends Controller with Logging {
           }
           case "deleteV2" => {
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-            Persistence.store.deleteDeployLogV2(UUID.fromString(form.uuid))
+            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           }
           case "addStringUUID" => {
@@ -151,7 +155,7 @@ object Testing extends Controller with Logging {
   }
 
   def transferAllUUIDs = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployV2UUIDsWithoutStringUUIDs
+    val allDeploys = Persistence.store.getDeployUUIDsWithoutStringUUIDs
     allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
   }

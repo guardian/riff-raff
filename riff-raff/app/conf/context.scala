@@ -109,6 +109,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
   }
 
+  object notifications {
+    object aws {
+      lazy val isConfigured = topicArn.isDefined && accessKey.isDefined && secretKey.isDefined
+      lazy val topicArn = configuration.getStringProperty("notifications.aws.topicArn")
+      lazy val topicRegion = configuration.getStringProperty("notifications.aws.topicRegion")
+      lazy val accessKey = configuration.getStringProperty("notifications.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("notifications.aws.secretKey")
+    }
+  }
+
   object sshKey {
     lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
     lazy val file: Option[File] = path map (new File(_))
@@ -130,9 +140,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
     lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 60)
     lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
-    object tagging {
-      lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.tagging.pollingWindowMinutes", 14400)
-    }
   }
 
   object urls {

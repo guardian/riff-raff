@@ -6,7 +6,7 @@ import magenta.deployment_type.DeploymentType
 
 case class DeploymentPackage(
   name: String,
-  pkgApps: Set[App],
+  pkgApps: Seq[App],
   pkgSpecificData: Map[String, JValue],
   deploymentTypeName: String,
   srcDir: File) {

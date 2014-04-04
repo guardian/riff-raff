@@ -1,13 +1,17 @@
 package magenta.tasks
 
-import magenta.{KeyRing, Stage}
+import magenta._
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import collection.JavaConversions._
 import dispatch.classic._
 import net.liftweb.json._
 import java.net.ConnectException
+import magenta.DeploymentPackage
+import magenta.KeyRing
+import magenta.Stage
 
-case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, duration: Long)
+case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+                                           (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck {
 
   val description = "Wait for the elasticsearch cluster status to be green"
@@ -16,7 +20,7 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val instance = EC2(asg.getInstances().headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
@@ -27,10 +31,11 @@ case class WaitForElasticSearchClusterGreen(packageName: String, stage: Stage, d
   }
 }
 
-case class CullElasticSearchInstancesWithTerminationTag(packageName: String, stage: Stage, duration: Long)
+case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+                                                       (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean)(implicit keyRing: KeyRing) {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
     val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
 

@@ -1,7 +1,7 @@
 @(request: controllers.AuthenticatedRequest[AnyContent], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
 @import ci.Trigger._
 
-@main("Continuous Deployment", request, List("form-autocomplete", "ci-tag-disable")) {
+@main("Continuous Deployment", request, List("form-autocomplete")) {
 
 <h2>Continuous Deployment Configuration</h2>
 <hr/>
@@ -33,13 +33,9 @@ options = helper.options(resources.LookupSelector().stages.toList),
 <legend>Trigger</legend>
 @helper.inputRadioGroup(
     configForm("trigger"),
-    options = Seq(SuccessfulBuild, BuildTagged, Disabled).map(value => value.id.toString -> value.toString),
+    options = Seq(SuccessfulBuild, Disabled).map(value => value.id.toString -> value.toString),
     Symbol("data-radio") -> "trigger"
 )
-@configForm("trigger").value match {
-    case Some("2") => { @helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag") }
-    case _ => { @helper.inputText(configForm("tag"), 'id -> "tagInput", '_label -> "Tag", 'disabled -> None) }
-}
 
 <div class="actions">
     <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or

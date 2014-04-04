@@ -3,14 +3,20 @@ package persistence
 import java.util.UUID
 import org.joda.time.DateTime
 import magenta._
-import deployment.{Record, TaskType}
 import com.mongodb.{BasicDBList, DBObject}
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 
-case class DeployRecordDocument(uuid:UUID, stringUUID:Option[String], startTime: DateTime, parameters: ParametersDocument, status: RunState.Value, summarised: Option[Boolean] = None) {
-  lazy val deployTypeEnum = TaskType.withName(parameters.deployType)
-}
+case class DeployRecordDocument(uuid:UUID,
+                                stringUUID:Option[String],
+                                startTime: DateTime,
+                                parameters: ParametersDocument,
+                                status: RunState.Value,
+                                summarised: Option[Boolean] = None,
+                                totalTasks: Option[Int] = None,
+                                completedTasks: Option[Int] = None,
+                                lastActivityTime: Option[DateTime] = None)
+
 object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
@@ -24,7 +30,9 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
           "startTime" -> a.startTime,
           "parameters" -> a.parameters.toDBO,
           "status" -> a.status.toString
-        ) ++ a.stringUUID.map("stringUUID" -> _) ++ a.summarised.map("summarised" -> _)
+        ) ++ a.stringUUID.map("stringUUID" ->) ++ a.summarised.map("summarised" -> _) ++
+             a.totalTasks.map("totalTasks" ->) ++ a.completedTasks.map("completedTasks" ->) ++
+             a.lastActivityTime.map("lastActivityTime" ->)
       fields.toMap
     }
     def fromDBO(dbo: MongoDBObject) =
@@ -35,7 +43,10 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
         startTime = dbo.as[DateTime]("startTime"),
         parameters = pd,
         status = RunState.withName(dbo.as[String]("status")),
-        summarised = dbo.getAs[Boolean]("summarised")
+        summarised = dbo.getAs[Boolean]("summarised"),
+        totalTasks = dbo.getAs[Int]("totalTasks"),
+        completedTasks = dbo.getAs[Int]("completedTasks"),
+        lastActivityTime = dbo.getAs[DateTime]("lastActivityTime")
       )
     )
   }
@@ -43,11 +54,11 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
 
 case class ParametersDocument(
   deployer: String,
-  deployType: String,
   projectName: String,
   buildId: String,
   stage: String,
   recipe: String,
+  stacks: List[String],
   hostList: List[String],
   tags: Map[String,String]
 )
@@ -59,11 +70,11 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       val fields:List[(String,Any)] =
         List(
           "deployer" -> a.deployer,
-          "deployType" -> a.deployType,
           "projectName" -> a.projectName,
           "buildId" -> a.buildId,
           "stage" -> a.stage,
           "recipe" -> a.recipe,
+          "stacks" -> a.stacks,
           "hostList" -> a.hostList,
           "tags" -> a.tags
         )
@@ -71,11 +82,11 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
     }
     def fromDBO(dbo: MongoDBObject) = Some(ParametersDocument(
       deployer = dbo.as[String]("deployer"),
-      deployType = dbo.as[String]("deployType"),
       projectName = dbo.as[String]("projectName"),
       buildId = dbo.as[String]("buildId"),
       stage = dbo.as[String]("stage"),
       recipe = dbo.as[String]("recipe"),
+      stacks = dbo.getAsOrElse[MongoDBList]("stacks", MongoDBList()).map(_.asInstanceOf[String]).toList,
       hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
       tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
     ))
@@ -145,10 +156,7 @@ object DetailConversions {
       val fields:List[(String,Any)] =
         List(
           "name" -> a.name,
-          "apps" -> a.apps.map {
-            case LegacyApp(name) => MongoDBObject("name" -> name)
-            case StackApp(stack,app) => MongoDBObject("stack" -> stack, "app" -> app)
-          }.toList,
+          "apps" -> a.apps.map(a => MongoDBObject("name" -> a.name)).toList,
           "stage" -> a.stage
         ) ++ a.connectAs.map("connectAs" ->)
       fields.toMap
@@ -158,8 +166,8 @@ object DetailConversions {
       name = dbo.as[String]("name"),
       apps = dbo.as[List[DBObject]]("apps").map{dbo =>
         (dbo.getAs[String]("name"),dbo.getAs[String]("stack"),dbo.getAs[String]("app")) match {
-          case (Some(name), None, None) => LegacyApp(name)
-          case (None, Some(stack), Some(app)) => StackApp(stack, app)
+          case (Some(name), None, None) => App(name)
+          case (None, Some(stack), Some(app)) => App(app)
           case other => throw new IllegalArgumentException(s"Don't know how to construct App from tuple $other")
         }
       }.toSet,
@@ -270,7 +278,7 @@ object MessageDocument {
       case FinishContext(message) => FinishContextDocument()
       case FailContext(message) => FailContextDocument()
       case _ =>
-        throw new IllegalArgumentException("Don't know how to serialise Message of type %s" format from.getClass.getName)
+        throw new IllegalArgumentException(s"Don't know how to serialise Message of type ${from.getClass.getName}")
     }
   }
   def from(dbo:DBObject): MessageDocument = {
@@ -289,7 +297,7 @@ object MessageDocument {
       case "persistence.FinishContextDocument" => FinishContextDocument()
       case "persistence.FailContextDocument" => FailContextDocument()
       case hint =>
-        throw new IllegalArgumentException("Don't know how to construct MessageDocument of type %s" format hint)
+        throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
     }
   }
 }

@@ -62,7 +62,6 @@ continuous integration
  - `teamcity.pollingWindowMinutes` - Set this to be over the length of the longest running builds.  Used by the incremental updater to be smart about what it asks for.
  - `teamcity.pollingPeriodSeconds` - Number of seconds between incremental updates of TeamCity builds
  - `teamcity.fullUpdatePeriodSeconds` - Number of seconds between full updates of TeamCity builds (includes new projects and configurations)
- - `teamcity.tagging.pollingWindowMinutes` - Continuous deploys triggered by a new tag will only pick up new tags on builds that are not older than this value - defaults to 10 days
 
 database
 --------
@@ -88,3 +87,7 @@ notifications
  - `irc.channel` - Channel messages should be sent to
  - `irc.name` - Nick used by Riff-Raff in channel
  - `alerta.endpoints` - List of [alerta](https://github.com/guardian/alerta) API endpoints that should be notified of deployment start, complete and fail events
+ - `notifications.aws.topicArn` - The ARN of the AWS SNS topic to publish notifications to
+ - `notifications.aws.topicRegion` - If you are not posting to a us-east-1 topic you must specify the region here
+ - `notifications.aws.accessKey` - the access key for publishing to the topic
+ - `notifications.aws.secretKey` - the secret key for publishing to the topic

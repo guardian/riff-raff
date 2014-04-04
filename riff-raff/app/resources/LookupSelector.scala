@@ -5,6 +5,7 @@ import magenta._
 import org.joda.time.DateTime
 import com.gu.management.DefaultSwitch
 import controllers.Logging
+import conf.Configuration
 
 object LookupSelector {
   lazy val switches = Seq(enablePrism, enableValidation)
@@ -25,18 +26,20 @@ object LookupSelector {
   )
 
   lazy val secretProvider = new SecretProvider {
-                              def lookup(service: String, account: String): Option[String] =
-                                conf.Configuration.credentials.lookupSecret(service, account)
-                            }
+    def lookup(service: String, account: String): Option[String] =
+      conf.Configuration.credentials.lookupSecret(service, account)
+
+    def sshCredentials = SystemUser(keyFile = Configuration.sshKey.file)
+  }
 
   def deployInfoLookup = new Lookup {
     val lookupDelegate = DeployInfoLookupShim(DeployInfoManager.deployInfo, secretProvider)
     val name = "DeployInfo riffraff shim"
     def lastUpdated: DateTime = lookupDelegate.lastUpdated
-    def instances: Instances = lookupDelegate.instances
-    def data: Data = lookupDelegate.data
+    def hosts: HostLookup = lookupDelegate.hosts
+    def data: DataLookup = lookupDelegate.data
     def stages = lookupDelegate.stages.sorted(conf.Configuration.stages.ordering).reverse
-    def credentials(stage: Stage, apps: Set[App]) = lookupDelegate.credentials(stage, apps)
+    def keyRing(stage: Stage, apps: Set[App], stack: Stack) = lookupDelegate.keyRing(stage, apps, stack)
   }
 
   def apply():Lookup = {
@@ -103,20 +106,22 @@ case class LookupValidator(primary:Lookup, validation:Lookup) extends Lookup wit
   def lookupWithSeqDiff[T] = lookupWithDiff[Seq[T]](new SeqDiff[T]())
   def lookupWithOptionDiff[T] = lookupWithDiff[Option[T]](new OptionDiff[T]())
 
-  def instances: Instances = new Instances {
-    def get(app: App, stage: Stage): Seq[Host] = lookupWithSeqDiff[Host](_.instances.get(app,stage))
-    def all: Seq[Host] = lookupWithSeqDiff[Host](_.instances.all)
+  def hosts: HostLookup = new HostLookup {
+    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] =
+      lookupWithSeqDiff[Host](_.hosts.get(pkg, app, parameters, stack))
+    def all: Seq[Host] = lookupWithSeqDiff[Host](_.hosts.all)
   }
 
   def stages: Seq[String] = lookupWithSeqDiff[String](_.stages)
 
-  def data: Data = new Data {
-    def datum(key: String, app: App, stage: Stage): Option[Datum] =
-      lookupWithDiff[Option[Datum]](new OptionDiff[Datum]())(_.data.datum(key,app,stage))
+  def data: DataLookup = new DataLookup {
+    def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] =
+      lookupWithDiff[Option[Datum]](new OptionDiff[Datum]())(_.data.datum(key, app, stage, stack))
 
     def all: Map[String, Seq[Datum]] = lookupWithDiff[Map[String, Seq[Datum]]](MapDiff)(_.data.all)
     def keys: Seq[String] = lookupWithSeqDiff[String](_.data.keys)
   }
 
-  def credentials(stage: Stage, apps: Set[App]): Map[String, ApiCredentials] = primary.credentials(stage,apps)
+  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing =
+    primary.keyRing(stage, apps, stack)
 }

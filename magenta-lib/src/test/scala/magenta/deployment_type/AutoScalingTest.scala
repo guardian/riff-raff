@@ -10,23 +10,27 @@ import org.scalatest.matchers.ShouldMatchers
 import magenta.deployment_type.AutoScaling
 
 class AutoScalingTest extends FlatSpec with ShouldMatchers {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+
   "auto-scaling with ELB package type" should "have a deploy action" in {
     val data: Map[String, JValue] = Map(
       "bucket" -> "asg-bucket"
     )
 
-    val p = DeploymentPackage("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val app = Seq(App("app"))
 
-    AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize("app", PROD),
-      SuspendAlarmNotifications("app", PROD),
-      TagCurrentInstancesWithTerminationTag("app", PROD),
-      DoubleSize("app", Stage("PROD")),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
+    val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
+
+    AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters(), UnnamedStack) should be (List(
+      CheckGroupSize(p, PROD, UnnamedStack),
+      SuspendAlarmNotifications(p, PROD, UnnamedStack),
+      TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack),
+      DoubleSize(p, PROD, UnnamedStack),
+      WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000),
       HealthcheckGrace(0),
-      WaitForStabilization("app", PROD, 15 * 60 * 1000),
-      CullInstancesWithTerminationTag("app", PROD),
-      ResumeAlarmNotifications("app", PROD)
+      WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000),
+      CullInstancesWithTerminationTag(p, PROD, UnnamedStack),
+      ResumeAlarmNotifications(p, PROD, UnnamedStack)
     ))
   }
 
@@ -37,18 +41,20 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       "healthcheckGrace" -> 30
     )
 
-    val p = DeploymentPackage("app", Set.empty, data, "asg-elb", new File("/tmp/packages/webapp"))
+    val app = Seq(App("app"))
 
-    AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters()) should be (List(
-      CheckGroupSize("app", PROD),
-      SuspendAlarmNotifications("app", PROD),
-      TagCurrentInstancesWithTerminationTag("app", PROD),
-      DoubleSize("app", PROD),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
+    val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
+
+    AutoScaling.perAppActions("deploy")(p)(lookupEmpty, parameters(), UnnamedStack) should be (List(
+      CheckGroupSize(p, PROD, UnnamedStack),
+      SuspendAlarmNotifications(p, PROD, UnnamedStack),
+      TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack),
+      DoubleSize(p, PROD, UnnamedStack),
+      WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000),
       HealthcheckGrace(30000),
-      WaitForStabilization("app", PROD, 3 * 60 * 1000),
-      CullInstancesWithTerminationTag("app", PROD),
-      ResumeAlarmNotifications("app", PROD)
+      WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000),
+      CullInstancesWithTerminationTag(p, PROD, UnnamedStack),
+      ResumeAlarmNotifications(p, PROD, UnnamedStack)
     ))
   }
 }

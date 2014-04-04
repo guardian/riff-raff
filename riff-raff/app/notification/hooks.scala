@@ -5,7 +5,6 @@ import magenta._
 import akka.actor.{Actor, Props, ActorSystem}
 import lifecycle.LifecycleWithoutApp
 import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
-import deployment.TaskType
 import java.net.{URLEncoder, URL}
 import com.mongodb.casbah.commons.{Imports, MongoDBObject}
 import magenta.FinishContext
@@ -128,8 +127,7 @@ object HooksClient extends LifecycleWithoutApp with Logging {
     def message(message: MessageWrapper) {
       message.stack.top match {
         case FinishContext(Deploy(parameters)) =>
-          if (DeployController.get(message.context.deployId).taskType == TaskType.Deploy)
-            finishedBuild(message.context.deployId, parameters)
+          finishedBuild(message.context.deployId, parameters)
         case _ =>
       }
     }

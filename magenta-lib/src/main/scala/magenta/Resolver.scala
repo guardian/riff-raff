@@ -26,32 +26,27 @@ object Resolver {
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters): List[RecipeTasks] = {
 
-    def resolveTree(recipeName: String): RecipeTasksNode = {
+    def resolveTree(recipeName: String, stack: Stack): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
-      val recipeTasks = resolveRecipe(recipe)
-      val children = recipe.dependsOn.map(resolveTree)
+      val recipeTasks = resolveRecipe(recipe, stack)
+      val children = recipe.dependsOn.map(resolveTree(_, stack))
       RecipeTasksNode(recipeTasks, children)
     }
 
-    def resolveDependencies(recipeName: String): List[String] = {
-      val recipe = project.recipes(recipeName)
-      recipe.dependsOn.flatMap { resolveDependencies } :+ recipeName
-    }
-
-    def resolveRecipe(recipe: Recipe): RecipeTasks = {
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters) }
+    def resolveRecipe(recipe: Recipe, stack: Stack): RecipeTasks = {
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters, stack) }
 
       val perHostTasks = {
         for {
           action <- recipe.actionsPerHost
-          tasks <- action.resolve(resourceLookup, parameters)
+          tasks <- action.resolve(resourceLookup, parameters, stack)
         } yield {
           tasks
         }
       }
 
       val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
-      val taskHostsInOriginalOrder = resourceLookup.instances.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
+      val taskHostsInOriginalOrder = resourceLookup.hosts.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
       val groupedHosts = taskHostsInOriginalOrder.transposeBy(_.tags.getOrElse("group",""))
       val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
         t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
@@ -60,11 +55,25 @@ object Resolver {
       RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
     }
 
-    val resolvedTree = resolveTree(parameters.recipe.name)
-    val filteredTree = resolvedTree.disable(rt => !rt.recipe.actionsPerHost.isEmpty && rt.hostTasks.isEmpty)
-    filteredTree.toList.distinct
+    val stacks = resolveStacks(project, parameters)
+
+    for {
+      stack <- stacks.toList
+      tasks <- {
+        val resolvedTree = resolveTree(parameters.recipe.name, stack)
+        val filteredTree = resolvedTree.disable(rt => !rt.recipe.actionsPerHost.isEmpty && rt.hostTasks.isEmpty)
+        filteredTree.toList.distinct
+      }
+    } yield tasks
   }
 
+
+  def resolveStacks(project: Project, parameters: DeployParameters): Seq[Stack] = {
+    parameters.stacks match {
+      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
+      case s => s
+    }
+  }
 }
 class NoHostsFoundException extends Exception("No hosts found")
 

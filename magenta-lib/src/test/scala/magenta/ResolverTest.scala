@@ -15,6 +15,7 @@ import tasks.{Task, CopyFile}
 
 
 class ResolverTest extends FlatSpec with ShouldMatchers {
+  implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   val simpleExample = """
   {
@@ -38,7 +39,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     val parsed = JsonReader.parse(simpleExample, new File("/tmp"))
     val deployRecipe = parsed.recipes("htmlapp-only")
 
-    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(StackApp("web","apache"))
+    val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(App("apache"))
     val lookup = stubLookup(host :: Nil)
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe))
@@ -49,7 +50,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
-  val app2 = LegacyApp("the_2nd_role")
+  val app2 = App("the_2nd_role")
 
   val host = Host("the_host", stage = CODE.name).app(app1)
 
@@ -67,7 +68,7 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app(StackApp("web","other_app")) +: lookupSingleHost.instances.all), parameters(baseRecipe)) should be (List(
+      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe)) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -83,8 +84,8 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
 
   it should "generate tasks only for hosts with app per action" in {
     val multiRoleRecipe = {
-      val doubleAppPackage = stubPackage.copy(pkgApps = Set(app1, app2))
-      val appTwoPackage = stubPackage.copy(pkgApps = Set(app2))
+      val doubleAppPackage = stubPackage.copy(pkgApps = Seq(app1, app2))
+      val appTwoPackage = stubPackage.copy(pkgApps = Seq(app2))
 
       val doubleAppPackageType = stubPackageType(Seq("init_action_one"), Seq("action_two"))
       val appTwoPackageType = stubPackageType(Seq(), Seq("action_three"))
@@ -200,10 +201,11 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
   it should "observe ordering of hosts in deployInfo irrespective of connection user" in {
     val pkgTypeWithUser = StubDeploymentType(
       perHostActions = {
-        case "deploy" => pkg => host => List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
+        case "deploy" => pkg => (host, keyRing) =>
+          List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
       }
     )
-    val pkg = stubPackage.copy(pkgApps = Set(app1, app2))
+    val pkg = stubPackage.copy(pkgApps = Seq(app1, app2))
     val recipe = Recipe("with-user",
       actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")(pkg)))
 
@@ -212,6 +214,22 @@ class ResolverTest extends FlatSpec with ShouldMatchers {
       StubTask("without conn", Some(host2)),
       StubTask("with conn", Some(host1 as "user")),
       StubTask("without conn", Some(host1))
+    ))
+  }
+
+  it should "resolve tasks from multiple stacks" in {
+    val pkgType = StubDeploymentType(
+      perAppActions = {
+        case "deploy" => pkg => (lookup, params, stack) =>
+          List(StubTask("stacked", stack = Some(stack)))
+      }
+    )
+    val recipe = Recipe("stacked",
+      actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
+
+    Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe)) should be (List(
+      StubTask("stacked", stack = Some(NamedStack("foo"))),
+      StubTask("stacked", stack = Some(NamedStack("bar")))
     ))
   }
 

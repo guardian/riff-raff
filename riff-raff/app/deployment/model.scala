@@ -11,11 +11,6 @@ import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
 
-object TaskType extends Enumeration {
-  val Deploy = Value("Deploy")
-  val Preview = Value("Preview")
-}
-
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
   val RIFFRAFF_DOMAIN = "riffraff-domain"
@@ -23,12 +18,13 @@ object Record {
 
 trait Record {
   def time: DateTime
-  def taskType: TaskType.Value
   def uuid: UUID
   def parameters: DeployParameters
   def metaData: Map[String, String]
   def report: ReportTree
   def recordState: Option[RunState.Value]
+  def recordTotalTasks: Option[Int]
+  def recordCompletedTasks: Option[Int]
 
   lazy val buildName = parameters.build.projectName
   lazy val buildId = parameters.build.id
@@ -79,19 +75,26 @@ trait Record {
   lazy val vcsInfo: Option[VCSInfo] = VCSInfo(metaData)
 
   lazy val totalTasks: Option[Int] = {
-    val taskListMessages:Seq[TaskList] = report.allMessages.flatMap{
-      case SimpleMessageState(list@TaskList(tasks), _, _) => Some(list)
-      case _ => None
+    if (isSummarised)
+      recordTotalTasks
+    else {
+      val taskListMessages: Seq[TaskList] = report.allMessages.flatMap {
+        case SimpleMessageState(list@TaskList(tasks), _, _) => Some(list)
+        case _ => None
+      }
+      assert(taskListMessages.size <= 1, "More than one TaskList in report")
+      taskListMessages.headOption.map(_.taskList.size)
     }
-    assert(taskListMessages.size <= 1, "More than one TaskList in report")
-    taskListMessages.headOption.map(_.taskList.size)
   }
 
   lazy val completedTasks: Int = {
-    report.allMessages.count {
-      case FinishMessageState(StartContext(TaskRun(task)), _, _, _) => true
-      case _ => false
-    }
+    if (isSummarised)
+      recordCompletedTasks.getOrElse(0)
+    else
+      report.allMessages.count {
+        case FinishMessageState(StartContext(TaskRun(task)), _, _, _) => true
+        case _ => false
+      }
   }
 
   lazy val completedPercentage: Int =
@@ -100,34 +103,35 @@ trait Record {
     }.getOrElse(0)
 }
 
-object DeployV2Record {
-  def apply(taskType: TaskType.Value,
-            uuid: UUID,
-            parameters: DeployParameters ): DeployV2Record = {
+object DeployRecord {
+  def apply(uuid: UUID,
+            parameters: DeployParameters ): DeployRecord = {
     val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
-    DeployV2Record(new DateTime(), taskType, uuid, parameters, metaData)
+    DeployRecord(new DateTime(), uuid, parameters, metaData)
   }
 }
 
-case class DeployV2Record(time: DateTime,
-                          taskType: TaskType.Value,
+case class DeployRecord(time: DateTime,
                            uuid: UUID,
                            parameters: DeployParameters,
                            metaData: Map[String, String] = Map.empty,
                            messages: List[MessageWrapper] = Nil,
-                           recordState: Option[RunState.Value] = None) extends Record {
-  lazy val report = DeployReport.v2(messages, "Deployment Report")
+                           recordState: Option[RunState.Value] = None,
+                           recordTotalTasks: Option[Int] = None,
+                           recordCompletedTasks: Option[Int] = None,
+                           recordLastActivityTime: Option[DateTime] = None) extends Record {
+  lazy val report = DeployReport(messages, "Deployment Report")
 
-  def +(message: MessageWrapper): DeployV2Record = {
+  def +(message: MessageWrapper): DeployRecord = {
     this.copy(messages = messages ++ List(message))
   }
 
-  def ++(newMetaData: Map[String, String]): DeployV2Record = {
+  def ++(newMetaData: Map[String, String]): DeployRecord = {
     this.copy(metaData = metaData ++ newMetaData)
   }
 
   def isSummarised = messages.isEmpty && recordState.isDefined
 
-  lazy val lastActivityTime = messages.lastOption.map(_.stack.time).getOrElse(time)
+  lazy val lastActivityTime = messages.lastOption.map(_.stack.time).orElse(recordLastActivityTime).getOrElse(time)
 
 }
