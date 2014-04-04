@@ -89,7 +89,9 @@ object S3 extends DeploymentType with S3AclParams {
         data.get.value
       }
       List(
-        S3Upload(parameters.stage,
+        S3Upload(
+          stack,
+          parameters.stage,
           bucketName,
           new File(pkg.srcDir.getPath + "/"),
           cacheControl(pkg),
