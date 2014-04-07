@@ -8,14 +8,14 @@ import ci.teamcity.{BuildSummary, TeamCityWS}
 import ci.teamcity.TeamCity.BuildTypeLocator
 import play.api.libs.ws.WS
 import play.api.libs.json.JsArray
+import concurrent.duration._
 
-object Builds extends Logging {
-  import concurrent.duration._
+object Every extends Logging {
 
-  def every[T](frequency: concurrent.duration.Duration)(buildRetriever: => Future[Iterable[T]])(implicit ec: ExecutionContext): Observable[Iterable[T]] = {
+  def apply[T](frequency: concurrent.duration.Duration)(buildRetriever: () => Future[Iterable[T]])(implicit ec: ExecutionContext): Observable[Iterable[T]] = {
     (for {
       _ <- Observable.timer(5.seconds, frequency)
-      builds <- Observable.from(buildRetriever.recover { case e =>
+      builds <- Observable.from(buildRetriever().recover { case e =>
         log.logger.error("Error while polling", e)
         Seq()
       })
@@ -23,8 +23,10 @@ object Builds extends Logging {
     // publish.refCount turns this from a 'cold' to a 'hot' observable (http://www.introtorx.com/content/v1.0.10621.0/14_HotAndColdObservables.html)
     // i.e. however many subscriptions, we only make one set of API calls
   }
+}
 
-  def teamcity(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]] = every(Configuration.teamcity.pollingPeriodSeconds.seconds)(
+object BuildRetrievers {
+  def teamcity(implicit ec: ExecutionContext): () => Future[Iterable[CIBuild]] = () =>
     TeamCityWS.url("/app/rest/builds").get().flatMap { r =>
       BuildSummary(r.xml, (id: String) => {
         BuildTypeLocator.list.map(_.find(_.id == id))
@@ -32,6 +34,5 @@ object Builds extends Logging {
         builds.maxBy(_.id)
       }))
     }
-  )
 }
 

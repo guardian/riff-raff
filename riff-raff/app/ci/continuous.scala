@@ -19,6 +19,7 @@ import akka.agent.Agent
 import akka.actor.ActorSystem
 import utils.ChangeFreeze
 import rx.lang.scala.{Subscription, Observable}
+import conf.Configuration
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -40,13 +41,10 @@ case class ContinuousDeploymentConfig(
   lazy val buildFilter =
     (build:CIBuild) => build.projectName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
 
-  def findMatchOnSuccessfulBuild(builds: List[CIBuild]): Option[CIBuild] = {
-    if (trigger == Trigger.SuccessfulBuild) {
-      builds.filter(buildFilter).sortBy(-_.id).find { build =>
-        val olderBuilds = TeamCityBuilds.successfulBuilds(projectName).filter(buildFilter)
-        !olderBuilds.exists(_.id > build.id)
-      }
-    } else None
+  def findMatchOnSuccessfulBuild(build: CIBuild): Option[CIBuild] = {
+    if (trigger == Trigger.SuccessfulBuild && buildFilter(build))
+      Some(build)
+    else None
   }
 }
 
@@ -92,11 +90,15 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
 
 object ReactiveDeployment extends LifecycleWithoutApp with Logging {
   import play.api.libs.concurrent.Execution.Implicits._
+  import concurrent.duration._
 
   var sub: Option[Subscription] = None
 
   def init() {
-    val builds = NotFirstBatch(Unseen(Builds.teamcity))
+    val builds = for {
+      batch <- NotFirstBatch(Unseen(Every(Configuration.teamcity.pollingPeriodSeconds.seconds)(BuildRetrievers.teamcity)))
+      build <- Latest(Observable.from(batch))
+    } yield build
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
         runDeploy(getDeployParams(x))
@@ -130,10 +132,10 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
       log.info(s"Would deploy ${params.toString}")
   }
 
-  def getMatchesForSuccessfulBuilds(build: Iterable[CIBuild], configs: Iterable[ContinuousDeploymentConfig])
+  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig])
     : Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
-      config.findMatchOnSuccessfulBuild(build.toList).map(build => config -> build)
+      config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
   }
 }
@@ -143,4 +145,11 @@ trait CIBuild {
   def branchName: String
   def number: String
   def id: Long
+}
+
+object CIBuild {
+  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+  implicit val key = new Keyed[CIBuild, (String, String)] {
+    override def apply(t: CIBuild) = (t.projectName, t.branchName)
+  }
 }
