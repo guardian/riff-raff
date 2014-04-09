@@ -387,7 +387,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     pipeBuilder += MongoDBObject("$match" ->
       MongoDBObject(
         "parameters.projectName" -> projectName,
-        "parameters.deployType" -> "Deploy",
         "status" -> "Completed"
       )
     )
@@ -399,25 +398,23 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
       )
     )
     val pipeline = pipeBuilder.result()
-    log.debug("Aggregate query: %s" format pipeline.toString)
+    log.debug(s"Aggregate query: ${pipeline.toString()}")
     val result = database.command(MongoDBObject("aggregate" -> deployCollection.name, "pipeline" -> pipeline))
     val ok = result.as[Double]("ok")
     ok match {
       case 1.0 =>
-        log.debug("Result of aggregate query: %s" format result.toString)
+        log.debug(s"Result of aggregate query: ${result.toString}")
         result.get("result") match {
-          case results: BasicDBList => results.map { result =>
-            result match {
-              case dbo:BasicDBObject =>
-                dbo.as[BasicDBObject]("_id").as[String]("stage") -> UUID.fromString(dbo.as[String]("uuid"))
-            }
+          case results: BasicDBList => results.map {
+            case dbo: BasicDBObject =>
+              dbo.as[BasicDBObject]("_id").as[String]("stage") -> UUID.fromString(dbo.as[String]("uuid"))
           }.toMap
           case _ =>
             throw new IllegalArgumentException("Mongo query did not return valid result")
         }
       case 0.0 =>
         val errorMessage = result.as[String]("errmsg")
-        throw new IllegalArgumentException("Failed to execute mongo query: %s" format errorMessage)
+        throw new IllegalArgumentException(s"Failed to execute mongo query: $errorMessage")
     }
   }
 
