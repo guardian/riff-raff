@@ -57,25 +57,10 @@ class UnseenTest extends FunSuite with ShouldMatchers {
   test("latest can give latest item for some unique key on that item type") {
     case class Thing(name: String, v: Int)
     implicit val oThing = Ordering.by[Thing, Int](_.v)
-    implicit val key = new Keyed[Thing, String] {
-      override def apply(t: Thing) = t.name
-    }
 
     val things = Seq(Thing("a", 1), Thing("b", 2), Thing("b", 1), Thing("a", 3), Thing("a", 2))
-    val latest = Latest(Observable.interval(10.millis).take(5).map(_.toInt).map(things(_)))
+    val latest = Latest.by(Observable.interval(10.millis).take(5).map(_.toInt).map(things(_)))(_.name)
 
     latest.toBlockingObservable.toList should be (List(Thing("a", 1), Thing("b", 2), Thing("a", 3)))
-  }
-
-  test("bounded map will work as a map") {
-    val map = BoundedMap[Int, Int](1) + (1 -> 2)
-    map.get(1) should be (Some(2))
-    map.get(0) should be (None)
-  }
-
-  test("bounded map should overflow") {
-    val map = BoundedMap[Int, Int](1) + (1 -> 2) + (2 -> 3)
-    map.get(2) should be (Some(3))
-    map.get(1) should be (None)
   }
 }

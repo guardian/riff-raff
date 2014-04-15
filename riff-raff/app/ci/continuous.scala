@@ -97,7 +97,7 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
   def init() {
     val builds = for {
       batch <- NotFirstBatch(Unseen(Every(Configuration.teamcity.pollingPeriodSeconds.seconds)(BuildRetrievers.teamcity)))
-      build <- Latest(Observable.from(batch))
+      build <- Latest.by(Observable.from(batch))(b => b.projectName -> b.branchName)
     } yield build
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
@@ -149,7 +149,4 @@ trait CIBuild {
 
 object CIBuild {
   implicit val ord = Ordering.by[CIBuild, Long](_.id)
-  implicit val key = new Keyed[CIBuild, (String, String)] {
-    override def apply(t: CIBuild) = (t.projectName, t.branchName)
-  }
 }
