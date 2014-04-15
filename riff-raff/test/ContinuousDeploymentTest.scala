@@ -16,23 +16,21 @@ import org.joda.time.DateTime
 class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
-    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
-    params.size should be(2)
+    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
+    params.size should be(1)
     params should be(Set(
-      DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
       DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy", "71"), Stage("PROD"), RecipeName("default"))
     ))
   }
 
-  it should "work out the latest build for different branches" in {
-    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(newBuildsList, contDeployBranchConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
-    val expected = Set(
-      DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default")),
-      DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "391"), Stage("PROD"), RecipeName("default")),
-      DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy", "71"), Stage("PROD"), RecipeName("default"))
-    )
-    params.size should be(expected.size)
-    params should be(expected)
+  it should "return nothing if no matches" in {
+    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(otherBranch, contDeployBranchConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
+    params should be(Set())
+  }
+
+  it should "take account of branch" in {
+    val params = ReactiveDeployment.getMatchesForSuccessfulBuilds(td2B392, contDeployBranchConfigs).map(ReactiveDeployment.getDeployParams(_)).toSet
+    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), MagentaBuild("tools::deploy2", "392"), Stage("QA"), RecipeName("default"))))
   }
 
   /* Test types */
@@ -49,13 +47,9 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
   val url = new URL("http://riffraff.gnl/test")
 
   val tdBT = BuildType("bt204", "deploy", Project("project1", "tools"), url)
-  val tdB70 = BuildSummary(45394, "70", tdBT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,24,14,42,47), tdBT)
   val tdB71 = BuildSummary(45397, "71", tdBT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,25,14,42,47), tdBT)
 
   val td2BT = BuildType("bt205", "deploy2", Project("project1", "tools"), new URL("http://riffraff.gnl/test"))
-  val td2B390 = BuildSummary(45395, "390", td2BT.id, "SUCCESS", url, "branch", None, new DateTime(2013,1,24,14,43,47), td2BT)
-  val td2B391 = BuildSummary(45396, "391", td2BT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,25,14,44,47), td2BT)
   val td2B392 = BuildSummary(45400, "392", td2BT.id, "SUCCESS", url, "branch", None, new DateTime(2013,1,25,15,34,47), td2BT)
-
-  val newBuildsList = List( tdB70, tdB71, td2B390, td2B391, td2B392 )
+  val otherBranch = BuildSummary(45401, "393", td2BT.id, "SUCCESS", url, "other", None, new DateTime(2013,1,25,15,34,47), td2BT)
 }
