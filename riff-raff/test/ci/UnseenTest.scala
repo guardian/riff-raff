@@ -61,10 +61,10 @@ class UnseenTest extends FunSuite with ShouldMatchers {
       override def apply(t: Thing) = t.name
     }
 
-    val things = Seq(Thing("a", 1), Thing("b", 2), Thing("b", 1))
-    val latest = Latest(Observable.interval(10.millis).take(3).map(_.toInt).map(things(_)))
+    val things = Seq(Thing("a", 1), Thing("b", 2), Thing("b", 1), Thing("a", 3), Thing("a", 2))
+    val latest = Latest(Observable.interval(10.millis).take(5).map(_.toInt).map(things(_)))
 
-    latest.toBlockingObservable.toList should be (List(Thing("a", 1), Thing("b", 2)))
+    latest.toBlockingObservable.toList should be (List(Thing("a", 1), Thing("b", 2), Thing("a", 3)))
   }
 
   test("bounded map will work as a map") {
