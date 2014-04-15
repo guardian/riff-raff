@@ -19,14 +19,10 @@ object NotFirstBatch {
   }
 }
 
-trait Keyed[T, K] {
-  def apply(t: T): K
-}
-
 object Latest {
   def by[T: Ordering, K](obs: Observable[T])(groupBy: T => K): Observable[T] = {
     val ord = implicitly[Ordering[T]]
-    obs.groupBy(groupBy).flatMap { case (k, o) =>
+    obs.groupBy(groupBy).flatMap { case (_, o) =>
       o.scan(Option.empty[T], Option.empty[T]) {
         case ((_, maxed), current) => {
           if (maxed.exists(ord.gt(_, current)))
