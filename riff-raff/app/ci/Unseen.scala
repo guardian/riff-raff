@@ -37,7 +37,7 @@ object Latest {
   }
 }
 
-class BoundedSet[T](queue: Queue[T], maxSize: Int) {
+class BoundedSet[T](queue: Queue[T], maxSize: Int) extends Set[T] {
   def +(elem: T): BoundedSet[T] = {
     if (contains(elem)) {
       new BoundedSet(pushToBack(queue, elem), maxSize)
@@ -53,6 +53,9 @@ class BoundedSet[T](queue: Queue[T], maxSize: Int) {
     (queue.slice(0, currentPos) ++ queue.slice(currentPos + 1, queue.size)).enqueue(item)
   }
 
+  def -(elem: T) = new BoundedSet[T](queue.filter(_ != elem), maxSize)
+
+  def iterator = queue.iterator
 }
 
 object BoundedSet {

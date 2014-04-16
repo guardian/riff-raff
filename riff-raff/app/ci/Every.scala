@@ -4,7 +4,7 @@ import controllers.Logging
 import scala.concurrent.{ExecutionContext, Future}
 import rx.lang.scala.Observable
 import conf.Configuration
-import ci.teamcity.{BuildSummary, TeamCityWS}
+import ci.teamcity.{BuildType, BuildSummary, TeamCityWS}
 import ci.teamcity.TeamCity.BuildTypeLocator
 import play.api.libs.ws.WS
 import play.api.libs.json.JsArray
@@ -14,7 +14,7 @@ object Every extends Logging {
 
   def apply[T](frequency: concurrent.duration.Duration)(buildRetriever: () => Future[Iterable[T]])(implicit ec: ExecutionContext): Observable[Iterable[T]] = {
     (for {
-      _ <- Observable.timer(5.seconds, frequency)
+      _ <- Observable.timer(1.second, frequency)
       builds <- Observable.from(buildRetriever().recover { case e =>
         log.logger.error("Error while polling", e)
         Seq()
@@ -27,12 +27,14 @@ object Every extends Logging {
 
 object BuildRetrievers {
   def teamcity(implicit ec: ExecutionContext): () => Future[Iterable[CIBuild]] = () =>
-    TeamCityWS.url("/app/rest/builds").get().flatMap { r =>
-      BuildSummary(r.xml, (id: String) => {
-        BuildTypeLocator.list.map(_.find(_.id == id))
-      }, false).map(_.groupBy(b => (b.buildType.fullName, b.branchName, b.status)).map({case (_, builds) =>
-        builds.maxBy(_.id)
-      }).filter(_.status == "SUCCESS"))
+    BuildTypeLocator.list.flatMap { bts =>
+      Future.traverse(bts)(buildsForType).map(_.flatten)
     }
+
+  def buildsForType(buildType: BuildType)(implicit ec: ExecutionContext): Future[Iterable[CIBuild]] = {
+    TeamCityWS.url(s"/app/rest/builds?buildType=${buildType.id}&status=SUCCESS&count=10").get().flatMap { r =>
+      BuildSummary(r.xml, (id: String) => Future.successful(Some(buildType)), false)
+    }
+  }
 }
 

@@ -141,8 +141,8 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   def buildTypes: Iterable[CIBuild] = buildsAgent.get().groupBy(b => b.projectName).map{
     case (_, builds) => builds.head
   }
-  val buildsAgent = Agent[Set[CIBuild]](Set())
-  def successfulBuilds(projectName: String): List[CIBuild] = builds.filter(_.projectName == projectName)
+  val buildsAgent = Agent[Set[CIBuild]](BoundedSet(10000))
+  def successfulBuilds(projectName: String): List[CIBuild] = builds.filter(_.projectName == projectName).sortBy(- _.id)
   def getLastSuccessful(projectName: String): Option[String] =
     successfulBuilds(projectName).headOption.map{ latestBuild =>
       latestBuild.number
