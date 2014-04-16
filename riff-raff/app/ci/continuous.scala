@@ -9,17 +9,13 @@ import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import scala.Some
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.{MongoFormat, MongoSerialisable}
 import persistence.Persistence.store.getContinuousDeploymentList
 import org.joda.time.DateTime
-import teamcity.TeamcityBuild
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
-import akka.agent.Agent
-import akka.actor.ActorSystem
 import utils.ChangeFreeze
 import rx.lang.scala.{Subscription, Observable}
-import conf.Configuration
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -89,14 +85,12 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
 }
 
 object ReactiveDeployment extends LifecycleWithoutApp with Logging {
-  import play.api.libs.concurrent.Execution.Implicits._
-  import concurrent.duration._
 
   var sub: Option[Subscription] = None
 
   def init() {
     val builds = for {
-      batch <- NotFirstBatch(Unseen(Every(Configuration.teamcity.pollingPeriodSeconds.seconds)(BuildRetrievers.teamcity)))
+      batch <- NotFirstBatch(Unseen(CIBuild.teamCity))
       build <- Latest.by(Observable.from(batch))(b => b.projectName -> b.branchName)
     } yield build
     sub = Some(builds.subscribe { b =>
@@ -140,13 +134,3 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
   }
 }
 
-trait CIBuild {
-  def projectName: String
-  def branchName: String
-  def number: String
-  def id: Long
-}
-
-object CIBuild {
-  implicit val ord = Ordering.by[CIBuild, Long](_.id)
-}

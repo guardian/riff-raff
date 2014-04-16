@@ -28,7 +28,7 @@ object Project extends Logging {
   }
 }
 
-case class BuildType(id: String, name: String, project: Project, webUrl: URL) {
+case class BuildType(id: String, name: String, project: Project) {
   def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
   def builds(locator: BuildLocator, followNext: Boolean = false) = BuildSummary(locator.buildTypeId(id), this, followNext)
   lazy val fullName = "%s::%s" format (project.name, name)
@@ -48,8 +48,7 @@ object BuildType extends Logging {
     BuildType(
       buildType \ "@id" text,
       buildType \ "@name" text,
-      Project(buildType \ "@projectId" text, buildType \ "@projectName" text),
-      new URL(buildType \ "@webUrl" text)
+      Project(buildType \ "@projectId" text, buildType \ "@projectName" text)
     )
   }
 }
@@ -79,6 +78,9 @@ trait TeamcityBuild extends CIBuild with Logging {
     buildPinCall
   }
   def projectName = buildType.fullName
+  def startTime = startDate
+
+  def projectId = buildType.id
 }
 
 case class BuildSummary(id: Long,

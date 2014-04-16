@@ -12,6 +12,7 @@ import play.api.Logger
 import akka.agent.Agent
 import Context._
 import scala.util.Try
+import rx.lang.scala.{Observable, Subscription}
 
 
 object `package` {
@@ -32,11 +33,11 @@ object `package` {
 object ContinuousIntegration {
   def getMetaData(projectName: String, buildId: String): Map[String, String] = {
     val build = TeamCityBuilds.builds.find { build =>
-      build.buildType.fullName == projectName && build.number == buildId
+      build.projectName == projectName && build.number == buildId
     }
     build.map { build =>
       val branch = Map("branch" -> build.branchName)
-      val futureMap = build.detail.flatMap { detailedBuild =>
+      val futureMap = BuildDetail(BuildLocator(id=Some(build.id))).flatMap { detailedBuild =>
         Future.sequence(detailedBuild.revision.map {
           revision =>
             revision.vcsDetails.map {
@@ -128,95 +129,32 @@ trait ApiTracker[T] {
   def name:String
 }
 
-case class BuildLocatorTracker(locator: BuildLocator,
-                          buildTypeTracker: ApiTracker[BuildType],
-                          fullUpdatePeriod: FiniteDuration,
-                          incrementalUpdatePeriod: FiniteDuration,
-                          pollingWindow: Duration,
-                          startupDelay: FiniteDuration = 0L.seconds) extends ApiTracker[TeamcityBuild] with Logging {
-
-  def name = locator.toString
-
-  def fullUpdate(previous: List[TeamcityBuild]) = {
-    Await.result(getBuilds, incrementalUpdatePeriod * 20)
-  }
-
-  override def incrementalUpdate(previous: List[TeamcityBuild]) = {
-    Await.result(getNewBuilds(previous).map { newBuilds =>
-      if (newBuilds.isEmpty)
-        Result(Nil, previous, previous)
-      else
-        Result(newBuilds, (previous ++ newBuilds).sortBy(-_.id), previous)
-    },incrementalUpdatePeriod)
-  }
-
-  def getBuilds: Future[List[TeamcityBuild]] = {
-    log.debug(s"[$name] Getting builds")
-    val buildTypes = buildTypeTracker.future()
-    buildTypes.flatMap{ fulfilledBuildTypes =>
-      Future.sequence(fulfilledBuildTypes.map(_.builds(locator, followNext = true))).map(_.flatten)
-    }
-  }
-
-  def getNewBuilds(currentBuilds:List[TeamcityBuild]): Future[List[TeamcityBuild]] = {
-    val knownBuilds = currentBuilds.map(_.id).toSet
-    val locatorWithWindow = locator.sinceDate(new DateTime().minus(pollingWindow))
-    log.info(s"[$name] Querying with $locatorWithWindow")
-    val builds = BuildSummary.listWithLookup(locatorWithWindow, TeamCityBuilds.getBuildType, followNext = true)
-    builds.map { builds =>
-      val newBuilds = builds.filterNot(build => knownBuilds.contains(build.id))
-      if (!newBuilds.isEmpty)
-        log.info(s"[$name] Discovered builds: \n${newBuilds.mkString("\n")}")
-      newBuilds
-    }
-  }
-
-  val trackerLog = log
-}
-
 object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
-  private var buildTypeTracker: Option[ApiTracker[BuildType]] = None
-  private var successfulBuildTracker: Option[BuildLocatorTracker] = None
+  private var buildSubscription: Option[Subscription] = None
 
-  def builds: List[TeamcityBuild] = successfulBuildTracker.map(_.get()).getOrElse(Nil)
-  def build(project: String, number: String) = builds.find(b => b.buildType.fullName == project && b.number == number)
-  def buildTypes: Set[BuildType] = buildTypeTracker.map(_.get().toSet).getOrElse(Set.empty)
-  def getBuildType(id: String):Option[BuildType] = buildTypes.find(_.id == id)
-  def successfulBuilds(projectName: String): List[TeamcityBuild] = builds.filter(_.buildType.fullName == projectName)
+  def builds: List[CIBuild] = buildsAgent.get().toList
+  def build(project: String, number: String) = builds.find(b => b.projectName == project && b.number == number)
+  def buildTypes: Iterable[CIBuild] = buildsAgent.get().groupBy(b => b.projectName).map{
+    case (_, builds) => builds.head
+  }
+  val buildsAgent = Agent[Set[CIBuild]](Set())
+  def successfulBuilds(projectName: String): List[CIBuild] = builds.filter(_.projectName == projectName)
   def getLastSuccessful(projectName: String): Option[String] =
     successfulBuilds(projectName).headOption.map{ latestBuild =>
       latestBuild.number
     }
 
   def init() {
-    if (TeamCityWS.teamcityURL.isDefined) {
-      buildTypeTracker = Some(new ApiTracker[BuildType] {
-        def name = "BuildType tracker"
-        def fullUpdatePeriod = TeamCityBuilds.fullUpdatePeriod
-        def incrementalUpdatePeriod = pollingPeriod
-        def fullUpdate(previous: List[BuildType]) = {
-          Await.result(BuildTypeLocator.list, pollingPeriod / 2)
-        }
-        def notify(discovered: List[BuildType], previous: List[BuildType]) { }
-        def trackerLog = log
-        def startupDelay = 0L.seconds
-      })
-      successfulBuildTracker = Some(new BuildLocatorTracker(
-        BuildLocator.status("SUCCESS"),
-        buildTypeTracker.get,
-        fullUpdatePeriod,
-        pollingPeriod,
-        pollingWindow
-      ))
-    }
+    buildSubscription = Some(CIBuild.teamCityBuilds.subscribe { b =>
+      buildsAgent.send(_ + b)
+    })
   }
 
   def shutdown() {
-    successfulBuildTracker.foreach(_.shutdown())
-    buildTypeTracker.foreach(_.shutdown())
+    buildSubscription.foreach(_.unsubscribe())
   }
 }

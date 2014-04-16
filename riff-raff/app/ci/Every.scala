@@ -32,7 +32,7 @@ object BuildRetrievers {
         BuildTypeLocator.list.map(_.find(_.id == id))
       }, false).map(_.groupBy(b => (b.buildType.fullName, b.branchName, b.status)).map({case (_, builds) =>
         builds.maxBy(_.id)
-      }))
+      }).filter(_.status == "SUCCESS"))
     }
 }
 
