@@ -32,7 +32,7 @@ object BuildRetrievers {
     }
 
   def buildsForType(buildType: BuildType)(implicit ec: ExecutionContext): Future[Iterable[CIBuild]] = {
-    TeamCityWS.url(s"/app/rest/builds?buildType=${buildType.id}&status=SUCCESS&count=10").get().flatMap { r =>
+    TeamCityWS.url(s"/app/rest/builds?locator=buildType:${buildType.id},branch:default:any&count=20").get().flatMap { r =>
       BuildSummary(r.xml, (id: String) => Future.successful(Some(buildType)), false)
     }
   }
