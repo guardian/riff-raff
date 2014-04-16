@@ -61,22 +61,6 @@ trait TeamcityBuild extends CIBuild with Logging {
   def buildType: BuildType
   def defaultBranch: Option[Boolean]
   def detail: Future[BuildDetail]
-  def pin(text: String): Future[Response] = {
-    val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).put(text)
-    buildPinCall.map { response =>
-      log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
-      log.debug("HTTP response body %s" format response.body)
-    }
-    buildPinCall
-  }
-  def unpin(): Future[Response] = {
-    val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(id)).delete()
-    buildPinCall.map { response =>
-      log.info("Unpinning build %s: HTTP status code %d" format (this.toString, response.status))
-      log.debug("HTTP response body %s" format response.body)
-    }
-    buildPinCall
-  }
   def projectName = buildType.fullName
   def startTime = startDate
 

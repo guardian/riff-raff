@@ -1,6 +1,7 @@
 package notification
 
 import ci.{CIBuild, TeamCityBuilds}
+import ci.teamcity.TeamcityBuild
 import lifecycle.LifecycleWithoutApp
 import controllers.{routes, Logging}
 import magenta.{MessageSink,Build, MessageBroker}
@@ -60,7 +61,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
           log.debug("Got details for %d builds: %s" format (detailedBuilds.size, detailedBuilds.mkString("\n")))
           detailedBuilds.filter(_.pinInfo.get.user.username == tcUserName).sortBy(-_.pinInfo.get.timestamp.getMillis).drop(maxPinned).map { buildToUnpin =>
             log.debug("Unpinning %s" format buildToUnpin)
-            buildToUnpin.unpin()
+            unpin(buildToUnpin)
           }
         }
       }
@@ -71,6 +72,14 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).put(text)
     buildPinCall.map { response =>
       log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
+      log.debug("HTTP response body %s" format response.body)
+    }
+    buildPinCall
+  }
+  def unpin(build: TeamcityBuild): Future[Response] = {
+    val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).delete()
+    buildPinCall.map { response =>
+      log.info("Unpinning build %s: HTTP status code %d" format (build.toString, response.status))
       log.debug("HTTP response body %s" format response.body)
     }
     buildPinCall
