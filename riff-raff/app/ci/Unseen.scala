@@ -2,6 +2,9 @@ package ci
 
 import rx.lang.scala.Observable
 import scala.collection.immutable.Queue
+import scala.concurrent.duration._
+import scala.util.Random
+import scala.Some
 
 object Unseen {
   def apply[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
@@ -16,6 +19,13 @@ object Unseen {
 object NotFirstBatch {
   def apply[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
     obs.dropWhile(_.toSeq.isEmpty).drop(1)
+  }
+}
+
+object AtSomePointIn {
+  def apply[T](window: Duration)(act: => Observable[T]): Observable[T] = {
+    val kickOffTime = Duration.create(Random.nextInt(window.toMillis.toInt), MILLISECONDS)
+    Observable.interval(kickOffTime).first.flatMap(_ => act)
   }
 }
 
