@@ -42,7 +42,7 @@ object Django extends DeploymentType {
         BlockFirewall(host as user(pkg)),
         CompressedCopy(host as user(pkg), appVersionPath, destDir),
         Link(host as user(pkg), appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
-        CleanupOldDeploys(host as user(pkg), deploysToKeep(pkg)),
+        CleanupOldDeploys(host as user(pkg), deploysToKeep(pkg), destDir),
         ApacheGracefulRestart(host as user(pkg)),
         WaitForPort(host, port(pkg), 60 * 1000),
         CheckUrls(host, port(pkg), healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),

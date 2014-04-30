@@ -276,9 +276,9 @@ case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extend
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
-case class CleanupOldDeploys(host: Host, amount: Int = 0) extends RemoteShellTask {
+case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String) extends RemoteShellTask {
 	def commandLine = {
-    if (amount > 0) List("ls", "-tr","--ignore=logs", "|", "head", "-n", "-" + amount*2, "|", "xargs", "rm", "-rf") else List()
+    if (amount > 0) List(s"cd $path && ", "ls", "-tr","--ignore=logs", "--ignore=http", "|", "head", "-n", "-" + amount*2, "|", "xargs", "rm", "-rf") else List()
   }
 }
 
