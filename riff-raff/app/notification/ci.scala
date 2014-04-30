@@ -51,7 +51,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
   def cleanUpPins(build: CIBuild) {
     log.debug("Cleaning up any old pins")
     val buildType = BuildType(
-      id = build.projectId, name = build.projectName, project = Project(build.projectId, build.projectName))
+      id = build.projectId, typeName = build.projectName, project = Project(build.projectId, build.projectName))
     val allPinnedBuilds = BuildLocator.pinned(pinned=true).buildTypeInstance(buildType).list
     allPinnedBuilds.map { builds =>
       log.debug("Found %d pinned builds for %s" format (builds.size, build.projectId))

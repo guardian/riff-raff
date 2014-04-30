@@ -28,10 +28,15 @@ object Project extends Logging {
   }
 }
 
-case class BuildType(id: String, name: String, project: Project) {
+trait Job {
+  def id: String
+  def name: String
+}
+
+case class BuildType(id: String, typeName: String, project: Project) extends Job {
   def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
   def builds(locator: BuildLocator, followNext: Boolean = false) = BuildSummary(locator.buildTypeId(id), this, followNext)
-  lazy val fullName = "%s::%s" format (project.name, name)
+  lazy val name = "%s::%s" format (project.name, typeName)
 }
 object BuildType extends Logging {
   def apply(project: Project): Future[List[BuildType]] = {
@@ -61,7 +66,7 @@ trait TeamcityBuild extends CIBuild with Logging {
   def buildType: BuildType
   def defaultBranch: Option[Boolean]
   def detail: Future[BuildDetail]
-  def projectName = buildType.fullName
+  def projectName = buildType.name
   def startTime = startDate
 
   def projectId = buildType.id
