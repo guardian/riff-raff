@@ -14,9 +14,7 @@ import concurrent.{ExecutionContext, Future}
 import ExecutionContext.Implicits.global
 import ci.CIBuild
 
-case class Project(id: String, name: String) {
-  def buildTypes: Future[List[BuildType]] = BuildType(this)
-}
+case class Project(id: String, name: String)
 object Project extends Logging {
   def apply(): Future[List[Project]] = {
     val ws = api.project.list
@@ -34,16 +32,9 @@ trait Job {
 }
 
 case class BuildType(id: String, typeName: String, project: Project) extends Job {
-  def builds = BuildSummary(BuildLocator.buildTypeId(id), this)
-  def builds(locator: BuildLocator, followNext: Boolean = false) = BuildSummary(locator.buildTypeId(id), this, followNext)
   lazy val name = "%s::%s" format (project.name, typeName)
 }
 object BuildType extends Logging {
-  def apply(project: Project): Future[List[BuildType]] = {
-    val ws = api.project.detail(ProjectLocator(project))
-    log.debug("Getting list of buildTypes from %s" format ws.url)
-    ws.get().map( data => BuildType(data.xml \ "buildTypes" \ "buildType"))
-  }
   def apply(xml: NodeSeq): List[BuildType] = {
     val nodes = xml.toList
     log.debug("Processing %d build types" format nodes.size)
@@ -63,13 +54,13 @@ trait TeamcityBuild extends CIBuild with Logging {
   def webUrl: URL
   def buildTypeId: String
   def startDate: DateTime
-  def buildType: BuildType
+  def job: Job
   def defaultBranch: Option[Boolean]
   def detail: Future[BuildDetail]
-  def projectName = buildType.name
+  def jobName = job.name
   def startTime = startDate
 
-  def projectId = buildType.id
+  def jobId = job.id
 }
 
 case class BuildSummary(id: Long,
@@ -80,31 +71,31 @@ case class BuildSummary(id: Long,
                         branchName: String,
                         defaultBranch: Option[Boolean],
                         startDate: DateTime,
-                        buildType: BuildType
+                        job: Job
                          ) extends TeamcityBuild {
   def detail: Future[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
 }
 object BuildSummary extends Logging {
-  def wrapLookup(original: String => Option[BuildType]) = (id: String) => Future.successful(original(id))
+  def wrapLookup(original: String => Option[Job]) = (id: String) => Future.successful(original(id))
 
-  def apply(locator: BuildLocator, buildType: BuildType, followNext: Boolean = false): Future[List[BuildSummary]] = {
-    listWithLookup(locator, (id: String) => { Some(buildType) }, followNext)
+  def apply(locator: BuildLocator, job: Job, followNext: Boolean = false): Future[List[BuildSummary]] = {
+    listWithLookup(locator, (id: String) => { Some(job) }, followNext)
   }
 
-  def listWithLookup(locator: BuildLocator, buildTypeLookup: String => Option[BuildType], followNext:Boolean = false): Future[List[BuildSummary]] = {
-    listWithFuturedLookup(locator, wrapLookup(buildTypeLookup), followNext)
+  def listWithLookup(locator: BuildLocator, jobLookup: String => Option[Job], followNext:Boolean = false): Future[List[BuildSummary]] = {
+    listWithFuturedLookup(locator, wrapLookup(jobLookup), followNext)
   }
 
-  def listWithFuturedLookup(locator: BuildLocator, buildTypeLookup: String => Future[Option[BuildType]], followNext:Boolean = false): Future[List[BuildSummary]] = {
+  def listWithFuturedLookup(locator: BuildLocator, jobLookup: String => Future[Option[Job]], followNext:Boolean = false): Future[List[BuildSummary]] = {
     log.debug("Getting build summaries for %s" format locator)
-    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, buildTypeLookup, followNext) )
+    api.build.list(locator).get().flatMap( data => BuildSummary(data.xml, jobLookup, followNext) )
   }
 
-  private def apply(build: Node, buildTypeLookup: String => Future[Option[BuildType]]): Future[Option[BuildSummary]] = {
+  private def apply(build: Node, jobLookup: String => Future[Option[Job]]): Future[Option[BuildSummary]] = {
     val buildTypeId = build \ "@buildTypeId" text
-    val buildSummary = buildTypeLookup(buildTypeId).map { buildType =>
-      if (buildType.isEmpty) log.warn("No build type found for %s" format buildTypeId)
-      buildType.map { bt =>
+    val buildSummary = jobLookup(buildTypeId).map { job =>
+      if (job.isEmpty) log.warn("No build type found for %s" format buildTypeId)
+      job.map { bt =>
         apply(
           (build \ "@id" text).toInt,
           build \ "@number" text,
@@ -123,8 +114,8 @@ object BuildSummary extends Logging {
 
   val BrokenSinceDateMatcher = """^(.*sinceDate:\d{8}T\d{6})\+(\d{4}.*)$""".r
 
-  def apply(builds: Elem, buildTypeLookup: String => Future[Option[BuildType]], followNext: Boolean): Future[List[BuildSummary]] = {
-    val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, buildTypeLookup) )).map(_.flatten)
+  def apply(builds: Elem, jobLookup: String => Future[Option[Job]], followNext: Boolean): Future[List[BuildSummary]] = {
+    val buildSummaries = Future.sequence((builds \ "build").toList map( apply(_, jobLookup) )).map(_.flatten)
     (builds \ "@nextHref").headOption match {
       case Some(continuationUrl) if followNext =>
         val fixedContinuationUrl = continuationUrl.text match {
@@ -133,7 +124,7 @@ object BuildSummary extends Logging {
         }
         val continuations = api.href(fixedContinuationUrl).get().flatMap{ data =>
           if (data.status < 400)
-            BuildSummary(data.xml, buildTypeLookup, followNext)
+            BuildSummary(data.xml, jobLookup, followNext)
           else {
             log.warn(s"Status ${data.status} when trying to get further results from $fixedContinuationUrl")
             Future.successful(Nil)
@@ -196,7 +187,7 @@ object Revision {
 case class BuildDetail(
   id: Long,
   number: String,
-  buildType: BuildType,
+  job: BuildType,
   status: String,
   webUrl: URL,
   branchName: String,
@@ -207,7 +198,7 @@ case class BuildDetail(
   revision: Option[Revision]
 ) extends TeamcityBuild {
   def detail = Future.successful(this)
-  def buildTypeId = buildType.id
+  def buildTypeId = job.id
 }
 object BuildDetail {
   def apply(locator: BuildLocator): Future[BuildDetail] = {
@@ -217,7 +208,7 @@ object BuildDetail {
     BuildDetail(
       id = (build \ "@id" text).toInt,
       number = build \ "@number" text,
-      buildType = BuildType(build \ "buildType" head),
+      job = BuildType(build \ "buildType" head),
       status = build \ "@status" text,
       webUrl = new URL(build \ "@webUrl" text),
       branchName = (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
@@ -309,7 +300,7 @@ object TeamCity {
   object BuildTypeLocator {
     def id(buildTypeId: String) = BuildTypeLocator(id=Some(buildTypeId))
     def name(buildTypeName: String) = BuildTypeLocator(name=Some(buildTypeName))
-    def list: Future[List[BuildType]] = api.buildType.list.get().map(data => BuildType(data.xml \ "buildType"))
+    def list: Future[List[Job]] = api.buildType.list.get().map(data => BuildType(data.xml \ "buildType"))
   }
   case class ProjectLocator(id: Option[String] = None, name: Option[String] = None) extends Locator {
     lazy val params = Map(
@@ -351,7 +342,7 @@ object TeamCity {
 }
 
 
-object TeamCityWS {
+object TeamCityWS extends Logging {
   case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
   val auth = if (teamcity.useAuth) Some(Auth(teamcity.user.get, teamcity.password.get)) else None
@@ -360,6 +351,7 @@ object TeamCityWS {
   def url(path: String): WSRequestHolder = {
     assert(teamcityURL.isDefined, "TeamCity is not configured")
     val url = "%s%s" format (teamcityURL.get, path)
+    log.debug(s"Fetching: $url")
     auth.map(ui => WS.url(url).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(url))
   }
 

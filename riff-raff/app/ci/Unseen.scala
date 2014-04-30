@@ -7,12 +7,20 @@ import scala.util.Random
 import scala.Some
 
 object Unseen {
-  def apply[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
+  def iterable[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
     obs.scan((Seq[T]().toIterable, BoundedSet[T](10000))) {
       case ((_, seen), current) => (current.filterNot(seen.contains), current.foldLeft(seen)(_ + _))
     } map {
       case (elems, _) => elems
     } drop (1)
+  }
+
+  def apply[T](obs: Observable[T]): Observable[T] = {
+    obs.scan((Option.empty[T], BoundedSet[T](10000))) {
+      case ((_, seen), current) => (if (seen.contains(current)) None else Some(current), seen + current)
+    } flatMap {
+      case (opt, _) => Observable.from(opt)
+    }
   }
 }
 

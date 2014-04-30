@@ -16,6 +16,8 @@ import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import utils.ChangeFreeze
 import rx.lang.scala.{Subscription, Observable}
+import ci.teamcity.Job
+import conf.Configuration
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -35,7 +37,7 @@ case class ContinuousDeploymentConfig(
 ) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
-    (build:CIBuild) => build.projectName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
+    (build:CIBuild) => build.jobName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
 
   def findMatchOnSuccessfulBuild(build: CIBuild): Option[CIBuild] = {
     if (trigger == Trigger.SuccessfulBuild && buildFilter(build))
@@ -90,9 +92,11 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
 
   def init() {
     val builds = for {
-      batch <- NotFirstBatch(Unseen(CIBuild.teamCity))
-      build <- Latest.by(Observable.from(batch))(b => b.projectName -> b.branchName)
+      buildBatchesForJob <- CIBuild.buildBatchesForAllJobs
+      buildBatch <- NotFirstBatch(buildBatchesForJob)
+      build <- Latest.by(Observable.from(buildBatch))(b => b.jobName -> b.branchName)
     } yield build
+
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
         runDeploy(getDeployParams(x))
@@ -108,7 +112,7 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
     val (config,build) = configBuildTuple
     DeployParameters(
       Deployer("Continuous Deployment"),
-      MagentaBuild(build.projectName,build.number),
+      MagentaBuild(build.jobName,build.number),
       Stage(config.stage),
       RecipeName(config.recipe)
     )

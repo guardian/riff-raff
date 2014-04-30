@@ -3,10 +3,11 @@ package ci
 import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
+import ci.teamcity.Job
 
 trait CIBuild {
-  def projectName: String
-  def projectId: String
+  def jobName: String
+  def jobId: String
   def branchName: String
   def number: String
   def id: Long
@@ -19,9 +20,22 @@ object CIBuild {
 
   implicit val ord = Ordering.by[CIBuild, Long](_.id)
 
-  val teamCity = Every(Configuration.teamcity.pollingPeriodSeconds.seconds)(BuildRetrievers.teamcity)
-  val teamCityBuilds = for {
-    builds <- CIBuild.teamCity
-    build <- Observable.from(builds)
+  val pollingPeriod = Configuration.teamcity.pollingPeriodSeconds.seconds
+  val jobs: Observable[Job] = Every(pollingPeriod)(TeamCityAPI.jobs)
+  val buildBatchesForAllJobs: Observable[Observable[Iterable[CIBuild]]] = for {
+    job <- Unseen(CIBuild.jobs)
+  } yield
+    Unseen.iterable(
+      AtSomePointIn(pollingPeriod)(
+        Every(pollingPeriod)(
+          TeamCityAPI.builds(job)
+        )
+      )
+    )
+
+  val builds = for {
+    buildBatchesForJob <- buildBatchesForAllJobs
+    buildBatch <- buildBatchesForJob
+    build <- Observable.from(buildBatch)
   } yield build
 }

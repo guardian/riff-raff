@@ -14,26 +14,10 @@ import Context._
 import scala.util.Try
 import rx.lang.scala.{Observable, Subscription}
 
-
-object `package` {
-  implicit def listOfBuild2helpers(builds: List[TeamcityBuild]) = new {
-    def buildTypes: Set[teamcity.BuildType] = builds.map(_.buildType).toSet
-  }
-
-  implicit def futureIterable2FlattenMap[A](futureIterable: Future[Iterable[A]]) = new {
-    def flatFutureMap[B](p: A => Future[Iterable[B]]):Future[Iterable[B]] = {
-      futureIterable.flatMap { iterable =>
-        val newFutures:Iterable[Future[Iterable[B]]] = iterable.map(p)
-        Future.sequence(newFutures).map(_.flatten)
-      }
-    }
-  }
-}
-
 object ContinuousIntegration {
   def getMetaData(projectName: String, buildId: String): Map[String, String] = {
     val build = TeamCityBuilds.builds.find { build =>
-      build.projectName == projectName && build.number == buildId
+      build.jobName == projectName && build.number == buildId
     }
     build.map { build =>
       val branch = Map("branch" -> build.branchName)
@@ -63,27 +47,32 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
-  private var buildSubscription: Option[Subscription] = None
+  private var subscriptions = Seq.empty[Subscription]
 
+  def jobs: Iterable[Job] = jobsAgent.get()
   def builds: List[CIBuild] = buildsAgent.get().toList
-  def build(project: String, number: String) = builds.find(b => b.projectName == project && b.number == number)
-  def buildTypes: Iterable[CIBuild] = buildsAgent.get().groupBy(b => b.projectName).map{
-    case (_, builds) => builds.head
-  }
+  def build(project: String, number: String) = builds.find(b => b.jobName == project && b.number == number)
+
   val buildsAgent = Agent[Set[CIBuild]](BoundedSet(10000))
-  def successfulBuilds(projectName: String): List[CIBuild] = builds.filter(_.projectName == projectName).sortBy(- _.id)
-  def getLastSuccessful(projectName: String): Option[String] =
-    successfulBuilds(projectName).headOption.map{ latestBuild =>
+  val jobsAgent = Agent[Set[Job]](Set())
+  def successfulBuilds(jobName: String): List[CIBuild] = builds.filter(_.jobName == jobName).sortBy(- _.id)
+  def getLastSuccessful(jobName: String): Option[String] =
+    successfulBuilds(jobName).headOption.map{ latestBuild =>
       latestBuild.number
     }
 
   def init() {
-    buildSubscription = Some(CIBuild.teamCityBuilds.subscribe { b =>
-      buildsAgent.send(_ + b)
-    })
+    subscriptions = Seq(
+      CIBuild.builds.subscribe { b =>
+        buildsAgent.send(_ + b)
+      },
+      CIBuild.jobs.subscribe { b =>
+        jobsAgent.send(_ + b)
+      }
+    )
   }
 
   def shutdown() {
-    buildSubscription.foreach(_.unsubscribe())
+    subscriptions.foreach(_.unsubscribe())
   }
 }
