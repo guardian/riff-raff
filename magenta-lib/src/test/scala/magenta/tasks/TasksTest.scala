@@ -370,7 +370,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   "CleanupOldDeploy task" should "keep all deploys by default" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = new CleanupOldDeploys(host, 0, "/tmp/")
+    val task = new CleanupOldDeploys(host, 0, "/tmp/", "test")
     val command = task.tasks
 
     command should be (Seq.empty)
@@ -389,11 +389,11 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "try to delete the last n deploys" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = new deleteOldDeploys(host, 4, "/tmp/")
+    val task = new deleteOldDeploys(host, 4, "/tmp/", "test")
 
     val command = task.commandLine
 
-    command.quoted should be ("""ls -t --ignore="logs" /tmp/ | head -n -5 | xargs -x rm -rf""")
+    command.quoted should be ("""ls -tdr /django-apps/test?* | head -n -4 | xargs -t -n1 rm -rf""")
   }
 
   private def createTempDir(): File = {
