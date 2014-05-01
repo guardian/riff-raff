@@ -3,35 +3,17 @@ package ci
 import org.scalatest.FunSuite
 import rx.lang.scala.Observable
 import org.scalatest.matchers.ShouldMatchers
-import scala.concurrent.ExecutionContext
 import concurrent.duration._
 
 class UnseenTest extends FunSuite with ShouldMatchers {
-  test("should only provide unseen elements") {
-    val unseen = Unseen.iterable(Observable.interval(10.millis).take(5).map(_ % 3).map(Seq(_)))
-    unseen.toBlockingObservable.toList should be(List(Seq(0),Seq(1),Seq(2), Seq(), Seq()))
-  }
-
-  test("should not pass on anything if nothing seen previously") {
-    val notFirstBatch = NotFirstBatch(Observable.timer(0.millis, 10.millis).take(5).map(Seq(_)))
-    notFirstBatch.toBlockingObservable.toList should be(List(Seq(1),Seq(2), Seq(3), Seq(4)))
-  }
-
-  test("should ignore multiple empty elements") {
-    val stuff = Seq(Seq(), Seq(), Seq(1,2), Seq(2,3,4), Seq(2,3,4))
-    val notFirstBatch = NotFirstBatch(Observable.interval(10.millis).take(5).map(_.toInt).map(stuff(_)))
-    notFirstBatch.toBlockingObservable.toList should be(List(Seq(2,3,4), Seq(2,3,4)))
-  }
-
-  test("can combine unseen with not first batch") {
-    val stuff = Seq(Seq(), Seq(), Seq(1,2), Seq(2,3,4), Seq(2,3,4), Seq(2,3,4,5))
-    val notFirstUnseen = NotFirstBatch(Unseen.iterable(Observable.timer(0.millis, 10.millis).take(6).map(_.toInt).map(stuff(_))))
-    notFirstUnseen.toBlockingObservable.toList should be(List(Seq(3,4), Seq(), Seq(5)))
-  }
-
   test("only emit unseen values") {
     val unseen = Unseen(Observable.items(0, 1, 2, 0, 1, 3))
     unseen.toBlockingObservable.toList should be(List(0, 1, 2, 3))
+  }
+
+  test("should not provide elements provided in seed") {
+    val unseen = Unseen(Seq(1), Observable.items(0, 1, 2, 0, 1, 3))
+    unseen.toBlockingObservable.toList should be(List(0, 2, 3))
   }
 
   test("bounded set obeys contains") {

@@ -2,38 +2,17 @@ package ci
 
 import rx.lang.scala.Observable
 import scala.collection.immutable.Queue
-import scala.concurrent.duration._
-import scala.util.Random
 import scala.Some
 
 object Unseen {
-  def iterable[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
-    obs.scan((Seq[T]().toIterable, BoundedSet[T](10000))) {
-      case ((_, seen), current) => (current.filterNot(seen.contains), current.foldLeft(seen)(_ + _))
-    } map {
-      case (elems, _) => elems
-    } drop (1)
-  }
+  def apply[T](obs: Observable[T]): Observable[T] = apply(Nil, obs)
 
-  def apply[T](obs: Observable[T]): Observable[T] = {
-    obs.scan((Option.empty[T], BoundedSet[T](10000))) {
+  def apply[T](seed: Iterable[T], obs: Observable[T]): Observable[T] = {
+    obs.scan((Option.empty[T], BoundedSet[T](10000) ++ seed)) {
       case ((_, seen), current) => (if (seen.contains(current)) None else Some(current), seen + current)
     } flatMap {
       case (opt, _) => Observable.from(opt)
     }
-  }
-}
-
-object NotFirstBatch {
-  def apply[T](obs: Observable[Iterable[T]]): Observable[Iterable[T]] = {
-    obs.dropWhile(_.toSeq.isEmpty).drop(1)
-  }
-}
-
-object AtSomePointIn {
-  def apply[T](window: Duration)(act: => Observable[T]): Observable[T] = {
-    val kickOffTime = Duration.create(Random.nextInt(window.toMillis.toInt), MILLISECONDS)
-    Observable.interval(kickOffTime).first.flatMap(_ => act)
   }
 }
 

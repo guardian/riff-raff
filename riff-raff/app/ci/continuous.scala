@@ -15,9 +15,7 @@ import org.joda.time.DateTime
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import utils.ChangeFreeze
-import rx.lang.scala.{Subscription, Observable}
-import ci.teamcity.Job
-import conf.Configuration
+import rx.lang.scala.Subscription
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -87,14 +85,15 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
 }
 
 object ReactiveDeployment extends LifecycleWithoutApp with Logging {
+  import play.api.libs.concurrent.Execution.Implicits._
 
   var sub: Option[Subscription] = None
 
   def init() {
     val builds = for {
-      buildBatchesForJob <- CIBuild.buildBatchesForAllJobs
-      buildBatch <- NotFirstBatch(buildBatchesForJob)
-      build <- Latest.by(Observable.from(buildBatch))(b => b.jobName -> b.branchName)
+      job <- Unseen(CIBuild.jobs)
+      initial <- TeamCityAPI.buildBatch(job)
+      build <- Unseen(initial, CIBuild.newBuilds(job))
     } yield build
 
     sub = Some(builds.subscribe { b =>

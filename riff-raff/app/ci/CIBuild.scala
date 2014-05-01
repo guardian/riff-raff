@@ -22,20 +22,15 @@ object CIBuild {
 
   val pollingPeriod = Configuration.teamcity.pollingPeriodSeconds.seconds
   val jobs: Observable[Job] = Every(pollingPeriod)(TeamCityAPI.jobs)
-  val buildBatchesForAllJobs: Observable[Observable[Iterable[CIBuild]]] = for {
-    job <- Unseen(CIBuild.jobs)
-  } yield
-    Unseen.iterable(
-      AtSomePointIn(pollingPeriod)(
-        Every(pollingPeriod)(
-          TeamCityAPI.builds(job)
-        )
-      )
-    )
+  val recentBuildJobIds: Observable[String] = Every(pollingPeriod)(TeamCityAPI.recentBuildJobIds)
+
+  def newBuilds(job: Job): Observable[CIBuild] = (for {
+    id <- recentBuildJobIds if id == job.id
+    builds <- TeamCityAPI.builds(job)
+  } yield builds).publish.refCount
 
   val builds = for {
-    buildBatchesForJob <- buildBatchesForAllJobs
-    buildBatch <- buildBatchesForJob
-    build <- Observable.from(buildBatch)
+    job <- Unseen(jobs)
+    build <- Unseen(TeamCityAPI.builds(job) merge newBuilds(job))
   } yield build
 }
