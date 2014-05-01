@@ -371,18 +371,29 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val host = Host("some-host") as ("some-user")
 
     val task = new CleanupOldDeploys(host, 0, "/tmp/")
+    val command = task.tasks
+
+    command should be (Seq.empty)
+  }
+
+  it should "try to delete the last n deploys compressed files" in {
+    val host = Host("some-host") as ("some-user")
+
+    val task = new deleteCompressedFiles(host, "/tmp/")
+
     val command = task.commandLine
 
-    command.quoted should be ("")
+    command.quoted should be ("""rm -rf /tmp/*.tar.bz2""")
   }
 
   it should "try to delete the last n deploys" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = new CleanupOldDeploys(host, 4, "/tmp/")
+    val task = new deleteOldDeploys(host, 4, "/tmp/")
+
     val command = task.commandLine
 
-    command.quoted should be ("""cd /tmp/ && find . -maxdepth 1 -type d -exec stat -c "%y %n" {} + | sort | grep -vE "logs|\.$" | head -n -4 | cut -d ' ' -f 4 | xargs -x rm -rf && rm -rf *.tar.bz2""")
+    command.quoted should be ("""ls -t --ignore="logs" /tmp/ | head -n -5 | xargs -x rm -rf""")
   }
 
   private def createTempDir(): File = {

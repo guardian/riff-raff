@@ -276,18 +276,25 @@ case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extend
 	def commandLine = List("/bin/mkdir", "-p", path)
 }
 
-case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-	def commandLine = {
-    if (amount > 0) {
-      List("cd", path, "&&") ++
-      List("find", ".", "-maxdepth", "1", "-type", "d", "-exec", "stat", "-c", """"%y""", """%n"""", "{}", "+", "|") ++
-      List("sort", "|", "grep", "-vE", """"logs|\.$"""", "|") ++
-      List("head", "-n", s"-$amount", "|", "cut", "-d", """'""", """'""", "-f", "4", "|") ++
-      List("xargs", "-x", "rm", "-rf", "&&") ++
-      List("rm", "-rf", "*.tar.bz2")
+case class deleteCompressedFiles(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine = List("rm", "-rf", s"$path*.tar.bz2")
+}
 
-    } else { List() }
-  }
+case class deleteOldDeploys(host: Host, amount: Int, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  val toDelete = amount + 1
+  def commandLine = List("ls", "-t", """--ignore="logs"""", path, "|", "head", "-n", s"-$toDelete", "|", "xargs", "-x", "rm", "-rf")
+}
+
+case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String)(implicit val keyRing: KeyRing) extends CompositeTask {
+
+  val tasks = if (amount > 0) Seq( deleteCompressedFiles(host, path), deleteOldDeploys(host, amount, path) ) else Seq.empty
+
+  def description: String = "Cleanup old deploys "
+
+  def verbose: String = description
+
+  override val taskHost = Some(host)
+
 }
 
 case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
