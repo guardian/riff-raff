@@ -3,7 +3,6 @@ package ci
 import org.scalatest.FunSuite
 import rx.lang.scala.Observable
 import org.scalatest.matchers.ShouldMatchers
-import concurrent.duration._
 
 class UnseenTest extends FunSuite with ShouldMatchers {
   test("only emit unseen values") {
@@ -39,15 +38,5 @@ class UnseenTest extends FunSuite with ShouldMatchers {
     val set = BoundedSet[Int](2) + 1 + 2 + 2 + 2 + 1 + 3
 
     Seq(1,3) map (i => set.contains(i) should be (true))
-  }
-
-  test("latest can give latest item for some unique key on that item type") {
-    case class Thing(name: String, v: Int)
-    implicit val oThing = Ordering.by[Thing, Int](_.v)
-
-    val things = Seq(Thing("a", 1), Thing("b", 2), Thing("b", 1), Thing("a", 3), Thing("a", 2))
-    val latest = Latest.by(Observable.interval(10.millis).take(5).map(_.toInt).map(things(_)))(_.name)
-
-    latest.toBlockingObservable.toList should be (List(Thing("a", 1), Thing("b", 2), Thing("a", 3)))
   }
 }

@@ -16,24 +16,6 @@ object Unseen {
   }
 }
 
-object Latest {
-  def by[T: Ordering, K](obs: Observable[T])(groupBy: T => K): Observable[T] = {
-    val ord = implicitly[Ordering[T]]
-    obs.groupBy(groupBy).flatMap { case (_, o) =>
-      o.scan(Option.empty[T], Option.empty[T]) {
-        case ((_, maxed), current) => {
-          if (maxed.exists(ord.gt(_, current)))
-            (None, maxed)
-          else
-            (Some(current), Some(current))
-        }
-      } map {
-        case (elems, _) => elems
-      } flatMap (Observable.from(_))
-    }
-  }
-}
-
 class BoundedSet[T](queue: Queue[T], maxSize: Int) extends Set[T] {
   def +(elem: T): BoundedSet[T] = {
     if (contains(elem)) {
