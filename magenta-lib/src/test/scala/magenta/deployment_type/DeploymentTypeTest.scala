@@ -96,7 +96,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "django"),
       CompressedCopy(host as "django", Some(specificBuildFile), "/django-apps/"),
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
-      CleanupOldDeploys(host as "django", 0),
+      CleanupOldDeploys(host as "django", 0, "/django-apps/"),
       ApacheGracefulRestart(host as "django"),
       WaitForPort(host, 80, 1 minute),
       CheckUrls(host, 80, List.empty, 120000, 5),

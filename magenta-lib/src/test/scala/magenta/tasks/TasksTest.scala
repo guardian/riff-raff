@@ -382,33 +382,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     val task = new CleanupOldDeploys(host, 4, "/tmp/")
     val command = task.commandLine
 
-    command.quoted should be ("""cd /tmp/ && ls -tr --ignore=logs | head -n -8 | xargs rm -rf""")
-  }
-
-  it should "delete the last n deploys" in {
-    val host = Host("some-host") as ("some-user")
-
-    val task = new CleanupOldDeploys(host, 2, "/tmp/")
-    val command = task.commandLine
-
-    val tempDir = createTempDir()
-    val baseDir = new File(tempDir, "test")
-    baseDir.mkdir()
-
-    for( n <- 1 to 4 ) {
-      val file = new File(baseDir, s"deploy$value.txt")
-      file.createNewFile()
-      val dir = new File(baseDir, s"deploy$value")
-      dir.mkdir
-    }
-
-
-
-    //create new temp folder with structure temp/{deploy1, deploy1.tar.gz, deploy2, deploy2.tar.gz, deploy3, deploy3.tar.gz, deploy4, deploy4.tar.gz, logs}
-    //create files touch temp/{deploy1.tar.gz, deploy2.tar.gz, deploy3.tar.gz, deploy4.tar.gz}
-    //exectute the command
-    //should have the output deploy3, deploy3.tar.gz, deploy4, deploy4.tar.gz, logs
-
+    command.quoted should be ("""cd /tmp/ && find . -maxdepth 1 -type d -exec stat -c "%y %n" {} + | sort | grep -vE "logs|\.$" | head -n -4 | cut -d ' ' -f 4 | xargs -x rm -rf && rm -rf *.tar.bz2""")
   }
 
   private def createTempDir(): File = {
