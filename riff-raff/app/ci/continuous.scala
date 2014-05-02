@@ -15,7 +15,8 @@ import org.joda.time.DateTime
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.Implicits._
 import utils.ChangeFreeze
-import rx.lang.scala.Subscription
+import rx.lang.scala.{Observable, Subscription}
+import ci.teamcity.Job
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -89,13 +90,18 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
 
   var sub: Option[Subscription] = None
 
-  def init() {
-    val builds = for {
-      job <- Unseen(CIBuild.jobs)
-      initial <- TeamCityAPI.buildBatch(job)
-      (_, buildsPerBranch) <- CIBuild.newBuilds(job).groupBy(_.branchName)
+  def buildCandidates(jobs: Observable[Job], allBuilds: Job => Observable[Iterable[CIBuild]], newBuilds: Job => Observable[CIBuild])
+    : Observable[CIBuild] = {
+    for {
+      job <- Unseen(jobs)
+      initial <- allBuilds(job)
+      (_, buildsPerBranch) <- newBuilds(job).groupBy(_.branchName)
       build <- Unseen(initial, GreatestSoFar(buildsPerBranch))
     } yield build
+  }
+
+  def init() {
+    val builds = buildCandidates(CIBuild.jobs, TeamCityAPI.buildBatch, CIBuild.newBuilds)
 
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
