@@ -15,6 +15,14 @@ class ReactiveDeploymentTest extends FunSuite with ShouldMatchers {
     ReactiveDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlockingObservable.toList should be(Nil)
   }
 
+  test("should not try to deploy the same build twice") {
+    val jobs = Observable.items(BuildType("job1", "job", Project("", "project")))
+    val allBuilds = (job: Job) => Observable.items(Seq(ciBuild(1), ciBuild(2)))
+    val newBuilds = (job: Job) => Observable.items(ciBuild(2), ciBuild(3), ciBuild(3))
+
+    ReactiveDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlockingObservable.toList should be(List(ciBuild(3)))
+  }
+
   test("should only try to deploy latest for job and branch") {
     val jobs = Observable.items(BuildType("job1", "job", Project("", "project")))
     val allBuilds = (job: Job) => Observable.items(Seq(ciBuild(1), ciBuild(2)))
