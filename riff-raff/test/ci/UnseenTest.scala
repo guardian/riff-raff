@@ -15,6 +15,11 @@ class UnseenTest extends FunSuite with ShouldMatchers {
     unseen.toBlockingObservable.toList should be(List(0, 2, 3))
   }
 
+  test("should return the greatest element seen so far") {
+    GreatestSoFar(Observable.items(1, 2, 3, 3, 5, 4)).toBlockingObservable.toList should be (
+      List(1, 2, 3, 3, 5, 5))
+  }
+
   test("bounded set obeys contains") {
     val set = BoundedSet[Int](5) + 1 + 2
     Seq(1,2) map (i => set.contains(i) should be (true))

@@ -8,11 +8,18 @@ object Unseen {
   def apply[T](obs: Observable[T]): Observable[T] = apply(Nil, obs)
 
   def apply[T](seed: Iterable[T], obs: Observable[T]): Observable[T] = {
-    obs.scan((Option.empty[T], BoundedSet[T](10000) ++ seed)) {
+    obs.scan((Option.empty[T], BoundedSet[T](1000) ++ seed)) {
       case ((_, seen), current) => (if (seen.contains(current)) None else Some(current), seen + current)
     } flatMap {
       case (opt, _) => Observable.from(opt)
     }
+  }
+}
+
+object GreatestSoFar {
+  def apply[T: Ordering](obs: Observable[T]): Observable[T] = {
+    val ord = implicitly[Ordering[T]]
+    obs.scan((prev, current) => if (ord.gt(current, prev)) current else prev)
   }
 }
 

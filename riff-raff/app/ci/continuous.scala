@@ -93,7 +93,8 @@ object ReactiveDeployment extends LifecycleWithoutApp with Logging {
     val builds = for {
       job <- Unseen(CIBuild.jobs)
       initial <- TeamCityAPI.buildBatch(job)
-      build <- Unseen(initial, CIBuild.newBuilds(job))
+      (_, buildsPerBranch) <- CIBuild.newBuilds(job).groupBy(_.branchName)
+      build <- Unseen(initial, GreatestSoFar(buildsPerBranch))
     } yield build
 
     sub = Some(builds.subscribe { b =>
