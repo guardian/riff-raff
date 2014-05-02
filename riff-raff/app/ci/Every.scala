@@ -51,7 +51,7 @@ object TeamCityAPI extends ContinuousIntegrationAPI {
   def recentBuildJobIds(implicit ec: ExecutionContext): Observable[String] = {
     Observable.from(
       TeamCity.api.build.since(DateTime.now.minusMinutes(Configuration.teamcity.pollingWindowMinutes)).get().map { r =>
-        (r.xml \\ "@buildTypeId").map(_.text)
+        (r.xml \\ "@buildTypeId").map(_.text).distinct
       }
     ) flatMap (Observable.from(_))
   }

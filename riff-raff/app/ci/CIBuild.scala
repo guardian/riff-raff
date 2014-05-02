@@ -26,7 +26,7 @@ object CIBuild {
 
   def newBuilds(job: Job): Observable[CIBuild] = (for {
     id <- recentBuildJobIds if id == job.id
-    builds <- TeamCityAPI.builds(job)
+    builds <- AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job))
   } yield builds).publish.refCount
 
   val builds = for {
