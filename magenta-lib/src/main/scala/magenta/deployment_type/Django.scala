@@ -30,6 +30,9 @@ object Django extends DeploymentType {
     "Number of seconds to wait for each healthcheck path to become healthy").default(120)
   val checkUrlReadTimeoutSeconds = Param("checkUrlReadTimeoutSeconds",
     "Read timeout (in seconds) used when checking health check paths").default(5)
+  val deploysToKeep = Param("deploysToKeep", "The number of deploys to keep on the server").default(0)
+  val deployArtifactPrefix = Param("deployArtifactPrefix",
+    "The prefix of the deploy artifact, used to find directories to cleanup").defaultFromPackage( _.name )
 
   override def perHostActions = {
     case "deploy" => pkg => (host, keyRing) => {
@@ -42,6 +45,7 @@ object Django extends DeploymentType {
         CompressedCopy(host as user(pkg), appVersionPath, destDir),
         Link(host as user(pkg), appVersionPath.map(destDir + _.getName), "/django-apps/%s" format pkg.name),
         ApacheGracefulRestart(host as user(pkg)),
+        CleanupOldDeploys(host as user(pkg), deploysToKeep(pkg), destDir, deployArtifactPrefix(pkg)),
         WaitForPort(host, port(pkg), 60 * 1000),
         CheckUrls(host, port(pkg), healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
         UnblockFirewall(host as user(pkg))

@@ -367,6 +367,35 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
+  "CleanupOldDeploy task" should "keep all deploys by default" in {
+    val host = Host("some-host") as ("some-user")
+
+    val task = new CleanupOldDeploys(host, 0, "/tmp/", "test")
+    val command = task.tasks
+
+    command should be (Seq.empty)
+  }
+
+  it should "try to delete the last n deploys compressed files" in {
+    val host = Host("some-host") as ("some-user")
+
+    val task = new deleteCompressedFiles(host, "/tmp/")
+
+    val command = task.commandLine
+
+    command.quoted should be ("""rm -rf /tmp/*.tar.bz2""")
+  }
+
+  it should "try to delete the last n deploys" in {
+    val host = Host("some-host") as ("some-user")
+
+    val task = new deleteOldDeploys(host, 4, "/tmp/", "test")
+
+    val command = task.commandLine
+
+    command.quoted should be ("""ls -tdr /django-apps/test?* | head -n -4 | xargs -t -n1 rm -rf""")
+  }
+
   private def createTempDir(): File = {
     val file = File.createTempFile("foo", "bar")
     file.delete()
