@@ -389,7 +389,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "try to delete the last n deploys" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = new deleteOldDeploys(host, 4, "/tmp/", "test")
+    val task = new deleteOldDeploys(host, 4, "/django-apps/", "test")
 
     val command = task.commandLine
 
