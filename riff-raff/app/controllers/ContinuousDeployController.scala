@@ -5,7 +5,7 @@ import play.api.data.Forms._
 import play.api.data.Form
 import persistence.Persistence
 import java.util.UUID
-import ci.{ContinuousDeployment, Trigger, ContinuousDeploymentConfig}
+import ci.{Trigger, ContinuousDeploymentConfig}
 import org.joda.time.DateTime
 import utils.Forms.uuid
 

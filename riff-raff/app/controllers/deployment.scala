@@ -291,7 +291,7 @@ object Deployment extends Controller with Logging {
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = TeamCityBuilds.buildTypes.map(_.fullName).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
+    val possibleProjects = TeamCityBuilds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
@@ -300,7 +300,7 @@ object Deployment extends Controller with Logging {
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
       val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
-      val label = "%s [%s] (%s)" format (build.number, build.branchName, formatter.print(build.startDate))
+      val label = "%s [%s] (%s)" format (build.number, build.branchName, formatter.print(build.startTime))
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
@@ -314,8 +314,8 @@ object Deployment extends Controller with Logging {
   def teamcity = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
-      for(build <- TeamCityBuilds.builds.sortBy(_.buildType.fullName))
-        yield Seq(build.buildType.name,build.number,build.branchName,build.buildType.id,build.id)
+      for(build <- TeamCityBuilds.builds.sortBy(_.jobName))
+        yield Seq(build.jobName,build.number,build.branchName,build.jobId,build.id)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }

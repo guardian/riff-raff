@@ -4,7 +4,7 @@ import _root_.resources.LookupSelector
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.{Management => PlayManagement, RequestMetrics}
+import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
@@ -138,7 +138,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
     lazy val maximumPinsPerProject = configuration.getIntegerProperty("teamcity.maximumPinsPerProject", 5)
     lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
-    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 60)
+    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 15)
     lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
   }
 
@@ -202,6 +202,11 @@ object DeployMetrics extends LifecycleWithoutApp {
   def shutdown() { MessageBroker.unsubscribe(sink) }
 }
 
+object TeamCityMetrics {
+  object ApiCallTimer extends TimingMetric("riffraff", "teamcity_api", "Teamcity API calls", "Timing of Teamcity API calls")
+  val all = Seq(ApiCallTimer)
+}
+
 object TaskMetrics {
   object TaskTimer extends TimingMetric("riffraff", "task_run", "Tasks running", "Timing of deployment tasks")
   object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
@@ -254,7 +259,8 @@ object Metrics {
     PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all ++
-    TaskMetrics.all
+    TaskMetrics.all ++
+    TeamCityMetrics.all
 }
 
 case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean = true) extends Switchable with Loggable {
