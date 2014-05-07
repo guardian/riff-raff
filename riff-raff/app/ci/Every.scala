@@ -45,7 +45,7 @@ object TeamCityAPI extends ContinuousIntegrationAPI {
         TeamCityMetrics.ApiCallTimer.recordTimeSpent(DateTime.now.getMillis - startTime.getMillis)
         BuildSummary(r.xml, (id: String) => Future.successful(Some(job)), false)
       }
-    }
+    }.onErrorResumeNext(Observable.empty)
   }
 
   def recentBuildJobIds(implicit ec: ExecutionContext): Observable[String] = {
