@@ -30,10 +30,11 @@ trait ContinuousIntegrationAPI {
 }
 
 object FailSafeObservable extends Logging {
-  def apply[T](f: Future[T], msg: => String): Observable[T] = Observable.from(f).onErrorResumeNext { e =>
-    log.error(msg, e)
-    Observable.empty
-  }
+  def apply[T](f: Future[T], msg: => String)(implicit ec: ExecutionContext): Observable[T] =
+    Observable.from(f).onErrorResumeNext { e =>
+      log.error(msg, e)
+      Observable.empty
+    }
 }
 
 object TeamCityAPI extends ContinuousIntegrationAPI with Logging {
