@@ -30,7 +30,7 @@ object CIBuild {
   } yield builds).publish.refCount
 
   val builds = for {
-    job <- Unseen(jobs)
-    build <- Unseen(TeamCityAPI.builds(job) merge newBuilds(job))
+    job <- jobs.distinct
+    build <- (TeamCityAPI.builds(job) merge newBuilds(job)).distinct
   } yield build
 }

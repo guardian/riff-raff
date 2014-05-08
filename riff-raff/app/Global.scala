@@ -8,7 +8,7 @@ import persistence.SummariseDeploysHousekeeping
 import play.api.mvc.{SimpleResult, RequestHeader, WithFilters}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
-import ci.{ReactiveDeployment, TeamCityBuilds}
+import ci.{ContinuousDeployment, TeamCityBuilds}
 import play.filters.gzip.GzipFilter
 import scala.concurrent.Future
 import utils.ScheduledAgent
@@ -32,7 +32,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
       TeamCityBuilds,
       TeamCityBuildPinner,
       SummariseDeploysHousekeeping,
-      ReactiveDeployment
+      ContinuousDeployment
     )
 
     log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")

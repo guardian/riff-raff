@@ -1,25 +1,9 @@
 package ci
 
 import org.scalatest.FunSuite
-import rx.lang.scala.Observable
 import org.scalatest.matchers.ShouldMatchers
 
-class UnseenTest extends FunSuite with ShouldMatchers {
-  test("only emit unseen values") {
-    val unseen = Unseen(Observable.items(0, 1, 2, 0, 1, 3))
-    unseen.toBlockingObservable.toList should be(List(0, 1, 2, 3))
-  }
-
-  test("should not provide elements provided in seed") {
-    val unseen = Unseen(Seq(1), Observable.items(0, 1, 2, 0, 1, 3))
-    unseen.toBlockingObservable.toList should be(List(0, 2, 3))
-  }
-
-  test("should return the greatest element seen so far") {
-    GreatestSoFar(Observable.items(1, 2, 3, 3, 5, 4)).toBlockingObservable.toList should be (
-      List(1, 2, 3, 3, 5, 5))
-  }
-
+class BoundedSetTest  extends FunSuite with ShouldMatchers {
   test("bounded set obeys contains") {
     val set = BoundedSet[Int](5) + 1 + 2
     Seq(1,2) map (i => set.contains(i) should be (true))
