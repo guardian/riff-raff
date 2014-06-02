@@ -4,6 +4,7 @@ import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import ci.teamcity.Job
+import controllers.Logging
 
 trait CIBuild {
   def jobName: String
@@ -14,7 +15,7 @@ trait CIBuild {
   def startTime: DateTime
 }
 
-object CIBuild {
+object CIBuild extends Logging {
   import concurrent.duration._
   import play.api.libs.concurrent.Execution.Implicits._
 
@@ -26,7 +27,11 @@ object CIBuild {
 
   def newBuilds(job: Job): Observable[CIBuild] = (for {
     id <- recentBuildJobIds if id == job.id
-    builds <- AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job))
+    builds <-
+      AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job)).onErrorResumeNext { e =>
+        log.error(s"Failed tor retrieve builds for job $job", e)
+        Observable.empty
+      }
   } yield builds).publish.refCount
 
   val builds = for {

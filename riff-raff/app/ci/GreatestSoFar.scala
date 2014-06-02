@@ -14,7 +14,7 @@ object GreatestSoFar {
 
 object AtSomePointIn {
   def apply[T](window: Duration)(act: => Observable[T]): Observable[T] = {
-    val kickOffTime = Duration.create(Random.nextInt(window.toMillis.toInt), MILLISECONDS)
+    val kickOffTime = Duration.create(Random.nextInt(window.toMillis.toInt) + 1, MILLISECONDS)
     Observable.interval(kickOffTime).first.flatMap(_ => act)
   }
 }
