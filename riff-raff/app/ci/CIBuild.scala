@@ -27,13 +27,11 @@ object CIBuild extends Logging {
 
   def newBuilds(job: Job): Observable[CIBuild] = (for {
     id <- recentBuildJobIds if id == job.id
-    builds <- {
-      log.debug(s"Recent build for job $job / $id")
+    builds <-
       AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job)).onErrorResumeNext { e =>
         log.error(s"Failed tor retrieve builds for job $job", e)
         Observable.empty
       }
-    }
   } yield builds).publish.refCount
 
   val builds = for {
