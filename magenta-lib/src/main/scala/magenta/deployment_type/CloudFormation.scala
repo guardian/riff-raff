@@ -5,12 +5,20 @@ import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
   val name = "cloud-formation"
-  def documentation = "Deploy an AWS CloudFormation template"
+  def documentation = "Update an AWS CloudFormation template"
 
-  val stackName = Param[String]("stackName").defaultFromPackage(_.name)
-  val appendStageToStackName = Param[Boolean]("appendStageToStackName").default(true)
-  val templatePath = Param[String]("templatePath").default("""cloud-formation\cfn.json""")
-  val templateParameters = Param[Map[String, String]]("templateParameters").default(Map.empty)
+  val stackName = Param[String]("stackName",
+    documentation = "The name of the CloudFormation stack to update"
+  ).defaultFromPackage(_.name)
+  val appendStageToStackName = Param[Boolean]("appendStageToStackName",
+    documentation = "Whether to add '-`stack`' to the `stackName`, e.g. MyApp => MyApp-PROD"
+  ).default(true)
+  val templatePath = Param[String]("templatePath",
+    documentation = "Location of template to use within package"
+  ).default("""cloud-formation/cfn.json""")
+  val templateParameters = Param[Map[String, String]]("templateParameters",
+    documentation = "Map of parameter names and values to be passed into template"
+  ).default(Map.empty)
 
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
