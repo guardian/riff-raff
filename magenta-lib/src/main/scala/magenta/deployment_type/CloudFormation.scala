@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.tasks.UpdateCloudFormationTask
+import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
@@ -15,13 +15,18 @@ object CloudFormation extends DeploymentType {
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+
+      val cfStack = if (appendStageToStackName(pkg)) s"${stackName(pkg)}-${parameters.stage.name}"
+        else stackName(pkg)
+
       List(
         UpdateCloudFormationTask(
-          if (appendStageToStackName(pkg)) s"${stackName(pkg)}-${parameters.stage.name}" else stackName(pkg),
+          cfStack,
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
           templateParameters(pkg),
           parameters.stage
-        )
+        ),
+        CheckUpdateEventsTask(cfStack)
       )
     }
   }

@@ -1,10 +1,11 @@
 package magenta.tasks
 
-import magenta.{Stage, KeyRing}
+import magenta.{MessageBroker, Stage, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
-import com.amazonaws.services.cloudformation.model.{Parameter, UpdateStackRequest}
+import com.amazonaws.services.cloudformation.model.{StackEvent, DescribeStackEventsRequest, Parameter, UpdateStackRequest}
 import scalax.file.Path
+import collection.convert.wrapAsScala._
 
 case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage)
                                    (implicit val keyRing: KeyRing) extends Task {
@@ -13,6 +14,57 @@ case class UpdateCloudFormationTask(stackName: String, template: Path, parameter
   }
 
   def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
+  def verbose = description
+}
+
+case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRing) extends Task {
+
+  def execute(stopFlag: => Boolean): Unit = {
+    def reportEvent(e: StackEvent): Unit = {
+      MessageBroker.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
+      if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
+    }
+    def updateStart(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_IN_PROGRESS" &&
+      e.getResourceType == "AWS::CloudFormation::Stack"
+    def updateComplete(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_COMPLETE" &&
+      e.getResourceType == "AWS::CloudFormation::Stack"
+    def fail(e: StackEvent): Unit = MessageBroker.fail(
+        s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
+            |${e.getResourceStatusReason}""".stripMargin)
+
+    def check(lastSeenEvent: Option[StackEvent]): Unit = {
+      val result = CloudFormation.describeStackEvents(stackName)
+      val events = result.getStackEvents
+
+      lastSeenEvent match {
+        case None => events.find(updateStart) foreach (e => {
+          reportEvent(e)
+          check(Some(e))
+        })
+        case Some(event) => {
+          val newEvents = events.filter(_.getTimestamp.after(event.getTimestamp))
+          newEvents.reverse.foreach(reportEvent)
+
+          newEvents.headOption match {
+            case Some(latest) => {
+              if (latest.getResourceStatus.contains("FAILED")) fail(latest)
+              else if (!updateComplete(latest)) {
+                Thread.sleep(5000)
+                check(Some(latest))
+              }
+            }
+            case None => {
+              Thread.sleep(5000)
+              check(Some(event))
+            }
+          }
+        }
+      }
+    }
+    check(None)
+  }
+
+  def description = s"Checking events on update for: $stackName"
   def verbose = description
 }
 
@@ -29,6 +81,11 @@ trait CloudFormation extends AWS {
           case (k, v) => new Parameter().withParameterKey(k).withParameterValue(v)
         } toSeq: _*
       )
+    )
+
+  def describeStackEvents(name: String)(implicit keyRing: KeyRing) =
+    client.describeStackEvents(
+      new DescribeStackEventsRequest().withStackName(name)
     )
 }
 
