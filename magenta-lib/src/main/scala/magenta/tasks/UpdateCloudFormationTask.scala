@@ -3,14 +3,18 @@ package magenta.tasks
 import magenta.{MessageBroker, Stage, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
-import com.amazonaws.services.cloudformation.model.{StackEvent, DescribeStackEventsRequest, Parameter, UpdateStackRequest}
+import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
 case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage)
                                    (implicit val keyRing: KeyRing) extends Task {
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    CloudFormation.updateStack(stackName, template.string, parameters + ("Stage" -> stage.name))
+    val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters
+    val actualParameters =
+      if (requiredParameters.map(_.getParameterKey).contains("Stage")) parameters + ("Stage" -> stage.name)
+      else parameters
+    CloudFormation.updateStack(stackName, template.string, actualParameters)
   }
 
   def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
@@ -74,6 +78,10 @@ trait CloudFormation extends AWS {
       classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
     )
   }
+
+  def validateTemplate(templateBody: String)(implicit keyRing: KeyRing) =
+    client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
+
   def updateStack(name: String, templateBody: String, parameters: Map[String, String])(implicit keyRing: KeyRing) =
     client.updateStack(
       new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM").withParameters(
