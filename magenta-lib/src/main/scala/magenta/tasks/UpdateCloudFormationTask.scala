@@ -1,23 +1,31 @@
 package magenta.tasks
 
-import magenta.{MessageBroker, Stage, KeyRing}
+import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
-case class UpdateCloudFormationTask(stackName: String, template: Path, parameters: Map[String, String], stage: Stage)
+case class UpdateCloudFormationTask(cloudFormationStackName: String, template: Path,
+                                    parameters: Map[String, String], stage: Stage, stack: Stack)
                                    (implicit val keyRing: KeyRing) extends Task {
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters
-    val actualParameters =
-      if (requiredParameters.map(_.getParameterKey).contains("Stage")) parameters + ("Stage" -> stage.name)
-      else parameters
-    CloudFormation.updateStack(stackName, template.string, actualParameters)
+
+    def addParametersIfRequired(params: Map[String, String])(nameValues: Iterable[(String,  String)]): Map[String, String] = {
+      nameValues.foldLeft(params) { case (completeParams, (name, value)) =>
+        if (requiredParameters.map(_.getParameterKey).contains(name)) completeParams + (name -> value)
+        else params
+      }
+    }
+
+    val actualParameters = addParametersIfRequired(parameters)(
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => ("Stack" -> name)))
+    CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
   }
 
-  def description = s"Updating CloudFormation stack: $stackName with ${template.name}"
+  def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
   def verbose = description
 }
 
