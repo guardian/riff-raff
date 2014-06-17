@@ -19,6 +19,7 @@ import conf.Configuration
 import scala.concurrent._
 import akka.actor.ActorSystem
 import ExecutionContext.Implicits.global
+import duration._
 
 case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -41,7 +42,7 @@ object PreviewController {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val previewFuture = future { Preview(parameters) }
-    agent.send{ _ + (previewId -> PreviewResult(previewFuture)) }
+    Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 1.second)
     previewId
   }
 
