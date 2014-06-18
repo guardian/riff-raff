@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], hookForm: Form[String])
+@(request: AuthenticatedRequest[AnyContent], hookForm: Form[String])
 @import helper.twitterBootstrap._
 
 @main("Authorise a new user", request) {

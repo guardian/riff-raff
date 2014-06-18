@@ -55,7 +55,7 @@ POST        /deployment/hooks/delete                        controllers.Hooks.de
 GET         /profile                                        controllers.Login.profile
 GET         /login                                          controllers.Login.login
 GET         /loginAction                                    controllers.Login.loginAction
-GET         /openIDCallback                                 controllers.Login.openIDCallback
+GET         /oauth2callback                                 controllers.Login.oauth2Callback
 GET         /logout                                         controllers.Login.logout
 
 GET         /auth/list                                      controllers.Login.authList

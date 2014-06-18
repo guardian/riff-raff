@@ -1,4 +1,5 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], elapsed: Long)
+@(implicit request: AuthenticatedRequest[AnyContent], elapsed: Long)
+@import com.gu.googleauth.UserIdentity
 
 <p><img height="16" width="16" src="@routes.Assets.at("images/ajax-loader.gif")"/>
     @elapsed match {
@@ -13,14 +14,7 @@
        }
        case time if time < 48 => {
            @defining(request.identity.get) { id =>
-                   @id match {
-                       case controllers.UserIdentity(_, _, firstName, _) => {
-                           Sorry, @firstName, I'm still resolving this preview - I know you have things to do and to be honest I'd actually prefer to be deploying something myself...
-                       }
-                       case _ => {
-                           Still resolving recipes, hosts and tasks from artifacts deploy.json file (it's tricky you know, I have to download the artifact and twiddle my thumbs)...
-                       }
-                   }
+                   Sorry, @id.firstName, I'm still resolving this preview - I know you have things to do and to be honest I'd actually prefer to be deploying something myself...
            }
        }
        case time if time < 180 => {

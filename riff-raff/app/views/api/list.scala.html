@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], keyList: Iterable[controllers.ApiKey])
+@(implicit request: AuthenticatedRequest[AnyContent], keyList: Iterable[controllers.ApiKey])
 
 @main("API keys", request) {
     <h2>API keys</h2>

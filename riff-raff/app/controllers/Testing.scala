@@ -14,7 +14,7 @@ import persistence.{DocumentStoreConverter, Persistence}
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-object Testing extends Controller with Logging {
+object Testing extends Controller with Logging with LoginActions {
   def reportTestPartial(take: Int, verbose: Boolean) = NonAuthAction { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())

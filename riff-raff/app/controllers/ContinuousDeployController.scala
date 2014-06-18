@@ -9,7 +9,7 @@ import ci.{Trigger, ContinuousDeploymentConfig}
 import org.joda.time.DateTime
 import utils.Forms.uuid
 
-object ContinuousDeployController extends Controller with Logging {
+object ContinuousDeployController extends Controller with Logging with LoginActions {
 
   case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
   object ConfigForm {

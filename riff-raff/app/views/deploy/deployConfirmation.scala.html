@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
+@(request: AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
 @import helper.twitterBootstrap._
 
 @main("Deploy confirmation", request) {

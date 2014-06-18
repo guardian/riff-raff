@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], hookForm: Form[controllers.HookForm])
+@(request: AuthenticatedRequest[AnyContent], hookForm: Form[controllers.HookForm])
 @import helper.twitterBootstrap._
 
 @main("Create Post Deploy Hook", request) {

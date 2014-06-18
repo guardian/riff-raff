@@ -39,12 +39,15 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object auth {
-    lazy val openIdUrl: String = configuration.getStringProperty("auth.openIdUrl").getOrException("No authentication URL configured")
     lazy val domains: List[String] = configuration.getStringPropertiesSplitByComma("auth.domains")
     object whitelist {
       lazy val useDatabase: Boolean = configuration.getStringProperty("auth.whitelist.useDatabase", "false") == "true"
       lazy val addresses: List[String] = configuration.getStringPropertiesSplitByComma("auth.whitelist.addresses")
     }
+    lazy val clientId: String = configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
+    lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
+    lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrException("No redirect URL configured")
+    lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
   }
 
   object concurrency {

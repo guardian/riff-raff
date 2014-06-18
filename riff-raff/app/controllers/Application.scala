@@ -8,6 +8,7 @@ import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import java.io.File
 import resources.LookupSelector
+import com.gu.googleauth.AuthenticatedRequest
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -56,7 +57,7 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-object Application extends Controller with Logging {
+object Application extends Controller with Logging with LoginActions {
 
   def index = NonAuthAction { implicit request =>
     val url = getClass.getResource("/docs/releases.md")

@@ -164,7 +164,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-object Deployment extends Controller with Logging {
+object Deployment extends Controller with Logging with LoginActions {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(

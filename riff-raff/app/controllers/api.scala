@@ -92,7 +92,7 @@ object ApiKeyGenerator {
 }
 
 object ApiJsonEndpoint {
-  def apply[A](counter: String, p: BodyParser[A])(f: AuthenticatedRequest[A] => JsValue): Action[A] = {
+  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] = {
     ApiAuthAction(counter, p) { authenticatedRequest =>
       val format = authenticatedRequest.queryString.get("format").toSeq.flatten
       val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
@@ -126,12 +126,12 @@ object ApiJsonEndpoint {
       }
     }
   }
-  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => JsValue): Action[AnyContent] = {
+  def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = {
     this.apply(counter, parse.anyContent)(f)
   }
 }
 
-object Api extends Controller with Logging {
+object Api extends Controller with Logging with LoginActions {
 
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)
@@ -220,7 +220,7 @@ object Api extends Controller with Logging {
     ))))
   }
 
-  def record2apiResponse(deploy:Record)(implicit request: AuthenticatedRequest[AnyContent]) =
+  def record2apiResponse(deploy:Record)(implicit request: ApiRequest[AnyContent]) =
     Json.obj(
       "time" -> deploy.time,
       "uuid" -> deploy.uuid.toString,
@@ -306,7 +306,7 @@ object Api extends Controller with Logging {
         val recipe = recipeOption.map(RecipeName).getOrElse(DefaultRecipe())
         val hosts = hostsOption.getOrElse(Nil)
         val params = DeployParameters(
-          Deployer(request.identity.get.fullName),
+          Deployer(request.fullName),
           Build(project, build),
           Stage(stage),
           recipe,
@@ -358,7 +358,7 @@ object Api extends Controller with Logging {
       uuid => {
         val record = DeployController.get(UUID.fromString(uuid), fetchLog = false)
         assert(!record.isDone, "Can't stop a deploy that has already completed")
-        DeployController.stop(UUID.fromString(uuid), request.identity.get.fullName)
+        DeployController.stop(UUID.fromString(uuid), request.fullName)
         Json.obj(
           "response" -> Json.obj(
             "status" -> "ok",

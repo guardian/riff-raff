@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record)
+@(implicit request: AuthenticatedRequest[AnyContent], record: deployment.Record)
 
 @logSummary(record)
 

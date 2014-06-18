@@ -9,6 +9,7 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % "6.0" exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % "5.31",
   "com.gu" %% "configuration" % "3.10",
+  "com.gu" %% "play-googleauth" % "0.0.2-SNAPSHOT",
   "org.scala-lang" % "scala-reflect" % "2.10.0",
   "org.mongodb" %% "casbah" % "2.6.0",
   "org.pircbotx" % "pircbotx" % "1.7",

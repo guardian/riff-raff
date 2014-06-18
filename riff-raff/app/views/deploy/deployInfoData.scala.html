@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent])
+@(request: AuthenticatedRequest[AnyContent])
 @import _root_.resources.LookupSelector
 
 @main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {

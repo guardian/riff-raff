@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean)
 
-object Hooks extends Controller with Logging {
+object Hooks extends Controller with Logging with LoginActions {
   lazy val hookForm = Form[HookForm](
     mapping(
       "id" -> uuid,

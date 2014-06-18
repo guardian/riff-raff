@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], apiForm: Form[String])
+@(request: AuthenticatedRequest[AnyContent], apiForm: Form[String])
 @import helper.twitterBootstrap._
 
 @main("Create new API key", request) {

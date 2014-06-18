@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], authList: Seq[controllers.AuthorisationRecord])
+@(implicit request: AuthenticatedRequest[AnyContent], authList: Seq[controllers.AuthorisationRecord])
 
 @main("Authorisation List", request) {
     <h2>Authorisation List</h2>

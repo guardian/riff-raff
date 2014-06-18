@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], projects: String, search: Boolean)
+@(request: AuthenticatedRequest[AnyContent], projects: String, search: Boolean)
 
 @main("Dashboard", request, List("auto-refresh")) {
     <h2>Dashboard</h2>

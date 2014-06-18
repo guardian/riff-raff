@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], message:String, throwable:Option[Throwable]=None)
+@(request: AuthenticatedRequest[AnyContent], message:String, throwable:Option[Throwable]=None)
 @import conf.Configuration._
 
 @main("Not found", request){
