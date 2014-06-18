@@ -32,17 +32,7 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
 case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRing) extends Task {
 
   def execute(stopFlag: => Boolean): Unit = {
-    def reportEvent(e: StackEvent): Unit = {
-      MessageBroker.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
-      if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
-    }
-    def updateStart(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_IN_PROGRESS" &&
-      e.getResourceType == "AWS::CloudFormation::Stack"
-    def updateComplete(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_COMPLETE" &&
-      e.getResourceType == "AWS::CloudFormation::Stack"
-    def fail(e: StackEvent): Unit = MessageBroker.fail(
-        s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
-            |${e.getResourceStatusReason}""".stripMargin)
+    import StackEvent._
 
     def check(lastSeenEvent: Option[StackEvent]): Unit = {
       val result = CloudFormation.describeStackEvents(stackName)
@@ -54,26 +44,34 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
           check(Some(e))
         })
         case Some(event) => {
-          val newEvents = events.filter(_.getTimestamp.after(event.getTimestamp))
+          val newEvents = events.takeWhile(_.getTimestamp.after(event.getTimestamp))
           newEvents.reverse.foreach(reportEvent)
 
-          newEvents.headOption match {
-            case Some(latest) => {
-              if (latest.getResourceStatus.contains("FAILED")) fail(latest)
-              else if (!updateComplete(latest)) {
-                Thread.sleep(5000)
-                check(Some(latest))
-              }
-            }
-            case None => {
-              Thread.sleep(5000)
-              check(Some(event))
-            }
+          if (!newEvents.exists(e => updateComplete(e) || failed(e)) && !stopFlag) {
+            Thread.sleep(5000)
+            check(Some(newEvents.headOption.getOrElse(event)))
           }
+          newEvents.filter(failed).foreach(fail)
         }
       }
     }
     check(None)
+  }
+
+  object StackEvent {
+    def reportEvent(e: StackEvent): Unit = {
+      MessageBroker.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
+      if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
+    }
+    def updateStart(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_IN_PROGRESS" &&
+      e.getResourceType == "AWS::CloudFormation::Stack"
+    def updateComplete(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_COMPLETE" &&
+      e.getResourceType == "AWS::CloudFormation::Stack"
+    def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED")
+
+    def fail(e: StackEvent): Unit = MessageBroker.fail(
+      s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
+            |${e.getResourceStatusReason}""".stripMargin)
   }
 
   def description = s"Checking events on update for: $stackName"

@@ -6,7 +6,18 @@ import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
   val name = "cloud-formation"
-  def documentation = "Update an AWS CloudFormation template"
+  def documentation =
+    """Update an AWS CloudFormation template.
+      |
+      |It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
+      |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
+      |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
+      |mean-time.
+      |
+      |This deployment type is not currently recommended for continuous deployment, as CloudFormation
+      |will fail if you try to update a CloudFormation stack with a configuration that matches its
+      | current state.
+    """.stripMargin
 
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
