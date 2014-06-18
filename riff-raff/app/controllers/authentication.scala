@@ -82,7 +82,6 @@ trait LoginActions extends Actions {
 
 object Login extends Controller with Logging with LoginActions {
   val ANTI_FORGERY_KEY = "antiForgeryToken"
-  val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
@@ -102,7 +101,7 @@ object Login extends Controller with Logging with LoginActions {
   def loginAction = Action.async { implicit request =>
     // redirect to google with anti forgery token (that we keen in session storage - note that flashing is not secure)
     val antiForgeryToken = GoogleAuth.generateAntiForgeryToken()
-    GoogleAuth.redirectToGoogle(googleAuthConfig, antiForgeryToken).map {
+    GoogleAuth.redirectToGoogle(auth.googleAuthConfig, antiForgeryToken).map {
       _.withSession { session + (ANTI_FORGERY_KEY -> antiForgeryToken) }
     }
   }
@@ -112,7 +111,7 @@ object Login extends Controller with Logging with LoginActions {
       case None =>
         Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
       case Some(token) =>
-        GoogleAuth.validatedUserIdentity(googleAuthConfig, token).map { identity =>
+        GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
           val redirect = session.get(LOGIN_ORIGIN_KEY) match {
             case Some(url) => Redirect(url)
             case None => Redirect(routes.Application.index())

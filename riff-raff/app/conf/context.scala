@@ -20,6 +20,7 @@ import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
+import com.gu.googleauth.GoogleAuthConfig
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -48,6 +49,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
     lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrException("No redirect URL configured")
     lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
+    lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
   }
 
   object concurrency {
