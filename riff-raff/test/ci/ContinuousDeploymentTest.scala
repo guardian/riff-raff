@@ -84,12 +84,10 @@ class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
 
-  val url = new URL("http://riffraff.gnl/test")
-
   val tdBT = BuildType("bt204", "deploy", Project("project1", "tools"))
-  val tdB71 = BuildSummary(45397, "71", tdBT.id, "SUCCESS", url, "master", None, new DateTime(2013,1,25,14,42,47), tdBT)
+  val tdB71 = BuildSummary(45397, "71", tdBT.id, "SUCCESS", "master", new DateTime(2013,1,25,14,42,47), tdBT)
 
   val td2BT = BuildType("bt205", "deploy2", Project("project1", "tools"))
-  val td2B392 = BuildSummary(45400, "392", td2BT.id, "SUCCESS", url, "branch", None, new DateTime(2013,1,25,15,34,47), td2BT)
-  val otherBranch = BuildSummary(45401, "393", td2BT.id, "SUCCESS", url, "other", None, new DateTime(2013,1,25,15,34,47), td2BT)
+  val td2B392 = BuildSummary(45400, "392", td2BT.id, "SUCCESS", "branch", new DateTime(2013,1,25,15,34,47), td2BT)
+  val otherBranch = BuildSummary(45401, "393", td2BT.id, "SUCCESS", "other", new DateTime(2013,1,25,15,34,47), td2BT)
 }
