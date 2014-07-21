@@ -163,7 +163,7 @@ object VCSRootInstance {
   }
 }
 
-case class Revision(version: String, vcsInstanceId: Int, vcsRootId: Int, vcsName: String, vcsHref: String) {
+case class Revision(version: String, vcsInstanceId: Int, vcsRootId: String, vcsName: String, vcsHref: String) {
   def vcsDetails = TeamCityWS.href(vcsHref).get().map(data => VCSRootInstance(data.xml))
 }
 object Revision {
@@ -171,7 +171,7 @@ object Revision {
     Revision(
       xml \ "@version" text,
       (xml \ "vcs-root-instance" \ "@id" text).toInt,
-      (xml \ "vcs-root-instance" \ "@vcs-root-id" text).toInt,
+      (xml \ "vcs-root-instance" \ "@vcs-root-id" text),
       xml \ "vcs-root-instance" \ "@name" text,
       xml \ "vcs-root-instance" \ "@href" text
     )
