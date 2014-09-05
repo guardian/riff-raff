@@ -10,13 +10,12 @@ import java.io.File
 import magenta._
 import java.net.URL
 import controllers.{DeployController, Logging}
-import lifecycle.LifecycleWithoutApp
+import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
 import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
 import deployment.DeployMetricsActor
-import akka.util.{Switch => AkkaSwitch}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
@@ -263,33 +262,8 @@ object Metrics {
     TeamCityMetrics.all
 }
 
-case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean = true) extends Switchable with Loggable {
-  val delegate = new AkkaSwitch(initiallyOn)
-
-  def isSwitchedOn = delegate.isOn
-
-  def switchOn() = switchOn({})
-  def switchOn( action: => Unit ): Boolean =
-    delegate.switchOn {
-      logger.info("Switching on " + name)
-      action
-    }
-
-  def switchOff() = switchOff({})
-  def switchOff( action: => Unit ): Boolean =
-    delegate.switchOff {
-      logger.info("Switching off " + name)
-      action
-    }
-
-  def whileOn( action: => Unit ): Boolean = delegate.whileOn(action)
-  def whileOff( action: => Unit ): Boolean = delegate.whileOff(action)
-  def whileOnYield[T]( action: T ): Option[T] = delegate.whileOnYield( action )
-  def whileOffYield[T]( action: T ): Option[T] = delegate.whileOffYield( action )
-}
-
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
 }
 
