@@ -87,6 +87,12 @@ case class Decompress(host: Host, dest: String, source: Option[File])(implicit v
   }
 }
 
+case class DecompressTarBall(host: Host, tarball: String, dest: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine: CommandLine = {
+    CommandLine("tar" :: "--directory" :: dest :: "-xmzf" :: tarball :: Nil)
+  }
+}
+
 trait CompressedFilename {
   def source: Option[File]
   def sourceFile = source.getOrElse(throw new FileNotFoundException())
@@ -296,9 +302,10 @@ case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String, prefix: 
 
 }
 
-case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("/bin/rm", path)
-  override lazy val description = s"$path from ${host.name}"
+case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  val recursiveFlag = if (recursive) List("-r") else Nil
+  def commandLine = List("/bin/rm") ++ recursiveFlag :+ path
+  override lazy val description = s"$path from ${host.name} (recursion=$recursive)"
 }
 
 case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
