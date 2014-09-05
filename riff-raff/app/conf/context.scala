@@ -10,7 +10,7 @@ import java.io.File
 import magenta._
 import java.net.URL
 import controllers.{DeployController, Logging}
-import lifecycle.LifecycleWithoutApp
+import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
 import java.util.UUID
 import scala.Some
 import collection.mutable
@@ -290,6 +290,6 @@ case class AtomicSwitch(name: String, description: String, initiallyOn: Boolean 
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
 }
 
