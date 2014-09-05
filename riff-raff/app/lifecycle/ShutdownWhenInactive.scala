@@ -24,14 +24,16 @@ object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
   def disableAndShutdown() {
     future {
       // wait a while for the UI requests to get up to date and then try and shutdown
+      log.info("Shutdown request received, pausing for UI updates to complete")
       blocking(Thread.sleep(5000L))
       try {
         log.info("Shutdown request received, disabling deployment")
         DeployController.enableDeploysSwitch.switchOff()
-        log.info("Deploys successfully disabled, shutting down JVM")
+        blocking(Thread.sleep(5000L))
+        log.info("Enable deploys switch successfully disabled, shutting down JVM")
         System.exit(EXITCODE)
       } catch {
-        case e: IllegalStateException => log.warn("Couldn't disable deployment so ignoring automatic shutdown request", e)
+        case e: IllegalStateException => log.warn("Ignoring automatic shutdown request: Deploys still running")
       }
     }
   }
