@@ -299,23 +299,17 @@ case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) e
   override lazy val description = s"$path from ${host.name}"
 }
 
-case class ChangeSwitch(switchboardURL: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
+case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
   val desiredStateName = if (desiredState) "ON" else "OFF"
+  val switchboardUrl = s"$protocol://${host.name}:$port$path"
 
   // execute this task (should throw on failure)
   def execute(stopFlag: => Boolean) = {
-    val req = url(switchboardURL) << Map(switchName -> desiredStateName)
-    val handler = (code:Int, res:HttpResponse, ent:Option[HttpEntity]) => {
-      MessageBroker.verbose(s"Response when trying to change $switchName to $desiredStateName: code $code and response $res (the response object status code was ${res.getStatusLine.getStatusCode})")
-      code match {
-        case failure if code >=400 => MessageBroker.fail(s"Failed trying to switch $switchName to $desiredStateName at switchboard URL $switchboardURL")
-        case success => MessageBroker.info(s"Switch $switchName changed to $desiredStateName successfully")
-      }
-    }
-    Handler(req, handler)
+    MessageBroker.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
+    Http(url(switchboardUrl) << Map(switchName -> desiredStateName) >|)
   }
 
-  def verbose: String = s"$description using switchboard at $switchboardURL"
+  def verbose: String = s"$description using switchboard at $switchboardUrl"
   def description: String = s"$switchName to $desiredStateName"
 }
 

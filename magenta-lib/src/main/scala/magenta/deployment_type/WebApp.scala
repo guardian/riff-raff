@@ -113,7 +113,7 @@ trait WebApp extends DeploymentType with S3AclParams {
     case "selfDeploy" => pkg => (host, keyRing) => {
       implicit val key = keyRing
       rootCopies(pkg, host) :::
-        ChangeSwitch(s"{$managementProtocol(pkg)}://$host:${managementPort(pkg)}${switchboardPath(pkg)}",
+        ChangeSwitch(host, managementProtocol(pkg), managementPort(pkg), switchboardPath(pkg),
           "shutdown-when-inactive", desiredState=true) ::
         Nil
     }
