@@ -3,14 +3,12 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
-import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import java.net.URL
 import magenta.deployment_type.PatternValue
+import dispatch.classic._
+import org.apache.http.{HttpEntity, HttpResponse}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -299,6 +297,26 @@ case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String, prefix: 
 case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("/bin/rm", path)
   override lazy val description = s"$path from ${host.name}"
+}
+
+case class ChangeSwitch(switchboardURL: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
+  val desiredStateName = if (desiredState) "ON" else "OFF"
+
+  // execute this task (should throw on failure)
+  def execute(stopFlag: => Boolean) = {
+    val req = url(switchboardURL) << Map(switchName -> desiredStateName)
+    val handler = (code:Int, res:HttpResponse, ent:Option[HttpEntity]) => {
+      MessageBroker.verbose(s"Response when trying to change $switchName to $desiredStateName: code $code and response $res (the response object status code was ${res.getStatusLine.getStatusCode})")
+      code match {
+        case failure if code >=400 => MessageBroker.fail(s"Failed trying to switch $switchName to $desiredStateName at switchboard URL $switchboardURL")
+        case success => MessageBroker.info(s"Switch $switchName changed to $desiredStateName successfully")
+      }
+    }
+    Handler(req, handler)
+  }
+
+  def verbose: String = s"$description using switchboard at $switchboardURL"
+  def description: String = s"$switchName to $desiredStateName"
 }
 
 case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {

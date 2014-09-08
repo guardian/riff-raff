@@ -78,6 +78,15 @@ trait WebApp extends DeploymentType with S3AclParams {
       |more precisely which directories on the target host are affected.
     """.stripMargin
   ).default("additive")
+  val managementPort = Param[Int]("managementPort",
+    "For deferred deployment only: The port of the management pages containing the location of the switchboard"
+  ).default(18080)
+  val managementProtocol = Param[String]("managementProtocol",
+    "For deferred deployment only: The protocol of the management pages containing the location of the switchboard"
+  ).default("http")
+  val switchboardPath = Param[String]("switchboardPath",
+    "For deferred deployment only: The URL path on the host to the switchboard management page"
+  ).default("/management/switchboard")
 
   override def perHostActions = {
     case "deploy" => pkg => (host, keyRing) => {
@@ -100,6 +109,13 @@ trait WebApp extends DeploymentType with S3AclParams {
         CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
         UnblockFirewall(host as user(pkg))
       )
+    }
+    case "selfDeploy" => pkg => (host, keyRing) => {
+      implicit val key = keyRing
+      rootCopies(pkg, host) :::
+        ChangeSwitch(s"{$managementProtocol(pkg)}://$host:${managementPort(pkg)}${switchboardPath(pkg)}",
+          "shutdown-when-inactive", desiredState=true) ::
+        Nil
     }
   }
 
