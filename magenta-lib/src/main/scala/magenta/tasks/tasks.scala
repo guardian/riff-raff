@@ -303,8 +303,12 @@ case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String, prefix: 
 }
 
 case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def conditional(test: List[String], command: List[String]) = List("if", "[") ++ test ++ List("];", "then") ++ command ++ List(";", "fi" )
   val recursiveFlag = if (recursive) List("-r") else Nil
-  def commandLine = List("/bin/rm") ++ recursiveFlag :+ path
+  def commandLine = conditional(
+    List("-f", path),
+    List("/bin/rm") ++ recursiveFlag :+ path
+  )
   override lazy val description = s"$path from ${host.name} (recursion=$recursive)"
 }
 
