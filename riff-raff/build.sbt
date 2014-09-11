@@ -1,13 +1,12 @@
 resolvers ++= Seq(
-    "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-releases",
     "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
 
 libraryDependencies ++= Seq(
-  "com.gu" %% "management-play" % "6.0" exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
-  "com.gu" %% "management-logback" % "5.31",
+  "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
+  "com.gu" %% "management-logback" % guardianManagementVersion,
   "com.gu" %% "configuration" % "3.10",
   "org.scala-lang" % "scala-reflect" % "2.10.0",
   "org.mongodb" %% "casbah" % "2.6.0",
