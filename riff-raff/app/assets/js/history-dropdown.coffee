@@ -8,7 +8,7 @@ updateOrAddParam = (url, param, value) ->
     url+separator+param+'='+encodedValue
 
 filterByProjectName = ->
-  projectName = $('#projectName').val()
+  projectName = $('#projectInput').val()
   newUrl = updateOrAddParam(document.URL, "projectName", projectName)
   pageResetUrl = updateOrAddParam(newUrl, "page", "1")
   window.location = pageResetUrl
@@ -16,5 +16,7 @@ filterByProjectName = ->
 $ ->
   $('.dropdown-toggle').dropdown()
   $('.dropdown input, .dropdown label').click((e) -> e.stopPropagation())
+  # don't hide panel when autocomplete is clicked
+  $('body').on('click', '.ui-autocomplete', (e) -> e.stopPropagation())
   $('#projectNameGo').click => filterByProjectName()
-  $('#projectName').keypress((e) -> if e.which == 13 then filterByProjectName())
+  $('#projectInput').keypress((e) -> if e.which == 13 then filterByProjectName())
