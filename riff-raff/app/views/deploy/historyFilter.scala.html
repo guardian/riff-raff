@@ -28,7 +28,7 @@
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Project@view.filter.projectName.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
                 <div class="dropdown-menu floating-form">
                     <div class="input-group floating-form">
-                        <input id="projectName" class="form-control" type="text" name="projectName" size="80" value="@view.filter.projectName.getOrElse("")"/>
+                        <input id="projectInput" name="projectName" value="@view.filter.projectName.getOrElse("")" data-url="/deployment/request/autoComplete/project" class="form-control" />
                         <span class="input-group-btn">
                             <button class="btn btn-primary" id="projectNameGo"><i class="glyphicon glyphicon-filter"></i> Filter</button>
                             <a class="btn btn-danger" href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withProjectName(None)).q}"><i class="glyphicon glyphicon-remove"></i> Clear</a>

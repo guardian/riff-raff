@@ -1,7 +1,7 @@
 @(implicit request: AuthenticatedRequest[AnyContent])
 @import deployment.DeployFilterPagination
 
-@main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time")) {
+@main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
 <link href="@routes.Assets.at("stylesheets/rickshaw.css")" rel="stylesheet">
 <link href='@routes.Assets.at("stylesheets/graph.css")' rel="stylesheet">
 <script src='@routes.Assets.at("javascripts/d3.v2.min.js")'></script>
