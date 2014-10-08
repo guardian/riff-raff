@@ -11,34 +11,64 @@ import akka.actor.ActorSystem
 import magenta._
 import magenta.Build
 import akka.agent.Agent
-import akka.util.Timeout
+import akka.util.{Switch, Timeout}
 import scala.concurrent.duration._
 import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
-import conf.AtomicSwitch
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.util.{Failure, Success}
 import org.joda.time.DateTime
 import play.api.libs.json.Json
 import org.joda.time.format.DateTimeFormat
 import scala.concurrent.{Await, Future}
+import scala.collection.mutable
+
+trait DeploySink {
+  def postCleanup(uuid:UUID)
+}
 
 object DeployController extends Logging with LifecycleWithoutApp {
+  private val deployEventListener = mutable.Buffer[DeploySink]()
+  def subscribe(sink: DeploySink) { deployEventListener += sink }
+  def unsubscribe(sink: DeploySink) { deployEventListener -= sink }
+
   val sink = new MessageSink {
     def message(message: MessageWrapper) { update(message) }
   }
   def init() { MessageBroker.subscribe(sink) }
   def shutdown() { MessageBroker.unsubscribe(sink) }
 
-  lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
+  val deploysEnabled = new Switch(startAsOn = true)
 
-  lazy val enableDeploysSwitch = new AtomicSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", true) {
-    override def switchOff() {
-      super.switchOff {
+  /**
+   * Attempt to disable deploys from running.
+   * @return true if successful and false if this failed because a deploy was currently running
+   */
+  def atomicDisableDeploys:Boolean = {
+    try {
+      deploysEnabled.switchOff {
         if (getControllerDeploys.exists(!_.isDone))
           throw new IllegalStateException("Cannot turn switch off as builds are currently running")
       }
+      true
+    } catch {
+      case e:IllegalStateException => false
+    }
+  }
+
+  def enableDeploys = deploysEnabled.switchOn
+
+  lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
+
+  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", deploysEnabled.isOn) {
+    override def switchOff() {
+      if (!atomicDisableDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+      super.switchOff()
+    }
+    override def switchOn(): Unit = {
+      enableDeploys
+      super.switchOn()
     }
   }
 
@@ -97,6 +127,13 @@ object DeployController extends Logging with LifecycleWithoutApp {
       log.debug(s"Done removing deploy record $uuid from internal caches")
       allDeploys - record.uuid
     }
+    firePostCleanup(uuid)
+  }
+
+  def firePostCleanup(uuid: UUID) {
+    library.future().onComplete{ _ =>
+      deployEventListener.foreach(_.postCleanup(uuid))
+    }    
   }
 
   def deploy(requestedParams: DeployParameters): UUID = {
@@ -111,7 +148,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
       }.getOrElse(requestedParams)
     }
 
-    enableDeploysSwitch.whileOnYield {
+    deploysEnabled.whileOnYield {
       val record = DeployController.create(params)
       DeployControlActor.interruptibleDeploy(record)
       record.uuid

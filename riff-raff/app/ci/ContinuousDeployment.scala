@@ -30,7 +30,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   }
 
   def init() {
-    val builds = buildCandidates(CIBuild.jobs, TeamCityAPI.buildBatch, CIBuild.newBuilds)
+    val builds = buildCandidates(CIBuild.jobs, TeamCityAPI.succesfulBuildBatch, CIBuild.newBuilds)
 
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>

@@ -3,14 +3,12 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import scala._
 import java.io.{IOException, FileNotFoundException, File}
-import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import java.net.URL
 import magenta.deployment_type.PatternValue
+import dispatch.classic._
+import org.apache.http.{HttpEntity, HttpResponse}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -84,6 +82,12 @@ case class Compress(source:  Option[File])(implicit val keyRing: KeyRing) extend
 case class Decompress(host: Host, dest: String, source: Option[File])(implicit val keyRing: KeyRing) extends RemoteShellTask with CompressedFilename {
   def commandLine: CommandLine = {
     CommandLine("tar" :: "--bzip2" :: "--directory" :: dest :: "-xmf" :: dest + compressedName:: Nil)
+  }
+}
+
+case class DecompressTarBall(host: Host, tarball: String, dest: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def commandLine: CommandLine = {
+    CommandLine("tar" :: "--directory" :: dest :: "-xmzf" :: tarball :: Nil)
   }
 }
 
@@ -296,9 +300,28 @@ case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String, prefix: 
 
 }
 
-case class RemoveFile(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("/bin/rm", path)
-  override lazy val description = s"$path from ${host.name}"
+case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
+  def conditional(test: List[String], command: List[String]) = List("if", "[") ++ test ++ List("];", "then") ++ command ++ List(";", "fi" )
+  val recursiveFlag = if (recursive) List("-r") else Nil
+  def commandLine = conditional(
+    List("-f", path),
+    List("/bin/rm") ++ recursiveFlag :+ path
+  )
+  override lazy val description = s"$path from ${host.name} (recursion=$recursive)"
+}
+
+case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
+  val desiredStateName = if (desiredState) "ON" else "OFF"
+  val switchboardUrl = s"$protocol://${host.name}:$port$path"
+
+  // execute this task (should throw on failure)
+  def execute(stopFlag: => Boolean) = {
+    MessageBroker.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
+    Http(url(switchboardUrl) << Map(switchName -> desiredStateName) >|)
+  }
+
+  def verbose: String = s"$description using switchboard at $switchboardUrl"
+  def description: String = s"$switchName to $desiredStateName"
 }
 
 case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {

@@ -26,7 +26,7 @@ object Every {
 trait ContinuousIntegrationAPI {
   def jobs(implicit ec: ExecutionContext): Observable[Job]
   def builds(job: Job)(implicit ec: ExecutionContext): Observable[CIBuild]
-  def buildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]]
+  def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]]
 }
 
 object FailSafeObservable extends Logging {
@@ -42,14 +42,14 @@ object TeamCityAPI extends ContinuousIntegrationAPI with Logging {
     FailSafeObservable(BuildTypeLocator.list, "Couldn't retrieve build types").flatMap(Observable.from(_))
 
   def builds(job: Job)(implicit ec: ExecutionContext): Observable[CIBuild] = for {
-    builds <- TeamCityAPI.buildBatch(job)
+    builds <- TeamCityAPI.succesfulBuildBatch(job)
     build <- Observable.from(builds)
   } yield build
 
-  def buildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]] = {
+  def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]] = {
     FailSafeObservable({
       val startTime = DateTime.now()
-      TeamCityWS.url(s"/app/rest/builds?locator=buildType:${job.id},branch:default:any&count=20").get().flatMap { r =>
+      TeamCityWS.url(s"/app/rest/builds?locator=status:SUCCESS,buildType:${job.id},branch:default:any&count=20&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl)").get().flatMap { r =>
         TeamCityMetrics.ApiCallTimer.recordTimeSpent(DateTime.now.getMillis - startTime.getMillis)
         BuildSummary(r.xml, (id: String) => Future.successful(Some(job)), false)
       }

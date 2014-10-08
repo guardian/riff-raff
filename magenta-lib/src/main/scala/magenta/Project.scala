@@ -164,9 +164,15 @@ object DefaultRecipe {
   def apply() = RecipeName("default")
 }
 
-sealed trait Stack
-case class NamedStack(name: String) extends Stack
-case object UnnamedStack extends Stack
+sealed trait Stack {
+  def nameOption: Option[String]
+}
+case class NamedStack(name: String) extends Stack {
+  override def nameOption = Some(name)
+}
+case object UnnamedStack extends Stack {
+  override def nameOption = None
+}
 
 case class Deployer(name: String)
 

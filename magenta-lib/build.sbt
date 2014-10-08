@@ -1,8 +1,7 @@
 resolvers ++= Seq(
     Classpaths.typesafeResolver,
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
-    "spray repo" at "http://repo.spray.cc",
-    "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases"
+    "spray repo" at "http://repo.spray.cc"
 )
 
 libraryDependencies ++= Seq(
@@ -18,6 +17,6 @@ libraryDependencies ++= Seq(
     "org.mockito" % "mockito-core" % "1.9.0" % "test",
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.2",
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.2",
-    "com.gu" %% "management" % "5.27",
+    "com.gu" %% "management" % guardianManagementVersion,
     "com.gu" %% "fastly-api-client" % "0.1.3"
 )

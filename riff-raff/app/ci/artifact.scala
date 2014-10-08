@@ -1,20 +1,19 @@
 package ci
 
-import teamcity._
-import teamcity.TeamCity.{BuildTypeLocator, BuildLocator}
-import utils.{VCSInfo, PeriodicScheduledAgentUpdate, ScheduledAgent}
-import scala.concurrent.duration._
-import org.joda.time.{Duration, DateTime}
+import akka.agent.Agent
+import ci.Context._
+import ci.teamcity.TeamCity.BuildLocator
+import ci.teamcity._
 import controllers.Logging
 import lifecycle.LifecycleWithoutApp
-import concurrent.{ Future, Promise, promise, Await }
-import play.api.Logger
-import akka.agent.Agent
-import Context._
-import scala.util.Try
-import rx.lang.scala.{Observable, Subscription}
+import org.joda.time.Duration
+import rx.lang.scala.Subscription
+import utils.VCSInfo
 
-object ContinuousIntegration {
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+
+object ContinuousIntegration extends Logging {
   def getMetaData(projectName: String, buildId: String): Map[String, String] = {
     val build = TeamCityBuilds.builds.find { build =>
       build.jobName == projectName && build.number == buildId
@@ -35,7 +34,10 @@ object ContinuousIntegration {
         }.toIterable)
           .map(_.flatten.toMap)
       } recover {
-        case _ => Map.empty[String,String]
+        case e => {
+          log.error("Problem retrieving VCS details", e)
+          Map.empty[String,String]
+        }
       }
       Await.result(futureMap, 5 seconds)
     }.getOrElse(Map.empty[String,String])

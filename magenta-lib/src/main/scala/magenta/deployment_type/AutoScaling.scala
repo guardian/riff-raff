@@ -67,7 +67,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
     """
       |S3 bucket name to upload artifact into.
       |
-      |The path in the bucket is `<stage>/<packageName>/<fileName>`.
+      |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
     """.stripMargin
   )
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
@@ -91,7 +91,13 @@ object AutoScaling  extends DeploymentType with S3AclParams {
     case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
-        S3Upload(stack, parameters.stage, bucket(pkg), new File(pkg.srcDir.getPath + "/"), publicReadAcl = publicReadAcl(pkg))
+        S3Upload(
+          stack,
+          parameters.stage,
+          bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
+          new File(pkg.srcDir.getPath + "/"),
+          publicReadAcl = publicReadAcl(pkg)
+        )
       )
   }
 }

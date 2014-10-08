@@ -51,11 +51,9 @@ object BuildType extends Logging {
 
 trait TeamcityBuild extends CIBuild with Logging {
   def status: String
-  def webUrl: URL
   def buildTypeId: String
   def startDate: DateTime
   def job: Job
-  def defaultBranch: Option[Boolean]
   def detail: Future[BuildDetail]
   def jobName = job.name
   def startTime = startDate
@@ -67,9 +65,7 @@ case class BuildSummary(id: Long,
                         number: String,
                         buildTypeId: String,
                         status: String,
-                        webUrl: URL,
                         branchName: String,
-                        defaultBranch: Option[Boolean],
                         startDate: DateTime,
                         job: Job
                          ) extends TeamcityBuild {
@@ -101,10 +97,8 @@ object BuildSummary extends Logging {
           build \ "@number" text,
           build \ "@buildTypeId" text,
           build \ "@status" text,
-          new URL(build \ "@webUrl" text),
           (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
-          (build \ "@defaultBranch").headOption.map(_.text == "true"),
-          TeamCity.dateTimeFormat.parseDateTime(build \ "@startDate" text),
+          TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
           bt
         )
       }
@@ -169,7 +163,7 @@ object VCSRootInstance {
   }
 }
 
-case class Revision(version: String, vcsInstanceId: Int, vcsRootId: Int, vcsName: String, vcsHref: String) {
+case class Revision(version: String, vcsInstanceId: Int, vcsRootId: String, vcsName: String, vcsHref: String) {
   def vcsDetails = TeamCityWS.href(vcsHref).get().map(data => VCSRootInstance(data.xml))
 }
 object Revision {
@@ -177,7 +171,7 @@ object Revision {
     Revision(
       xml \ "@version" text,
       (xml \ "vcs-root-instance" \ "@id" text).toInt,
-      (xml \ "vcs-root-instance" \ "@vcs-root-id" text).toInt,
+      (xml \ "vcs-root-instance" \ "@vcs-root-id" text),
       xml \ "vcs-root-instance" \ "@name" text,
       xml \ "vcs-root-instance" \ "@href" text
     )
@@ -328,7 +322,7 @@ object TeamCity {
 
     object build {
       def detail(buildLocator: BuildLocator) = TeamCityWS.url("/app/rest/builds/%s" format buildLocator)
-      def list(buildLocator: BuildLocator) = TeamCityWS.url("/app/rest/builds/?locator=%s" format buildLocator)
+      def list(buildLocator: BuildLocator) = TeamCityWS.url(s"/app/rest/builds/?locator=$buildLocator&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl)")
       def buildType(buildTypeId: String) = list(BuildLocator.buildTypeId(buildTypeId))
       def since(buildId:Int) = list(BuildLocator.sinceBuild(buildId))
       def since(startTime:DateTime) = list(BuildLocator.sinceDate(startTime))

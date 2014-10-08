@@ -10,5 +10,16 @@
                 ]
             }
         }
+    },
+    "recipes":{
+      "default": {
+          "depends": ["deploy"]
+      },
+      "deploy": {
+          "actionsPerHost": ["riff-raff.deploy"]
+      },
+      "self-deploy": {
+          "actionsPerHost": ["riff-raff.selfDeploy"]
+      }
     }
 }

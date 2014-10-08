@@ -2,7 +2,7 @@ import collection.mutable
 import conf.{PlayRequestMetrics, DeployMetrics}
 import controllers.Logging
 import deployment.DeployInfoManager
-import lifecycle.Lifecycle
+import lifecycle.{ShutdownWhenInactive, Lifecycle}
 import notification._
 import persistence.SummariseDeploysHousekeeping
 import play.api.mvc.{SimpleResult, RequestHeader, WithFilters}
@@ -32,7 +32,8 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
       TeamCityBuilds,
       TeamCityBuildPinner,
       SummariseDeploysHousekeeping,
-      ContinuousDeployment
+      ContinuousDeployment,
+      ShutdownWhenInactive
     )
 
     log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
