@@ -156,7 +156,7 @@ case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends Remo
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
-case class Restart(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
+case class Service(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, command)
 
   override lazy val description = s" of $appName using $command command"
@@ -304,7 +304,7 @@ case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(impl
   def conditional(test: List[String], command: List[String]) = List("if", "[") ++ test ++ List("];", "then") ++ command ++ List(";", "fi" )
   val recursiveFlag = if (recursive) List("-r") else Nil
   def commandLine = conditional(
-    List("-f", path),
+    List("-e", path),
     List("/bin/rm") ++ recursiveFlag :+ path
   )
   override lazy val description = s"$path from ${host.name} (recursion=$recursive)"

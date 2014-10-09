@@ -7,7 +7,7 @@ import tasks._
 import tasks.BlockFirewall
 import tasks.CheckUrls
 import tasks.CopyFile
-import tasks.Restart
+import tasks.Service
 import tasks.WaitForPort
 import net.liftweb.util.TimeHelpers._
 import net.liftweb.json.Implicits._
@@ -25,7 +25,7 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     ResinWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
-      Restart(host as "resin", "webapp"),
+      Service(host as "resin", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
       UnblockFirewall(host as "resin")
@@ -50,7 +50,7 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
     ResinWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
-      Restart(host as "resin", "webapp"),
+      Service(host as "resin", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, urls, 2 minutes, 5),
       UnblockFirewall(host as "resin")

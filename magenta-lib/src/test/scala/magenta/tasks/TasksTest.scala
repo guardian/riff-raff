@@ -40,7 +40,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   it should "support hosts with user name" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = Restart(host, "app")
+    val task = Service(host, "app")
 
     task.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "some-user@some-host", "sudo /sbin/service app restart")))
   }
@@ -64,7 +64,7 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
   "restart task" should "perform service restart" in {
     val host = Host("some-host") as ("some-user")
 
-    val task = Restart(host, "myapp")
+    val task = Service(host, "myapp")
 
     task.commandLine should be (CommandLine(List("sudo", "/sbin/service", "myapp", "restart")))
   }

@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.tasks._
 import magenta.tasks.CheckUrls
-import magenta.tasks.Restart
+import magenta.tasks.Service
 import magenta.tasks.BlockFirewall
 import scala.Some
 import magenta.tasks.WaitForPort
@@ -52,10 +52,11 @@ object NativePackagerWebapp extends WebApp {
 
       BlockFirewall(host as user(pkg)) ::
       CopyFile(host as user(pkg), s"${pkg.srcDir.getPath}/${tarball(pkg)}", remoteTarballLocation) ::
+      Service(host as user(pkg), servicename(pkg), "stop") ::
       RemoveFile(host as user(pkg), s"$applicationRoot/${applicationName(pkg)}", recursive=true) ::
       DecompressTarBall(host as user(pkg), remoteTarballLocation, applicationRoot) ::
       RemoveFile(host as user(pkg), remoteTarballLocation) ::
-      Restart(host as user(pkg), servicename(pkg)) ::
+      Service(host as user(pkg), servicename(pkg), "start") ::
       WaitForPort(host, port(pkg), waitseconds(pkg) * 1000) ::
       CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
       UnblockFirewall(host as user(pkg)) ::
