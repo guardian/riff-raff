@@ -304,7 +304,7 @@ case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(impl
   def conditional(test: List[String], command: List[String]) = List("if", "[") ++ test ++ List("];", "then") ++ command ++ List(";", "fi" )
   val recursiveFlag = if (recursive) List("-r") else Nil
   def commandLine = conditional(
-    List("-f", path),
+    List("-e", path),
     List("/bin/rm") ++ recursiveFlag :+ path
   )
   override lazy val description = s"$path from ${host.name} (recursion=$recursive)"
