@@ -94,7 +94,7 @@ trait WebApp extends DeploymentType with S3AclParams {
 
       BlockFirewall(host as user(pkg)) ::
       rootCopies(pkg, host) :::
-      Restart(host as user(pkg), servicename(pkg)) ::
+      Service(host as user(pkg), servicename(pkg)) ::
       WaitForPort(host, port(pkg), waitseconds(pkg) * 1000) ::
       CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)) ::
       UnblockFirewall(host as user(pkg)) ::
@@ -104,7 +104,7 @@ trait WebApp extends DeploymentType with S3AclParams {
       implicit val key = keyRing
       List(
         BlockFirewall(host as user(pkg)),
-        Restart(host as user(pkg), servicename(pkg)),
+        Service(host as user(pkg), servicename(pkg)),
         WaitForPort(host, port(pkg), waitseconds(pkg) * 1000),
         CheckUrls(host, port(pkg), healthcheck_paths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg)),
         UnblockFirewall(host as user(pkg))

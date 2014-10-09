@@ -8,7 +8,7 @@ import net.liftweb.json.Implicits._
 import tasks.BlockFirewall
 import tasks.CheckUrls
 import tasks.CopyFile
-import tasks.Restart
+import tasks.Service
 import tasks.UnblockFirewall
 import net.liftweb.json.JsonAST.JString
 import tasks.WaitForPort
@@ -28,7 +28,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     JettyWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
-      Restart(host as "jetty", "webapp"),
+      Service(host as "jetty", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
       UnblockFirewall(host as "jetty")
@@ -53,7 +53,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     JettyWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/"),
-      Restart(host as "jetty", "webapp"),
+      Service(host as "jetty", "webapp"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, urls, 2 minutes, 5),
       UnblockFirewall(host as "jetty")
@@ -70,13 +70,13 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
     JettyWebapp.perHostActions("deploy")(p)(host, fakeKeyRing) should (contain[Task] (
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/webapp/")
     ) and contain[Task] (
-      Restart(host as "jetty", "webapp")
+      Service(host as "jetty", "webapp")
     ))
 
     JettyWebapp.perHostActions("deploy")(p2)(host, fakeKeyRing) should (contain[Task] (
       CopyFile(host as "jetty", "/tmp/packages/webapp/", "/jetty-apps/microapps/")
     ) and contain[Task] (
-      Restart(host as "jetty", "microapps")
+      Service(host as "jetty", "microapps")
     ))
   }
 
@@ -103,7 +103,7 @@ class JettyWebappTest  extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "jetty"),
       CopyFile(host as "jetty", "/tmp/packages/d2index/solr/conf/", "/jetty-apps/d2index/solr/conf/", CopyFile.MIRROR_MODE),
       CopyFile(host as "jetty", "/tmp/packages/d2index/webapp/", "/jetty-apps/d2index/webapp/", CopyFile.MIRROR_MODE),
-      Restart(host as "jetty", "d2index"),
+      Service(host as "jetty", "d2index"),
       WaitForPort(host, 8080, 1 minute),
       CheckUrls(host, 8080, List("/d2index/management/healthcheck"), 2 minutes, 5),
       UnblockFirewall(host as "jetty")

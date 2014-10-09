@@ -56,7 +56,7 @@ object RPM extends DeploymentType {
       CopyFile(host as user(pkg), rpmFilePath, remoteTmpRpm) ::
       InstallRpm(host as user(pkg), remoteTmpRpm, noFileDigest(pkg)) ::
       RemoveFile(host as user(pkg), remoteTmpRpm) ::
-      services(pkg).map(service => Restart(host as user(pkg), service, serviceCommand(pkg))) :::
+      services(pkg).map(service => Service(host as user(pkg), service, serviceCommand(pkg))) :::
       port.get(pkg).toList.map(p => WaitForPort(host, p, 60 * 1000)) :::
       port.get(pkg).toList.map(p => CheckUrls(host, p, healthCheckPaths(pkg), checkseconds(pkg) * 1000, checkUrlReadTimeoutSeconds(pkg))) :::
       UnblockFirewall(host as user(pkg)) ::

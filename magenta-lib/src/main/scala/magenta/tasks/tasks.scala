@@ -156,7 +156,7 @@ case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends Remo
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
 
-case class Restart(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
+case class Service(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = List("sudo", "/sbin/service", appName, command)
 
   override lazy val description = s" of $appName using $command command"
