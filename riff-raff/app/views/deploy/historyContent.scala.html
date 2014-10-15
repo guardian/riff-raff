@@ -1,4 +1,4 @@
-@(implicit request: AuthenticatedRequest[AnyContent], records: List[deployment.Record], pagination: DeployFilterPagination)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], records: List[deployment.Record], pagination: DeployFilterPagination)
 @import deployment.DeployFilterPagination
 
 @snippets.recordTable(records)

@@ -1,4 +1,4 @@
-@(implicit request: AuthenticatedRequest[AnyContent], parameters: magenta.DeployParameters, previewId: String)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], parameters: magenta.DeployParameters, previewId: String)
 @import views.html.helper.magenta.ParameterHelper._
 
 @main("Preview", request, List("auto-refresh","checkbox-selection")) {

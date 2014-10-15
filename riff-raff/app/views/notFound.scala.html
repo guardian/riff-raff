@@ -1,7 +1,7 @@
-@(request: AuthenticatedRequest[AnyContent], message:String, throwable:Option[Throwable]=None)
+@(request: Request[AnyContent], message:String, throwable:Option[Throwable]=None)
 @import conf.Configuration._
 
-@main("Not found", request){
+@mainNoAuth("Not found", request){
 <h2>Master, Rocky has broken his chain and vanished</h2>
 
 <p>@message</p>

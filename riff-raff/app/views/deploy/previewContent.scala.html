@@ -1,4 +1,4 @@
-@(implicit request: AuthenticatedRequest[AnyContent], preview: deployment.Preview)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], preview: deployment.Preview)
 
 @helper.form(action=routes.Deployment.processForm) {
 

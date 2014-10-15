@@ -1,4 +1,4 @@
-@(request: AuthenticatedRequest[AnyContent])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("About Deployment Information", request) {
 

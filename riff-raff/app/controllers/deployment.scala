@@ -235,7 +235,7 @@ object Deployment extends Controller with Logging with LoginActions {
         val defaultRecipe = LookupSelector().data
           .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
-        val parameters = new DeployParameters(Deployer(request.identity.get.fullName),
+        val parameters = new DeployParameters(Deployer(request.user.fullName),
           Build(form.project,form.build.toString),
           Stage(form.stage),
           recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
@@ -255,7 +255,7 @@ object Deployment extends Controller with Logging with LoginActions {
   }
 
   def stop(uuid: String) = AuthAction { implicit request =>
-    DeployController.stop(UUID.fromString(uuid), request.identity.get.fullName)
+    DeployController.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.Deployment.viewUUID(uuid))
   }
 
@@ -268,13 +268,13 @@ object Deployment extends Controller with Logging with LoginActions {
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
     val record = DeployController.get(UUID.fromString(uuid))
-    Ok(views.html.deploy.logContent(request, record))
+    Ok(views.html.deploy.logContent(record))
   }
 
   def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks:String) = AuthAction { implicit request =>
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
-    val parameters = DeployParameters(Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
+    val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
     val previewId = PreviewController.startPreview(parameters)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
@@ -283,7 +283,7 @@ object Deployment extends Controller with Logging with LoginActions {
     val previewUUID = UUID.fromString(previewId)
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val parameters = DeployParameters(
-      Deployer(request.identity.get.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
+      Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
     )
     val result = PreviewController.getPreview(previewUUID, parameters)
     result match {

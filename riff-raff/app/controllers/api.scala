@@ -150,7 +150,7 @@ object Api extends Controller with Logging with LoginActions {
       errors => BadRequest(views.html.api.form(request, errors)),
       applicationName => {
         val randomKey = ApiKeyGenerator.newKey()
-        val key = ApiKey(applicationName, randomKey, request.identity.get.fullName, new DateTime())
+        val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
         Persistence.store.createApiKey(key)
         Redirect(routes.Api.listKeys)
       }

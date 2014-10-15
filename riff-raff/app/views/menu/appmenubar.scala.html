@@ -1,11 +1,13 @@
-@(request: AuthenticatedRequest[AnyContent])
+@(request: Request[AnyContent])
+@import com.gu.googleauth.UserIdentity
 
 @menubar{
-            @if(request.identity.isDefined) {
+    @defining(UserIdentity.fromRequest(request)) { identity =>
+        @if(identity.isDefined) {
             <ul class="btn-group pull-right hidden-xs nav navbar-nav">
                 <li>
                     <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-                        <i class="glyphicon glyphicon-user"></i> @request.identity.get.fullName
+                        <i class="glyphicon glyphicon-user"></i> @identity.get.fullName
                         <span class="caret"></span>
                     </a>
                     <ul class="dropdown-menu">
@@ -15,16 +17,17 @@
                     </ul>
                 </li>
             </ul>
-            } else {
+        } else {
             <ul class="nav navbar-nav pull-right">
                 <li>
                     <a href="@Menu.loginMenuItem.target"><i class="glyphicon glyphicon-user"></i> @Menu.loginMenuItem.title</a>
                 </li>
             </ul>
-            }
-            <ul class="nav navbar-nav navbar-collapse collapse">
-                @for(item <- Menu.menuItems) {
-                @menubaritem(request,item)
-                }
-            </ul>
+        }
+        <ul class="nav navbar-nav navbar-collapse collapse">
+        @for(item <- Menu.menuItems) {
+            @menubaritem(request, item)
+        }
+        </ul>
+    }
 }

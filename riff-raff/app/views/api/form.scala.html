@@ -1,4 +1,4 @@
-@(request: AuthenticatedRequest[AnyContent], apiForm: Form[String])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], apiForm: Form[String])
 @import helper.twitterBootstrap._
 
 @main("Create new API key", request) {

@@ -1,5 +1,6 @@
 package controllers
 
+import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.mvc.BodyParsers._
@@ -18,10 +19,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 import com.gu.googleauth._
 import scala.concurrent.Future
 import play.api.libs.json.Json
-
-case class ApiIdentity(apiKey: ApiKey) {
-
-}
 
 class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
@@ -78,10 +75,14 @@ object ApiAuthAction {
 
 trait LoginActions extends Actions {
   override def loginTarget: Call = routes.Login.loginAction()
+
+  def authConfig: GoogleAuthConfig = auth.googleAuthConfig
 }
 
 object Login extends Controller with Logging with LoginActions {
   val ANTI_FORGERY_KEY = "antiForgeryToken"
+
+  def hasIdentity[A](request: Request[A]): Boolean = request.isInstanceOf[AuthenticatedRequest[UserIdentity, A]]
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
@@ -93,7 +94,7 @@ object Login extends Controller with Logging with LoginActions {
     }
   }
 
-  def login = LoginAuthAction { request =>
+  def login = Action { request =>
     val error = request.flash.get("error")
     Ok(views.html.auth.login(request, error))
   }
@@ -135,7 +136,7 @@ object Login extends Controller with Logging with LoginActions {
   }
 
   def profile = AuthAction { request =>
-    val records = DeployController.getDeploys(request.identity.map(i => DeployFilter(deployer=Some(i.fullName)))).reverse
+    val records = DeployController.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
 
@@ -153,7 +154,7 @@ object Login extends Controller with Logging with LoginActions {
     authorisationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.auth.form(request, errors)),
       email => {
-        val auth = AuthorisationRecord(email.toLowerCase, request.identity.get.fullName, new DateTime())
+        val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
         Persistence.store.setAuthorisation(auth)
         Redirect(routes.Login.authList())
       }
@@ -162,7 +163,7 @@ object Login extends Controller with Logging with LoginActions {
 
   def authDelete = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
-      log.info(s"${request.identity.get.fullName} deleted authorisation for $email")
+      log.info(s"${request.user.fullName} deleted authorisation for $email")
       Persistence.store.deleteAuthorisation(email)
     } )
     Redirect(routes.Login.authList())

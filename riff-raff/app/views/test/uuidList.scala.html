@@ -1,4 +1,4 @@
-@(request: AuthenticatedRequest[AnyContent], deploys:Seq[controllers.SimpleDeployDetail])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
 @import helper.twitterBootstrap._
 
 @main("UUID list", request) {

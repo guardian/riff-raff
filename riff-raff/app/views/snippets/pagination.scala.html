@@ -1,4 +1,4 @@
-@(implicit request: AuthenticatedRequest[AnyContent], pagination: deployment.Pagination)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], pagination: deployment.Pagination)
 <div class="text-center">
     <ul class="pagination pagination-sm">
         <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.first(routes.Deployment.history())">««</a></li>

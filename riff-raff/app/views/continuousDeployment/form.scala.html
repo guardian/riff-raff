@@ -1,4 +1,4 @@
-@(request: AuthenticatedRequest[AnyContent], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
 @import ci.Trigger._
 
 @main("Continuous Deployment", request, List("form-autocomplete")) {

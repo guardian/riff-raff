@@ -1,6 +1,6 @@
-@(implicit request: AuthenticatedRequest[AnyContent], record: deployment.Record, verbose:Boolean)
+@(implicit request: Request[AnyContent], record: deployment.Record, verbose:Boolean)
 
-@main("Report test", request) {
+@mainNoAuth("Report test", request) {
 <!-- verbose @verbose -->
 @if(!verbose) {
 <style>
@@ -12,6 +12,6 @@
 <h2>Report test (@record.report.message.text)</h2>
 <hr/>
 <div class="content">
-    @deploy.logContent(request, record)
+    @deploy.logContent(record)
 </div>
 }

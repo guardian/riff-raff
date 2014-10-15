@@ -1,14 +1,14 @@
-@(request: AuthenticatedRequest[AnyContent], deployerRecords: List[deployment.Record])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: List[deployment.Record])
 
 @main("Profile", request) {
-@defining(request.identity.get) { id =>
+@defining(request.user) { id =>
     <h2>Profile for @id.firstName @id.lastName</h2>
     <div>
     <table class="table table-condensed">
         <tbody>
             <tr><td><strong>E-mail</strong></td><td>@id.email</td></tr>
             <tr><td><strong>Google subject ID</strong></td><td>@id.sub</td></tr>
-            <tr><td><strong>Expiry</strong></td><td>@id.exp</td></tr>
+            <tr><td><strong>Expiry</strong></td><td>@{new org.joda.time.DateTime(id.exp*1000)}</td></tr>
         </tbody>
     </table>
     </div>

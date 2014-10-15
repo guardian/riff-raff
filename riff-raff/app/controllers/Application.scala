@@ -1,5 +1,6 @@
 package controllers
 
+import com.gu.googleauth.UserIdentity
 import play.api.mvc._
 
 import play.api.{Routes, Logger}
@@ -8,7 +9,6 @@ import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import java.io.File
 import resources.LookupSelector
-import com.gu.googleauth.AuthenticatedRequest
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -17,20 +17,21 @@ trait Logging {
 trait MenuItem {
   def title:String
   def target:Call
-  def isActive(implicit request:AuthenticatedRequest[AnyContent]):Boolean
-  def isVisible(implicit request:AuthenticatedRequest[AnyContent]):Boolean
+  def isActive(implicit request:Request[AnyContent]):Boolean
+  def isVisible(hasIdentity:Boolean):Boolean
+  def isVisible(implicit request:Request[AnyContent]):Boolean = isVisible(UserIdentity.fromRequest(request).isDefined)
 }
 
 case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false, enabled: Boolean = true) extends MenuItem{
-  def isActive(implicit request: AuthenticatedRequest[AnyContent]): Boolean = {
+  def isActive(implicit request: Request[AnyContent]): Boolean = {
     activeInSubPaths && request.path.startsWith(target.url) || request.path == target.url
   }
-  def isVisible(implicit request: AuthenticatedRequest[AnyContent]): Boolean = enabled && (!identityRequired || request.identity.isDefined)
+  def isVisible(hasIdentity:Boolean = false) = enabled && (hasIdentity || !identityRequired)
 }
 
 case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#")) extends MenuItem {
-  def isActive(implicit request: AuthenticatedRequest[AnyContent]) = items.exists(_.isActive(request))
-  def isVisible(implicit request: AuthenticatedRequest[AnyContent]) = items.exists(_.isVisible(request))
+  def isActive(implicit request: Request[AnyContent]) = items.exists(_.isActive(request))
+  def isVisible(hasIdentity:Boolean = false) = items.exists(_.isVisible(hasIdentity))
 }
 
 object Menu {
@@ -45,7 +46,7 @@ object Menu {
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys())
     )),
-    SingleMenuItem("Documentation", routes.Application.documentation(""), identityRequired = false, activeInSubPaths = true)
+    SingleMenuItem("Documentation", routes.Application.documentation(""), activeInSubPaths = true)
   )
 
   lazy val deployInfoMenu = Seq(
@@ -59,7 +60,7 @@ object Menu {
 
 object Application extends Controller with Logging with LoginActions {
 
-  def index = NonAuthAction { implicit request =>
+  def index = Action { implicit request =>
     val url = getClass.getResource("/docs/releases.md")
     val markDown = Source.fromURL(url).mkString
     Ok(views.html.index(request, markDown))
@@ -145,13 +146,13 @@ object Application extends Controller with Logging with LoginActions {
     if (resource.endsWith(".png")) {
       Assets.at("/docs",resource)
     } else {
-      NonAuthAction { request =>
+      AuthAction { request =>
         if (resource.endsWith("/index")) {
           Redirect(routes.Application.documentation(resource.stripSuffix("index")))
         } else {
           val markDownLines = getMarkdownLines(resource)
           if (markDownLines.isEmpty) {
-              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
+              NotFound(views.html.notFound(request,s"No documentation found for $resource",None))
           } else {
             val markDown = markDownLines.mkString("\n")
 
@@ -192,7 +193,7 @@ object Application extends Controller with Logging with LoginActions {
     }
   }
 
-  def javascriptRoutes = NonAuthAction { implicit request =>
+  def javascriptRoutes = Action { implicit request =>
     import routes.javascript._
     Ok{
       Routes.javascriptRouter("jsRoutes")(

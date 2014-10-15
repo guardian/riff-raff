@@ -1,8 +1,8 @@
 package controllers
 
-import _root_.resources.LookupSelector
-import play.api.mvc.Controller
+import play.api.mvc.{Action, Controller}
 import magenta._
+import resources.LookupSelector
 import collection.mutable.ArrayBuffer
 import deployment.DeployRecord
 import java.util.UUID
@@ -15,7 +15,7 @@ import persistence.{DocumentStoreConverter, Persistence}
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
 object Testing extends Controller with Logging with LoginActions {
-  def reportTestPartial(take: Int, verbose: Boolean) = NonAuthAction { implicit request =>
+  def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
 

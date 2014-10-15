@@ -1,4 +1,4 @@
-@(request: AuthenticatedRequest[AnyContent], item: MenuItem)
+@(request: Request[AnyContent], item: MenuItem)
 
 @if(item.isVisible(request)) {
     @item match {

@@ -40,7 +40,7 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
       formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
       form => {
         val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.identity.get.fullName, new DateTime()
+          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
         Persistence.store.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
