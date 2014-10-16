@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean)
 
-object Hooks extends Controller with Logging {
+object Hooks extends Controller with Logging with LoginActions {
   lazy val hookForm = Form[HookForm](
     mapping(
       "id" -> uuid,
@@ -36,7 +36,7 @@ object Hooks extends Controller with Logging {
     hookForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.hooks.form(request,formWithErrors)),
       f => {
-        val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.identity.get.fullName)
+        val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName)
         Persistence.store.setPostDeployHook(config)
         Redirect(routes.Hooks.list())
       }

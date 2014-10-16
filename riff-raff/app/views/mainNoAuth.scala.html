@@ -1,4 +1,4 @@
-@(title: String, request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
+@(title: String, request: Request[AnyContent],
         scripts: List[String] = Nil, subNav: Html = Html.empty)(content: Html)
 
 @page(title, scripts)(menu.appmenubar(request), subNav)(content)

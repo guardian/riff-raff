@@ -22,6 +22,7 @@ GET         /deployment/externalRequest                     controllers.Deployme
 
 GET         /deployment/history                             controllers.Deployment.history
 GET         /deployment/history/update                      controllers.Deployment.historyContent
+GET         /deployment/history/graphData                   controllers.Api.historyGraph
 
 GET         /deployment/view/:uuid                          controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
 POST        /deployment/markAsFailed                        controllers.Deployment.markAsFailed
@@ -55,7 +56,7 @@ POST        /deployment/hooks/delete                        controllers.Hooks.de
 GET         /profile                                        controllers.Login.profile
 GET         /login                                          controllers.Login.login
 GET         /loginAction                                    controllers.Login.loginAction
-GET         /openIDCallback                                 controllers.Login.openIDCallback
+GET         /oauth2callback                                 controllers.Login.oauth2Callback
 GET         /logout                                         controllers.Login.logout
 
 GET         /auth/list                                      controllers.Login.authList
@@ -74,8 +75,6 @@ GET         /api/deployinfo                                 controllers.Api.depl
 GET         /api/deploy/view                                controllers.Api.view(uuid:String)
 POST        /api/deploy/request                             controllers.Api.deploy
 POST        /api/deploy/stop                                controllers.Api.stop
-
-GET         /api/historyGraph                               controllers.Api.historyGraph
 
 # Testing pages (for changing styling without running deploys)
 GET         /testing/reportTestPartial                      controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)

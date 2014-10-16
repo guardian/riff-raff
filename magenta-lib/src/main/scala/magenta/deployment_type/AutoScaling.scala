@@ -23,6 +23,44 @@ object AutoScaling  extends DeploymentType with S3AclParams {
       |
       |This deploy type has two actions, `deploy` and `uploadArtifacts`. `uploadArtifacts` simply uploads the files
       |in the package directory to the specified bucket. `deploy` carries out the auto-scaling group rotation.
+      |
+      |The set of AWS permissions needed to let RiffRaff do an autoscaling deploy are:
+      |
+      |    {
+      |      "Statement": [
+      |        {
+      |          "Action": [
+      |            "autoscaling:DescribeAutoScalingGroups",
+      |            "autoscaling:DescribeAutoScalingInstances",
+      |            "autoscaling:DescribeTags",
+      |            "autoscaling:SuspendProcesses",
+      |            "autoscaling:ResumeProcesses",
+      |            "autoscaling:SetDesiredCapacity",
+      |            "autoscaling:TerminateInstanceInAutoScalingGroup",
+      |            "ec2:CreateTags",
+      |            "ec2:DescribeInstances",
+      |            "elb:DescribeInstanceHealth",
+      |            "elasticloadbalancing:DescribeInstanceHealth",
+      |            "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+      |          ],
+      |          "Effect": "Allow",
+      |          "Resource": [
+      |            "*"
+      |          ]
+      |        },
+      |        {
+      |          "Action": [
+      |            "s3:*"
+      |          ],
+      |          "Effect": "Allow",
+      |          "Resource": [
+      |            "arn:aws:s3:::*"
+      |          ]
+      |        }
+      |      ]
+      |    }
+      |
+      |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
   val bucket = Param[String]("bucket",

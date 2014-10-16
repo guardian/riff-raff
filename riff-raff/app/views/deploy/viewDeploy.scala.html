@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import magenta.RunState
 
 @main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {

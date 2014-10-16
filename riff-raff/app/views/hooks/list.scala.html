@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], hooks: Seq[notification.HookConfig])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hooks: Seq[notification.HookConfig])
 @import org.joda.time.format.DateTimeFormat._
 
 @main("Post Deploy Hooks", request) {

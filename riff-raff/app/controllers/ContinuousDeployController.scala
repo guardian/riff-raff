@@ -9,7 +9,7 @@ import ci.{Trigger, ContinuousDeploymentConfig}
 import org.joda.time.DateTime
 import utils.Forms.uuid
 
-object ContinuousDeployController extends Controller with Logging {
+object ContinuousDeployController extends Controller with Logging with LoginActions {
 
   case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
   object ConfigForm {
@@ -40,7 +40,7 @@ object ContinuousDeployController extends Controller with Logging {
       formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
       form => {
         val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.identity.get.fullName, new DateTime()
+          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
         Persistence.store.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())

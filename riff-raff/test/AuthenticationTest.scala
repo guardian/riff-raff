@@ -1,10 +1,10 @@
 package test
 
+import com.gu.googleauth.UserIdentity
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
-import notification.{HookCriteria, HookAction}
 import com.mongodb.casbah.Imports._
-import controllers.{UserIdentity, AuthorisationValidator, AuthorisationRecord}
+import controllers.{AuthorisationValidator, AuthorisationRecord}
 import org.joda.time.DateTime
 
 class AuthenticationTest extends FlatSpec with ShouldMatchers {
@@ -24,7 +24,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = false
       def emailWhitelistContains(email: String) = false
     }
-    val id = UserIdentity("","test@test.com", "Test", "Testing")
+    val id = UserIdentity("","test@test.com", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(true)
   }
 
@@ -34,7 +34,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = false
       def emailWhitelistContains(email: String) = false
     }
-    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing")
+    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(true)
   }
 
@@ -44,7 +44,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = false
       def emailWhitelistContains(email: String) = false
     }
-    val id = UserIdentity("","test@test.com", "Test", "Testing")
+    val id = UserIdentity("","test@test.com", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(false)
     validator.authorisationError(id).get should be("The e-mail address domain you used to login to Riff-Raff (test@test.com) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
   }
@@ -55,7 +55,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = true
       def emailWhitelistContains(email: String) = email == "test@guardian.co.uk"
     }
-    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing")
+    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(true)
   }
 
@@ -65,7 +65,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = true
       def emailWhitelistContains(email: String) = email == "test@test.com"
     }
-    val id = UserIdentity("","test@test.com", "Test", "Testing")
+    val id = UserIdentity("","test@test.com", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(false)
     validator.authorisationError(id).get should be("The e-mail address domain you used to login to Riff-Raff (test@test.com) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
   }
@@ -76,7 +76,7 @@ class AuthenticationTest extends FlatSpec with ShouldMatchers {
       def emailWhitelistEnabled = true
       def emailWhitelistContains(email: String) = false
     }
-    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing")
+    val id = UserIdentity("","test@guardian.co.uk", "Test", "Testing", 3600, None)
     validator.isAuthorised(id) should be(false)
     validator.authorisationError(id).get should be("The e-mail address you used to login to Riff-Raff (test@guardian.co.uk) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator.")
   }

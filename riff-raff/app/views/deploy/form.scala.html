@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployForm: Form[controllers.DeployParameterForm])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm])
 @import helper.twitterBootstrap._
 
 @main("Deploy request", request, List("form-autocomplete")) {

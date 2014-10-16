@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 @import _root_.resources.LookupSelector
 
 @main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {

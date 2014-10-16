@@ -1,5 +1,6 @@
 package controllers
 
+import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.mvc.BodyParsers._
@@ -14,31 +15,12 @@ import com.mongodb.casbah.Imports._
 import play.api.data._
 import play.api.data.Forms._
 import deployment.DeployFilter
-import play.api.libs.openid.{OpenIDError, OpenID}
 import play.api.libs.concurrent.Execution.Implicits._
+import com.gu.googleauth._
+import scala.concurrent.Future
+import play.api.libs.json.Json
 
-trait Identity {
-  def fullName: String
-}
-
-case class UserIdentity(openid: String, email: String, firstName: String, lastName: String) extends Identity {
-  implicit val formats = Serialization.formats(NoTypeHints)
-  def writeJson = write(this)
-
-  lazy val fullName = firstName + " " + lastName
-  lazy val emailDomain = email.split("@").last
-}
-
-object UserIdentity {
-  val KEY = "identity"
-  implicit val formats = Serialization.formats(NoTypeHints)
-  def readJson(json: String) = read[UserIdentity](json)
-  def apply(request: Request[Any]): Option[UserIdentity] = {
-    request.session.get(KEY).map(credentials => UserIdentity.readJson(credentials))
-  }
-}
-
-case class ApiIdentity(apiKey: ApiKey) extends Identity {
+class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
 }
 
@@ -67,83 +49,41 @@ trait AuthorisationValidator {
   }
 }
 
-object AuthenticatedRequest {
-  def apply[A](request: Request[A]) = {
-    new AuthenticatedRequest(UserIdentity(request), request)
-  }
-}
-
-class AuthenticatedRequest[A](val identity: Option[Identity], request: Request[A]) extends WrappedRequest(request) {
-  lazy val isAuthenticated = identity.isDefined
-  lazy val betaUser = identity.exists(_.fullName=="Simon Hildrew")
-}
-
-object NonAuthAction {
-
-  def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result) = {
-    Action(p) { implicit request => f(AuthenticatedRequest(request)) }
-  }
-
-  def apply(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] = {
-    this.apply(parse.anyContent)(f)
-  }
-
-  def apply(block: => Result): Action[AnyContent] = {
-    this.apply(_ => block)
-  }
-
-}
-
-object AuthAction {
-
-  def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result) = {
-    Action(p) { implicit request =>
-      UserIdentity(request).map { identity =>
-        f(new AuthenticatedRequest(Some(identity), request))
-      }.getOrElse(Redirect(routes.Login.loginAction).withSession {
-        request.session + ("loginFromUrl", request.uri)
-      })
-    }
-  }
-
-  def apply(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] = {
-    this.apply(parse.anyContent)(f)
-  }
-
-  def apply(block: => Result): Action[AnyContent] = {
-    this.apply(_ => block)
-  }
-
-}
-
 object ApiAuthAction {
 
-  def apply[A](counter: Option[String], p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A]  = {
+  def apply[A](counter: Option[String], p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
     Action(p) { implicit request =>
       val inputKey = request.queryString.get("key").flatMap(_.headOption)
-      val validatedIdentity = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter)).map(ApiIdentity)
-      assert(inputKey.isDefined == validatedIdentity.isDefined, "The ApiKey provided is not valid, please check and try again")
-      validatedIdentity.orElse(UserIdentity(request)).map { identity =>
-        f(new AuthenticatedRequest(Some(identity), request))
-      }.getOrElse(Redirect(routes.Login.loginAction).withSession {
-        request.session + ("loginFromUrl", request.uri)
-      })
+      assert(inputKey.isDefined, "An API key must be provided for this endpoint")
+      val apiKey = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter))
+      assert(apiKey.isDefined, "The ApiKey provided is not valid, please check and try again")
+      f(new ApiRequest(apiKey.get, request))
     }
   }
 
-  def apply[A](counter: String, p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A]  =
+  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  =
     this.apply(Some(counter), p)(f)
-  def apply[A](p: BodyParser[A])(f: AuthenticatedRequest[A] => Result): Action[A] =
+  def apply[A](p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A] =
     this.apply(None, p)(f)
-  def apply(counter: Option[String])(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+  def apply(counter: Option[String])(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
     this.apply(counter, parse.anyContent)(f)
-  def apply(counter: String)(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+  def apply(counter: String)(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
     this.apply(Some(counter))(f)
-  def apply(f: AuthenticatedRequest[AnyContent] => Result): Action[AnyContent] =
+  def apply(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
     this.apply(None)(f)
 }
 
-object Login extends Controller with Logging {
+trait LoginActions extends Actions {
+  override def loginTarget: Call = routes.Login.loginAction()
+
+  def authConfig: GoogleAuthConfig = auth.googleAuthConfig
+}
+
+object Login extends Controller with Logging with LoginActions {
+  val ANTI_FORGERY_KEY = "antiForgeryToken"
+
+  def hasIdentity[A](request: Request[A]): Boolean = request.isInstanceOf[AuthenticatedRequest[UserIdentity, A]]
+
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
     def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
@@ -154,60 +94,40 @@ object Login extends Controller with Logging {
     }
   }
 
-  val openIdAttributes = Seq(
-    ("email", "http://axschema.org/contact/email"),
-    ("firstname", "http://axschema.org/namePerson/first"),
-    ("lastname", "http://axschema.org/namePerson/last")
-  )
-
-  def login = NonAuthAction { request =>
+  def login = Action { request =>
     val error = request.flash.get("error")
     Ok(views.html.auth.login(request, error))
   }
 
   def loginAction = Action.async { implicit request =>
-    val secureConnection = request.headers.get("X-Forwarded-Proto").exists(_ == "https")
-    OpenID
-      .redirectURL(auth.openIdUrl, routes.Login.openIDCallback.absoluteURL(secureConnection), openIdAttributes)
-      .map { url =>
-        LoginCounter.recordCount(1)
-        Redirect(url)
-      }
-      .recover {
-        case t => Redirect(routes.Login.login).flashing("error" -> s"Unknown error: ${t.getMessage}")
-      }
+    // redirect to google with anti forgery token (that we keen in session storage - note that flashing is not secure)
+    val antiForgeryToken = GoogleAuth.generateAntiForgeryToken()
+    GoogleAuth.redirectToGoogle(auth.googleAuthConfig, antiForgeryToken).map {
+      _.withSession { session + (ANTI_FORGERY_KEY -> antiForgeryToken) }
+    }
   }
 
-  def openIDCallback = Action.async { implicit request =>
-    OpenID.verifiedId.map{ info =>
-        val credentials = UserIdentity(
-          info.id,
-          info.attributes.get("email").get,
-          info.attributes.get("firstname").get,
-          info.attributes.get("lastname").get
-        )
-        if (validator.isAuthorised(credentials)) {
-          Redirect(session.get("loginFromUrl").getOrElse("/")).withSession {
-            session + (UserIdentity.KEY -> credentials.writeJson) - "loginFromUrl"
+  def oauth2Callback = Action.async { implicit request =>
+    session.get(ANTI_FORGERY_KEY) match {
+      case None =>
+        Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
+      case Some(token) =>
+        GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
+          val redirect = session.get(LOGIN_ORIGIN_KEY) match {
+            case Some(url) => Redirect(url)
+            case None => Redirect(routes.Application.index())
           }
-        } else {
-          FailedLoginCounter.recordCount(1)
-          Redirect(routes.Login.login).flashing(
-            "error" -> validator.authorisationError(credentials).get
-          ).withSession(session - UserIdentity.KEY)
+          redirect.withSession {
+            session + (UserIdentity.KEY -> Json.toJson(identity).toString) - ANTI_FORGERY_KEY - LOGIN_ORIGIN_KEY
+          }
+        } recover {
+          case t =>
+            FailedLoginCounter.recordCount(1)
+            log.warn("Login failure", t)
+            Redirect(routes.Login.login())
+              .withSession(session - ANTI_FORGERY_KEY)
+              .flashing("error" -> s"Login failure: ${t.toString}")
         }
-      } recover {
-      case t => {
-        // Here you should look at the error, and give feedback to the user
-        FailedLoginCounter.recordCount(1)
-        val message = t match {
-          case e:OpenIDError => s"Failed to login (${e.id}): ${e.message}"
-          case other => s"Unknown login failure: ${t.toString}"
-        }
-        Redirect(routes.Login.login).flashing(
-          "error" -> message
-        )
-      }
     }
   }
 
@@ -215,8 +135,8 @@ object Login extends Controller with Logging {
     Redirect("/").withNewSession
   }
 
-  def profile = ApiAuthAction("profile") { request =>
-    val records = DeployController.getDeploys(request.identity.map(i => DeployFilter(deployer=Some(i.fullName)))).reverse
+  def profile = AuthAction { request =>
+    val records = DeployController.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
 
@@ -234,7 +154,7 @@ object Login extends Controller with Logging {
     authorisationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.auth.form(request, errors)),
       email => {
-        val auth = AuthorisationRecord(email.toLowerCase, request.identity.get.fullName, new DateTime())
+        val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
         Persistence.store.setAuthorisation(auth)
         Redirect(routes.Login.authList())
       }
@@ -243,7 +163,7 @@ object Login extends Controller with Logging {
 
   def authDelete = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
-      log.info(s"${request.identity.get.fullName} deleted authorisation for $email")
+      log.info(s"${request.user.fullName} deleted authorisation for $email")
       Persistence.store.deleteAuthorisation(email)
     } )
     Redirect(routes.Login.authList())

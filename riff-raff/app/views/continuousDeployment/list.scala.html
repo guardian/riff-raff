@@ -1,4 +1,4 @@
-@(implicit request: controllers.AuthenticatedRequest[AnyContent], configs: Seq[ci.ContinuousDeploymentConfig])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configs: Seq[ci.ContinuousDeploymentConfig])
 @import utils.ChangeFreeze
 @import org.joda.time.format.DateTimeFormat._
 @import ci.Trigger._

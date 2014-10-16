@@ -1,4 +1,4 @@
-@(implicit request: AuthenticatedRequest[AnyContent])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 @import deployment.DeployFilterPagination
 
 @main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
@@ -9,7 +9,7 @@
 <script>
 $(function () { graph({
     "container_id": 'deploy-chart',
-    "data_path": '/api/historyGraph',
+    "data_path": '@{routes.Api.historyGraph().url}',
     "height": '100',
     "renderer": 'bar'
 })  })

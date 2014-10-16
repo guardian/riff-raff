@@ -1,11 +1,12 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], releaseNotes: String)
+@(request: Request[AnyContent], releaseNotes: String)
+@import com.gu.googleauth.UserIdentity
 @import conf.Configuration._
 
-@main("Welcome", request) {
+@mainNoAuth("Welcome", request) {
     
     <h2>Welcome to the Guardian deployment tool.</h2>
 
-    @if(request.isAuthenticated && (irc.isConfigured || notifications.aws.isConfigured)) {
+    @if(UserIdentity.fromRequest(request).isDefined && (irc.isConfigured || notifications.aws.isConfigured)) {
         <div class="panel panel-info">
             <div class="panel-body">
                 @if(irc.isConfigured){<div>Deployment information can also be seen in the <strong>@irc.channel</strong> IRC channel on <strong>@irc.host</strong></div>}

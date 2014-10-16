@@ -34,7 +34,8 @@ object MagentaBuild extends Build {
         "magenta._",
         "deployment._",
         "controllers._",
-        "views.html.helper.magenta._"
+        "views.html.helper.magenta._",
+        "com.gu.googleauth.AuthenticatedRequest"
       ),
       mergeStrategy in assembly <<= (mergeStrategy in assembly) {
         (old) => {

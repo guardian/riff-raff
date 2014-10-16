@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent],
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
         title: String,
         breadcrumbs: List[controllers.Application.Link],
         sections: Seq[(String, Html)])

@@ -1,4 +1,4 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], testForm: Form[controllers.Testing.TestForm])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], testForm: Form[controllers.Testing.TestForm])
 @import helper.twitterBootstrap._
 
 @main("Test form", request) {

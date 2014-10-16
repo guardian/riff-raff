@@ -1,56 +1,20 @@
-@(request: controllers.AuthenticatedRequest[AnyContent], deployerRecords: List[deployment.Record])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: List[deployment.Record])
 
 @main("Profile", request) {
-@defining(request.identity.get) { id =>
-    @id match {
-        case UserIdentity(openId, strongail, firstName, lastName) => {
-            <h2>Profile for @firstName @lastName</h2>
-            <div>
-            <table class="table table-condensed">
-                <tbody>
-                    <tr><td><strong>E-mail</strong></td><td>@strongail</td></tr>
-                    <tr><td><strong>OpenID</strong></td><td>@openId</td></tr>
-                </tbody>
-            </table>
-            </div>
+@defining(request.user) { id =>
+    <h2>Profile for @id.firstName @id.lastName</h2>
+    <div>
+    <table class="table table-condensed">
+        <tbody>
+            <tr><td><strong>E-mail</strong></td><td>@id.email</td></tr>
+            <tr><td><strong>Google subject ID</strong></td><td>@id.sub</td></tr>
+            <tr><td><strong>Expiry</strong></td><td>@{new org.joda.time.DateTime(id.exp*1000)}</td></tr>
+        </tbody>
+    </table>
+    </div>
 
-            <div class="clearfix"></div>
-            <h3>Recent deploys</h3>
-            @snippets.recordTable(deployerRecords)
-        }
-        case ApiIdentity(key) => {
-            <h2>Profile for @key.application API key</h2>
-            <div class="col-md-6">
-            <h4>Details</h4>
-            <table class="table table-condensed">
-                <tbody>
-                    <tr><td><strong>Application Name</strong></td><td>@key.application</td></tr>
-                    <tr><td><strong>Issued by</strong></td><td>@key.issuedBy</td></tr>
-                    <tr><td><strong>Created date</strong></td><td>@key.created</td></tr>
-                    <tr><td><strong>Last used</strong></td><td>@key.lastUsed.getOrElse("Never")</td></tr>
-                </tbody>
-            </table>
-            </div>
-
-            <div class="col-md-6">
-            <h4>Usage statistics</h4>
-            <table class="table table-condensed">
-                <tbody>
-                    @for((name, counter) <- key.callCounters) {
-                        <tr><td><strong>@name</strong></td><td>@counter</td></tr>
-                    }
-                    <tr><td><strong>Total</strong></td><td>@{key.callCounters.values.fold(0L)(_+_)}</td></tr>
-                </tbody>
-            </table>
-            </div>
-
-            <div class="clearfix"></div>
-            <h3>Recent deploys</h3>
-            @snippets.recordTable(deployerRecords)
-        }
-        case _ => {
-            <div class="alert"><p>Unknown user profile type</p></div>
-        }
-    }
+    <div class="clearfix"></div>
+    <h3>Recent deploys</h3>
+    @snippets.recordTable(deployerRecords)
 }
 }
