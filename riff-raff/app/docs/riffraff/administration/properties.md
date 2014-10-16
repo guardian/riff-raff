@@ -32,7 +32,12 @@ deployment information
 auth
 ----
 
- - `auth.openIdUrl` - configure the authentication OpenID provider
+Authentication is designed to use Google's OAuth2 support. You'll need a Client ID which you can obtain from the Google Developers Console at https://console.developers.google.com
+
+ - `auth.clientId` - the OAuth client ID from the Developers Console
+ - `auth.clientSecret` - the OAuth client secret from the Developers Console
+ - `auth.redirectUrl` - the URL that Google will redirect back to, by default this is worked out from the `url.publicPrefix` so probably doesn't need to be specified
+ - `auth.domain` - if specified then then OAuth login will be restricted to this domain
  - `auth.domains` - white list of e-mail address domains to allow access, empty for all
  - `auth.whitelist.addresses` - white list of e-mail addresses to allow access, empty for all
  - `auth.whitelist.useDatabase` - enable database module and in app configuration of e-mail whitelist
