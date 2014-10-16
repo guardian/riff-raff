@@ -1,7 +1,7 @@
 package controllers
 
 import _root_.resources.LookupSelector
-import play.api.mvc.{BodyParser, Action, AnyContent, Controller}
+import play.api.mvc.{BodyParser, Action, AnyContent, Controller, SimpleResult}
 import play.api.mvc.Results._
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -91,43 +91,48 @@ object ApiKeyGenerator {
 
 }
 
-object ApiJsonEndpoint {
-  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] = {
-    ApiAuthAction(counter, p) { authenticatedRequest =>
-      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
-      val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+object ApiJsonEndpoint extends LoginActions {
+  val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
 
-      val response = try {
-        f(authenticatedRequest)
-      } catch {
-        case t:Throwable =>
-          toJson(Map(
-            "response" -> toJson(Map(
-              "status" -> toJson("error"),
-              "message" -> toJson(t.getMessage),
-              "stacktrace" -> toJson(t.getStackTraceString.split("\n"))
-            ))
+  def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): SimpleResult = {
+    val format = authenticatedRequest.queryString.get("format").toSeq.flatten
+    val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+
+    val response = try {
+      f(authenticatedRequest)
+    } catch {
+      case t:Throwable =>
+        toJson(Map(
+          "response" -> toJson(Map(
+            "status" -> toJson("error"),
+            "message" -> toJson(t.getMessage),
+            "stacktrace" -> toJson(t.getStackTraceString.split("\n"))
           ))
-      }
+        ))
+    }
 
-      val responseObject = response match {
-        case jso:JsObject => jso
-        case jsv:JsValue => JsObject(Seq(("value", jsv)))
-      }
+    val responseObject = response match {
+      case jso:JsObject => jso
+      case jsv:JsValue => JsObject(Seq(("value", jsv)))
+    }
 
-      jsonpCallback map { callback =>
-        Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
-      } getOrElse {
-        response \ "response" \ "status" match {
-          case JsString("ok") => Ok(responseObject)
-          case JsString("error") => BadRequest(responseObject)
-          case _ => throw new IllegalStateException("Response status missing or invalid")
-        }
+    jsonpCallback map { callback =>
+      Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
+    } getOrElse {
+      response \ "response" \ "status" match {
+        case JsString("ok") => Ok(responseObject)
+        case JsString("error") => BadRequest(responseObject)
+        case _ => throw new IllegalStateException("Response status missing or invalid")
       }
     }
   }
-  def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = {
+  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
+    ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
+  def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
     this.apply(counter, parse.anyContent)(f)
+  def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
+    val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
+    this.apply(apiRequest)(f)
   }
 }
 
@@ -171,7 +176,7 @@ object Api extends Controller with Logging with LoginActions {
     )
   }
 
-  def historyGraph = ApiJsonEndpoint("historyGraph") { implicit request =>
+  def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
     val count = DeployController.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
