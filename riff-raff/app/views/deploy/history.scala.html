@@ -9,7 +9,7 @@
 <script>
 $(function () { graph({
     "container_id": 'deploy-chart',
-    "data_path": '/api/historyGraph',
+    "data_path": '@{routes.Api.historyGraph().url}',
     "height": '100',
     "renderer": 'bar'
 })  })
