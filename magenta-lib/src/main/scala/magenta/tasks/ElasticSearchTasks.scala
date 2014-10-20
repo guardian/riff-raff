@@ -53,23 +53,26 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
         if (!stopFlag) cull(asg, instance)
     }
 
-    def cullInOrder(instancesToKillByZone: List[List[Instance]]) {
-      instancesToKillByZone match {
-        case Nil => Unit
-        case Nil :: otherZones => cullInOrder(otherZones)
-        case ((toKill::notYet) :: otherZones) => {
-          cullInstance(toKill)
-          cullInOrder(otherZones :+ notYet)
-        }
-      }
-    }
-
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate"))
     val instancesToKillByZone = instancesToKill.groupBy(_.getAvailabilityZone).toList.map(_._2.toList)
-    cullInOrder(instancesToKillByZone)
+    CullElasticSearchInstancesWithTerminationTag.applyInOrder(instancesToKillByZone, cullInstance)
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
+}
+
+object CullElasticSearchInstancesWithTerminationTag {
+  
+  def applyInOrder[T](groupedElements: List[List[T]], f:T => Unit) {
+    groupedElements match {
+      case Nil => Unit
+      case Nil :: otherGroups => applyInOrder(otherGroups, f)
+      case ((nextElement::otherElements) :: otherGroups) => {
+        f(nextElement)
+        applyInOrder(otherGroups :+ otherElements, f)
+      }
+    }
+  }
 }
 
 case class ElasticSearchNode(address: String) {
