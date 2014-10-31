@@ -49,7 +49,7 @@ object TeamCityAPI extends ContinuousIntegrationAPI with Logging {
   def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]] = {
     FailSafeObservable({
       val startTime = DateTime.now()
-      TeamCityWS.url(s"/app/rest/builds?locator=status:SUCCESS,buildType:${job.id},branch:default:any&count=20&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl,tags)").get().flatMap { r =>
+      TeamCityWS.url(s"/app/rest/builds?locator=status:SUCCESS,buildType:${job.id},branch:default:any&count=20&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl)").get().flatMap { r =>
         TeamCityMetrics.ApiCallTimer.recordTimeSpent(DateTime.now.getMillis - startTime.getMillis)
         BuildSummary(r.xml, (id: String) => Future.successful(Some(job)), false)
       }
