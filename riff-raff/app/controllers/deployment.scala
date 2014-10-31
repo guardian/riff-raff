@@ -337,7 +337,8 @@ object Deployment extends Controller with Logging with LoginActions {
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
       val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
-      val label = "%s [%s] (%s)" format (build.number, build.branchName, formatter.print(build.startTime))
+      val tags = if (build.tags.isEmpty) "" else build.tags.mkString("<", ", ", "> ")
+      val label = s"${build.number} [${build.branchName}] $tags(${formatter.print(build.startTime)})"
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
