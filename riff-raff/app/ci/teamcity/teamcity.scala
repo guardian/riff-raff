@@ -57,7 +57,7 @@ trait TeamcityBuild extends CIBuild with Logging {
   def detail: Future[BuildDetail]
   def jobName = job.name
   def startTime = startDate
-
+  def tags: List[String]
   def jobId = job.id
 }
 
@@ -67,6 +67,7 @@ case class BuildSummary(id: Long,
                         status: String,
                         branchName: String,
                         startDate: DateTime,
+                        tags: List[String],
                         job: Job
                          ) extends TeamcityBuild {
   def detail: Future[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
@@ -99,6 +100,7 @@ object BuildSummary extends Logging {
           build \ "@status" text,
           (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
           TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
+          (build \ "tags" \ "tag").map(_.text).toList,
           bt
         )
       }
@@ -189,7 +191,8 @@ case class BuildDetail(
   startDate: DateTime,
   finishDate: DateTime,
   pinInfo: Option[PinInfo],
-  revision: Option[Revision]
+  revision: Option[Revision],
+  tags: List[String]
 ) extends TeamcityBuild {
   def detail = Future.successful(this)
   def buildTypeId = job.id
@@ -210,7 +213,8 @@ object BuildDetail {
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
       pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
-      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
+      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_)),
+      tags = (build \ "tags" \ "tag").map(_.text).toList
     )
   }
 }

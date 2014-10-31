@@ -13,6 +13,7 @@ trait CIBuild {
   def number: String
   def id: Long
   def startTime: DateTime
+  def tags: List[String]
 }
 
 object CIBuild extends Logging {
