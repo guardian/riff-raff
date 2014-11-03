@@ -1,5 +1,6 @@
-@(build: ci.CIBuild, tags: List[String])
+@(build: ci.CIBuild, tags: List[ci.TagClassification])
 @import org.joda.time.format.DateTimeFormat
+@import ci.Colour
 
 <h4>Build number <em>@build.number</em></h4>
 
@@ -20,7 +21,13 @@
                     <em>No tags</em>
                 }
                 @tags.map { tag =>
-                    <div class="label label-primary">@tag</div>
+                    @if(tag.link.isDefined) { <a href="@tag.link.get"> }
+                    @tag.colour match {
+                        case Some(Colour.Red) => { <div class="label label-danger">@tag.text</div> }
+                        case Some(Colour.Green) => { <div class="label label-success">@tag.text</div> }
+                        case _ => { <div class="label label-primary">@tag.text</div> }
+                    }
+                    @if(tag.link.isDefined) { </a> }
                 }
             </td>
         </tr>
