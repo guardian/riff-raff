@@ -1,7 +1,7 @@
 package magenta.tasks
 
 import magenta._
-import com.amazonaws.services.autoscaling.model.AutoScalingGroup
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
 import collection.JavaConversions._
 import dispatch.classic._
 import net.liftweb.json._
@@ -39,8 +39,7 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
     val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
 
-    for (instance <- asg.getInstances) {
-      if (EC2.hasTag(instance, "Magenta", "Terminate")) {
+    def cullInstance(instance: Instance) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
         check(stopFlag) {
           newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
@@ -52,8 +51,11 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
           }
         }
         if (!stopFlag) cull(asg, instance)
-      }
     }
+
+    val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate"))
+    val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
+    orderedInstancesToKill.foreach(cullInstance)
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
