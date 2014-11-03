@@ -2,12 +2,6 @@
 @if(stageDeployMap.size > 0) {
 @defining(stageDeployMap.keySet.toList.sorted(conf.Configuration.stages.ordering)) { stages =>
     <h4>Last deploys of <em>@projectName</em></h4>
-    <div class="alert alert-info">
-        <p>The details below are the last builds deployed in the various stages for @{projectName} by Riff Raff.</p>
-        <p>This could be misleading due to different recipes or host lists having been selected (hover over a build
-            for more details).  Alternately a deploy might have been done outside of Riff Raff.</p>
-        <p>Having said that, it's pretty likely to be right.</p>
-    </div>
     <table class="table table-condensed">
     <thead>
         <tr>

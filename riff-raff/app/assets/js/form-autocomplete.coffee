@@ -1,6 +1,9 @@
 selectedProject = ''
 menuOpen = false
 
+updateBuildInfo = (buildNumber) ->
+  $('#build-info').load(jsRoutes.controllers.Deployment.buildInfo(selectedProject, buildNumber).url)
+
 $ ->
   $('#projectInput').each ->
     input = $(this)
@@ -32,8 +35,18 @@ $ ->
           response
         )
       open: (event,ui) -> menuOpen = true
-      close: (event,ui) -> menuOpen = false
+      close: (event,ui) ->
+        menuOpen = false
+        updateBuildInfo( input.val() )
+      select: (event,ui) ->
+        updateBuildInfo( input.val() )
       minLength:0
+
+  $('#buildInput').on('input keyup',
+    ->
+      input = $(this)
+      updateBuildInfo( input.val() )
+  )
 
   $('#buildInput').focus (e) ->
     if (!menuOpen)
