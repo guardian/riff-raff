@@ -1,0 +1,28 @@
+@(build: ci.CIBuild, tags: List[String])
+@import org.joda.time.format.DateTimeFormat
+
+<h4>Build number <em>@build.number</em></h4>
+
+<table class="table table-condensed">
+    <tbody>
+        <tr>
+            <th>Branch</th>
+            <td>@build.branchName</td>
+        </tr>
+        <tr>
+            <th>Start Time</th>
+            <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(build.startTime)</td>
+        </tr>
+        <tr>
+            <th>Tags</th>
+            <td>
+                @if(tags.isEmpty) {
+                    <em>No tags</em>
+                }
+                @tags.map { tag =>
+                    <div class="label label-primary">@tag</div>
+                }
+            </td>
+        </tr>
+    </tbody>
+</table>

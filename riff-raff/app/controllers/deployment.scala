@@ -17,6 +17,7 @@ import persistence.DocumentStoreConverter
 import lifecycle.LifecycleWithoutApp
 import com.gu.management.DefaultSwitch
 import play.api.libs.concurrent.Execution.Implicits._
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import org.joda.time.DateTime
 import play.api.libs.json.Json
@@ -344,8 +345,28 @@ object Deployment extends Controller with Logging with LoginActions {
   }
 
   def projectHistory(project: String) = AuthAction {
-    val buildMap = DeployController.getLastCompletedDeploys(project)
-    Ok(views.html.deploy.projectHistory(project, buildMap))
+    if (project.trim.isEmpty) {
+      Ok("")
+    } else {
+      val buildMap = DeployController.getLastCompletedDeploys(project)
+      Ok(views.html.deploy.projectHistory(project, buildMap))
+    }
+  }
+
+  def buildInfo(project: String, build: String) = AuthAction.async {
+    log.info(s"Getting build info for $project: $build")
+    val buildTagTuple = for {
+      b <- Future(TeamCityBuilds.build(project, build).get)
+      tagsOption <- TeamCityAPI.tags(b)
+      tags <- Future(tagsOption.get)
+    } yield (b, tags)
+
+    buildTagTuple map { case(b, tags) =>
+      Ok(views.html.deploy.buildInfo(b, tags))
+    } recover {
+      case NonFatal(t) =>
+        Ok("")
+    }
   }
 
   def teamcity = AuthAction {

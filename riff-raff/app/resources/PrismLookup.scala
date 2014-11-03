@@ -26,7 +26,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
         Await.result(result, 3 seconds)
       } catch {
         case NonFatal(e) =>
-          log.warn(s"Call to prism failed ($retriesLeft retries left)", e)
+          log.warn(s"Call to prism failed ($path; $retriesLeft retries left)", e)
           if (retriesLeft > 0) get(path,retriesLeft-1)(block) else throw e
       }
     }

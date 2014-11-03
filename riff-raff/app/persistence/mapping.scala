@@ -104,7 +104,7 @@ trait DocumentStore {
   def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
   def countDeploys(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLog(uuid: UUID) {}
-  def getLastCompletedDeploy(projectName: String):Map[String,UUID] = Map.empty
+  def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
   def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
@@ -180,7 +180,7 @@ object DocumentStoreConverter extends Logging {
   def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploys(filter)
 
   def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
-    documentStore.getLastCompletedDeploy(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
+    documentStore.getLastCompletedDeploys(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
 
   def findProjects(): List[String] = documentStore.findProjects()
 }

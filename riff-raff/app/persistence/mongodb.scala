@@ -12,7 +12,7 @@ import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
 import notification.{HookConfig, HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
-import org.joda.time.DateTime
+import org.joda.time.{Period, DateTime}
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import ci.ContinuousDeploymentConfig
@@ -382,12 +382,14 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getLastCompletedDeploy(projectName: String):Map[String,UUID] = {
+  override def getLastCompletedDeploys(projectName: String):Map[String,UUID] = {
+    val threshold = new DateTime().minus(new Period().withDays(90))
     val pipeBuilder = MongoDBList.newBuilder
     pipeBuilder += MongoDBObject("$match" ->
       MongoDBObject(
         "parameters.projectName" -> projectName,
-        "status" -> "Completed"
+        "status" -> "Completed",
+        "startTime" -> MongoDBObject("$gte" -> threshold)
       )
     )
     pipeBuilder += MongoDBObject("$sort" -> MongoDBObject("startTime" -> 1))

@@ -199,7 +199,8 @@ object Application extends Controller with Logging with LoginActions {
       Routes.javascriptRouter("jsRoutes")(
         Deployment.stop,
         Deployment.projectHistory,
-        Deployment.dashboardContent
+        Deployment.dashboardContent,
+        Deployment.buildInfo
       )
     }.as("text/javascript")
   }
