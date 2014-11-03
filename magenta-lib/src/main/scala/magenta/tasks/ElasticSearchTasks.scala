@@ -55,7 +55,8 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
 
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate"))
     val instancesToKillByZone = instancesToKill.groupBy(_.getAvailabilityZone).toList.map(_._2.toList)
-    CullElasticSearchInstancesWithTerminationTag.applyInOrder(instancesToKillByZone, cullInstance)
+    val orderedInstances = CullElasticSearchInstancesWithTerminationTag.transposeLists(instancesToKillByZone)
+    orderedInstances.foreach{ cullInstance }
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
@@ -63,13 +64,12 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
 
 object CullElasticSearchInstancesWithTerminationTag {
   
-  def applyInOrder[T](groupedElements: List[List[T]], f:T => Unit) {
+  def transposeLists[T](groupedElements: Seq[Seq[T]]) : Seq[T] = {
     groupedElements match {
-      case Nil => Unit
-      case Nil :: otherGroups => applyInOrder(otherGroups, f)
+      case Nil => Seq[T]()
+      case Nil :: otherGroups => transposeLists(otherGroups)
       case ((nextElement::otherElements) :: otherGroups) => {
-        f(nextElement)
-        applyInOrder(otherGroups :+ otherElements, f)
+        nextElement +: transposeLists(otherGroups :+ otherElements)
       }
     }
   }
