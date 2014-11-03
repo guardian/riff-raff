@@ -67,8 +67,7 @@ case class BuildSummary(id: Long,
                         status: String,
                         branchName: String,
                         startDate: DateTime,
-                        job: Job,
-                        tags: List[String]
+                        job: Job
                          ) extends TeamcityBuild {
   def detail: Future[BuildDetail] = BuildDetail(BuildLocator(id=Some(id)))
 }
@@ -100,8 +99,7 @@ object BuildSummary extends Logging {
           build \ "@status" text,
           (build \ "@branchName").headOption.map(_.text).getOrElse("default"),
           TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
-          bt,
-          (build \ "tags" \ "tag").map(_.text).toList
+          bt
         )
       }
     }
@@ -191,8 +189,7 @@ case class BuildDetail(
   startDate: DateTime,
   finishDate: DateTime,
   pinInfo: Option[PinInfo],
-  revision: Option[Revision],
-  tags: List[String]
+  revision: Option[Revision]
 ) extends TeamcityBuild {
   def detail = Future.successful(this)
   def buildTypeId = job.id
@@ -213,8 +210,7 @@ object BuildDetail {
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
       pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
-      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_)),
-      tags = (build \ "tags" \ "tag").map(_.text).toList
+      revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
     )
   }
 }
@@ -326,7 +322,7 @@ object TeamCity {
 
     object build {
       def detail(buildLocator: BuildLocator) = TeamCityWS.url("/app/rest/builds/%s" format buildLocator)
-      def list(buildLocator: BuildLocator) = TeamCityWS.url(s"/app/rest/builds/?locator=$buildLocator&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl,tags)")
+      def list(buildLocator: BuildLocator) = TeamCityWS.url(s"/app/rest/builds/?locator=$buildLocator&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl)")
       def buildType(buildTypeId: String) = list(BuildLocator.buildTypeId(buildTypeId))
       def since(buildId:Int) = list(BuildLocator.sinceBuild(buildId))
       def since(startTime:DateTime) = list(BuildLocator.sinceDate(startTime))

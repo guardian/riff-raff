@@ -1,4 +1,4 @@
-@(build: ci.CIBuild)
+@(build: ci.CIBuild, tags: List[String])
 @import org.joda.time.format.DateTimeFormat
 
 <h4>Build number <em>@build.number</em></h4>
@@ -16,10 +16,10 @@
         <tr>
             <th>Tags</th>
             <td>
-                @if(build.tags.isEmpty) {
+                @if(tags.isEmpty) {
                     <em>No tags</em>
                 }
-                @build.tags.map { tag =>
+                @tags.map { tag =>
                     <div class="label label-primary">@tag</div>
                 }
             </td>

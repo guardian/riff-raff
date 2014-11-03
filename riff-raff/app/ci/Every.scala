@@ -27,7 +27,7 @@ trait ContinuousIntegrationAPI {
   def jobs(implicit ec: ExecutionContext): Observable[Job]
   def builds(job: Job)(implicit ec: ExecutionContext): Observable[CIBuild]
   def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]]
-  def latest(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[CIBuild]]
+  def tags(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[List[String]]]
 }
 
 object FailSafeObservable extends Logging {
@@ -65,12 +65,13 @@ object TeamCityAPI extends ContinuousIntegrationAPI with Logging {
     }, "Couldn't find recent build job ids") flatMap (Observable.from(_))
   }
 
-  def latest(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[CIBuild]] = {
+  def tags(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[List[String]]] = {
     build match {
       case b:TeamcityBuild =>
-        TeamCityWS.url(s"/app/rest/builds?locator=buildType:${b.jobId},number:${b.number},branch:default:any&fields=build(id,number,status,startDate,branchName,buildTypeId,webUrl,tags)").get().flatMap { r =>
-          BuildSummary(r.xml, (id: String) => Future.successful(Some(b.job)), false).map(_.headOption)
+        TeamCityWS.url(s"/app/rest/builds?locator=buildType:${b.jobId},number:${b.number},branch:default:any&fields=build(tags)").get().map { r =>
+          Some((r.xml \\ "tag").map(_.text).toList)
         }
+      case _ => Future.successful(None)
     }
   }
 }

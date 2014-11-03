@@ -355,14 +355,14 @@ object Deployment extends Controller with Logging with LoginActions {
 
   def buildInfo(project: String, build: String) = AuthAction.async {
     log.info(s"Getting build info for $project: $build")
-    val updatedBuild = for {
+    val buildTagTuple = for {
       b <- Future(TeamCityBuilds.build(project, build).get)
-      updatedOption <- TeamCityAPI.latest(b)
-      updated <- Future(updatedOption.get)
-    } yield updated
+      tagsOption <- TeamCityAPI.tags(b)
+      tags <- Future(tagsOption.get)
+    } yield (b, tags)
 
-    updatedBuild map { b =>
-      Ok(views.html.deploy.buildInfo(b))
+    buildTagTuple map { case(b, tags) =>
+      Ok(views.html.deploy.buildInfo(b, tags))
     } recover {
       case NonFatal(t) =>
         Ok("")
