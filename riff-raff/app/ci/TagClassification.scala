@@ -12,7 +12,7 @@ object Status extends Enumeration {
 case class TagClassification(text: String) {
   import TagClassification._
 
-  lazy val status = keywordStatusMap.find { case (keyword, _) => text.toLowerCase.contains(keyword) }.map(_._2)
+  lazy val status = keywordStatusMap.get(text.toLowerCase)
 
   lazy val link = text match {
     case HttpMatcher(l) => try {
@@ -27,10 +27,11 @@ case class TagClassification(text: String) {
 object TagClassification {
   val keywordStatusMap = Map(
     "error" -> Status.Danger,
-    "fail" -> Status.Danger,
+    "failed" -> Status.Danger,
     "success" -> Status.Success,
-    "succeed" -> Status.Success,
-    "pass" -> Status.Success
+    "passed" -> Status.Success,
+    "teststatus:passed" -> Status.Success,
+    "teststatus:failed" -> Status.Danger
   )
 
   val HttpMatcher = "^.*(http.*)$".r
