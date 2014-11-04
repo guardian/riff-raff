@@ -1,35 +1,36 @@
 package ci
 
-import java.net.{MalformedURLException, URL}
+import java.net.{URISyntaxException, URI}
 
-object Colour extends Enumeration {
-  type Colour = Value
-  val Red = Value
-  val Green = Value
+object Status extends Enumeration {
+  type Status = Value
+  val Danger = Value
+  val Success = Value
+  val Default = Value
 }
 
 case class TagClassification(text: String) {
   import TagClassification._
 
-  lazy val colour = keywordColourMap.find { case (keyword, _) => text.toLowerCase.contains(keyword) }.map(_._2)
+  lazy val status = keywordStatusMap.find { case (keyword, _) => text.toLowerCase.contains(keyword) }.map(_._2)
 
   lazy val link = text match {
     case HttpMatcher(l) => try {
-      Some(new URL(l))
+      Some(new URI(l))
     } catch {
-      case e:MalformedURLException => None
+      case e:URISyntaxException => None
     }
     case _ => None
   }
 }
 
 object TagClassification {
-  val keywordColourMap = Map(
-    "error" -> Colour.Red,
-    "fail" -> Colour.Red,
-    "success" -> Colour.Green,
-    "succeed" -> Colour.Green,
-    "pass" -> Colour.Green
+  val keywordStatusMap = Map(
+    "error" -> Status.Danger,
+    "fail" -> Status.Danger,
+    "success" -> Status.Success,
+    "succeed" -> Status.Success,
+    "pass" -> Status.Success
   )
 
   val HttpMatcher = "^.*(http.*)$".r
