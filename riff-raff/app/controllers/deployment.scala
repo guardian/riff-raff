@@ -362,10 +362,9 @@ object Deployment extends Controller with Logging with LoginActions {
     } yield (b, tags)
 
     buildTagTuple map { case(b, tags) =>
-      Ok(views.html.deploy.buildInfo(b, tags))
+      Ok(views.html.deploy.buildInfo(b, tags.map(TagClassification.apply)))
     } recover {
-      case NonFatal(t) =>
-        Ok("")
+      case e:NoSuchElementException => Ok("")
     }
   }
 
