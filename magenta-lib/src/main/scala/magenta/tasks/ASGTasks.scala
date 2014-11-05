@@ -72,11 +72,9 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
 
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
-    for (instance <- asg.getInstances) {
-      if (EC2.hasTag(instance, "Magenta", "Terminate")(keyRing)) {
-        cull(asg, instance)(keyRing)
-      }
-    }
+    val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate")(keyRing))
+    val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
+    orderedInstancesToKill.foreach(instance => cull(asg, instance)(keyRing))
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
