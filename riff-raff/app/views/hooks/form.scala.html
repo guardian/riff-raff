@@ -18,7 +18,13 @@ options = helper.options(resources.LookupSelector().stages.toList),
 '_label -> "Stage",
 '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
 )
-@helper.inputText(hookForm("url"), '_label -> "Hook target URL (GET)", 'class -> "buildForm")
+@helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
+    @helper.select(
+        hookForm("method"),
+        options = helper.options(notification.HttpMethod.all.map(_.serialised)),
+        '_label -> "HTTP Method",
+        '_error -> hookForm.globalError.map(_.withMessage("Please select HTTP method"))
+    )
 @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
 
 <div class="actions">

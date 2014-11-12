@@ -1,21 +1,18 @@
 package notification
 
-import controllers.{DeployController, Logging}
-import magenta._
-import akka.actor.{Actor, Props, ActorSystem}
-import lifecycle.LifecycleWithoutApp
-import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
-import java.net.{URLEncoder, URL}
-import com.mongodb.casbah.commons.{Imports, MongoDBObject}
-import magenta.FinishContext
-import magenta.DeployParameters
-import magenta.Deploy
-import scala.Some
-import play.api.libs.ws.WS
-import com.ning.http.client.Realm.AuthScheme
-import play.api.libs.concurrent.Execution.Implicits._
+import java.net.{URL, URLEncoder}
 import java.util.UUID
+
+import akka.actor.{Actor, ActorSystem, Props}
+import com.mongodb.casbah.commons.MongoDBObject
+import com.ning.http.client.Realm.AuthScheme
+import controllers.Logging
+import lifecycle.LifecycleWithoutApp
+import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
+import persistence.{Persistence, MongoFormat, MongoSerialisable, DeployRecordDocument}
+import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.ws.WS
 
 case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
 
@@ -25,7 +22,8 @@ case class HookConfig(id: UUID,
                       url: String,
                       enabled: Boolean,
                       lastEdited: DateTime,
-                      user:String) extends Logging {
+                      user:String,
+                       method: HttpMethod = GET) extends Logging {
 
   val substitutionPoint = """%deploy\.([A-Za-z]+\.?)([A-Za-z-_]+)?%""".r
   def request(record: DeployRecordDocument) = {
@@ -53,11 +51,28 @@ case class HookConfig(id: UUID,
 
   def act(record: DeployRecordDocument) {
     if (enabled) {
-      val urlRequest = request(record)
-      log.info(s"Calling ${urlRequest.url}")
-      urlRequest.get().map { response =>
-        log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
-        log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
+      method match {
+        case GET => {
+          val urlRequest = request(record)
+          log.info(s"Calling ${urlRequest.url}")
+          urlRequest.get().map { response =>
+            log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
+            log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
+          }
+        }
+        case POST => {
+          WS.url(url).post(Map[String, Seq[String]](
+            "build" -> Seq(record.parameters.buildId),
+            "project" -> Seq(record.parameters.projectName),
+            "stage" -> Seq(record.parameters.stage),
+            "recipe" -> Seq(record.parameters.recipe),
+            "hosts" -> record.parameters.hostList,
+            "stacks" -> record.parameters.stacks,
+            "deployer" -> Seq(record.parameters.deployer),
+            "uuid" -> Seq(record.uuid.toString),
+            "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
+          ))
+        }
       }
     } else {
       log.info("Hook disabled")
@@ -76,7 +91,8 @@ object HookConfig extends MongoSerialisable[HookConfig] {
       "url" -> a.url,
       "enabled" -> a.enabled,
       "lastEdited" -> a.lastEdited,
-      "user" -> a.user
+      "user" -> a.user,
+      "method" -> a.method.serialised
     )
     def fromDBO(dbo: MongoDBObject) = Some(HookConfig(
       dbo.as[UUID]("_id"),
@@ -85,7 +101,8 @@ object HookConfig extends MongoSerialisable[HookConfig] {
       dbo.as[String]("url"),
       dbo.as[Boolean]("enabled"),
       dbo.as[DateTime]("lastEdited"),
-      dbo.as[String]("user")
+      dbo.as[String]("user"),
+      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse (GET)
     ))
   }
 }
@@ -166,7 +183,7 @@ object HooksClient extends LifecycleWithoutApp with Logging {
 }
 
 class HooksClient extends Actor with Logging {
-  import HooksClient._
+  import notification.HooksClient._
 
   def receive = {
     case Finished(uuid, params) =>
@@ -179,4 +196,24 @@ class HooksClient extends Actor with Logging {
         }
       }
   }
+}
+
+object HttpMethod {
+  def apply(stringRep: String): HttpMethod = stringRep match {
+    case GET.serialised => GET
+    case POST.serialised => POST
+    case _ => throw new IllegalArgumentException(s"Can't translate $stringRep to HTTP verb")
+  }
+  def all: List[HttpMethod] = List(GET, POST)
+}
+
+sealed trait HttpMethod {
+  def serialised: String
+  override def toString = serialised
+}
+case object GET extends HttpMethod {
+  override val serialised = "GET"
+}
+case object POST extends HttpMethod {
+  override val serialised = "POST"
 }
