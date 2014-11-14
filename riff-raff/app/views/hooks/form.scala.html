@@ -3,34 +3,36 @@
 
 @main("Create Post Deploy Hook", request) {
 
-<h2>Create Post Deploy Hook</h2>
-<hr/>
+    <h2>Create Post Deploy Hook</h2>
+    <hr/>
 
-@helper.form(action=routes.Hooks.save) {
+    @helper.form(action=routes.Hooks.save) {
 
-@snippets.inputHidden(hookForm("id"))
+    @snippets.inputHidden(hookForm("id"))
 
-@helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
-@helper.select(
-hookForm("stage"),
-options = helper.options(resources.LookupSelector().stages.toList),
-'_default -> "--- Choose a stage ---",
-'_label -> "Stage",
-'_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
-)
-@helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
+    @helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
+    @helper.select(
+    hookForm("stage"),
+    options = helper.options(resources.LookupSelector().stages.toList),
+    '_default -> "--- Choose a stage ---",
+    '_label -> "Stage",
+    '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
+    )
+    @helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
     @helper.select(
         hookForm("method"),
         options = helper.options(notification.HttpMethod.all.map(_.serialised)),
         '_label -> "HTTP Method",
         '_error -> hookForm.globalError.map(_.withMessage("Please select HTTP method"))
     )
-@helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
+    @helper.textarea(hookForm("postBody"), '_label -> "Body to be POSTed. This can be templated with build parameters",
+        'cols -> 100, 'rows -> 6)
+    @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
 
-<div class="actions">
-    <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
-    <a href="@routes.Hooks.list()" class="btn btn-danger">Cancel</a>
-</div>
+    <div class="actions">
+        <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+        <a href="@routes.Hooks.list()" class="btn btn-danger">Cancel</a>
+    </div>
 }
 <script type="text/javascript">
     var selectedProject = ''

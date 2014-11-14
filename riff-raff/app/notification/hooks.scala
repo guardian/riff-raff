@@ -23,56 +23,50 @@ case class HookConfig(id: UUID,
                       enabled: Boolean,
                       lastEdited: DateTime,
                       user:String,
-                       method: HttpMethod = GET) extends Logging {
+                      method: HttpMethod = GET,
+                      postBody: Option[String] = None) extends Logging {
 
-  val substitutionPoint = """%deploy\.([A-Za-z]+\.?)([A-Za-z-_]+)?%""".r
   def request(record: DeployRecordDocument) = {
-    val newUrl = substitutionPoint.replaceAllIn(url, (substitution) => {
-      URLEncoder.encode(substitution.group(1).toLowerCase match {
-        case "build" => record.parameters.buildId
-        case "project" => record.parameters.projectName
-        case "stage" => record.parameters.stage
-        case "recipe" => record.parameters.recipe
-        case "hosts" => record.parameters.hostList.mkString(",")
-        case "deployer" => record.parameters.deployer
-        case "uuid" => record.uuid.toString
-        case "tag." => Option(substitution.group(2)).flatMap(record.parameters.tags.get).getOrElse("")
-      }, "utf-8")
-    })
-    val userInfo = Option(new URL(newUrl).getUserInfo).flatMap { ui =>
-      val elements = ui.split(':')
-      if (elements.length == 2)
-        Some(Auth(elements(0), elements(1)))
-      else
-        None
+    val templatedUrl = new HookTemplate(url, record, urlEncode = true).Template.run().get
+    authFor(templatedUrl).map(ui => WS.url(templatedUrl).withAuth(ui.user, ui.password, ui.scheme))
+      .getOrElse(WS.url(templatedUrl))
+  }
+
+  def authFor(url: String): Option[Auth] = Option(new URL(url).getUserInfo).flatMap { ui =>
+    ui.split(':') match {
+      case Array(user, password) => Some(Auth(user, password))
+      case _ => None
     }
-    userInfo.map(ui => WS.url(newUrl).withAuth(ui.user, ui.password, ui.scheme)).getOrElse(WS.url(newUrl))
   }
 
   def act(record: DeployRecordDocument) {
     if (enabled) {
-      method match {
+      val urlRequest = request(record)
+      log.info(s"Calling ${urlRequest.url}")
+      (method match {
         case GET => {
-          val urlRequest = request(record)
-          log.info(s"Calling ${urlRequest.url}")
-          urlRequest.get().map { response =>
-            log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
-            log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
-          }
+          urlRequest.get()
         }
         case POST => {
-          WS.url(url).post(Map[String, Seq[String]](
-            "build" -> Seq(record.parameters.buildId),
-            "project" -> Seq(record.parameters.projectName),
-            "stage" -> Seq(record.parameters.stage),
-            "recipe" -> Seq(record.parameters.recipe),
-            "hosts" -> record.parameters.hostList,
-            "stacks" -> record.parameters.stacks,
-            "deployer" -> Seq(record.parameters.deployer),
-            "uuid" -> Seq(record.uuid.toString),
-            "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
-          ))
+          postBody.map(t =>
+            urlRequest.post(new HookTemplate(t, record, urlEncode = false).Template.run().get)
+          ).getOrElse (
+            urlRequest.post(Map[String, Seq[String]](
+              "build" -> Seq(record.parameters.buildId),
+              "project" -> Seq(record.parameters.projectName),
+              "stage" -> Seq(record.parameters.stage),
+              "recipe" -> Seq(record.parameters.recipe),
+              "hosts" -> record.parameters.hostList,
+              "stacks" -> record.parameters.stacks,
+              "deployer" -> Seq(record.parameters.deployer),
+              "uuid" -> Seq(record.uuid.toString),
+              "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
+            ))
+          )
         }
+      }).map { response =>
+        log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
+        log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
       }
     } else {
       log.info("Hook disabled")
@@ -92,7 +86,8 @@ object HookConfig extends MongoSerialisable[HookConfig] {
       "enabled" -> a.enabled,
       "lastEdited" -> a.lastEdited,
       "user" -> a.user,
-      "method" -> a.method.serialised
+      "method" -> a.method.serialised,
+      "postBody" -> a.postBody
     )
     def fromDBO(dbo: MongoDBObject) = Some(HookConfig(
       dbo.as[UUID]("_id"),
@@ -102,7 +97,8 @@ object HookConfig extends MongoSerialisable[HookConfig] {
       dbo.as[Boolean]("enabled"),
       dbo.as[DateTime]("lastEdited"),
       dbo.as[String]("user"),
-      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse (GET)
+      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse (GET),
+      dbo.getAs[String]("postBody")
     ))
   }
 }
