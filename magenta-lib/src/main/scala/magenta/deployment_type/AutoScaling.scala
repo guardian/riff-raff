@@ -77,6 +77,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
     case "deploy" => (pkg) => (lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
+        CheckForStabilization(pkg, parameters.stage, stack),
         CheckGroupSize(pkg, parameters.stage, stack),
         SuspendAlarmNotifications(pkg, parameters.stage, stack),
         TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
