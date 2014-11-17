@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "1.9.1" % "test",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.1.3",
   "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
+  "org.parboiled" %% "parboiled" % "2.0.1",
   filters
 )
 
