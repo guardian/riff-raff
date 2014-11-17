@@ -16,7 +16,7 @@ object MagentaBuild extends Build {
   lazy val riffraff = magentaPlayProject("riff-raff") dependsOn(lib)
 
   val liftVersion = "2.5-RC5"
-  val guardianManagementVersion = "5.33"
+  val guardianManagementVersion = "5.35"
   val guardianManagementPlayVersion = "6.2"
 
   def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
@@ -56,7 +56,7 @@ object MagentaBuild extends Build {
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.11.4",
     scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
     version := magentaVersion,
     resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases"
