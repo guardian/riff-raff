@@ -10,6 +10,6 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-web" % "1.0.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-less" % "1.0.0")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.9.2")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
 addSbtPlugin("com.gu" % "sbt-teamcity-test-reporting-plugin" % "1.5")

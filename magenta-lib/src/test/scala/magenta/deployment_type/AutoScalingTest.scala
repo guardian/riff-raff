@@ -3,8 +3,8 @@ package magenta
 import java.io.File
 import tasks._
 import fixtures._
-import org.json4s.Implicits._
-import org.json4s.JsonAST.JValue
+import org.json4s._
+import org.json4s.JsonDSL._
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import magenta.deployment_type.AutoScaling

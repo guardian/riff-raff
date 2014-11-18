@@ -3,9 +3,8 @@ package magenta
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import java.io.File
-import net.liftweb.util.TimeHelpers._
-import org.json4s.Implicits._
-import org.json4s.JsonAST._
+import org.json4s._
+import org.json4s.JsonDSL._
 import fixtures._
 import magenta.deployment_type.{S3, Django, ExecutableJarWebapp, PatternValue}
 import magenta.tasks._
@@ -98,7 +97,7 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
       ApacheGracefulRestart(host as "django"),
       CleanupOldDeploys(host as "django", 0, "/django-apps/", "webapp"),
-      WaitForPort(host, 80, 1 minute),
+      WaitForPort(host, 80, 1 * 60 * 1000),
       CheckUrls(host, 80, List.empty, 120000, 5),
       UnblockFirewall(host as "django")
     ))

@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
   "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
   "org.parboiled" %% "parboiled" % "2.0.1",
   filters,
-  ws
+  ws,
+  "org.scalatestplus" %% "play" % "1.1.0" % "test"
 )
 
 ivyXML :=
