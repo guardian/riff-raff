@@ -24,7 +24,6 @@ libraryDependencies ++= Seq(
   "org.clapper" %% "markwrap" % "1.0.2",
   "com.rabbitmq" % "amqp-client" % "2.8.7",
   "org.scalatest" %% "scalatest" % "2.2.2" % "test",
-//  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.1.3",
   "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
   "org.parboiled" %% "parboiled" % "2.0.1",
   filters,
@@ -32,7 +31,7 @@ libraryDependencies ++= Seq(
   "org.scalatestplus" %% "play" % "1.1.0" % "test"
 )
 
-//riffRaffPackageType := sbtassembly.Plugin.AssemblyKeys.assembly.value
+riffRaffPackageType := assembly.value
 
 ivyXML :=
   <dependencies>
@@ -50,3 +49,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) {
     case x => old(x)
   }
 }
+
+lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
+
+magenta := riffRaffArtifact.value
