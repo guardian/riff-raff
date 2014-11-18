@@ -1,7 +1,9 @@
 package magenta
 package json
 
-import net.liftweb.json._
+import org.json4s._
+import org.json4s.native.JsonMethods._
+import org.json4s.native.JsonParser
 import io.Source
 import java.io.{FileNotFoundException, File}
 

@@ -10,8 +10,8 @@ import tasks.CopyFile
 import tasks.Service
 import tasks.WaitForPort
 import net.liftweb.util.TimeHelpers._
-import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.{JArray, JString}
+import org.json4s.Implicits._
+import org.json4s.JsonAST.{JArray, JString}
 import magenta.deployment_type.ResinWebapp
 
 class ResinWebappTest extends FlatSpec with ShouldMatchers {

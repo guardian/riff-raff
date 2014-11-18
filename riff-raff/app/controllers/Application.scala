@@ -3,12 +3,14 @@ package controllers
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
 
-import play.api.{Routes, Logger}
+import play.api.{Play, Routes, Logger}
 import io.Source
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import java.io.File
 import resources.LookupSelector
+
+import scala.io.Source
 
 trait Logging {
   implicit val log = Logger(getClass.getName.stripSuffix("$"))
@@ -59,10 +61,11 @@ object Menu {
 }
 
 object Application extends Controller with Logging with LoginActions {
+  import play.api.Play.current
 
   def index = Action { implicit request =>
-    val url = getClass.getResource("/docs/releases.md")
-    val markDown = Source.fromURL(url).mkString
+    val stream = Play.resourceAsStream("public/docs/releases.md").get
+    val markDown = Source.fromInputStream(stream).mkString
     Ok(views.html.index(request, markDown))
   }
 
@@ -90,9 +93,9 @@ object Application extends Controller with Logging with LoginActions {
     val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
     log.info(s"Getting page for $realResource")
     try {
-      val url = getClass.getResource(s"/docs/$realResource.md")
+      val url =  Play.resourceAsStream(s"public/docs/$realResource.md").orElse(Play.resourceAsStream(s"$realResource.md")).get
       log.info(s"Resolved URL $url")
-      Source.fromURL(url).getLines().toList
+      Source.fromInputStream(url).getLines().toList
     } catch {
       case e:Throwable =>
         log.warn(s"$resource is not a valid page of documentation")

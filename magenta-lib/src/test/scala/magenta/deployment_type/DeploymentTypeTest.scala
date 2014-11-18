@@ -4,8 +4,8 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import java.io.File
 import net.liftweb.util.TimeHelpers._
-import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST._
+import org.json4s.Implicits._
+import org.json4s.JsonAST._
 import fixtures._
 import magenta.deployment_type.{S3, Django, ExecutableJarWebapp, PatternValue}
 import magenta.tasks._

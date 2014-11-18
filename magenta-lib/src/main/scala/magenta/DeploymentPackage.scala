@@ -1,7 +1,7 @@
 package magenta
 
 import java.io.File
-import net.liftweb.json.JsonAST._
+import org.json4s._
 import magenta.deployment_type.DeploymentType
 
 case class DeploymentPackage(

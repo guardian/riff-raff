@@ -70,6 +70,8 @@ class AlertaController extends Actor with Logging {
   import Alerta._
   val endpoints = conf.Configuration.alerta.endpoints
 
+  import play.api.Play.current
+
   def receive = {
     case Notify(event) => {
       try {

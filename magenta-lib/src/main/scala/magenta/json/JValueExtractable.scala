@@ -1,13 +1,13 @@
 package magenta.json
 
-import net.liftweb.json.JsonAST._
-import net.liftweb.json.JsonAST.JString
-import net.liftweb.json.JsonAST.JInt
-import net.liftweb.json.JsonAST.JBool
+import org.json4s._
+import org.json4s.native.JsonMethods._
+
+import scala.reflect.ClassTag
 
 trait JValueExtractable[T] {
   def extract(json: JValue): Option[T]
-  def extractOption[T <: JValue, X](extract: T => Option[X])(json: JValue)(implicit t: reflect.ClassTag[T]) =
+  def extractOption[T <: JValue, X](extract: T => Option[X])(json: JValue)(implicit t: ClassTag[T]) =
     t.unapply(json) flatMap (extract)
 }
 object JValueExtractable {
@@ -33,8 +33,10 @@ object JValueExtractable {
       val kvs: List[(String, Option[V])] = for {
         JObject(fields) <- json
         field <- fields
-        JField(k, v) <- field
-      } yield k -> jve.extract(v)
+      } yield {
+        val JField(k, v) = field
+        k -> jve.extract(v)
+      }
       if (kvs.isEmpty || !kvs.forall{case (_, x) => x.isDefined}) None
       else Some(Map(kvs: _*).mapValues(_.get))
     }

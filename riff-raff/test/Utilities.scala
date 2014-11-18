@@ -1,8 +1,8 @@
 package test
 
 import scala.Some
-import net.liftweb.json._
-import net.liftweb.json.Diff
+import org.json4s._
+import org.json4s.Diff
 import org.joda.time.DateTime
 import java.util.UUID
 import magenta._

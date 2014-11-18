@@ -2,17 +2,17 @@ package magenta
 
 import java.io.File
 import tasks._
-import net.liftweb.json.JsonAST.{JArray, JString}
+import org.json4s.JsonAST.{JArray, JString}
 import net.liftweb.util.TimeHelpers._
-import net.liftweb.json.Implicits._
+import org.json4s.Implicits._
 import tasks.BlockFirewall
 import tasks.CheckUrls
 import tasks.CopyFile
 import tasks.Service
 import tasks.UnblockFirewall
-import net.liftweb.json.JsonAST.JString
+import org.json4s.JsonAST.JString
 import tasks.WaitForPort
-import net.liftweb.json.JsonAST.JArray
+import org.json4s.JsonAST.JArray
 import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 import magenta.deployment_type.JettyWebapp

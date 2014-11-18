@@ -3,7 +3,7 @@ package cli
 
 import java.io.File
 import json.{DeployInfoJsonReader, JsonReader}
-import scopt.OptionParser
+import scopt.{Zero, OptionParser}
 import HostList._
 import tasks.CommandLocator
 import magenta.teamcity.Artifact._
@@ -102,32 +102,40 @@ object Main extends scala.App {
   val programName = "magenta"
   val programVersion = ManagementBuildInfo.version
 
-  val parser = new OptionParser(programName, programVersion) {
-    help("h", "help", "show this usage message")
+  val parser = new OptionParser[Unit](programName) {
+    head(programName, programVersion)
 
-    separator("\n  What to deploy:")
-    opt("r", "recipe", "recipe to execute (default: 'default')", { r => Config.recipe = RecipeName(r) })
-    opt("t", "host", "only deply to the named host", { h => Config.host = Some(h) })
+    help("help") abbr("h") text ("show this usage message")
 
-    separator("\n  Diagnostic options:")
-    opt("v", "verbose", "verbose logging", { Config.verbose = true } )
-    opt("n", "dry-run", "don't execute any tasks, just show what would be done", { Config.dryRun = true })
-    opt("deployer", "fullname or username of person executing the deployment", { name => Config.deployer = Deployer(name)})
+    note("\n  What to deploy:")
 
-    separator("\n  Advanced options:")
-    opt("local-artifact", "Path to local artifact directory (overrides <project> and <build>)",
-      { dir => Config.localArtifactDir = Some(new File(dir)) })
-    opt("deployinfo", "use a different deployinfo script", { deployinfo => Config.deployInfoExecutable = deployinfo })
-    opt("path", "Path for deploy support scripts (default: '/opt/deploy/bin')", { path => CommandLocator.rootPath = path })
-    opt("i", "keyLocation", "specify location of SSH key file", {keyLocation => Config.keyLocation = Some(validFile(keyLocation))})
-    opt("j", "jvm-ssh", "perform ssh within the JVM, rather than shelling out to do so", { Config.jvmSsh = true })
+    opt[String]('r', "recipe") text ("recipe to execute (default: 'default')") foreach { r => Config.recipe = RecipeName(r) }
+    opt[String]('t', "host") text ("only deply to the named host") foreach { h => Config.host = Some(h) }
 
-    separator("\n")
-    opt("teamcityUrl", s"URL of the teamcity server from which to download artifacts (e.g. ${Config.teamcityUrl.toString}})",
-      { teamcityUrl => Config.teamcityUrl = Some(new URL(teamcityUrl)) })
-    arg("<stage>", "Stage to deploy (e.g. TEST)", { s => Config.stage = s })
-    argOpt("<project>", "TeamCity project name (e.g. tools::stats-aggregator)", { p => Config.project = Some(p) })
-    argOpt("<build>", "TeamCity build number", { b => Config.build = Some(b) })
+    note("\n  Diagnostic options:")
+    opt[Unit]('v', "verbose") text ("verbose logging") foreach { _ => Config.verbose = true }
+    opt[Unit]('n', "dry-run") text ("don't execute any tasks, just show what would be done") foreach { _ => Config.dryRun = true }
+    opt[String]("deployer") text ("fullname or username of person executing the deployment") foreach
+      { name => Config.deployer = Deployer(name)}
+
+    note("\n  Advanced options:")
+    opt[String]("local-artifact") text ("Path to local artifact directory (overrides <project> and <build>)") foreach
+      { dir => Config.localArtifactDir = Some(new File(dir)) }
+    opt[String]("deployinfo") text ("use a different deployinfo script") foreach
+      { deployinfo => Config.deployInfoExecutable = deployinfo }
+    opt[String]("path") text ("Path for deploy support scripts (default: '/opt/deploy/bin')") foreach
+      { path => CommandLocator.rootPath = path }
+    opt[String]('i', "keyLocation") text ("specify location of SSH key file") foreach
+      {keyLocation => Config.keyLocation = Some(validFile(keyLocation))}
+    opt[Unit]('j', "jvm-ssh") text ("perform ssh within the JVM, rather than shelling out to do so") foreach
+      { _ => Config.jvmSsh = true }
+
+    note("\n")
+    opt[String]("teamcityUrl") text (s"URL of the teamcity server from which to download artifacts (e.g. ${Config.teamcityUrl.toString}})") foreach
+      { teamcityUrl => Config.teamcityUrl = Some(new URL(teamcityUrl)) }
+    arg[String]("<stage>") text ("Stage to deploy (e.g. TEST)") foreach { s => Config.stage = s }
+    arg[String]("<project>") text ("TeamCity project name (e.g. tools::stats-aggregator)") foreach { p => Config.project = Some(p) }
+    arg[String]("<build>") text ("TeamCity build number") foreach { b => Config.build = Some(b) }
   }
 
   def validFile(s: String) = {

@@ -4,8 +4,8 @@ package json
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import java.io.File
-import net.liftweb.json.JsonAST._
-import net.liftweb.json.Implicits._
+import org.json4s.JsonAST._
+import org.json4s.Implicits._
 
 class JsonReaderTest extends FlatSpec with ShouldMatchers {
   val deployJsonExample = """

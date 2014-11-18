@@ -1,7 +1,8 @@
 package magenta
 package json
 
-import net.liftweb.json._
+import org.json4s._
+import org.json4s.native.JsonParser
 import io.Source
 import java.io.File
 import org.joda.time.DateTime

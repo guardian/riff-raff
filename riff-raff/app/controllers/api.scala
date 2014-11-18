@@ -19,6 +19,9 @@ import magenta._
 import play.api.mvc.BodyParsers.parse
 import java.util.UUID
 import utils.Json.DefaultJodaDateWrites
+import org.json4s._
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization.{ read, write }
 
 case class ApiKey(
   application:String,
@@ -270,7 +273,7 @@ object Api extends Controller with Logging with LoginActions {
       filter.app.map("app" -> toJson(_)) ++
       Some("hostList" -> toJson(filter.hostList))
 
-    import net.liftweb.json.{Serialization,NoTypeHints}
+    import org.json4s.{Serialization,NoTypeHints}
     implicit val format = Serialization.formats(NoTypeHints)
     val deployInfo = DeployInfoManager.deployInfo
     val filtered = deployInfo.filterHosts { host =>

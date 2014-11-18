@@ -16,6 +16,8 @@ import scala.util.{Failure, Success, Try}
 import java.net.URLEncoder
 
 object PrismLookup extends Lookup with MagentaCredentials with Logging {
+  import play.api.Play.current
+
   object prism extends Logging {
     val url = conf.Configuration.lookup.prismUrl
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {

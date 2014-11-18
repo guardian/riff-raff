@@ -4,8 +4,6 @@ import play.api.mvc.Security.AuthenticatedRequest
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.mvc.BodyParsers._
-import net.liftweb.json.{ Serialization, NoTypeHints }
-import net.liftweb.json.Serialization.{ read, write }
 import conf._
 import conf.Configuration.auth
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -82,6 +80,8 @@ trait LoginActions extends Actions {
 object Login extends Controller with Logging with LoginActions {
   val ANTI_FORGERY_KEY = "antiForgeryToken"
 
+  import play.api.Play.current
+
   def hasIdentity[A](request: Request[A]): Boolean = request.isInstanceOf[AuthenticatedRequest[UserIdentity, A]]
 
   val validator = new AuthorisationValidator {
@@ -103,29 +103,29 @@ object Login extends Controller with Logging with LoginActions {
     // redirect to google with anti forgery token (that we keen in session storage - note that flashing is not secure)
     val antiForgeryToken = GoogleAuth.generateAntiForgeryToken()
     GoogleAuth.redirectToGoogle(auth.googleAuthConfig, antiForgeryToken).map {
-      _.withSession { session + (ANTI_FORGERY_KEY -> antiForgeryToken) }
+      _.withSession { request.session + (ANTI_FORGERY_KEY -> antiForgeryToken) }
     }
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    session.get(ANTI_FORGERY_KEY) match {
+    request.session.get(ANTI_FORGERY_KEY) match {
       case None =>
         Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
       case Some(token) =>
         GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
-          val redirect = session.get(LOGIN_ORIGIN_KEY) match {
+          val redirect = request.session.get(LOGIN_ORIGIN_KEY) match {
             case Some(url) => Redirect(url)
             case None => Redirect(routes.Application.index())
           }
           redirect.withSession {
-            session + (UserIdentity.KEY -> Json.toJson(identity).toString) - ANTI_FORGERY_KEY - LOGIN_ORIGIN_KEY
+            request.session + (UserIdentity.KEY -> Json.toJson(identity).toString) - ANTI_FORGERY_KEY - LOGIN_ORIGIN_KEY
           }
         } recover {
           case t =>
             FailedLoginCounter.recordCount(1)
             log.warn("Login failure", t)
             Redirect(routes.Login.login())
-              .withSession(session - ANTI_FORGERY_KEY)
+              .withSession(request.session - ANTI_FORGERY_KEY)
               .flashing("error" -> s"Login failure: ${t.toString}")
         }
     }

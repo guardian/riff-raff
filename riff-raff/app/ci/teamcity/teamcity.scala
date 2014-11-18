@@ -1,6 +1,6 @@
 package ci.teamcity
 
-import play.api.libs.ws.{Response, WS}
+import play.api.libs.ws._
 import com.ning.http.client.Realm.AuthScheme
 import conf.Configuration.teamcity
 import play.api.libs.ws.WS.WSRequestHolder
@@ -337,7 +337,9 @@ object TeamCity {
 
 
 object TeamCityWS extends Logging {
-  case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
+  import play.api.Play.current
+
+  case class Auth(user:String, password:String, scheme:WSAuthScheme=WSAuthScheme.BASIC)
 
   val auth = if (teamcity.useAuth) Some(Auth(teamcity.user.get, teamcity.password.get)) else None
   val teamcityURL =teamcity.serverURL.map(url => "%s/%s" format (url, if (auth.isDefined) "httpAuth" else "guestAuth"))

@@ -5,16 +5,15 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.mongodb.casbah.commons.MongoDBObject
-import com.ning.http.client.Realm.AuthScheme
 import controllers.Logging
 import lifecycle.LifecycleWithoutApp
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
 import persistence.{Persistence, MongoFormat, MongoSerialisable, DeployRecordDocument}
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.ws.WS
+import play.api.libs.ws._
 
-case class Auth(user:String, password:String, scheme:AuthScheme=AuthScheme.BASIC)
+case class Auth(user:String, password:String, scheme:WSAuthScheme=WSAuthScheme.BASIC)
 
 case class HookConfig(id: UUID,
                       projectName: String,
@@ -25,6 +24,8 @@ case class HookConfig(id: UUID,
                       user:String,
                       method: HttpMethod = GET,
                       postBody: Option[String] = None) extends Logging {
+
+  import play.api.Play.current
 
   def request(record: DeployRecordDocument) = {
     val templatedUrl = new HookTemplate(url, record, urlEncode = true).Template.run().get
