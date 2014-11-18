@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
     "org.json4s" %% "json4s-native" % "3.2.11",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
-    "com.decodified" %% "scala-ssh" % "0.7.0",
+    "com.decodified" %% "scala-ssh" % "0.7.0" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
     "ch.qos.logback" % "logback-classic" % "1.0.3",
     "com.amazonaws" % "aws-java-sdk" % "1.6.1",
     "org.scalatest" %% "scalatest" % "2.2.2" % "test",
