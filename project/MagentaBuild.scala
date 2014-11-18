@@ -1,9 +1,7 @@
 import sbt._
 import Keys._
-import Defaults._
 import sbtassembly.Plugin._
 import AssemblyKeys._
-//import com.gu.deploy.MagentaArtifact._
 import play.twirl.sbt.Import._
 import com.typesafe.sbt.web.SbtWeb
 
@@ -19,17 +17,13 @@ object MagentaBuild extends Build {
   val guardianManagementVersion = "5.35"
   val guardianManagementPlayVersion = "7.2"
 
-  def magentaProject(name: String) = Project(name, file(name), settings = defaultSettings ++ magentaSettings)
+  def magentaProject(name: String) = Project(name, file(name)).settings(magentaSettings: _*)
 
   def magentaPlayProject(name: String) = Project(name, file(name)).enablePlugins(play.PlayScala).enablePlugins(SbtWeb)
-//    .settings( magentaArtifactSettings: _* )
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
       jarName in assembly := "%s.jar" format name,
-//      excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-//        cp filter {jar => "scala-stm_2.10.0-0.6.jar" == jar.data.getName}
-//      },
       TwirlKeys.templateImports ++= Seq(
         "magenta._",
         "deployment._",
@@ -37,14 +31,6 @@ object MagentaBuild extends Build {
         "views.html.helper.magenta._",
         "com.gu.googleauth.AuthenticatedRequest"
       )
-//      ,
-//      mergeStrategy in assembly <<= (mergeStrategy in assembly) {
-//        (old) => {
-//          case "play/core/server/ServerWithStop.class" => MergeStrategy.first
-//          case x => old(x)
-//        }
-//      }
-//    )
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(

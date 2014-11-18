@@ -1,8 +1,16 @@
+import play.PlayImport.PlayKeys._
+import sbtassembly.Plugin.AssemblyKeys._
+
 resolvers ++= Seq(
     "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
+assemblySettings
+
+mainClass in assembly := Some("play.core.server.NettyServer")
+
+fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
 
 libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
@@ -24,6 +32,8 @@ libraryDependencies ++= Seq(
   "org.scalatestplus" %% "play" % "1.1.0" % "test"
 )
 
+//riffRaffPackageType := sbtassembly.Plugin.AssemblyKeys.assembly.value
+
 ivyXML :=
   <dependencies>
     <exclude org="commons-logging"><!-- Conflicts with jcl-over-slf4j in Play. --></exclude>
@@ -33,3 +43,10 @@ ivyXML :=
 unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
 
 includeFilter in (Assets, LessKeys.less) := "*.less"
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) {
+  (old) => {
+    case "play/core/server/ServerWithStop.class" => MergeStrategy.first
+    case x => old(x)
+  }
+}
