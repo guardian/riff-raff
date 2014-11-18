@@ -48,6 +48,13 @@ case class HealthcheckGrace(duration: Long)(implicit val keyRing: KeyRing) exten
   def description = verbose
 }
 
+case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
+  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+    isStabilized(asg)
+  }
+  lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
+}
+
 case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
@@ -67,7 +74,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
     def isRateExceeded(e: AmazonServiceException) = e.getStatusCode == 400 && e.getErrorCode == "Throttling"
   }
 
-  lazy val description: String = "Check the desired number of hosts in ASG are up and in ELB"
+  lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
 }
 
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
