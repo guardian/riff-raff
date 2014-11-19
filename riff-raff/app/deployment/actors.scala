@@ -12,7 +12,7 @@ import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
 import collection.mutable.ListBuffer
-import akka.routing.RoundRobinRouter
+import akka.routing.{RoundRobinPool, RoundRobinRouter}
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
 import concurrent.Await
@@ -131,9 +131,10 @@ class DeployCoordinator extends Actor with Logging {
   }
 
   val taskStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
-  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(
-    new RoundRobinRouter(conf.Configuration.concurrency.maxDeploys).withSupervisorStrategy(taskStrategy)
-  ))
+  val runners = context.actorOf(
+    RoundRobinPool(conf.Configuration.concurrency.maxDeploys, supervisorStrategy = taskStrategy)
+      .props(Props[TaskRunner].withDispatcher("akka.task-dispatcher")), "taskRunners"
+  )
 
   var deployStateMap = Map.empty[UUID, DeployRunState]
   var deferredDeployQueue = ListBuffer[DeployCoordinator.Message]()
