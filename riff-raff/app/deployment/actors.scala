@@ -31,7 +31,7 @@ object DeployControlActor extends Logging {
 
   lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(
-      "akka.task-dispatcher.type" -> "BalancingDispatcher",
+      "akka.task-dispatcher.type" -> "akka.dispatch.BalancingDispatcherConfigurator",
       "akka.task-dispatcher.executor" -> "thread-pool-executor",
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
