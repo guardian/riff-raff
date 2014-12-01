@@ -27,6 +27,7 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
             activeVersionNumber <- getActiveVersionNumber(client, stopFlag)
             nextVersionNumber <- clone(activeVersionNumber, client, stopFlag)
             deleteResult <- deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag)
+            // The if(xResult) logic here is more to establish explicit temporal dependency than anything else
             uploadResult <- if (deleteResult) uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag) else Future.successful(false)
             activateResult <- if (uploadResult) activateVersion(nextVersionNumber, client, stopFlag) else Future.successful(false)
           } yield activateResult
