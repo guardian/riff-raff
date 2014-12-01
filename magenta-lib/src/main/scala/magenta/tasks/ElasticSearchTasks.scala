@@ -4,7 +4,8 @@ import magenta._
 import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
 import collection.JavaConversions._
 import dispatch.classic._
-import net.liftweb.json._
+import org.json4s._
+import org.json4s.native.JsonMethods._
 import java.net.ConnectException
 import magenta.DeploymentPackage
 import magenta.KeyRing

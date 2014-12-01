@@ -38,5 +38,6 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Proj
       }
     }
   }
-
 }
+
+case class DeployStoppedException(message:String) extends Exception(message)

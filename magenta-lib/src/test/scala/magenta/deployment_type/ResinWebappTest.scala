@@ -9,9 +9,8 @@ import tasks.CheckUrls
 import tasks.CopyFile
 import tasks.Service
 import tasks.WaitForPort
-import net.liftweb.util.TimeHelpers._
-import net.liftweb.json.Implicits._
-import net.liftweb.json.JsonAST.{JArray, JString}
+import org.json4s._
+import org.json4s.JsonDSL._
 import magenta.deployment_type.ResinWebapp
 
 class ResinWebappTest extends FlatSpec with ShouldMatchers {
@@ -26,8 +25,8 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Service(host as "resin", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 minutes, 5),
+      WaitForPort(host, 8080, 1 * 60 * 1000),
+      CheckUrls(host, 8080, List("/webapp/management/healthcheck"), 2 * 60 * 1000, 5),
       UnblockFirewall(host as "resin")
     ))
   }
@@ -51,8 +50,8 @@ class ResinWebappTest extends FlatSpec with ShouldMatchers {
       BlockFirewall(host as "resin"),
       CopyFile(host as "resin", "/tmp/packages/webapp/", "/resin-apps/webapp/"),
       Service(host as "resin", "webapp"),
-      WaitForPort(host, 8080, 1 minute),
-      CheckUrls(host, 8080, urls, 2 minutes, 5),
+      WaitForPort(host, 8080, 1 * 60 * 1000),
+      CheckUrls(host, 8080, urls, 2 * 60 * 1000, 5),
       UnblockFirewall(host as "resin")
     ))
   }

@@ -4,8 +4,8 @@ package deployment_type
 import fixtures._
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
-import net.liftweb.json.JsonAST.JValue
-import net.liftweb.json.Implicits._
+import org.json4s._
+import org.json4s.JsonDSL._
 import java.io.File
 import tasks._
 import tasks.CopyFile

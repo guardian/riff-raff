@@ -12,8 +12,8 @@ import java.io.{FileNotFoundException, File}
 import java.net.{URLConnection, URL, URLStreamHandler}
 import io.Source
 import lifecycle.LifecycleWithoutApp
-import net.liftweb.json.{DefaultFormats, JsonParser}
-import net.liftweb.json.JsonAST.JObject
+import org.json4s._
+import org.json4s.native.JsonMethods._
 import org.joda.time.{DateTime, Duration}
 import scala.collection.mutable
 import scala.concurrent._
@@ -72,7 +72,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
 
     deployInfoJsonOption.map{ deployInfoJson =>
       implicit val formats = DefaultFormats
-      val json = JsonParser.parse(deployInfoJson)
+      val json = parse(deployInfoJson)
       val deployInfo = (json \ "response") match {
         case response:JObject => {
           val updateTime = (response \ "updateTime").extractOpt[String].map(s => new DateTime(s))

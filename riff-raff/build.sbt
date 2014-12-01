@@ -1,26 +1,37 @@
+import play.PlayImport.PlayKeys._
+import sbtassembly.Plugin.AssemblyKeys._
+
 resolvers ++= Seq(
     "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
+assemblySettings
+
+mainClass in assembly := Some("play.core.server.NettyServer")
+
+fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
 
 libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % guardianManagementVersion,
-  "com.gu" %% "configuration" % "3.10",
-  "com.gu" %% "play-googleauth" % "0.0.7",
-  "org.scala-lang" % "scala-reflect" % "2.10.0",
-  "org.mongodb" %% "casbah" % "2.6.0",
+  "com.gu" %% "configuration" % "4.0",
+  "com.gu" %% "play-googleauth" % "0.1.7",
+  "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+  "org.mongodb" %% "casbah" % "2.7.4",
   "org.pircbotx" % "pircbotx" % "1.7",
-  "com.typesafe.akka" %% "akka-agent" % "2.2.0",
-  "org.clapper" %% "markwrap" % "1.0.0",
+  "com.typesafe.akka" %% "akka-agent" % "2.3.7",
+  "org.clapper" %% "markwrap" % "1.0.2",
   "com.rabbitmq" % "amqp-client" % "2.8.7",
-  "org.scalatest" %% "scalatest" % "1.9.1" % "test",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.1.3",
+  "org.scalatest" %% "scalatest" % "2.2.2" % "test",
   "com.netflix.rxjava" % "rxjava-scala" % "0.17.1",
   "org.parboiled" %% "parboiled" % "2.0.1",
-  filters
+  filters,
+  ws,
+  "org.scalatestplus" %% "play" % "1.1.0" % "test"
 )
+
+riffRaffPackageType := assembly.value
 
 ivyXML :=
   <dependencies>
@@ -30,8 +41,15 @@ ivyXML :=
 
 unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
 
-play.Project.lessEntryPoints <<= (sourceDirectory in Compile)(base => (
-  (base / "assets" / "stylesheets" / "bootstrap" / "bootstrap.less") +++
-  (base / "assets" / "stylesheets" / "bootstrap" / "responsive.less") +++
-  (base / "assets" / "stylesheets" * "*.less" )
-))
+includeFilter in (Assets, LessKeys.less) := "*.less"
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) {
+  (old) => {
+    case "play/core/server/ServerWithStop.class" => MergeStrategy.first
+    case x => old(x)
+  }
+}
+
+lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
+
+magenta := riffRaffArtifact.value

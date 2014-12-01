@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import net.liftweb.json.JsonAST._
+import org.json4s.JsonAST._
 import java.io.File
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload

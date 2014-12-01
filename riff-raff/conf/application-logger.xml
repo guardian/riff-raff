@@ -24,9 +24,11 @@
     <logger name="com.amazonaws.request" level="WARN" />
     <logger name="notification.Alerta" level="DEBUG" />
     <logger name="notification.AlertaController" level="DEBUG" />
+
+    <logger name="deployment" level="DEBUG" />
     <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
-    <logger name="ci.teamcity" level="DEBUG" />
+    <!-- logger name="ci.teamcity" level="DEBUG" / -->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
     <!--<logger name="persistence.MongoDatastore" level="DEBUG" />-->
 

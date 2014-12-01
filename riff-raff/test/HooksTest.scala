@@ -1,16 +1,17 @@
 package test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
-import notification.{HookConfig, HookCriteria, HookAction}
-import com.mongodb.casbah.Imports._
-import com.ning.http.client.Realm.AuthScheme
 import java.util.UUID
-import magenta._
-import persistence.{ParametersDocument, DeployRecordDocument}
-import org.joda.time.DateTime
 
-class HooksTest extends FlatSpec with ShouldMatchers {
+import com.mongodb.casbah.Imports._
+import magenta._
+import notification.{HookAction, HookConfig, HookCriteria}
+import org.joda.time.DateTime
+import org.scalatest.{FlatSpec, Matchers}
+import org.scalatestplus.play._
+import persistence.{DeployRecordDocument, ParametersDocument}
+import play.api.libs.ws.WSAuthScheme
+
+class HooksTest extends FlatSpec with Matchers with OneAppPerSuite {
   "HookAction" should "serialise and deserialise" in {
     val action = HookAction("http://localhost:80/test", true)
     val dbo = action.toDBO
@@ -22,7 +23,7 @@ class HooksTest extends FlatSpec with ShouldMatchers {
   it should "create an authenticated request" in {
     val action = HookConfig("testProject", "TEST", "http://simon:bobbins@localhost:80/test", true, "Mr. Tester")
     val req = action.request(testDeployParams)
-    req.auth should be(Some(("simon", "bobbins", AuthScheme.BASIC)))
+    req.auth should be(Some(("simon", "bobbins", WSAuthScheme.BASIC)))
   }
 
   it should "create a plain request" in {

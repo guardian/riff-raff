@@ -12,7 +12,7 @@ import akka.pattern.ask
 import tasks.Task
 import java.util.UUID
 import collection.mutable.ListBuffer
-import akka.routing.RoundRobinRouter
+import akka.routing.{RoundRobinPool, RoundRobinRouter}
 import com.typesafe.config.ConfigFactory
 import scala.collection.JavaConversions._
 import concurrent.Await
@@ -31,7 +31,7 @@ object DeployControlActor extends Logging {
 
   lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(
-      "akka.task-dispatcher.type" -> "BalancingDispatcher",
+      "akka.task-dispatcher.type" -> "akka.dispatch.BalancingDispatcherConfigurator",
       "akka.task-dispatcher.executor" -> "thread-pool-executor",
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
       "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
@@ -131,9 +131,10 @@ class DeployCoordinator extends Actor with Logging {
   }
 
   val taskStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
-  val runners = context.actorOf(Props[TaskRunner].withDispatcher("akka.task-dispatcher").withRouter(
-    new RoundRobinRouter(conf.Configuration.concurrency.maxDeploys).withSupervisorStrategy(taskStrategy)
-  ))
+  val runners = context.actorOf(
+    RoundRobinPool(conf.Configuration.concurrency.maxDeploys, supervisorStrategy = taskStrategy)
+      .props(Props[TaskRunner].withDispatcher("akka.task-dispatcher")), "taskRunners"
+  )
 
   var deployStateMap = Map.empty[UUID, DeployRunState]
   var deferredDeployQueue = ListBuffer[DeployCoordinator.Message]()
@@ -152,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        MessageBroker.failAllContexts(state.loggingContext, stopMessage, new DeployStoppedException(stopMessage))
+        MessageBroker.failAllContexts(state.loggingContext, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -319,5 +320,3 @@ class TaskRunner extends Actor with Logging {
     }
   }
 }
-
-class DeployStoppedException(message:String) extends Exception(message)
