@@ -17,8 +17,7 @@ libraryDependencies ++= Seq(
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
     "com.gu" %% "management" % guardianManagementVersion,
-    "com.gu" %% "fastly-api-client" % "0.2.4",
-    "org.scala-lang.modules" %% "scala-async" % "0.9.2"
+    "com.gu" %% "fastly-api-client" % "0.2.4"
 )
 
 resourceDirectory in Compile := baseDirectory.value / "docs"

@@ -153,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        MessageBroker.failAllContexts(state.loggingContext, stopMessage, new DeployStoppedException(stopMessage))
+        MessageBroker.failAllContexts(state.loggingContext, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -320,5 +320,3 @@ class TaskRunner extends Actor with Logging {
     }
   }
 }
-
-class DeployStoppedException(message:String) extends Exception(message)
