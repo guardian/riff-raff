@@ -20,6 +20,8 @@ object S3 extends DeploymentType with S3AclParams {
     "Prefix the S3 bucket key with the target stage").default(true)
   val prefixPackage = Param("prefixPackage",
     "Prefix the S3 bucket key with the package name").default(true)
+  val prefixStack = Param("prefixStack",
+    "Prefix the S3 bucket key with the target stack").default(true)
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
@@ -97,6 +99,7 @@ object S3 extends DeploymentType with S3AclParams {
           cacheControl(pkg),
           prefixStage = prefixStage(pkg),
           prefixPackage = prefixPackage(pkg),
+          prefixStack = prefixStack(pkg),
           publicReadAcl = publicReadAcl(pkg)
         )
       )
