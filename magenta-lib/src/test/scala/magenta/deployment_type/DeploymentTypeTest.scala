@@ -13,8 +13,8 @@ class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size(7)
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage", "prefixStack", "bucket","publicReadAcl","bucketResource","cacheControl"))
+    S3.params should have size 8
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
   }
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {

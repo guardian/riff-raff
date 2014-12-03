@@ -366,6 +366,25 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
   }
 
+  it should "use overriden mime type" in {
+    val tempDir = createTempDir()
+    val baseDir = new File(tempDir, "package")
+    baseDir.mkdir()
+
+    val fileOne = new File(baseDir, "one.txt")
+    fileOne.createNewFile()
+    val fileTwo = new File(baseDir, "two.xpi")
+    fileTwo.createNewFile()
+
+    val mimeTypes = Map("xpi" -> "application/x-xpinstall")
+    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, mimeTypeMap = mimeTypes) with StubS3 {
+      override val bucket = "bucket"
+    }
+
+    Option(task.requests.find(_.getFile == fileOne).get.getMetadata.getContentType) should be(None)
+    Option(task.requests.find(_.getFile == fileTwo).get.getMetadata.getContentType) should be(Some("application/x-xpinstall"))
+  }
+
   "CleanupOldDeploy task" should "keep all deploys by default" in {
     val host = Host("some-host") as ("some-user")
 
