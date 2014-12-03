@@ -4,7 +4,7 @@ import java.util.jar.Attributes
 
 libraryDependencies ++= Seq(
     "com.github.scopt" %% "scopt" % "3.2.0",
-    "net.databinder" %% "dispatch-http" % "0.8.9"
+    "net.databinder" %% "dispatch-http" % "0.8.10"
 )
 
 seq(sbtassembly.Plugin.assemblySettings: _*)
