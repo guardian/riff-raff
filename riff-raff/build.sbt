@@ -6,12 +6,6 @@ resolvers ++= Seq(
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
-assemblySettings
-
-mainClass in assembly := Some("play.core.server.NettyServer")
-
-fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
-
 libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % guardianManagementVersion,
@@ -33,15 +27,17 @@ libraryDependencies ++= Seq(
 
 riffRaffPackageType := assembly.value
 
+assemblySettings
+mainClass in assembly := Some("play.core.server.NettyServer")
+fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
+
 ivyXML :=
   <dependencies>
-    <exclude org="commons-logging"><!-- Conflicts with jcl-over-slf4j in Play. --></exclude>
+    <exclude org="commons-logging"><!-- Conflicts with jcl-over-slf4j in Play. --> </exclude>
+    <exclude org="oauth.signpost"><!-- Conflicts with play-googleauth--></exclude>
     <exclude org="org.springframework"><!-- Because I don't like it. --></exclude>
+    <exclude org="xpp3"></exclude>
   </dependencies>
-
-unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
-
-includeFilter in (Assets, LessKeys.less) := "*.less"
 
 mergeStrategy in assembly <<= (mergeStrategy in assembly) {
   (old) => {
@@ -49,6 +45,12 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) {
     case x => old(x)
   }
 }
+
+unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
+
+includeFilter in (Assets, LessKeys.less) := "*.less"
+
+fork in Test := false
 
 lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
 

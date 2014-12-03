@@ -161,7 +161,7 @@ object DeployInfoMode extends Enumeration {
 }
 
 object Management extends PlayManagement {
-  val applicationName = Play.current.configuration.getString("application.name").get
+  val applicationName = Play.current.configuration.getString("application.name").getOrElse("RiffRaff")
 
   val pages = List(
     new ManifestPage,
