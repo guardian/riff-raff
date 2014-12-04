@@ -68,6 +68,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig])
     : Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
+      log.debug(s"Matching $build against $config")
       config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
   }

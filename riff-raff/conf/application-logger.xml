@@ -28,7 +28,8 @@
     <logger name="deployment" level="DEBUG" />
     <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
-    <!-- logger name="ci.teamcity" level="DEBUG" / -->
+    <!--<logger name="ci.teamcity" level="DEBUG" />-->
+    <!--<logger name="ci.ContinuousDeployment" level="DEBUG" />-->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
     <!--<logger name="persistence.MongoDatastore" level="DEBUG" />-->
 
