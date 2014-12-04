@@ -1,9 +1,8 @@
 package ci
 
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{FunSuite, Matchers}
 
-class BoundedSetTest  extends FunSuite with ShouldMatchers {
+class BoundedSetTest  extends FunSuite with Matchers {
   test("bounded set obeys contains") {
     val set = BoundedSet[Int](5) + 1 + 2
     Seq(1,2) map (i => set.contains(i) should be (true))

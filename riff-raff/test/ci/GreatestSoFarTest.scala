@@ -1,13 +1,12 @@
 package ci
 
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Matchers}
 import rx.lang.scala.Observable
-import org.scalatest.matchers.ShouldMatchers
 
-class GreatestSoFarTest extends FunSuite with ShouldMatchers {
+class GreatestSoFarTest extends FunSuite with Matchers {
 
   test("should return the greatest element seen so far") {
-    GreatestSoFar(Observable.items(1, 2, 3, 3, 5, 4)).toBlockingObservable.toList should be (
+    GreatestSoFar(Observable.just(1, 2, 3, 3, 5, 4)).toBlocking.toList should be (
       List(1, 2, 3, 3, 5, 5))
   }
 }

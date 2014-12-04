@@ -1,10 +1,9 @@
 package test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{FlatSpec, Matchers}
 import utils.UnnaturalOrdering
 
-class UnnaturalOrderingTest extends FlatSpec with ShouldMatchers {
+class UnnaturalOrderingTest extends FlatSpec with Matchers {
 
   "UnnaturalOrdering" should "order strings in the order that is specified" in {
     val ordering = UnnaturalOrdering(List("test", "alpha", "first"))

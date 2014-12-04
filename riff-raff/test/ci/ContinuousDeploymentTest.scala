@@ -1,40 +1,38 @@
 package ci
 
-import org.scalatest.FlatSpec
+import org.scalatest.{Matchers, FlatSpec}
 import rx.lang.scala.Observable
 import ci.teamcity.{BuildSummary, Job, Project, BuildType}
 import org.joda.time.DateTime
-import org.scalatest.matchers.ShouldMatchers
 import magenta._
 import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import java.util.UUID
-import java.net.URL
 
-class ContinuousDeploymentTest extends FlatSpec with ShouldMatchers {
-  "Continuous Deployment" should "not try to deploy items already built at startup" in {
-    val jobs = Observable.items(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.items(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.items(ciBuild(2))
+class ContinuousDeploymentTest extends FlatSpec with Matchers {
+  "Continuous Deployment" should "not try to deploy just already built at startup" in {
+    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
+    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
+    val newBuilds = (job: Job) => Observable.just(ciBuild(2))
 
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlockingObservable.toList should be(Nil)
+    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(Nil)
   }
 
   it should "not try to deploy the same build twice" in {
-    val jobs = Observable.items(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.items(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.items(ciBuild(2), ciBuild(3), ciBuild(3))
+    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
+    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
+    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(3), ciBuild(3))
 
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlockingObservable.toList should be(List(ciBuild(3)))
+    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(List(ciBuild(3)))
   }
 
   it should "only try to deploy latest for job and branch" in {
-    val jobs = Observable.items(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.items(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.items(ciBuild(2), ciBuild(5), ciBuild(4), ciBuild(3, "other"))
+    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
+    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
+    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(5), ciBuild(4), ciBuild(3, "other"))
 
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlockingObservable.toList should be(
+    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(
       List(ciBuild(5), ciBuild(3, "other"))
     )
   }
