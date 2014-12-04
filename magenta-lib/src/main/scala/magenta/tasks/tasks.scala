@@ -104,6 +104,7 @@ case class S3Upload( stack: Stack,
                      bucket: String,
                      file: File,
                      cacheControlPatterns: List[PatternValue] = Nil,
+                     mimeTypeMap: Map[String,String] = Map.empty,
                      prefixStack: Boolean = true,
                      prefixStage: Boolean = true,
                      prefixPackage: Boolean = true,
@@ -126,7 +127,8 @@ case class S3Upload( stack: Stack,
   lazy val totalSize = filesToCopy.map(_.length).sum
 
   lazy val requests = filesToCopy map { file =>
-    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(toRelative(file)), publicReadAcl)
+    val relative = toRelative(file)
+    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(relative), contentTypeLookup(relative), publicReadAcl)
   }
 
   def execute(stopFlag: =>  Boolean)  {
@@ -144,6 +146,14 @@ case class S3Upload( stack: Stack,
       case _ => ""
     }
     s"$stackName$stageName${toRelative(file)}"
+  }
+
+  def contentTypeLookup(fileName:String) = {
+    val Extension = """^.*\.([^.]*)$""".r
+    fileName match {
+      case Extension(ext) => mimeTypeMap.get(ext)
+      case _ => None
+    }
   }
 
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
