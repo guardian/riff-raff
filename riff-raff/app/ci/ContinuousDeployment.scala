@@ -7,7 +7,6 @@ import magenta.RecipeName
 import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
-import scala.Some
 import persistence.Persistence.store.getContinuousDeploymentList
 
 import utils.ChangeFreeze
@@ -21,12 +20,15 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   def buildCandidates(jobs: Observable[Job], allBuilds: Job => Observable[Iterable[CIBuild]], newBuilds: Job => Observable[CIBuild])
     : Observable[CIBuild] = {
-    for {
+    (for {
       job <- jobs.distinct
       initial <- allBuilds(job)
       (_, buildsPerBranch) <- newBuilds(job).groupBy(_.branchName)
       build <- GreatestSoFar(buildsPerBranch).filter(!initial.toSeq.contains(_)).distinct
-    } yield build
+    } yield build).onErrorResumeNext(e => {
+      log.error("Problem polling builds for ContinuousDeployment", e)
+      buildCandidates(jobs, allBuilds, newBuilds)
+    })
   }
 
   def init() {
