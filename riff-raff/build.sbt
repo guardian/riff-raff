@@ -1,8 +1,9 @@
 import play.PlayImport.PlayKeys._
 import sbtassembly.Plugin.AssemblyKeys._
 
+// TODO: Remove sonatype releases resolver
 resolvers ++= Seq(
-    "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+    "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases",
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
@@ -10,7 +11,7 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % guardianManagementVersion,
   "com.gu" %% "configuration" % "4.0",
-  "com.gu" %% "play-googleauth" % "0.1.8",
+  "com.gu" %% "play-googleauth" % "0.1.10",
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.mongodb" %% "casbah" % "2.7.4",
   "org.pircbotx" % "pircbotx" % "1.7",
