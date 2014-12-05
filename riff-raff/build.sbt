@@ -10,7 +10,7 @@ libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % guardianManagementVersion,
   "com.gu" %% "configuration" % "4.0",
-  "com.gu" %% "play-googleauth" % "0.1.8",
+  "com.gu" %% "play-googleauth" % "0.1.10",
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "org.mongodb" %% "casbah" % "2.7.4",
   "org.pircbotx" % "pircbotx" % "1.7",
