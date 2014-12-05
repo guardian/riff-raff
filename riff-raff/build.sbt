@@ -1,8 +1,9 @@
 import play.PlayImport.PlayKeys._
 import sbtassembly.Plugin.AssemblyKeys._
 
+// TODO: Remove sonatype releases resolver
 resolvers ++= Seq(
-    "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+    "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases",
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
