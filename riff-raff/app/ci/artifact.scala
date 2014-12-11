@@ -12,6 +12,7 @@ import utils.VCSInfo
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.util.Try
 
 object ContinuousIntegration extends Logging {
   def getMetaData(projectName: String, buildId: String): Map[String, String] = {
@@ -39,7 +40,7 @@ object ContinuousIntegration extends Logging {
           Map.empty[String,String]
         }
       }
-      Await.result(futureMap, 5 seconds)
+      Try(Await.result(futureMap, 5 seconds)).getOrElse(Map.empty[String, String])
     }.getOrElse(Map.empty[String,String])
   }
 }

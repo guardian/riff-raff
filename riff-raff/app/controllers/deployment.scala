@@ -80,6 +80,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
   def create(params: DeployParameters): Record = {
+    log.info(s"Creating deploy record for $params")
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = DeployRecord(uuid, params) ++ hostNameMetadata
@@ -138,6 +139,7 @@ object DeployController extends Logging with LifecycleWithoutApp {
   }
 
   def deploy(requestedParams: DeployParameters): UUID = {
+    log.info(s"Started deploying $requestedParams")
     if (enableQueueingSwitch.isSwitchedOff)
       throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
 
