@@ -91,7 +91,6 @@ notifications
  - `irc.host` - IRC host to connect to
  - `irc.channel` - Channel messages should be sent to
  - `irc.name` - Nick used by Riff-Raff in channel
- - `alerta.endpoints` - List of [alerta](https://github.com/guardian/alerta) API endpoints that should be notified of deployment start, complete and fail events
  - `notifications.aws.topicArn` - The ARN of the AWS SNS topic to publish notifications to
  - `notifications.aws.topicRegion` - If you are not posting to a us-east-1 topic you must specify the region here
  - `notifications.aws.accessKey` - the access key for publishing to the topic

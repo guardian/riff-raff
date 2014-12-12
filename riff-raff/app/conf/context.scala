@@ -32,12 +32,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
-  object alerta {
-    lazy val isConfigured = !endpoints.isEmpty
-
-    lazy val endpoints: List[String] = configuration.getStringPropertiesSplitByComma("alerta.endpoints")
-  }
-
   object auth {
     lazy val domains: List[String] = configuration.getStringPropertiesSplitByComma("auth.domains")
     object whitelist {

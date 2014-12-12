@@ -25,8 +25,6 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
       DeployInfoManager,
       DeployController,
       IrcClient,
-      Alerta,
-      AWS,
       DeployMetrics,
       HooksClient,
       TeamCityBuilds,
