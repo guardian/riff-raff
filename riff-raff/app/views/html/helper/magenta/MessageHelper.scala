@@ -1,7 +1,7 @@
 package views.html.helper.magenta
 
 import magenta._
-import play.api.templates.Html
+import play.twirl.api.Html
 
 object MessageHelper {
   def stateClassName(state: RunState.Value): String = {

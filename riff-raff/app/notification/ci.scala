@@ -1,23 +1,18 @@
 package notification
 
-import ci.{CIBuild, TeamCityBuilds}
-import ci.teamcity.TeamcityBuild
-import lifecycle.LifecycleWithoutApp
-import controllers.{routes, Logging}
-import magenta.{MessageSink,Build, MessageBroker}
-import conf.Configuration
 import java.util.UUID
-import ci.teamcity.{Project, TeamCity, BuildType}
+
 import ci.teamcity.TeamCity.BuildLocator
+import ci.teamcity.{BuildType, Project, TeamCity, TeamcityBuild}
+import ci.{CIBuild, TeamCityBuilds}
+import conf.Configuration
+import controllers.{Logging, routes}
+import lifecycle.LifecycleWithoutApp
+import magenta.{Build, Deploy, FinishContext, MessageBroker, MessageSink, MessageWrapper}
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.ws.WSResponse
+
 import scala.concurrent.Future
-import play.api.libs.ws.Response
-import java.net.URL
-import magenta.FinishContext
-import play.api.libs.ws.Response
-import magenta.Deploy
-import scala.Some
-import magenta.MessageWrapper
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
@@ -68,7 +63,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     }
   }
 
-  def pin(build: CIBuild, text: String): Future[Response] = {
+  def pin(build: CIBuild, text: String): Future[WSResponse] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).put(text)
     buildPinCall.map { response =>
       log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
@@ -76,7 +71,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     }
     buildPinCall
   }
-  def unpin(build: TeamcityBuild): Future[Response] = {
+  def unpin(build: TeamcityBuild): Future[WSResponse] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).delete()
     buildPinCall.map { response =>
       log.info("Unpinning build %s: HTTP status code %d" format (build.toString, response.status))

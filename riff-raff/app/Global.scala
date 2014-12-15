@@ -5,7 +5,7 @@ import deployment.DeployInfoManager
 import lifecycle.{ShutdownWhenInactive, Lifecycle}
 import notification._
 import persistence.SummariseDeploysHousekeeping
-import play.api.mvc.{SimpleResult, RequestHeader, WithFilters}
+import play.api.mvc.{Result, SimpleResult, RequestHeader, WithFilters}
 import play.api.mvc.Results.InternalServerError
 import controllers.DeployController
 import ci.{ContinuousDeployment, TeamCityBuilds}
@@ -55,7 +55,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
     }
   }
 
-  override def onError(request: RequestHeader, t: Throwable): Future[SimpleResult] = {
+  override def onError(request: RequestHeader, t: Throwable): Future[Result] = {
     log.error("Error whilst trying to serve request", t)
     val reportException = if (t.getCause != null) t.getCause else t
     Future.successful(InternalServerError(views.html.errorPage(reportException)))

@@ -3,9 +3,10 @@ package magenta
 import java.util.UUID
 import magenta.tasks.Task
 import metrics.MagentaMetrics
-import util.DynamicVariable
+import scala.util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
+import rx.lang.scala.Subject
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
@@ -32,6 +33,8 @@ object MessageBroker {
   private val listeners = mutable.Buffer[MessageSink]()
   def subscribe(sink: MessageSink) { listeners += sink }
   def unsubscribe(sink: MessageSink) { listeners -= sink }
+
+  lazy val messages = Subject[MessageWrapper]()
 
   private val messageStack = new DynamicVariable[List[Message]](Nil)
   private val messageContext = new DynamicVariable[MessageContext](null)
