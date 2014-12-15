@@ -36,7 +36,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     log.info("Pinning build %s" format build.toString)
     val tcBuild = TeamCityBuilds.build(build.projectName,build.id)
     tcBuild.map { realBuild =>
-      pin(realBuild, "Pinned by RiffRaff: %s%s" format (Configuration.urls.publicPrefix, routes.Deployment.viewUUID(deployId.toString).url))
+      pin(realBuild, "Pinned by RiffRaff: %s%s" format (Configuration.urls.publicPrefix, routes.DeployController.viewUUID(deployId.toString).url))
       cleanUpPins(realBuild)
     } getOrElse {
       log.warn("Unable to pin build %s as the associated TeamCity build was not known" format build.toString)

@@ -1,17 +1,13 @@
 package ci
 
-import controllers.{Logging, DeployController}
-import lifecycle.LifecycleWithoutApp
-import magenta.{Build => MagentaBuild}
-import magenta.RecipeName
-import magenta.DeployParameters
-import magenta.Deployer
-import magenta.Stage
-import persistence.Persistence.store.getContinuousDeploymentList
-
-import utils.ChangeFreeze
-import rx.lang.scala.{Observable, Subscription}
 import ci.teamcity.Job
+import controllers.Logging
+import deployment.DeployManager
+import lifecycle.LifecycleWithoutApp
+import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
+import persistence.Persistence.store.getContinuousDeploymentList
+import rx.lang.scala.{Observable, Subscription}
+import utils.ChangeFreeze
 
 object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   import play.api.libs.concurrent.Execution.Implicits._
@@ -59,7 +55,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
     if (conf.Configuration.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
-        DeployController.deploy(params)
+        DeployManager.deploy(params)
       } else {
         log.info(s"Due to change freeze, continuous deployment is skipping ${params.toString}")
       }

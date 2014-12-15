@@ -6,13 +6,13 @@ import metrics.MagentaMetrics
 import scala.util.DynamicVariable
 import collection.mutable
 import org.joda.time.DateTime
-import rx.lang.scala.Subject
+import rx.lang.scala.{Observable, Subject}
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
   implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
   def apply(t:Throwable): ThrowableDetail = {
-    ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTraceString, Option(t.getCause).map(ThrowableDetail(_)))
+    ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTrace.mkString(""), Option(t.getCause).map(ThrowableDetail(_)))
   }
 }
 
@@ -34,7 +34,8 @@ object MessageBroker {
   def subscribe(sink: MessageSink) { listeners += sink }
   def unsubscribe(sink: MessageSink) { listeners -= sink }
 
-  lazy val messages = Subject[MessageWrapper]()
+  private val messageSubject = Subject[MessageWrapper]()
+  val messages: Observable[MessageWrapper] = messageSubject
 
   private val messageStack = new DynamicVariable[List[Message]](Nil)
   private val messageContext = new DynamicVariable[MessageContext](null)
@@ -47,6 +48,7 @@ object MessageBroker {
       MagentaMetrics.MessageBrokerMessages.measure {
         listeners foreach(_.message(MessageWrapper(context, messageUUID, stack)))
       }
+      messageSubject.onNext(MessageWrapper(context, messageUUID, stack))
     }
   }
 

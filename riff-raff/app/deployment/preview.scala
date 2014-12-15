@@ -111,5 +111,5 @@ case class Preview(project: Project, parameters: DeployParameters) {
   val recipe = parameters.recipe.name
   val hostList = parameters.hostList.mkString(",")
 
-  def withRecipe(newRecipe: String) = routes.Deployment.preview(projectName, build, stage, newRecipe, "", "")
+  def withRecipe(newRecipe: String) = routes.DeployController.preview(projectName, build, stage, newRecipe, "", "")
 }

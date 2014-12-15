@@ -1,14 +1,12 @@
 package notification
 
-import controllers.{DeployController, Logging}
-import conf.Configuration
-import org.pircbotx.PircBotX
-import scala.collection.JavaConversions._
+import akka.actor.{Actor, ActorSystem, Props}
 import com.gu.management.ManagementBuildInfo
-import magenta._
-import akka.actor.{Actor, ActorRef, Props, ActorSystem}
-import java.util.UUID
+import conf.Configuration
+import controllers.Logging
 import lifecycle.LifecycleWithoutApp
+import magenta._
+import org.pircbotx.PircBotX
 
 object IrcClient extends LifecycleWithoutApp {
   trait Event
@@ -49,7 +47,7 @@ object IrcClient extends LifecycleWithoutApp {
 }
 
 class IrcClient extends Actor with Logging {
-  import IrcClient._
+  import notification.IrcClient._
 
   val name = Configuration.irc.name.get
   val host = Configuration.irc.host.get

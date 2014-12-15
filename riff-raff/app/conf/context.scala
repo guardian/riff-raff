@@ -9,13 +9,13 @@ import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
 import java.net.URL
-import controllers.{routes, DeployController, Logging}
+import controllers.{routes, Logging}
 import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
 import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.DeployMetricsActor
+import deployment.{DeployManager, DeployMetricsActor}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
@@ -263,6 +263,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployManager.enableSwitches
 }
 

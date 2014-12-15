@@ -26,7 +26,7 @@
         </div>
         <div class="clearfix"></div>
 
-        @helper.form(action=routes.Deployment.processForm) {
+        @helper.form(action=routes.DeployController.processForm) {
 
             @fields.map { fieldName =>
                 @snippets.inputHidden(deployForm(fieldName))

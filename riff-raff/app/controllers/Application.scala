@@ -39,8 +39,8 @@ case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Ca
 object Menu {
   lazy val menuItems = Seq(
     SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
-    SingleMenuItem("History", routes.Deployment.history()),
-    SingleMenuItem("Deploy", routes.Deployment.deploy()),
+    SingleMenuItem("History", routes.DeployController.history()),
+    SingleMenuItem("Deploy", routes.DeployController.deploy()),
     DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
@@ -200,10 +200,10 @@ object Application extends Controller with Logging with LoginActions {
     import routes.javascript._
     Ok{
       Routes.javascriptRouter("jsRoutes")(
-        Deployment.stop,
-        Deployment.projectHistory,
-        Deployment.dashboardContent,
-        Deployment.buildInfo
+        DeployController.stop,
+        DeployController.projectHistory,
+        DeployController.dashboardContent,
+        DeployController.buildInfo
       )
     }.as("text/javascript")
   }
