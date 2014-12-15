@@ -32,7 +32,7 @@ object CloudFormation extends DeploymentType {
     documentation = "Location of template to use within package"
   ).default("""cloud-formation/cfn.json""")
   val templateParameters = Param[Map[String, String]]("templateParameters",
-    documentation = "Map of parameter names and values to be passed into template"
+    documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
   ).default(Map.empty)
 
   override def perAppActions = {
