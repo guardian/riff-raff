@@ -88,6 +88,8 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
 }
 
 trait CloudFormation extends AWS {
+  val CAPABILITY_IAM = "CAPABILITY_IAM"
+
   def client(implicit keyRing: KeyRing) = {
     com.amazonaws.regions.Region.getRegion(Regions.EU_WEST_1).createClient(
       classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
@@ -99,7 +101,7 @@ trait CloudFormation extends AWS {
 
   def updateStack(name: String, templateBody: String, parameters: Map[String, String])(implicit keyRing: KeyRing) =
     client.updateStack(
-      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM").withParameters(
+      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
           case (k, v) => new Parameter().withParameterKey(k).withParameterValue(v)
         } toSeq: _*
@@ -108,7 +110,7 @@ trait CloudFormation extends AWS {
 
   def createStack(name: String, templateBody: String, parameters: Map[String, String])(implicit keyRing: KeyRing) =
     client.createStack(
-      new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM").withParameters(
+      new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
           case (k, v) => new Parameter().withParameterKey(k).withParameterValue(v)
         } toSeq: _*
