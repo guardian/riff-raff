@@ -4,13 +4,12 @@ import java.util.UUID
 
 import magenta.RunState
 import org.joda.time.DateTime
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
-import persistence.{ParametersDocument, DeployRecordDocument}
+import org.scalatest.{FunSuite, Matchers}
+import persistence.{DeployRecordDocument, ParametersDocument}
 
 import scala.util.{Success, Try}
 
-class HookTemplateTest extends FunSuite with ShouldMatchers {
+class HookTemplateTest extends FunSuite with Matchers {
   test("HookTemplate should leave unparameterised template as is") {
     val template = new HookTemplate("foo", record)
     val res: Try[String] = template.Template.run()
@@ -46,12 +45,6 @@ class HookTemplateTest extends FunSuite with ShouldMatchers {
       record.copy(parameters = paramsDoc.copy(projectName = "test::project")), urlEncode = true)
     val res: Try[String] = template.Template.run()
     res should be (Success("http://localhost:80/test?project=test%3A%3Aproject"))
-  }
-
-  test("Matched project should produce projectName") {
-    val template = new HookTemplate("project", record)
-    val res: Try[String] = template.ProjectName.run()
-    res should be (Success("A Project"))
   }
 
   val paramsDoc = ParametersDocument(
