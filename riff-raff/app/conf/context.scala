@@ -15,7 +15,7 @@ import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{DeployManager, DeployMetricsActor}
+import deployment.{Deployments, DeployMetricsActor}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
@@ -261,6 +261,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployManager.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: Deployments.enableSwitches
 }
 

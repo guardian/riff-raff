@@ -12,7 +12,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import play.api.data._
 import play.api.data.Forms._
-import deployment.{DeployManager, DeployFilter}
+import deployment.{Deployments, DeployFilter}
 import play.api.libs.concurrent.Execution.Implicits._
 import com.gu.googleauth._
 import scala.concurrent.Future
@@ -136,7 +136,7 @@ object Login extends Controller with Logging with LoginActions {
   }
 
   def profile = AuthAction { request =>
-    val records = DeployManager.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
+    val records = Deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
 

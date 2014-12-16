@@ -1,10 +1,8 @@
 package lifecycle
 
-import java.util.UUID
-
 import com.gu.management.DefaultSwitch
 import controllers.Logging
-import deployment.{DeploySink, DeployManager}
+import deployment.Deployments
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -24,7 +22,7 @@ object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
   def attemptShutdown() {
     future {
       log.info("Attempting to shutdown: trying to atomically disable deployment")
-      if (DeployManager.atomicDisableDeploys) {
+      if (Deployments.atomicDisableDeploys) {
         log.info("Deployment disabled, shutting down JVM")
         // wait a while for AJAX update requests to complete
         blocking(Thread.sleep(2000L))
@@ -35,11 +33,9 @@ object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
     }
   }
 
-  val sink = new DeploySink {
-    def postCleanup(uuid: UUID): Unit = if (switch.isSwitchedOn) attemptShutdown()
-  }
+  val sub = Deployments.completed.subscribe(_ => if (switch.isSwitchedOn) attemptShutdown())
 
   // add hooks to listen and exit when desired
-  def init() = DeployManager.subscribe(sink)
-  def shutdown() = DeployManager.unsubscribe(sink)
+  def init() { }
+  def shutdown() { sub.unsubscribe() }
 }

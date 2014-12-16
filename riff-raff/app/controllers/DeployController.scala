@@ -3,7 +3,7 @@ package controllers
 import java.util.UUID
 
 import ci.{TagClassification, TeamCityAPI, TeamCityBuilds}
-import deployment.{DeployManager, PreviewController, PreviewResult}
+import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -65,7 +65,7 @@ object DeployController extends Controller with Logging with LoginActions {
           case "preview" =>
             Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
           case "deploy" =>
-            val uuid = DeployManager.deploy(parameters)
+            val uuid = Deployments.deploy(parameters)
             Redirect(routes.DeployController.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }
@@ -74,19 +74,19 @@ object DeployController extends Controller with Logging with LoginActions {
   }
 
   def stop(uuid: String) = AuthAction { implicit request =>
-    DeployManager.stop(UUID.fromString(uuid), request.user.fullName)
+    Deployments.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.DeployController.viewUUID(uuid))
   }
 
   def viewUUID(uuidString: String, verbose: Boolean) = AuthAction { implicit request =>
     val uuid = UUID.fromString(uuidString)
-    val record = DeployManager.get(uuid)
-    val stopFlag = if (record.isDone) false else DeployManager.getStopFlag(uuid).getOrElse(false)
+    val record = Deployments.get(uuid)
+    val stopFlag = if (record.isDone) false else Deployments.getStopFlag(uuid).getOrElse(false)
     Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
-    val record = DeployManager.get(UUID.fromString(uuid))
+    val record = Deployments.get(UUID.fromString(uuid))
     Ok(views.html.deploy.logContent(record))
   }
 
@@ -132,14 +132,14 @@ object DeployController extends Controller with Logging with LoginActions {
 
   def historyContent() = AuthAction { implicit request =>
     val records = try {
-      DeployManager.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
+      Deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
     } catch {
       case e: Exception =>
         log.error("Exception whilst fetching records", e)
         Nil
     }
     val count = try {
-      Some(DeployManager.countDeploys(deployment.DeployFilter.fromRequest(request)))
+      Some(Deployments.countDeploys(deployment.DeployFilter.fromRequest(request)))
     } catch {
       case e: Exception => None
     }
@@ -166,7 +166,7 @@ object DeployController extends Controller with Logging with LoginActions {
     if (project.trim.isEmpty) {
       Ok("")
     } else {
-      val buildMap = DeployManager.getLastCompletedDeploys(project)
+      val buildMap = Deployments.getLastCompletedDeploys(project)
       Ok(views.html.deploy.projectHistory(project, buildMap))
     }
   }
@@ -211,9 +211,9 @@ object DeployController extends Controller with Logging with LoginActions {
       form => {
         form.action match {
           case "markAsFailed" =>
-            val record = DeployManager.get(UUID.fromString(form.uuid))
+            val record = Deployments.get(UUID.fromString(form.uuid))
             if (record.isStalled)
-              DeployManager.markAsFailed(record)
+              Deployments.markAsFailed(record)
             Redirect(routes.DeployController.viewUUID(form.uuid))
         }
       }
@@ -228,11 +228,11 @@ object DeployController extends Controller with Logging with LoginActions {
     val projectTerms = projects.split(",").toList.filterNot("" ==)
     val projectNames = if (search) {
       projectTerms.flatMap(term => {
-        DeployManager.findProjects().filter(_.contains(term))
+        Deployments.findProjects().filter(_.contains(term))
       })
     } else projectTerms
     val deploys = projectNames.map { project =>
-      project -> DeployManager.getLastCompletedDeploys(project)
+      project -> Deployments.getLastCompletedDeploys(project)
     }.filterNot(_._2.isEmpty)
     Ok(views.html.deploy.dashboardContent(deploys))
   }

@@ -2,7 +2,7 @@ package ci
 
 import ci.teamcity.Job
 import controllers.Logging
-import deployment.DeployManager
+import deployment.Deployments
 import lifecycle.LifecycleWithoutApp
 import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
 import persistence.Persistence.store.getContinuousDeploymentList
@@ -55,7 +55,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
     if (conf.Configuration.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
-        DeployManager.deploy(params)
+        Deployments.deploy(params)
       } else {
         log.info(s"Due to change freeze, continuous deployment is skipping ${params.toString}")
       }

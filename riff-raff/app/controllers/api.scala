@@ -12,7 +12,7 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import com.mongodb.casbah.Imports._
-import deployment.{DeployManager, Record, DeployFilter, DeployInfoManager}
+import deployment.{Deployments, Record, DeployFilter, DeployInfoManager}
 import DeployInfoManager._
 import utils.{ChangeFreeze, Graph}
 import magenta._
@@ -181,9 +181,9 @@ object Api extends Controller with Logging with LoginActions {
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
-    val count = DeployManager.countDeploys(filter)
+    val count = Deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
-    val deployList = DeployManager.getDeploys(filter, pagination.pagination, fetchLogs = false)
+    val deployList = Deployments.getDeploys(filter, pagination.pagination, fetchLogs = false)
 
     def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
@@ -245,9 +245,9 @@ object Api extends Controller with Logging with LoginActions {
 
   def history = ApiJsonEndpoint("history") { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request)
-    val count = DeployManager.countDeploys(filter)
+    val count = Deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
-    val deployList = DeployManager.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
+    val deployList = Deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
 
     val deploys = deployList.map{ record2apiResponse }
     val response = Map(
@@ -323,7 +323,7 @@ object Api extends Controller with Logging with LoginActions {
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
 
-        val deployId = DeployManager.deploy(params)
+        val deployId = Deployments.deploy(params)
         Json.obj(
           "response" -> Json.obj(
             "status" -> "ok",
@@ -351,7 +351,7 @@ object Api extends Controller with Logging with LoginActions {
   }
 
   def view(uuid: String) = ApiJsonEndpoint("viewDeploy") { implicit request =>
-    val record = DeployManager.get(UUID.fromString(uuid), fetchLog = false)
+    val record = Deployments.get(UUID.fromString(uuid), fetchLog = false)
     Json.obj(
       "response" -> Json.obj(
         "status" -> "ok",
@@ -364,9 +364,9 @@ object Api extends Controller with Logging with LoginActions {
     Form("uuid" -> nonEmptyText).bindFromRequest.fold(
       errors => throw new IllegalArgumentException("No UUID specified"),
       uuid => {
-        val record = DeployManager.get(UUID.fromString(uuid), fetchLog = false)
+        val record = Deployments.get(UUID.fromString(uuid), fetchLog = false)
         assert(!record.isDone, "Can't stop a deploy that has already completed")
-        DeployManager.stop(UUID.fromString(uuid), request.fullName)
+        Deployments.stop(UUID.fromString(uuid), request.fullName)
         Json.obj(
           "response" -> Json.obj(
             "status" -> "ok",

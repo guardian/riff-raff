@@ -1,7 +1,7 @@
 import ci.{ContinuousDeployment, TeamCityBuilds}
 import conf.{DeployMetrics, PlayRequestMetrics}
 import controllers.Logging
-import deployment.{DeployInfoManager, DeployManager}
+import deployment.{DeployInfoManager, Deployments}
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import notification._
 import persistence.SummariseDeploysHousekeeping
@@ -23,7 +23,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
     lifecycleSingletons ++= List(
       ScheduledAgent,
       DeployInfoManager,
-      DeployManager,
+      Deployments,
       IrcClient,
       DeployMetrics,
       HooksClient,

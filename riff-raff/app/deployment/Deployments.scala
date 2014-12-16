@@ -14,20 +14,11 @@ import persistence.DocumentStoreConverter
 import play.api.libs.concurrent.Execution.Implicits._
 import rx.lang.scala.{Observable, Subject, Subscription}
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-trait DeploySink {
-  def postCleanup(uuid:UUID)
-}
-
-object DeployManager extends Logging with LifecycleWithoutApp {
-  private val deployEventListener = mutable.Buffer[DeploySink]()
-  def subscribe(sink: DeploySink) { deployEventListener += sink }
-  def unsubscribe(sink: DeploySink) { deployEventListener -= sink }
-
-  lazy val completeDeployments: Observable[UUID] = deployCompleteSubject
+object Deployments extends Logging with LifecycleWithoutApp {
+  lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
 
   private val messagesSubscription: Subscription = MessageBroker.messages.subscribe(update(_))
@@ -128,7 +119,6 @@ object DeployManager extends Logging with LifecycleWithoutApp {
 
   def firePostCleanup(uuid: UUID) {
     library.future().onComplete{ _ =>
-      deployEventListener.foreach(_.postCleanup(uuid))
       deployCompleteSubject.onNext(uuid)
     }
   }
@@ -147,7 +137,7 @@ object DeployManager extends Logging with LifecycleWithoutApp {
     }
 
     deploysEnabled.whileOnYield {
-      val record = DeployManager.create(params)
+      val record = Deployments.create(params)
       DeployControlActor.interruptibleDeploy(record)
       record.uuid
     } getOrElse {
