@@ -19,33 +19,28 @@ import java.net.URL
 
 object Main extends scala.App {
 
-  val sink = new MessageSink {
-    var taskList: List[TaskDetail] = _
-
-    def message(wrapper: MessageWrapper) {
-      val indent = "  " * (wrapper.stack.messages.size - 1)
-      wrapper.stack.top match {
-        case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
-        case TaskList(tasks) =>
-          taskList = tasks
-          Console.out.println(indent+"Tasks to execute: ")
-          tasks.zipWithIndex.foreach { case (task, idx) =>
-            Console.out.println(indent + "  %d. %s" format (idx + 1, task.fullDescription))
-            if (Config.verbose) Console.out.println(indent + "  " + task.verbose)
-          }
-          Console.out.println()
-        case StartContext(Info(message)) => { Console.out.println(indent + message) }
-        case FinishContext(original) => {}
-        case StartContext(TaskRun(task)) => {
-          val timestamp = DateTimeFormat.mediumTime().print(new DateTime())
-          Console.out.println("%s[%s] Starting task %d of %d: %s" format (indent, timestamp, taskList.indexOf(task)+1, taskList.length, task.fullDescription))
+  var taskList: List[TaskDetail] = _
+  MessageBroker.messages.subscribe(wrapper => {
+    val indent = "  " * (wrapper.stack.messages.size - 1)
+    wrapper.stack.top match {
+      case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
+      case TaskList(tasks) =>
+        taskList = tasks
+        Console.out.println(indent+"Tasks to execute: ")
+        tasks.zipWithIndex.foreach { case (task, idx) =>
+          Console.out.println(indent + "  %d. %s" format (idx + 1, task.fullDescription))
+          if (Config.verbose) Console.out.println(indent + "  " + task.verbose)
         }
-        case _ => Console.out.println("%s%s" format (indent, wrapper.stack.top.text))
+        Console.out.println()
+      case StartContext(Info(message)) => { Console.out.println(indent + message) }
+      case FinishContext(original) => {}
+      case StartContext(TaskRun(task)) => {
+        val timestamp = DateTimeFormat.mediumTime().print(new DateTime())
+        Console.out.println("%s[%s] Starting task %d of %d: %s" format (indent, timestamp, taskList.indexOf(task)+1, taskList.length, task.fullDescription))
       }
+      case _ => Console.out.println("%s%s" format (indent, wrapper.stack.top.text))
     }
-  }
-
-  MessageBroker.subscribe(sink)
+  })
 
   object Config {
 

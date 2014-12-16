@@ -137,44 +137,17 @@ object HooksClient extends LifecycleWithoutApp with Logging {
     actor.foreach(_ ! Finished(uuid, parameters))
   }
 
-  val sink = new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case FinishContext(Deploy(parameters)) =>
-          finishedBuild(message.context.deployId, parameters)
-        case _ =>
-      }
+  val messageSub = MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case FinishContext(Deploy(parameters)) =>
+        finishedBuild(message.context.deployId, parameters)
+      case _ =>
     }
-  }
+  })
 
-  def doMigration() {
-    val MIGRATED_KEY = "migratedToHookConfig"
-    if (Persistence.store.readKey(MIGRATED_KEY).isEmpty) {
-      log.info("Migrating deploy hooks to V2")
-      val oldHooks = Persistence.store.getPostDeployHooks
-      val newHooks = Persistence.store.getPostDeployHookList
-      assert(newHooks.isEmpty, "New hooks collection not empty")
-      log.info(s"Migrating ${oldHooks.size} hooks")
-      oldHooks.foreach{ case (criteria, action) =>
-        val config = HookConfig(criteria.projectName, criteria.stage, action.url, action.enabled, "Migration")
-        log.info(s"Migrating criteria $criteria and action $action as config $config")
-        Persistence.store.setPostDeployHook(config)
-      }
-      val migratedHooks = Persistence.store.getPostDeployHookList
-      log.info(s"Found ${migratedHooks.size} migrated hooks")
-      assert(oldHooks.size == migratedHooks.size, "Migration failed")
-      Persistence.store.writeKey(MIGRATED_KEY, "true")
-      log.info("Migration of deploy hooks to V2 completed successfully!")
-    }
-  }
-
-  def init() {
-    doMigration()
-    MessageBroker.subscribe(sink)
-  }
-
+  def init() { }
   def shutdown() {
-    MessageBroker.unsubscribe(sink)
+    messageSub.unsubscribe()
     actor.foreach(system.stop)
   }
 }

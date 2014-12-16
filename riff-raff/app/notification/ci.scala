@@ -8,7 +8,7 @@ import ci.{CIBuild, TeamCityBuilds}
 import conf.Configuration
 import controllers.{Logging, routes}
 import lifecycle.LifecycleWithoutApp
-import magenta.{Build, Deploy, FinishContext, MessageBroker, MessageSink, MessageWrapper}
+import magenta.{Build, Deploy, FinishContext, MessageBroker}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.ws.WSResponse
 
@@ -21,16 +21,14 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
   val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   lazy val tcUserName = conf.Configuration.teamcity.user.get
 
-  val sink = if (!pinningEnabled) None else Some(new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case FinishContext(Deploy(parameters)) =>
-          if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
-            pinBuild(message.context.deployId, parameters.build)
-        case _ =>
-      }
+  val messagesSub = if (!pinningEnabled) None else Some(MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case FinishContext(Deploy(parameters)) =>
+        if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
+          pinBuild(message.context.deployId, parameters.build)
+      case _ =>
     }
-  })
+  }))
 
   def pinBuild(deployId: UUID, build: Build) {
     log.info("Pinning build %s" format build.toString)
@@ -80,6 +78,6 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     buildPinCall
   }
 
-  def init() { sink.foreach(MessageBroker.subscribe) }
-  def shutdown() { sink.foreach(MessageBroker.unsubscribe) }
+  def init() { }
+  def shutdown() { messagesSub.foreach(_.unsubscribe()) }
 }

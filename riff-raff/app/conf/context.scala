@@ -179,25 +179,23 @@ object DeployMetrics extends LifecycleWithoutApp {
 
   val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
-  val sink = new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          DeployStart.recordCount(1)
-          runningDeploys += message.context.deployId
-        case FailContext(Deploy(parameters)) =>
-          DeployFail.recordCount(1)
-          runningDeploys -= message.context.deployId
-        case FinishContext(Deploy(parameters)) =>
-          DeployComplete.recordCount(1)
-          runningDeploys -= message.context.deployId
-        case _ =>
-      }
+  val messageSub = MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case StartContext(Deploy(parameters)) =>
+        DeployStart.recordCount(1)
+        runningDeploys += message.context.deployId
+      case FailContext(Deploy(parameters)) =>
+        DeployFail.recordCount(1)
+        runningDeploys -= message.context.deployId
+      case FinishContext(Deploy(parameters)) =>
+        DeployComplete.recordCount(1)
+        runningDeploys -= message.context.deployId
+      case _ =>
     }
-  }
+  })
 
-  def init() { MessageBroker.subscribe(sink) }
-  def shutdown() { MessageBroker.unsubscribe(sink) }
+  def init() { }
+  def shutdown() { messageSub.unsubscribe() }
 }
 
 object TeamCityMetrics {

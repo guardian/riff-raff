@@ -30,10 +30,6 @@ object TaskDetail {
 case class MessageBrokerContext(messageStack: List[Message], messageContext: MessageContext, previousContext: Option[MessageBrokerContext] = None)
 
 object MessageBroker {
-  private val listeners = mutable.Buffer[MessageSink]()
-  def subscribe(sink: MessageSink) { listeners += sink }
-  def unsubscribe(sink: MessageSink) { listeners -= sink }
-
   private val messageSubject = Subject[MessageWrapper]()
   val messages: Observable[MessageWrapper] = messageSubject
 
@@ -46,9 +42,8 @@ object MessageBroker {
     Option(messageContext.value).foreach { context =>
       val stack = MessageStack(message :: messageStack.value)
       MagentaMetrics.MessageBrokerMessages.measure {
-        listeners foreach(_.message(MessageWrapper(context, messageUUID, stack)))
+        messageSubject.onNext(MessageWrapper(context, messageUUID, stack))
       }
-      messageSubject.onNext(MessageWrapper(context, messageUUID, stack))
     }
   }
 
@@ -178,17 +173,6 @@ object MessageBroker {
 
 case class MessageContext(deployId: UUID, parameters: DeployParameters, parentId: Option[UUID])
 case class MessageWrapper(context: MessageContext, messageId: UUID, stack: MessageStack)
-
-trait MessageSink {
-  def message(wrapper: MessageWrapper)
-}
-
-class MessageSinkFilter(messageSink: MessageSink, filter: MessageWrapper => Boolean) extends MessageSink {
-  def message(wrapper: MessageWrapper) {
-    if (filter(wrapper))
-      messageSink.message(wrapper)
-  }
-}
 
 case class MessageStack(messages: List[Message], time:DateTime = new DateTime()) {
   lazy val top = messages.head

@@ -19,29 +19,24 @@ object IrcClient extends LifecycleWithoutApp {
     actor.foreach(_ ! Notify(message))
   }
 
-  val sink = new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case FailContext(Deploy(parameters)) =>
-          sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case FinishContext(Deploy(parameters)) =>
-          sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case _ =>
-      }
+  val messageSub = MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case StartContext(Deploy(parameters)) =>
+        sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case FailContext(Deploy(parameters)) =>
+        sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case FinishContext(Deploy(parameters)) =>
+        sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case _ =>
     }
-  }
+  })
 
-  def init() {
-    MessageBroker.subscribe(sink)
-  }
-
+  def init() {}
   def shutdown() {
-    MessageBroker.unsubscribe(sink)
+    messageSub.unsubscribe()
     actor.foreach(system.stop)
   }
 }
