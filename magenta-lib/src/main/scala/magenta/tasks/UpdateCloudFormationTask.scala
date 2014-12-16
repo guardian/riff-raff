@@ -8,7 +8,8 @@ import scalax.file.Path
 import collection.convert.wrapAsScala._
 
 case class UpdateCloudFormationTask(cloudFormationStackName: String, template: Path,
-                                    parameters: Map[String, String], stage: Stage, stack: Stack)
+                                    parameters: Map[String, String], stage: Stage, stack: Stack,
+                                    createStackIfAbsent:Boolean)
                                    (implicit val keyRing: KeyRing) extends Task {
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters
@@ -21,8 +22,16 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
     }
 
     val actualParameters = addParametersIfRequired(parameters)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => ("Stack" -> name)))
-    CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name))
+
+    if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
+      CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+    else if (createStackIfAbsent) {
+      MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
+      CloudFormation.createStack(cloudFormationStackName, template.string, actualParameters)
+    } else {
+      MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
+    }
   }
 
   def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
@@ -96,6 +105,20 @@ trait CloudFormation extends AWS {
         } toSeq: _*
       )
     )
+
+  def createStack(name: String, templateBody: String, parameters: Map[String, String])(implicit keyRing: KeyRing) =
+    client.createStack(
+      new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities("CAPABILITY_IAM").withParameters(
+        parameters map {
+          case (k, v) => new Parameter().withParameterKey(k).withParameterValue(v)
+        } toSeq: _*
+      )
+    )
+
+  def describeStack(name: String)(implicit keyRing:KeyRing) =
+    client.describeStacks(
+      new DescribeStacksRequest().withStackName(name)
+    ).getStacks.headOption
 
   def describeStackEvents(name: String)(implicit keyRing: KeyRing) =
     client.describeStackEvents(

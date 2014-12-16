@@ -34,6 +34,9 @@ object CloudFormation extends DeploymentType {
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template"
   ).default(Map.empty)
+  val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
+    documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
+  ).default(true)
 
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
@@ -50,7 +53,8 @@ object CloudFormation extends DeploymentType {
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
           templateParameters(pkg),
           parameters.stage,
-          stack
+          stack,
+          createStackIfAbsent(pkg)
         ),
         CheckUpdateEventsTask(fullCloudFormationStackName)
       )
