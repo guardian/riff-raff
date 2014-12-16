@@ -18,112 +18,92 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
 
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
+  // No, I'm not happy about this, but it gets things working until we can make a larger change
+  def block[T](f: => Future[T]) = Await.result(f, 1.minute)
+
   override def execute(stopFlag: => Boolean) {
 
     FastlyApiClientProvider.get(keyRing).map {
-      client =>
-        val newVersion = Await.result(
-          for {
-            activeVersionNumber <- getActiveVersionNumber(client, stopFlag)
-            nextVersionNumber <- clone(activeVersionNumber, client, stopFlag)
-            deleteResult <- deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag)
-            // The if(xResult) logic here is more to establish explicit temporal dependency than anything else
-            uploadResult <- if (deleteResult) uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag) else Future.successful(false)
-            activateResult <- if (uploadResult) activateVersion(nextVersionNumber, client, stopFlag) else Future.successful(false)
-          } yield activateResult
-        , 10.minutes)
+      client => {
+        val activeVersionNumber = getActiveVersionNumber(client, stopFlag)
+        val nextVersionNumber = clone(activeVersionNumber, client, stopFlag)
 
-        MessageBroker.info(s"Fastly version $newVersion is now active")
-    }
-  }
+        deleteAllVclFilesFrom(nextVersionNumber, client, stopFlag)
 
+        uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, stopFlag)
+        activateVersion(nextVersionNumber, client, stopFlag)
 
-  def stopOnFlag[T](stopFlag: => Boolean)(block: => Future[T]): Future[T] =
-    if (!stopFlag) block else Future.failed(new DeployStoppedException("Deploy manually stopped during UpdateFastlyConfig"))
-
-  private def getActiveVersionNumber(client: FastlyApiClient, stopFlag: => Boolean): Future[Int] = {
-    stopOnFlag(stopFlag) {
-      for (versionList <- client.versionList()) yield {
-        val versions = parse(versionList.getResponseBody).extract[List[Version]]
-        val activeVersion = versions.filter(x => x.active.getOrElse(false))(0)
-        MessageBroker.info(s"Current active version ${activeVersion.number}")
-        activeVersion.number
+        MessageBroker.info(s"Fastly version $nextVersionNumber is now active")
       }
     }
   }
 
-  private def clone(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Future[Int] = {
+
+  def stopOnFlag[T](stopFlag: => Boolean)(block: => T): T =
+    if (!stopFlag) block else throw new DeployStoppedException("Deploy manually stopped during UpdateFastlyConfig")
+
+  private def getActiveVersionNumber(client: FastlyApiClient, stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
-      for (cloned <- client.versionClone(versionNumber)) yield {
-        val clonedVersion = parse(cloned.getResponseBody).extract[Version]
-        MessageBroker.info(s"Cloned version ${clonedVersion.number}")
-        clonedVersion.number
+      val versionList = block(client.versionList())
+      val versions = parse(versionList.getResponseBody).extract[List[Version]]
+      val activeVersion = versions.filter(x => x.active.getOrElse(false))(0)
+      MessageBroker.info(s"Current active version ${activeVersion.number}")
+      activeVersion.number
+    }
+  }
+
+  private def clone(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Int = {
+    stopOnFlag(stopFlag) {
+      val cloned = block(client.versionClone(versionNumber))
+      val clonedVersion = parse(cloned.getResponseBody).extract[Version]
+      MessageBroker.info(s"Cloned version ${clonedVersion.number}")
+      clonedVersion.number
+    }
+  }
+
+  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Unit = {
+    stopOnFlag(stopFlag) {
+      val vclListResponse = block(client.vclList(versionNumber))
+      val vclFilesToDelete = parse(vclListResponse.getResponseBody).extract[List[Vcl]]
+      vclFilesToDelete.foreach { file =>
+        MessageBroker.info(s"Deleting ${file.name}")
+        block(client.vclDelete(versionNumber, file.name).map(_.getResponseBody))
       }
     }
   }
 
-  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Future[Boolean] = {
-    stopOnFlag(stopFlag) {
-      for {
-        vclListResponse <- client.vclList(versionNumber)
-        vclFilesToDelete = parse(vclListResponse.getResponseBody).extract[List[Vcl]]
-        deleteResponses <- Future.traverse(vclFilesToDelete) {
-          file =>
-            MessageBroker.info(s"Deleting ${file.name}")
-            client.vclDelete(versionNumber, file.name).map(_.getResponseBody)
-        }
-      } yield {
-        MessageBroker.info(s"Deleted ${deleteResponses.size} files")
-        true
-      }
-    }
-  }
-
-  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, stopFlag: => Boolean): Future[Boolean] = {
+  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclFilesToUpload = srcDir.listFiles().toList
-      Future.traverse(vclFilesToUpload) {
-        file =>
-          if (file.getName.endsWith(".vcl")) {
-            MessageBroker.info(s"Uploading ${file.getName}")
-            val vcl = scala.io.Source.fromFile(file.getAbsolutePath).mkString
-            client.vclUpload(versionNumber, vcl, file.getName, file.getName)
-          } else {
-            Future.successful(Nil)
-          }
-      }.andThen {
-        case Success(_) => client.vclSetAsMain(versionNumber, "main.vcl")
-        case Failure(e) => MessageBroker.fail("Couldn't set main VCL", e)
-      }.map(_ => true)
+      vclFilesToUpload.foreach { file =>
+        if (file.getName.endsWith(".vcl")) {
+          MessageBroker.info(s"Uploading ${file.getName}")
+          val vcl = scala.io.Source.fromFile(file.getAbsolutePath).mkString
+          block(client.vclUpload(versionNumber, vcl, file.getName, file.getName))
+        }
+      }
+      block(client.vclSetAsMain(versionNumber, "main.vcl"))
     }
   }
 
-  private def activateVersion(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Future[Int] = {
-    for {
-      configIsValid <- validateNewConfigFor(versionNumber, client, stopFlag)
-      result <-
-        if (configIsValid) {
-          client.versionActivate(versionNumber).map { r =>
-            if (r.getStatusCode == 200) {
-              versionNumber
-            } else MessageBroker.fail(s"Error activating Fastly version $versionNumber")
-          }
-        } else {
-          MessageBroker.fail(s"Error validating Fastly version $versionNumber")
-        }
-    } yield result
+  private def activateVersion(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Unit = {
+    val configIsValid = validateNewConfigFor(versionNumber, client, stopFlag)
+    if (configIsValid) {
+      block(client.versionActivate(versionNumber))
+    } else {
+      MessageBroker.fail(s"Error validating Fastly version $versionNumber")
+    }
   }
 
-  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Future[Boolean] = {
+  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, stopFlag: => Boolean): Boolean = {
     stopOnFlag(stopFlag) {
       MessageBroker.info("Waiting 5 seconds for the VCL to compile")
       Thread.sleep(5000)
 
       MessageBroker.info(s"Validating new config $versionNumber")
-      for { response <- client.versionValidate(versionNumber) } yield {
-        val validationResponse = parse(response.getResponseBody) \\ "status"
-        validationResponse == JString("ok")
-      }
+      val response = block(client.versionValidate(versionNumber))
+      val validationResponse = parse(response.getResponseBody) \\ "status"
+      validationResponse == JString("ok")
     }
   }
 
