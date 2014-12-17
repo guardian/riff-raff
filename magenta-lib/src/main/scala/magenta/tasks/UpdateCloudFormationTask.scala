@@ -119,8 +119,8 @@ trait CloudFormation extends AWS {
 
   def describeStack(name: String)(implicit keyRing:KeyRing) =
     client.describeStacks(
-      new DescribeStacksRequest().withStackName(name)
-    ).getStacks.headOption
+      new DescribeStacksRequest()
+    ).getStacks.find(_.getStackName == name)
 
   def describeStackEvents(name: String)(implicit keyRing: KeyRing) =
     client.describeStackEvents(
