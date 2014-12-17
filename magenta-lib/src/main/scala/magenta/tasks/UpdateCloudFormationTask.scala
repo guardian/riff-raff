@@ -24,6 +24,8 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
     val actualParameters = addParametersIfRequired(parameters)(
       Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name))
 
+    MessageBroker.info(s"Parameters: $actualParameters")
+
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
     else if (createStackIfAbsent) {
