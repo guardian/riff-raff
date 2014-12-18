@@ -16,8 +16,14 @@ class HookTemplateTest extends FunSuite with Matchers {
     res should be (Success("foo"))
   }
 
-  test("HookTemplate should replace projectName in template") {
+  test("HookTemplate should replace project in template") {
     val template = new HookTemplate("{'name': '%deploy.project%'}", record)
+    val res: Try[String] = template.Template.run()
+    res should be (Success("{'name': 'A Project'}"))
+  }
+
+  test("HookTemplate should replace projectName in template") {
+    val template = new HookTemplate("{'name': '%deploy.projectName%'}", record)
     val res: Try[String] = template.Template.run()
     res should be (Success("{'name': 'A Project'}"))
   }
@@ -45,6 +51,12 @@ class HookTemplateTest extends FunSuite with Matchers {
       record.copy(parameters = paramsDoc.copy(projectName = "test::project")), urlEncode = true)
     val res: Try[String] = template.Template.run()
     res should be (Success("http://localhost:80/test?project=test%3A%3Aproject"))
+  }
+
+  test("Should replace build") {
+    val template = new HookTemplate("{'build': '%deploy.build%'}", record)
+    val res: Try[String] = template.Template.run()
+    res should be (Success("{'build': 'a123'}"))
   }
 
   val paramsDoc = ParametersDocument(

@@ -15,23 +15,24 @@ class HookTemplate(val input: ParserInput, record: DeployRecordDocument, urlEnco
 
   def Param = rule { SimpleParam | Tag }
 
-  def SimpleParam = rule { paramSubstitutions.mapValues(encode) }
+  def SimpleParam = rule { HookTemplate.paramSubstitutions.mapValues(f => encode(f(record))) }
 
   def Tag = rule { "tag." ~ capture( oneOrMore(Alpha | '-' | '_')) ~> (tagName =>
     encode(record.parameters.tags.getOrElse(tagName, ""))
   )}
 
-  def paramSubstitutions: Map[String, String] = Map(
-    "buildId" -> record.parameters.buildId,
-    "build" -> record.parameters.buildId,
-    "projectName" -> record.parameters.projectName,
-    "project" -> record.parameters.projectName,
-    "stage" -> record.parameters.stage,
-    "recipe" -> record.parameters.recipe,
-    "hostList" ->  record.parameters.hostList.mkString(","),
-    "deployer" -> record.parameters.deployer,
-    "uuid" -> record.uuid.toString
-  )
-
   def encode(p: String) = if (urlEncode) URLEncoder.encode(p, "utf-8") else p
+}
+
+object HookTemplate {
+  val paramSubstitutions = Map[String, DeployRecordDocument => String](
+    ("build", _.parameters.buildId),
+    ("projectName", _.parameters.projectName),
+    ("project", _.parameters.projectName),
+    ("stage", _.parameters.stage),
+    ("recipe", _.parameters.recipe),
+    ("hostList",  _.parameters.hostList.mkString(",")),
+    ("deployer", _.parameters.deployer),
+    ("uuid", _.uuid.toString)
+  )
 }
