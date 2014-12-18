@@ -14,8 +14,6 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters.map(_.getParameterKey)
 
-    MessageBroker.info(s"Required parameters: $requiredParameters")
-
     def addParametersIfRequired(params: Map[String, String])(nameValues: Iterable[(String,  String)]): Map[String, String] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if requiredParameters.contains(name) => completeParams + (name -> value)
