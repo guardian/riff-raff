@@ -12,17 +12,19 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
                                     createStackIfAbsent:Boolean)
                                    (implicit val keyRing: KeyRing) extends Task {
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters
+    val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters.map(_.getParameterKey)
 
     def addParametersIfRequired(params: Map[String, String])(nameValues: Iterable[(String,  String)]): Map[String, String] = {
-      nameValues.foldLeft(params) { case (completeParams, (name, value)) =>
-        if (requiredParameters.map(_.getParameterKey).contains(name)) completeParams + (name -> value)
-        else params
+      nameValues.foldLeft(params) {
+        case (completeParams, (name, value)) if requiredParameters.contains(name) => completeParams + (name -> value)
+        case (completeParams, _) => completeParams
       }
     }
 
     val actualParameters = addParametersIfRequired(parameters)(
       Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name))
+
+    MessageBroker.info(s"Parameters: $actualParameters")
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
@@ -119,8 +121,8 @@ trait CloudFormation extends AWS {
 
   def describeStack(name: String)(implicit keyRing:KeyRing) =
     client.describeStacks(
-      new DescribeStacksRequest().withStackName(name)
-    ).getStacks.headOption
+      new DescribeStacksRequest()
+    ).getStacks.find(_.getStackName == name)
 
   def describeStackEvents(name: String)(implicit keyRing: KeyRing) =
     client.describeStackEvents(
