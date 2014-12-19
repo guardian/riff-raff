@@ -6,32 +6,48 @@
     <h2>Create Post Deploy Hook</h2>
     <hr/>
 
-    @helper.form(action=routes.Hooks.save) {
+    <div class="row">
+        <div class="col-md-7">
+            @helper.form(action=routes.Hooks.save) {
 
-    @snippets.inputHidden(hookForm("id"))
+            @snippets.inputHidden(hookForm("id"))
 
-    @helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
-    @helper.select(
-    hookForm("stage"),
-    options = helper.options(resources.LookupSelector().stages.toList),
-    '_default -> "--- Choose a stage ---",
-    '_label -> "Stage",
-    '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
-    )
-    @helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
-    @helper.select(
-        hookForm("method"),
-        options = helper.options(notification.HttpMethod.all.map(_.serialised)),
-        '_label -> "HTTP Method",
-        '_error -> hookForm.globalError.map(_.withMessage("Please select HTTP method"))
-    )
-    @helper.textarea(hookForm("postBody"), '_label -> "Body to be POSTed. This can be templated with build parameters",
-        'cols -> 100, 'rows -> 6)
-    @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
+            @helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
+            @helper.select(
+            hookForm("stage"),
+            options = helper.options(resources.LookupSelector().stages.toList),
+            '_default -> "--- Choose a stage ---",
+            '_label -> "Stage",
+            '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
+            )
+            @helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
+            @helper.select(
+                hookForm("method"),
+                options = helper.options(notification.HttpMethod.all.map(_.serialised)),
+                '_label -> "HTTP Method",
+                '_error -> hookForm.globalError.map(_.withMessage("Please select HTTP method"))
+            )
+            @helper.textarea(hookForm("postBody"), '_label -> "Body to be POSTed",
+                'cols -> 100, 'rows -> 6)
 
-    <div class="actions">
-        <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
-        <a href="@routes.Hooks.list()" class="btn btn-danger">Cancel</a>
+            @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
+
+            <div class="actions">
+                <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+                <a href="@routes.Hooks.list()" class="btn btn-danger">Cancel</a>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <p class="lead">If the following tokens appear in the target URL or POST body, they will be replaced
+                with details of the deploy that triggered the hook:</p>
+            <ol class="list-inline">
+                @for(param <- notification.HookTemplate.paramSubstitutions.keys.toSeq.sorted){
+                    <li><code>%deploy.@param%</code></li>
+                }
+                <li>or <code>%deploy.tag.<i>tagName</i>%</code> where tagName is any tag applied to the build</li>
+            </ol>
+        </div>
     </div>
 }
 <script type="text/javascript">
