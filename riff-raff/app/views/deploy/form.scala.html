@@ -1,17 +1,17 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm])
-@import helper.twitterBootstrap._
+@import b3.vertical.fieldConstructor
 
 @main("Deploy request", request, List("form-autocomplete")) {
 
 <div class="clearfix"><p>&nbsp;</p></div>
 
 <div class="col-md-6">
-@helper.form(routes.Deployment.processForm, 'class -> "well") {
+@b3.form(routes.Deployment.processForm, 'class -> "well") {
     <fieldset>
         <legend>What would you like to deploy?</legend>
-@helper.inputText(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
-@helper.inputText(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
-@helper.select(
+@b3.text(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
+@b3.text(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
+@b3.select(
 deployForm("stage"),
 helper.options(resources.LookupSelector().stages.toList),
 '_default -> "--- Choose a stage ---",

@@ -21,6 +21,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.2" % "test",
   "com.netflix.rxjava" % "rxjava-scala" % "0.20.7",
   "org.parboiled" %% "parboiled" % "2.0.1",
+  "com.adrianhurt" %% "play-bootstrap3" % "0.3",
   filters,
   ws,
   "org.scalatestplus" %% "play" % "1.2.0" % "test"

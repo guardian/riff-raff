@@ -1,14 +1,14 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[String])
-@import helper.twitterBootstrap._
+@import b3.vertical.fieldConstructor
 
 @main("Authorise a new user", request) {
 
     <h2>Authorise a new user</h2>
     <hr/>
 
-    @helper.form(action=routes.Login.authSave()) {
+    @b3.form(action=routes.Login.authSave()) {
 
-        @helper.inputText(hookForm("email"), '_label -> "Email address of user", 'class -> "buildForm")
+        @b3.text(hookForm("email"), '_label -> "Email address of user")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
             <a href="@routes.Login.authList()" class="btn btn-danger">Cancel</a>
