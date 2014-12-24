@@ -1,5 +1,6 @@
 package magenta.tasks
 
+import com.amazonaws.AmazonServiceException
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -27,7 +28,12 @@ case class UpdateCloudFormationTask(cloudFormationStackName: String, template: P
     MessageBroker.info(s"Parameters: $actualParameters")
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
-      CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+      try {
+        CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+      } catch {
+        case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
+          MessageBroker.info("Cloudformation update has no changes to template or parameters")
+      }
     else if (createStackIfAbsent) {
       MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
       CloudFormation.createStack(cloudFormationStackName, template.string, actualParameters)
