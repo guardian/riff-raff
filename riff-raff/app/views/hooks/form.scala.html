@@ -1,5 +1,5 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[controllers.HookForm])
-@import helper.twitterBootstrap._
+@import b3.vertical.fieldConstructor
 
 @main("Create Post Deploy Hook", request) {
 
@@ -8,29 +8,29 @@
 
     <div class="row">
         <div class="col-md-7">
-            @helper.form(action=routes.Hooks.save) {
+            @b3.form(action=routes.Hooks.save) {
 
             @snippets.inputHidden(hookForm("id"))
 
-            @helper.inputText(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
-            @helper.select(
+            @b3.text(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+            @b3.select(
             hookForm("stage"),
             options = helper.options(resources.LookupSelector().stages.toList),
             '_default -> "--- Choose a stage ---",
             '_label -> "Stage",
             '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))
             )
-            @helper.inputText(hookForm("url"), '_label -> "Hook target URL", 'class -> "buildForm")
-            @helper.select(
+            @b3.text(hookForm("url"), '_label -> "Hook target URL")
+            @b3.select(
                 hookForm("method"),
                 options = helper.options(notification.HttpMethod.all.map(_.serialised)),
                 '_label -> "HTTP Method",
                 '_error -> hookForm.globalError.map(_.withMessage("Please select HTTP method"))
             )
-            @helper.textarea(hookForm("postBody"), '_label -> "Body to be POSTed",
+            @b3.textarea(hookForm("postBody"), '_label -> "Body to be POSTed",
                 'cols -> 100, 'rows -> 6)
 
-            @helper.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
+            @b3.checkbox(hookForm("enabled"), '_label -> "Hook Enabled")
 
             <div class="actions">
                 <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or

@@ -1,12 +1,13 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
 @import ci.Trigger._
+@import b3.vertical.fieldConstructor
 
 @main("Continuous Deployment", request, List("form-autocomplete")) {
 
 <h2>Continuous Deployment Configuration</h2>
 <hr/>
 
-@helper.form(action=routes.ContinuousDeployController.save) {
+@b3.form(action=routes.ContinuousDeployController.save) {
 @snippets.inputHidden(configForm("id"))
 
     @if(configForm.hasGlobalErrors) {
@@ -20,18 +21,18 @@
         </div>
     }
 
-@helper.inputText(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name", 'class -> "buildForm")
-@helper.select(
+@b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+@b3.select(
 configForm("stage"),
 options = helper.options(resources.LookupSelector().stages.toList),
 '_default -> "--- Choose a stage ---",
 '_label -> "Stage",
 '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
 )
-@helper.inputText(configForm("recipe"), '_label -> "Recipe to Execute")
-@helper.inputText(configForm("branchMatcher"), '_label -> "Branch RegEx")
+@b3.text(configForm("recipe"), '_label -> "Recipe to Execute")
+@b3.text(configForm("branchMatcher"), '_label -> "Branch RegEx")
 <legend>Trigger</legend>
-@helper.inputRadioGroup(
+@b3.radio(
     configForm("trigger"),
     options = Seq(SuccessfulBuild, Disabled).map(value => value.id.toString -> value.toString),
     Symbol("data-radio") -> "trigger"

@@ -1,12 +1,12 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], testForm: Form[controllers.Testing.TestForm])
-@import helper.twitterBootstrap._
+@import b3.vertical.fieldConstructor
 
 @main("Test form", request) {
 
 <h2>Test form</h2>
 
-@helper.form(action=routes.Testing.formPost) {
-@helper.inputText(testForm("project"))
+@b3.form(action=routes.Testing.formPost) {
+@b3.text(testForm("project"))
 <input type="checkbox" name="hosts[0]" value="bob" checked="true"/>bob</span>
 <input type="checkbox" name="hosts[1]" value="larry" checked="true"/>larry</span>
 
