@@ -119,9 +119,9 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
 
-    evaluating {
+    a [FailException] should be thrownBy {
       asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
-    } should produce [FailException]
+    }
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {

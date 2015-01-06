@@ -1,6 +1,7 @@
 package magenta
 
 import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.matchers.ShouldMatchers
 import java.io.File
 import org.json4s._
 import org.json4s.JsonDSL._
