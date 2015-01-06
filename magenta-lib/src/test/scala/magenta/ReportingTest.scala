@@ -1,11 +1,11 @@
 package magenta
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
-import org.joda.time.DateTime
 import java.util.UUID
 
-class ReportingTest extends FlatSpec with ShouldMatchers {
+import org.joda.time.DateTime
+import org.scalatest.{FlatSpec, Matchers}
+
+class ReportingTest extends FlatSpec with Matchers {
 
   "Deploy Report" should "build an empty report from an empty list" in {
     val report = DeployReport(Nil, titleTime = Some(testTime))

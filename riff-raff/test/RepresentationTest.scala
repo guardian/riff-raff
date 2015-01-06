@@ -1,8 +1,7 @@
 package test
 
 import ci.{Trigger, ContinuousDeploymentConfig}
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import persistence._
 import org.bson.{BasicBSONDecoder, BasicBSONEncoder}
 import org.joda.time.DateTime
@@ -15,7 +14,7 @@ import java.util.UUID
 import controllers.ApiKey
 
 
-class RepresentationTest extends FlatSpec with ShouldMatchers with Utilities with PersistenceTestInstances {
+class RepresentationTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances {
 
   RegisterJodaTimeConversionHelpers()
 

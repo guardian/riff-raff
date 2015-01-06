@@ -1,7 +1,6 @@
 package magenta.tasks
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import magenta._
 import org.scalatest.mock.MockitoSugar
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
@@ -14,7 +13,7 @@ import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstanc
 import magenta.{App, SystemUser, KeyRing, Stage}
 import java.io.File
 
-class ASGTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   it should "find the matching auto-scaling group with App tagging" in {

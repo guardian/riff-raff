@@ -1,13 +1,13 @@
 package test
 
 import com.gu.googleauth.UserIdentity
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import com.gu.googleauth.UserIdentity
+import org.scalatest.{Matchers, FlatSpec}
 import com.mongodb.casbah.Imports._
 import controllers.{AuthorisationValidator, AuthorisationRecord}
 import org.joda.time.DateTime
 
-class AuthenticationTest extends FlatSpec with ShouldMatchers {
+class AuthenticationTest extends FlatSpec with Matchers {
   "AuthorisationRecord" should "serialise and deserialise" in {
     val dateTime = new DateTime()
     val auth = AuthorisationRecord("test@test.com", "Test Person", dateTime)

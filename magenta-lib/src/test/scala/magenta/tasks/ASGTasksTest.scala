@@ -4,14 +4,13 @@ import com.amazonaws.services.autoscaling.model.{SetDesiredCapacityRequest, Auto
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import magenta._
 import org.mockito.Mockito._
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import magenta.KeyRing
 import magenta.Stage
 import org.scalatest.mock.MockitoSugar
 import java.io.File
 
-class ASGTasksTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   it should "double the size of the autoscaling group" in {

@@ -1,8 +1,7 @@
 package magenta
 package tasks
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
+import org.scalatest.{Matchers, FlatSpec}
 import java.net.ServerSocket
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
@@ -18,7 +17,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
+class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "block firewall task" should "use configurable path" in {

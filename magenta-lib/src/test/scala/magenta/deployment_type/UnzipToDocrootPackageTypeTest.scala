@@ -2,8 +2,7 @@ package magenta
 package deployment_type
 
 import fixtures._
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FunSuite}
 import org.json4s._
 import org.json4s.JsonDSL._
 import java.io.File
@@ -11,7 +10,7 @@ import tasks._
 import tasks.CopyFile
 import magenta.DeploymentPackage
 
-class UnzipToDocrootTest extends FunSuite with ShouldMatchers{
+class UnzipToDocrootTest extends FunSuite with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   test("copies to host based on deployInfo data") {

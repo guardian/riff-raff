@@ -1,10 +1,9 @@
 package magenta
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{FlatSpec, Matchers}
 
-class HostListTests extends FlatSpec with ShouldMatchers {
-  import HostList._
+class HostListTests extends FlatSpec with Matchers {
+  import magenta.HostList._
   
   it should "provide an alphabetical list of all hosts and supported apps" in {
     val hostList = List(Host("z.z.z.z", Set(App("z"))), Host("x.x.x.x", Set(App("x"))))

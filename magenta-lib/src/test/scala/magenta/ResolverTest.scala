@@ -1,20 +1,15 @@
 package magenta
 
 
-import fixtures._
-import fixtures.StubDeploymentType
-import fixtures.StubPerAppAction
-import fixtures.StubPerHostAction
-import fixtures.StubTask
-import json._
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
 import java.io.File
-import scala.Some
-import tasks.{Task, CopyFile}
+
+import magenta.fixtures.{StubDeploymentType, StubTask, _}
+import magenta.json._
+import magenta.tasks.CopyFile
+import org.scalatest.{FlatSpec, Matchers}
 
 
-class ResolverTest extends FlatSpec with ShouldMatchers {
+class ResolverTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   val simpleExample = """

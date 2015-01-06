@@ -1,7 +1,6 @@
 package magenta
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import java.io.File
 import org.json4s._
 import org.json4s.JsonDSL._
@@ -9,7 +8,7 @@ import fixtures._
 import magenta.deployment_type.{S3, Django, ExecutableJarWebapp, PatternValue}
 import magenta.tasks._
 
-class DeploymentTypeTest extends FlatSpec with ShouldMatchers {
+class DeploymentTypeTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "Deployment types" should "automatically register params in the params Seq" in {

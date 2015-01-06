@@ -1,13 +1,12 @@
 package magenta
 package json
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
+import org.scalatest.{Matchers, FlatSpec}
 import java.io.File
 import org.json4s.JsonDSL._
 import org.json4s._
 
-class JsonReaderTest extends FlatSpec with ShouldMatchers {
+class JsonReaderTest extends FlatSpec with Matchers {
   val deployJsonExample = """
   {
     "stack":"content-api",

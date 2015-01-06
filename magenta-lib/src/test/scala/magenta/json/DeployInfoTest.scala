@@ -1,12 +1,11 @@
 package magenta
 package json
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import fixtures._
 
 
-class DeployInfoTest  extends FlatSpec with ShouldMatchers {
+class DeployInfoTest  extends FlatSpec with Matchers {
   val deployInfoSample = """
   {"hosts":[
     {"group":"a", "stage":"CODE", "app":"microapp-cache", "hostname":"machost01.dc-code.gnl"},
