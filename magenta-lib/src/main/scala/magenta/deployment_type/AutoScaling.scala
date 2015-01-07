@@ -72,6 +72,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   )
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
+  val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
 
   def perAppActions = {
     case "deploy" => (pkg) => (lookup, parameters, stack) => {
@@ -83,6 +84,8 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
         DoubleSize(pkg, parameters.stage, stack),
         HealthcheckGrace(healthcheckGrace(pkg) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        WarmupGrace(warmupGrace(pkg) * 1000),
         WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
         CullInstancesWithTerminationTag(pkg, parameters.stage, stack),
         ResumeAlarmNotifications(pkg, parameters.stage, stack)

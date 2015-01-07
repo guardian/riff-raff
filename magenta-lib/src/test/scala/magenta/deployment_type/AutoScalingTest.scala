@@ -29,6 +29,8 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       DoubleSize(p, PROD, UnnamedStack),
       HealthcheckGrace(20000),
       WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000),
+      WarmupGrace(1000),
+      WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack),
       ResumeAlarmNotifications(p, PROD, UnnamedStack)
     ))
@@ -38,7 +40,8 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
     val data: Map[String, JValue] = Map(
       "bucket" -> "asg-bucket",
       "secondsToWait" -> 3 * 60,
-      "healthcheckGrace" -> 30
+      "healthcheckGrace" -> 30,
+      "warmupGrace" -> 20
     )
 
     val app = Seq(App("app"))
@@ -52,6 +55,8 @@ class AutoScalingTest extends FlatSpec with ShouldMatchers {
       TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack),
       DoubleSize(p, PROD, UnnamedStack),
       HealthcheckGrace(30000),
+      WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000),
+      WarmupGrace(20000),
       WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack),
       ResumeAlarmNotifications(p, PROD, UnnamedStack)

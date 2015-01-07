@@ -37,15 +37,21 @@ case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implic
   lazy val description = s"Double the size of the auto-scaling group in $stage for apps ${pkg.apps.mkString(", ")}"
 }
 
-case class HealthcheckGrace(duration: Long)(implicit val keyRing: KeyRing) extends Task {
+sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends Task {
 
   def execute(stopFlag: => Boolean) {
-    Thread.sleep(duration)
+    Thread.sleep(durationMillis)
   }
 
-  def verbose: String = s"Wait extra ${duration}ms to let Load Balancer report correctly"
-
   def description = verbose
+}
+
+case class HealthcheckGrace(durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+  def verbose: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
+}
+
+case class WarmupGrace(durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+  def verbose: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
 }
 
 case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
