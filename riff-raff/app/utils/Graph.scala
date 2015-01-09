@@ -1,10 +1,10 @@
 package utils
 
-import org.joda.time.DateMidnight
+import org.joda.time.LocalDate
 
 object Graph {
-  implicit def series2prefixDate(series: List[(DateMidnight, Int)]) = new {
-    def prefixDate(prefixDate: Option[DateMidnight]):List[(DateMidnight, Int)] = series match {
+  implicit def series2prefixDate(series: List[(LocalDate, Int)]) = new {
+    def prefixDate(prefixDate: Option[LocalDate]):List[(LocalDate, Int)] = series match {
       case Nil => Nil
       case (date, count) :: tail if prefixDate.isDefined && date != prefixDate.get =>
         (prefixDate.get, 0) :: (date, count) :: tail
@@ -12,9 +12,9 @@ object Graph {
     }
   }
 
-  def zeroFillDays(deploysPerDay: List[(DateMidnight, Int)],
-                   firstDate: Option[DateMidnight],
-                   lastDate: Option[DateMidnight]): List[(DateMidnight, Int)] = {
+  def zeroFillDays(deploysPerDay: List[(LocalDate, Int)],
+                   firstDate: Option[LocalDate],
+                   lastDate: Option[LocalDate]): List[(LocalDate, Int)] = {
 
     zeroFillDays(deploysPerDay match {
       case Nil => Nil
@@ -22,7 +22,7 @@ object Graph {
     })
   }
 
-  def zeroFillDays(deploysPerDay: List[(DateMidnight, Int)]): List[(DateMidnight, Int)] = deploysPerDay match {
+  def zeroFillDays(deploysPerDay: List[(LocalDate, Int)]): List[(LocalDate, Int)] = deploysPerDay match {
     case Nil => Nil
     case head :: Nil => head :: Nil
     case (date1, count1) :: (date2, count2) :: tail => {

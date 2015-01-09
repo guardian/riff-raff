@@ -1,9 +1,9 @@
 package controllers
 
 import _root_.resources.LookupSelector
-import play.api.mvc.{BodyParser, Action, AnyContent, Controller, SimpleResult}
+import play.api.mvc.{Action, Controller, Result, AnyContent, BodyParser}
 import play.api.mvc.Results._
-import org.joda.time.DateTime
+import org.joda.time.{LocalDate, DateTime}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data._
 import play.api.data.Forms._
@@ -97,7 +97,7 @@ object ApiKeyGenerator {
 object ApiJsonEndpoint extends LoginActions {
   val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
 
-  def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): SimpleResult = {
+  def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
     val format = authenticatedRequest.queryString.get("format").toSeq.flatten
     val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
 
@@ -189,8 +189,11 @@ object Api extends Controller with Logging with LoginActions {
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
     }.getOrElse("")
 
-    val allDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
-      case (date, _) => date.getMillis
+    implicit val dateOrdering = new Ordering[LocalDate] {
+      override def compare(x: LocalDate, y: LocalDate): Int = x.compareTo(y)
+    }
+    val allDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
+      case (date, _) => date
     }
     val firstDate = allDataByDay.headOption.map(_._1)
     val lastDate = allDataByDay.lastOption.map(_._1)
@@ -204,13 +207,13 @@ object Api extends Controller with Logging with LoginActions {
     }
 
     val deploys = deploysByState.map { case (state, deployList) =>
-      val seriesDataByDay = deployList.groupBy(_.time.toDateMidnight).mapValues(_.size).toList.sortBy {
-        case (date, _) => date.getMillis
+      val seriesDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
+        case (date, _) => date
       }
       val seriesJson = Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
         case (day, deploys) =>
           toJson(Map(
-            "x" -> toJson(day.getMillis / 1000),
+            "x" -> toJson(day.toDateTimeAtStartOfDay.getMillis / 1000),
             "y" -> toJson(deploys)
           ))
       }
