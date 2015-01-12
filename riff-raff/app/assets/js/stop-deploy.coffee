@@ -2,7 +2,7 @@ $ ->
   $(".stop-deploy-button").click (e) ->
     e.preventDefault()
     uuid = $(this).val()
-    jsRoutes.controllers.Deployment.stop(uuid).ajax
+    jsRoutes.controllers.DeployController.stop(uuid).ajax
       context: this
       success: ->
         $(".stop-deploy-button").addClass("disabled")

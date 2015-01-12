@@ -2,7 +2,7 @@ selectedProject = ''
 menuOpen = false
 
 updateBuildInfo = (buildNumber) ->
-  $('#build-info').load(jsRoutes.controllers.Deployment.buildInfo(selectedProject, buildNumber).url)
+  $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
 
 $ ->
   $('#projectInput').each ->
@@ -15,7 +15,7 @@ $ ->
   $('#projectInput').blur (e) ->
     selectedProject = $(e.target).val()
     $('#deploy-info').load(
-      jsRoutes.controllers.Deployment.projectHistory(selectedProject).url,
+      jsRoutes.controllers.DeployController.projectHistory(selectedProject).url,
       ->
         $(".promoteDeploy").click (e) ->
           (e).preventDefault()
