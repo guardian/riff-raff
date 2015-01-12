@@ -1,7 +1,7 @@
 package persistence
 
 import java.util.{UUID}
-import com.mongodb.casbah.{MongoCollection, MongoDB, MongoURI, MongoConnection}
+import com.mongodb.casbah._
 import com.mongodb.casbah.Imports.WriteConcern
 import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
@@ -46,9 +46,9 @@ object MongoDatastore extends Logging {
 
   def buildDatastore(app:Option[Application]) = try {
     if (Configuration.mongo.isConfigured) {
-      val uri = MongoURI(Configuration.mongo.uri.get)
-      val mongoConn = MongoConnection(uri)
-      val mongoDB = mongoConn(uri.database.get)
+      val uri = MongoClientURI(Configuration.mongo.uri.get)
+      val client = MongoClient(uri)
+      val mongoDB = client(uri.database.get)
 
       if ( uri.username.isEmpty || uri.password.isEmpty ||
              mongoDB.authenticate(uri.username.get,new String(uri.password.get)) ) {

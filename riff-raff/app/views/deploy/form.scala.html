@@ -6,7 +6,7 @@
 <div class="clearfix"><p>&nbsp;</p></div>
 
 <div class="col-md-6">
-@b3.form(routes.Deployment.processForm, 'class -> "well") {
+@b3.form(routes.DeployController.processForm, 'class -> "well") {
     <fieldset>
         <legend>What would you like to deploy?</legend>
 @b3.text(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")

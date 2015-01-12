@@ -14,30 +14,30 @@ GET         /docs/                                          controllers.Applicat
 GET         /docs/*resource                                 controllers.Application.documentation(resource)
 
 # Deployment pages
-GET         /deployment/request                             controllers.Deployment.deploy
-POST        /deployment/request                             controllers.Deployment.processForm
-POST        /deployment/:uuid/stop                          controllers.Deployment.stop(uuid)
-GET         /deployment/confirm                             controllers.Deployment.deployConfirmation(parametersJson:String)
-GET         /deployment/externalRequest                     controllers.Deployment.deployConfirmationWithParameters
+GET         /deployment/request                             controllers.DeployController.deploy
+POST        /deployment/request                             controllers.DeployController.processForm
+POST        /deployment/:uuid/stop                          controllers.DeployController.stop(uuid)
+GET         /deployment/confirm                             controllers.DeployController.deployConfirmation(parametersJson:String)
+GET         /deployment/externalRequest                     controllers.DeployController.deployConfirmationWithParameters
 
-GET         /deployment/history                             controllers.Deployment.history
-GET         /deployment/history/update                      controllers.Deployment.historyContent
+GET         /deployment/history                             controllers.DeployController.history
+GET         /deployment/history/update                      controllers.DeployController.historyContent
 GET         /deployment/history/graphData                   controllers.Api.historyGraph
 
-GET         /deployment/view/:uuid                          controllers.Deployment.viewUUID(uuid:String, verbose:Boolean?=false)
-POST        /deployment/markAsFailed                        controllers.Deployment.markAsFailed
-GET         /deployment/updates/:uuid                       controllers.Deployment.updatesUUID(uuid:String)
+GET         /deployment/view/:uuid                          controllers.DeployController.viewUUID(uuid:String, verbose:Boolean?=false)
+POST        /deployment/markAsFailed                        controllers.DeployController.markAsFailed
+GET         /deployment/updates/:uuid                       controllers.DeployController.updatesUUID(uuid:String)
 
-GET         /deployment/request/autoComplete/project        controllers.Deployment.autoCompleteProject(term:String)
-GET         /deployment/request/autoComplete/build          controllers.Deployment.autoCompleteBuild(project:String,term:String)
-GET         /deployment/request/history                     controllers.Deployment.projectHistory(project:String)
-GET         /deployment/request/buildInfo                   controllers.Deployment.buildInfo(project: String, build: String)
+GET         /deployment/request/autoComplete/project        controllers.DeployController.autoCompleteProject(term:String)
+GET         /deployment/request/autoComplete/build          controllers.DeployController.autoCompleteBuild(project:String,term:String)
+GET         /deployment/request/history                     controllers.DeployController.projectHistory(project:String)
+GET         /deployment/request/buildInfo                   controllers.DeployController.buildInfo(project: String, build: String)
 
-GET         /deployment/preview                             controllers.Deployment.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
-GET         /deployment/preview/content                     controllers.Deployment.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
+GET         /deployment/preview                             controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
+GET         /deployment/preview/content                     controllers.DeployController.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
-GET         /deployment/dashboard                           controllers.Deployment.dashboard(projects:String, search:Boolean?=false)
-GET         /deployment/dashboard/content                   controllers.Deployment.dashboardContent(projects:String, search:Boolean?=false)
+GET         /deployment/dashboard                           controllers.DeployController.dashboard(projects:String, search:Boolean?=false)
+GET         /deployment/dashboard/content                   controllers.DeployController.dashboardContent(projects:String, search:Boolean?=false)
 
 # Continuous deployment
 GET         /deployment/continuous                          controllers.ContinuousDeployController.list
@@ -87,7 +87,7 @@ GET         /testing/view/:uuid                             controllers.Testing.
 GET         /testing/addStringUUID                          controllers.Testing.transferAllUUIDs
 GET         /testing/testcharset                            controllers.Testing.testcharset
 GET         /testing/deployinfo                             controllers.Testing.hosts
-GET         /teamcity                                       controllers.Deployment.teamcity
+GET         /teamcity                                       controllers.DeployController.teamcity
 
 # Javascript routing
 GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes

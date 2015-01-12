@@ -1,6 +1,6 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], preview: deployment.Preview)
 
-@helper.form(action=routes.Deployment.processForm) {
+@helper.form(action=routes.DeployController.processForm) {
 
     <table class="table table-hover">
         <tbody>
@@ -111,7 +111,7 @@
     <div class="actions">
         <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
         <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-        <a href="@routes.Deployment.deploy()" class="btn btn-danger">Cancel</a>
+        <a href="@routes.DeployController.deploy()" class="btn btn-danger">Cancel</a>
     </div>
 
     <div class="ajax-refresh-disabled pull-left"></div>

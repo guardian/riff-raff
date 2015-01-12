@@ -1,23 +1,18 @@
 package notification
 
-import ci.{CIBuild, TeamCityBuilds}
-import ci.teamcity.TeamcityBuild
-import lifecycle.LifecycleWithoutApp
-import controllers.{routes, Logging}
-import magenta.{MessageSink,Build, MessageBroker}
-import conf.Configuration
 import java.util.UUID
-import ci.teamcity.{Project, TeamCity, BuildType}
+
 import ci.teamcity.TeamCity.BuildLocator
+import ci.teamcity.{BuildType, Project, TeamCity, TeamcityBuild}
+import ci.{CIBuild, TeamCityBuilds}
+import conf.Configuration
+import controllers.{Logging, routes}
+import lifecycle.LifecycleWithoutApp
+import magenta.{Build, Deploy, FinishContext, MessageBroker}
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.ws.WSResponse
+
 import scala.concurrent.Future
-import play.api.libs.ws.Response
-import java.net.URL
-import magenta.FinishContext
-import play.api.libs.ws.Response
-import magenta.Deploy
-import scala.Some
-import magenta.MessageWrapper
 
 object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
@@ -26,22 +21,20 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
   val pinningEnabled = conf.Configuration.teamcity.pinSuccessfulDeploys
   lazy val tcUserName = conf.Configuration.teamcity.user.get
 
-  val sink = if (!pinningEnabled) None else Some(new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case FinishContext(Deploy(parameters)) =>
-          if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
-            pinBuild(message.context.deployId, parameters.build)
-        case _ =>
-      }
+  val messagesSub = if (!pinningEnabled) None else Some(MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case FinishContext(Deploy(parameters)) =>
+        if (pinStages.isEmpty || pinStages.contains(parameters.stage.name))
+          pinBuild(message.context.deployId, parameters.build)
+      case _ =>
     }
-  })
+  }))
 
   def pinBuild(deployId: UUID, build: Build) {
     log.info("Pinning build %s" format build.toString)
     val tcBuild = TeamCityBuilds.build(build.projectName,build.id)
     tcBuild.map { realBuild =>
-      pin(realBuild, "Pinned by RiffRaff: %s%s" format (Configuration.urls.publicPrefix, routes.Deployment.viewUUID(deployId.toString).url))
+      pin(realBuild, "Pinned by RiffRaff: %s%s" format (Configuration.urls.publicPrefix, routes.DeployController.viewUUID(deployId.toString).url))
       cleanUpPins(realBuild)
     } getOrElse {
       log.warn("Unable to pin build %s as the associated TeamCity build was not known" format build.toString)
@@ -68,7 +61,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     }
   }
 
-  def pin(build: CIBuild, text: String): Future[Response] = {
+  def pin(build: CIBuild, text: String): Future[WSResponse] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).put(text)
     buildPinCall.map { response =>
       log.info("Pinning build %s: HTTP status code %d" format (this.toString, response.status))
@@ -76,7 +69,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     }
     buildPinCall
   }
-  def unpin(build: TeamcityBuild): Future[Response] = {
+  def unpin(build: TeamcityBuild): Future[WSResponse] = {
     val buildPinCall = TeamCity.api.build.pin(BuildLocator.id(build.id)).delete()
     buildPinCall.map { response =>
       log.info("Unpinning build %s: HTTP status code %d" format (build.toString, response.status))
@@ -85,6 +78,6 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
     buildPinCall
   }
 
-  def init() { sink.foreach(MessageBroker.subscribe) }
-  def shutdown() { sink.foreach(MessageBroker.unsubscribe) }
+  def init() { }
+  def shutdown() { messagesSub.foreach(_.unsubscribe()) }
 }

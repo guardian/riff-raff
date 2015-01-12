@@ -1,17 +1,16 @@
 package magenta
 
-import fixtures._
-import fixtures.StubTask
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
-import tasks.Task
-import collection.mutable.Buffer
-import org.scalatest.mock.MockitoSugar
-import org.mockito.Mockito._
 import java.util.UUID
-import scala.Some
 
-class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+import magenta.fixtures.{StubTask, _}
+import magenta.tasks.Task
+import org.mockito.Mockito._
+import org.scalatest.mock.MockitoSugar
+import org.scalatest.{FlatSpec, Matchers}
+
+import scala.collection.mutable.Buffer
+
+class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("resolve a set of tasks") in {
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
@@ -27,24 +26,20 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   it should ("send a Info and TaskList message when resolving tasks") in {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
 
-    val sink = new MessageSink {
-      val messages = Buffer[Message]()
-      def message(wrapper: MessageWrapper) {messages += wrapper.stack.top}
-    }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
+    val messages = Buffer[Message]()
+    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
 
     MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
     }
 
-    sink.messages.filter(_.getClass == classOf[Info]) should have size (1)
-    sink.messages.filter(_.getClass == classOf[TaskList]) should have size (1)
+    messages.filter(_.getClass == classOf[Info]) should have size (1)
+    messages.filter(_.getClass == classOf[TaskList]) should have size (1)
   }
 
   it should ("execute the task") in {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseMockRecipe), lookupSingleHost)
-    val keyRing = mock[KeyRing]
     context.execute()
     val task = context.tasks.head
 
@@ -55,52 +50,42 @@ class DeployContextTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val parameters = DeployParameters(Deployer("tester2"), Build("project","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
 
-    val sink = new MessageSink {
-      val messages = Buffer[Message]()
-      val finished = Buffer[Message]()
-      def message(wrapper: MessageWrapper) {
-        wrapper.stack.top match {
-          case FinishContext(finishMessage) => finished += finishMessage
-          case StartContext(startMessage) => messages += startMessage
-          case _ =>
-        }
+    val start = Buffer[Message]()
+    val finished = Buffer[Message]()
+    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
+      wrapper.stack.top match {
+        case FinishContext(finishMessage) => finished += finishMessage
+        case StartContext(startMessage) => start += startMessage
+        case _ =>
       }
-    }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
-
-    val keyRing = mock[KeyRing]
+    )
 
     context.execute()
 
-    sink.messages.filter(_.getClass == classOf[Deploy]) should have size (1)
-    sink.messages.filter(_.getClass == classOf[TaskRun]) should have size (2)
-    sink.finished.filter(_.getClass == classOf[Deploy]) should have size (1)
-    sink.finished.filter(_.getClass == classOf[TaskRun]) should have size (2)
+    start.filter(_.getClass == classOf[Deploy]) should have size (1)
+    start.filter(_.getClass == classOf[TaskRun]) should have size (2)
+    finished.filter(_.getClass == classOf[Deploy]) should have size (1)
+    finished.filter(_.getClass == classOf[TaskRun]) should have size (2)
   }
 
   it should ("bookend the messages with startdeploy and finishdeploy messages") in {
     val parameters = DeployParameters(Deployer("tester3"), Build("Project","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
 
-    val sink = new MessageSink {
-      val messages = Buffer[Message]()
-      val finished = Buffer[Message]()
-      def message(wrapper: MessageWrapper) {
-        wrapper.stack.top match {
-          case FinishContext(finishMessage) => finished += finishMessage
-          case StartContext(startMessage) => messages += startMessage
-          case _ =>
-        }
+    val start = Buffer[Message]()
+    val finished = Buffer[Message]()
+    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
+      wrapper.stack.top match {
+        case FinishContext(finishMessage) => finished += finishMessage
+        case StartContext(startMessage) => start += startMessage
+        case _ =>
       }
-    }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.stack.deployParameters == Some(parameters)))
-
-    val keyRing = mock[KeyRing]
+    )
 
     context.execute()
 
-    sink.messages.head.getClass should be(classOf[Deploy])
-    sink.finished.last.getClass should be(classOf[Deploy])
+    start.head.getClass should be(classOf[Deploy])
+    finished.last.getClass should be(classOf[Deploy])
   }
 
 

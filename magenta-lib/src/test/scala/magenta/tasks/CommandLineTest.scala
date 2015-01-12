@@ -1,15 +1,16 @@
 package magenta
 package tasks
 
-import fixtures._
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
-import collection.mutable.ListBuffer
 import java.io.IOException
 import java.util.UUID
 
+import magenta.fixtures._
+import org.scalatest.{FlatSpec, Matchers}
 
-class CommandLineTest extends FlatSpec with ShouldMatchers {
+import scala.collection.mutable.ListBuffer
+
+
+class CommandLineTest extends FlatSpec with Matchers {
 
   "CommandLine" should "return sensible description for simple commands" in {
     CommandLine(List("ls", "-l")).quoted should be ("ls -l")
@@ -20,21 +21,16 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
       be ("echo \"this needs to be quoted\"")
   }
 
-  class RecordingSink extends MessageSink {
-    val recorded = new ListBuffer[List[Message]]()
-    def message(wrapper: MessageWrapper) { recorded += wrapper.stack.messages }
-  }
-
   it should "execute command and pipe progress results to Logger" in {
-    val blackBox = new RecordingSink
-    MessageBroker.subscribe(new MessageSinkFilter(blackBox, _.stack.deployParameters == Some(parameters)))
+    val recordedMessages = new ListBuffer[List[Message]]()
+    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(recordedMessages += _.stack.messages)
 
     MessageBroker.deployContext(UUID.randomUUID(), parameters) {
       val c = CommandLine(List("echo", "hello"))
       c.run()
     }
 
-    blackBox.recorded.toList should be (
+    recordedMessages.toList should be (
       List(StartContext(Deploy(parameters))) ::
       List(StartContext(Info("$ echo hello")),Deploy(parameters)) ::
       List(CommandOutput("hello"),Info("$ echo hello"),Deploy(parameters)) ::
@@ -46,19 +42,19 @@ class CommandLineTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "throw when command is not found" in {
-    evaluating {
+    an[IOException] should be thrownBy {
       MessageBroker.deployContext(UUID.randomUUID(), parameters) {
         CommandLine(List("unknown_command")).run()
       }
-    } should produce [IOException]
+    }
   }
 
   it should "throw when command returns non zero exit code" in {
-    evaluating {
+    a[FailException] should be thrownBy {
       MessageBroker.deployContext(UUID.randomUUID(), parameters) {
         CommandLine(List("false")).run()
       }
-    } should produce [FailException]
+    }
   }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), CODE, RecipeName(baseRecipe.name))

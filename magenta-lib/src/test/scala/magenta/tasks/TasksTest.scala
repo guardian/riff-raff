@@ -1,8 +1,7 @@
 package magenta
 package tasks
 
-import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.FlatSpec
+import org.scalatest.{Matchers, FlatSpec}
 import java.net.ServerSocket
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
@@ -18,7 +17,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
+class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "block firewall task" should "use configurable path" in {
@@ -70,9 +69,9 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   "waitForPort task" should "fail after timeout" in {
     val task = WaitForPort(Host("localhost"), 9998, 200)
-    evaluating {
+    a [FailException] should be thrownBy {
       task.execute()
-    } should produce [FailException]
+    }
   }
 
   it should "connect to open port" in {
@@ -99,9 +98,9 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
 
   "check_url task" should "fail after timeout" in {
     val task = CheckUrls(Host("localhost"), 9997,List("/"), 200, 5)
-    evaluating {
+    a [FailException] should be thrownBy {
       task.execute()
-    } should produce [FailException]
+    }
   }
 
   it should "get a 200 OK" in {
@@ -118,9 +117,9 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     Future {
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
-    evaluating {
+    a [FailException] should be thrownBy {
       task.execute()
-    } should produce [FailException]
+    }
   }
 
   it should "fail on a 500 ERROR" in {
@@ -128,9 +127,9 @@ class TasksTest extends FlatSpec with ShouldMatchers with MockitoSugar{
     Future {
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
-    evaluating {
+    a [FailException] should be thrownBy {
       task.execute()
-    } should produce [FailException]
+    }
   }
   
   "remote shell task" should "build a remote ssh line if no credentials" in {

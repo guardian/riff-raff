@@ -29,7 +29,7 @@ $(function () { graph({
     <div class="graph-legend"></div>
 </div>
 
-<div class="content" data-ajax-refresh="@{routes.Deployment.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
+<div class="content" data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
     <p>Loading...</p>
 </div>
 }

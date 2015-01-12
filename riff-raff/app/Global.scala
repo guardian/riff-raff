@@ -1,18 +1,18 @@
-import collection.mutable
-import conf.{PlayRequestMetrics, DeployMetrics}
+import ci.{ContinuousDeployment, TeamCityBuilds}
+import conf.{DeployMetrics, PlayRequestMetrics}
 import controllers.Logging
-import deployment.DeployInfoManager
-import lifecycle.{ShutdownWhenInactive, Lifecycle}
+import deployment.{DeployInfoManager, Deployments}
+import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import notification._
 import persistence.SummariseDeploysHousekeeping
-import play.api.mvc.{SimpleResult, RequestHeader, WithFilters}
-import play.api.mvc.Results.InternalServerError
-import controllers.DeployController
-import ci.{ContinuousDeployment, TeamCityBuilds}
-import play.filters.gzip.GzipFilter
-import scala.concurrent.Future
-import utils.ScheduledAgent
 import play.api.Application
+import play.api.mvc.Results.InternalServerError
+import play.api.mvc.{RequestHeader, Result, WithFilters}
+import play.filters.gzip.GzipFilter
+import utils.ScheduledAgent
+
+import scala.collection.mutable
+import scala.concurrent.Future
 
 object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
 
@@ -23,7 +23,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
     lifecycleSingletons ++= List(
       ScheduledAgent,
       DeployInfoManager,
-      DeployController,
+      Deployments,
       IrcClient,
       DeployMetrics,
       HooksClient,
@@ -55,7 +55,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
     }
   }
 
-  override def onError(request: RequestHeader, t: Throwable): Future[SimpleResult] = {
+  override def onError(request: RequestHeader, t: Throwable): Future[Result] = {
     log.error("Error whilst trying to serve request", t)
     val reportException = if (t.getCause != null) t.getCause else t
     Future.successful(InternalServerError(views.html.errorPage(reportException)))

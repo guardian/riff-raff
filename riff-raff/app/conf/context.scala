@@ -9,13 +9,13 @@ import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
 import java.net.URL
-import controllers.{routes, DeployController, Logging}
+import controllers.{routes, Logging}
 import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
 import java.util.UUID
 import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.DeployMetricsActor
+import deployment.{Deployments, DeployMetricsActor}
 import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
@@ -179,25 +179,23 @@ object DeployMetrics extends LifecycleWithoutApp {
 
   val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
-  val sink = new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          DeployStart.recordCount(1)
-          runningDeploys += message.context.deployId
-        case FailContext(Deploy(parameters)) =>
-          DeployFail.recordCount(1)
-          runningDeploys -= message.context.deployId
-        case FinishContext(Deploy(parameters)) =>
-          DeployComplete.recordCount(1)
-          runningDeploys -= message.context.deployId
-        case _ =>
-      }
+  val messageSub = MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case StartContext(Deploy(parameters)) =>
+        DeployStart.recordCount(1)
+        runningDeploys += message.context.deployId
+      case FailContext(Deploy(parameters)) =>
+        DeployFail.recordCount(1)
+        runningDeploys -= message.context.deployId
+      case FinishContext(Deploy(parameters)) =>
+        DeployComplete.recordCount(1)
+        runningDeploys -= message.context.deployId
+      case _ =>
     }
-  }
+  })
 
-  def init() { MessageBroker.subscribe(sink) }
-  def shutdown() { MessageBroker.unsubscribe(sink) }
+  def init() { }
+  def shutdown() { messageSub.unsubscribe() }
 }
 
 object TeamCityMetrics {
@@ -263,6 +261,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: DeployController.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: Deployments.enableSwitches
 }
 

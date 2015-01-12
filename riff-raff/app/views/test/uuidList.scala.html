@@ -24,7 +24,7 @@
               <td>@deploy.time</td>
               <td>@deploy.uuid</td>
               <td>
-                    <a href="@routes.Deployment.viewUUID(deploy.uuid.toString)" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-search"></i> View Log</a>
+                    <a href="@routes.DeployController.viewUUID(deploy.uuid.toString)" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-search"></i> View Log</a>
                     <a href="@routes.Testing.debugLogViewer(deploy.uuid.toString)" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-search"></i> View Debug Log</a>
               </td>
               <td>V2</td>

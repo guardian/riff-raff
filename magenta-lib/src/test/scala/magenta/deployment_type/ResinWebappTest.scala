@@ -1,7 +1,6 @@
 package magenta
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import java.io.File
 import tasks._
 import tasks.BlockFirewall
@@ -13,7 +12,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import magenta.deployment_type.ResinWebapp
 
-class ResinWebappTest extends FlatSpec with ShouldMatchers {
+class ResinWebappTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "resin web app package type" should "have a deploy action" in {

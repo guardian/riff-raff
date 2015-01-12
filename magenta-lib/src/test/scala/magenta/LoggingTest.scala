@@ -1,16 +1,14 @@
 package magenta
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import java.util.UUID
 import collection.mutable.ListBuffer
 
-class LoggingTest extends FlatSpec with ShouldMatchers {
+class LoggingTest extends FlatSpec with Matchers {
 
   def getWrapperBuffer(uuid: UUID): ListBuffer[MessageWrapper] = {
     val wrappers = ListBuffer.empty[MessageWrapper]
-    val sink = new MessageSink { def message(wrapper: MessageWrapper) { wrappers += wrapper } }
-    MessageBroker.subscribe(new MessageSinkFilter(sink, _.context.deployId == uuid))
+    MessageBroker.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
     wrappers
   }
 

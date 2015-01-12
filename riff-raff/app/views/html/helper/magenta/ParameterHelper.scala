@@ -6,7 +6,7 @@ import controllers.routes
 object ParameterHelper {
   implicit def parameters2Calls(parameters: DeployParameters) = new {
     def previewContentCall(id: String) =
-      routes.Deployment.previewContent(
+      routes.DeployController.previewContent(
         id.toString,
         parameters.build.projectName,
         parameters.build.id,

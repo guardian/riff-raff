@@ -1,14 +1,12 @@
 package notification
 
-import controllers.{DeployController, Logging}
-import conf.Configuration
-import org.pircbotx.PircBotX
-import scala.collection.JavaConversions._
+import akka.actor.{Actor, ActorSystem, Props}
 import com.gu.management.ManagementBuildInfo
-import magenta._
-import akka.actor.{Actor, ActorRef, Props, ActorSystem}
-import java.util.UUID
+import conf.Configuration
+import controllers.Logging
 import lifecycle.LifecycleWithoutApp
+import magenta._
+import org.pircbotx.PircBotX
 
 object IrcClient extends LifecycleWithoutApp {
   trait Event
@@ -21,35 +19,30 @@ object IrcClient extends LifecycleWithoutApp {
     actor.foreach(_ ! Notify(message))
   }
 
-  val sink = new MessageSink {
-    def message(message: MessageWrapper) {
-      message.stack.top match {
-        case StartContext(Deploy(parameters)) =>
-          sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case FailContext(Deploy(parameters)) =>
-          sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case FinishContext(Deploy(parameters)) =>
-          sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
-            (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
-        case _ =>
-      }
+  val messageSub = MessageBroker.messages.subscribe(message => {
+    message.stack.top match {
+      case StartContext(Deploy(parameters)) =>
+        sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case FailContext(Deploy(parameters)) =>
+        sendMessage("[%s] FAILED: deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case FinishContext(Deploy(parameters)) =>
+        sendMessage("[%s] Finished deploy of %s build %s (using recipe %s) to %s" format
+          (parameters.deployer.name, parameters.build.projectName, parameters.build.id, parameters.recipe.name, parameters.stage.name))
+      case _ =>
     }
-  }
+  })
 
-  def init() {
-    MessageBroker.subscribe(sink)
-  }
-
+  def init() {}
   def shutdown() {
-    MessageBroker.unsubscribe(sink)
+    messageSub.unsubscribe()
     actor.foreach(system.stop)
   }
 }
 
 class IrcClient extends Actor with Logging {
-  import IrcClient._
+  import notification.IrcClient._
 
   val name = Configuration.irc.name.get
   val host = Configuration.irc.host.get

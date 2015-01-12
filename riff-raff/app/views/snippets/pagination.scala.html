@@ -1,15 +1,15 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], pagination: deployment.Pagination)
 <div class="text-center">
     <ul class="pagination pagination-sm">
-        <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.first(routes.Deployment.history())">««</a></li>
-        <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.previous(routes.Deployment.history())">«</a></li>
+        <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.first(routes.DeployController.history())">««</a></li>
+        <li @if(!pagination.hasPrevious){class="disabled"}><a href="@pagination.previous(routes.DeployController.history())">«</a></li>
         @for(page <- pagination.pageList) {
-        <li @if(pagination.page==page){class="active"}><a href="@pagination.toPage(routes.Deployment.history(),page)">@page</a></li>
+        <li @if(pagination.page==page){class="active"}><a href="@pagination.toPage(routes.DeployController.history(),page)">@page</a></li>
         }
         @if(pagination.pageCount.isEmpty) {
             <li class="disabled"><a href="#">…</a></li>
         }
-        <li @if(!pagination.hasNext){class="disabled"}><a href="@pagination.next(routes.Deployment.history())">»</a></li>
-        <li @if(!pagination.hasLast){class="disabled"}><a href="@pagination.last(routes.Deployment.history())">»»</a></li>
+        <li @if(!pagination.hasNext){class="disabled"}><a href="@pagination.next(routes.DeployController.history())">»</a></li>
+        <li @if(!pagination.hasLast){class="disabled"}><a href="@pagination.last(routes.DeployController.history())">»»</a></li>
     </ul>
 </div>

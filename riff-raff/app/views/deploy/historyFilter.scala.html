@@ -7,20 +7,20 @@
             <li class="dropdown@if(view.filter.stage.isDefined){ active}">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Stage@view.filter.stage.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li@if(!view.filter.stage.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStage(None)).q}">All</a></li>
+                    <li@if(!view.filter.stage.isDefined){ class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStage(None)).q}">All</a></li>
                     <li class="divider"></li>
                     @for(stage <- resources.LookupSelector().stages) {
-                        <li @if(Some(stage)==view.filter.stage){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStage(Some(stage))).q}">@stage</a></li>
+                        <li @if(Some(stage)==view.filter.stage){class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStage(Some(stage))).q}">@stage</a></li>
                     }
                 </ul>
             </li>
             <li class="dropdown@if(view.filter.status.isDefined){ active}">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Status@view.filter.status.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li@if(!view.filter.status.isDefined){ class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStatus(None)).q}">All</a></li>
+                    <li@if(!view.filter.status.isDefined){ class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStatus(None)).q}">All</a></li>
                     <li class="divider"></li>
                     @for(status <- RunState.values.toList.filterNot(_==RunState.ChildRunning).sortBy(_.toString)) {
-                        <li @if(Some(status)==view.filter.status){class="active"}><a href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withStatus(Some(status))).q}">@status</a></li>
+                        <li @if(Some(status)==view.filter.status){class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStatus(Some(status))).q}">@status</a></li>
                     }
                 </ul>
             </li>
@@ -31,14 +31,14 @@
                         <input id="projectInput" name="projectName" value="@view.filter.projectName.getOrElse("")" data-url="/deployment/request/autoComplete/project" class="form-control" />
                         <span class="input-group-btn">
                             <button class="btn btn-primary" id="projectNameGo"><i class="glyphicon glyphicon-filter"></i> Filter</button>
-                            <a class="btn btn-danger" href="@{routes.Deployment.history()}?@{view.replaceFilter(_.withProjectName(None)).q}"><i class="glyphicon glyphicon-remove"></i> Clear</a>
+                            <a class="btn btn-danger" href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withProjectName(None)).q}"><i class="glyphicon glyphicon-remove"></i> Clear</a>
                         </span>
                     </div>
                 </div>
             </li>
             @if(!view.filter.default) {
             <li>
-                <a href="@routes.Deployment.history()?@{view.replaceFilter(_ => DeployFilter()).q}"><i class="glyphicon glyphicon-remove"></i> Clear all filters</a>
+                <a href="@routes.DeployController.history()?@{view.replaceFilter(_ => DeployFilter()).q}"><i class="glyphicon glyphicon-remove"></i> Clear all filters</a>
             </li>
             }
         </ul>
@@ -48,7 +48,7 @@
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Deploys per page@view.pagination.pageSize.map{s=>: <strong>@s</strong>} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     @for(count <- List(20,50,100)) {
-                        <li @if(Some(count)==view.pagination.pageSize){class="active"}><a href="@{routes.Deployment.history()}?@{view.replacePagination(_.withPageSize(Some(count))).q}">@count</a></li>
+                        <li @if(Some(count)==view.pagination.pageSize){class="active"}><a href="@{routes.DeployController.history()}?@{view.replacePagination(_.withPageSize(Some(count))).q}">@count</a></li>
                     }
                 </ul>
             </li>

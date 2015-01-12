@@ -1,13 +1,12 @@
 package test
 
-import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FlatSpec}
 import magenta._
 import persistence._
 import controllers.Logging
 import java.util.UUID
 
-class MappingTest extends FlatSpec with ShouldMatchers with Utilities with PersistenceTestInstances with Logging {
+class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
     RecordConverter(testRecord).deployDocument should be(
       DeployRecordDocument(

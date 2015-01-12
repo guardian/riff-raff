@@ -2,7 +2,7 @@
 
 @if(!record.isDone){
 
-    @helper.form(routes.Deployment.stop(record.uuid.toString), 'class -> "form-make-inline pull-right stop-deploy-hide") {
+    @helper.form(routes.DeployController.stop(record.uuid.toString), 'class -> "form-make-inline pull-right stop-deploy-hide") {
         @if(stopFlag) {
             <button name="action" type="button" value="@record.uuid" class="stop-deploy-button refresh-disabled-hide btn btn-danger disabled">
                 Stopping Deploy...

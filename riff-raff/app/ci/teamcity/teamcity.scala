@@ -1,18 +1,18 @@
 package ci.teamcity
 
-import play.api.libs.ws._
-import com.ning.http.client.Realm.AuthScheme
-import conf.Configuration.teamcity
-import play.api.libs.ws.WS.WSRequestHolder
-import org.joda.time.format.DateTimeFormat
-import org.joda.time.DateTime
 import java.net.{URL, URLEncoder}
-import xml.{NodeSeq, Node, Elem}
-import ci.teamcity.TeamCity.{api, BuildLocator, ProjectLocator}
-import controllers.Logging
-import concurrent.{ExecutionContext, Future}
-import ExecutionContext.Implicits.global
+
 import ci.CIBuild
+import ci.teamcity.TeamCity.{BuildLocator, api}
+import conf.Configuration.teamcity
+import controllers.Logging
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
+import play.api.libs.ws.{WSRequestHolder, _}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
+import scala.xml.{Elem, Node, NodeSeq}
 
 case class Project(id: String, name: String)
 object Project extends Logging {

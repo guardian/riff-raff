@@ -2,7 +2,7 @@ package persistence
 
 import lifecycle.LifecycleWithoutApp
 import conf.Configuration.housekeeping
-import org.joda.time.{DateMidnight, LocalTime}
+import org.joda.time.{LocalDate, LocalTime}
 import persistence.Persistence.store
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 import controllers.Logging
@@ -13,8 +13,8 @@ object SummariseDeploysHousekeeping extends LifecycleWithoutApp with Logging {
 
   def summariseDeploys(): Int = {
     log.info("Summarising deploys older than %d days" format maxAgeDays)
-    val maxAgeThreshold = (new DateMidnight()).minusDays(maxAgeDays)
-    val deploys = store.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTime).toList
+    val maxAgeThreshold = (LocalDate.now()).minusDays(maxAgeDays)
+    val deploys = store.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay).toList
     log.info("Found %d deploys to summarise" format deploys.size)
     deploys.foreach(detail => store.summariseDeploy(detail.uuid))
     log.info("Finished summarising")
