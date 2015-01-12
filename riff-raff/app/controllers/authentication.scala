@@ -82,8 +82,6 @@ object Login extends Controller with Logging with LoginActions {
 
   import play.api.Play.current
 
-  def hasIdentity[A](request: Request[A]): Boolean = request.isInstanceOf[AuthenticatedRequest[UserIdentity, A]]
-
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
     def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
