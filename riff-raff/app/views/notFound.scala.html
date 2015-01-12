@@ -1,16 +1,9 @@
-@(request: Request[AnyContent], message:String, throwable:Option[Throwable]=None)
+@(request: Request[AnyContent], message:String)
 @import conf.Configuration._
 
 @mainNoAuth("Not found", request){
 <h2>Master, Rocky has broken his chain and vanished</h2>
 
 <p>@message</p>
-
-@throwable.map{ error =>
-<div class="alert alert-danger">
-    <h4 class="alert-heading">@error.toString</h4>
-    <pre>@error.getStackTraceString</pre>
-</div>
-}
 
 }

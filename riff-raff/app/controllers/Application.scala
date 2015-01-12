@@ -155,7 +155,7 @@ object Application extends Controller with Logging with LoginActions {
         } else {
           val markDownLines = getMarkdownLines(resource)
           if (markDownLines.isEmpty) {
-              NotFound(views.html.notFound(request,s"No documentation found for $resource",None))
+              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
           } else {
             val markDown = markDownLines.mkString("\n")
 
