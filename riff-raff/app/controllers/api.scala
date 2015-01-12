@@ -109,7 +109,7 @@ object ApiJsonEndpoint extends LoginActions {
           "response" -> toJson(Map(
             "status" -> toJson("error"),
             "message" -> toJson(t.getMessage),
-            "stacktrace" -> toJson(t.getStackTraceString.split("\n"))
+            "stacktrace" -> toJson(t.getStackTrace.map(_.toString))
           ))
         ))
     }
