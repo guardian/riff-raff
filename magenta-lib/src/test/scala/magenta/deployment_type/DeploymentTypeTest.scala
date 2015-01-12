@@ -24,11 +24,11 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    val thrown = evaluating {
+    val thrown = the[NoSuchElementException] thrownBy {
       S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(S3Upload(UnnamedStack, Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"), List(PatternValue(".*", "no-cache"))))
       )
-    } should produce [NoSuchElementException]
+    }
 
     thrown.getMessage should equal ("Package myapp [aws-s3] requires parameter cacheControl of type List")
   }
