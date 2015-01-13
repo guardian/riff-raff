@@ -1,7 +1,5 @@
 import sbt._
 import Keys._
-import sbtassembly.Plugin._
-import AssemblyKeys._
 import play.twirl.sbt.Import._
 import com.typesafe.sbt.web.SbtWeb
 import com.gu.riffraff.artifact.RiffRaffArtifact
@@ -27,7 +25,6 @@ object MagentaBuild extends Build {
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
-      jarName in assembly := "%s.jar" format name,
       TwirlKeys.templateImports ++= Seq(
         "magenta._",
         "deployment._",
@@ -38,7 +35,6 @@ object MagentaBuild extends Build {
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
-    scalaVersion := "2.11.5",
     scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
     version := magentaVersion,
     resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases"
