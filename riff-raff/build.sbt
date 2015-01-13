@@ -1,5 +1,4 @@
 import play.PlayImport.PlayKeys._
-import sbtassembly.Plugin.AssemblyKeys._
 
 // TODO: Remove sonatype releases resolver
 resolvers ++= Seq(
@@ -29,7 +28,6 @@ libraryDependencies ++= Seq(
 
 riffRaffPackageType := assembly.value
 
-assemblySettings
 mainClass in assembly := Some("play.core.server.NettyServer")
 fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
 
@@ -41,7 +39,7 @@ ivyXML :=
     <exclude org="xpp3"></exclude>
   </dependencies>
 
-mergeStrategy in assembly <<= (mergeStrategy in assembly) {
+assemblyMergeStrategy in assembly <<= (assemblyMergeStrategy in assembly) {
   (old) => {
     case "play/core/server/ServerWithStop.class" => MergeStrategy.first
     case x => old(x)
@@ -57,3 +55,5 @@ fork in Test := false
 lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
 
 magenta := riffRaffArtifact.value
+
+assemblyJarName in assembly := s"${name.value}.jar"
