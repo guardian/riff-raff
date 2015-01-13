@@ -11,4 +11,4 @@ packageOptions += {
     )
 }
 
-assemblyJarName in assembly := s"magenta.jar"
+assemblyJarName in assembly := "magenta.jar"
