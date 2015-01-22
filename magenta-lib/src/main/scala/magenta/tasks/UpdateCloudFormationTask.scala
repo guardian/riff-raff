@@ -80,10 +80,13 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
       MessageBroker.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
       if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
     }
-    def updateStart(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_IN_PROGRESS" &&
-      e.getResourceType == "AWS::CloudFormation::Stack"
-    def updateComplete(e: StackEvent): Boolean = e.getResourceStatus == "UPDATE_COMPLETE" &&
-      e.getResourceType == "AWS::CloudFormation::Stack"
+    def isStackEvent(e: StackEvent): Boolean =
+      e.getResourceType == "AWS::CloudFormation::Stack" && e.getStackName == stackName
+    def updateStart(e: StackEvent): Boolean =
+      isStackEvent(e) && (e.getResourceStatus == "UPDATE_IN_PROGRESS" || e.getResourceStatus == "CREATE_IN_PROGRESS")
+    def updateComplete(e: StackEvent): Boolean =
+      isStackEvent(e) && (e.getResourceStatus == "UPDATE_COMPLETE" || e.getResourceStatus == "CREATE_COMPLETE")
+
     def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED")
 
     def fail(e: StackEvent): Unit = MessageBroker.fail(
