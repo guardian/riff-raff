@@ -137,17 +137,6 @@ object User {
   }
 }
 
-case class PinInfo(user: User, timestamp: DateTime, text: String)
-object PinInfo {
-  def apply(xml: Node): PinInfo = {
-    PinInfo(
-      User(xml \ "user" head),
-      TeamCity.dateTimeFormat.parseDateTime(xml \ "timestamp" text),
-      xml \ "text" text
-    )
-  }
-}
-
 case class VCSRootInstance(lastVersion: String, id: Int, name: String, vcsName: String, properties: Map[String, String])
 object VCSRootInstance {
   def apply(xml: Node): VCSRootInstance = {
@@ -188,7 +177,6 @@ case class BuildDetail(
   defaultBranch: Option[Boolean],
   startDate: DateTime,
   finishDate: DateTime,
-  pinInfo: Option[PinInfo],
   revision: Option[Revision]
 ) extends TeamcityBuild {
   def detail = Future.successful(this)
@@ -209,7 +197,6 @@ object BuildDetail {
       defaultBranch = (build \ "@defaultBranch").headOption.map(_.text == "true"),
       startDate = TeamCity.dateTimeFormat.parseDateTime(build \ "startDate" text),
       finishDate = TeamCity.dateTimeFormat.parseDateTime(build \ "finishDate" text),
-      pinInfo = (build \ "pinInfo" headOption) map (PinInfo(_)),
       revision = (build \ "revisions" \ "revision" headOption) map (Revision(_))
     )
   }
@@ -276,7 +263,6 @@ object TeamCity {
     def sinceBuild(buildId: Int) = BuildLocator(sinceBuild=Some(buildId))
     def sinceDate(date: DateTime) = BuildLocator(sinceDate=Some(date))
     def number(buildNumber: String) = BuildLocator(number=Some(buildNumber))
-    def pinned(pinned: Boolean) = BuildLocator(pinned=Some(pinned))
     def status(status: String) = BuildLocator(status=Some(status))
   }
 
@@ -326,9 +312,6 @@ object TeamCity {
       def buildType(buildTypeId: String) = list(BuildLocator.buildTypeId(buildTypeId))
       def since(buildId:Int) = list(BuildLocator.sinceBuild(buildId))
       def since(startTime:DateTime) = list(BuildLocator.sinceDate(startTime))
-
-      def pin(buildLocator: BuildLocator): WSRequestHolder = TeamCityWS.url("/app/rest/builds/%s/pin" format buildLocator)
-      def pin(buildTypeId: String, buildNumber: String): WSRequestHolder = pin(BuildLocator.buildTypeId(buildTypeId).number(buildNumber))
     }
 
     def href(href: String) = TeamCityWS.href(href)
