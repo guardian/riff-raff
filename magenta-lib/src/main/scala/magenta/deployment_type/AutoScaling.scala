@@ -74,13 +74,13 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
 
-  val prefixStage = Param[Boolean]("prefixStageToS3Location",
+  val prefixStage = Param[Boolean]("prefixStage",
     documentation = "Whether to prefix `stage` to the S3 location`"
   ).default(true)
-  val prefixPackage = Param[Boolean]("prefixPackageToS3Location",
+  val prefixPackage = Param[Boolean]("prefixPackage",
     documentation = "Whether to prefix `package` to the S3 location"
   ).default(true)
-  val prefixStack = Param[Boolean]("prefixStackToS3Location",
+  val prefixStack = Param[Boolean]("prefixStack",
     documentation = "Whether to prefix `stack` to the S3 location"
   ).default(true)
 
