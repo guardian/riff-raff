@@ -74,6 +74,16 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
 
+  val prefixStage = Param[Boolean]("prefixStageToS3Location",
+    documentation = "Whether to prefix `stage` to the S3 location`"
+  ).default(true)
+  val prefixPackage = Param[Boolean]("prefixPackageToS3Location",
+    documentation = "Whether to prefix `package` to the S3 location"
+  ).default(true)
+  val prefixStack = Param[Boolean]("prefixStackToS3Location",
+    documentation = "Whether to prefix `stack` to the S3 location"
+  ).default(true)
+
   def perAppActions = {
     case "deploy" => (pkg) => (lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
@@ -99,6 +109,9 @@ object AutoScaling  extends DeploymentType with S3AclParams {
           parameters.stage,
           bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
           new File(pkg.srcDir.getPath + "/"),
+          prefixStage = prefixStage(pkg),
+          prefixStack = prefixStack(pkg),
+          prefixPackage = prefixPackage(pkg),
           publicReadAcl = publicReadAcl(pkg)
         )
       )
