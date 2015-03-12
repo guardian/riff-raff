@@ -20,12 +20,14 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   object prism extends Logging {
     val url = conf.Configuration.lookup.prismUrl
+    val timeout = conf.Configuration.lookup.timeoutSeconds.seconds
+
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
       val result = WS.url(s"$url$path").get().map(_.json).map { json =>
         block(json)
       }
       try {
-        Await.result(result, 3 seconds)
+        Await.result(result, timeout)
       } catch {
         case NonFatal(e) =>
           log.warn(s"Call to prism failed ($path; $retriesLeft retries left)", e)
