@@ -40,7 +40,7 @@ object ContinuousIntegration extends Logging {
           Map.empty[String,String]
         }
       }
-      Try(Await.result(futureMap, 5 seconds)).getOrElse(Map.empty[String, String])
+      Try(Await.result(futureMap, 30 seconds)).getOrElse(Map.empty[String, String])
     }.getOrElse(Map.empty[String,String])
   }
 }

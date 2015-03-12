@@ -42,7 +42,7 @@ object PreviewController {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val previewFuture = future { Preview(parameters) }
-    Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 1.second)
+    Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
   }
 
