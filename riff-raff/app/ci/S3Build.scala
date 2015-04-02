@@ -2,7 +2,7 @@ package ci
 
 import ci.teamcity.Job
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.ObjectListing
+import com.amazonaws.services.s3.model.{S3ObjectSummary, ObjectListing}
 import controllers.Logging
 import org.joda.time.DateTime
 import play.api.libs.json.{Json, JsPath, Reads}
@@ -25,53 +25,37 @@ case class S3Build(
 case class S3Project(id: String, name: String) extends Job
 
 object S3Build extends Logging {
-  val client = new AmazonS3Client()
 
   val bucketName = "travis-ci-artifact-test"
 
-  import collection.convert.wrapAsScala._
-  import play.api.libs.functional.syntax._
-
-  import utils.Json.DefaultJodaDateReads
-  implicit val reads: Reads[S3Build] = (
-    (JsPath \ "BuildNumber").read[String].map(_.toLong) and
-    (JsPath \ "ProjectName").read[String] and
-    (JsPath \ "ProjectName").read[String] and
-    (JsPath \ "Branch").read[String] and
-    (JsPath \ "BuildNumber").read[String] and
-    (JsPath \ "StartTime").read[DateTime]
-  )(S3Build.apply _)
-
-  def all(): Seq[CIBuild] = {
-    val objects = listAllObjects(bucketName).flatMap(_.getObjectSummaries)
-
-    val buildJsonLocations = for (o <- objects if o.getKey.endsWith("build.json")) yield o.getKey
-
+  def all(): Seq[CIBuild] =
     for {
-      location <- buildJsonLocations
-      build <- (Try {
-        Json.parse(Source.fromInputStream(client.getObject(bucketName, location).getObjectContent).mkString).as[S3Build]
-      } recoverWith  {
-        case NonFatal(e) => {
-          log.error(s"Error parsing $location", e)
-          Failure(e)
-        }
-      }).toOption
+      location <- S3Location.all(bucketName) if location.path.endsWith("build.json")
+      build <- from(location)
     } yield build
-  }
 
-  def listAllObjects(bucket: String): Seq[ObjectListing] = {
-    @tailrec
-    def pageListings(listings: Seq[ObjectListing], listing: ObjectListing): Seq[ObjectListing] = {
-      if (!listing.isTruncated) {
-        Seq(listing)
-      } else {
-        val nextBatch = client.listNextBatchOfObjects(listing)
-        pageListings(listings :+ nextBatch, nextBatch)
-      }
+  def from(location: S3Location): Option[S3Build] = (Try {
+    parse(S3Location.contents(location))
+  } recoverWith  {
+    case NonFatal(e) => {
+      log.error(s"Error parsing $location", e)
+      Failure(e)
     }
+  }).toOption
 
-    val initialList = client.listObjects(bucket)
-    pageListings(Seq(client.listObjects(bucket)), initialList)
+  def parse(json: String): S3Build = {
+    import play.api.libs.functional.syntax._
+
+    import utils.Json.DefaultJodaDateReads
+    implicit val reads: Reads[S3Build] = (
+      (JsPath \ "BuildNumber").read[String].map(_.toLong) and
+        (JsPath \ "ProjectName").read[String] and
+        (JsPath \ "ProjectName").read[String] and
+        (JsPath \ "Branch").read[String] and
+        (JsPath \ "BuildNumber").read[String] and
+        (JsPath \ "StartTime").read[DateTime]
+      )(S3Build.apply _)
+
+    Json.parse(json).as[S3Build]
   }
 }
