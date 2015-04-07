@@ -5,6 +5,7 @@ import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import ci.teamcity.Job
 import controllers.Logging
+import rx.lang.scala.schedulers.NewThreadScheduler
 
 trait CIBuild {
   def jobName: String
@@ -22,20 +23,25 @@ object CIBuild extends Logging {
   implicit val ord = Ordering.by[CIBuild, Long](_.id)
 
   val pollingPeriod = Configuration.teamcity.pollingPeriodSeconds.seconds
-  val jobs: Observable[Job] = Every(pollingPeriod)(TeamCityAPI.jobs)
-  val recentBuildJobIds: Observable[String] = Every(pollingPeriod)(TeamCityAPI.recentBuildJobIds)
+  lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
-  def newBuilds(job: Job): Observable[CIBuild] = (for {
-    id <- recentBuildJobIds if id == job.id
-    builds <-
-      AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job)).onErrorResumeNext { e =>
-        log.error(s"Failed tor retrieve builds for job $job", e)
-        Observable.empty
-      }
-  } yield builds).publish.refCount
+  lazy val newBuilds: Observable[CIBuild] =
+    (for {
+      location <- (Every(10.seconds)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
+      build <- Observable.from(S3Build.buildAt(location))
+    } yield build).publish.refCount
 
-  val builds = for {
-    job <- jobs.distinct
-    build <- (TeamCityAPI.builds(job) merge newBuilds(job)).distinct
-  } yield build
+  lazy val initialFiles: Seq[S3Location] = for {
+    location <- S3Build.buildJsons
+  } yield location
+
+  lazy val initialBuilds: Seq[CIBuild] = {
+    log.logger.info(s"${initialFiles.length}")
+    (for {
+      location <- initialFiles.par
+      build <- S3Build.buildAt(location)
+    } yield build).seq.view
+  }
+
+  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).merge(newBuilds)
 }

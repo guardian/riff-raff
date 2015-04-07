@@ -11,31 +11,6 @@ import magenta.Stage
 import java.util.UUID
 
 class ContinuousDeploymentTest extends FlatSpec with Matchers {
-  "Continuous Deployment" should "not try to deploy just already built at startup" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(Nil)
-  }
-
-  it should "not try to deploy the same build twice" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(3), ciBuild(3))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(List(ciBuild(3)))
-  }
-
-  it should "only try to deploy latest for job and branch" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(5), ciBuild(4), ciBuild(3, "other"))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(
-      List(ciBuild(5), ciBuild(3, "other"))
-    )
-  }
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
@@ -68,7 +43,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
       case _ => false
     }
     override def hashCode() = id.toInt
-    override def toString = s"CIBuild($jobName, $number)"
+    override def toString = s"CIBuild($jobName, $number, $branch)"
   }
 
   /* Test types */

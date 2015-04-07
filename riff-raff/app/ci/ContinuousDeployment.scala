@@ -14,21 +14,17 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   var sub: Option[Subscription] = None
 
-  def buildCandidates(jobs: Observable[Job], allBuilds: Job => Observable[Iterable[CIBuild]], newBuilds: Job => Observable[CIBuild])
-    : Observable[CIBuild] = {
+  def buildCandidates(builds: Observable[CIBuild]): Observable[CIBuild] =
     (for {
-      job <- jobs.distinct
-      initial <- allBuilds(job)
-      (_, buildsPerBranch) <- newBuilds(job).groupBy(_.branchName)
-      build <- GreatestSoFar(buildsPerBranch).filter(!initial.toSeq.contains(_)).distinct
+      (_, buildsPerJobAndBranch) <- builds.groupBy(b => (b.jobName, b.branchName))
+      build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
     } yield build).onErrorResumeNext(e => {
       log.error("Problem polling builds for ContinuousDeployment", e)
-      buildCandidates(jobs, allBuilds, newBuilds)
+      buildCandidates(CIBuild.newBuilds)
     })
-  }
 
   def init() {
-    val builds = buildCandidates(CIBuild.jobs, TeamCityAPI.succesfulBuildBatch, CIBuild.newBuilds)
+    val builds = buildCandidates(CIBuild.newBuilds)
 
     sub = Some(builds.subscribe { b =>
       getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
