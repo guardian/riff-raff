@@ -62,9 +62,6 @@ trait Record {
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }
   }
-  def withDownload[T](block: File => T): T = {
-    Artifact.withDownload(Configuration.teamcity.serverURL, parameters.build)(block)
-  }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 
