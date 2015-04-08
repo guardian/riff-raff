@@ -2,7 +2,10 @@ package magenta
 package cli
 
 import java.io.File
+import com.amazonaws.auth._
+import com.amazonaws.services.s3.AmazonS3Client
 import json.{DeployInfoJsonReader, JsonReader}
+import magenta.artifact.S3Artifact
 import scopt.{Zero, OptionParser}
 import HostList._
 import tasks.CommandLocator
@@ -88,6 +91,19 @@ object Main extends scala.App {
     }
 
     def localArtifactDir = _localArtifactDir
+
+    var bucketName: Option[String] = None
+    var accessKey: Option[String] = None
+    var secretKey: Option[String] = None
+    lazy val credentialsProvider =
+      new AWSCredentialsProviderChain(new AWSCredentialsProvider {
+        override def getCredentials: AWSCredentials = (for {
+          key <- accessKey
+          secret <- secretKey
+        } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+
+        override def refresh(): Unit = {}
+      }, new DefaultAWSCredentialsProviderChain())
   }
 
   object ManagementBuildInfo {
@@ -128,6 +144,13 @@ object Main extends scala.App {
     note("\n")
     opt[String]("teamcityUrl") text (s"URL of the teamcity server from which to download artifacts (e.g. ${Config.teamcityUrl.toString}})") foreach
       { teamcityUrl => Config.teamcityUrl = Some(new URL(teamcityUrl)) }
+    opt[String]("bucketName") text (s"S3 Bucket to download artifacts from") foreach
+      { bucketName => Config.bucketName = Some(bucketName) }
+    opt[String]("accessKey") text (s"Access Key for downloading artifacts from S3") foreach
+      { accessKey => Config.accessKey = Some(accessKey) }
+    opt[String]("secretKey") text (s"Secret Key for downloading artifacts from S3") foreach
+        { secretKey => Config.secretKey = Some(secretKey) }
+
     arg[String]("<stage>") text ("Stage to deploy (e.g. TEST)") foreach { s => Config.stage = s }
     arg[String]("<project>") text ("TeamCity project name (e.g. tools::stats-aggregator)") foreach { p => Config.project = Some(p) }
     arg[String]("<build>") text ("TeamCity build number") foreach { b => Config.build = Some(b) }
@@ -162,7 +185,16 @@ object Main extends scala.App {
             MessageBroker.info("Making temporary copy of local artifact: %s" format file)
             file.copyTo(Path(tmpDir))
           } getOrElse {
-            Artifact.download(Config.teamcityUrl, tmpDir, build)
+            S3Artifact.download(build, tmpDir)(Config.bucketName, new AmazonS3Client(
+              new AWSCredentialsProviderChain(new AWSCredentialsProvider {
+                override def getCredentials: AWSCredentials = (for {
+                  key <- Config.accessKey
+                  secret <- Config.secretKey
+                } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+
+                override def refresh(): Unit = {}
+              }, new DefaultAWSCredentialsProviderChain())
+            ))
           }
 
           MessageBroker.info("Loading project file...")
