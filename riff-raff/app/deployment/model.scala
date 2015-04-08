@@ -6,7 +6,7 @@ import magenta.DeployParameters
 import magenta.ReportTree
 import java.io.File
 import org.joda.time.{Interval, DateTime, Duration}
-import ci.ContinuousIntegration
+import ci.{S3Build, TeamCityBuilds, CIBuild, ContinuousIntegration}
 import utils.VCSInfo
 import magenta.teamcity.Artifact
 import conf.Configuration
@@ -103,8 +103,16 @@ trait Record {
 object DeployRecord {
   def apply(uuid: UUID,
             parameters: DeployParameters ): DeployRecord = {
-    val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
-    DeployRecord(new DateTime(), uuid, parameters, metaData)
+    val build = TeamCityBuilds.builds.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
+    val metaData = build.map { case b: S3Build =>
+      Map(
+        "branch" -> b.branchName,
+        VCSInfo.REVISION -> b.revision,
+        VCSInfo.CIURL -> b.vcsURL
+      )
+    }
+
+    DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
   }
 }
 

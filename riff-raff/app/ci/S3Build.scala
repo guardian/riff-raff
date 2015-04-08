@@ -18,7 +18,9 @@ case class S3Build(
   jobId: String,
   branchName: String,
   number: String,
-  startTime: DateTime
+  startTime: DateTime,
+  revision: String,
+  vcsURL: String
 ) extends CIBuild
 
 case class S3Project(id: String, name: String) extends Job
@@ -51,7 +53,9 @@ object S3Build extends Logging {
         (JsPath \ "ProjectName").read[String] and
         (JsPath \ "Branch").read[String] and
         (JsPath \ "BuildNumber").read[String] and
-        (JsPath \ "StartTime").read[DateTime]
+        (JsPath \ "StartTime").read[DateTime] and
+        (JsPath \ "Revision").read[String] and
+        (JsPath \ "VCS").read[String]
       )(S3Build.apply _)
 
     Json.parse(json).as[S3Build]
