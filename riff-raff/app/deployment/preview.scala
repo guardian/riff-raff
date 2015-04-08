@@ -52,8 +52,10 @@ object PreviewController {
 }
 
 object Preview {
+  import Configuration.artifact.aws._
+
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build): String = S3Artifact.withDownload(Some(S3Build.bucketName), build) { artifactDir =>
+  def getJsonFromArtifact(build: Build): String = S3Artifact.withDownload(build) { artifactDir =>
     Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
   }
   def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))

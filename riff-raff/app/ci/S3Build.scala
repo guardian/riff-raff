@@ -1,6 +1,7 @@
 package ci
 
 import ci.teamcity.Job
+import conf.Configuration
 import controllers.Logging
 import org.joda.time.DateTime
 import play.api.libs.json.{JsPath, Json, Reads}
@@ -24,7 +25,7 @@ case class S3Project(id: String, name: String) extends Job
 
 object S3Build extends Logging {
 
-  val bucketName = "travis-ci-artifact-test"
+  lazy val bucketName = Configuration.artifact.aws.bucketName.get
 
   def buildJsons: Seq[S3Location] =
     S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
