@@ -4,13 +4,13 @@ import play.api.mvc.{Action, Controller}
 import magenta._
 import resources.LookupSelector
 import collection.mutable.ArrayBuffer
-import deployment.DeployRecord
+import deployment.{PaginationView, DeployFilter, DeployRecord}
 import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
-import org.joda.time.DateTime
-import persistence.{DocumentStoreConverter, Persistence}
+import org.joda.time.{Duration, Interval, DateTime}
+import persistence.{TaskRunDocument, DocumentStoreConverter, Persistence}
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
@@ -112,6 +112,27 @@ object Testing extends Controller with Logging with LoginActions {
   def uuidList(limit:Int) = AuthAction { implicit request =>
     val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
+  }
+
+  def S3LatencyList(limit:Int) = AuthAction { implicit request =>
+    val filter = DeployFilter.fromRequest
+    val pagination = PaginationView.fromRequest
+    val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true)
+    val times = allDeploys.map { deploy =>
+      val taskRunLines = deploy.messages.flatMap { message =>
+        message.stack.top match {
+          case StartContext(TaskRun(detail)) => Some(message -> detail)
+          case _ => None
+        }
+      }
+      log.info(s"got ${taskRunLines.length} lines")
+      val s3UploadTasks = taskRunLines.dropWhile(!_._2.name.contains("S3Upload"))
+      val endOfS3UploadTasks = s3UploadTasks.dropWhile(_._2.name.contains("S3Upload"))
+      val s3Start = s3UploadTasks.headOption.map(_._1.stack.time)
+      val s3End = endOfS3UploadTasks.headOption.map(_._1.stack.time)
+      deploy -> s3Start.zip(s3End).map{ case (start, end) => new Duration(start,end) }.headOption
+    }
+    Ok(views.html.test.s3Latencies(request, times))
   }
 
   def debugLogViewer(uuid: String) = AuthAction { implicit request =>
