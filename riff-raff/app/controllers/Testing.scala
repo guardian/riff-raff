@@ -1,5 +1,6 @@
 package controllers
 
+import org.joda.time.format.{ISODateTimeFormat, DateTimeFormat}
 import play.api.mvc.{Action, Controller}
 import magenta._
 import resources.LookupSelector
@@ -114,7 +115,7 @@ object Testing extends Controller with Logging with LoginActions {
     Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
   }
 
-  def S3LatencyList(limit:Int) = AuthAction { implicit request =>
+  def S3LatencyList(limit:Int, csv: Boolean) = AuthAction { implicit request =>
     val filter = DeployFilter.fromRequest
     val pagination = PaginationView.fromRequest
     val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true)
@@ -132,7 +133,17 @@ object Testing extends Controller with Logging with LoginActions {
       val s3End = endOfS3UploadTasks.headOption.map(_._1.stack.time)
       deploy -> s3Start.zip(s3End).map{ case (start, end) => new Duration(start,end) }.headOption
     }
-    Ok(views.html.test.s3Latencies(request, times))
+    if (csv) {
+      val formatter = DateTimeFormat.forPattern("dd/MM/yyyy HH:mm:ss")
+      val csvLines = s"Time,Project,S3 Duration" +:
+        times.map{case(deploy, duration) =>
+          s"${formatter.print(deploy.time)},${deploy.parameters.build.projectName},${duration.map(_.getStandardSeconds).getOrElse("")}"
+        }
+      val csvCall = routes.Testing.S3LatencyList(limit, true)
+      Ok(csvLines.mkString("\n")).as("text/csv").withHeaders("Content-Disposition" -> "attachment; filename=s3Latencies.csv")
+    }
+    else
+      Ok(views.html.test.s3Latencies(request, times))
   }
 
   def debugLogViewer(uuid: String) = AuthAction { implicit request =>
