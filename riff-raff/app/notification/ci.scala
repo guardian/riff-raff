@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ci.teamcity.TeamCity.BuildLocator
 import ci.teamcity.{BuildType, Project, TeamCity, TeamcityBuild}
-import ci.{CIBuild, TeamCityBuilds}
+import ci.{CIBuild, Builds}
 import conf.Configuration
 import controllers.{Logging, routes}
 import lifecycle.LifecycleWithoutApp
@@ -32,7 +32,7 @@ object TeamCityBuildPinner extends LifecycleWithoutApp with Logging {
 
   def pinBuild(deployId: UUID, build: Build) {
     log.info("Pinning build %s" format build.toString)
-    val tcBuild = TeamCityBuilds.build(build.projectName,build.id)
+    val tcBuild = Builds.build(build.projectName,build.id)
     tcBuild.map { realBuild =>
       pin(realBuild, "Pinned by RiffRaff: %s%s" format (Configuration.urls.publicPrefix, routes.DeployController.viewUUID(deployId.toString).url))
       cleanUpPins(realBuild)

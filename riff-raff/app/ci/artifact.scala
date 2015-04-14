@@ -16,7 +16,7 @@ import scala.util.Try
 
 object ContinuousIntegration extends Logging {
   def getMetaData(projectName: String, buildId: String): Map[String, String] = {
-    val build = TeamCityBuilds.builds.find { build =>
+    val build = Builds.all.find { build =>
       build.jobName == projectName && build.number == buildId
     }
     build.map { build =>
@@ -45,7 +45,7 @@ object ContinuousIntegration extends Logging {
   }
 }
 
-object TeamCityBuilds extends LifecycleWithoutApp with Logging {
+object Builds extends LifecycleWithoutApp with Logging {
   val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
   val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
   val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
@@ -53,12 +53,12 @@ object TeamCityBuilds extends LifecycleWithoutApp with Logging {
   private var subscriptions = Seq.empty[Subscription]
 
   def jobs: Iterable[Job] = jobsAgent.get()
-  def builds: List[CIBuild] = buildsAgent.get().toList
-  def build(project: String, number: String) = builds.find(b => b.jobName == project && b.number == number)
+  def all: List[CIBuild] = buildsAgent.get().toList
+  def build(project: String, number: String) = all.find(b => b.jobName == project && b.number == number)
 
   val buildsAgent = Agent[Set[CIBuild]](BoundedSet(10000))
   val jobsAgent = Agent[Set[Job]](Set())
-  def successfulBuilds(jobName: String): List[CIBuild] = builds.filter(_.jobName == jobName).sortBy(- _.id)
+  def successfulBuilds(jobName: String): List[CIBuild] = all.filter(_.jobName == jobName).sortBy(- _.id)
   def getLastSuccessful(jobName: String): Option[String] =
     successfulBuilds(jobName).headOption.map{ latestBuild =>
       latestBuild.number

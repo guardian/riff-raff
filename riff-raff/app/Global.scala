@@ -1,4 +1,4 @@
-import ci.{ContinuousDeployment, TeamCityBuilds}
+import ci.{ContinuousDeployment, Builds}
 import conf.{DeployMetrics, PlayRequestMetrics}
 import controllers.Logging
 import deployment.{DeployInfoManager, Deployments}
@@ -27,7 +27,7 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
       IrcClient,
       DeployMetrics,
       HooksClient,
-      TeamCityBuilds,
+      Builds,
       TeamCityBuildPinner,
       SummariseDeploysHousekeeping,
       ContinuousDeployment,

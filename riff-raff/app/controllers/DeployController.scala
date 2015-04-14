@@ -2,7 +2,7 @@ package controllers
 
 import java.util.UUID
 
-import ci.{S3Tag, TagClassification, TeamCityAPI, TeamCityBuilds}
+import ci.{S3Tag, TagClassification, TeamCityAPI, Builds}
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
 import org.joda.time.DateTime
@@ -147,12 +147,12 @@ object DeployController extends Controller with Logging with LoginActions {
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = TeamCityBuilds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
+    val possibleProjects = Builds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
   def autoCompleteBuild(project: String, term: String) = AuthAction {
-    val possibleProjects = TeamCityBuilds.successfulBuilds(project).filter(
+    val possibleProjects = Builds.successfulBuilds(project).filter(
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
       val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
@@ -174,7 +174,7 @@ object DeployController extends Controller with Logging with LoginActions {
   def buildInfo(project: String, build: String) = AuthAction {
     log.info(s"Getting build info for $project: $build")
     val buildTagTuple = for {
-      b <- TeamCityBuilds.build(project, build)
+      b <- Builds.build(project, build)
       tags <- S3Tag.of(b)
     } yield (b, tags)
 
@@ -186,7 +186,7 @@ object DeployController extends Controller with Logging with LoginActions {
   def teamcity = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
-      for (build <- TeamCityBuilds.builds.sortBy(_.jobName))
+      for (build <- Builds.all.sortBy(_.jobName))
       yield Seq(build.jobName, build.number, build.branchName, build.jobId, build.id)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")

@@ -131,7 +131,7 @@ object Deployments extends Logging with LifecycleWithoutApp {
     val params = if (requestedParams.build.id != "lastSuccessful")
       requestedParams
     else {
-      TeamCityBuilds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
+      Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
         requestedParams.copy(build = requestedParams.build.copy(id=latestId))
       }.getOrElse(requestedParams)
     }
