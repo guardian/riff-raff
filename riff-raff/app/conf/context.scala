@@ -136,18 +136,39 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
       implicit lazy val client = new AmazonS3Client(credentialsProvider)
-      lazy val credentialsProvider =
-        new AWSCredentialsProviderChain(new AWSCredentialsProvider {
-          override def getCredentials: AWSCredentials = (for {
-            key <- accessKey
-            secret <- secretKey
-          } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
-
-          override def refresh(): Unit = {}
-        }, new DefaultAWSCredentialsProviderChain())
-
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
     }
   }
+
+  object build {
+    object aws {
+      implicit lazy val bucketName = configuration.getStringProperty("build.aws.bucketName")
+      lazy val accessKey = configuration.getStringProperty("build.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
+      implicit lazy val client = new AmazonS3Client(credentialsProvider)
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    }
+  }
+
+  object tag {
+    object aws {
+      implicit lazy val bucketName = configuration.getStringProperty("tag.aws.bucketName")
+      lazy val accessKey = configuration.getStringProperty("tag.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
+      implicit lazy val client = new AmazonS3Client(credentialsProvider)
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    }
+  }
+
+  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
+    new AWSCredentialsProviderChain(new AWSCredentialsProvider {
+      override def getCredentials: AWSCredentials = (for {
+        key <- accessKey
+        secret <- secretKey
+      } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+
+      override def refresh(): Unit = {}
+    }, new DefaultAWSCredentialsProviderChain())
 
   object teamcity {
     lazy val serverURL = configuration.getStringProperty("teamcity.serverURL").map(new URL(_))

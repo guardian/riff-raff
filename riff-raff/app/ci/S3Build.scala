@@ -5,10 +5,7 @@ import conf.Configuration
 import controllers.Logging
 import org.joda.time.DateTime
 import play.api.libs.json.{JsPath, Json, Reads}
-import rx.lang.scala.Observable
-import rx.lang.scala.schedulers.{NewThreadScheduler, IOScheduler, ComputationScheduler}
 
-import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
@@ -27,35 +24,34 @@ case class S3Project(id: String, name: String) extends Job
 
 object S3Build extends Logging {
 
-  lazy val bucketName = Configuration.artifact.aws.bucketName.get
+  lazy val bucketName = Configuration.build.aws.bucketName.get
+  implicit lazy val client = Configuration.build.aws.client
 
   def buildJsons: Seq[S3Location] =
     S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
 
   def buildAt(location: S3Location): Option[S3Build] = (Try {
     log.info(s"Parsing ${location.path}")
-    val build = parse(S3Location.contents(location))
-    log.info(s"Parsed ${location.path}")
-    build
+    S3Location.contents(location).map(parse)
   } recoverWith  {
     case NonFatal(e) => {
       log.error(s"Error parsing $location", e)
       Failure(e)
     }
-  }).toOption
+  }).toOption.flatten
 
   def parse(json: String): S3Build = {
     import play.api.libs.functional.syntax._
     import utils.Json.DefaultJodaDateReads
     implicit val reads: Reads[S3Build] = (
-      (JsPath \ "BuildNumber").read[String].map(_.toLong) and
-        (JsPath \ "ProjectName").read[String] and
-        (JsPath \ "ProjectName").read[String] and
-        (JsPath \ "Branch").read[String] and
-        (JsPath \ "BuildNumber").read[String] and
-        (JsPath \ "StartTime").read[DateTime] and
-        (JsPath \ "Revision").read[String] and
-        (JsPath \ "VCS").read[String]
+      (JsPath \ "buildNumber").read[String].map(_.toLong) and
+        (JsPath \ "projectName").read[String] and
+        (JsPath \ "projectName").read[String] and
+        (JsPath \ "branch").read[String] and
+        (JsPath \ "buildNumber").read[String] and
+        (JsPath \ "startTime").read[DateTime] and
+        (JsPath \ "revision").read[String] and
+        (JsPath \ "vcsURL").read[String]
       )(S3Build.apply _)
 
     Json.parse(json).as[S3Build]

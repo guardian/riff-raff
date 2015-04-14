@@ -2,7 +2,7 @@ package controllers
 
 import java.util.UUID
 
-import ci.{TagClassification, TeamCityAPI, TeamCityBuilds}
+import ci.{S3Tag, TagClassification, TeamCityAPI, TeamCityBuilds}
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
 import org.joda.time.DateTime
@@ -171,19 +171,16 @@ object DeployController extends Controller with Logging with LoginActions {
     }
   }
 
-  def buildInfo(project: String, build: String) = AuthAction.async {
+  def buildInfo(project: String, build: String) = AuthAction {
     log.info(s"Getting build info for $project: $build")
     val buildTagTuple = for {
-      b <- Future(TeamCityBuilds.build(project, build).get)
-      tagsOption <- TeamCityAPI.tags(b)
-      tags <- Future(tagsOption.get)
+      b <- TeamCityBuilds.build(project, build)
+      tags <- S3Tag.of(b)
     } yield (b, tags)
 
     buildTagTuple map { case (b, tags) =>
       Ok(views.html.deploy.buildInfo(b, tags.map(TagClassification.apply)))
-    } recover {
-      case e: NoSuchElementException => Ok("")
-    }
+    } getOrElse Ok("")
   }
 
   def teamcity = AuthAction {
