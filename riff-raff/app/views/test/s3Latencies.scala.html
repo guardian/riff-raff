@@ -1,0 +1,36 @@
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[(deployment.DeployRecord, Option[org.joda.time.Duration])])
+@import helper.twitterBootstrap._
+
+@main("S3 Latencies", request) {
+
+  <h2>S3 Latencies</h2>
+
+ <p>This page is to help troubleshoot upload problems by providing easy to use stats on how long a build takes to upload to s3.</p>
+
+    <p>Add /csv to the path to download a CSV file.</p>
+
+  <table class="table table-condensed">
+      <thead>
+          <tr>
+              <th>Date/Time</th>
+              <th>Project Name</th>
+              <th>Duration (s)</th>
+              <th>View</th>
+          </tr>
+      </thead>
+      <tbody>
+          @deploys.map { case(deploy, duration) =>
+            <tr>
+              <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(deploy.time)</td>
+              <td>@deploy.parameters.build.projectName</td>
+                <td>@duration.map(_.getStandardSeconds).getOrElse("")</td>
+              <td>
+                    <a href="@routes.DeployController.viewUUID(deploy.uuid.toString)" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-search"></i> View Log</a>
+                    <a href="@routes.Testing.debugLogViewer(deploy.uuid.toString)" class="btn btn-default btn-xs"><i class="glyphicon glyphicon-search"></i> View Debug Log</a>
+              </td>
+            </tr>
+          }
+      </tbody>
+  </table>
+
+}
