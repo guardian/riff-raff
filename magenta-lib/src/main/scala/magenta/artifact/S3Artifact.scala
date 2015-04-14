@@ -32,7 +32,7 @@ object S3Artifact {
 
     if (bucket.isEmpty) MessageBroker.fail("Don't know where to get artifact - no bucket set")
 
-    val path = s"${build.projectName}/${build.id}/artifacts/artifacts.zip"
+    val path = s"${build.projectName}/${build.id}/artifacts.zip"
 
     MessageBroker.verbose(s"Downloading from $path to ${dir.getAbsolutePath}...")
 
