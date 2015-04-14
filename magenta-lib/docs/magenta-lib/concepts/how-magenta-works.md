@@ -4,15 +4,15 @@ How magenta works
 
 Magenta needs three to five bits of user input in order to start a deploy:
 
- - TeamCity project name
- - TeamCity build ID
+ - project name
+ - build number
  - Target stage
  - Recipe name (optional)
  - Hostname filter (optional)
 
 The diagram below gives an overview of how the process hangs together. In essence,
 magenta tries to download a file called `artifacts.zip` that it expects
-to be an artifact of the build identified by the TeamCity project and build ID.
+to be an artifact of the build with an S3 path of the form `project-name/build-number/artifacts.zip`
 
 Once it has downloaded that archive, it will extract the `/deploy.json` file from it.
 This file contains `packages` and `recipes` that give magenta enough information to know

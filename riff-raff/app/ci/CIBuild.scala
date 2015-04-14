@@ -29,12 +29,13 @@ object CIBuild extends Logging {
 
   implicit val ord = Ordering.by[CIBuild, Long](_.id)
 
-  val pollingPeriod = Configuration.teamcity.pollingPeriodSeconds.seconds
+  val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
+
   lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
   lazy val newBuilds: Observable[CIBuild] =
     (for {
-      location <- (Every(10.seconds)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
+      location <- (Every(pollingPeriod)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
       build <- Observable.from(S3Build.buildAt(location))
     } yield build).publish.refCount
 

@@ -55,18 +55,34 @@ continuous deployment
  starting a deploy - to prevent rogue or development instances of Riff-Raff automatically starting deployments);
  to enable set this property to `true` (you want to do this on your production instance)
 
-continuous integration
-----------------------
+artifact
+--------
 
- - `teamcity.serverURL` - URL to root of teamcity server
- - `teamcity.user` - User name to authenticate against TeamCity - if not specified guest authentication will be used
- - `teamcity.password` - Password for the specified user - if not specified guest authentication will be used
- - `teamcity.pinSuccessfulDeploys` - Set to `true` if Riff Raff should pin builds after a successful deploy
- - `teamcity.pinStages` - Comma separated list of stages that limits which deploys will result in the artifact being pinned
- - `teamcity.maximumPinsPerProject` - The number of pins that should be retained, when there are more than this number pinned then older pins will be removed
- - `teamcity.pollingWindowMinutes` - Set this to be over the length of the longest running builds.  Used by the incremental updater to be smart about what it asks for.
- - `teamcity.pollingPeriodSeconds` - Number of seconds between incremental updates of TeamCity builds
- - `teamcity.fullUpdatePeriodSeconds` - Number of seconds between full updates of TeamCity builds (includes new projects and configurations)
+ - `artifact.aws.bucketName` - Bucket to download build artifacts from
+ - `artifact.aws.accessKey` - Access key to use when downloading build artifacts. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html)
+ - `artifact.aws.secretKey` - Secret key to use when downloading build artifacts. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html)
+ 
+build
+-----
+
+ - `build.aws.bucketName` - Bucket to poll for build.json files describing builds
+ - `build.aws.accessKey` - Access key to use when polling for builds. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html)
+ - `build.aws.secretKey` - Secret key to use when polling for builds. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html) 
+ - `build.pollingPeriodSeconds` - Number of seconds between incremental updates of available builds from S3 bucket
+ 
+tag
+---
+
+ - `tag.aws.bucketName` - Bucket to download tag details from
+ - `tag.aws.accessKey` - Access key to use when downloading tag details. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html)
+ - `tag.aws.secretKey` - Secret key to use when downloading tag details. If not present fall back to 
+ [DefaultAWSCredentialsProviderChain](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html)
+
 
 database
 --------

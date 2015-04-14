@@ -4,15 +4,9 @@ import akka.agent.Agent
 import ci.Context._
 import controllers.Logging
 import lifecycle.LifecycleWithoutApp
-import org.joda.time.Duration
 import rx.lang.scala.Subscription
 
-import scala.concurrent.duration._
-
 object Builds extends LifecycleWithoutApp with Logging {
-  val pollingWindow = Duration.standardMinutes(conf.Configuration.teamcity.pollingWindowMinutes)
-  val pollingPeriod = conf.Configuration.teamcity.pollingPeriodSeconds.seconds
-  val fullUpdatePeriod = conf.Configuration.teamcity.fullUpdatePeriodSeconds.seconds
 
   private var subscriptions = Seq.empty[Subscription]
 

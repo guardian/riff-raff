@@ -31,7 +31,7 @@ In the first case you'll need some form of external system to make the API call 
 
 ### Continuous Deployment configurations
 
-A continuous deployment configuration is designed to watch a build server (currently only TeamCity) and react to
+A continuous deployment configuration is designed to watch for new builds and react to
  events. You can currently set up a configuration that reacts to a successful build. When the matching event occurs,
  Riff-Raff will start a deploy automatically to the specified environment, using the specified recipe.
 

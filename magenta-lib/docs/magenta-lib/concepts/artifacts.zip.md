@@ -2,8 +2,7 @@
 Anatomy of artifacts.zip
 ========================
 
-Whether magenta gets the `artifacts.zip` file from TeamCity (99% of the time
-at the Guardian) or from another source, it must have the layout described
+The `artifacts.zip` file must have the layout described
 here in order for magenta to understand it.
 
 Here is an example `artifacts.zip` file:

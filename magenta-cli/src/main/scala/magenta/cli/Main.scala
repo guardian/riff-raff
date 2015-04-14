@@ -146,8 +146,8 @@ object Main extends scala.App {
         { secretKey => Config.secretKey = Some(secretKey) }
 
     arg[String]("<stage>") text ("Stage to deploy (e.g. TEST)") foreach { s => Config.stage = s }
-    arg[String]("<project>") text ("TeamCity project name (e.g. tools::stats-aggregator)") foreach { p => Config.project = Some(p) }
-    arg[String]("<build>") text ("TeamCity build number") foreach { b => Config.build = Some(b) }
+    arg[String]("<project>") text ("Project name (e.g. tools::stats-aggregator)") foreach { p => Config.project = Some(p) }
+    arg[String]("<build>") text ("Build number") foreach { b => Config.build = Some(b) }
   }
 
   def validFile(s: String) = {

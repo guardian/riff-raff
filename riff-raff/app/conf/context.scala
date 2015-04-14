@@ -141,6 +141,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object build {
+    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("build.pollingPeriodSeconds", 10)
     object aws {
       implicit lazy val bucketName = configuration.getStringProperty("build.aws.bucketName")
       lazy val accessKey = configuration.getStringProperty("build.aws.accessKey")
@@ -169,12 +170,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
       override def refresh(): Unit = {}
     }, new DefaultAWSCredentialsProviderChain())
-
-  object teamcity {
-    lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
-    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 15)
-    lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
-  }
 
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
