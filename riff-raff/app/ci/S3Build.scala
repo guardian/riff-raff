@@ -31,7 +31,7 @@ object S3Build extends Logging {
     S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
 
   def buildAt(location: S3Location): Option[S3Build] = (Try {
-    log.info(s"Parsing ${location.path}")
+    log.debug(s"Parsing ${location.path}")
     S3Location.contents(location).map(parse)
   } recoverWith  {
     case NonFatal(e) => {

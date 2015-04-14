@@ -1,11 +1,15 @@
 package ci
 
+import java.util.concurrent.Executors
+
 import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import ci.teamcity.Job
 import controllers.Logging
 import rx.lang.scala.schedulers.NewThreadScheduler
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait CIBuild {
   def jobName: String
@@ -35,13 +39,13 @@ object CIBuild extends Logging {
     location <- S3Build.buildJsons
   } yield location
 
-  lazy val initialBuilds: Seq[CIBuild] = {
-    log.logger.info(s"${initialFiles.length}")
-    (for {
-      location <- initialFiles.par
-      build <- S3Build.buildAt(location)
-    } yield build).seq.view
+  lazy val initialBuilds: Future[Seq[CIBuild]] = {
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
+    log.logger.info(s"Found ${initialFiles.length} builds to parse")
+    (Future.traverse(initialFiles) { location =>
+      Future(S3Build.buildAt(location))
+    }).map(_.flatten)
   }
 
-  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).merge(newBuilds)
+  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
 }
