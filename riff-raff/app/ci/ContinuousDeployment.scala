@@ -1,16 +1,14 @@
 package ci
 
-import ci.teamcity.Job
 import controllers.Logging
 import deployment.Deployments
 import lifecycle.LifecycleWithoutApp
-import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
+import magenta.{Build => MagentaBuild, DeployParameters, Deployer, RecipeName, Stage}
 import persistence.Persistence.store.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 
 object ContinuousDeployment extends LifecycleWithoutApp with Logging {
-  import play.api.libs.concurrent.Execution.Implicits._
 
   var sub: Option[Subscription] = None
 

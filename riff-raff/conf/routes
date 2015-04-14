@@ -89,7 +89,7 @@ GET         /testing/view/:uuid                             controllers.Testing.
 GET         /testing/addStringUUID                          controllers.Testing.transferAllUUIDs
 GET         /testing/testcharset                            controllers.Testing.testcharset
 GET         /testing/deployinfo                             controllers.Testing.hosts
-GET         /teamcity                                       controllers.DeployController.teamcity
+GET         /builds                                         controllers.DeployController.builds
 
 # Javascript routing
 GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes

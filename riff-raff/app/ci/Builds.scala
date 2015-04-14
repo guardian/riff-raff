@@ -2,7 +2,6 @@ package ci
 
 import akka.agent.Agent
 import ci.Context._
-import ci.teamcity._
 import controllers.Logging
 import lifecycle.LifecycleWithoutApp
 import org.joda.time.Duration

@@ -2,23 +2,21 @@ package magenta
 package cli
 
 import java.io.File
+import java.net.URL
+import java.util.UUID
+
 import com.amazonaws.auth._
 import com.amazonaws.services.s3.AmazonS3Client
-import json.{DeployInfoJsonReader, JsonReader}
 import magenta.artifact.S3Artifact
-import scopt.{Zero, OptionParser}
-import HostList._
-import tasks.CommandLocator
-import magenta.teamcity.Artifact._
-import java.util.UUID
-import org.joda.time.format.DateTimeFormat
+import magenta.json.{DeployInfoJsonReader, JsonReader}
+import magenta.tasks.CommandLocator
 import org.joda.time.DateTime
-import scalax.file.Path
-import scalax.file.ImplicitConversions.defaultPath2jfile
-import scalax.file.ImplicitConversions.jfile2path
+import org.joda.time.format.DateTimeFormat
+import scopt.OptionParser
+
 import scala.util.Try
-import magenta.teamcity.Artifact
-import java.net.URL
+import scalax.file.ImplicitConversions.{defaultPath2jfile, jfile2path}
+import scalax.file.Path
 
 object Main extends scala.App {
 
@@ -46,8 +44,6 @@ object Main extends scala.App {
   })
 
   object Config {
-
-    var teamcityUrl: Option[URL] = Some(new URL("http://teamcity.guprod.gnm"))
 
     var project: Option[String] = None
     var build: Option[String] = None
@@ -142,8 +138,6 @@ object Main extends scala.App {
       { _ => Config.jvmSsh = true }
 
     note("\n")
-    opt[String]("teamcityUrl") text (s"URL of the teamcity server from which to download artifacts (e.g. ${Config.teamcityUrl.toString}})") foreach
-      { teamcityUrl => Config.teamcityUrl = Some(new URL(teamcityUrl)) }
     opt[String]("bucketName") text (s"S3 Bucket to download artifacts from") foreach
       { bucketName => Config.bucketName = Some(bucketName) }
     opt[String]("accessKey") text (s"Access Key for downloading artifacts from S3") foreach

@@ -5,9 +5,7 @@ import java.util.concurrent.Executors
 import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
-import ci.teamcity.Job
 import controllers.Logging
-import rx.lang.scala.schedulers.NewThreadScheduler
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,6 +16,11 @@ trait CIBuild {
   def number: String
   def id: Long
   def startTime: DateTime
+}
+
+trait Job {
+  def id: String
+  def name: String
 }
 
 object CIBuild extends Logging {

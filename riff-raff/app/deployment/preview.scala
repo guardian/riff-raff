@@ -13,7 +13,6 @@ import magenta.DeployParameters
 import magenta.Project
 import magenta.Build
 import tasks.{ Task => MagentaTask }
-import magenta.teamcity.Artifact
 import java.util.UUID
 import akka.agent.Agent
 import org.joda.time.DateTime

@@ -19,7 +19,6 @@ import scala.collection.JavaConversions._
 import concurrent.Await
 import akka.util.Timeout
 import scalax.file.Path
-import magenta.teamcity.Artifact
 import conf.{TaskMetrics, Configuration}
 import org.joda.time.DateTime
 import scala.util.Try

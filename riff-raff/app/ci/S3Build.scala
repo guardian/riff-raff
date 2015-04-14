@@ -1,6 +1,5 @@
 package ci
 
-import ci.teamcity.Job
 import conf.Configuration
 import controllers.Logging
 import org.joda.time.DateTime

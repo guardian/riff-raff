@@ -2,7 +2,7 @@ package controllers
 
 import java.util.UUID
 
-import ci.{S3Tag, TagClassification, TeamCityAPI, Builds}
+import ci.{Builds, S3Tag, TagClassification}
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
 import org.joda.time.DateTime
@@ -13,8 +13,6 @@ import play.api.libs.json.Json
 import play.api.mvc.Controller
 import resources.LookupSelector
 
-import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
@@ -183,7 +181,7 @@ object DeployController extends Controller with Logging with LoginActions {
     } getOrElse Ok("")
   }
 
-  def teamcity = AuthAction {
+  def builds = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
       for (build <- Builds.all.sortBy(_.jobName))
