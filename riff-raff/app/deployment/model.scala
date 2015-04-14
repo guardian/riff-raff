@@ -1,15 +1,11 @@
 package deployment
 
 import java.util.UUID
-import magenta._
-import magenta.DeployParameters
-import magenta.ReportTree
-import java.io.File
-import org.joda.time.{Interval, DateTime, Duration}
-import ci.{S3Build, Builds, CIBuild, ContinuousIntegration}
+
+import ci.{Builds, S3Build}
+import magenta.{DeployParameters, ReportTree, _}
+import org.joda.time.{DateTime, Duration, Interval}
 import utils.VCSInfo
-import magenta.teamcity.Artifact
-import conf.Configuration
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"

@@ -14,8 +14,8 @@ import persistence.DocumentStoreConverter
 import play.api.libs.concurrent.Execution.Implicits._
 import rx.lang.scala.{Observable, Subject, Subscription}
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 
 object Deployments extends Logging with LifecycleWithoutApp {
   lazy val completed: Observable[UUID] = deployCompleteSubject
@@ -71,7 +71,6 @@ object Deployments extends Logging with LifecycleWithoutApp {
     val record = DeployRecord(uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
-    attachMetaData(record)
     await(uuid)
   }
 
@@ -89,20 +88,6 @@ object Deployments extends Logging with LifecycleWithoutApp {
         case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
         case List(FailContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
         case _ =>
-      }
-    }
-  }
-
-  def attachMetaData(record: Record) {
-    val metaData = Future {
-      ContinuousIntegration.getMetaData(record.buildName, record.buildId)
-    }
-    metaData.map { md =>
-      DocumentStoreConverter.addMetaData(record.uuid, md)
-      Option(library()(record.uuid)) foreach { recordAgent =>
-        recordAgent send { record =>
-          record ++ md
-        }
       }
     }
   }
