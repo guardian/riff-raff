@@ -14,7 +14,7 @@ object Builds extends LifecycleWithoutApp with Logging {
   def all: List[CIBuild] = buildsAgent.get().toList
   def build(project: String, number: String) = all.find(b => b.jobName == project && b.number == number)
 
-  val buildsAgent = Agent[Set[CIBuild]](BoundedSet(10000))
+  val buildsAgent = Agent[Set[CIBuild]](BoundedSet(100000))
   val jobsAgent = Agent[Set[Job]](Set())
   def successfulBuilds(jobName: String): List[CIBuild] = all.filter(_.jobName == jobName).sortBy(- _.id)
   def getLastSuccessful(jobName: String): Option[String] =
