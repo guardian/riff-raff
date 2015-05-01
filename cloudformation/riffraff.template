@@ -13,7 +13,7 @@
         "BucketName" : "riffraff-builds",
         "LifecycleConfiguration" : {
           "Rules" : {
-            "ExpirationInDays" : 14,
+            "ExpirationInDays" : 28,
             "Status" : "Enabled"
           }
         }
@@ -23,13 +23,7 @@
     "TagBucket" : {
       "Type" : "AWS::S3::Bucket",
       "Properties" : {
-        "BucketName" : "riffraff-tags",
-        "LifecycleConfiguration" : {
-          "Rules": {
-            "ExpirationInDays": 14,
-            "Status": "Enabled"
-          }
-        }
+        "BucketName" : "riffraff-tags"
       },
       "DeletionPolicy" : "Retain"
     },
