@@ -1,0 +1,94 @@
+{
+  "Resources" : {
+    "ArtifactBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "BucketName" : "riffraff-artifact"
+      },
+      "DeletionPolicy" : "Retain"
+    },
+    "BuildBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "BucketName" : "riffraff-builds",
+        "LifecycleConfiguration" : {
+          "Rules" : {
+            "ExpirationInDays" : 28,
+            "Status" : "Enabled"
+          }
+        }
+      },
+      "DeletionPolicy" : "Retain"
+    },
+    "TagBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "BucketName" : "riffraff-tags"
+      },
+      "DeletionPolicy" : "Retain"
+    },
+
+    "CI" : {
+      "Type": "AWS::IAM::Group"
+    },
+
+    "Deployment" : {
+      "Type": "AWS::IAM::Group"
+    },
+
+    "BucketReadAndWriteAccessPolicy" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "RiffRaffBucketReadAndWrite",
+        "PolicyDocument" : {
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]},
+            "Principal":"*"
+          },
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]},
+            "Principal":"*"
+          },
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]},
+            "Principal":"*"
+          }
+        },
+        "Groups" : [ { "Ref" : "CI" } ]
+      }
+    },
+    "BucketReadAccessPolicy" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "RiffRaffBucketRead",
+        "PolicyDocument" : {
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]},
+            "Principal":"*"
+          },
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]},
+            "Principal":"*"
+          },
+          "Statement" : {
+            "Action":["s3:Get*", "s3:List*"],
+            "Effect":"Allow",
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]},
+            "Principal":"*"
+          }
+        },
+        "Groups" : [ { "Ref" : "Deployment" } ]
+      }
+    }
+  }
+}
