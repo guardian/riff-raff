@@ -12,10 +12,10 @@
       "Properties" : {
         "BucketName" : "riffraff-builds",
         "LifecycleConfiguration" : {
-          "Rules" : {
+          "Rules" : [{
             "ExpirationInDays" : 28,
             "Status" : "Enabled"
-          }
+          }]
         }
       },
       "DeletionPolicy" : "Retain"
@@ -44,20 +44,17 @@
           "Statement" : {
             "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]}
           },
           "Statement" : {
             "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]}
           },
           "Statement" : {
             "Action":["s3:Get*", "s3:List*", "s3:Put*", "s3:AbortMultipartUpload"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]}
           }
         },
         "Groups" : [ { "Ref" : "CI" } ]
@@ -71,20 +68,17 @@
           "Statement" : {
             "Action":["s3:Get*", "s3:List*"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]}
           },
           "Statement" : {
             "Action":["s3:Get*", "s3:List*"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]}
           },
           "Statement" : {
             "Action":["s3:Get*", "s3:List*"],
             "Effect":"Allow",
-            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]},
-            "Principal":"*"
+            "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]}
           }
         },
         "Groups" : [ { "Ref" : "Deployment" } ]
