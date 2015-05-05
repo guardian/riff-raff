@@ -28,7 +28,7 @@
       "DeletionPolicy" : "Retain"
     },
 
-    "CI" : {
+    "Build" : {
       "Type": "AWS::IAM::Group"
     },
 
@@ -57,7 +57,7 @@
             "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]}
           }
         },
-        "Groups" : [ { "Ref" : "CI" } ]
+        "Groups" : [ { "Ref" : "Build" } ]
       }
     },
     "BucketReadAccessPolicy" : {
