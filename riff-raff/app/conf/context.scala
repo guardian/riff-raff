@@ -2,6 +2,7 @@ package conf
 
 import _root_.resources.LookupSelector
 import com.amazonaws.auth._
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
 import play.api.Play
 import com.gu.management._
@@ -162,14 +163,20 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
-    new AWSCredentialsProviderChain(new AWSCredentialsProvider {
-      override def getCredentials: AWSCredentials = (for {
-        key <- accessKey
-        secret <- secretKey
-      } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+    new AWSCredentialsProviderChain(
+      new AWSCredentialsProvider {
+        override def getCredentials: AWSCredentials = (for {
+          key <- accessKey
+          secret <- secretKey
+        } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
 
-      override def refresh(): Unit = {}
-    }, new DefaultAWSCredentialsProviderChain())
+        override def refresh(): Unit = {}
+      },
+      new EnvironmentVariableCredentialsProvider,
+      new SystemPropertiesCredentialsProvider,
+      new ProfileCredentialsProvider("riffraff"),
+      new InstanceProfileCredentialsProvider
+    )
 
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
