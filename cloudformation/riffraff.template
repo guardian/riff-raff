@@ -63,8 +63,11 @@
             "Action":["s3:Get*", "s3:List*"],
             "Effect":"Allow",
             "Resource": [
+              { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } ]]},
               { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ArtifactBucket" } , "/*" ]]},
+              { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } ]]},
               { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "BuildBucket" } , "/*" ]]},
+              { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } ]]},
               { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "TagBucket" } , "/*" ]]}
             ]
           }
