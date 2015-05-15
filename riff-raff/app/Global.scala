@@ -28,7 +28,6 @@ object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilte
       DeployMetrics,
       HooksClient,
       TeamCityBuilds,
-      TeamCityBuildPinner,
       SummariseDeploysHousekeeping,
       ContinuousDeployment,
       ShutdownWhenInactive

@@ -61,9 +61,6 @@ continuous integration
  - `teamcity.serverURL` - URL to root of teamcity server
  - `teamcity.user` - User name to authenticate against TeamCity - if not specified guest authentication will be used
  - `teamcity.password` - Password for the specified user - if not specified guest authentication will be used
- - `teamcity.pinSuccessfulDeploys` - Set to `true` if Riff Raff should pin builds after a successful deploy
- - `teamcity.pinStages` - Comma separated list of stages that limits which deploys will result in the artifact being pinned
- - `teamcity.maximumPinsPerProject` - The number of pins that should be retained, when there are more than this number pinned then older pins will be removed
  - `teamcity.pollingWindowMinutes` - Set this to be over the length of the longest running builds.  Used by the incremental updater to be smart about what it asks for.
  - `teamcity.pollingPeriodSeconds` - Number of seconds between incremental updates of TeamCity builds
  - `teamcity.fullUpdatePeriodSeconds` - Number of seconds between full updates of TeamCity builds (includes new projects and configurations)
