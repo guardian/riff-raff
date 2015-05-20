@@ -17,6 +17,7 @@
         <th>Recipe</th>
         <th>Hosts</th>
         <th>Status</th>
+        <th>Time taken</th>
     </tr>
     </thead>
     <tbody class="rowlink" data-provides="rowlink">
@@ -55,6 +56,7 @@
             }
             }
         </td>
+        <td>@record.timeTaken.map(Record.prettyPrintDuration).getOrElse(Html(""))</td>
     </tr>
     }
     </tbody>

@@ -37,7 +37,8 @@ object MagentaBuild extends Build {
   val magentaSettings: Seq[Setting[_]] = Seq(
     scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
     version := magentaVersion,
-    resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases"
+    resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases",
+    resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven"
   ) ++ net.virtualvoid.sbt.graph.Plugin.graphSettings
 
   val magentaVersion = "1.0"
