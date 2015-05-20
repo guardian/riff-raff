@@ -57,12 +57,7 @@ trait Record {
   }
   def lastActivityTime: DateTime
 
-  def timeTaken: Option[Duration] = {
-    if (isDone)
-      Some(new Duration(time, lastActivityTime))
-    else
-      None
-  }
+  def timeTaken: Duration = new Duration(time, lastActivityTime)
 
   def isStalled: Boolean = {
     recordState.exists {

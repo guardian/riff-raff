@@ -56,7 +56,7 @@
             }
             }
         </td>
-        <td>@record.timeTaken.map(Record.prettyPrintDuration).getOrElse(Html(""))</td>
+        <td>@Record.prettyPrintDuration(record.timeTaken)</td>
     </tr>
     }
     </tbody>
