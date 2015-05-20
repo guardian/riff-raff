@@ -81,7 +81,7 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
       if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
     }
     def isStackEvent(e: StackEvent): Boolean =
-      e.getResourceType == "AWS::CloudFormation::Stack" && e.getStackName == stackName
+      e.getResourceType == "AWS::CloudFormation::Stack" && e.getLogicalResourceId == stackName
     def updateStart(e: StackEvent): Boolean =
       isStackEvent(e) && (e.getResourceStatus == "UPDATE_IN_PROGRESS" || e.getResourceStatus == "CREATE_IN_PROGRESS")
     def updateComplete(e: StackEvent): Boolean =
