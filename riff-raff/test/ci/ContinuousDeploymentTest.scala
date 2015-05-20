@@ -1,8 +1,6 @@
 package ci
 
 import org.scalatest.{Matchers, FlatSpec}
-import rx.lang.scala.Observable
-import ci.teamcity.{BuildSummary, Job, Project, BuildType}
 import org.joda.time.DateTime
 import magenta._
 import magenta.DeployParameters
@@ -11,31 +9,6 @@ import magenta.Stage
 import java.util.UUID
 
 class ContinuousDeploymentTest extends FlatSpec with Matchers {
-  "Continuous Deployment" should "not try to deploy just already built at startup" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(Nil)
-  }
-
-  it should "not try to deploy the same build twice" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(3), ciBuild(3))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(List(ciBuild(3)))
-  }
-
-  it should "only try to deploy latest for job and branch" in {
-    val jobs = Observable.just(BuildType("job1", "job", Project("", "project")))
-    val allBuilds = (job: Job) => Observable.just(Seq(ciBuild(1), ciBuild(2)))
-    val newBuilds = (job: Job) => Observable.just(ciBuild(2), ciBuild(5), ciBuild(4), ciBuild(3, "other"))
-
-    ContinuousDeployment.buildCandidates(jobs, allBuilds, newBuilds).toBlocking.toList should be(
-      List(ciBuild(5), ciBuild(3, "other"))
-    )
-  }
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
@@ -55,22 +28,6 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
     params should be(Set(DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy2", "392"), Stage("QA"), RecipeName("default"))))
   }
 
-  def ciBuild(num: Long, branch: String = "master") = new CIBuild {
-    def id = num
-    def startTime = DateTime.now
-    def number = num.toString
-    def jobName = "project::job"
-    def branchName = branch
-    def jobId = "job1"
-
-    override def equals(other: scala.Any) = other match {
-      case o: CIBuild => o.id == id
-      case _ => false
-    }
-    override def hashCode() = id.toInt
-    override def toString = s"CIBuild($jobName, $number)"
-  }
-
   /* Test types */
 
   val tdProdEnabled = ContinuousDeploymentConfig(UUID.randomUUID(), "tools::deploy", "PROD", "default", None, Trigger.SuccessfulBuild, "Test user")
@@ -82,10 +39,8 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
 
-  val tdBT = BuildType("bt204", "deploy", Project("project1", "tools"))
-  val tdB71 = BuildSummary(45397, "71", tdBT.id, "SUCCESS", "master", new DateTime(2013,1,25,14,42,47), tdBT)
+  val tdB71 = S3Build(45397, "tools::deploy", "45397", "branch", "71", new DateTime(2013,1,25,14,42,47), "", "")
+  val td2B392 = S3Build(45400, "tools::deploy2", "45400", "branch", "392", new DateTime(2013,1,25,15,34,47), "", "")
+  val otherBranch = S3Build(45401, "tools::deploy2", "45401", "other", "393", new DateTime(2013,1,25,15,34,47), "", "")
 
-  val td2BT = BuildType("bt205", "deploy2", Project("project1", "tools"))
-  val td2B392 = BuildSummary(45400, "392", td2BT.id, "SUCCESS", "branch", new DateTime(2013,1,25,15,34,47), td2BT)
-  val otherBranch = BuildSummary(45401, "393", td2BT.id, "SUCCESS", "other", new DateTime(2013,1,25,15,34,47), td2BT)
 }

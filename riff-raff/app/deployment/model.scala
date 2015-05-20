@@ -1,15 +1,11 @@
 package deployment
 
 import java.util.UUID
-import magenta._
-import magenta.DeployParameters
-import magenta.ReportTree
-import java.io.File
-import org.joda.time.{Interval, DateTime, Duration}
-import ci.ContinuousIntegration
+
+import ci.{Builds, S3Build}
+import magenta.{DeployParameters, ReportTree, _}
+import org.joda.time.{DateTime, Duration, Interval}
 import utils.VCSInfo
-import magenta.teamcity.Artifact
-import conf.Configuration
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
@@ -62,9 +58,6 @@ trait Record {
   def loggingContext[T](block: => T): T = {
     MessageBroker.deployContext(uuid, parameters) { block }
   }
-  def withDownload[T](block: File => T): T = {
-    Artifact.withDownload(Configuration.teamcity.serverURL, parameters.build)(block)
-  }
 
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 
@@ -106,8 +99,16 @@ trait Record {
 object DeployRecord {
   def apply(uuid: UUID,
             parameters: DeployParameters ): DeployRecord = {
-    val metaData = ContinuousIntegration.getMetaData(parameters.build.projectName, parameters.build.id)
-    DeployRecord(new DateTime(), uuid, parameters, metaData)
+    val build = Builds.all.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
+    val metaData = build.map { case b: S3Build =>
+      Map(
+        "branch" -> b.branchName,
+        VCSInfo.REVISION -> b.revision,
+        VCSInfo.CIURL -> b.vcsURL
+      )
+    }
+
+    DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
   }
 }
 

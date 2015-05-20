@@ -1,10 +1,13 @@
 package ci
 
+import java.util.concurrent.Executors
+
 import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
-import ci.teamcity.Job
 import controllers.Logging
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait CIBuild {
   def jobName: String
@@ -15,27 +18,38 @@ trait CIBuild {
   def startTime: DateTime
 }
 
+trait Job {
+  def id: String
+  def name: String
+}
+
 object CIBuild extends Logging {
   import concurrent.duration._
   import play.api.libs.concurrent.Execution.Implicits._
 
   implicit val ord = Ordering.by[CIBuild, Long](_.id)
 
-  val pollingPeriod = Configuration.teamcity.pollingPeriodSeconds.seconds
-  val jobs: Observable[Job] = Every(pollingPeriod)(TeamCityAPI.jobs)
-  val recentBuildJobIds: Observable[String] = Every(pollingPeriod)(TeamCityAPI.recentBuildJobIds)
+  val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
 
-  def newBuilds(job: Job): Observable[CIBuild] = (for {
-    id <- recentBuildJobIds if id == job.id
-    builds <-
-      AtSomePointIn(pollingPeriod)(TeamCityAPI.builds(job)).onErrorResumeNext { e =>
-        log.error(s"Failed tor retrieve builds for job $job", e)
-        Observable.empty
-      }
-  } yield builds).publish.refCount
+  lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
-  val builds = for {
-    job <- jobs.distinct
-    build <- (TeamCityAPI.builds(job) merge newBuilds(job)).distinct
-  } yield build
+  lazy val newBuilds: Observable[CIBuild] =
+    (for {
+      location <- (Every(pollingPeriod)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
+      build <- Observable.from(S3Build.buildAt(location))
+    } yield build).publish.refCount
+
+  lazy val initialFiles: Seq[S3Location] = for {
+    location <- S3Build.buildJsons
+  } yield location
+
+  lazy val initialBuilds: Future[Seq[CIBuild]] = {
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
+    log.logger.info(s"Found ${initialFiles.length} builds to parse")
+    (Future.traverse(initialFiles) { location =>
+      Future(S3Build.buildAt(location))
+    }).map(_.flatten)
+  }
+
+  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
 }

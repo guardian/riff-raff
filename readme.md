@@ -21,7 +21,8 @@ Requirements
 Riff-Raff and Magenta have been built with the tools we use at the Guardian
 and you will find it easiest if you use a similar set of tools. Riff-Raff has
 
- - has tight integration with TeamCity (we have experimented with adding Jenkins and TravisCI with some success)
+ - relies on artifacts and `build.json` files describing builds being in S3 buckets with the artifacts having paths of 
+  the form `project-name/build-number/artifacts.zip`
  - uses [Prism](http://github.com/guardian/prism) to do service discovery
  - stores all configuration, history and logs in a MongoDB instance
 
@@ -62,7 +63,7 @@ How do I run Riff-Raff locally if I want to hack on it?
 
 Assuming you have a reasonably recent version of Java installed, 
 
- * Create a basic configuration file at ~/.gu/riff-raff.properties (teamcity and mondo config if probably the minimum)
+ * Create a basic configuration file at ~/.gu/riff-raff.properties (S3 and mongo config is probably the minimum)
  * Run the sbt script
  * enter `project riff-raff` at the SBT prompt
  * enter `run` at the SBT prompt

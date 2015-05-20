@@ -1,7 +1,9 @@
 package deployment
 
 import _root_.resources.LookupSelector
+import ci.S3Build
 import magenta._
+import magenta.artifact.S3Artifact
 import persistence.Persistence
 import java.io.File
 import io.Source
@@ -11,7 +13,6 @@ import magenta.DeployParameters
 import magenta.Project
 import magenta.Build
 import tasks.{ Task => MagentaTask }
-import magenta.teamcity.Artifact
 import java.util.UUID
 import akka.agent.Agent
 import org.joda.time.DateTime
@@ -50,8 +51,10 @@ object PreviewController {
 }
 
 object Preview {
+  import Configuration.artifact.aws._
+
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build): String = Artifact.withDownload(Configuration.teamcity.serverURL, build) { artifactDir =>
+  def getJsonFromArtifact(build: Build): String = S3Artifact.withDownload(build) { artifactDir =>
     Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
   }
   def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))

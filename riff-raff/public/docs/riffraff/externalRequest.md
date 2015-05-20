@@ -12,8 +12,8 @@ The user can then click confirm to execute the deploy (or preview).
 
 The parameters available are:
 
- - `project` - the project name from TeamCity
- - `build` - the build identifier in TeamCity
+ - `project` - the project name
+ - `build` - the build number
  - `stage` - the environment in which you would like the deploy carried out
  - `manualStage` - this is an alternative to the stage parameter and should be ignored for this form
  - `recipe` - choose the recipe to resolve

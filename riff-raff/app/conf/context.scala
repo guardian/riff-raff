@@ -1,6 +1,9 @@
 package conf
 
 import _root_.resources.LookupSelector
+import com.amazonaws.auth._
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.services.s3.AmazonS3Client
 import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
@@ -128,18 +131,52 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val ordering = UnnaturalOrdering(order, false)
   }
 
-  object teamcity {
-    lazy val serverURL = configuration.getStringProperty("teamcity.serverURL").map(new URL(_))
-    lazy val useAuth = user.isDefined && password.isDefined
-    lazy val user = configuration.getStringProperty("teamcity.user")
-    lazy val password = configuration.getStringProperty("teamcity.password")
-    lazy val pinSuccessfulDeploys = configuration.getStringProperty("teamcity.pinSuccessfulDeploys", "false") == "true"
-    lazy val pinStages = configuration.getStringPropertiesSplitByComma("teamcity.pinStages").filterNot(""==)
-    lazy val maximumPinsPerProject = configuration.getIntegerProperty("teamcity.maximumPinsPerProject", 5)
-    lazy val pollingWindowMinutes = configuration.getIntegerProperty("teamcity.pollingWindowMinutes", 60)
-    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("teamcity.pollingPeriodSeconds", 15)
-    lazy val fullUpdatePeriodSeconds = configuration.getIntegerProperty("teamcity.fullUpdatePeriodSeconds", 1800)
+  object artifact {
+    object aws {
+      implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName")
+      lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
+      implicit lazy val client = new AmazonS3Client(credentialsProvider)
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    }
   }
+
+  object build {
+    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("build.pollingPeriodSeconds", 10)
+    object aws {
+      implicit lazy val bucketName = configuration.getStringProperty("build.aws.bucketName")
+      lazy val accessKey = configuration.getStringProperty("build.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
+      implicit lazy val client = new AmazonS3Client(credentialsProvider)
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    }
+  }
+
+  object tag {
+    object aws {
+      implicit lazy val bucketName = configuration.getStringProperty("tag.aws.bucketName")
+      lazy val accessKey = configuration.getStringProperty("tag.aws.accessKey")
+      lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
+      implicit lazy val client = new AmazonS3Client(credentialsProvider)
+      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    }
+  }
+
+  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
+    new AWSCredentialsProviderChain(
+      new AWSCredentialsProvider {
+        override def getCredentials: AWSCredentials = (for {
+          key <- accessKey
+          secret <- secretKey
+        } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+
+        override def refresh(): Unit = {}
+      },
+      new EnvironmentVariableCredentialsProvider,
+      new SystemPropertiesCredentialsProvider,
+      new ProfileCredentialsProvider("riffraff"),
+      new InstanceProfileCredentialsProvider
+    )
 
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
@@ -199,11 +236,6 @@ object DeployMetrics extends LifecycleWithoutApp {
   def shutdown() { messageSub.unsubscribe() }
 }
 
-object TeamCityMetrics {
-  object ApiCallTimer extends TimingMetric("riffraff", "teamcity_api", "Teamcity API calls", "Timing of Teamcity API calls")
-  val all = Seq(ApiCallTimer)
-}
-
 object TaskMetrics {
   object TaskTimer extends TimingMetric("riffraff", "task_run", "Tasks running", "Timing of deployment tasks")
   object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
@@ -256,8 +288,7 @@ object Metrics {
     PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all ++
-    TaskMetrics.all ++
-    TeamCityMetrics.all
+    TaskMetrics.all
 }
 
 object Switches {

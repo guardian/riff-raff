@@ -3,7 +3,6 @@ RiffRaff outside the Guardian
 
 RiffRaff is pretty awesome and it would be nice if people outside of the Guardian could get a taste of the awesomeness.
 
- * Support for Jenkins as well as Teamcity
  * Attempt to set up RiffRaff elsewhere to deploy something and see what breaks
  * Review how Guardian specific the documentation is
  * Get the documentation built to Github pages and put in some shiny screenshots
