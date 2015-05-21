@@ -5,11 +5,29 @@ import java.util.UUID
 import ci.{Builds, S3Build}
 import magenta.{DeployParameters, ReportTree, _}
 import org.joda.time.{DateTime, Duration, Interval}
+import org.joda.time.format.PeriodFormatterBuilder
 import utils.VCSInfo
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
   val RIFFRAFF_DOMAIN = "riffraff-domain"
+
+  private val formatter = new PeriodFormatterBuilder()
+    .appendDays
+    .appendSuffix("d")
+    .appendSeparator(" ")
+    .appendHours
+    .appendSuffix("h")
+    .appendSeparator(" ")
+    .appendMinutes
+    .appendSuffix("m")
+    .appendSeparator(" ")
+    .appendSeconds
+    .appendSuffix("s")
+    .toFormatter
+
+  def prettyPrintDuration(duration: Duration): String = 
+    formatter.print(duration.toPeriod)
 }
 
 trait Record {
@@ -38,6 +56,8 @@ trait Record {
     )
   }
   def lastActivityTime: DateTime
+
+  def timeTaken: Duration = new Duration(time, lastActivityTime)
 
   def isStalled: Boolean = {
     recordState.exists {
