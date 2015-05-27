@@ -26,18 +26,22 @@ object S3Build extends Logging {
   lazy val bucketName = Configuration.build.aws.bucketName.get
   implicit lazy val client = Configuration.build.aws.client
 
-  def buildJsons: Seq[S3Location] =
+  def buildJsons: Seq[S3Location] = Try {
     S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
+  } recover {
+    case NonFatal(e) =>
+      log.error(s"Error finding buildJsons", e)
+      Nil
+  } get
 
-  def buildAt(location: S3Location): Option[S3Build] = (Try {
+  def buildAt(location: S3Location): Option[S3Build] = Try {
     log.debug(s"Parsing ${location.path}")
     S3Location.contents(location).map(parse)
-  } recoverWith  {
-    case NonFatal(e) => {
+  } recover {
+    case NonFatal(e) =>
       log.error(s"Error parsing $location", e)
-      Failure(e)
-    }
-  }).toOption.flatten
+      None
+  } get
 
   def parse(json: String): S3Build = {
     import play.api.libs.functional.syntax._
