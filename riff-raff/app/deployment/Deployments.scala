@@ -16,12 +16,21 @@ import rx.lang.scala.{Observable, Subject, Subscription}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 object Deployments extends Logging with LifecycleWithoutApp {
   lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
 
-  private val messagesSubscription: Subscription = MessageBroker.messages.subscribe(update(_))
+  private val messagesSubscription: Subscription =
+    MessageBroker.messages.subscribe{ wrapper =>
+      try {
+        update(wrapper)
+      } catch {
+        case NonFatal(t) =>
+          log.error(s"Exception thrown whilst processing update with $wrapper", t)
+      }
+    }
   def init() {}
   def shutdown() { messagesSubscription.unsubscribe() }
 
