@@ -9,7 +9,10 @@
 </style>
 <div class="row">
 <div class="col-md-8">
-<h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage to stacks (@record.stacks.map{ stack => @stack.name }.mkString(", "))</h2>
+<h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage @if(record.stacks.nonEmpty) {
+to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
+}</h2>
+
 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
     <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
 }
