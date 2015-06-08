@@ -34,6 +34,9 @@ object CloudFormation extends DeploymentType {
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
   ).default(Map.empty)
+  val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
+    documentation = "Like templateParameters, but supports stage-specific configuration."
+  ).default(Map.empty)
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
@@ -47,11 +50,15 @@ object CloudFormation extends DeploymentType {
       val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
+      val globalParams = templateParameters(pkg)
+      val stageParams = stageName.flatMap(stage => templateStageParameters(pkg).lift(stage)).getOrElse(Map())
+      val combinedParams = globalParams ++ stageParams
+
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
-          templateParameters(pkg),
+          combinedParams,
           parameters.stage,
           stack,
           createStackIfAbsent(pkg)

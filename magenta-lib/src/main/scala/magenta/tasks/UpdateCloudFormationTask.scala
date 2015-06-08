@@ -8,10 +8,14 @@ import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
-case class UpdateCloudFormationTask(cloudFormationStackName: String, template: Path,
-                                    parameters: Map[String, String], stage: Stage, stack: Stack,
-                                    createStackIfAbsent:Boolean)
-                                   (implicit val keyRing: KeyRing) extends Task {
+case class UpdateCloudFormationTask(
+  cloudFormationStackName: String,
+  template: Path,
+  parameters: Map[String, String],
+  stage: Stage,
+  stack: Stack,
+  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
+
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val requiredParameters = CloudFormation.validateTemplate(template.string).getParameters.map(_.getParameterKey)
 
