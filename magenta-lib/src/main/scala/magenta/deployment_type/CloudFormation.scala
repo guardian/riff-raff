@@ -1,7 +1,7 @@
 package magenta.deployment_type
 
-import magenta.{UnnamedStack, NamedStack}
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
+
 import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
@@ -62,7 +62,7 @@ object CloudFormation extends DeploymentType {
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
       val globalParams = templateParameters(pkg)
-      val stageParams = templateStageParameters(pkg).lift(parameters.stage.name).getOrElse(Map())
+      val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
       val combinedParams = globalParams ++ stageParams
 
       List(
