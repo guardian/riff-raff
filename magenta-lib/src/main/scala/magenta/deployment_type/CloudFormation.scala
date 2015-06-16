@@ -62,7 +62,7 @@ object CloudFormation extends DeploymentType {
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
       val globalParams = templateParameters(pkg)
-      val stageParams = stageName.flatMap(stage => templateStageParameters(pkg).lift(stage)).getOrElse(Map())
+      val stageParams = templateStageParameters(pkg).lift(parameters.stage.name).getOrElse(Map())
       val combinedParams = globalParams ++ stageParams
 
       List(
