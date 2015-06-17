@@ -1,7 +1,7 @@
 package magenta.deployment_type
 
-import magenta.{UnnamedStack, NamedStack}
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
+
 import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
@@ -34,6 +34,20 @@ object CloudFormation extends DeploymentType {
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
   ).default(Map.empty)
+  val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
+    documentation =
+      """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
+        |support stage-specific configuration. E.g.
+        |
+        |    {
+        |        "CODE": { "apiUrl": "my.code.endpoint", ... },
+        |        "PROD": { "apiUrl": "my.prod.endpoint", ... },
+        |    }
+        |
+        |At deploy time, parameters for the matching stage (if found) are merged into any
+        |templateParameters parameters, with stage-specific values overriding general parameters
+        |when in conflict.""".stripMargin
+  ).default(Map.empty)
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
@@ -47,11 +61,15 @@ object CloudFormation extends DeploymentType {
       val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
+      val globalParams = templateParameters(pkg)
+      val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
+      val combinedParams = globalParams ++ stageParams
+
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
-          templateParameters(pkg),
+          combinedParams,
           parameters.stage,
           stack,
           createStackIfAbsent(pkg)
