@@ -99,7 +99,15 @@ trait ASG extends AWS {
       }
     }
 
-    val groups = client.describeAutoScalingGroups().getAutoScalingGroups.toList
+    def listAutoScalingGroups(result: DescribeAutoScalingGroupsResult): List[AutoScalingGroup] = {
+      val autoScalingGroups = result.getAutoScalingGroups.toList
+      Option(result.getNextToken) match {
+        case None => autoScalingGroups
+        case Some(token) => autoScalingGroups ++ listAutoScalingGroups(result.withNextToken(token))
+      }
+    }
+
+    val groups = listAutoScalingGroups(client.describeAutoScalingGroups())
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
     val appToMatchingGroups = pkg.apps.flatMap { app =>
       val matches = filteredByStage.filter(_.matchApp(app, stack))
