@@ -177,6 +177,35 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
     asg.isStabilized(updatedGroup) should be (true)
   }
 
+  it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {
+    val asgClientMock = mock[AmazonAutoScalingClient]
+    val asg = new ASG {
+      override def client(implicit keyRing: KeyRing) = asgClientMock
+    }
+
+    val firstRequest = new DescribeAutoScalingGroupsRequest
+    val secondRequest = new DescribeAutoScalingGroupsRequest().withNextToken("someToken")
+
+    val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
+
+    when (asgClientMock.describeAutoScalingGroups(firstRequest)) thenReturn
+      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
+        AutoScalingGroup("Role" -> "other", "Stage" -> "PROD"),
+        AutoScalingGroup("Role" -> "example", "Stage" -> "TEST")
+      )).withNextToken("someToken" +
+        "")
+    when (asgClientMock.describeAutoScalingGroups(secondRequest)) thenReturn
+      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
+        AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+        AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+        AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD"),
+        desiredGroup
+      ))
+
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", new File("/tmp/packages/webapp"))
+    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
+  }
+
   object AutoScalingGroup {
     def apply(tags: (String, String)*) = new AutoScalingGroup().withTags(tags map {
       case (key, value) => new TagDescription().withKey(key).withValue(value)
