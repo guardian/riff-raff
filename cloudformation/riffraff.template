@@ -27,7 +27,69 @@
       },
       "DeletionPolicy" : "Retain"
     },
-
+    "DelegateAccessArtifactBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "ArtifactBucket" },
+        "PolicyDocument": {
+          "Statement": {
+            "Action": [
+              "s3:Get*",
+              "s3:List*",
+              "s3:Put*",
+              "s3:AbortMultipartUpload"
+            ],
+            "Effect": "Allow",
+            "Resource": {
+              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }, "/*" ] ]
+            },
+            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+          }
+        }
+      }
+    },
+    "DelegateAccessBuildBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "BuildBucket" },
+        "PolicyDocument": {
+          "Statement": {
+            "Action": [
+              "s3:Get*",
+              "s3:List*",
+              "s3:Put*",
+              "s3:AbortMultipartUpload"
+            ],
+            "Effect": "Allow",
+            "Resource": {
+              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }, "/*" ] ]
+            },
+            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+          }
+        }
+      }
+    },
+    "DelegateAccessTagBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "TagBucket" },
+        "PolicyDocument": {
+          "Statement": {
+            "Action": [
+              "s3:Get*",
+              "s3:List*",
+              "s3:Put*",
+              "s3:AbortMultipartUpload"
+            ],
+            "Effect": "Allow",
+            "Resource": {
+              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }, "/*" ] ]
+            },
+            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+          }
+        }
+      }
+    },
     "Build" : {
       "Type": "AWS::IAM::Group"
     },
