@@ -40,9 +40,10 @@
               "s3:AbortMultipartUpload"
             ],
             "Effect": "Allow",
-            "Resource": {
-              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }, "/*" ] ]
-            },
+            "Resource": [
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }] ]},
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }, "/*" ] ]}
+            ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
               "arn:aws:iam::642631414762:root"
@@ -64,9 +65,10 @@
               "s3:AbortMultipartUpload"
             ],
             "Effect": "Allow",
-            "Resource": {
-              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }, "/*" ] ]
-            },
+            "Resource": [
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }] ]},
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }, "/*" ] ]}
+            ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
               "arn:aws:iam::642631414762:root"
@@ -88,9 +90,10 @@
               "s3:AbortMultipartUpload"
             ],
             "Effect": "Allow",
-            "Resource": {
-              "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }, "/*" ] ]
-            },
+            "Resource": [
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }] ]},
+              { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }, "/*" ] ]}
+            ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
               "arn:aws:iam::642631414762:root"
