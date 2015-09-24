@@ -43,7 +43,10 @@
             "Resource": {
               "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }, "/*" ] ]
             },
-            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+            "Principal": {"AWS": [
+              "arn:aws:iam::163592447864:root",
+              "arn:aws:iam::642631414762:root"
+            ] }
           }
         }
       }
@@ -64,7 +67,10 @@
             "Resource": {
               "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }, "/*" ] ]
             },
-            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+            "Principal": {"AWS": [
+              "arn:aws:iam::163592447864:root",
+              "arn:aws:iam::642631414762:root"
+            ] }
           }
         }
       }
@@ -85,7 +91,10 @@
             "Resource": {
               "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }, "/*" ] ]
             },
-            "Principal": {"AWS": ["arn:aws:iam::163592447864:root"] }
+            "Principal": {"AWS": [
+              "arn:aws:iam::163592447864:root",
+              "arn:aws:iam::642631414762:root"
+            ] }
           }
         }
       }
