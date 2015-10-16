@@ -46,7 +46,8 @@
             ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root"
+              "arn:aws:iam::642631414762:root",
+              "arn:aws:iam::743583969668:root"
             ] }
           }
         }
@@ -71,7 +72,8 @@
             ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root"
+              "arn:aws:iam::642631414762:root",
+              "arn:aws:iam::743583969668:root"
             ] }
           }
         }
@@ -96,7 +98,8 @@
             ],
             "Principal": {"AWS": [
               "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root"
+              "arn:aws:iam::642631414762:root",
+              "arn:aws:iam::743583969668:root"
             ] }
           }
         }
