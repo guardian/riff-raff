@@ -8,6 +8,8 @@ import persistence.Persistence.store.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 
+import scala.util.control.NonFatal
+
 object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
   var sub: Option[Subscription] = None
@@ -49,7 +51,11 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
     if (conf.Configuration.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
-        Deployments.deploy(params)
+        try {
+          Deployments.deploy(params)
+        } catch {
+          case NonFatal(e) => log.error(s"Could not deploy $params", e)
+        }
       } else {
         log.info(s"Due to change freeze, continuous deployment is skipping ${params.toString}")
       }
