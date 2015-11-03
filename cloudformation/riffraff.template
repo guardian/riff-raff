@@ -1,4 +1,16 @@
 {
+  "Mappings" : {
+    "Constants": {
+      "AccountPrincipalsWithAccess" : {
+        "Value": [
+          "arn:aws:iam::163592447864:root",
+          "arn:aws:iam::642631414762:root",
+          "arn:aws:iam::743583969668:root",
+          "arn:aws:iam::308506855511:root"
+        ]
+      }
+    }
+  },
   "Resources" : {
     "ArtifactBucket" : {
       "Type" : "AWS::S3::Bucket",
@@ -44,11 +56,7 @@
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }] ]},
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "ArtifactBucket" }, "/*" ] ]}
             ],
-            "Principal": {"AWS": [
-              "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root",
-              "arn:aws:iam::743583969668:root"
-            ] }
+            "Principal": {"AWS": { "Fn::FindInMap" : [ "Constants", "AccountPrincipalsWithAccess", "Value" ] } }
           }
         }
       }
@@ -70,11 +78,7 @@
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }] ]},
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "BuildBucket" }, "/*" ] ]}
             ],
-            "Principal": {"AWS": [
-              "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root",
-              "arn:aws:iam::743583969668:root"
-            ] }
+            "Principal": {"AWS": { "Fn::FindInMap" : [ "Constants", "AccountPrincipalsWithAccess", "Value" ] } }
           }
         }
       }
@@ -96,11 +100,7 @@
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }] ]},
               { "Fn::Join": ["", [ "arn:aws:s3:::", { "Ref": "TagBucket" }, "/*" ] ]}
             ],
-            "Principal": {"AWS": [
-              "arn:aws:iam::163592447864:root",
-              "arn:aws:iam::642631414762:root",
-              "arn:aws:iam::743583969668:root"
-            ] }
+            "Principal": {"AWS": { "Fn::FindInMap" : [ "Constants", "AccountPrincipalsWithAccess", "Value" ] } }
           }
         }
       }
