@@ -65,7 +65,7 @@ The parameters that can be supplied are the same as those on the history web UI 
   * `pageSize` - Number of results provided per page
   * `status` - One of `Completed`, `Running`, `Failed` or `Not running` (waiting to run)
   * `stage` - One of the stages as show in the results pages
-  * `project` - Case insensitive search by project
+  * `projectName` - Case insensitive search by project
   * `deployer` - The name of the deployer as it appears on the search results
 
 Deploy view endpoint
