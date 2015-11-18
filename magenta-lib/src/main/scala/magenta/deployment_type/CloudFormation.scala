@@ -5,7 +5,7 @@ import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
 
-object CloudFormation extends DeploymentType {
+object CloudFormation extends DeploymentType with UpToDateImage {
   val name = "cloud-formation"
   def documentation =
     """Update an AWS CloudFormation template.
@@ -64,8 +64,6 @@ object CloudFormation extends DeploymentType {
       |The CFN parameter to
     """.stripMargin
   ).default("AMI")
-
-  def latestImage(tags: Map[String, String])(implicit keyRing: KeyRing): Option[String] = ???
 
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
