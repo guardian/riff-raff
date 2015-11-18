@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import magenta.KeyRing
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
@@ -51,6 +52,20 @@ object CloudFormation extends DeploymentType {
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
+  val amiTags = Param[Map[String,String]]("amiTags",
+    documentation =
+    """
+      |Specify the set of tags to use to find the latest AMI
+    """.stripMargin
+  ).default(Map.empty)
+  val amiParameter = Param[String]("amiParameter",
+    documentation =
+    """
+      |The CFN parameter to
+    """.stripMargin
+  ).default("AMI")
+
+  def latestImage(tags: Map[String, String])(implicit keyRing: KeyRing): Option[String] = ???
 
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
@@ -63,7 +78,10 @@ object CloudFormation extends DeploymentType {
 
       val globalParams = templateParameters(pkg)
       val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
-      val combinedParams = globalParams ++ stageParams
+      val amiParam: Option[(String, String)] = if (amiTags(pkg).nonEmpty) {
+        latestImage(amiTags(pkg)).map(amiParameter(pkg) ->)
+      } else None
+      val combinedParams = globalParams ++ stageParams ++ amiParam
 
       List(
         UpdateCloudFormationTask(
