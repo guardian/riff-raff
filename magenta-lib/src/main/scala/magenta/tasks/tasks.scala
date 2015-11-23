@@ -162,6 +162,7 @@ case class S3Upload( stack: Stack,
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
 }
 
+
 case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
@@ -339,3 +340,21 @@ case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(i
   def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs") ++ extraFlags :+ path
   override lazy val description = s"$path on ${host.name}"
 }
+
+case class Lambda(
+                   file: File,
+                   functionName: String)
+                 (implicit val keyRing: KeyRing) extends Task with Lambda {
+  def description = s"Updating $functionName Lambda"
+  def verbose = description
+
+  def execute(stopFlag: =>  Boolean) {
+
+    val client = lambdaClient(keyRing)
+    MessageBroker.verbose("Starting update Lambda")
+    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, file))
+    MessageBroker.verbose("Finished update Lambda")
+  }
+
+}
+

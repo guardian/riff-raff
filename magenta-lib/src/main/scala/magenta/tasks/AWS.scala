@@ -24,7 +24,7 @@ trait S3 extends AWS {
 }
 
 trait Lambda extends AWS {
-  def client(keyRing: KeyRing) = new AWSLambdaClient(credentials(keyRing))
+  def lambdaClient(keyRing: KeyRing) = new AWSLambdaClient(credentials(keyRing))
   def lambdaUpdateFunctionCodeRequest(functionName: String, file: File): UpdateFunctionCodeRequest = {
 
     val fileSize = file.length
