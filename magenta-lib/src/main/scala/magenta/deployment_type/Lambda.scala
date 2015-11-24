@@ -19,7 +19,7 @@ object Lambda extends DeploymentType  {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       val fName = functionName(pkg)
       assert(functionName.get(pkg).isDefined, "functionName must be defined")
-    List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName))
+    List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), s"$fName-${parameters.stage}"))
 
     }
   }
