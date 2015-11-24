@@ -341,7 +341,7 @@ case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(i
   override lazy val description = s"$path on ${host.name}"
 }
 
-case class Lambda(
+case class UpdateLambda(
                    file: File,
                    functionName: String)
                  (implicit val keyRing: KeyRing) extends Task with Lambda {
@@ -351,9 +351,9 @@ case class Lambda(
   def execute(stopFlag: =>  Boolean) {
 
     val client = lambdaClient(keyRing)
-    MessageBroker.verbose("Starting update Lambda")
+    MessageBroker.verbose(s"Starting update $functionName Lambda")
     client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, file))
-    MessageBroker.verbose("Finished update Lambda")
+    MessageBroker.verbose(s"Finished update $functionName Lambda")
   }
 
 }

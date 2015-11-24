@@ -1,9 +1,9 @@
 package magenta.deployment_type
 
 import java.io.File
-import magenta.tasks.{UpdateLambda, Lambda}
+import magenta.tasks.UpdateLambda
 
-object Lambda extends DeploymentType with S3AclParams  {
+object Lambda extends DeploymentType  {
   val name = "aws-lambda"
   val documentation =
     """
@@ -17,8 +17,9 @@ object Lambda extends DeploymentType with S3AclParams  {
   def perAppActions = {
     case "updateLambda" => (pkg) => (resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      assert(functionName.get(pkg).isDefined, "functionName must be defined"))
-  List(UpdateLambda)
+      val fName = functionName(pkg)
+      assert(functionName.get(pkg).isDefined, "functionName must be defined")
+    List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName))
 
     }
   }
