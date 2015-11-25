@@ -47,41 +47,6 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     )
   }
 
-  "AWS Lambda" should "have a updateLambda action" in {
-
-    val data: Map[String, JValue] = Map(
-      "functionNames" ->(
-      "CODE" -> "myLambda"
-        )
-    )
-
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", new File("/tmp/packages"))
-
-    Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
-      List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
-    ))
-
-  }
-
-  it should "throw an AssertionError if a required mapping is missing" in {
-    val badData: Map[String, JValue] = Map(
-      "functionNames" ->(
-        "BADSTAGE" -> "myInvalidStageLambda"
-        )
-
-    )
-
-    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
-
-    val thrown = the[AssertionError] thrownBy {
-      Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
-        List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
-        ))
-    }
-
-    thrown.getMessage should equal ("assertion failed: functionName must be defined for stage CODE")
-  }
-
   it should "take a pattern list for cache control" in {
     val data: Map[String, JValue] = Map(
       "bucket" -> "bucket-1234",
@@ -99,6 +64,39 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
           List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
       )
     )
+  }
+
+  "AWS Lambda" should "have a updateLambda action" in {
+
+    val data: Map[String, JValue] = Map(
+      "functionNames" ->(
+        "CODE" -> "myLambda"
+        )
+    )
+
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", new File("/tmp/packages"))
+
+    Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+      List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
+      ))
+  }
+
+  it should "throw an AssertionError if a required mapping is missing" in {
+    val badData: Map[String, JValue] = Map(
+      "functionNames" ->(
+        "BADSTAGE" -> "myLambda"
+        )
+    )
+
+    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
+
+    val thrown = the[AssertionError] thrownBy {
+      Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+        List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
+        ))
+    }
+
+    thrown.getMessage should equal ("assertion failed: functionName must be defined for stage CODE")
   }
 
   "executable web app package type" should "have a default user of jvmuser" in {
