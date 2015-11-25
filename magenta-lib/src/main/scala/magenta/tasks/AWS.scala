@@ -66,8 +66,6 @@ object S3 {
   }
 }
 
-
-
 trait ASG extends AWS {
   def elb: ELB = ELB
 

@@ -162,7 +162,6 @@ case class S3Upload( stack: Stack,
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
 }
 
-
 case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
   def commandLine = CommandLocator conditional "block-load-balancer"
 }
