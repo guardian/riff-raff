@@ -43,19 +43,6 @@ trait Lambda extends AWS {
   }
 }
 
-object Lambda {
-  def lambdaUpdateFunctionCodeRequest(functionName: String, file: File): UpdateFunctionCodeRequest = {
-
-    val fileSize = file.length
-    val stream = new FileInputStream(file)
-    val buffer = stream.getChannel.map(READ_ONLY, 0, fileSize)
-    val request = new UpdateFunctionCodeRequest
-    request.withFunctionName(functionName)
-    request.withZipFile(buffer)
-    request
-  }
-}
-
 object S3 {
   def putObjectRequest(bucket: String, key: String, file: File, cacheControlHeader: Option[String], contentType: Option[String], publicReadAcl: Boolean) = {
     val metaData = new ObjectMetadata

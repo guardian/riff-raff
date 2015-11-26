@@ -351,7 +351,7 @@ case class UpdateLambda(
 
     val client = lambdaClient(keyRing)
     MessageBroker.verbose(s"Starting update $functionName Lambda")
-    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, file))
+    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, file))
     MessageBroker.verbose(s"Finished update $functionName Lambda")
   }
 
