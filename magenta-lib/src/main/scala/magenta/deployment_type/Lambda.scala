@@ -8,14 +8,14 @@ object Lambda extends DeploymentType  {
   val name = "aws-lambda"
   val documentation =
     """
-      |Provides one deploy action, `updateLambda`, that runs Lambda Update Function Code using the package file which should be a single file named lambda.zip.
+      |Provides one deploy action, `updateLambda`, that runs Lambda Update Function Code using the package files which can be specified per stage.
     """.stripMargin
   
 
   //required configuration, you cannot upload without setting these
   val functions = Param[Map[String, Map[String, String]]]("functions",
     documentation =
-      """Map of Stage to Lambda function names.
+      """Map of Stage to Lambda functions. 'filename' field is optional and if not specified defaults to lambda.zip
         |e.g.
         |        "functions": {
         |          "CODE": {
