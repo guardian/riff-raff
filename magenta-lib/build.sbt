@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
     "com.decodified" %% "scala-ssh" % "0.7.0" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
     "ch.qos.logback" % "logback-classic" % "1.1.2",
-    "com.amazonaws" % "aws-java-sdk" % "1.9.14",
+    "com.amazonaws" % "aws-java-sdk" % "1.10.35",
     "org.scalatest" %% "scalatest" % "2.2.3" % "test",
     "org.mockito" % "mockito-core" % "1.10.19" % "test",
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",

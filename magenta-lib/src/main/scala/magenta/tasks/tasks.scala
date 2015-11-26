@@ -339,3 +339,21 @@ case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(i
   def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs") ++ extraFlags :+ path
   override lazy val description = s"$path on ${host.name}"
 }
+
+case class UpdateLambda(
+                   file: File,
+                   functionName: String)
+                 (implicit val keyRing: KeyRing) extends Task with Lambda {
+  def description = s"Updating $functionName Lambda"
+  def verbose = description
+
+  def execute(stopFlag: =>  Boolean) {
+
+    val client = lambdaClient(keyRing)
+    MessageBroker.verbose(s"Starting update $functionName Lambda")
+    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, file))
+    MessageBroker.verbose(s"Finished update $functionName Lambda")
+  }
+
+}
+

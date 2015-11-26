@@ -7,15 +7,40 @@ import com.amazonaws.services.ec2.AmazonEC2Client
 import com.amazonaws.services.ec2.model.{ Tag => EC2Tag, _ }
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.{ Instance => ELBInstance, _ }
+import com.amazonaws.services.lambda.AWSLambdaClient
+import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.CannedAccessControlList.PublicRead
 import com.amazonaws.services.s3.model.{ ObjectMetadata, PutObjectRequest }
 import java.io.File
 import magenta._
 import scala.collection.JavaConversions._
+import java.io.File
+import java.io.FileInputStream
+import java.nio.channels.FileChannel.MapMode._
 
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
+}
+
+trait Lambda extends AWS {
+
+  def lambdaClient(implicit keyRing: KeyRing) = {
+    val client = new AWSLambdaClient(credentials(keyRing))
+    client.setEndpoint("lambda.eu-west-1.amazonaws.com")
+    client
+  }
+
+  def lambdaUpdateFunctionCodeRequest(functionName: String, file: File): UpdateFunctionCodeRequest = {
+
+    val fileSize = file.length
+    val stream = new FileInputStream(file)
+    val buffer = stream.getChannel.map(READ_ONLY, 0, fileSize)
+    val request = new UpdateFunctionCodeRequest
+    request.withFunctionName(functionName)
+    request.withZipFile(buffer)
+    request
+  }
 }
 
 object S3 {
