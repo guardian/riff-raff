@@ -71,7 +71,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val data: Map[String, JValue] = Map(
       "functions" ->(
         "CODE" -> {
-         "name" -> "myLambda"
+          "name" -> "myLambda"
         }
         )
     )
@@ -87,7 +87,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val badData: Map[String, JValue] = Map(
       "functions" ->(
         "BADSTAGE" -> {
-          "name" -> "myLambda"}
+          "name" -> "myLambda"
+        }
         )
     )
 
