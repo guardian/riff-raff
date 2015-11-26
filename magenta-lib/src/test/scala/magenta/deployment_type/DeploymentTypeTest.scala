@@ -69,8 +69,10 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
   "AWS Lambda" should "have a updateLambda action" in {
 
     val data: Map[String, JValue] = Map(
-      "functionNames" ->(
-        "CODE" -> "myLambda"
+      "functions" ->(
+        "CODE" -> {
+         "name" -> "myLambda"
+        }
         )
     )
 
@@ -83,8 +85,9 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
   it should "throw an exception if a required mapping is missing" in {
     val badData: Map[String, JValue] = Map(
-      "functionNames" ->(
-        "BADSTAGE" -> "myLambda"
+      "functions" ->(
+        "BADSTAGE" -> {
+          "name" -> "myLambda"}
         )
     )
 
@@ -96,7 +99,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
         ))
     }
 
-    thrown.getMessage should equal ("functionName must be defined for stage CODE")
+    thrown.getMessage should equal ("Function not defined for stage CODE")
   }
 
   "executable web app package type" should "have a default user of jvmuser" in {

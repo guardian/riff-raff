@@ -13,13 +13,19 @@ object Lambda extends DeploymentType  {
   
 
   //required configuration, you cannot upload without setting these
-  val functionNames = Param[Map[String, String]]("functionNames",
+  val functions = Param[Map[String, Map[String, String]]]("functions",
     documentation =
       """Map of Stage to Lambda function names.
         |e.g.
-        |        "functionNames": {
-        |          "CODE": 'myLambda-CODE',
-        |          "PROD": 'myLambda-PROD'
+        |        "functions": {
+        |          "CODE": {
+        |           "name": "myLambda-CODE",
+        |           "filename": "myLambda-CODE.zip",
+        |          },
+        |          "PROD": {
+        |           "name": "myLambda-PROD",
+        |           "filename": "myLambda-PROD.zip",
+        |          }
         |        }
       """.stripMargin
   ).default(Map.empty)
@@ -27,14 +33,18 @@ object Lambda extends DeploymentType  {
   def perAppActions = {
     case "updateLambda" => (pkg) => (resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      val fNames = functionNames(pkg)
       val stage = parameters.stage.name
-      val fName = fNames get stage
-      fName match{
-        case None => MessageBroker.fail(s"functionName must be defined for stage $stage")
-        case Some(fName) => List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName))
+
+      val functionDefinition = functions(pkg).getOrElse(stage, MessageBroker.fail(s"Function not defined for stage $stage"))
+      val functionName = functionDefinition.getOrElse("name", MessageBroker.fail(s"Function name not defined for stage $stage"))
+      val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
+      val maybeListOfTasks = for {
+        definition <- functionDefinition
+      } yield {
+        UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName)
       }
-    List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName.get))
+
+      maybeListOfTasks.toList
 
     }
   }
