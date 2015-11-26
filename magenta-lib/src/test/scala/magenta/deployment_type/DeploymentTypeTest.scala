@@ -58,9 +58,9 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+    S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be(
       List(
-        S3Upload(UnnamedStack, Stage("CODE"),"bucket-1234",new File("/tmp/packages/static-files"),
+        S3Upload(UnnamedStack, Stage("CODE"), "bucket-1234", new File("/tmp/packages/static-files"),
           List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
       )
     )
@@ -81,7 +81,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
       ))
   }
 
-  it should "throw an AssertionError if a required mapping is missing" in {
+  it should "throw an exception if a required mapping is missing" in {
     val badData: Map[String, JValue] = Map(
       "functionNames" ->(
         "BADSTAGE" -> "myLambda"
@@ -90,13 +90,13 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
 
-    val thrown = the[AssertionError] thrownBy {
+    val thrown = the[FailException] thrownBy {
       Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
         ))
     }
 
-    thrown.getMessage should equal ("assertion failed: functionName must be defined for stage CODE")
+    thrown.getMessage should equal ("functionName must be defined for stage CODE")
   }
 
   "executable web app package type" should "have a default user of jvmuser" in {

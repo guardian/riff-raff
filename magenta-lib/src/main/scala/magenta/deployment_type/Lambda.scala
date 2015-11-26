@@ -1,6 +1,7 @@
 package magenta.deployment_type
 
 import java.io.File
+import magenta.MessageBroker
 import magenta.tasks.UpdateLambda
 
 object Lambda extends DeploymentType  {
@@ -29,7 +30,10 @@ object Lambda extends DeploymentType  {
       val fNames = functionNames(pkg)
       val stage = parameters.stage.name
       val fName = fNames get stage
-      assert(fName.isDefined, s"functionName must be defined for stage $stage")
+      fName match{
+        case None => MessageBroker.fail(s"functionName must be defined for stage $stage")
+        case Some(fName) => List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName))
+      }
     List(UpdateLambda(new File(pkg.srcDir.getPath + "/lambda.zip"), fName.get))
 
     }
