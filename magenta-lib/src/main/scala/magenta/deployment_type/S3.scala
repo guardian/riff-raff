@@ -10,7 +10,7 @@ object S3 extends DeploymentType with S3AclParams {
   val documentation =
     """
       |Provides one deploy action, `uploadStaticFiles`, that uploads the package files to an S3 bucket. In order for this to work, magenta
-      |must have credentials that are valid to write to the bucket in the sepcified location.
+      |must have credentials that are valid to write to the bucket in the specified location.
       |
       |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
       |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.

@@ -15,7 +15,10 @@ object Lambda extends DeploymentType  {
   //required configuration, you cannot upload without setting these
   val functions = Param[Map[String, Map[String, String]]]("functions",
     documentation =
-      """Map of Stage to Lambda functions. `name` is the Lambda `FunctionName`. The `filename` field is optional and if not specified defaults to `lambda.zip`
+      """
+        |In order for this to work, magenta must have credentials that are able to perform `lambda:UpdateFunctionCode` on the specified resources.
+        |
+        |Map of Stage to Lambda functions. `name` is the Lambda `FunctionName`. The `filename` field is optional and if not specified defaults to `lambda.zip`
         |e.g.
         |
         |        "functions": {
