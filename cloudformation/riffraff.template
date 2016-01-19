@@ -10,7 +10,8 @@
           "arn:aws:iam::308506855511:root",
           "arn:aws:iam::865473395570:root",
           "arn:aws:iam::021353022223:root",
-          "arn:aws:iam::942464564246:root"
+          "arn:aws:iam::942464564246:root",
+          "arn:aws:iam::563563610310:root"
         ]
       }
     }
