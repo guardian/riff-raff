@@ -111,6 +111,7 @@ object Login extends Controller with Logging with LoginActions {
         Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
       case Some(token) =>
         GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
+          require(validator.isAuthorised(identity), validator.authorisationError(identity).getOrElse("Unknown error"))
           val redirect = request.session.get(LOGIN_ORIGIN_KEY) match {
             case Some(url) => Redirect(url)
             case None => Redirect(routes.Application.index())
