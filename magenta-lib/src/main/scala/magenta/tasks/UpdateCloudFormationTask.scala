@@ -8,7 +8,12 @@ import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
-case class TemplateParameter(key:String, default:Boolean)
+object UpdateCloudFormationTask {
+  trait ParameterValue
+  case class StringValue(value: String) extends ParameterValue
+  case class UseExistingValue() extends ParameterValue
+  case class TemplateParameter(key:String, default:Boolean)
+}
 
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
@@ -18,11 +23,13 @@ case class UpdateCloudFormationTask(
   stack: Stack,
   createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
 
+  import UpdateCloudFormationTask._
+
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    val actualParameters: Map[String, Option[String]] = combineParameters(templateParameters)
+    val actualParameters: Map[String, ParameterValue] = combineParameters(templateParameters)
 
     MessageBroker.info(s"Parameters: $actualParameters")
 
@@ -41,16 +48,16 @@ case class UpdateCloudFormationTask(
     }
   }
 
-  def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, Option[String]] = {
-    def addParametersIfInTemplate(params: Map[String, Option[String]])(nameValues: Iterable[(String, String)]): Map[String, Option[String]] = {
+  def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, ParameterValue] = {
+    def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> Some(value))
+        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> StringValue(value))
         case (completeParams, _) => completeParams
       }
     }
 
-    val requiredParams: Map[String, Option[String]] = templateParameters.filterNot(_.default).map(_.key -> None).toMap
-      val userAndDefaultParams = requiredParams ++ parameters.mapValues(Some(_))
+    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue()).toMap
+      val userAndDefaultParams = requiredParams ++ parameters.mapValues(StringValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
       Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
@@ -114,6 +121,7 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
 }
 
 trait CloudFormation extends AWS {
+  import UpdateCloudFormationTask._
   val CAPABILITY_IAM = "CAPABILITY_IAM"
 
   def client(implicit keyRing: KeyRing) = {
@@ -125,22 +133,22 @@ trait CloudFormation extends AWS {
   def validateTemplate(templateBody: String)(implicit keyRing: KeyRing) =
     client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
 
-  def updateStack(name: String, templateBody: String, parameters: Map[String, Option[String]])(implicit keyRing: KeyRing) =
+  def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.updateStack(
       new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
-          case (k, Some(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, None) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+          case (k, StringValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue()) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
         } toSeq: _*
       )
     )
 
-  def createStack(name: String, templateBody: String, parameters: Map[String, Option[String]])(implicit keyRing: KeyRing) =
+  def createStack(name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.createStack(
       new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
-          case (k, Some(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, None) => MessageBroker.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+          case (k, StringValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue()) => MessageBroker.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
          } toSeq: _*
       )
     )

@@ -3,9 +3,9 @@ package magenta.deployment_type
 import java.io.File
 
 import magenta._
-import magenta.tasks.{TemplateParameter, CheckUpdateEventsTask, UpdateCloudFormationTask}
+import magenta.tasks._
+import magenta.tasks.UpdateCloudFormationTask._
 import org.json4s.JsonAST.JValue
-import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
 import fixtures._
 
@@ -49,9 +49,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
     val combined = task.combineParameters(templateParameters)
 
     combined should be(Map(
-      "param1" -> Some("value1"),
-      "Stack" -> Some("cfn"),
-      "Stage" -> Some("PROD")
+      "param1" -> StringValue("value1"),
+      "Stack" -> StringValue("cfn"),
+      "Stage" -> StringValue("PROD")
       ))
   }
 
@@ -70,9 +70,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
     val combined = task.combineParameters(templateParameters)
 
     combined should be(Map(
-      "param1" -> Some("value1"),
-      "param3" -> None,
-      "Stage" -> Some(PROD.name)
+      "param1" -> StringValue("value1"),
+      "param3" -> UseExistingValue(),
+      "Stage" -> StringValue(PROD.name)
     ))
   }
 }
