@@ -16,6 +16,7 @@ libraryDependencies ++= Seq(
     "org.mockito" % "mockito-core" % "1.10.19" % "test",
     "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
+    "org.parboiled" %% "parboiled" % "2.0.1",
     "com.gu" %% "management" % guardianManagementVersion,
     "com.gu" %% "fastly-api-client" % "0.2.4",
     "io.reactivex" %% "rxscala" % "0.23.0"

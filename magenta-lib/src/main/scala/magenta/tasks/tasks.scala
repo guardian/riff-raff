@@ -1,14 +1,13 @@
 package magenta
 package tasks
 
+
 import scala.io.Source
 import java.net.Socket
-import scala._
 import java.io.{IOException, FileNotFoundException, File}
 import java.net.URL
 import magenta.deployment_type.PatternValue
 import dispatch.classic._
-import org.apache.http.{HttpEntity, HttpResponse}
 
 object CommandLocator {
   var rootPath = "/opt/deploy/bin"
@@ -149,11 +148,13 @@ case class S3Upload( stack: Stack,
   }
 
   def contentTypeLookup(fileName:String) = {
-    val Extension = """^.*\.([^.]*)$""".r
-    fileName match {
-      case Extension(ext) => mimeTypeMap.get(ext)
-      case _ => None
+    import org.parboiled2._
+    import org.parboiled2.CharPredicate._
+    class ExtensionParser(val input: ParserInput) extends Parser {
+      def FileName = rule { oneOrMore(Visible -- '.') ~ '.' ~ Extension ~ EOI }
+      def Extension = rule { capture(oneOrMore(Visible)) ~> (s => mimeTypeMap.get(s)) }
     }
+    new ExtensionParser(fileName).FileName.run().getOrElse(None)
   }
 
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
