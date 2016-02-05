@@ -49,9 +49,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
     val combined = task.combineParameters(templateParameters)
 
     combined should be(Map(
-      "param1" -> StringValue("value1"),
-      "Stack" -> StringValue("cfn"),
-      "Stage" -> StringValue("PROD")
+      "param1" -> SpecifiedValue("value1"),
+      "Stack" -> SpecifiedValue("cfn"),
+      "Stage" -> SpecifiedValue("PROD")
       ))
   }
 
@@ -70,9 +70,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
     val combined = task.combineParameters(templateParameters)
 
     combined should be(Map(
-      "param1" -> StringValue("value1"),
-      "param3" -> UseExistingValue(),
-      "Stage" -> StringValue(PROD.name)
+      "param1" -> SpecifiedValue("value1"),
+      "param3" -> UseExistingValue,
+      "Stage" -> SpecifiedValue(PROD.name)
     ))
   }
 }

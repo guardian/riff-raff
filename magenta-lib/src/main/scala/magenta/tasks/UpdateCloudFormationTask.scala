@@ -9,9 +9,9 @@ import scalax.file.Path
 import collection.convert.wrapAsScala._
 
 object UpdateCloudFormationTask {
-  trait ParameterValue
-  case class StringValue(value: String) extends ParameterValue
-  case class UseExistingValue() extends ParameterValue
+  sealed trait ParameterValue
+  case class SpecifiedValue(value: String) extends ParameterValue
+  case object UseExistingValue extends ParameterValue
   case class TemplateParameter(key:String, default:Boolean)
 }
 
@@ -51,13 +51,13 @@ case class UpdateCloudFormationTask(
   def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> StringValue(value))
+        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
         case (completeParams, _) => completeParams
       }
     }
 
-    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue()).toMap
-      val userAndDefaultParams = requiredParams ++ parameters.mapValues(StringValue.apply)
+    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
+      val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
       Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
@@ -137,8 +137,8 @@ trait CloudFormation extends AWS {
     client.updateStack(
       new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
-          case (k, StringValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, UseExistingValue()) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
         } toSeq: _*
       )
     )
@@ -147,8 +147,8 @@ trait CloudFormation extends AWS {
     client.createStack(
       new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
-          case (k, StringValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, UseExistingValue()) => MessageBroker.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => MessageBroker.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
          } toSeq: _*
       )
     )
