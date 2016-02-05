@@ -8,32 +8,21 @@ import com.amazonaws.services.cloudformation.model._
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
+case class TemplateParameter(key:String, default:Boolean)
+
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
   template: Path,
-  parameters: Map[String, Option[String]],
+  parameters: Map[String, String],
   stage: Stage,
   stack: Stack,
   createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
-  
-  case class TemplateParameter(key:String, default:Boolean)
 
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
     val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    def addParametersIfInTemplate(params: Map[String, Option[String]])(nameValues: Iterable[(String,  String)]): Map[String, Option[String]] = {
-      nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> Some(value))
-        case (completeParams, _) => completeParams
-      }
-    }
-
-    val requiredParams: Map[String,Option[String]] = templateParameters.filterNot(_.default).map(_.key -> None).toMap
-
-    val actualParameters = addParametersIfInTemplate(requiredParams ++ parameters)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
-    )
+    val actualParameters: Map[String, Option[String]] = combineParameters(templateParameters)
 
     MessageBroker.info(s"Parameters: $actualParameters")
 
@@ -50,6 +39,22 @@ case class UpdateCloudFormationTask(
     } else {
       MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
+  }
+
+  def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, Option[String]] = {
+    def addParametersIfInTemplate(params: Map[String, Option[String]])(nameValues: Iterable[(String, String)]): Map[String, Option[String]] = {
+      nameValues.foldLeft(params) {
+        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> Some(value))
+        case (completeParams, _) => completeParams
+      }
+    }
+
+    val requiredParams: Map[String, Option[String]] = templateParameters.filterNot(_.default).map(_.key -> None).toMap
+      val userAndDefaultParams = requiredParams ++ parameters.mapValues(Some(_))
+
+    addParametersIfInTemplate(userAndDefaultParams)(
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
+    )
   }
 
   def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"

@@ -63,7 +63,7 @@ object CloudFormation extends DeploymentType {
 
       val globalParams = templateParameters(pkg)
       val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
-      val combinedParams = (globalParams ++ stageParams).mapValues(Some(_))
+      val combinedParams = globalParams ++ stageParams
 
       List(
         UpdateCloudFormationTask(
