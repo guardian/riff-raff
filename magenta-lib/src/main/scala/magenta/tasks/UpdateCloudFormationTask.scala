@@ -2,7 +2,13 @@ package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
 import magenta.deployment_type.AmiCloudFormationParameter._
+import magenta.deployment_type.AmiCloudFormationParameter.amiParameter
+import magenta.deployment_type.AmiCloudFormationParameter.amiTags
+import magenta.deployment_type.AmiCloudFormationParameter.cloudFormationStackName
+import magenta.deployment_type.AmiCloudFormationParameter.name
+import magenta.deployment_type.CloudFormation._
 import magenta.deployment_type.UpToDateImage
+import magenta.tasks.UpdateCloudFormationTask.SpecifiedValue
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -15,42 +21,8 @@ object UpdateCloudFormationTask {
   case class SpecifiedValue(value: String) extends ParameterValue
   case object UseExistingValue extends ParameterValue
   case class TemplateParameter(key:String, default:Boolean)
-}
 
-case class UpdateCloudFormationTask(
-  cloudFormationStackName: String,
-  template: Path,
-  parameters: Map[String, String],
-  stage: Stage,
-  stack: Stack,
-  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
-
-  import UpdateCloudFormationTask._
-
-  def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
-      .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
-
-    val actualParameters: Map[String, ParameterValue] = combineParameters(templateParameters)
-
-    MessageBroker.info(s"Parameters: $actualParameters")
-
-    if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
-      try {
-        CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
-      } catch {
-        case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
-          MessageBroker.info("Cloudformation update has no changes to template or parameters")
-      }
-    else if (createStackIfAbsent) {
-      MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, template.string, actualParameters)
-    } else {
-      MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
-    }
-  }
-
-  def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, ParameterValue] = {
+  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String], amiParam: Option[(String, String)]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -59,11 +31,51 @@ case class UpdateCloudFormationTask(
     }
 
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-      val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
+    val userAndDefaultParams = requiredParams ++ (parameters ++ amiParam).mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
       Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
     )
+  }
+}
+
+case class UpdateCloudFormationTask(
+  cloudFormationStackName: String,
+  template: Path,
+  userParameters: Map[String, String],
+  amiParamName: String,
+  amiTags: Map[String, String],
+  stage: Stage,
+  stack: Stack,
+  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task with UpToDateImage {
+
+  import UpdateCloudFormationTask._
+
+  def execute(stopFlag: => Boolean) = if (!stopFlag) {
+    val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
+      .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
+
+    val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
+      latestImage(amiTags).map(amiParamName -> _)
+    } else None
+
+    val parameters: Map[String, ParameterValue] = combineParameters(stack, stage, templateParameters, userParameters, amiParam)
+
+    MessageBroker.info(s"Parameters: $parameters")
+
+    if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
+      try {
+        CloudFormation.updateStack(cloudFormationStackName, template.string, parameters)
+      } catch {
+        case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
+          MessageBroker.info("Cloudformation update has no changes to template or parameters")
+      }
+    else if (createStackIfAbsent) {
+      MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
+      CloudFormation.createStack(cloudFormationStackName, template.string, parameters)
+    } else {
+      MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
+    }
   }
 
   def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"

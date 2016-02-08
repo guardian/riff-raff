@@ -5,7 +5,7 @@ import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
 
-object CloudFormation extends DeploymentType with UpToDateImage {
+object CloudFormation extends DeploymentType {
   val name = "cloud-formation"
   def documentation =
     """Update an AWS CloudFormation template.
@@ -76,16 +76,15 @@ object CloudFormation extends DeploymentType with UpToDateImage {
 
       val globalParams = templateParameters(pkg)
       val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
-      val amiParam: Option[(String, String)] = if (amiTags(pkg).nonEmpty) {
-        latestImage(amiTags(pkg)).map(amiParameter(pkg) ->)
-      } else None
-      val combinedParams = globalParams ++ stageParams ++ amiParam
+      val params = globalParams ++ stageParams
 
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
-          combinedParams,
+          params,
+          amiParameter(pkg),
+          amiTags(pkg),
           parameters.stage,
           stack,
           createStackIfAbsent(pkg)

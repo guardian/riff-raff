@@ -26,6 +26,8 @@ class CloudFormationTest extends FlatSpec with Matchers {
         cfnStackName,
         Path(p.srcDir) \ Path.fromString("""cloud-formation/cfn.json"""),
         Map.empty,
+        "AMI",
+        Map.empty,
         PROD,
         NamedStack("cfn"),
         true
@@ -35,18 +37,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
   }
 
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
-    val task = UpdateCloudFormationTask(
-      "testStack",
-      Path.fromString("""cloud-formation/cfn.json"""),
-      Map("param1" -> "value1"),
-      PROD,
-      NamedStack("cfn"),
-      true
-    )
-
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = task.combineParameters(templateParameters)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -56,18 +49,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
   }
 
   it should "default required parameters to use existing parameters" in {
-    val task = UpdateCloudFormationTask(
-      "testStack",
-      Path.fromString("""cloud-formation/cfn.json"""),
-      Map("param1" -> "value1"),
-      PROD,
-      NamedStack("cfn"),
-      true
-    )
-
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = task.combineParameters(templateParameters)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
