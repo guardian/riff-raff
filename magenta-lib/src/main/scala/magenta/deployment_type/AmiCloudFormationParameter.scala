@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.tasks.{UpdateAmiCloudFormationParameter, CheckUpdateEventsTask, UpdateCloudFormationTask}
+import magenta.tasks.{UpdateAmiCloudFormationParameterTask, CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
 
@@ -45,7 +45,7 @@ object AmiCloudFormationParameter extends DeploymentType with UpToDateImage {
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
       List(
-        UpdateAmiCloudFormationParameter(
+        UpdateAmiCloudFormationParameterTask(
           fullCloudFormationStackName,
           amiParameter(pkg),
           amiTags(pkg),

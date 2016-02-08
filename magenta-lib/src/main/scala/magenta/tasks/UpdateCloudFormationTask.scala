@@ -82,7 +82,7 @@ case class UpdateCloudFormationTask(
   def verbose = description
 }
 
-case class UpdateAmiCloudFormationParameter(
+case class UpdateAmiCloudFormationParameterTask(
   cloudFormationStackName: String,
   amiParameter: String,
   amiTags: Map[String, String],
