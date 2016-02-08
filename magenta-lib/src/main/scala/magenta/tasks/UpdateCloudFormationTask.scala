@@ -1,6 +1,8 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
+import magenta.deployment_type.AmiCloudFormationParameter._
+import magenta.deployment_type.UpToDateImage
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -65,6 +67,30 @@ case class UpdateCloudFormationTask(
   }
 
   def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
+  def verbose = description
+}
+
+case class UpdateAmiCloudFormationParameter(
+  cloudFormationStackName: String,
+  amiParameter: String,
+  amiTags: Map[String, String],
+  stage: Stage,
+  stack: Stack)(implicit val keyRing: KeyRing) extends Task with UpToDateImage {
+
+  import UpdateCloudFormationTask._
+
+  def execute(stopFlag: => Boolean) = if (!stopFlag) {
+    latestImage(amiTags) match {
+      case Some(ami) =>
+        MessageBroker.info(s"Resolved AMI: $ami")
+        CloudFormation.updateStackParams(cloudFormationStackName, Map(amiParameter -> SpecifiedValue(ami)))
+      case None =>
+        val tagsStr = amiTags.map { case (k, v) => s"k: v" }.mkString(", ")
+        MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
+    }
+  }
+
+  def description = s"Updating AMI in CloudFormation stack: $cloudFormationStackName"
   def verbose = description
 }
 
@@ -136,6 +162,16 @@ trait CloudFormation extends AWS {
   def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.updateStack(
       new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+        } toSeq: _*
+      )
+    )
+
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
+    client.updateStack(
+      new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
           case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
           case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
