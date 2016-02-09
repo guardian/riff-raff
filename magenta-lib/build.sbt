@@ -19,7 +19,9 @@ libraryDependencies ++= Seq(
     "org.parboiled" %% "parboiled" % "2.0.1",
     "com.gu" %% "management" % guardianManagementVersion,
     "com.gu" %% "fastly-api-client" % "0.2.4",
-    "io.reactivex" %% "rxscala" % "0.23.0"
+    "io.reactivex" %% "rxscala" % "0.23.0",
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.7.1",
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.1"
 )
 
 resourceDirectory in Compile := baseDirectory.value / "docs"
