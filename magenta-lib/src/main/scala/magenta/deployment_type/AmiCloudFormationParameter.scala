@@ -1,8 +1,6 @@
 package magenta.deployment_type
 
-import magenta.tasks.{UpdateAmiCloudFormationParameterTask, CheckUpdateEventsTask, UpdateCloudFormationTask}
-
-import scalax.file.Path
+import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
 
 object AmiCloudFormationParameter extends DeploymentType with UpToDateImage {
   val name = "ami-cloudformation-parameter"
@@ -23,16 +21,10 @@ object AmiCloudFormationParameter extends DeploymentType with UpToDateImage {
     documentation = "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD"
   ).default(true)
   val amiTags = Param[Map[String,String]]("amiTags",
-    documentation =
-    """
-      |Specify the set of tags to use to find the latest AMI
-    """.stripMargin
+    documentation = "Specify the set of tags to use to find the latest AMI"
   )
   val amiParameter = Param[String]("amiParameter",
-    documentation =
-    """
-      |The CFN parameter to
-    """.stripMargin
+    documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
   override def perAppActions = {

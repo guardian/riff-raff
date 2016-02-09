@@ -97,7 +97,7 @@ case class UpdateAmiCloudFormationParameterTask(
         MessageBroker.info(s"Resolved AMI: $ami")
         CloudFormation.updateStackParams(cloudFormationStackName, Map(amiParameter -> SpecifiedValue(ami)))
       case None =>
-        val tagsStr = amiTags.map { case (k, v) => s"k: v" }.mkString(", ")
+        val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
         MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
     }
   }

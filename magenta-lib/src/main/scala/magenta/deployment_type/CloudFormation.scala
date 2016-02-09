@@ -1,6 +1,5 @@
 package magenta.deployment_type
 
-import magenta.KeyRing
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
@@ -53,16 +52,10 @@ object CloudFormation extends DeploymentType {
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
   val amiTags = Param[Map[String,String]]("amiTags",
-    documentation =
-    """
-      |Specify the set of tags to use to find the latest AMI
-    """.stripMargin
+    documentation = "Specify the set of tags to use to find the latest AMI"
   ).default(Map.empty)
   val amiParameter = Param[String]("amiParameter",
-    documentation =
-    """
-      |The CFN parameter to
-    """.stripMargin
+    documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
   override def perAppActions = {
