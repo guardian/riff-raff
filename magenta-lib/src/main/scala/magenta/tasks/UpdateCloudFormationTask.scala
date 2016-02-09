@@ -92,10 +92,22 @@ case class UpdateAmiCloudFormationParameterTask(
   import UpdateCloudFormationTask._
 
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
+    val existingParameters = CloudFormation.describeStack(cloudFormationStackName) match {
+      case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
+        cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
+      case Some(_) =>
+        MessageBroker.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
+      case None =>
+        MessageBroker.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
+    }
+
     latestImage(amiTags) match {
       case Some(ami) =>
         MessageBroker.info(s"Resolved AMI: $ami")
-        CloudFormation.updateStackParams(cloudFormationStackName, Map(amiParameter -> SpecifiedValue(ami)))
+        CloudFormation.updateStackParams(
+          cloudFormationStackName,
+          existingParameters + (amiParameter -> SpecifiedValue(ami))
+        )
       case None =>
         val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
         MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
