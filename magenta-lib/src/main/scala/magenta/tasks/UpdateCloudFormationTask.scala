@@ -5,6 +5,7 @@ import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
+import org.joda.time.{Duration, DateTime}
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
@@ -124,8 +125,13 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
 
       lastSeenEvent match {
         case None => events.find(updateStart) foreach (e => {
-          reportEvent(e)
-          check(Some(e))
+          val age = new Duration(new DateTime(e.getTimestamp), new DateTime()).getStandardSeconds
+          if (age > 30) {
+            MessageBroker.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+          } else {
+            reportEvent(e)
+            check(Some(e))
+          }
         })
         case Some(event) => {
           val newEvents = events.takeWhile(_.getTimestamp.after(event.getTimestamp))
