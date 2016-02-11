@@ -75,4 +75,50 @@ class CloudFormationTest extends FlatSpec with Matchers {
       "Stage" -> SpecifiedValue(PROD.name)
     ))
   }
+
+  "JsonConverter" should "convert YAML to JSON" in {
+    val yaml =
+      """
+        |AWSTemplateFormatVersion: 2010-09-09
+        |Description: 'Example CloudFormation template'
+        |Parameters:
+        |  FirstParam:
+        |    Description: An EC2 key pair
+        |    Type: AWS::EC2::KeyPair::KeyName
+      """.stripMargin
+
+    val expectedJson =
+      """
+        |{
+        |  "AWSTemplateFormatVersion":"2010-09-09",
+        |  "Description":"Example CloudFormation template",
+        |  "Parameters":{
+        |    "FirstParam":{
+        |      "Description":"An EC2 key pair",
+        |      "Type":"AWS::EC2::KeyPair::KeyName"
+        |    }
+        |  }
+        |}
+      """.stripMargin.trim
+
+    val yamlFile = Path.createTempFile(suffix = ".yml")
+    try {
+      yamlFile.append(yaml)
+      JsonConverter.convert(yamlFile) should be(expectedJson)
+    } finally {
+      yamlFile.delete()
+    }
+  }
+
+  "JsonConverter" should "assume a file with a non-YAML extension already contains JSON" in {
+    val json = """{"some":"json"}"""
+    val jsonFile = Path.createTempFile(suffix = ".template")
+    try {
+      jsonFile.append(json)
+      JsonConverter.convert(jsonFile) should be(json)
+    } finally {
+      jsonFile.delete()
+    }
+
+  }
 }

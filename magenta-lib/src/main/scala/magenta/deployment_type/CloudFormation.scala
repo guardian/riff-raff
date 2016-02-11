@@ -17,6 +17,9 @@ object CloudFormation extends DeploymentType {
       |This deployment type is not currently recommended for continuous deployment, as CloudFormation
       |will fail if you try to update a CloudFormation stack with a configuration that matches its
       | current state.
+      |
+      |If your CloudFormation template is in YAML format, it will be automatically converted to JSON
+      |before it is used.
     """.stripMargin
 
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
@@ -29,7 +32,7 @@ object CloudFormation extends DeploymentType {
     documentation = "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD"
   ).default(true)
   val templatePath = Param[String]("templatePath",
-    documentation = "Location of template to use within package"
+    documentation = "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
   ).default("""cloud-formation/cfn.json""")
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."

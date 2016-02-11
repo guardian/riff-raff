@@ -1,6 +1,9 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -15,6 +18,26 @@ object UpdateCloudFormationTask {
   case class TemplateParameter(key:String, default:Boolean)
 }
 
+object JsonConverter {
+
+  /**
+    * Return the template's content as JSON,
+    * converting it from YAML if necessary.
+    */
+  def convert(template: Path): String = template.extension match {
+    case Some("yml") | Some("yaml") =>
+      MessageBroker.info(s"Converting ${template.name} from YAML to JSON")
+      val tree = new ObjectMapper(new YAMLFactory()).readTree(template.string)
+      new ObjectMapper()
+        .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
+        .writeValueAsString(tree)
+    case _ =>
+      // Assume it's already in JSON, so just return the file contents
+      template.string
+  }
+
+}
+
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
   template: Path,
@@ -26,7 +49,8 @@ case class UpdateCloudFormationTask(
   import UpdateCloudFormationTask._
 
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
+    val templateJson = JsonConverter.convert(template)
+    val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val actualParameters: Map[String, ParameterValue] = combineParameters(templateParameters)
@@ -35,14 +59,14 @@ case class UpdateCloudFormationTask(
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
-        CloudFormation.updateStack(cloudFormationStackName, template.string, actualParameters)
+        CloudFormation.updateStack(cloudFormationStackName, templateJson, actualParameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
           MessageBroker.info("Cloudformation update has no changes to template or parameters")
       }
     else if (createStackIfAbsent) {
       MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, template.string, actualParameters)
+      CloudFormation.createStack(cloudFormationStackName, templateJson, actualParameters)
     } else {
       MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
