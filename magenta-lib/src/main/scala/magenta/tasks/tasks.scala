@@ -147,17 +147,13 @@ case class S3Upload( stack: Stack,
     s"$stackName$stageName${toRelative(file)}"
   }
 
-  def contentTypeLookup(fileName:String) = {
-    import org.parboiled2._
-    import org.parboiled2.CharPredicate._
-    class ExtensionParser(val input: ParserInput) extends Parser {
-      def FileName = rule { oneOrMore(Visible -- '.') ~ '.' ~ Extension ~ EOI }
-      def Extension = rule { capture(oneOrMore(Visible)) ~> (s => mimeTypeMap.get(s)) }
-    }
-    new ExtensionParser(fileName).FileName.run().getOrElse(None)
-  }
+  def contentTypeLookup(fileName: String) =
+    fileExtension(fileName).flatMap(mimeTypeMap.get)
 
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
+
+  private def fileExtension(fileName: String) =
+    fileName.split('.').drop(1).lastOption
 
   private def resolveFiles(file: File): Seq[File] =
     Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
