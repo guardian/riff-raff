@@ -78,6 +78,7 @@ object CloudFormation extends DeploymentType {
           params,
           amiParameter(pkg),
           amiTags(pkg),
+          lookup.getLatestAmi,
           parameters.stage,
           stack,
           createStackIfAbsent(pkg)

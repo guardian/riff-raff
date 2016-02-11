@@ -1,14 +1,6 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
-import magenta.deployment_type.AmiCloudFormationParameter._
-import magenta.deployment_type.AmiCloudFormationParameter.amiParameter
-import magenta.deployment_type.AmiCloudFormationParameter.amiTags
-import magenta.deployment_type.AmiCloudFormationParameter.cloudFormationStackName
-import magenta.deployment_type.AmiCloudFormationParameter.name
-import magenta.deployment_type.CloudFormation._
-import magenta.deployment_type.UpToDateImage
-import magenta.tasks.UpdateCloudFormationTask.SpecifiedValue
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -45,9 +37,10 @@ case class UpdateCloudFormationTask(
   userParameters: Map[String, String],
   amiParamName: String,
   amiTags: Map[String, String],
+  latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
-  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task with UpToDateImage {
+  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
 
   import UpdateCloudFormationTask._
 
@@ -56,7 +49,7 @@ case class UpdateCloudFormationTask(
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
-      latestImage(amiTags).map(amiParamName -> _)
+      latestImage(CloudFormation.region.name)(amiTags).map(amiParamName -> _)
     } else None
 
     val parameters: Map[String, ParameterValue] = combineParameters(stack, stage, templateParameters, userParameters, amiParam)
@@ -86,35 +79,37 @@ case class UpdateAmiCloudFormationParameterTask(
   cloudFormationStackName: String,
   amiParameter: String,
   amiTags: Map[String, String],
+  latestImage: String => Map[String, String] => Option[String],
   stage: Stage,
-  stack: Stack)(implicit val keyRing: KeyRing) extends Task with UpToDateImage {
+  stack: Stack)(implicit val keyRing: KeyRing) extends Task {
 
   import UpdateCloudFormationTask._
 
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val existingParameters = CloudFormation.describeStack(cloudFormationStackName) match {
+    val (existingParameters, currentAmi) = CloudFormation.describeStack(cloudFormationStackName) match {
       case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
-        cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
+        (cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
       case Some(_) =>
         MessageBroker.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
       case None =>
         MessageBroker.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
     }
 
-    latestImage(amiTags) match {
+    latestImage(CloudFormation.region.name)(amiTags) match {
+      case Some(sameAmi) if currentAmi == sameAmi =>
+        MessageBroker.info(s"Current AMI is the same as the resolved AMI ($sameAmi). No update to perform.")
       case Some(ami) =>
         MessageBroker.info(s"Resolved AMI: $ami")
-        CloudFormation.updateStackParams(
-          cloudFormationStackName,
-          existingParameters + (amiParameter -> SpecifiedValue(ami))
-        )
+        val parameters = existingParameters + (amiParameter -> SpecifiedValue(ami))
+        MessageBroker.info(s"Updating cloudformation stack params: $parameters")
+        CloudFormation.updateStackParams(cloudFormationStackName, parameters)
       case None =>
         val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
         MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
     }
   }
 
-  def description = s"Updating AMI in CloudFormation stack: $cloudFormationStackName"
+  def description = s"Update $amiParameter to latest AMI with tags $amiTags in CloudFormation stack: $cloudFormationStackName"
   def verbose = description
 }
 
@@ -174,8 +169,9 @@ trait CloudFormation extends AWS {
   import UpdateCloudFormationTask._
   val CAPABILITY_IAM = "CAPABILITY_IAM"
 
+  val region = Regions.EU_WEST_1
   def client(implicit keyRing: KeyRing) = {
-    com.amazonaws.regions.Region.getRegion(Regions.EU_WEST_1).createClient(
+    com.amazonaws.regions.Region.getRegion(region).createClient(
       classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
     )
   }
@@ -195,7 +191,11 @@ trait CloudFormation extends AWS {
 
   def updateStackParams(name: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.updateStack(
-      new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_IAM).withParameters(
+      new UpdateStackRequest()
+        .withStackName(name)
+        .withCapabilities(CAPABILITY_IAM)
+        .withUsePreviousTemplate(true)
+        .withParameters(
         parameters map {
           case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
           case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)

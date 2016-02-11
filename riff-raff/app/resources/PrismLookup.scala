@@ -145,15 +145,25 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
     }
 
     def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = {
-      get(pkg, app, parameters, stack, "instances") ++
-        get(pkg, app, parameters, stack, "hardware")
+      get(pkg, app, parameters, stack, "instances")
     }
 
-    def all: Seq[Host] = prism.get("/instances?_expand")(js => parseHosts(js, "instances")) ++
-                            prism.get("/hardware?_expand")(js => parseHosts(js, "hardware"))
+    def all: Seq[Host] = prism.get("/instances?_expand")(js => parseHosts(js, "instances"))
   }
 
   def stages: Seq[String] = prism.get("/stages"){ json => (json \ "data" \ "stages").as[Seq[String]] }
 
   def secretProvider = LookupSelector.secretProvider
+
+  case class Image(imageId: String, creationDate: DateTime)
+  implicit val imageReads = Json.reads[Image]
+  private def get(region: String, tags: Map[String, String]): Seq[Image] = {
+    val params = tags.map{ case (key, value) => s"tags.${key.urlEncode}=${value.urlEncode}" }.mkString("&")
+    prism.get(s"/images?$params"){ json =>
+      (json \ "data" \ "images").as[Seq[Image]]
+    }
+  }
+  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] =
+    get(region, tags).sortBy(-_.creationDate.getMillis).headOption.map(_.imageId)
+
 }

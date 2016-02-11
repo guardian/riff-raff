@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
 
-object AmiCloudFormationParameter extends DeploymentType with UpToDateImage {
+object AmiCloudFormationParameter extends DeploymentType {
   val name = "ami-cloudformation-parameter"
   def documentation =
     """Update an AMI parameter in a CloudFormation stack.
@@ -41,6 +41,7 @@ object AmiCloudFormationParameter extends DeploymentType with UpToDateImage {
           fullCloudFormationStackName,
           amiParameter(pkg),
           amiTags(pkg),
+          lookup.getLatestAmi,
           parameters.stage,
           stack
         ),

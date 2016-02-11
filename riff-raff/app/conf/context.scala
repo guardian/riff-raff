@@ -102,7 +102,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val staleMinutes: Int = configuration.getIntegerProperty("lookup.staleMinutes", 15)
     lazy val prismUrl = configuration.getStringProperty("lookup.prismUrl").getOrException("Prism URL not specified")
     lazy val timeoutSeconds = configuration.getIntegerProperty("lookup.timeoutSeconds", 30)
-    lazy val validation = configuration.getStringProperty("lookup.validation","false") == "true"
   }
 
   object mongo {
