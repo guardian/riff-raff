@@ -86,6 +86,8 @@ package object fixtures {
       }
 
       def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing(SystemUser(None))
+
+      def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] = ???
     }
   }
 
