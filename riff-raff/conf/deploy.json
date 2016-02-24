@@ -4,7 +4,8 @@
         "riff-raff":{
             "type":"autoscaling",
             "data":{
-                "bucket": "deploy-tools-dist"
+                "bucket": "deploy-tools-dist",
+                "publicReadAcl": false
             }
         }
     },
