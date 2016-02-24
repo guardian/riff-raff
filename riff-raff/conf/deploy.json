@@ -2,7 +2,7 @@
     "defaultStacks": ["deploy"],
     "packages":{
         "riff-raff":{
-            "type":"aws-s3",
+            "type":"autoscaling",
             "data":{
                 "bucket": "deploy-tools-dist"
             }
@@ -13,7 +13,7 @@
           "depends": ["deploy"]
       },
       "deploy": {
-          "actionsPerHost": ["riff-raff.uploadStaticFiles"]
+          "actionsPerHost": ["riff-raff.uploadArtifacts"]
       }
     }
 }
