@@ -1,13 +1,11 @@
 {
+    "defaultStacks": ["deploy"],
     "packages":{
         "riff-raff":{
-            "type":"executable-jar-webapp",
-            "apps":["deploy::node"],
+            "type":"autoscaling",
             "data":{
-                "port":"8080",
-                "healthcheck_paths":[
-                    "/"
-                ]
+                "bucket": "deploy-tools-dist",
+                "publicReadAcl": false
             }
         }
     },
@@ -16,10 +14,7 @@
           "depends": ["deploy"]
       },
       "deploy": {
-          "actionsPerHost": ["riff-raff.deploy"]
-      },
-      "self-deploy": {
-          "actionsPerHost": ["riff-raff.selfDeploy"]
+          "actionsPerHost": ["riff-raff.uploadArtifacts"]
       }
     }
 }
