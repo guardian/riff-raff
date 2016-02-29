@@ -370,9 +370,9 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val baseDir = new File(tempDir, "package")
     baseDir.mkdir()
 
-    val fileOne = new File(baseDir, "one.txt")
+    val fileOne = new File(baseDir, "one.test.txt")
     fileOne.createNewFile()
-    val fileTwo = new File(baseDir, "two.xpi")
+    val fileTwo = new File(baseDir, "two.test.xpi")
     fileTwo.createNewFile()
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")

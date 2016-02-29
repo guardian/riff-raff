@@ -3,6 +3,7 @@ import Keys._
 import play.twirl.sbt.Import._
 import com.typesafe.sbt.web.SbtWeb
 import com.gu.riffraff.artifact.RiffRaffArtifact
+import com.typesafe.sbt.packager.universal.UniversalPlugin
 
 object MagentaBuild extends Build {
   lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
@@ -19,9 +20,7 @@ object MagentaBuild extends Build {
   def magentaProject(name: String) = Project(name, file(name)).settings(magentaSettings: _*)
 
   def magentaPlayProject(name: String) = Project(name, file(name))
-    .enablePlugins(play.PlayScala)
-    .enablePlugins(SbtWeb)
-    .enablePlugins(RiffRaffArtifact)
+    .enablePlugins(play.PlayScala, SbtWeb, RiffRaffArtifact, UniversalPlugin)
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,

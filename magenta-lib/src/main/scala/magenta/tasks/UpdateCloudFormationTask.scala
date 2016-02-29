@@ -1,6 +1,9 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
@@ -32,6 +35,26 @@ object UpdateCloudFormationTask {
   }
 }
 
+object JsonConverter {
+
+  /**
+    * Return the template's content as JSON,
+    * converting it from YAML if necessary.
+    */
+  def convert(template: Path): String = template.extension match {
+    case Some("yml") | Some("yaml") =>
+      MessageBroker.info(s"Converting ${template.name} from YAML to JSON")
+      val tree = new ObjectMapper(new YAMLFactory()).readTree(template.string)
+      new ObjectMapper()
+        .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
+        .writeValueAsString(tree)
+    case _ =>
+      // Assume it's already in JSON, so just return the file contents
+      template.string
+  }
+
+}
+
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
   template: Path,
@@ -46,7 +69,8 @@ case class UpdateCloudFormationTask(
   import UpdateCloudFormationTask._
 
   def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val templateParameters = CloudFormation.validateTemplate(template.string).getParameters
+    val templateJson = JsonConverter.convert(template)
+    val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {

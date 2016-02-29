@@ -26,10 +26,15 @@ libraryDependencies ++= Seq(
   "org.scalatestplus" %% "play" % "1.2.0" % "test"
 )
 
-riffRaffPackageType := assembly.value
+riffRaffPackageType := (packageZipTarball in Universal).value
 
-mainClass in assembly := Some("play.core.server.NettyServer")
-fullClasspath in assembly += Attributed.blank(playPackageAssets.value)
+packageName in Universal := normalizedName.value
+topLevelDirectory in Universal := Some(normalizedName.value)
+
+def env(key: String): Option[String] = Option(System.getenv(key))
+riffRaffBuildIdentifier := env("TRAVIS_BUILD_NUMBER").getOrElse("DEV")
+riffRaffUploadArtifactBucket := Option("riffraff-artifact")
+riffRaffUploadManifestBucket := Option("riffraff-builds")
 
 ivyXML :=
   <dependencies>
@@ -38,13 +43,6 @@ ivyXML :=
     <exclude org="org.springframework"><!-- Because I don't like it. --></exclude>
     <exclude org="xpp3"></exclude>
   </dependencies>
-
-assemblyMergeStrategy in assembly <<= (assemblyMergeStrategy in assembly) {
-  (old) => {
-    case "play/core/server/ServerWithStop.class" => MergeStrategy.first
-    case x => old(x)
-  }
-}
 
 unmanagedClasspath in Test <+= (baseDirectory) map { bd => Attributed.blank(bd / "test") }
 
@@ -55,5 +53,3 @@ fork in Test := false
 lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
 
 magenta := riffRaffArtifact.value
-
-assemblyJarName in assembly := s"${name.value}.jar"

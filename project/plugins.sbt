@@ -18,4 +18,6 @@ addSbtPlugin("com.gu" % "sbt-teamcity-test-reporting-plugin" % "1.5")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
 
-addSbtPlugin("com.gu" % "riffraff-artifact" % "0.4")
+addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.8.3")
+
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.0.6")
