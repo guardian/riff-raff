@@ -21,6 +21,7 @@ trait Lookup {
   def stages: Seq[String]
   def data: DataLookup
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing
+  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String]
 }
 
 trait SecretProvider {
@@ -73,4 +74,6 @@ case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretPr
   }
 
   def stages = deployInfo.knownHostStages
+
+  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] = ???
 }

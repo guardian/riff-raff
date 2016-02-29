@@ -6,12 +6,12 @@ import magenta._
 import magenta.tasks._
 import magenta.tasks.UpdateCloudFormationTask._
 import org.json4s.JsonAST.JValue
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{Inside, FlatSpec, Matchers}
 import fixtures._
 
 import scalax.file.Path
 
-class CloudFormationTest extends FlatSpec with Matchers {
+class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
   "cloudformation deployment type" should "have an updateStack action" in {
@@ -21,32 +21,30 @@ class CloudFormationTest extends FlatSpec with Matchers {
     val cfnStackName = s"cfn-app-PROD"
     val p = DeploymentPackage("app", app, data, "cloudformation", new File("/tmp/packages/webapp"))
 
-    CloudFormation.perAppActions("updateStack")(p)(lookupEmpty, parameters(), stack) should be (List(
-      UpdateCloudFormationTask(
-        cfnStackName,
-        Path(p.srcDir) \ Path.fromString("""cloud-formation/cfn.json"""),
-        Map.empty,
-        PROD,
-        NamedStack("cfn"),
-        true
-      ),
-      CheckUpdateEventsTask(cfnStackName)
-    ))
+    inside(CloudFormation.perAppActions("updateStack")(p)(lookupEmpty, parameters(), stack)) {
+      case List(updateTask, checkTask) =>
+        inside(updateTask) {
+          case UpdateCloudFormationTask(stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>
+            stackName should be(cfnStackName)
+            path should be(Path(p.srcDir) \ Path.fromString( """cloud-formation/cfn.json"""))
+            userParams should be(Map.empty)
+            amiParam should be("AMI")
+            amiTags should be(Map.empty)
+            stage should be(PROD)
+            stack should be(NamedStack("cfn"))
+            ifAbsent should be(true)
+        }
+        inside(checkTask) {
+          case CheckUpdateEventsTask(updateStackName) =>
+            updateStackName should be(cfnStackName)
+        }
+    }
   }
 
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
-    val task = UpdateCloudFormationTask(
-      "testStack",
-      Path.fromString("""cloud-formation/cfn.json"""),
-      Map("param1" -> "value1"),
-      PROD,
-      NamedStack("cfn"),
-      true
-    )
-
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = task.combineParameters(templateParameters)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -56,18 +54,9 @@ class CloudFormationTest extends FlatSpec with Matchers {
   }
 
   it should "default required parameters to use existing parameters" in {
-    val task = UpdateCloudFormationTask(
-      "testStack",
-      Path.fromString("""cloud-formation/cfn.json"""),
-      Map("param1" -> "value1"),
-      PROD,
-      NamedStack("cfn"),
-      true
-    )
-
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = task.combineParameters(templateParameters)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),

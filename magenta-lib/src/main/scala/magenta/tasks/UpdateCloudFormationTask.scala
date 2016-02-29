@@ -8,6 +8,7 @@ import magenta.{MessageBroker, Stage, Stack, KeyRing}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
+import org.joda.time.{Duration, DateTime}
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
@@ -16,6 +17,22 @@ object UpdateCloudFormationTask {
   case class SpecifiedValue(value: String) extends ParameterValue
   case object UseExistingValue extends ParameterValue
   case class TemplateParameter(key:String, default:Boolean)
+
+  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String], amiParam: Option[(String, String)]): Map[String, ParameterValue] = {
+    def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
+      nameValues.foldLeft(params) {
+        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
+        case (completeParams, _) => completeParams
+      }
+    }
+
+    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
+    val userAndDefaultParams = requiredParams ++ (parameters ++ amiParam).mapValues(SpecifiedValue.apply)
+
+    addParametersIfInTemplate(userAndDefaultParams)(
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
+    )
+  }
 }
 
 object JsonConverter {
@@ -41,7 +58,10 @@ object JsonConverter {
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
   template: Path,
-  parameters: Map[String, String],
+  userParameters: Map[String, String],
+  amiParamName: String,
+  amiTags: Map[String, String],
+  latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
   createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
@@ -53,42 +73,68 @@ case class UpdateCloudFormationTask(
     val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    val actualParameters: Map[String, ParameterValue] = combineParameters(templateParameters)
+    val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
+      latestImage(CloudFormation.region.name)(amiTags).map(amiParamName -> _)
+    } else None
 
-    MessageBroker.info(s"Parameters: $actualParameters")
+    val parameters: Map[String, ParameterValue] = combineParameters(stack, stage, templateParameters, userParameters, amiParam)
+
+    MessageBroker.info(s"Parameters: $parameters")
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
-        CloudFormation.updateStack(cloudFormationStackName, templateJson, actualParameters)
+        CloudFormation.updateStack(cloudFormationStackName, template.string, parameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
           MessageBroker.info("Cloudformation update has no changes to template or parameters")
       }
     else if (createStackIfAbsent) {
       MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, templateJson, actualParameters)
+      CloudFormation.createStack(cloudFormationStackName, template.string, parameters)
     } else {
       MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
   }
 
-  def combineParameters(templateParameters: Seq[TemplateParameter]): Map[String, ParameterValue] = {
-    def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
-      nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
-        case (completeParams, _) => completeParams
-      }
+  def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
+  def verbose = description
+}
+
+case class UpdateAmiCloudFormationParameterTask(
+  cloudFormationStackName: String,
+  amiParameter: String,
+  amiTags: Map[String, String],
+  latestImage: String => Map[String, String] => Option[String],
+  stage: Stage,
+  stack: Stack)(implicit val keyRing: KeyRing) extends Task {
+
+  import UpdateCloudFormationTask._
+
+  def execute(stopFlag: => Boolean) = if (!stopFlag) {
+    val (existingParameters, currentAmi) = CloudFormation.describeStack(cloudFormationStackName) match {
+      case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
+        (cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
+      case Some(_) =>
+        MessageBroker.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
+      case None =>
+        MessageBroker.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
     }
 
-    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-      val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
-
-    addParametersIfInTemplate(userAndDefaultParams)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
-    )
+    latestImage(CloudFormation.region.name)(amiTags) match {
+      case Some(sameAmi) if currentAmi == sameAmi =>
+        MessageBroker.info(s"Current AMI is the same as the resolved AMI ($sameAmi). No update to perform.")
+      case Some(ami) =>
+        MessageBroker.info(s"Resolved AMI: $ami")
+        val parameters = existingParameters + (amiParameter -> SpecifiedValue(ami))
+        MessageBroker.info(s"Updating cloudformation stack params: $parameters")
+        CloudFormation.updateStackParams(cloudFormationStackName, parameters)
+      case None =>
+        val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
+        MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
+    }
   }
 
-  def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
+  def description = s"Update $amiParameter to latest AMI with tags $amiTags in CloudFormation stack: $cloudFormationStackName"
   def verbose = description
 }
 
@@ -103,8 +149,13 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
 
       lastSeenEvent match {
         case None => events.find(updateStart) foreach (e => {
-          reportEvent(e)
-          check(Some(e))
+          val age = new Duration(new DateTime(e.getTimestamp), new DateTime()).getStandardSeconds
+          if (age > 30) {
+            MessageBroker.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+          } else {
+            reportEvent(e)
+            check(Some(e))
+          }
         })
         case Some(event) => {
           val newEvents = events.takeWhile(_.getTimestamp.after(event.getTimestamp))
@@ -148,8 +199,9 @@ trait CloudFormation extends AWS {
   import UpdateCloudFormationTask._
   val CAPABILITY_IAM = "CAPABILITY_IAM"
 
+  val region = Regions.EU_WEST_1
   def client(implicit keyRing: KeyRing) = {
-    com.amazonaws.regions.Region.getRegion(Regions.EU_WEST_1).createClient(
+    com.amazonaws.regions.Region.getRegion(region).createClient(
       classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
     )
   }
@@ -160,6 +212,20 @@ trait CloudFormation extends AWS {
   def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.updateStack(
       new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+        } toSeq: _*
+      )
+    )
+
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
+    client.updateStack(
+      new UpdateStackRequest()
+        .withStackName(name)
+        .withCapabilities(CAPABILITY_IAM)
+        .withUsePreviousTemplate(true)
+        .withParameters(
         parameters map {
           case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
           case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)

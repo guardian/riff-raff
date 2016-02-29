@@ -54,6 +54,12 @@ object CloudFormation extends DeploymentType {
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
+  val amiTags = Param[Map[String,String]]("amiTags",
+    documentation = "Specify the set of tags to use to find the latest AMI"
+  ).default(Map.empty)
+  val amiParameter = Param[String]("amiParameter",
+    documentation = "The CloudFormation parameter name for the AMI"
+  ).default("AMI")
 
   override def perAppActions = {
     case "updateStack" => pkg => (lookup, parameters, stack) => {
@@ -66,13 +72,16 @@ object CloudFormation extends DeploymentType {
 
       val globalParams = templateParameters(pkg)
       val stageParams = templateStageParameters(pkg).lift.apply(parameters.stage.name).getOrElse(Map())
-      val combinedParams = globalParams ++ stageParams
+      val params = globalParams ++ stageParams
 
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
           Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
-          combinedParams,
+          params,
+          amiParameter(pkg),
+          amiTags(pkg),
+          lookup.getLatestAmi,
           parameters.stage,
           stack,
           createStackIfAbsent(pkg)
