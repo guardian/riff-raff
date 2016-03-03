@@ -47,17 +47,9 @@ object MongoDatastore extends Logging {
   def buildDatastore(app:Option[Application]) = try {
     if (Configuration.mongo.isConfigured) {
       val uri = MongoClientURI(Configuration.mongo.uri.get)
-      val client = MongoClient(uri)
-      val mongoDB = client(uri.database.get)
-
-      if ( uri.username.isEmpty || uri.password.isEmpty ||
-             mongoDB.authenticate(uri.username.get,new String(uri.password.get)) ) {
-        Some(new MongoDatastore(mongoDB, app.map(_.classloader)))
-      } else {
-        log.error("Authentication to mongoDB failed")
-        None
-      }
-
+      val mongoClient = MongoClient(uri)
+      val db = MongoDB(mongoClient, uri.database.get)
+      Some(new MongoDatastore(db, app.map(_.classloader)))
     } else None
   } catch {
     case e:Throwable =>
@@ -93,9 +85,9 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   override def collectionStats: Map[String, CollectionStats] = collections.map(coll => (coll.name, collectionStats(coll))).toMap
 
   // ensure indexes
-  deployCollection.ensureIndex("startTime")
-  deployLogCollection.ensureIndex("deploy")
-  apiKeyCollection.ensureIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
+  deployCollection.createIndex("startTime")
+  deployLogCollection.createIndex("deploy")
+  apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
   override def getPostDeployHooks = hooksCollection.find().flatMap{ dbo =>
     val criteria = HookCriteria.fromDBO(dbo.as[DBObject]("_id"))
