@@ -2,7 +2,7 @@
     "defaultStacks": ["deploy"],
     "packages":{
         "riff-raff":{
-            "type":"autoscaling",
+            "type":"self-deploy",
             "data":{
                 "bucket": "deploy-tools-dist",
                 "publicReadAcl": false
@@ -11,10 +11,13 @@
     },
     "recipes":{
       "default": {
-          "depends": ["deploy"]
+          "depends": ["uploadStep", "restartStep"]
       },
-      "deploy": {
+      "uploadStep": {
           "actionsPerHost": ["riff-raff.uploadArtifacts"]
+      },
+      "restartStep": {
+          "actionsPerHost": ["riff-raff.selfDeploy"]
       }
     }
 }
