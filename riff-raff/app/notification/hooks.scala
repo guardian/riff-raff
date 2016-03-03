@@ -57,7 +57,7 @@ case class HookConfig(id: UUID,
             val json = Try {
               Json.parse(body)
             }.toOption
-            urlRequest.post(json.getOrElse(body))
+            json.map(urlRequest.post(_)).getOrElse(urlRequest.post(body))
           }.getOrElse (
             urlRequest.post(Map[String, Seq[String]](
               "build" -> Seq(record.parameters.buildId),
