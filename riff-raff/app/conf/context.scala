@@ -181,10 +181,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
 
-  val version:String = Seq(
-    Manifest.asKeyValuePairs.get("Branch"),
-    Manifest.asKeyValuePairs.get("Build").orElse(Some("UNKNOWN"))
-  ).flatten.map(_.trim).mkString("/")
+  val version:String = Manifest.asKeyValuePairs.getOrElse("Build", "UNKNOWN")
 
   override def toString(): String = configuration.toString
 }
