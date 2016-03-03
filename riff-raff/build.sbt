@@ -6,8 +6,6 @@ resolvers ++= Seq(
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 )
 
-ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
-
 libraryDependencies ++= Seq(
   "com.gu" %% "management-play" % guardianManagementPlayVersion exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
   "com.gu" %% "management-logback" % guardianManagementVersion,
