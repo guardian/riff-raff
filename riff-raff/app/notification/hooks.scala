@@ -11,7 +11,10 @@ import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
 import persistence.{Persistence, MongoFormat, MongoSerialisable, DeployRecordDocument}
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.json.Json
 import play.api.libs.ws._
+
+import scala.util.Try
 
 case class Auth(user:String, password:String, scheme:WSAuthScheme=WSAuthScheme.BASIC)
 
@@ -49,9 +52,13 @@ case class HookConfig(id: UUID,
           urlRequest.get()
         }
         case POST => {
-          postBody.map(t =>
-            urlRequest.post(new HookTemplate(t, record, urlEncode = false).Template.run().get)
-          ).getOrElse (
+          postBody.map { t =>
+            val body = new HookTemplate(t, record, urlEncode = false).Template.run().get
+            val json = Try {
+              Json.parse(body)
+            }.toOption
+            urlRequest.post(json.getOrElse(body))
+          }.getOrElse (
             urlRequest.post(Map[String, Seq[String]](
               "build" -> Seq(record.parameters.buildId),
               "project" -> Seq(record.parameters.projectName),
