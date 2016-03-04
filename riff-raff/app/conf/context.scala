@@ -1,6 +1,6 @@
 package conf
 
-import _root_.resources.LookupSelector
+import resources.LookupSelector
 import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
@@ -11,11 +11,9 @@ import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import java.io.File
 import magenta._
-import java.net.URL
 import controllers.{routes, Logging}
 import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
 import java.util.UUID
-import scala.Some
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
 import deployment.{Deployments, DeployMetricsActor}
@@ -23,6 +21,7 @@ import utils.{UnnaturalOrdering, ScheduledAgent}
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
+import riffraff.BuildInfo
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -181,7 +180,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
 
-  val version:String = Manifest.asKeyValuePairs.getOrElse("Build", "UNKNOWN")
+  val version:String = BuildInfo.buildNumber
 
   override def toString(): String = configuration.toString
 }
@@ -197,12 +196,18 @@ object Management extends PlayManagement {
   val applicationName = Play.current.configuration.getString("application.name").getOrElse("RiffRaff")
 
   val pages = List(
-    new ManifestPage,
+    new BuildInfoPage,
     new HealthcheckManagementPage,
     new Switchboard(applicationName, Switches.all),
     StatusPage(applicationName, Metrics.all),
     new LogbackLevelPage(applicationName)
   )
+}
+
+class BuildInfoPage extends ManagementPage {
+  val path = "/management/manifest"
+  def get(req: HttpRequest) = response
+  lazy val response = PlainTextResponse(BuildInfo.toString)
 }
 
 object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard

@@ -1,12 +1,12 @@
-import java.net.InetAddress
-import java.util.Date
-
 import sbt._
 import Keys._
 import play.twirl.sbt.Import._
 import com.typesafe.sbt.web.SbtWeb
 import com.gu.riffraff.artifact.RiffRaffArtifact
 import com.typesafe.sbt.packager.universal.UniversalPlugin
+import sbtbuildinfo.{BuildInfoOption, BuildInfoPlugin}
+import sbtbuildinfo.BuildInfoPlugin.BuildInfoKey
+import sbtbuildinfo.BuildInfoKeys._
 
 object MagentaBuild extends Build {
   lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
@@ -15,19 +15,15 @@ object MagentaBuild extends Build {
 
   lazy val cli = magentaProject("magenta-cli") dependsOn(lib)
 
-  lazy val riffraff = magentaPlayProject("riff-raff") dependsOn(lib)
+  lazy val riffraff = magentaPlayProject("riff-raff", "riffraff") dependsOn(lib)
 
   val guardianManagementVersion = "5.35"
   val guardianManagementPlayVersion = "7.2"
 
   def magentaProject(name: String) = Project(name, file(name)).settings(magentaSettings: _*)
 
-  val buildNumber = System.getProperty("build.number", "DEV")
-  val branch = System.getProperty("build.vcs.branch", "DEV")
-  val vcsNumber = System.getProperty("build.vcs.number", "DEV")
-
-  def magentaPlayProject(name: String) = Project(name, file(name))
-    .enablePlugins(play.PlayScala, SbtWeb, RiffRaffArtifact, UniversalPlugin)
+  def magentaPlayProject(projectName: String, versionPackage: String) = Project(projectName, file(projectName))
+    .enablePlugins(play.PlayScala, SbtWeb, RiffRaffArtifact, UniversalPlugin, BuildInfoPlugin)
     .settings( magentaSettings: _* )
     .settings(
       testOptions in Test := Nil,
@@ -38,9 +34,13 @@ object MagentaBuild extends Build {
         "views.html.helper.magenta._",
         "com.gu.googleauth.AuthenticatedRequest"
       ),
-      resourceGenerators in Compile += Def.task {
-        buildFile((resourceManaged in Compile).value, branch, buildNumber, vcsNumber, streams.value)
-      }.taskValue
+      buildInfoKeys := Seq[BuildInfoKey](
+        name, version, scalaVersion, sbtVersion,
+        sbtbuildinfo.BuildInfoKey.constant("gitCommitId", System.getProperty("build.vcs.number", "DEV").dequote.trim),
+        sbtbuildinfo.BuildInfoKey.constant("buildNumber", System.getProperty("build.number", "DEV").dequote.trim)
+      ),
+      buildInfoOptions += BuildInfoOption.BuildTime,
+      buildInfoPackage := versionPackage
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
@@ -52,27 +52,7 @@ object MagentaBuild extends Build {
 
   val magentaVersion = "1.0"
 
-
   implicit def string2Dequote(s: String): Object {val dequote: String} = new {
     lazy val dequote = s.replace("\"", "")
-  }
-
-  def buildFile(outDir: File, branch: String, buildNum: String, vcsNum: String, s: TaskStreams) = {
-    val versionInfo = Map(
-      "Revision" -> vcsNum.dequote.trim,
-      "Branch" -> branch.dequote.trim,
-      "Build" -> buildNum.dequote.trim,
-      "Date" -> new Date().toString,
-      "Built-By" -> System.getProperty("user.name", "<unknown>"),
-      "Built-On" -> InetAddress.getLocalHost.getHostName)
-
-    val versionFileContents = (versionInfo map { case (x, y) => x + ": " + y }).toList.sorted
-
-    val versionFile = outDir / "version.txt"
-    s.log.debug("Writing to " + versionFile + ":\n   " + versionFileContents.mkString("\n   "))
-
-    IO.write(versionFile, versionFileContents mkString "\n")
-
-    Seq(versionFile)
   }
 }
