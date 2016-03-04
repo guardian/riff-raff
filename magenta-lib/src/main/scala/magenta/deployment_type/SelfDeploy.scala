@@ -23,16 +23,6 @@ object SelfDeploy extends DeploymentType with S3AclParams {
     """.stripMargin
   )
 
-  val prefixStage = Param[Boolean]("prefixStage",
-    documentation = "Whether to prefix `stage` to the S3 location`"
-  ).default(true)
-  val prefixPackage = Param[Boolean]("prefixPackage",
-    documentation = "Whether to prefix `package` to the S3 location"
-  ).default(true)
-  val prefixStack = Param[Boolean]("prefixStack",
-    documentation = "Whether to prefix `stack` to the S3 location"
-  ).default(true)
-
   val managementPort = Param[Int]("managementPort",
     "For deferred deployment only: The port of the management pages containing the location of the switchboard"
   ).default(18080)
@@ -52,10 +42,7 @@ object SelfDeploy extends DeploymentType with S3AclParams {
           parameters.stage,
           bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
           new File(pkg.srcDir.getPath + "/"),
-          prefixStage = prefixStage(pkg),
-          prefixStack = prefixStack(pkg),
-          prefixPackage = prefixPackage(pkg),
-          publicReadAcl = publicReadAcl(pkg)
+          publicReadAcl = false
         )
       )
   }
