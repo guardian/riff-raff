@@ -1,3 +1,7 @@
+#### 9th March 2016
+
+Moved from internal hosting to AWS.
+
 #### 10th February 2014
 
 Add the ability to publish messages on an AWS SNS topic.
