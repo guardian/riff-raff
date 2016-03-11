@@ -15,21 +15,27 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   var sub: Option[Subscription] = None
 
   def buildCandidates(builds: Observable[CIBuild]): Observable[CIBuild] =
-    (for {
+    for {
       (_, buildsPerJobAndBranch) <- builds.groupBy(b => (b.jobName, b.branchName))
       build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
-    } yield build).onErrorResumeNext(e => {
-      log.error("Problem polling builds for ContinuousDeployment", e)
-      buildCandidates(CIBuild.newBuilds)
-    })
+    } yield build
+
+  def buildsToDeploy(buildCandidates: Observable[CIBuild]): Observable[(ContinuousDeploymentConfig, CIBuild)] =
+    (for {
+      build <- buildCandidates
+      deployable <- Observable.from(getMatchesForSuccessfulBuilds(build, getContinuousDeploymentList))
+    } yield deployable)
 
   def init() {
-    val builds = buildCandidates(CIBuild.newBuilds)
-
-    sub = Some(builds.subscribe { b =>
-      getMatchesForSuccessfulBuilds(b, getContinuousDeploymentList) foreach  { x =>
-        runDeploy(getDeployParams(x))
+    val builds = buildsToDeploy(buildCandidates(CIBuild.newBuilds)).onErrorResumeNext{ _ match {
+      case NonFatal(e) =>
+        log.error("Problem polling builds for ContinuousDeployment", e)
+        buildsToDeploy(buildCandidates(CIBuild.newBuilds))
       }
+    }
+
+    sub = Some(builds.subscribe { x =>
+      runDeploy(getDeployParams(x))
     })
   }
 
