@@ -83,14 +83,17 @@ case class UpdateCloudFormationTask(
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
-        CloudFormation.updateStack(cloudFormationStackName, template.string, parameters)
+        CloudFormation.updateStack(cloudFormationStackName, templateJson, parameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
           MessageBroker.info("Cloudformation update has no changes to template or parameters")
+        case ase:AmazonServiceException if ase.getMessage contains "Template format error: JSON not well-formed" =>
+          MessageBroker.info(s"Cloudformation update failed with the following template content:\n$templateJson")
+          throw ase
       }
     else if (createStackIfAbsent) {
       MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, template.string, parameters)
+      CloudFormation.createStack(cloudFormationStackName, templateJson, parameters)
     } else {
       MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
