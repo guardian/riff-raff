@@ -62,7 +62,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
-  val hooksCollection = getCollection("hooks")
   val hookConfigsCollection = getCollection("hookConfigs")
   val authCollection = getCollection("auth")
   val deployJsonCollection = getCollection("deployJson")
@@ -70,7 +69,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val continuousDeployCollection = getCollection("continuousDeploy")
   val keyValuesCollection = getCollection("keyValues")
 
-  val collections = List(deployCollection, deployLogCollection, hooksCollection,
+  val collections = List(deployCollection, deployLogCollection, hookConfigsCollection,
     authCollection, deployJsonCollection, apiKeyCollection, continuousDeployCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
@@ -88,38 +87,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   deployCollection.createIndex("startTime")
   deployLogCollection.createIndex("deploy")
   apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
-
-  override def getPostDeployHooks = hooksCollection.find().flatMap{ dbo =>
-    val criteria = HookCriteria.fromDBO(dbo.as[DBObject]("_id"))
-    val action = HookAction.fromDBO(dbo)
-    criteria.flatMap(c => action.map(c ->))
-  }.toMap
-
-  override def getPostDeployHook(criteria: HookCriteria) =
-    logAndSquashExceptions[Option[HookAction]](Some("Requesting post deploy hook for %s" format criteria),None) {
-      hooksCollection.findOneByID(criteria.toDBO).flatMap(dbo => HookAction.fromDBO(dbo))
-    }
-
-  override def setPostDeployHook(criteria: HookCriteria, action: HookAction) {
-    logAndSquashExceptions(Some("Creating post deploy hook %s" format criteria),()) {
-      val criteriaId = MongoDBObject("_id" -> criteria.toDBO)
-      hooksCollection.findAndModify(
-        query = criteriaId,
-        update = criteriaId ++ action.toDBO,
-        upsert = true, fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew=false
-      )
-    }
-  }
-
-  override def deletePostDeployHook(criteria: HookCriteria) {
-    logAndSquashExceptions(Some("Deleting post deploy hook %s" format criteria),()) {
-      hooksCollection.findAndRemove(MongoDBObject("_id" -> criteria.toDBO))
-    }
-  }
-
 
   override def getPostDeployHook(id: UUID): Option[HookConfig] =
     logAndSquashExceptions[Option[HookConfig]](Some("Getting hook config for %s" format id), None) {
