@@ -18,7 +18,7 @@ libraryDependencies ++= Seq(
   "org.clapper" %% "markwrap" % "1.0.2",
   "com.rabbitmq" % "amqp-client" % "2.8.7",
   "org.scalatest" %% "scalatest" % "2.2.3" % "test",
-  "io.reactivex" %% "rxscala" % "0.23.0",
+  "io.reactivex" %% "rxscala" % "0.26.0",
   "org.parboiled" %% "parboiled" % "2.0.1",
   "com.adrianhurt" %% "play-bootstrap3" % "0.3",
   filters,
