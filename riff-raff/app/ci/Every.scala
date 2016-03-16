@@ -12,7 +12,7 @@ object Every {
               (buildRetriever: => Observable[T])
               (implicit ec: ExecutionContext): Observable[T] = {
     (for {
-      _ <- Observable.timer(1.second, frequency)
+      _ <- Observable.interval(1.second, frequency)
       builds <- buildRetriever
     } yield builds).publish.refCount
     // publish.refCount turns this from a 'cold' to a 'hot' observable (http://www.introtorx.com/content/v1.0.10621.0/14_HotAndColdObservables.html)

@@ -18,7 +18,9 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
     for {
       (_, buildsPerJobAndBranch) <- builds.groupBy(b => (b.jobName, b.branchName))
       build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
+      _ = log.debug(s"Candidate: $build")
     } yield build
+
 
   def buildsToDeploy(buildCandidates: Observable[CIBuild]): Observable[(ContinuousDeploymentConfig, CIBuild)] =
     (for {
