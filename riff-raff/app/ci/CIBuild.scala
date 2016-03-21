@@ -33,11 +33,14 @@ object CIBuild extends Logging {
 
   lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
-  lazy val newBuilds: Observable[CIBuild] =
-    (for {
+  lazy val newBuilds: Observable[CIBuild] = {
+    val buildsObs = (for {
       location <- (Every(pollingPeriod)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
       build <- Observable.from(S3Build.buildAt(location))
     } yield build).publish.refCount
+    buildsObs.doOnError(e => log.error(s"Error polling for new builds", e))
+    buildsObs
+  }
 
   lazy val initialFiles: Seq[S3Location] = for {
     location <- S3Build.buildJsons
