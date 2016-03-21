@@ -3,11 +3,12 @@ package ci
 import controllers.Logging
 import deployment.Deployments
 import lifecycle.LifecycleWithoutApp
-import magenta.{Build => MagentaBuild, DeployParameters, Deployer, RecipeName, Stage}
+import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
 import persistence.Persistence.store.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 
+import scala.util.Try
 import scala.util.control.NonFatal
 
 object ContinuousDeployment extends LifecycleWithoutApp with Logging {
@@ -25,7 +26,16 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   def buildsToDeploy(buildCandidates: Observable[CIBuild]): Observable[(ContinuousDeploymentConfig, CIBuild)] =
     (for {
       build <- buildCandidates
-      deployable <- Observable.from(getMatchesForSuccessfulBuilds(build, getContinuousDeploymentList))
+      deployable <- Observable.from(
+        Try {
+          val cdConfigs = getContinuousDeploymentList
+          getMatchesForSuccessfulBuilds(build, cdConfigs)
+        } recover {
+          case NonFatal(e) =>
+            log.error(s"Problem matching $build againt CD configs", e)
+            Nil
+        } get
+      )
     } yield deployable)
 
   def init() {
