@@ -34,10 +34,12 @@ object CIBuild extends Logging {
   lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
   lazy val newBuilds: Observable[CIBuild] = {
-    (for {
-      location <- (Every(pollingPeriod)(Observable.from(S3Build.buildJsons))).distinct if !initialFiles.contains(location)
+    val observable = for {
+      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
       build <- Observable.from(S3Build.buildAt(location))
-    } yield build).publish.refCount
+    } yield build
+    observable.publish.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
+    observable
       .doOnError(e => log.error(s"Error polling for new builds", e))
       .doOnNext(b => log.info(s"Found $b"))
       .doOnTerminate(log.info("Terminated whilst waiting for new builds"))
