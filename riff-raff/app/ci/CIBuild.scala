@@ -39,6 +39,8 @@ object CIBuild extends Logging {
       build <- Observable.from(S3Build.buildAt(location))
     } yield build).publish.refCount
     buildsObs.doOnError(e => log.error(s"Error polling for new builds", e))
+    buildsObs.doOnEach(b => log.info(s"Found $b"))
+    buildsObs.doOnTerminate(log.info("Terminated whilst waiting for new builds"))
     buildsObs
   }
 
