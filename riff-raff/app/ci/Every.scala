@@ -6,13 +6,14 @@ import rx.lang.scala.Observable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
-object Every {
+object Every extends Logging {
 
   def apply[T](frequency: Duration)
               (buildRetriever: => Observable[T])
               (implicit ec: ExecutionContext): Observable[T] = {
     (for {
       _ <- Observable.interval(1.second, frequency)
+      _ = log.debug("Ping!")
       builds <- buildRetriever
     } yield builds).publish.refCount
     // publish.refCount turns this from a 'cold' to a 'hot' observable (http://www.introtorx.com/content/v1.0.10621.0/14_HotAndColdObservables.html)
