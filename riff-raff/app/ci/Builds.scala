@@ -26,7 +26,7 @@ object Builds extends LifecycleWithoutApp with Logging {
     subscriptions = Seq(
       CIBuild.builds.subscribe ({ b =>
         buildsAgent.send(_ + b)
-      }, e => log.error(s"Build poller failed $e")),
+      }, e => log.error("Build poller failed", e)),
       CIBuild.jobs.subscribe { b =>
         jobsAgent.send(_ + b)
       }

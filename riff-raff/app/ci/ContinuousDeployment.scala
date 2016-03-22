@@ -48,7 +48,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
     sub = Some(builds.subscribe ({ x =>
       runDeploy(getDeployParams(x))
-    }, e => log.error(s"Problem looking for new CD candidates $e")))
+    }, e => log.error("Problem looking for new CD candidates", e)))
   }
 
   def shutdown() {
