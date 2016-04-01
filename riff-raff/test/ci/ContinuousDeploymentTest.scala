@@ -1,12 +1,14 @@
 package ci
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import org.joda.time.DateTime
 import magenta._
 import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
 import java.util.UUID
+
+import scala.util.{Failure, Success}
 
 class ContinuousDeploymentTest extends FlatSpec with Matchers {
 
@@ -43,4 +45,21 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
   val td2B392 = S3Build(45400, "tools::deploy2", "45400", "branch", "392", new DateTime(2013,1,25,15,34,47), "", "")
   val otherBranch = S3Build(45401, "tools::deploy2", "45401", "other", "393", new DateTime(2013,1,25,15,34,47), "", "")
 
+  it should "retry until finds success" in {
+    var i = 0
+    def failingFun() = {
+      if (i < 3) {
+        i = i + 1
+        throw new RuntimeException(s"erk $i")
+      }
+      else i
+    }
+
+    val success = ContinuousDeployment.retryUpTo(4)(failingFun)
+    success should be (Success(3))
+
+    i = 0
+    val failure = ContinuousDeployment.retryUpTo(2)(failingFun)
+    failure.isFailure should be (true)
+  }
 }

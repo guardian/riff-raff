@@ -47,7 +47,7 @@ trait DataStore extends DocumentStore {
   def deleteAuthorisation(email: String) {}
 
   def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] = None
-  def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] = Nil
+  def getContinuousDeploymentList():Iterable[ContinuousDeploymentConfig] = Nil
   def setContinuousDeployment(cd: ContinuousDeploymentConfig) {}
   def deleteContinuousDeployment(id: UUID) {}
 
