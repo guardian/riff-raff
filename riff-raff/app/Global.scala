@@ -9,12 +9,12 @@ import play.api.Application
 import play.api.mvc.Results.InternalServerError
 import play.api.mvc.{RequestHeader, Result, WithFilters}
 import play.filters.gzip.GzipFilter
-import utils.ScheduledAgent
+import utils.{HstsFilter, ScheduledAgent}
 
 import scala.collection.mutable
 import scala.concurrent.Future
 
-object Global extends WithFilters(new GzipFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
+object Global extends WithFilters(new GzipFilter() :: new HstsFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
 
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 
