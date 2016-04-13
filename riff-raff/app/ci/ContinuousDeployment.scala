@@ -8,7 +8,7 @@ import persistence.Persistence.store.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 
-import scala.util.Try
+import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 object ContinuousDeployment extends LifecycleWithoutApp with Logging {
@@ -16,39 +16,26 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   var sub: Option[Subscription] = None
 
   def buildCandidates(builds: Observable[CIBuild]): Observable[CIBuild] =
-    for {
+    (for {
       (_, buildsPerJobAndBranch) <- builds.groupBy(b => (b.jobName, b.branchName))
       build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
-      _ = log.debug(s"Candidate: $build")
-    } yield build
-
-
-  def buildsToDeploy(buildCandidates: Observable[CIBuild]): Observable[(ContinuousDeploymentConfig, CIBuild)] =
-    (for {
-      build <- buildCandidates
-      deployable <- Observable.from(
-        Try {
-          val cdConfigs = getContinuousDeploymentList
-          getMatchesForSuccessfulBuilds(build, cdConfigs)
-        } recover {
-          case NonFatal(e) =>
-            log.error(s"Problem matching $build againt CD configs", e)
-            Nil
-        } get
-      )
-    } yield deployable)
+    } yield build).onErrorResumeNext(e => {
+      log.error("Problem polling builds for ContinuousDeployment", e)
+      buildCandidates(CIBuild.newBuilds)
+    })
 
   def init() {
-    val builds = buildsToDeploy(buildCandidates(CIBuild.newBuilds)).onErrorResumeNext{ _ match {
-      case NonFatal(e) =>
-        log.error("Problem polling builds for ContinuousDeployment", e)
-        buildsToDeploy(buildCandidates(CIBuild.newBuilds))
-      }
-    }
+    val builds = buildCandidates(CIBuild.newBuilds)
 
-    sub = Some(builds.subscribe ({ x =>
-      runDeploy(getDeployParams(x))
-    }, e => log.error("Problem looking for new CD candidates", e)))
+    val cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+      log.error("Failed to retrieve CD configs")
+      Nil
+    }
+    sub = Some(builds.subscribe { b =>
+      getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
+        runDeploy(getDeployParams(x))
+      }
+    })
   }
 
   def shutdown() {
@@ -87,6 +74,13 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
       log.debug(s"Matching $build against $config")
       config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
+  }
+
+  def retryUpTo[T](maxAttempts: Int)(thunk: () => T): Try[T] = {
+    val thunkStream = Stream.continually(Try(thunk()))
+      .take(maxAttempts)
+
+    thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
   }
 }
 

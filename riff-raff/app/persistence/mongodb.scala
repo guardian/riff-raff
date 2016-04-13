@@ -159,7 +159,7 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     logAndSquashExceptions[Option[ContinuousDeploymentConfig]](Some("Getting continuous deploy config for %s" format id), None) {
       continuousDeployCollection.findOneByID(id).flatMap(ContinuousDeploymentConfig.fromDBO(_))
     }
-  override def getContinuousDeploymentList:Iterable[ContinuousDeploymentConfig] =
+  override def getContinuousDeploymentList():Iterable[ContinuousDeploymentConfig] =
     logAndSquashExceptions[Iterable[ContinuousDeploymentConfig]](Some("Getting all continuous deploy configs"), Nil) {
       continuousDeployCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
         .toIterable.flatMap(ContinuousDeploymentConfig.fromDBO(_))
