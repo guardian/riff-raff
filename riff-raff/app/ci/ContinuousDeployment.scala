@@ -27,7 +27,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
   def init() {
     val builds = buildCandidates(CIBuild.newBuilds)
 
-    val cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+    def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
       log.error("Failed to retrieve CD configs")
       Nil
     }
