@@ -16,6 +16,8 @@ import controllers.{Logging, routes}
 import lifecycle.{LifecycleWithoutApp, ShutdownWhenInactive}
 import java.util.UUID
 
+import com.amazonaws.ClientConfiguration
+import com.amazonaws.regions.{Region, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 
 import collection.mutable
@@ -58,7 +60,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
-    val dynamoClient = new AmazonDynamoDBAsyncClient(credentialsProviderChain(None, None))
+    val dynamoClient = Region.getRegion(Regions.EU_WEST_1).createClient(
+      classOf[AmazonDynamoDBAsyncClient],
+      credentialsProviderChain(None, None),
+      new ClientConfiguration()
+    )
   }
 
   object credentials {
