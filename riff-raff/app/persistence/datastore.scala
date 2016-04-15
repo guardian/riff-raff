@@ -46,11 +46,6 @@ trait DataStore extends DocumentStore {
   def setAuthorisation(auth: AuthorisationRecord) {}
   def deleteAuthorisation(email: String) {}
 
-  def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] = None
-  def getContinuousDeploymentList():Iterable[ContinuousDeploymentConfig] = Nil
-  def setContinuousDeployment(cd: ContinuousDeploymentConfig) {}
-  def deleteContinuousDeployment(id: UUID) {}
-
   def createApiKey(newKey: ApiKey) {}
   def getApiKeyList:Iterable[ApiKey] = Nil
   def getApiKey(key: String): Option[ApiKey] = None
