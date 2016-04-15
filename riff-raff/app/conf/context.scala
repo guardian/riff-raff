@@ -10,14 +10,19 @@ import logback.LogbackLevelPage
 import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import java.io.File
+
 import magenta._
-import controllers.{routes, Logging}
-import lifecycle.{ShutdownWhenInactive, LifecycleWithoutApp}
+import controllers.{Logging, routes}
+import lifecycle.{LifecycleWithoutApp, ShutdownWhenInactive}
 import java.util.UUID
+
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{Deployments, DeployMetricsActor}
-import utils.{UnnaturalOrdering, ScheduledAgent}
+import deployment.{DeployMetricsActor, Deployments}
+import utils.{ScheduledAgent, UnnaturalOrdering}
+
 import scala.concurrent.duration._
 import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
@@ -53,6 +58,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
+    val dynamoClient = new AmazonDynamoDBAsyncClient(credentialsProviderChain(None, None))
   }
 
   object credentials {
