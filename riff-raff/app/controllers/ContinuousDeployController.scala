@@ -3,9 +3,10 @@ package controllers
 import play.api.mvc.Controller
 import play.api.data.Forms._
 import play.api.data.Form
-import persistence.Persistence
+import persistence.{ContinuousDeploymentConfigRepository, Persistence}
 import java.util.UUID
-import ci.{Trigger, ContinuousDeploymentConfig}
+
+import ci.{ContinuousDeploymentConfig, Trigger}
 import org.joda.time.DateTime
 import utils.Forms.uuid
 
@@ -29,7 +30,7 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
   )
 
   def list = AuthAction { implicit request =>
-    val configs = Persistence.store.getContinuousDeploymentList.toSeq.sortBy(q => (q.projectName, q.stage))
+    val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.toSeq.sortBy(q => (q.projectName, q.stage))
     Ok(views.html.continuousDeployment.list(request, configs))
   }
   def form = AuthAction { implicit request =>
@@ -42,13 +43,13 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
         val config = ContinuousDeploymentConfig(
           form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
-        Persistence.store.setContinuousDeployment(config)
+        ContinuousDeploymentConfigRepository.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
       }
     )
   }
   def edit(id: String) = AuthAction { implicit request =>
-    Persistence.store.getContinuousDeployment(UUID.fromString(id)).map{ config =>
+    ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
       Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(config))))
     }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
   }
@@ -58,7 +59,7 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
       action => {
         action match {
           case "delete" =>
-            Persistence.store.deleteContinuousDeployment(UUID.fromString(id))
+            ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
         }
       }
     )

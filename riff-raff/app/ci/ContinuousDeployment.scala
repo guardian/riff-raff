@@ -4,7 +4,7 @@ import controllers.Logging
 import deployment.Deployments
 import lifecycle.LifecycleWithoutApp
 import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
-import persistence.Persistence.store.getContinuousDeploymentList
+import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 

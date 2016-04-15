@@ -21,6 +21,7 @@ libraryDependencies ++= Seq(
   "io.reactivex" %% "rxscala" % "0.26.0",
   "org.parboiled" %% "parboiled" % "2.0.1",
   "com.adrianhurt" %% "play-bootstrap3" % "0.3",
+  "com.gu" %% "scanamo" % "0.3.0",
   filters,
   ws,
   "org.scalatestplus" %% "play" % "1.2.0" % "test"
