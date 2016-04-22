@@ -155,34 +155,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     }
   }
 
-  override def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
-    logAndSquashExceptions[Option[ContinuousDeploymentConfig]](Some("Getting continuous deploy config for %s" format id), None) {
-      continuousDeployCollection.findOneByID(id).flatMap(ContinuousDeploymentConfig.fromDBO(_))
-    }
-  override def getContinuousDeploymentList():Iterable[ContinuousDeploymentConfig] =
-    logAndSquashExceptions[Iterable[ContinuousDeploymentConfig]](Some("Getting all continuous deploy configs"), Nil) {
-      continuousDeployCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
-        .toIterable.flatMap(ContinuousDeploymentConfig.fromDBO(_))
-    }
-  override def setContinuousDeployment(cd: ContinuousDeploymentConfig) {
-    logAndSquashExceptions(Some("Saving continuous integration config: %s" format cd),()) {
-      continuousDeployCollection.findAndModify(
-        query = MongoDBObject("_id" -> cd.id),
-        update = cd.toDBO,
-        upsert = true,
-        fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew = false
-      )
-    }
-  }
-  override def deleteContinuousDeployment(id: UUID) {
-    logAndSquashExceptions(Some("Deleting continuous integration config for %s" format id),()) {
-      continuousDeployCollection.findAndRemove(MongoDBObject("_id" -> id))
-    }
-  }
-
   override def createApiKey(newKey: ApiKey) {
     logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
       val dbo = newKey.toDBO
