@@ -9,12 +9,13 @@ import controllers.Logging
 import lifecycle.LifecycleWithoutApp
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
-import persistence.{Persistence, MongoFormat, MongoSerialisable, DeployRecordDocument}
+import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.libs.ws._
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 case class Auth(user:String, password:String, scheme:WSAuthScheme=WSAuthScheme.BASIC)
 
@@ -75,6 +76,8 @@ case class HookConfig(id: UUID,
       }).map { response =>
         log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
         log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
+      }.recover {
+        case NonFatal(e) => log.error(s"Problem calling ${urlRequest.url}", e)
       }
     } else {
       log.info("Hook disabled")
