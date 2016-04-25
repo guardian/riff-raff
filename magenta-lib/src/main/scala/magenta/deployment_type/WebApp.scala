@@ -160,12 +160,3 @@ object JettyWebapp extends WebApp {
 
   lazy val containerName = "jetty"
 }
-
-object ResinWebapp extends WebApp {
-  val webAppDocumentation =
-    s"""
-      |The $name deployment type extends the WebApp trait in order to deploy an application into a Resin container.
-    """.stripMargin
-
-  lazy val containerName = "resin"
-}
