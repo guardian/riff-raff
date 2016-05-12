@@ -22,6 +22,7 @@ object S3Lambda extends DeploymentType  {
 
   def perAppActions = {
     case "uploadLambda" => (pkg) => (resourceLookup, parameters, stack) => {
+      implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
         S3Upload(
           stack,
@@ -39,13 +40,13 @@ object S3Lambda extends DeploymentType  {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       val stage = parameters.stage.name
 
-      val functionName = s"${functionName(pkg)}$stage"
+      val functionNameWithStage = s"${functionName(pkg)}$stage"
       // TODO: this has implicit knowledge of the way the S3Upload task assembles the key, which is bad
       val s3Key = List(stack.nameOption, Some(stage), Some(pkg.name), Some(fileName(pkg))).flatten.mkString("/")
 
       List(
         UpdateS3Lambda(
-          functionName,
+          functionNameWithStage,
           bucket(pkg),
           s3Key
         )
