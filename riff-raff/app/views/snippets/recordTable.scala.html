@@ -15,7 +15,7 @@
         <th>Build</th>
         <th>Branch</th>
         <th>Recipe</th>
-        <th>Hosts</th>
+        <th>Stacks</th>
         <th>Status</th>
         <th>Duration</th>
     </tr>
@@ -39,7 +39,7 @@
         }</td>
         }
         <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
-        <td>@Some(record.parameters.hostList.size).filter(_ != 0).getOrElse(Html(""))</td>
+        <td>@if(record.parameters.stacks.nonEmpty){ @record.parameters.stacks.map(_.name).mkString(", ") }</td>
         <td>
             @htmlTooltip(placement="left"){
                 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
