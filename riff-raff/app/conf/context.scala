@@ -184,7 +184,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       },
       new EnvironmentVariableCredentialsProvider,
       new SystemPropertiesCredentialsProvider,
-      new ProfileCredentialsProvider("riffraff"),
+      new ProfileCredentialsProvider("deployTools"),
       new InstanceProfileCredentialsProvider
     )
 
