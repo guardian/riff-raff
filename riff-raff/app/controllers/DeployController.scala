@@ -5,7 +5,7 @@ import java.util.UUID
 import ci.{Builds, S3Tag, TagClassification}
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
 import play.api.data.Forms._
@@ -149,12 +149,13 @@ object DeployController extends Controller with Logging with LoginActions {
     Ok(Json.toJson(possibleProjects))
   }
 
+  val shortFormat = DateTimeFormat.forPattern("HH:mm d/M/yy").withZone(DateTimeZone.forID("Europe/London"))
+
   def autoCompleteBuild(project: String, term: String) = AuthAction {
     val possibleProjects = Builds.successfulBuilds(project).filter(
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
-      val formatter = DateTimeFormat.forPattern("HH:mm d/M/yy")
-      val label = "%s [%s] (%s)" format(build.number, build.branchName, formatter.print(build.startTime))
+      val label = "%s [%s] (%s)" format(build.number, build.branchName, shortFormat.print(build.startTime))
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
