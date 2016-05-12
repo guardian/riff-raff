@@ -10,7 +10,7 @@ import magenta.Stage
 case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack)(implicit val keyRing: KeyRing) extends ASGTask {
   def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
     val doubleCapacity = asg.getDesiredCapacity * 2
-    if (asg.getMaxSize < doubleCapacity) {
+    if (asg.getMaxSize < doubleCapacity || doubleCapacity == 0) {
       MessageBroker.fail(
         s"Autoscaling group does not have the capacity to deploy current max = ${asg.getMaxSize} - desired max = $doubleCapacity"
       )
