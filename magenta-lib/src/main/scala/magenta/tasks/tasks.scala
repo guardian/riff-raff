@@ -354,3 +354,16 @@ case class UpdateLambda(
 
 }
 
+case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String)(implicit val keyRing: KeyRing) extends Task with Lambda {
+  def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
+  def verbose = description
+
+  def execute(stopFlag: =>  Boolean) {
+    val client = lambdaClient(keyRing)
+    MessageBroker.verbose(s"Starting update $functionName Lambda")
+    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
+    MessageBroker.verbose(s"Finished update $functionName Lambda")
+  }
+
+}
+
