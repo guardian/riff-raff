@@ -31,6 +31,7 @@ class LambdaTest extends FlatSpec with Matchers {
         stage = PROD,
         bucket = "lambda-bucket",
         file = new File(pkg.srcDir, "test-file.zip"),
+        prefixPackage = false,
         publicReadAcl = false
       )
     ))
@@ -42,7 +43,7 @@ class LambdaTest extends FlatSpec with Matchers {
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
         s3Bucket = "lambda-bucket",
-        s3Key = "test/PROD/lambda/test-file.zip"
+        s3Key = "test/PROD/test-file.zip"
       )
     ))
   }

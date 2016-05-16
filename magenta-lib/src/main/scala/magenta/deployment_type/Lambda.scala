@@ -35,6 +35,8 @@ object Lambda extends DeploymentType  {
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function")
     .defaultFromPackage(pkg => s"${pkg.name}.zip")
 
+  val includePackage = Param[Boolean]("includePackage", "Whether to include the package name as the last directory component of the S3 key").default(false)
+
   val functionsParam = Param[Map[String, Map[String, String]]]("functions",
     documentation =
       """
@@ -68,6 +70,7 @@ object Lambda extends DeploymentType  {
         val functionName = functionDefinition.getOrElse("name", MessageBroker.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
         LambdaFunction(functionName, fileName, bucketOption)
+      case _ => MessageBroker.fail("Must specify one of 'functions' or 'functionName' parameters")
     }
   }
 
@@ -85,7 +88,7 @@ object Lambda extends DeploymentType  {
             new File(s"${pkg.srcDir.getPath}/$fileName"),
             prefixStage = true,
             prefixStack = true,
-            prefixPackage = true,
+            prefixPackage = includePackage(pkg),
             publicReadAcl = false
           ))
       }
@@ -98,7 +101,7 @@ object Lambda extends DeploymentType  {
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
           // TODO: this has implicit knowledge of the way the S3Upload task assembles the key, which is bad
-          val s3Key = List(stack.nameOption, Some(parameters.stage.name), Some(pkg.name), Some(fileName)).flatten.mkString("/")
+          val s3Key = List(stack.nameOption, Some(parameters.stage.name), Some(pkg.name).filter(_ => includePackage(pkg)), Some(fileName)).flatten.mkString("/")
           List(
           UpdateS3Lambda(
             functionName,
