@@ -9,10 +9,10 @@ import org.scalatest.{FlatSpec, Matchers}
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
-class S3LambdaTest extends FlatSpec with Matchers {
+class LambdaTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
 
-  behavior of "S3Lambda deployment action uploadLambda"
+  behavior of "Lambda deployment action uploadLambda"
 
   val data: Map[String, JValue] = Map(
     "bucket" -> "lambda-bucket",
@@ -24,7 +24,7 @@ class S3LambdaTest extends FlatSpec with Matchers {
   val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", new File("/tmp/packages/webapp"))
 
   it should "produce an S3 upload task" in {
-    val tasks = S3Lambda.perAppActions("uploadLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       S3Upload(
         stack = NamedStack("test"),
@@ -37,7 +37,7 @@ class S3LambdaTest extends FlatSpec with Matchers {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = S3Lambda.perAppActions("updateLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
