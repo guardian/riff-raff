@@ -60,10 +60,10 @@ object Lambda extends DeploymentType  {
 
   def lambdaToProcess(pkg: DeploymentPackage, stage: String): LambdaFunction = {
     val bucketOption = bucketParam.get(pkg)
-    (functionNameParam.get(pkg), fileNameParam.get(pkg), functionsParam.get(pkg)) match {
-      case (Some(functionName), Some(fileName), None) =>
-        LambdaFunction(s"$functionName$stage", fileName, bucketOption)
-      case (None, None, Some(functionsMap)) =>
+    (functionNameParam.get(pkg), functionsParam.get(pkg)) match {
+      case (Some(functionName), None) =>
+        LambdaFunction(s"$functionName$stage", fileNameParam(pkg), bucketOption)
+      case (None, Some(functionsMap)) =>
         val functionDefinition = functionsMap.getOrElse(stage, MessageBroker.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", MessageBroker.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
