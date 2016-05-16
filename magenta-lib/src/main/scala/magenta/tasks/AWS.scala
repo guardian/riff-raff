@@ -32,7 +32,6 @@ trait Lambda extends AWS {
   }
 
   def lambdaUpdateFunctionCodeRequest(functionName: String, file: File): UpdateFunctionCodeRequest = {
-
     val fileSize = file.length
     val stream = new FileInputStream(file)
     val buffer = stream.getChannel.map(READ_ONLY, 0, fileSize)
@@ -40,6 +39,13 @@ trait Lambda extends AWS {
     request.withFunctionName(functionName)
     request.withZipFile(buffer)
     request
+  }
+
+  def lambdaUpdateFunctionCodeRequest(functionName: String, s3Bucket: String, s3Key: String): UpdateFunctionCodeRequest = {
+    new UpdateFunctionCodeRequest()
+      .withFunctionName(functionName)
+      .withS3Bucket(s3Bucket)
+      .withS3Key(s3Key)
   }
 }
 
