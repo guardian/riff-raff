@@ -6,6 +6,7 @@ import scala.io.Source
 import java.net.Socket
 import java.io.{IOException, FileNotFoundException, File}
 import java.net.URL
+import com.amazonaws.services.s3.model.PutObjectRequest
 import magenta.deployment_type.PatternValue
 import dispatch.classic._
 
@@ -97,6 +98,8 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
+@deprecated("The S3Upload task has now been replaced by the simpler S3UploadV2 task that has less of an opinion on S3 key generation", "2015/05/18")
+object S3Upload
 
 case class S3Upload( stack: Stack,
                      stage: Stage,
@@ -147,16 +150,60 @@ case class S3Upload( stack: Stack,
     s"$stackName$stageName${toRelative(file)}"
   }
 
-  def contentTypeLookup(fileName: String) =
-    fileExtension(fileName).flatMap(mimeTypeMap.get)
-
+  def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(mimeTypeMap.get)
   def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
+  private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
+  private def resolveFiles(file: File): Seq[File] = Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
+}
 
-  private def fileExtension(fileName: String) =
-    fileName.split('.').drop(1).lastOption
+case class S3UploadV2(
+  bucket: String,
+  files: Seq[(File, String)],
+  cacheControlPatterns: List[PatternValue] = Nil,
+  extensionToMimeType: Map[String,String] = Map.empty,
+  publicReadAcl: Boolean = false,
+  detailedLoggingThreshold: Int = 10
+)(implicit val keyRing: KeyRing) extends Task with S3 {
 
-  private def resolveFiles(file: File): Seq[File] =
-    Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
+  lazy val totalSize = files.map{ case (file, key) => file.length}.sum
+
+  lazy val flattenedFiles = files flatMap {
+    case (file, key) => resolveFiles(file, key)
+  }
+
+  lazy val requests = flattenedFiles map {
+    case (file, key) => S3.putObjectRequest(bucket, key, file, cacheControlLookup(key), contentTypeLookup(key), publicReadAcl)
+  }
+
+  // A verbose description of this task. For command line tasks,
+  def verbose: String = s"$description using file mapping $files"
+
+  // end-user friendly description of this task
+  def description: String = s"Upload ${requests.size} files to S3 bucket $bucket"
+
+  def requestToString(request: PutObjectRequest): String =
+    s"${request.getFile.getPath} to s3://${request.getBucketName}/${request.getKey} with "+
+      s"CacheControl:${request.getMetadata.getCacheControl} ContentType:${request.getMetadata.getContentType} ACL:${request.getCannedAcl}"
+
+  // execute this task (should throw on failure)
+  def execute(stopFlag: =>  Boolean)  {
+    val client = s3client(keyRing)
+    MessageBroker.verbose(s"Starting upload of ${files.size} files ($totalSize bytes) to S3")
+    requests.par foreach { request =>
+      client.putObject(request)
+      if (requests.length <= detailedLoggingThreshold) MessageBroker.verbose(s"Uploaded ${requestToString(request)}")
+    }
+    MessageBroker.verbose(s"Finished upload of ${files.size} files to S3")
+  }
+
+  private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
+    if (!file.isDirectory) Seq((file, key))
+    else file.listFiles.toSeq.flatMap(f => resolveFiles(f, s"$key/${f.getName}")).distinct
+  }
+
+  private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
+  private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
+  private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
 }
 
 case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
