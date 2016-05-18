@@ -98,6 +98,8 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
+@deprecated("The S3Upload task has now been replaced by the simpler S3UploadV2 task that has less of an opinion on S3 key generation", "2015/05/18")
+object S3Upload
 
 case class S3Upload( stack: Stack,
                      stage: Stage,
