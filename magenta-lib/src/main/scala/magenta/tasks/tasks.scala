@@ -8,7 +8,6 @@ import java.io.{File, FileNotFoundException, IOException}
 import java.net.URL
 
 import com.amazonaws.services.s3.model.PutObjectRequest
-import com.gu.management.Loggable
 import magenta.deployment_type.PatternValue
 import dispatch.classic._
 
