@@ -98,64 +98,6 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
-@deprecated("The S3Upload task has now been replaced by the simpler S3UploadV2 task that has less of an opinion on S3 key generation", "2015/05/18")
-object S3Upload
-
-case class S3Upload( stack: Stack,
-                     stage: Stage,
-                     bucket: String,
-                     file: File,
-                     cacheControlPatterns: List[PatternValue] = Nil,
-                     mimeTypeMap: Map[String,String] = Map.empty,
-                     prefixStack: Boolean = true,
-                     prefixStage: Boolean = true,
-                     prefixPackage: Boolean = true,
-                     publicReadAcl: Boolean = true)
-                   (implicit val keyRing: KeyRing) extends Task with S3 {
-
-  private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
-
-  private val describe = {
-    val fileDesc = if (file.isDirectory) "directory" else "file"
-    val aclDesc = if (publicReadAcl) " with public read ACL" else ""
-    s"Upload $fileDesc $file to S3$aclDesc"
-  }
-
-  def description = describe
-  def verbose = describe
-
-  lazy val filesToCopy = resolveFiles(file)
-
-  lazy val totalSize = filesToCopy.map(_.length).sum
-
-  lazy val requests = filesToCopy map { file =>
-    val relative = toRelative(file)
-    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(relative), contentTypeLookup(relative), publicReadAcl)
-  }
-
-  def execute(stopFlag: =>  Boolean)  {
-    val client = s3client(keyRing)
-    MessageBroker.verbose("Starting upload of %d files (%d bytes) to S3" format (requests.size, totalSize))
-    requests.par foreach { client.putObject }
-    MessageBroker.verbose("Finished upload of %d files to S3" format requests.size)
-  }
-
-  def toRelative(file: File) = file.getAbsolutePath.replace(base, "")
-  def toKey(file: File) = {
-    val stageName = if (prefixStage) stage.name + "/" else ""
-    val stackName = stack match {
-      case NamedStack(s) if prefixStack => s + "/"
-      case _ => ""
-    }
-    s"$stackName$stageName${toRelative(file)}"
-  }
-
-  def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(mimeTypeMap.get)
-  def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
-  private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
-  private def resolveFiles(file: File): Seq[File] = Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
-}
-
 case class S3UploadV2(
   bucket: String,
   files: Seq[(File, String)],
@@ -204,6 +146,14 @@ case class S3UploadV2(
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
   private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
+}
+
+object S3UploadV2 {
+  def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
+    (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
+  }
+  def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
+    prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
 case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {

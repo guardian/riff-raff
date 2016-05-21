@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import java.io.File
 
-import magenta.tasks.{ChangeSwitch, S3Upload}
+import magenta.tasks.{ChangeSwitch, S3UploadV2}
 
 object SelfDeploy extends DeploymentType with S3AclParams {
   val name = "self-deploy"
@@ -36,13 +36,11 @@ object SelfDeploy extends DeploymentType with S3AclParams {
   def perAppActions = {
     case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      val prefix = S3UploadV2.prefixGenerator(stack, parameters.stage, pkg.name)
       List(
-        S3Upload(
-          stack,
-          parameters.stage,
+        S3UploadV2(
           bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
-          new File(pkg.srcDir.getPath + "/"),
-          publicReadAcl = false
+          files = Seq(new File(pkg.srcDir.getPath) -> prefix)
         )
       )
   }
