@@ -10,7 +10,7 @@ object FileCopy extends DeploymentType {
     """.stripMargin
 
   override def perHostActions = {
-    case "deploy" => pkg => (host, keyRing) => {
+    case "deploy" => pkg => (logger, host, keyRing) => {
       implicit val key = keyRing
       List(CopyFile(host, pkg.srcDir.getPath, "/"))
     }

@@ -235,7 +235,7 @@ object DeployMetrics extends LifecycleWithoutApp {
 
   val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
-  val messageSub = MessageBroker.messages.subscribe(message => {
+  val messageSub = DeployLogger.messages.subscribe(message => {
     message.stack.top match {
       case StartContext(Deploy(parameters)) =>
         DeployStart.recordCount(1)

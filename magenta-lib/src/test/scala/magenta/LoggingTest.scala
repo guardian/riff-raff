@@ -8,7 +8,7 @@ class LoggingTest extends FlatSpec with Matchers {
 
   def getWrapperBuffer(uuid: UUID): ListBuffer[MessageWrapper] = {
     val wrappers = ListBuffer.empty[MessageWrapper]
-    MessageBroker.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
+    DeployLogger.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
     wrappers
   }
 
@@ -17,16 +17,16 @@ class LoggingTest extends FlatSpec with Matchers {
   val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"))
 
   "MessageBroker" should "quietly ignore messages sent without a context" in {
-    MessageBroker.info("this shouldn't work")
+    DeployLogger.info("this shouldn't work")
   }
 
   it should "send messagewrappers to message sinks" in {
     val context = getRandomContext
     val wrappers = getWrapperBuffer(context.deployId)
-    val mbc = MessageBrokerContext(List(Deploy(parameters)), context)
+    val mbc = DeployLogger(List(Deploy(parameters)), context)
 
-    MessageBroker.withMessageBrokerContext(mbc){
-      MessageBroker.info("this should work")
+    DeployLogger.withMessageBrokerContext(mbc){
+      DeployLogger.info("this should work")
     }
 
     wrappers.size should be(1)
@@ -38,8 +38,8 @@ class LoggingTest extends FlatSpec with Matchers {
     val context = getRandomContext
     val wrappers = getWrapperBuffer(context.deployId)
 
-    MessageBroker.deployContext(context.deployId, context.parameters){
-      MessageBroker.info("this should work")
+    DeployLogger.deployContext(context.deployId, context.parameters){
+      DeployLogger.info("this should work")
     }
 
     wrappers.size should be(3)
@@ -54,11 +54,11 @@ class LoggingTest extends FlatSpec with Matchers {
     val context = getRandomContext
     val wrappers = getWrapperBuffer(context.deployId)
 
-    val logContext = MessageBroker.startDeployContext(context.deployId, context.parameters)
-    MessageBroker.withMessageBrokerContext(logContext){
-      MessageBroker.info("this should work")
+    val logContext = DeployLogger.rootLoggerFor(context.deployId, context.parameters)
+    DeployLogger.withMessageBrokerContext(logContext){
+      DeployLogger.info("this should work")
     }
-    MessageBroker.finishAllContexts(logContext)
+    DeployLogger.finishAllContexts(logContext)
 
     wrappers.size should be(3)
     wrappers(0).context should be(context)

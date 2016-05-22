@@ -62,7 +62,7 @@ object CloudFormation extends DeploymentType {
   ).default("AMI")
 
   override def perAppActions = {
-    case "updateStack" => pkg => (lookup, parameters, stack) => {
+    case "updateStack" => pkg => (logger, lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
 
       val stackName = stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))

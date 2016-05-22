@@ -23,7 +23,7 @@ object Deployments extends Logging with LifecycleWithoutApp {
   private lazy val deployCompleteSubject = Subject[UUID]()
 
   private val messagesSubscription: Subscription =
-    MessageBroker.messages.subscribe{ wrapper =>
+    DeployLogger.messages.subscribe{ wrapper =>
       try {
         update(wrapper)
       } catch {

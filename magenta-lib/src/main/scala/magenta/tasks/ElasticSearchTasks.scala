@@ -21,12 +21,12 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+  override def execute(asg: AutoScalingGroup, logger: DeployLogger, stopFlag: => Boolean) {
     val instance = EC2(asg.getInstances().headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
     val node = ElasticSearchNode(instance.getPublicDnsName)
-    check(stopFlag) {
+    check(logger, stopFlag) {
       node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
     }
   }
@@ -36,18 +36,18 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
                                                        (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  def execute(asg: AutoScalingGroup, stopFlag: => Boolean) {
+  override def execute(asg: AutoScalingGroup, logger: DeployLogger, stopFlag: => Boolean) {
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
     val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
 
     def cullInstance(instance: Instance) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
-        check(stopFlag) {
+        check(logger, stopFlag) {
           newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
         }
         if (!stopFlag) {
           node.shutdown()
-          check(stopFlag) {
+          check(logger, stopFlag) {
             newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity - 1)
           }
         }

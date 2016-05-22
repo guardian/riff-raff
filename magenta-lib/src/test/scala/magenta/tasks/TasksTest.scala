@@ -81,7 +81,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       server.accept().close()
       server.close()
     }
-    MessageBroker.deployContext(UUID.randomUUID(), parameters) { task.execute() }
+    DeployLogger.deployContext(UUID.randomUUID(), parameters) { task.execute() }
   }
 
   it should "connect to an open port after a short time" in {

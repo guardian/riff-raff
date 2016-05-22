@@ -15,7 +15,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   it should ("resolve a set of tasks") in {
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
     val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
-    MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
       context.tasks should be(List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
@@ -27,9 +27,9 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
 
     val messages = Buffer[Message]()
-    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
+    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
 
-    MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
       val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
     }
 
@@ -52,7 +52,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
-    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
+    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
       wrapper.stack.top match {
         case FinishContext(finishMessage) => finished += finishMessage
         case StartContext(startMessage) => start += startMessage
@@ -74,7 +74,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
-    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
+    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
       wrapper.stack.top match {
         case FinishContext(finishMessage) => finished += finishMessage
         case StartContext(startMessage) => start += startMessage

@@ -27,148 +27,115 @@ object TaskDetail {
   }
 }
 
-case class MessageBrokerContext(messageStack: List[Message], messageContext: MessageContext, previousContext: Option[MessageBrokerContext] = None)
+case class DeployLogger(messageStack: List[Message], messageContext: MessageContext,
+  previousLogger: Option[DeployLogger] = None, publishMessages: Boolean) {
+  def taskContext[T](task: Task)(block: DeployLogger => T): T = {
+    DeployLogger.sendContext(this, TaskRun(task))(block)
+  }
+  def taskList(tasks: List[Task]) { DeployLogger.send(this, TaskList(tasks)) }
+  def info(message: String) { DeployLogger.send(this, Info(message)) }
+  def infoContext[T](message: String)(block: DeployLogger => T): T = {
+    DeployLogger.sendContext(this, Info(message))(block)
+  }
+  def commandOutput(message: String) { DeployLogger.send(this, CommandOutput(message)) }
+  def commandError(message: String) { DeployLogger.send(this, CommandError(message)) }
+  def verbose(message: String) { DeployLogger.send(this, Verbose(message)) }
+  def fail(message: String, e: Option[Throwable] = None): Nothing = {
+    throw DeployLogger.failException(this, message, e)
+  }
+  def fail(message: String, e: Throwable): Nothing = { fail(message,Some(e)) }
+}
 
-object MessageBroker {
+object DeployLogger {
   private val messageSubject = Subject[MessageWrapper]()
   val messages: Observable[MessageWrapper] = messageSubject
 
-  private val messageStack = new DynamicVariable[List[Message]](Nil)
-  private val messageContext = new DynamicVariable[MessageContext](null)
-
-  def deployID = Option(messageContext.value).map(_.deployId)
-
-  def send(message: Message, messageUUID: UUID = UUID.randomUUID()) {
-    Option(messageContext.value).foreach { context =>
-      val stack = MessageStack(message :: messageStack.value)
-      MagentaMetrics.MessageBrokerMessages.measure {
-        messageSubject.onNext(MessageWrapper(context, messageUUID, stack))
-      }
+  private def send(logger: DeployLogger, message: Message, messageUUID: UUID = UUID.randomUUID()) {
+    val stack = MessageStack(message :: logger.messageStack)
+    MagentaMetrics.MessageBrokerMessages.measure {
+      messageSubject.onNext(MessageWrapper(logger.messageContext, messageUUID, stack))
     }
   }
 
-  def withMessageBrokerContext[T](context: MessageBrokerContext)(block: => T): T = {
-    messageContext.withValue(context.messageContext) {
-      messageStack.withValue(context.messageStack) {
-        block
-      }
-    }
-  }
-  def startDeployContext(uuid: UUID, parameters: DeployParameters): MessageBrokerContext = {
-    val initialContext = MessageBrokerContext(Nil, MessageContext(uuid, parameters, None))
+  // get the genesis context that will be the root of all others
+  def rootLoggerFor(uuid: UUID, parameters: DeployParameters, publishMessages: Boolean = true): DeployLogger = {
+    val initialContext = DeployLogger(Nil, MessageContext(uuid, parameters, None), publishMessages = publishMessages)
     pushContext(Deploy(parameters), initialContext)
   }
-  def pushContext(message: Message, currentContext: MessageBrokerContext): MessageBrokerContext = {
-    withMessageBrokerContext(currentContext) {
+
+  // create a new context with the given message at the top of the stack - sends the StartContext event
+  def pushContext(message: Message, currentContext: DeployLogger): DeployLogger = {
       val contextUUID = UUID.randomUUID()
-      send(StartContext(message), contextUUID)
-      MessageBrokerContext(message :: currentContext.messageStack, messageContext.value.copy(parentId = Some(contextUUID)), Some(currentContext))
-    }
+      send(currentContext, StartContext(message), contextUUID)
+      DeployLogger(
+        message :: currentContext.messageStack,
+        currentContext.messageContext.copy(parentId = Some(contextUUID)),
+        Some(currentContext),
+        currentContext.publishMessages
+      )
   }
-  def finishContext(currentContext: MessageBrokerContext): Option[MessageBrokerContext] = {
-    withMessageBrokerContext(currentContext) {
-      currentContext.messageStack.headOption.foreach(msg => send(FinishContext(msg)))
-      currentContext.previousContext
-    }
+
+  // finish the current context by sending the FinishContext event - returns the previous context if it exists
+  def finishContext(currentContext: DeployLogger): Option[DeployLogger] = {
+    currentContext.messageStack.headOption.foreach(msg => send(currentContext, FinishContext(msg)))
+    currentContext.previousLogger
   }
-  def finishAllContexts(currentContext: MessageBrokerContext) {
+  // finish all contexts recursively
+  def finishAllContexts(currentContext: DeployLogger) {
     finishContext(currentContext).foreach(finishAllContexts)
   }
-  def failContext(currentContext: MessageBrokerContext): Option[MessageBrokerContext] = {
-    withMessageBrokerContext(currentContext) {
-      currentContext.messageStack.headOption.foreach(msg => send(FailContext(msg)))
-      currentContext.previousContext
-    }
+  // fail the context by sending a FailContext event
+  def failContext(currentContext: DeployLogger): Option[DeployLogger] = {
+    currentContext.messageStack.headOption.foreach(msg => send(currentContext, FailContext(msg)))
+    currentContext.previousLogger
   }
-  def failAllContexts(currentContext: MessageBrokerContext) {
-    def failAllContextsRec(currentContext: MessageBrokerContext) {
-      failContext(currentContext).foreach(failAllContextsRec)
-    }
-    failAllContextsRec(currentContext)
+  // fail all contexts recursively
+  def failAllContexts(currentContext: DeployLogger) {
+    failContext(currentContext).foreach(failAllContexts)
   }
-  def failAllContexts(currentContext: MessageBrokerContext, message: String, reason: Throwable) {
-    withMessageBrokerContext(currentContext) {
-      send(Fail(message, reason))
-    }
+  def failAllContexts(currentContext: DeployLogger, message: String, reason: Throwable) {
+    send(currentContext, Fail(message, reason))
     failAllContexts(currentContext)
   }
 
-
-  def withContext[T](context: MessageBrokerContext)(block: => T): T = {
+  def withContext[T](context: DeployLogger)(block: DeployLogger => T): T = {
     try {
-      withMessageBrokerContext(context) {
-        try {
-          block
-        } catch {
-          case f:FailException =>
-            send(FailContext(context.messageStack.head))
-            throw f
-          case t:Throwable =>
-            // build exception (and send fail message) first
-            val message = context.messageStack.head
-            val exception = failException("Unhandled exception in %s" format message.text, t)
-            send(FailContext(message))
-            throw exception
-        }
+      try {
+        block(context)
+      } catch {
+        case f:FailException =>
+          send(context, FailContext(context.messageStack.head))
+          throw f
+        case t:Throwable =>
+          // build exception (and send fail message) first
+          val message = context.messageStack.head
+          val exception = failException(context, s"Unhandled exception in ${message.text}", t)
+          send(context, FailContext(message))
+          throw exception
       }
     } catch {
       case f:FailException =>
-        throw if (context.previousContext.isEmpty && f.getCause != null) f.getCause else f
+        throw if (context.previousLogger.isEmpty && f.getCause != null) f.getCause else f
     }
   }
 
-  def sendContext[T](message: Message)(block: => T): T = {
-    Option(messageContext.value) match {
-      case Some(context) =>
-        val contextUUID = UUID.randomUUID()
-        send(StartContext(message), contextUUID)
-        withContext(MessageBrokerContext(message :: messageStack.value, context.copy(parentId = Some(contextUUID)))) {
-          val result = block
-          send(FinishContext(message))
-          result
-        }
-      case None =>
-        block
+  private def sendContext[T](currentContext: DeployLogger, message: Message)(block: (DeployLogger) => T): T = {
+    val newContext = pushContext(message, currentContext)
+    withContext(newContext) { newContext =>
+      val result = block(newContext)
+      finishContext(newContext)
+      result
     }
   }
 
-  def deployContext[T](uuid: UUID, parameters: DeployParameters)(block: => T): T = {
-    val newContext = MessageContext(uuid, parameters, None)
-
-    val contextDefined = Option(messageContext.value).isDefined
-    val reentrant = contextDefined &&
-                    messageContext.value.deployId == uuid &&
-                    messageContext.value.parameters == parameters
-
-    if (contextDefined && !reentrant)
-      throw new IllegalStateException("Something went wrong as you have just asked to start a deploy context with %s but we already have a context of %s" format (newContext, messageContext.value))
-
-    if (reentrant) {
-      block
-    } else {
-      messageContext.withValue(newContext) {
-        sendContext(Deploy(parameters))(block)
-      }
-    }
-  }
-
-  def taskContext[T](task: Task)(block: => T) { sendContext(TaskRun(task))(block) }
-  def taskList(tasks: List[Task]) { send(TaskList(tasks)) }
-  def info(message: String) { send(Info(message)) }
-  def infoContext[T](message: String)(block: => T) { sendContext(Info(message))(block) }
-  def commandOutput(message: String) { send(CommandOutput(message)) }
-  def commandError(message: String) { send(CommandError(message)) }
-  def verbose(message: String) { send(Verbose(message)) }
-  def failException(message: String, e: Option[Throwable] = None): FailException = {
+  private def failException(context: DeployLogger, message: String, e: Option[Throwable] = None): FailException = {
     val exception = e.getOrElse(new RuntimeException(message))
-    send(Fail(message, exception))
-    new FailException(message, e.getOrElse(null))
+    send(context, Fail(message, exception))
+    new FailException(message, e.orNull)
   }
-  def fail(message: String, e: Option[Throwable] = None): Nothing = {
-    throw failException(message, e)
+  private def failException(context: DeployLogger, message: String, e: Throwable): FailException = {
+    failException(context, message,Some(e))
   }
-  def failException(message: String, e: Throwable): FailException = { failException(message,Some(e)) }
-  def fail(message: String, e: Throwable): Nothing = { fail(message,Some(e)) }
 }
 
 case class MessageContext(deployId: UUID, parameters: DeployParameters, parentId: Option[UUID])
@@ -192,18 +159,20 @@ trait ContextMessage extends Message {
 }
 
 case class Deploy(parameters: DeployParameters) extends Message {
-  lazy val text = "deploy for %s (build %s) to stage %s" format (parameters.build.projectName, parameters.build.id, parameters.stage.name)
+  lazy val text = s"deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name}"
   override lazy val deployParameters = Some(parameters)
 }
 
-case class TaskList(taskList: List[TaskDetail]) extends Message { lazy val text = "Tasks for deploy:\n%s" format taskList.mkString("\n")}
-case class TaskRun(task: TaskDetail) extends Message { lazy val text = "task %s" format task.fullDescription }
+case class TaskList(taskList: List[TaskDetail]) extends Message { lazy val text =
+  s"""Tasks for deploy:
+     |${taskList.mkString("\n")}""".stripMargin}
+case class TaskRun(task: TaskDetail) extends Message { lazy val text = s"task ${task.fullDescription}" }
 case class Info(text: String) extends Message
 case class CommandOutput(text: String) extends Message
 case class CommandError(text: String) extends Message
 case class Verbose(text: String) extends Message
 case class Fail(text: String, detail: ThrowableDetail) extends Message
 
-case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = "Starting %s" format originalMessage.text }
-case class FailContext(originalMessage: Message) extends ContextMessage { lazy val text = "Failed during %s" format originalMessage.text }
-case class FinishContext(originalMessage: Message) extends ContextMessage { lazy val text = "Successfully completed %s" format originalMessage.text}
+case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Starting ${originalMessage.text}" }
+case class FailContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Failed during ${originalMessage.text}" }
+case class FinishContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Successfully completed ${originalMessage.text}"}

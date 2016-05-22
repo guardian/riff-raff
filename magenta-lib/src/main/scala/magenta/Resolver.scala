@@ -21,25 +21,25 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters): List[Task] =
-    resolveDetail(project, resourceLookup, parameters).flatMap(_.tasks)
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployLogger: DeployLogger): List[Task] =
+    resolveDetail(project, resourceLookup, parameters, deployLogger).flatMap(_.tasks)
 
-  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters): List[RecipeTasks] = {
+  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployLogger: DeployLogger): List[RecipeTasks] = {
 
-    def resolveTree(recipeName: String, stack: Stack): RecipeTasksNode = {
+    def resolveTree(recipeName: String, stack: Stack, deployLogger: DeployLogger): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
-      val recipeTasks = resolveRecipe(recipe, stack)
-      val children = recipe.dependsOn.map(resolveTree(_, stack))
+      val recipeTasks = resolveRecipe(recipe, stack, deployLogger)
+      val children = recipe.dependsOn.map(resolveTree(_, stack, deployLogger: DeployLogger))
       RecipeTasksNode(recipeTasks, children)
     }
 
-    def resolveRecipe(recipe: Recipe, stack: Stack): RecipeTasks = {
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters, stack) }
+    def resolveRecipe(recipe: Recipe, stack: Stack, deployLogger: DeployLogger): RecipeTasks = {
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters, stack, deployLogger) }
 
       val perHostTasks = {
         for {
           action <- recipe.actionsPerHost
-          tasks <- action.resolve(resourceLookup, parameters, stack)
+          tasks <- action.resolve(resourceLookup, parameters, stack, deployLogger)
         } yield {
           tasks
         }
@@ -60,7 +60,7 @@ object Resolver {
     for {
       stack <- stacks.toList
       tasks <- {
-        val resolvedTree = resolveTree(parameters.recipe.name, stack)
+        val resolvedTree = resolveTree(parameters.recipe.name, stack, deployLogger)
         val filteredTree = resolvedTree.disable(rt => !rt.recipe.actionsPerHost.isEmpty && rt.hostTasks.isEmpty)
         filteredTree.toList.distinct
       }

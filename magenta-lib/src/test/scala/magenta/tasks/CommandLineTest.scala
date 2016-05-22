@@ -23,9 +23,9 @@ class CommandLineTest extends FlatSpec with Matchers {
 
   it should "execute command and pipe progress results to Logger" in {
     val recordedMessages = new ListBuffer[List[Message]]()
-    MessageBroker.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(recordedMessages += _.stack.messages)
+    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(recordedMessages += _.stack.messages)
 
-    MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
       val c = CommandLine(List("echo", "hello"))
       c.run()
     }
@@ -43,7 +43,7 @@ class CommandLineTest extends FlatSpec with Matchers {
 
   it should "throw when command is not found" in {
     an[IOException] should be thrownBy {
-      MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+      DeployLogger.deployContext(UUID.randomUUID(), parameters) {
         CommandLine(List("unknown_command")).run()
       }
     }
@@ -51,7 +51,7 @@ class CommandLineTest extends FlatSpec with Matchers {
 
   it should "throw when command returns non zero exit code" in {
     a[FailException] should be thrownBy {
-      MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+      DeployLogger.deployContext(UUID.randomUUID(), parameters) {
         CommandLine(List("false")).run()
       }
     }

@@ -21,7 +21,7 @@ trait RemoteShellTask extends ShellTask {
     )
   }
 
-  override def execute(stopFlag: =>  Boolean) { keyRing.sshCredentials match {
+  override def execute(logger: DeployLogger, stopFlag: =>  Boolean) { keyRing.sshCredentials match {
     case PassphraseProvided(user, pass, keyFile) =>
       val publicKeyLogin =
         PublicKeyLogin(user, SimplePasswordProducer(pass), keyFile map (_.getPath :: Nil) getOrElse DefaultKeyLocations)
@@ -30,7 +30,7 @@ trait RemoteShellTask extends ShellTask {
         case None => publicKeyLogin
       }
       SSH(host.name, credentialsForHost)(_.exec(commandLine.quoted))
-    case SystemUser(keyFile) => remoteCommandLine(keyRing.sshCredentials).run()
+    case SystemUser(keyFile) => remoteCommandLine(keyRing.sshCredentials).run(logger)
   }}
 
   lazy val description = "on " + host.name

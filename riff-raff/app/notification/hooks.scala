@@ -147,7 +147,7 @@ object HooksClient extends LifecycleWithoutApp with Logging {
     actor.foreach(_ ! Finished(uuid, parameters))
   }
 
-  val messageSub = MessageBroker.messages.subscribe(message => {
+  val messageSub = DeployLogger.messages.subscribe(message => {
     message.stack.top match {
       case FinishContext(Deploy(parameters)) =>
         finishedBuild(message.context.deployId, parameters)

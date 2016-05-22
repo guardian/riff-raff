@@ -21,7 +21,7 @@ import scalax.file.Path
 object Main extends scala.App {
 
   var taskList: List[TaskDetail] = _
-  MessageBroker.messages.subscribe(wrapper => {
+  DeployLogger.messages.subscribe(wrapper => {
     val indent = "  " * (wrapper.stack.messages.size - 1)
     wrapper.stack.top match {
       case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
@@ -80,7 +80,7 @@ object Main extends scala.App {
     def localArtifactDir_=(dir: Option[File]) {
       dir.foreach { f =>
         if (!f.exists() || !f.isDirectory) sys.error("Directory not found.")
-        MessageBroker.info("WARN: Ignoring <project> and <build>; using local artifact directory of " + f.getAbsolutePath)
+        System.err.println("WARN: Ignoring <project> and <build>; using local artifact directory of " + f.getAbsolutePath)
       }
 
       _localArtifactDir = dir
@@ -169,48 +169,47 @@ object Main extends scala.App {
       withTemporaryDirectory { tmpDir =>
         val build = Build(Config.project.get, Config.build.get)
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Nil, Config.host.toList)
-        MessageBroker.deployContext(UUID.randomUUID(), parameters) {
+        val deployId = UUID.randomUUID()
+        implicit val rootLogger = DeployLogger.rootLoggerFor(deployId, parameters)
+        rootLogger.info("[using %s build %s]" format (programName, programVersion))
 
-          MessageBroker.info("[using %s build %s]" format (programName, programVersion))
+        rootLogger.info("Locating artifact...")
 
-          MessageBroker.info("Locating artifact...")
+        Config.localArtifactDir.map{ file =>
+          rootLogger.info("Making temporary copy of local artifact: %s" format file)
+          file.copyTo(Path(tmpDir))
+        } getOrElse {
+          S3Artifact.download(build, tmpDir)(Config.bucketName, new AmazonS3Client(
+            new AWSCredentialsProviderChain(new AWSCredentialsProvider {
+              override def getCredentials: AWSCredentials = (for {
+                key <- Config.accessKey
+                secret <- Config.secretKey
+              } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
 
-          Config.localArtifactDir.map{ file =>
-            MessageBroker.info("Making temporary copy of local artifact: %s" format file)
-            file.copyTo(Path(tmpDir))
-          } getOrElse {
-            S3Artifact.download(build, tmpDir)(Config.bucketName, new AmazonS3Client(
-              new AWSCredentialsProviderChain(new AWSCredentialsProvider {
-                override def getCredentials: AWSCredentials = (for {
-                  key <- Config.accessKey
-                  secret <- Config.secretKey
-                } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
-
-                override def refresh(): Unit = {}
-              }, new DefaultAWSCredentialsProviderChain())
-            ))
-          }
-
-          MessageBroker.info("Loading project file...")
-          val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
-
-          MessageBroker.verbose("Loaded: " + project)
-
-          val context = DeployContext(parameters,project,Config.lookup)
-
-          if (Config.dryRun) {
-
-            val tasks = context.tasks
-            MessageBroker.info("Dry run requested. Not executing %d tasks." format tasks.size)
-
-          } else {
-
-            context.execute()
-          }
+              override def refresh(): Unit = {}
+            }, new DefaultAWSCredentialsProviderChain())
+          ), rootLogger)
         }
+
+        rootLogger.info("Loading project file...")
+        val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
+
+        rootLogger.verbose("Loaded: " + project)
+
+        val context = DeployContext(deployId, parameters, project, Config.lookup, rootLogger)
+
+        if (Config.dryRun) {
+
+          val tasks = context.tasks
+          rootLogger.info("Dry run requested. Not executing %d tasks." format tasks.size)
+
+        } else {
+
+          context.execute()
+        }
+        rootLogger.info("Done")
       }
 
-      MessageBroker.info("Done")
 
     } catch {
       case e: UsageError =>
