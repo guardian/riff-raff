@@ -215,176 +215,9 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv --delete --delete-after /source foo.com:/dest""")
   }
 
-  "S3Upload task" should "upload a single file to S3" in {
-
-    val fileToUpload = new File("/foo/bar/the-jar.jar")
-
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", fileToUpload) with StubS3
-
-    task.execute()
-    val s3Client = task.s3client(fakeKeyRing)
-
-    verify(s3Client).putObject(any(classOf[PutObjectRequest]))
-    verifyNoMoreInteractions(s3Client)
-  }
-
-  it should "create an upload request with correct permissions" in {
-    val baseDir = createTempDir()
-    val artifact = new File(baseDir, "artifact")
-    artifact.createNewFile()
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir)
-
-    task.requests should not be ('empty)
-    for (request <- task.requests) {
-      request.getBucketName should be ("bucket")
-      request.getCannedAcl should be (CannedAccessControlList.PublicRead)
-      request.getFile should be (artifact)
-      request.getKey should be ("CODE/" + baseDir.getName + "/artifact")
-    }
-
-    val taskWithoutAcl = task.copy(publicReadAcl = false)
-
-    taskWithoutAcl.requests should not be ('empty)
-    for (request <- taskWithoutAcl.requests) {
-      request.getCannedAcl should be (null)
-    }
-  }
-
-  it should "correctly convert a file to a key" in {
-    val baseDir = new File("/foo/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir)
-
-    task.toKey(child) should be ("CODE/bar/the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with prefixStage=false" in {
-    val baseDir = new File("/foo/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, prefixStage = false)
-
-    task.toKey(child) should be ("bar/the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with prefixPackage=false" in {
-    val baseDir = new File("/foo/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, prefixPackage = false)
-
-    task.toKey(child) should be ("CODE/the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with prefixStage=false and prefixPackage=false" in {
-    val baseDir = new File("/foo/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, prefixStage = false, prefixPackage = false)
-
-    task.toKey(child) should be ("the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with a stack" in {
-    val baseDir = new File("/packages/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(NamedStack("monkey"), Stage("CODE"), "bucket", baseDir)
-
-    task.toKey(child) should be ("monkey/CODE/bar/the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with a stack and prefixStack=false" in {
-    val baseDir = new File("/packages/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(NamedStack("monkey"), Stage("CODE"), "bucket", baseDir, prefixStack = false)
-
-    task.toKey(child) should be ("CODE/bar/the/file/name.txt")
-  }
-
-  it should "correctly convert a file to a key with a stack and prefixStack=false and prefixStage=false and prefixPackage=false" in {
-    val baseDir = new File("/packages/bar/something").getParentFile
-    val child = new File(baseDir, "the/file/name.txt")
-
-    val task = new S3Upload(NamedStack("monkey"), Stage("CODE"), "bucket", baseDir, prefixStack = false, prefixStage = false, prefixPackage = false)
-
-    task.toKey(child) should be ("the/file/name.txt")
-  }
-
-  it should "upload a directory to S3" in {
-
-    val baseDir = createTempDir()
-    val baseDirName = "CODE/%s/" format baseDir.getName
-
-    val fileOne = new File(baseDir, "one.txt")
-    fileOne.createNewFile()
-    val fileTwo = new File(baseDir, "two.txt")
-    fileTwo.createNewFile()
-    val subDir = new File(baseDir, "sub")
-    subDir.mkdir()
-    val fileThree = new File(subDir, "three.txt")
-    fileThree.createNewFile()
-
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir) with StubS3 {
-      override val bucket = "bucket"
-    }
-
-    task.execute()
-    val s3Client = task.s3client(fakeKeyRing)
-
-    verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
-
-    verifyNoMoreInteractions(s3Client)
-  }
-
-  it should "use different cache control" in {
-    val tempDir = createTempDir()
-    val baseDir = new File(tempDir, "package")
-    baseDir.mkdir()
-
-    val fileOne = new File(baseDir, "one.txt")
-    fileOne.createNewFile()
-    val fileTwo = new File(baseDir, "two.txt")
-    fileTwo.createNewFile()
-    val subDir = new File(baseDir, "sub")
-    subDir.mkdir()
-    val fileThree = new File(subDir, "three.txt")
-    fileThree.createNewFile()
-
-    val cacheControlPatterns = List(PatternValue("^package/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, cacheControlPatterns) with StubS3 {
-      override val bucket = "bucket"
-    }
-
-    task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
-    task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
-    task.requests.find(_.getFile == fileThree).get.getMetadata.getCacheControl should be("public; max-age=3600")
-  }
-
-  it should "use overriden mime type" in {
-    val tempDir = createTempDir()
-    val baseDir = new File(tempDir, "package")
-    baseDir.mkdir()
-
-    val fileOne = new File(baseDir, "one.test.txt")
-    fileOne.createNewFile()
-    val fileTwo = new File(baseDir, "two.test.xpi")
-    fileTwo.createNewFile()
-
-    val mimeTypes = Map("xpi" -> "application/x-xpinstall")
-    val task = new S3Upload(UnnamedStack, Stage("CODE"), "bucket", baseDir, mimeTypeMap = mimeTypes) with StubS3
-
-    Option(task.requests.find(_.getFile == fileOne).get.getMetadata.getContentType) should be(None)
-    Option(task.requests.find(_.getFile == fileTwo).get.getMetadata.getContentType) should be(Some("application/x-xpinstall"))
-  }
-
   "S3UploadV2" should "upload a single file to S3" in {
     val fileToUpload = new File("/foo/bar/the-jar.jar")
-    val task = new S3UploadV2("bucket", Seq((fileToUpload -> "keyPrefix/the-jar.jar"))) with StubS3
+    val task = new S3Upload("bucket", Seq((fileToUpload -> "keyPrefix/the-jar.jar"))) with StubS3
 
     val requests = task.requests
     requests.size should be (1)
@@ -405,7 +238,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val artifact = new File(baseDir, "artifact")
     artifact.createNewFile()
 
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "bucket")))
+    val task = new S3Upload("bucket", Seq((baseDir -> "bucket")))
 
     task.requests should not be ('empty)
     for (request <- task.requests) {
@@ -436,7 +269,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
 
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
     task.execute()
     val s3Client = task.s3client(fakeKeyRing)
 
@@ -466,7 +299,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "keyPrefix")), cacheControlPatterns = patternValues) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "keyPrefix")), cacheControlPatterns = patternValues) with StubS3
 
     task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
     task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
@@ -484,7 +317,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileTwo.createNewFile()
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "")), extensionToMimeType = mimeTypes) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "")), extensionToMimeType = mimeTypes) with StubS3
 
     Option(task.requests.find(_.getFile == fileOne).get.getMetadata.getContentType) should be(None)
     Option(task.requests.find(_.getFile == fileTwo).get.getMetadata.getContentType) should be(Some("application/x-xpinstall"))

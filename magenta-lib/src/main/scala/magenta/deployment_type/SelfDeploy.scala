@@ -36,13 +36,11 @@ object SelfDeploy extends DeploymentType with S3AclParams {
   def perAppActions = {
     case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      val prefix = S3Upload.prefixGenerator(stack, parameters.stage, pkg.name)
       List(
         S3Upload(
-          stack,
-          parameters.stage,
           bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
-          new File(pkg.srcDir.getPath + "/"),
-          publicReadAcl = false
+          files = Seq(new File(pkg.srcDir.getPath) -> prefix)
         )
       )
   }

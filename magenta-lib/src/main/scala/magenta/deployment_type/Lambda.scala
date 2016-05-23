@@ -3,7 +3,7 @@ package magenta.deployment_type
 import java.io.File
 
 import magenta.{DeployParameters, DeploymentPackage, KeyRing, MessageBroker, Stack, Stage}
-import magenta.tasks.{S3UploadV2, UpdateLambda, UpdateS3Lambda}
+import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
 
 object Lambda extends DeploymentType  {
   val name = "aws-lambda"
@@ -84,7 +84,7 @@ object Lambda extends DeploymentType  {
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
           val s3Key = makeS3Key(stack, parameters, pkg, fileName)
-          List(S3UploadV2(
+          List(S3Upload(
             s3Bucket,
             Seq((new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key))
           ))

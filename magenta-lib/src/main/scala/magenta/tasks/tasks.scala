@@ -4,9 +4,11 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import java.io.{IOException, FileNotFoundException, File}
+import java.io.{File, FileNotFoundException, IOException}
 import java.net.URL
+
 import com.amazonaws.services.s3.model.PutObjectRequest
+import com.gu.management.Loggable
 import magenta.deployment_type.PatternValue
 import dispatch.classic._
 
@@ -98,65 +100,7 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
-@deprecated("The S3Upload task has now been replaced by the simpler S3UploadV2 task that has less of an opinion on S3 key generation", "2015/05/18")
-object S3Upload
-
-case class S3Upload( stack: Stack,
-                     stage: Stage,
-                     bucket: String,
-                     file: File,
-                     cacheControlPatterns: List[PatternValue] = Nil,
-                     mimeTypeMap: Map[String,String] = Map.empty,
-                     prefixStack: Boolean = true,
-                     prefixStage: Boolean = true,
-                     prefixPackage: Boolean = true,
-                     publicReadAcl: Boolean = true)
-                   (implicit val keyRing: KeyRing) extends Task with S3 {
-
-  private val base = if (prefixPackage) file.getParent + "/" else file.getPath + "/"
-
-  private val describe = {
-    val fileDesc = if (file.isDirectory) "directory" else "file"
-    val aclDesc = if (publicReadAcl) " with public read ACL" else ""
-    s"Upload $fileDesc $file to S3$aclDesc"
-  }
-
-  def description = describe
-  def verbose = describe
-
-  lazy val filesToCopy = resolveFiles(file)
-
-  lazy val totalSize = filesToCopy.map(_.length).sum
-
-  lazy val requests = filesToCopy map { file =>
-    val relative = toRelative(file)
-    S3.putObjectRequest(bucket, toKey(file), file, cacheControlLookup(relative), contentTypeLookup(relative), publicReadAcl)
-  }
-
-  def execute(stopFlag: =>  Boolean)  {
-    val client = s3client(keyRing)
-    MessageBroker.verbose("Starting upload of %d files (%d bytes) to S3" format (requests.size, totalSize))
-    requests.par foreach { client.putObject }
-    MessageBroker.verbose("Finished upload of %d files to S3" format requests.size)
-  }
-
-  def toRelative(file: File) = file.getAbsolutePath.replace(base, "")
-  def toKey(file: File) = {
-    val stageName = if (prefixStage) stage.name + "/" else ""
-    val stackName = stack match {
-      case NamedStack(s) if prefixStack => s + "/"
-      case _ => ""
-    }
-    s"$stackName$stageName${toRelative(file)}"
-  }
-
-  def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(mimeTypeMap.get)
-  def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
-  private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
-  private def resolveFiles(file: File): Seq[File] = Option(file.listFiles).map { _.toSeq.flatMap(resolveFiles) } getOrElse (Seq(file)).distinct
-}
-
-case class S3UploadV2(
+case class S3Upload(
   bucket: String,
   files: Seq[(File, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
@@ -165,21 +109,23 @@ case class S3UploadV2(
   detailedLoggingThreshold: Int = 10
 )(implicit val keyRing: KeyRing) extends Task with S3 {
 
-  lazy val totalSize = files.map{ case (file, key) => file.length}.sum
-
   lazy val flattenedFiles = files flatMap {
     case (file, key) => resolveFiles(file, key)
   }
+
+  lazy val totalSize = flattenedFiles.map{ case (file, key) => file.length}.sum
 
   lazy val requests = flattenedFiles map {
     case (file, key) => S3.putObjectRequest(bucket, key, file, cacheControlLookup(key), contentTypeLookup(key), publicReadAcl)
   }
 
+  def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
+
   // A verbose description of this task. For command line tasks,
   def verbose: String = s"$description using file mapping $files"
 
   // end-user friendly description of this task
-  def description: String = s"Upload ${requests.size} files to S3 bucket $bucket"
+  def description: String = s"Upload ${fileString(requests.size)} to S3 bucket $bucket"
 
   def requestToString(request: PutObjectRequest): String =
     s"${request.getFile.getPath} to s3://${request.getBucketName}/${request.getKey} with "+
@@ -188,12 +134,10 @@ case class S3UploadV2(
   // execute this task (should throw on failure)
   def execute(stopFlag: =>  Boolean)  {
     val client = s3client(keyRing)
-    MessageBroker.verbose(s"Starting upload of ${files.size} files ($totalSize bytes) to S3")
-    requests.par foreach { request =>
-      client.putObject(request)
-      if (requests.length <= detailedLoggingThreshold) MessageBroker.verbose(s"Uploaded ${requestToString(request)}")
-    }
-    MessageBroker.verbose(s"Finished upload of ${files.size} files to S3")
+    MessageBroker.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3")
+    requests.take(detailedLoggingThreshold).foreach(r => MessageBroker.verbose(s"Uploading ${requestToString(r)}"))
+    requests.par foreach { request => client.putObject(request) }
+    MessageBroker.verbose(s"Finished upload of ${fileString(files.size)} to S3")
   }
 
   private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
@@ -204,6 +148,14 @@ case class S3UploadV2(
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
   private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
+}
+
+object S3Upload {
+  def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
+    (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
+  }
+  def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
+    prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
 case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
