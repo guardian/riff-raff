@@ -29,8 +29,10 @@ object Lambda extends DeploymentType  {
       """.stripMargin
   )
 
-  val functionNameParam = Param[String]("functionName",
-    "The stub of the function name (will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE)")
+  val functionNamesParam = Param[List[String]]("functionNames",
+    """One or more function names to update with the code from fileNameParam.
+      |Each function name will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE""".stripMargin
+  )
 
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function")
     .defaultFromPackage(pkg => s"${pkg.name}.zip")
@@ -58,17 +60,17 @@ object Lambda extends DeploymentType  {
       """.stripMargin
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String): LambdaFunction = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
-    (functionNameParam.get(pkg), functionsParam.get(pkg)) match {
-      case (Some(functionName), None) =>
-        LambdaFunction(s"$functionName$stage", fileNameParam(pkg), bucketOption)
+    (functionNamesParam.get(pkg), functionsParam.get(pkg)) match {
+      case (Some(functionNames), None) =>
+        functionNames.map(name => LambdaFunction(s"$name$stage", fileNameParam(pkg), bucketOption))
       case (None, Some(functionsMap)) =>
         val functionDefinition = functionsMap.getOrElse(stage, MessageBroker.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", MessageBroker.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        LambdaFunction(functionName, fileName, bucketOption)
-      case _ => MessageBroker.fail("Must specify one of 'functions' or 'functionName' parameters")
+        List(LambdaFunction(functionName, fileName, bucketOption))
+      case _ => MessageBroker.fail("Must specify one of 'functions' or 'functionNames' parameters")
     }
   }
 
@@ -79,26 +81,26 @@ object Lambda extends DeploymentType  {
   def perAppActions = {
     case "uploadLambda" => (pkg) => (resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name) match {
-        case LambdaFunctionFromZip(_,_) => List()
+      lambdaToProcess(pkg, parameters.stage.name).flatMap {
+        case LambdaFunctionFromZip(_,_) => None
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
           val s3Key = makeS3Key(stack, parameters, pkg, fileName)
-          List(S3Upload(
+          Some(S3Upload(
             s3Bucket,
-            Seq((new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key))
+            Seq(new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key)
           ))
       }
     }
     case "updateLambda" => (pkg) => (resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name) match {
+      lambdaToProcess(pkg, parameters.stage.name).flatMap {
         case LambdaFunctionFromZip(functionName, fileName) =>
-          List(UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName))
+          Some(UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName))
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
           val s3Key = makeS3Key(stack, parameters, pkg, fileName)
-          List(
+          Some(
           UpdateS3Lambda(
             functionName,
             s3Bucket,
