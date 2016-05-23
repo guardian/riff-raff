@@ -33,9 +33,9 @@ object ElasticSearch extends DeploymentType with S3AclParams {
     }
     case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      val prefix: String = S3UploadV2.prefixGenerator(stack, parameters.stage, pkg.name)
+      val prefix: String = S3Upload.prefixGenerator(stack, parameters.stage, pkg.name)
       List(
-        S3UploadV2(
+        S3Upload(
           bucket(pkg),
           Seq(new File(pkg.srcDir.getPath) -> prefix),
           publicReadAcl = publicReadAcl(pkg)

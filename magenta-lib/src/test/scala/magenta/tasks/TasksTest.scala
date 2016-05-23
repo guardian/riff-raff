@@ -217,7 +217,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
   "S3UploadV2" should "upload a single file to S3" in {
     val fileToUpload = new File("/foo/bar/the-jar.jar")
-    val task = new S3UploadV2("bucket", Seq((fileToUpload -> "keyPrefix/the-jar.jar"))) with StubS3
+    val task = new S3Upload("bucket", Seq((fileToUpload -> "keyPrefix/the-jar.jar"))) with StubS3
 
     val requests = task.requests
     requests.size should be (1)
@@ -238,7 +238,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val artifact = new File(baseDir, "artifact")
     artifact.createNewFile()
 
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "bucket")))
+    val task = new S3Upload("bucket", Seq((baseDir -> "bucket")))
 
     task.requests should not be ('empty)
     for (request <- task.requests) {
@@ -269,7 +269,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val fileThree = new File(subDir, "three.txt")
     fileThree.createNewFile()
 
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
     task.execute()
     val s3Client = task.s3client(fakeKeyRing)
 
@@ -299,7 +299,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "keyPrefix")), cacheControlPatterns = patternValues) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "keyPrefix")), cacheControlPatterns = patternValues) with StubS3
 
     task.requests.find(_.getFile == fileOne).get.getMetadata.getCacheControl should be("no-cache")
     task.requests.find(_.getFile == fileTwo).get.getMetadata.getCacheControl should be("no-cache")
@@ -317,7 +317,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileTwo.createNewFile()
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")
-    val task = new S3UploadV2("bucket", Seq((baseDir -> "")), extensionToMimeType = mimeTypes) with StubS3
+    val task = new S3Upload("bucket", Seq((baseDir -> "")), extensionToMimeType = mimeTypes) with StubS3
 
     Option(task.requests.find(_.getFile == fileOne).get.getMetadata.getContentType) should be(None)
     Option(task.requests.find(_.getFile == fileTwo).get.getMetadata.getContentType) should be(Some("application/x-xpinstall"))

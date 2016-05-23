@@ -103,13 +103,13 @@ object AutoScaling  extends DeploymentType with S3AclParams {
     }
     case "uploadArtifacts" => (pkg) => (lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      val prefix = S3UploadV2.prefixGenerator(
+      val prefix = S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg)) Some(stack) else None,
         stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
       List(
-        S3UploadV2(
+        S3Upload(
           bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(new File(pkg.srcDir.getPath) -> prefix),
           publicReadAcl = publicReadAcl(pkg)

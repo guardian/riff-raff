@@ -7,7 +7,7 @@ import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
 import magenta.fixtures._
-import magenta.tasks.{S3UploadV2, UpdateS3Lambda}
+import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
 class LambdaTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
@@ -26,7 +26,7 @@ class LambdaTest extends FlatSpec with Matchers {
   it should "produce an S3 upload task" in {
     val tasks = Lambda.perAppActions("uploadLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
-      S3UploadV2(
+      S3Upload(
         bucket = "lambda-bucket",
         files = Seq((new File(pkg.srcDir, "test-file.zip") -> s"test/PROD/lambda/test-file.zip"))
       )

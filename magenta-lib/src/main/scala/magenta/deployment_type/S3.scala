@@ -3,7 +3,7 @@ package magenta.deployment_type
 import java.io.File
 
 import magenta.json.JValueExtractable
-import magenta.tasks.S3UploadV2
+import magenta.tasks.S3Upload
 import org.json4s.JsonAST._
 
 object S3 extends DeploymentType with S3AclParams {
@@ -107,13 +107,13 @@ object S3 extends DeploymentType with S3AclParams {
         assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${parameters.stage.name})")
         data.get.value
       }
-      val prefix:String = S3UploadV2.prefixGenerator(
+      val prefix:String = S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg)) Some(stack) else None,
         stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
       List(
-        S3UploadV2(
+        S3Upload(
           bucket = bucketName,
           files = Seq(new File(pkg.srcDir.getPath) -> prefix),
           cacheControlPatterns = cacheControl(pkg),

@@ -98,7 +98,7 @@ trait CompressedFilename {
   def compressedName = sourceFile.getName + ".tar.bz2"
 }
 
-case class S3UploadV2(
+case class S3Upload(
   bucket: String,
   files: Seq[(File, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
@@ -148,7 +148,7 @@ case class S3UploadV2(
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
 }
 
-object S3UploadV2 {
+object S3Upload {
   def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
     (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }
