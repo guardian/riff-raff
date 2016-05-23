@@ -4,9 +4,11 @@ package tasks
 
 import scala.io.Source
 import java.net.Socket
-import java.io.{IOException, FileNotFoundException, File}
+import java.io.{File, FileNotFoundException, IOException}
 import java.net.URL
+
 import com.amazonaws.services.s3.model.PutObjectRequest
+import com.gu.management.Loggable
 import magenta.deployment_type.PatternValue
 import dispatch.classic._
 
@@ -107,21 +109,23 @@ case class S3Upload(
   detailedLoggingThreshold: Int = 10
 )(implicit val keyRing: KeyRing) extends Task with S3 {
 
-  lazy val totalSize = files.map{ case (file, key) => file.length}.sum
-
   lazy val flattenedFiles = files flatMap {
     case (file, key) => resolveFiles(file, key)
   }
+
+  lazy val totalSize = flattenedFiles.map{ case (file, key) => file.length}.sum
 
   lazy val requests = flattenedFiles map {
     case (file, key) => S3.putObjectRequest(bucket, key, file, cacheControlLookup(key), contentTypeLookup(key), publicReadAcl)
   }
 
+  def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
+
   // A verbose description of this task. For command line tasks,
   def verbose: String = s"$description using file mapping $files"
 
   // end-user friendly description of this task
-  def description: String = s"Upload ${requests.size} files to S3 bucket $bucket"
+  def description: String = s"Upload ${fileString(requests.size)} to S3 bucket $bucket"
 
   def requestToString(request: PutObjectRequest): String =
     s"${request.getFile.getPath} to s3://${request.getBucketName}/${request.getKey} with "+
@@ -130,12 +134,10 @@ case class S3Upload(
   // execute this task (should throw on failure)
   def execute(stopFlag: =>  Boolean)  {
     val client = s3client(keyRing)
-    MessageBroker.verbose(s"Starting upload of ${files.size} files ($totalSize bytes) to S3")
-    requests.par foreach { request =>
-      client.putObject(request)
-      if (requests.length <= detailedLoggingThreshold) MessageBroker.verbose(s"Uploaded ${requestToString(request)}")
-    }
-    MessageBroker.verbose(s"Finished upload of ${files.size} files to S3")
+    MessageBroker.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3")
+    requests.take(detailedLoggingThreshold).foreach(r => MessageBroker.verbose(s"Uploading ${requestToString(r)}"))
+    requests.par foreach { request => client.putObject(request) }
+    MessageBroker.verbose(s"Finished upload of ${fileString(files.size)} to S3")
   }
 
   private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
