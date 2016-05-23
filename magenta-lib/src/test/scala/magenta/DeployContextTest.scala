@@ -47,31 +47,6 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("send taskStart and taskFinish messages for each task") in {
     val parameters = DeployParameters(Deployer("tester2"), Build("project","1"), CODE, oneRecipeName)
-    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
-
-    val start = Buffer[Message]()
-    val finished = Buffer[Message]()
-    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
-      wrapper.stack.top match {
-        case FinishContext(finishMessage) => finished += finishMessage
-        case StartContext(startMessage) => start += startMessage
-        case _ => System.err.println()
-      }
-    )
-
-    context.execute()
-
-    start.filter(_.getClass == classOf[Deploy]) should have size (1)
-    start.filter(_.getClass == classOf[TaskRun]) should have size (2)
-    finished.filter(_.getClass == classOf[Deploy]) should have size (1)
-    finished.filter(_.getClass == classOf[TaskRun]) should have size (2)
-  }
-
-  it should ("bookend the messages with startdeploy and finishdeploy messages") in {
-    val parameters = DeployParameters(Deployer("tester3"), Build("Project","1"), CODE, oneRecipeName)
-    val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters)
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
@@ -83,7 +58,38 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
       }
     )
 
+    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
+
     context.execute()
+
+    DeployLogger.finishContext(logger)
+
+    start.filter(_.getClass == classOf[Deploy]) should have size (1)
+    start.filter(_.getClass == classOf[TaskRun]) should have size (2)
+    finished.filter(_.getClass == classOf[Deploy]) should have size (1)
+    finished.filter(_.getClass == classOf[TaskRun]) should have size (2)
+  }
+
+  it should ("bookend the messages with startdeploy and finishdeploy messages") in {
+    val parameters = DeployParameters(Deployer("tester3"), Build("Project","1"), CODE, oneRecipeName)
+
+    val start = Buffer[Message]()
+    val finished = Buffer[Message]()
+    DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
+      wrapper.stack.top match {
+        case FinishContext(finishMessage) => finished += finishMessage
+        case StartContext(startMessage) => start += startMessage
+        case _ =>
+      }
+    )
+
+    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
+
+    context.execute()
+
+    DeployLogger.finishContext(logger)
 
     start.head.getClass should be(classOf[Deploy])
     finished.last.getClass should be(classOf[Deploy])
