@@ -90,7 +90,7 @@ object Lambda extends DeploymentType  {
             s3Bucket,
             Seq(new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key)
           ))
-      }
+      }.distinct
     }
     case "updateLambda" => (pkg) => (resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
@@ -106,7 +106,7 @@ object Lambda extends DeploymentType  {
             s3Bucket,
             s3Key
           ))
-      }
+      }.distinct
     }
   }
 }
