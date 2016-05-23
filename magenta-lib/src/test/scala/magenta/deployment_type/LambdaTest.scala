@@ -17,7 +17,7 @@ class LambdaTest extends FlatSpec with Matchers {
   val data: Map[String, JValue] = Map(
     "bucket" -> "lambda-bucket",
     "fileName" -> "test-file.zip",
-    "functionName" -> "MyFunction-"
+    "functionNames" -> List("MyFunction-")
   )
 
   val app = Seq(App("lambda"))
@@ -28,7 +28,7 @@ class LambdaTest extends FlatSpec with Matchers {
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
-        files = Seq((new File(pkg.srcDir, "test-file.zip") -> s"test/PROD/lambda/test-file.zip"))
+        files = Seq(new File(pkg.srcDir, "test-file.zip") -> s"test/PROD/lambda/test-file.zip")
       )
     ))
   }
