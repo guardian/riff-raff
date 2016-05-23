@@ -1,16 +1,19 @@
 package magenta
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.matchers.ShouldMatchers
 import java.io.File
+import java.util.UUID
+
 import org.json4s._
 import org.json4s.JsonDSL._
 import fixtures._
-import magenta.deployment_type.{S3, Django, ExecutableJarWebapp, PatternValue, Lambda}
+import magenta.deployment_type.{Django, ExecutableJarWebapp, Lambda, PatternValue, S3}
 import magenta.tasks._
 
 class DeploymentTypeTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size 8
@@ -25,7 +28,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     val thrown = the[NoSuchElementException] thrownBy {
-      S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+      S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(S3Upload(
           "bucket-1234",
           Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -46,7 +49,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+    S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
       List(S3Upload(
         "bucket-1234",
         Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -67,7 +70,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    S3.perAppActions("uploadStaticFiles")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be(
+    S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be(
       List(S3Upload(
         "bucket-1234",
         Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -89,7 +92,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", new File("/tmp/packages"))
 
-    Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+    Lambda.perAppActions("updateLambda")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
       List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
       ))
   }
@@ -106,7 +109,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
 
     val thrown = the[FailException] thrownBy {
-      Lambda.perAppActions("updateLambda")(p)(lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+      Lambda.perAppActions("updateLambda")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
         ))
     }
@@ -139,7 +142,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "django-webapp", webappDirectory)
     val host = Host("host_name")
 
-    Django.perHostActions("deploy")(p)(host, fakeKeyRing) should be (List(
+    Django.perHostActions("deploy")(p)(logger, host, fakeKeyRing) should be (List(
       BlockFirewall(host as "django"),
       CompressedCopy(host as "django", Some(specificBuildFile), "/django-apps/"),
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),

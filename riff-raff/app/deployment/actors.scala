@@ -170,7 +170,7 @@ class DeployCoordinator extends Actor with Logging {
 
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
-      val rootLogger = DeployLogger.rootLoggerFor(record.uuid, record.parameters)
+      val rootLogger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(record.uuid, record.parameters))
       val state = DeployRunState(record, rootLogger)
       ifStopFlagClear(state) {
         deployStateMap += (record.uuid -> state)

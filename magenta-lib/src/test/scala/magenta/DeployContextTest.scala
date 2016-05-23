@@ -7,31 +7,29 @@ import magenta.tasks.Task
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.Matchers.any
 
 import scala.collection.mutable.Buffer
 
 class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
-
   it should ("resolve a set of tasks") in {
+    val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
-    val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
-    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
-      context.tasks should be(List(
-        StubTask("init_action_one per app task"),
-        StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
-      ))
-    }
+    val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, logger)
+    context.tasks should be(List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
+    ))
   }
 
   it should ("send a Info and TaskList message when resolving tasks") in {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
+    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
 
     val messages = Buffer[Message]()
     DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
 
-    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
-      val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
-    }
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
 
     messages.filter(_.getClass == classOf[Info]) should have size (1)
     messages.filter(_.getClass == classOf[TaskList]) should have size (1)
@@ -39,16 +37,18 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("execute the task") in {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
-    val context = DeployContext(parameters, project(baseMockRecipe), lookupSingleHost)
+    val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters)
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, logger)
     context.execute()
     val task = context.tasks.head
 
-    verify(task, times(1)).execute()
+    verify(task, times(1)).execute(any[DeployLogger])
   }
 
   it should ("send taskStart and taskFinish messages for each task") in {
     val parameters = DeployParameters(Deployer("tester2"), Build("project","1"), CODE, oneRecipeName)
-    val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
+    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
@@ -56,7 +56,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
       wrapper.stack.top match {
         case FinishContext(finishMessage) => finished += finishMessage
         case StartContext(startMessage) => start += startMessage
-        case _ =>
+        case _ => System.err.println()
       }
     )
 
@@ -70,7 +70,8 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("bookend the messages with startdeploy and finishdeploy messages") in {
     val parameters = DeployParameters(Deployer("tester3"), Build("Project","1"), CODE, oneRecipeName)
-    val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
+    val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters)
+    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
@@ -92,7 +93,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   val CODE = Stage("CODE")
 
   case class MockStubPerHostAction(description: String, apps: Seq[App]) extends Action {
-    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack) = {
+    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, logger: DeployLogger) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(Some(resourceLookup.hosts.all.head))
       task :: Nil
@@ -100,7 +101,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   case class MockStubPerAppAction(description: String, apps: Seq[App]) extends Action {
-    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack) = {
+    def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, logger: DeployLogger) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(None)
       task :: Nil

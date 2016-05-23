@@ -28,10 +28,10 @@ package object fixtures {
 
   def stubPackageType(perAppActionNames: Seq[String], perHostActionNames: Seq[String]) = StubDeploymentType(
     perAppActions = {
-      case name if perAppActionNames.contains(name) => pkg => (_,_, _) => List(StubTask(name + " per app task"))
+      case name if perAppActionNames.contains(name) => pkg => (_,_,_, _) => List(StubTask(name + " per app task"))
     },
     perHostActions = {
-      case name if perHostActionNames.contains(name) => pkg => (host, _) =>
+      case name if perHostActionNames.contains(name) => pkg => (_, host, _) =>
         List(StubTask(name + " per host task on " + host.name, Some(host)))
     }
   )

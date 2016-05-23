@@ -42,7 +42,7 @@ object JsonConverter {
     * Return the template's content as JSON,
     * converting it from YAML if necessary.
     */
-  def convert(template: Path)(logger: DeployLogger): String = template.extension match {
+  def convert(template: Path)(implicit logger: DeployLogger): String = template.extension match {
     case Some("yml") | Some("yaml") =>
       logger.info(s"Converting ${template.name} from YAML to JSON")
       val tree = new ObjectMapper(new YAMLFactory()).readTree(template.string)

@@ -25,10 +25,10 @@ class CommandLineTest extends FlatSpec with Matchers {
     val recordedMessages = new ListBuffer[List[Message]]()
     DeployLogger.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(recordedMessages += _.stack.messages)
 
-    DeployLogger.deployContext(UUID.randomUUID(), parameters) {
-      val c = CommandLine(List("echo", "hello"))
-      c.run()
-    }
+    val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+    val c = CommandLine(List("echo", "hello"))
+    c.run(logger)
+    DeployLogger.finishContext(logger)
 
     recordedMessages.toList should be (
       List(StartContext(Deploy(parameters))) ::
@@ -42,22 +42,19 @@ class CommandLineTest extends FlatSpec with Matchers {
   }
 
   it should "throw when command is not found" in {
-    an[IOException] should be thrownBy {
-      DeployLogger.deployContext(UUID.randomUUID(), parameters) {
-        CommandLine(List("unknown_command")).run()
-      }
+    a[FailException] should be thrownBy {
+      val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+      CommandLine(List("unknown_command")).run(logger)
     }
   }
 
   it should "throw when command returns non zero exit code" in {
     a[FailException] should be thrownBy {
-      DeployLogger.deployContext(UUID.randomUUID(), parameters) {
-        CommandLine(List("false")).run()
-      }
+      val logger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters))
+      CommandLine(List("false")).run(logger)
     }
   }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), CODE, RecipeName(baseRecipe.name))
-  val context = DeployContext(parameters, project(baseRecipe), lookupSingleHost)
 
 }

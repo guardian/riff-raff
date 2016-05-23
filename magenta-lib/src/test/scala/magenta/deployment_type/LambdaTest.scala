@@ -1,8 +1,9 @@
 package magenta.deployment_type
 
 import java.io.File
+import java.util.UUID
 
-import magenta.{App, DeploymentPackage, KeyRing, NamedStack, SystemUser}
+import magenta.{App, DeployLogger, DeploymentPackage, KeyRing, NamedStack, SystemUser, fixtures}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
@@ -11,6 +12,7 @@ import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
 class LambdaTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -24,7 +26,7 @@ class LambdaTest extends FlatSpec with Matchers {
   val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", new File("/tmp/packages/webapp"))
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(logger, lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
@@ -34,7 +36,7 @@ class LambdaTest extends FlatSpec with Matchers {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(logger, lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",

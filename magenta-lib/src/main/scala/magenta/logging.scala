@@ -59,9 +59,10 @@ object DeployLogger {
 
   // get the genesis context that will be the root of all others
   def rootLoggerFor(uuid: UUID, parameters: DeployParameters, publishMessages: Boolean = true): DeployLogger = {
-    val initialContext = DeployLogger(Nil, MessageContext(uuid, parameters, None), publishMessages = publishMessages)
-    pushContext(Deploy(parameters), initialContext)
+    DeployLogger(Nil, MessageContext(uuid, parameters, None), publishMessages = publishMessages)
   }
+
+  def startDeployContext(logger: DeployLogger) = pushContext(Deploy(logger.messageContext.parameters), logger)
 
   // create a new context with the given message at the top of the stack - sends the StartContext event
   def pushContext(message: Message, currentContext: DeployLogger): DeployLogger = {

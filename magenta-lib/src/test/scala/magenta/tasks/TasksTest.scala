@@ -19,6 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
 
   "block firewall task" should "use configurable path" in {
     val host = Host("some-host") as ("some-user")
@@ -70,7 +71,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   "waitForPort task" should "fail after timeout" in {
     val task = WaitForPort(Host("localhost"), 9998, 200)
     a [FailException] should be thrownBy {
-      task.execute()
+      task.execute(logger)
     }
   }
 
@@ -81,7 +82,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       server.accept().close()
       server.close()
     }
-    DeployLogger.deployContext(UUID.randomUUID(), parameters) { task.execute() }
+    task.execute(logger)
   }
 
   it should "connect to an open port after a short time" in {
@@ -92,14 +93,14 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       server.accept().close()
       server.close()
     }
-    task.execute()
+    task.execute(logger)
   }
 
 
   "check_url task" should "fail after timeout" in {
     val task = CheckUrls(Host("localhost"), 9997,List("/"), 200, 5)
     a [FailException] should be thrownBy {
-      task.execute()
+      task.execute(logger)
     }
   }
 
@@ -108,7 +109,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     Future {
       new TestServer().withResponse("HTTP/1.0 200 OK")
     }
-    task.execute()
+    task.execute(logger)
 
   }
 
@@ -118,7 +119,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
     a [FailException] should be thrownBy {
-      task.execute()
+      task.execute(logger)
     }
   }
 
@@ -128,7 +129,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
     a [FailException] should be thrownBy {
-      task.execute()
+      task.execute(logger)
     }
   }
   
@@ -159,14 +160,14 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       def host = Host("some-host")
 
       override def remoteCommandLine(credentials: Option[SshCredentials]) = new CommandLine(""::Nil) {
-        override def run() { passed = true }
+        override def run(logger: DeployLogger) { passed = true }
       }
 
       def commandLine = null
       def keyRing = KeyRing(SystemUser(None))
     }
     
-    remoteTask.execute()
+    remoteTask.execute(logger)
     
     passed should be (true)
   }
@@ -226,7 +227,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     request.getFile should be(fileToUpload)
     request.getKey should be (s"keyPrefix/the-jar.jar")
 
-    task.execute()
+    task.execute(logger)
     val s3Client = task.s3client(fakeKeyRing)
 
     verify(s3Client).putObject(request)
@@ -270,7 +271,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val task = new S3Upload("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
-    task.execute()
+    task.execute(logger)
     val s3Client = task.s3client(fakeKeyRing)
 
     val files = task.flattenedFiles

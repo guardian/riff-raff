@@ -1,21 +1,23 @@
 package magenta.tasks
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import magenta._
 import org.scalatest.mock.MockitoSugar
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
-
 import org.mockito.Mockito._
 import org.mockito.Matchers._
+
 import collection.JavaConversions._
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
-import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, InstanceState, DescribeInstanceHealthResult, DescribeInstanceHealthRequest}
-import magenta.{App, SystemUser, KeyRing, Stage}
+import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResult, InstanceState, Instance => ELBInstance}
+import magenta.{App, KeyRing, Stage, SystemUser}
 import java.io.File
+import java.util.UUID
 
 class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "find the matching auto-scaling group with App tagging" in {
     val asgClientMock = mock[AmazonAutoScalingClient]

@@ -12,58 +12,33 @@ class LoggingTest extends FlatSpec with Matchers {
     wrappers
   }
 
-  def getRandomContext = MessageContext(UUID.randomUUID(), parameters, None)
+  def getRandomLogger = DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters)
 
   val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"))
 
-  "MessageBroker" should "quietly ignore messages sent without a context" in {
-    DeployLogger.info("this shouldn't work")
-  }
-
   it should "send messagewrappers to message sinks" in {
-    val context = getRandomContext
-    val wrappers = getWrapperBuffer(context.deployId)
-    val mbc = DeployLogger(List(Deploy(parameters)), context)
+    val logger = getRandomLogger
+    val wrappers = getWrapperBuffer(logger.messageContext.deployId)
 
-    DeployLogger.withMessageBrokerContext(mbc){
-      DeployLogger.info("this should work")
-    }
+    logger.info("this should work")
 
     wrappers.size should be(1)
-    wrappers.head.context should be(context)
-    wrappers.head.stack.messages should be(List(Info("this should work"), Deploy(parameters)))
+    wrappers.head.context should be(logger.messageContext)
+    wrappers.head.stack.messages should be(List(Info("this should work")))
   }
 
-  it should "automatically send deploy start and finish context messages" in {
-    val context = getRandomContext
-    val wrappers = getWrapperBuffer(context.deployId)
+  it should "send deploy start and finish context messages" in {
+    val logger = getRandomLogger
+    val wrappers = getWrapperBuffer(logger.messageContext.deployId)
 
-    DeployLogger.deployContext(context.deployId, context.parameters){
-      DeployLogger.info("this should work")
-    }
-
-    wrappers.size should be(3)
-    wrappers(0).context should be(context)
-    wrappers(0).stack.messages should be(List(StartContext(Deploy(parameters))))
-    wrappers(1).context should be(MessageContext(context.deployId, parameters, Some(wrappers(0).messageId)))
-    wrappers(1).stack.messages should be(List(Info("this should work"), Deploy(parameters)))
-    wrappers(2).stack.messages should be(List(FinishContext(Deploy(parameters)), Deploy(parameters)))
-  }
-
-  it should "allow the contexts to be sent manually" in {
-    val context = getRandomContext
-    val wrappers = getWrapperBuffer(context.deployId)
-
-    val logContext = DeployLogger.rootLoggerFor(context.deployId, context.parameters)
-    DeployLogger.withMessageBrokerContext(logContext){
-      DeployLogger.info("this should work")
-    }
-    DeployLogger.finishAllContexts(logContext)
+    val deployLogger = DeployLogger.startDeployContext(logger)
+    deployLogger.info("this should work")
+    DeployLogger.finishContext(deployLogger)
 
     wrappers.size should be(3)
-    wrappers(0).context should be(context)
+    wrappers(0).context should be(logger.messageContext)
     wrappers(0).stack.messages should be(List(StartContext(Deploy(parameters))))
-    wrappers(1).context should be(MessageContext(context.deployId, parameters, Some(wrappers(0).messageId)))
+    wrappers(1).context should be(MessageContext(logger.messageContext.deployId, parameters, Some(wrappers(0).messageId)))
     wrappers(1).stack.messages should be(List(Info("this should work"), Deploy(parameters)))
     wrappers(2).stack.messages should be(List(FinishContext(Deploy(parameters)), Deploy(parameters)))
   }

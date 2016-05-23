@@ -2,6 +2,7 @@ package magenta
 
 
 import java.io.File
+import java.util.UUID
 
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
 import magenta.json._
@@ -11,6 +12,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class ResolverTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
 
   val simpleExample = """
   {
@@ -37,7 +39,7 @@ class ResolverTest extends FlatSpec with Matchers {
     val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(App("apache"))
     val lookup = stubLookup(host :: Nil)
 
-    val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe))
+    val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe), logger)
 
     tasks.size should be (1)
     tasks should be (List(
@@ -55,7 +57,7 @@ class ResolverTest extends FlatSpec with Matchers {
   val lookupTwoHosts = stubLookup(List(host1, host2))
 
   it should "generate the tasks from the actions supplied" in {
-    Resolver.resolve(project(baseRecipe), lookupSingleHost, parameters(baseRecipe)) should be (List(
+    Resolver.resolve(project(baseRecipe), lookupSingleHost, parameters(baseRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -63,14 +65,14 @@ class ResolverTest extends FlatSpec with Matchers {
 
   it should "only generate tasks for hosts that have apps" in {
     Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe)) should be (List(
+      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe), logger) should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "generate tasks for all hosts with app" in {
-    Resolver.resolve(project(baseRecipe), lookupTwoHosts, parameters(baseRecipe)) should be (List(
+    Resolver.resolve(project(baseRecipe), lookupTwoHosts, parameters(baseRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_one per host task on host2", Some(host2))
@@ -95,7 +97,7 @@ class ResolverTest extends FlatSpec with Matchers {
     val host2WithApp2 = Host("host2", stage = CODE.name, tags = Map("group" -> "")).app(app2)
     val lookupMultiHost = stubLookup(List(host1, host2WithApp2))
 
-    Resolver.resolve(project(multiRoleRecipe), lookupMultiHost, parameters(multiRoleRecipe)) should be (List(
+    Resolver.resolve(project(multiRoleRecipe), lookupMultiHost, parameters(multiRoleRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -112,7 +114,7 @@ class ResolverTest extends FlatSpec with Matchers {
         allOnAllPackageType.mkAction("action_two")(stubPackage) :: Nil
     )
 
-    Resolver.resolve(project(recipe), lookupTwoHosts, parameters(recipe)) should be (List(
+    Resolver.resolve(project(recipe), lookupTwoHosts, parameters(recipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -129,7 +131,7 @@ class ResolverTest extends FlatSpec with Matchers {
       actionsPerHost = basePackageType.mkAction("main_action")(stubPackage) :: Nil,
       dependsOn = List("one"))
 
-    Resolver.resolve(project(mainRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe)) should be (List(
+    Resolver.resolve(project(mainRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("main_init_action per app task"),
@@ -150,7 +152,7 @@ class ResolverTest extends FlatSpec with Matchers {
       actionsPerHost = basePackageType.mkAction("main_action")(stubPackage) :: Nil,
       dependsOn = List("two", "one"))
 
-    Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe)) should be (List(
+    Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("init_action_two per app task"),
@@ -161,7 +163,7 @@ class ResolverTest extends FlatSpec with Matchers {
   }
   
   it should "disable the recipe if no hosts found and actions require some" in {
-    val recipeTasks = Resolver.resolveDetail(project(baseRecipe), stubLookup(List()), parameters(baseRecipe))
+    val recipeTasks = Resolver.resolveDetail(project(baseRecipe), stubLookup(List()), parameters(baseRecipe), logger)
     recipeTasks.length should be(1)
     recipeTasks.head.disabled should be(true)
   }
@@ -171,14 +173,15 @@ class ResolverTest extends FlatSpec with Matchers {
       actionsBeforeApp =  basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,
       dependsOn = Nil)
 
-    Resolver.resolve(project(nonHostRecipe), stubLookup(List()), parameters(nonHostRecipe))
+    Resolver.resolve(project(nonHostRecipe), stubLookup(List()), parameters(nonHostRecipe), logger)
   }
 
   it should "only resolve tasks on hosts in the correct stage" in {
     Resolver.resolve(
       project(baseRecipe),
       stubLookup(List(host, Host("host_in_other_stage", Set(app1), "other_stage"))),
-      parameters(baseRecipe)
+      parameters(baseRecipe),
+      logger
     ) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
@@ -186,7 +189,7 @@ class ResolverTest extends FlatSpec with Matchers {
   }
 
   it should "observe ordering of hosts in deployInfo" in {
-    Resolver.resolve(project(baseRecipe), stubLookup(List(host2, host1)), parameters(baseRecipe)) should be (List(
+    Resolver.resolve(project(baseRecipe), stubLookup(List(host2, host1)), parameters(baseRecipe), logger) should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host2", Some(host2)),
       StubTask("action_one per host task on host1", Some(host1))
@@ -196,7 +199,7 @@ class ResolverTest extends FlatSpec with Matchers {
   it should "observe ordering of hosts in deployInfo irrespective of connection user" in {
     val pkgTypeWithUser = StubDeploymentType(
       perHostActions = {
-        case "deploy" => pkg => (host, keyRing) =>
+        case "deploy" => pkg => (logger, host, keyRing) =>
           List(StubTask("with conn", Some(host as "user")), StubTask("without conn", Some(host)))
       }
     )
@@ -204,7 +207,7 @@ class ResolverTest extends FlatSpec with Matchers {
     val recipe = Recipe("with-user",
       actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")(pkg)))
 
-    Resolver.resolve(project(recipe), stubLookup(List(host2, host1)), parameters(recipe)) should be (List(
+    Resolver.resolve(project(recipe), stubLookup(List(host2, host1)), parameters(recipe), logger) should be (List(
       StubTask("with conn", Some(host2 as "user")),
       StubTask("without conn", Some(host2)),
       StubTask("with conn", Some(host1 as "user")),
@@ -215,14 +218,14 @@ class ResolverTest extends FlatSpec with Matchers {
   it should "resolve tasks from multiple stacks" in {
     val pkgType = StubDeploymentType(
       perAppActions = {
-        case "deploy" => pkg => (lookup, params, stack) =>
+        case "deploy" => pkg => (logger, lookup, params, stack) =>
           List(StubTask("stacked", stack = Some(stack)))
       }
     )
     val recipe = Recipe("stacked",
       actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
 
-    Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe)) should be (List(
+    Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe), logger) should be (List(
       StubTask("stacked", stack = Some(NamedStack("foo"))),
       StubTask("stacked", stack = Some(NamedStack("bar")))
     ))
