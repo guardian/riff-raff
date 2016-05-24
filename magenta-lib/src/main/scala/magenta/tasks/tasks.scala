@@ -140,9 +140,10 @@ case class S3Upload(
     MessageBroker.verbose(s"Finished upload of ${fileString(files.size)} to S3")
   }
 
+  private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"
   private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
     if (!file.isDirectory) Seq((file, key))
-    else file.listFiles.toSeq.flatMap(f => resolveFiles(f, s"$key/${f.getName}")).distinct
+    else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
   }
 
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)

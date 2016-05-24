@@ -215,7 +215,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     command.quoted should be ("""rsync -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" -rpv --delete --delete-after /source foo.com:/dest""")
   }
 
-  "S3UploadV2" should "upload a single file to S3" in {
+  "S3Upload" should "upload a single file to S3" in {
     val fileToUpload = new File("/foo/bar/the-jar.jar")
     val task = new S3Upload("bucket", Seq((fileToUpload -> "keyPrefix/the-jar.jar"))) with StubS3
 
@@ -278,6 +278,35 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     files should contain ((fileOne,"myStack/CODE/myApp/one.txt"))
     files should contain ((fileTwo,"myStack/CODE/myApp/two.txt"))
     files should contain ((fileThree,"myStack/CODE/myApp/sub/three.txt"))
+
+    verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
+
+    verifyNoMoreInteractions(s3Client)
+  }
+
+  it should "upload a directory to S3 with no prefix" in {
+
+    val baseDir = createTempDir()
+
+    val fileOne = new File(baseDir, "one.txt")
+    fileOne.createNewFile()
+    val fileTwo = new File(baseDir, "two.txt")
+    fileTwo.createNewFile()
+    val subDir = new File(baseDir, "sub")
+    subDir.mkdir()
+    val fileThree = new File(subDir, "three.txt")
+    fileThree.createNewFile()
+
+    val task = new S3Upload("bucket", Seq(baseDir -> "")) with StubS3
+    task.execute()
+    val s3Client = task.s3client(fakeKeyRing)
+
+    val files = task.flattenedFiles
+    files.size should be (3)
+    // these should have no initial '/' in the target key
+    files should contain ((fileOne,"one.txt"))
+    files should contain ((fileTwo,"two.txt"))
+    files should contain ((fileThree,"sub/three.txt"))
 
     verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
