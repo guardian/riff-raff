@@ -13,9 +13,9 @@ case class CommandLine(commandLine: List[String], successCodes: List[Int] = List
         filteredOut(line)
   }
 
-  def run(logger: DeployLogger) {
+  def run(reporter: DeployReporter) {
     import sys.process._
-    logger.infoContext(s"$$ $quoted") { infoContext =>
+    reporter.infoContext(s"$$ $quoted") { infoContext =>
       val returnValue = commandLine ! ProcessLogger(infoContext.commandOutput(_), suppressor(infoContext.commandError(_)))
       infoContext.verbose("return value " + returnValue)
       if (!successCodes.contains(returnValue)) {

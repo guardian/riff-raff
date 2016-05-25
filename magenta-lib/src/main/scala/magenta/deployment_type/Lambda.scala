@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import java.io.File
 
-import magenta.{DeployLogger, DeployParameters, DeploymentPackage, KeyRing, Stack, Stage}
+import magenta.{DeployReporter, DeployParameters, DeploymentPackage, KeyRing, Stack, Stage}
 import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
 
 object Lambda extends DeploymentType  {
@@ -60,17 +60,17 @@ object Lambda extends DeploymentType  {
       """.stripMargin
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String)(logger: DeployLogger): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     (functionNamesParam.get(pkg), functionsParam.get(pkg)) match {
       case (Some(functionNames), None) =>
         functionNames.map(name => LambdaFunction(s"$name$stage", fileNameParam(pkg), bucketOption))
       case (None, Some(functionsMap)) =>
-        val functionDefinition = functionsMap.getOrElse(stage, logger.fail(s"Function not defined for stage $stage"))
-        val functionName = functionDefinition.getOrElse("name", logger.fail(s"Function name not defined for stage $stage"))
+        val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
+        val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
         List(LambdaFunction(functionName, fileName, bucketOption))
-      case _ => logger.fail("Must specify one of 'functions' or 'functionNames' parameters")
+      case _ => reporter.fail("Must specify one of 'functions' or 'functionNames' parameters")
     }
   }
 

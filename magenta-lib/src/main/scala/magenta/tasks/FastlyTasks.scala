@@ -2,7 +2,7 @@ package magenta.tasks
 
 import java.util.concurrent.Executors
 
-import magenta.{DeployLogger, DeployStoppedException, DeploymentPackage, KeyRing}
+import magenta.{DeployReporter, DeployStoppedException, DeploymentPackage, KeyRing}
 import java.io.File
 
 import org.json4s._
@@ -22,17 +22,17 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
   // No, I'm not happy about this, but it gets things working until we can make a larger change
   def block[T](f: => Future[T]) = Await.result(f, 1.minute)
 
-  override def execute(logger: DeployLogger, stopFlag: => Boolean) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     FastlyApiClientProvider.get(keyRing).foreach { client =>
-      val activeVersionNumber = getActiveVersionNumber(client, logger, stopFlag)
-      val nextVersionNumber = clone(activeVersionNumber, client, logger, stopFlag)
+      val activeVersionNumber = getActiveVersionNumber(client, reporter, stopFlag)
+      val nextVersionNumber = clone(activeVersionNumber, client, reporter, stopFlag)
 
-      deleteAllVclFilesFrom(nextVersionNumber, client, logger, stopFlag)
+      deleteAllVclFilesFrom(nextVersionNumber, client, reporter, stopFlag)
 
-      uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, logger, stopFlag)
-      activateVersion(nextVersionNumber, client, logger, stopFlag)
+      uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, reporter, stopFlag)
+      activateVersion(nextVersionNumber, client, reporter, stopFlag)
 
-      logger.info(s"Fastly version $nextVersionNumber is now active")
+      reporter.info(s"Fastly version $nextVersionNumber is now active")
     }
   }
 
@@ -40,42 +40,42 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
   def stopOnFlag[T](stopFlag: => Boolean)(block: => T): T =
     if (!stopFlag) block else throw new DeployStoppedException("Deploy manually stopped during UpdateFastlyConfig")
 
-  private def getActiveVersionNumber(client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Int = {
+  private def getActiveVersionNumber(client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val versionList = block(client.versionList())
       val versions = parse(versionList.getResponseBody).extract[List[Version]]
       val activeVersion = versions.filter(x => x.active.getOrElse(false))(0)
-      logger.info(s"Current active version ${activeVersion.number}")
+      reporter.info(s"Current active version ${activeVersion.number}")
       activeVersion.number
     }
   }
 
-  private def clone(versionNumber: Int, client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Int = {
+  private def clone(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val cloned = block(client.versionClone(versionNumber))
       val clonedVersion = parse(cloned.getResponseBody).extract[Version]
-      logger.info(s"Cloned version ${clonedVersion.number}")
+      reporter.info(s"Cloned version ${clonedVersion.number}")
       clonedVersion.number
     }
   }
 
-  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Unit = {
+  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclListResponse = block(client.vclList(versionNumber))
       val vclFilesToDelete = parse(vclListResponse.getResponseBody).extract[List[Vcl]]
       vclFilesToDelete.foreach { file =>
-        logger.info(s"Deleting ${file.name}")
+        reporter.info(s"Deleting ${file.name}")
         block(client.vclDelete(versionNumber, file.name).map(_.getResponseBody))
       }
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Unit = {
+  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclFilesToUpload = srcDir.listFiles().toList
       vclFilesToUpload.foreach { file =>
         if (file.getName.endsWith(".vcl")) {
-          logger.info(s"Uploading ${file.getName}")
+          reporter.info(s"Uploading ${file.getName}")
           val vcl = scala.io.Source.fromFile(file.getAbsolutePath).mkString
           block(client.vclUpload(versionNumber, vcl, file.getName, file.getName))
         }
@@ -84,21 +84,21 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
     }
   }
 
-  private def activateVersion(versionNumber: Int, client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Unit = {
-    val configIsValid = validateNewConfigFor(versionNumber, client, logger, stopFlag)
+  private def activateVersion(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+    val configIsValid = validateNewConfigFor(versionNumber, client, reporter, stopFlag)
     if (configIsValid) {
       block(client.versionActivate(versionNumber))
     } else {
-      logger.fail(s"Error validating Fastly version $versionNumber")
+      reporter.fail(s"Error validating Fastly version $versionNumber")
     }
   }
 
-  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, logger: DeployLogger, stopFlag: => Boolean): Boolean = {
+  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Boolean = {
     stopOnFlag(stopFlag) {
-      logger.info("Waiting 5 seconds for the VCL to compile")
+      reporter.info("Waiting 5 seconds for the VCL to compile")
       Thread.sleep(5000)
 
-      logger.info(s"Validating new config $versionNumber")
+      reporter.info(s"Validating new config $versionNumber")
       val response = block(client.versionValidate(versionNumber))
       val validationResponse = parse(response.getResponseBody) \\ "status"
       validationResponse == JString("ok")

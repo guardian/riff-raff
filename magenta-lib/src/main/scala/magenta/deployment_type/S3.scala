@@ -98,7 +98,7 @@ object S3 extends DeploymentType with S3AclParams {
   }
 
   def perAppActions = {
-    case "uploadStaticFiles" => (pkg) => (logger, resourceLookup, parameters, stack) => {
+    case "uploadStaticFiles" => (pkg) => (reporter, resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {

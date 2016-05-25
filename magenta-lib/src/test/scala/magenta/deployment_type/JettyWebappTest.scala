@@ -19,7 +19,7 @@ import magenta.deployment_type.JettyWebapp
 
 class JettyWebappTest  extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "jetty web app package type" should "have a deploy action" in {
     val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "jetty-webapp", new File("/tmp/packages/webapp"))

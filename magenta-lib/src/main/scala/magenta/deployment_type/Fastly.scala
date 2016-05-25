@@ -1,6 +1,5 @@
 package magenta.deployment_type
 
-import magenta.DeployLogger$
 import magenta.tasks.UpdateFastlyConfig
 
 object Fastly  extends DeploymentType {
@@ -11,9 +10,9 @@ object Fastly  extends DeploymentType {
     """.stripMargin
 
   def perAppActions = {
-    case "deploy" => pkg => (logger, lookup, parameters, stack) => {
+    case "deploy" => pkg => (reporter, lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      logger.verbose(s"Keyring is $keyRing")
+      reporter.verbose(s"Keyring is $keyRing")
       List(UpdateFastlyConfig(pkg))
     }
   }

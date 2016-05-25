@@ -17,7 +17,7 @@ import java.util.UUID
 
 class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "find the matching auto-scaling group with App tagging" in {
     val asgClientMock = mock[AmazonAutoScalingClient]

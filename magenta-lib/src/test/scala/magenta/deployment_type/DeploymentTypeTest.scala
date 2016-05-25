@@ -13,7 +13,7 @@ import magenta.tasks._
 
 class DeploymentTypeTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size 8

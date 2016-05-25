@@ -14,7 +14,7 @@ import scalax.file.Path
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "cloudformation deployment type" should "have an updateStack action" in {
     val data: Map[String, JValue] = Map()

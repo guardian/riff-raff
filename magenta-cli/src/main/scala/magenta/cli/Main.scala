@@ -21,7 +21,7 @@ import scalax.file.Path
 object Main extends scala.App {
 
   var taskList: List[TaskDetail] = _
-  DeployLogger.messages.subscribe(wrapper => {
+  DeployReporter.messages.subscribe(wrapper => {
     val indent = "  " * (wrapper.stack.messages.size - 1)
     wrapper.stack.top match {
       case Verbose(message) => if (Config.verbose) Console.out.println(indent + message)
@@ -170,7 +170,7 @@ object Main extends scala.App {
         val build = Build(Config.project.get, Config.build.get)
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Nil, Config.host.toList)
         val deployId = UUID.randomUUID()
-        implicit val rootLogger = DeployLogger.rootLoggerFor(deployId, parameters)
+        implicit val rootLogger = DeployReporter.rootReporterFor(deployId, parameters)
         rootLogger.info("[using %s build %s]" format (programName, programVersion))
 
         rootLogger.info("Locating artifact...")

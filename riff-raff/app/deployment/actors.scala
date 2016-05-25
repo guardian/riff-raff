@@ -106,7 +106,7 @@ case class UniqueTask(id: Int, task: Task)
 
 case class DeployRunState(
   record: Record,
-  rootLogger: DeployLogger,
+  rootLogger: DeployReporter,
   artifactDir: Option[File] = None,
   context: Option[DeployContext] = None
 ) {
@@ -153,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        DeployLogger.failAllContexts(state.rootLogger, stopMessage, DeployStoppedException(stopMessage))
+        DeployReporter.failAllContexts(state.rootLogger, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -170,7 +170,7 @@ class DeployCoordinator extends Actor with Logging {
 
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
-      val rootLogger = DeployLogger.startDeployContext(DeployLogger.rootLoggerFor(record.uuid, record.parameters))
+      val rootLogger = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
       val state = DeployRunState(record, rootLogger)
       ifStopFlagClear(state) {
         deployStateMap += (record.uuid -> state)
@@ -207,7 +207,7 @@ class DeployCoordinator extends Actor with Logging {
               log.debug("Running next task")
               runners ! RunTask(state.record, state.nextTask(task).get, state.rootLogger, new DateTime())
             case None =>
-              DeployLogger.finishContext(state.rootLogger)
+              DeployReporter.finishContext(state.rootLogger)
               log.debug("Cleaning up")
               cleanup(state)
           }
@@ -251,11 +251,11 @@ class DeployCoordinator extends Actor with Logging {
 
 object TaskRunner {
   trait Message
-  case class RunTask(record: Record, task: UniqueTask, loggingContext:DeployLogger, queueTime: DateTime) extends Message
+  case class RunTask(record: Record, task: UniqueTask, reporter: DeployReporter, queueTime: DateTime) extends Message
   case class TaskCompleted(record: Record, task: UniqueTask) extends Message
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
-  case class PrepareDeploy(record: Record, rootLogger: DeployLogger) extends Message
+  case class PrepareDeploy(record: Record, rootReporter: DeployReporter) extends Message
   case class DeployReady(record: Record, artifactDir: File, context: DeployContext) extends Message
   case class RemoveArtifact(artifactDir: File) extends Message
 }

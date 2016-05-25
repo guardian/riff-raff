@@ -41,8 +41,8 @@ case class CopyFile(host: Host, source: String, dest: String, copyMode: String =
 
   lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
 
-  override def execute(logger: DeployLogger, stopFlag: =>  Boolean) {
-    commandLine(keyRing).run(logger)
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    commandLine(keyRing).run(reporter)
   }
 }
 
@@ -65,8 +65,8 @@ case class CompressedCopy(host: Host, source: Option[File], dest: String)(implic
 
 trait CompositeTask extends Task {
   def tasks: Seq[Task]
-  override def execute(logger: DeployLogger, stopFlag: => Boolean) {
-    for (task <- tasks) { if (!stopFlag) task.execute(logger, stopFlag) }
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    for (task <- tasks) { if (!stopFlag) task.execute(reporter, stopFlag) }
   }
 }
 
@@ -130,12 +130,12 @@ case class S3Upload(
       s"CacheControl:${request.getMetadata.getCacheControl} ContentType:${request.getMetadata.getContentType} ACL:${request.getCannedAcl}"
 
   // execute this task (should throw on failure)
-  override def execute(logger: DeployLogger, stopFlag: =>  Boolean)  {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     val client = s3client(keyRing)
-    logger.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3")
-    requests.take(detailedLoggingThreshold).foreach(r => logger.verbose(s"Uploading ${requestToString(r)}"))
+    reporter.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3")
+    requests.take(detailedLoggingThreshold).foreach(r => reporter.verbose(s"Uploading ${requestToString(r)}"))
     requests.par foreach { request => client.putObject(request) }
-    logger.verbose(s"Finished upload of ${fileString(files.size)} to S3")
+    reporter.verbose(s"Finished upload of ${fileString(files.size)} to S3")
   }
 
   private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"
@@ -176,8 +176,8 @@ case class WaitForPort(host: Host, port: Int, duration: Long)(implicit val keyRi
   def description = "to %s on %s" format(host.name, port)
   def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
 
-  override def execute(logger: DeployLogger, stopFlag: =>  Boolean) {
-    check(logger, stopFlag) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    check(reporter, stopFlag) {
       try {
         new Socket(host.name, port).close()
         true
@@ -194,11 +194,11 @@ case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long,
   def description = "check [%s] on %s" format(paths, host)
   def verbose = "Check that [%s] returns a 200" format(paths)
 
-  def execute(logger: DeployLogger, stopFlag: =>  Boolean) {
+  def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     for (path <- paths) {
       val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
-      logger.verbose("Checking %s" format url)
-      check(logger, stopFlag) {
+      reporter.verbose("Checking %s" format url)
+      check(reporter, stopFlag) {
         try {
           val connection = url.openConnection()
           connection.setConnectTimeout( 2000 )
@@ -206,7 +206,7 @@ case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long,
           Source.fromInputStream( connection.getInputStream )
           true
         } catch {
-          case e: FileNotFoundException => logger.fail("404 Not Found", e)
+          case e: FileNotFoundException => reporter.fail("404 Not Found", e)
           case e:Throwable => false
         }
       }
@@ -217,22 +217,22 @@ case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long,
 trait PollingCheck {
   def duration: Long
 
-  def check(logger:DeployLogger, stopFlag: => Boolean)(theCheck: => Boolean) {
+  def check(reporter: DeployReporter, stopFlag: => Boolean)(theCheck: => Boolean) {
     val expiry = System.currentTimeMillis() + duration
 
     def checkAttempt(currentAttempt: Int) {
       if (!theCheck) {
         if (stopFlag) {
-          logger.info("Abandoning remaining checks as stop flag has been set")
+          reporter.info("Abandoning remaining checks as stop flag has been set")
         } else {
           val remainingTime = expiry - System.currentTimeMillis()
           if (remainingTime > 0) {
             val sleepyTime = calculateSleepTime(currentAttempt)
-            logger.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
+            reporter.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
             Thread.sleep(sleepyTime)
             checkAttempt(currentAttempt + 1)
           } else {
-            logger.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
+            reporter.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
           }
         }
       }
@@ -259,8 +259,8 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   override def taskHost = Some(host)
-  override def execute(logger: DeployLogger, stopFlag: => Boolean) {
-    logger.info("Hello to " + host.name + "!")
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    reporter.info("Hello to " + host.name + "!")
   }
 
   def description = "to " + host.name
@@ -320,8 +320,8 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
   val switchboardUrl = s"$protocol://${host.name}:$port$path"
 
   // execute this task (should throw on failure)
-  override def execute(logger: DeployLogger, stopFlag: => Boolean) = {
-    logger.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = {
+    reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
     Http(url(switchboardUrl) << Map(switchName -> desiredStateName) >|)
   }
 
@@ -342,12 +342,12 @@ case class UpdateLambda(
   def description = s"Updating $functionName Lambda"
   def verbose = description
 
-  override def execute(logger: DeployLogger, stopFlag: =>  Boolean) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
 
     val client = lambdaClient(keyRing)
-    logger.verbose(s"Starting update $functionName Lambda")
+    reporter.verbose(s"Starting update $functionName Lambda")
     client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, file))
-    logger.verbose(s"Finished update $functionName Lambda")
+    reporter.verbose(s"Finished update $functionName Lambda")
   }
 
 }
@@ -356,11 +356,11 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String)
   def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
   def verbose = description
 
-  override def execute(logger: DeployLogger, stopFlag: =>  Boolean) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     val client = lambdaClient(keyRing)
-    logger.verbose(s"Starting update $functionName Lambda")
+    reporter.verbose(s"Starting update $functionName Lambda")
     client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-    logger.verbose(s"Finished update $functionName Lambda")
+    reporter.verbose(s"Finished update $functionName Lambda")
   }
 
 }

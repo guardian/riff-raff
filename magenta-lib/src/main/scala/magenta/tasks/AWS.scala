@@ -116,7 +116,7 @@ trait ASG extends AWS {
   )
 
   def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)
-    (implicit keyRing: KeyRing, logger: DeployLogger): AutoScalingGroup = {
+    (implicit keyRing: KeyRing, reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
@@ -151,19 +151,19 @@ trait ASG extends AWS {
 
     val appMatch:ASGMatch = appToMatchingGroups match {
       case Seq() =>
-        logger.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
+        reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
       case Seq(onlyMatch) => onlyMatch
       case firstMatch +: otherMatches =>
-        logger.info(s"More than one app matches an autoscaling group, the first in the list will be used")
+        reporter.info(s"More than one app matches an autoscaling group, the first in the list will be used")
         firstMatch
     }
 
     appMatch match {
       case ASGMatch(_, List(singleGroup)) =>
-        logger.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
+        reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
         singleGroup
       case ASGMatch(app, groupList) =>
-        logger.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }

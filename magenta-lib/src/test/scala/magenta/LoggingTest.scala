@@ -8,11 +8,11 @@ class LoggingTest extends FlatSpec with Matchers {
 
   def getWrapperBuffer(uuid: UUID): ListBuffer[MessageWrapper] = {
     val wrappers = ListBuffer.empty[MessageWrapper]
-    DeployLogger.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
+    DeployReporter.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
     wrappers
   }
 
-  def getRandomLogger = DeployLogger.rootLoggerFor(UUID.randomUUID(), parameters)
+  def getRandomLogger = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
 
   val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"))
 
@@ -31,9 +31,9 @@ class LoggingTest extends FlatSpec with Matchers {
     val logger = getRandomLogger
     val wrappers = getWrapperBuffer(logger.messageContext.deployId)
 
-    val deployLogger = DeployLogger.startDeployContext(logger)
+    val deployLogger = DeployReporter.startDeployContext(logger)
     deployLogger.info("this should work")
-    DeployLogger.finishContext(deployLogger)
+    DeployReporter.finishContext(deployLogger)
 
     wrappers.size should be(3)
     wrappers(0).context should be(logger.messageContext)

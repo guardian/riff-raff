@@ -13,7 +13,7 @@ import java.util.UUID
 
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "double the size of the autoscaling group" in {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
@@ -24,7 +24,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val task = new DoubleSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
       override def groupForAppAndStage(pkg: DeploymentPackage,  stage: Stage, stack: Stack)
-                                      (implicit keyRing: KeyRing, logger: DeployLogger) = asg
+                                      (implicit keyRing: KeyRing, reporter: DeployReporter) = asg
     }
 
     task.execute(logger)
@@ -45,7 +45,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val task = new CheckGroupSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
       override def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)
-                                      (implicit keyRing: KeyRing, logger: DeployLogger) = asg
+                                      (implicit keyRing: KeyRing, reporter: DeployReporter) = asg
     }
 
     val thrown = intercept[FailException](task.execute(logger))

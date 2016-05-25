@@ -38,12 +38,12 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File)(implicit logger: DeployLogger): Project = {
+  def parse(f: File)(implicit reporter: DeployReporter): Project = {
     try {
       parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
     } catch {
       case e:FileNotFoundException =>
-        logger.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
+        reporter.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
     }
   }
 

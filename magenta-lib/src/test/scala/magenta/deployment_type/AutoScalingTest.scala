@@ -13,7 +13,7 @@ import magenta.deployment_type.AutoScaling
 
 class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "auto-scaling with ELB package type" should "have a deploy action" in {
     val data: Map[String, JValue] = Map(

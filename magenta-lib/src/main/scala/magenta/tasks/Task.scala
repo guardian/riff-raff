@@ -3,8 +3,8 @@ package tasks
 
 trait Task {
   // execute this task (should throw on failure)
-  def execute(context: DeployLogger, stopFlag: => Boolean)
-  def execute(context: DeployLogger) { execute(context, stopFlag = false) }
+  def execute(reporter: DeployReporter, stopFlag: => Boolean)
+  def execute(reporter: DeployReporter) { execute(reporter, stopFlag = false) }
 
   def keyRing: KeyRing
 

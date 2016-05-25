@@ -40,7 +40,7 @@ object PreviewController {
   def startPreview(parameters: DeployParameters): UUID = {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
-    val muteLogger = DeployLogger.rootLoggerFor(previewId, parameters, publishMessages = false)
+    val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
     val previewFuture = Future { Preview(parameters, muteLogger) }
     Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
@@ -53,7 +53,7 @@ object Preview {
   import Configuration.artifact.aws._
 
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build)(implicit logger: DeployLogger): String =
+  def getJsonFromArtifact(build: Build)(implicit reporter: DeployReporter): String =
     S3Artifact.withDownload(build) { artifactDir =>
       Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
     }
@@ -64,9 +64,9 @@ object Preview {
    * cannot be used for an actual deploy.
    * This is cached in the database so future previews are faster.
    */
-  def getProject(build: Build, logger: DeployLogger): Project = {
+  def getProject(build: Build, reporter: DeployReporter): Project = {
     val json = getJsonFromStore(build).getOrElse {
-      val json = getJsonFromArtifact(build)(logger)
+      val json = getJsonFromArtifact(build)(reporter)
       Persistence.store.writeDeployJson(build, json)
       json
     }
@@ -76,13 +76,13 @@ object Preview {
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters, logger: DeployLogger): Preview = {
-    val project = Preview.getProject(parameters.build, logger)
-    Preview(project, parameters, logger)
+  def apply(parameters: DeployParameters, reporter: DeployReporter): Preview = {
+    val project = Preview.getProject(parameters.build, reporter)
+    Preview(project, parameters, reporter)
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, logger: DeployLogger) {
+case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter) {
   lazy val lookup = LookupSelector()
   lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
     case NamedStack(s) => s
@@ -93,18 +93,18 @@ case class Preview(project: Project, parameters: DeployParameters, logger: Deplo
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
-  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, logger)
+  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, reporter)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
   def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), logger).distinct
+    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter).distinct
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
-    val allTasks = allRecipes.flatMap(recipe => Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), logger)).distinct
+    val allTasks = allRecipes.flatMap(recipe => Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter)).distinct
     taskHosts(allTasks)
   }
 

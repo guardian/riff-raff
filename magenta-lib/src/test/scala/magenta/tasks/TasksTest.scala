@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployLogger.rootLoggerFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "block firewall task" should "use configurable path" in {
     val host = Host("some-host") as ("some-user")
@@ -160,7 +160,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       def host = Host("some-host")
 
       override def remoteCommandLine(credentials: Option[SshCredentials]) = new CommandLine(""::Nil) {
-        override def run(logger: DeployLogger) { passed = true }
+        override def run(reporter: DeployReporter) { passed = true }
       }
 
       def commandLine = null
@@ -299,7 +299,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val task = new S3Upload("bucket", Seq(baseDir -> "")) with StubS3
-    task.execute()
+    task.execute(logger)
     val s3Client = task.s3client(fakeKeyRing)
 
     val files = task.flattenedFiles
