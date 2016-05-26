@@ -44,6 +44,7 @@ object MagentaBuild extends Build {
     )
 
   val magentaSettings: Seq[Setting[_]] = Seq(
+    scalaVersion in ThisBuild := "2.11.8",
     scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
     version := magentaVersion,
     resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases",
