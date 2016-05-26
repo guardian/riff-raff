@@ -170,13 +170,13 @@ object Main extends scala.App {
         val build = Build(Config.project.get, Config.build.get)
         val parameters = DeployParameters(Config.deployer, build, Stage(Config.stage), Config.recipe, Nil, Config.host.toList)
         val deployId = UUID.randomUUID()
-        implicit val rootLogger = DeployReporter.rootReporterFor(deployId, parameters)
-        rootLogger.info("[using %s build %s]" format (programName, programVersion))
+        implicit val reporter = DeployReporter.rootReporterFor(deployId, parameters)
+        reporter.info("[using %s build %s]" format (programName, programVersion))
 
-        rootLogger.info("Locating artifact...")
+        reporter.info("Locating artifact...")
 
         Config.localArtifactDir.map{ file =>
-          rootLogger.info("Making temporary copy of local artifact: %s" format file)
+          reporter.info("Making temporary copy of local artifact: %s" format file)
           file.copyTo(Path(tmpDir))
         } getOrElse {
           S3Artifact.download(build, tmpDir)(Config.bucketName, new AmazonS3Client(
@@ -188,26 +188,26 @@ object Main extends scala.App {
 
               override def refresh(): Unit = {}
             }, new DefaultAWSCredentialsProviderChain())
-          ), rootLogger)
+          ), reporter)
         }
 
-        rootLogger.info("Loading project file...")
+        reporter.info("Loading project file...")
         val project = JsonReader.parse(new File(tmpDir, "deploy.json"))
 
-        rootLogger.verbose("Loaded: " + project)
+        reporter.verbose("Loaded: " + project)
 
-        val context = DeployContext(deployId, parameters, project, Config.lookup, rootLogger)
+        val context = DeployContext(deployId, parameters, project, Config.lookup, reporter)
 
         if (Config.dryRun) {
 
           val tasks = context.tasks
-          rootLogger.info("Dry run requested. Not executing %d tasks." format tasks.size)
+          reporter.info("Dry run requested. Not executing %d tasks." format tasks.size)
 
         } else {
 
           context.execute()
         }
-        rootLogger.info("Done")
+        reporter.info("Done")
       }
 
 
