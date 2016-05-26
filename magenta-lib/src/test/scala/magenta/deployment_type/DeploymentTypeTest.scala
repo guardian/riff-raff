@@ -13,7 +13,7 @@ import magenta.tasks._
 
 class DeploymentTypeTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size 8
@@ -28,7 +28,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
     val thrown = the[NoSuchElementException] thrownBy {
-      S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+      S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(S3Upload(
           "bucket-1234",
           Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -49,7 +49,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+    S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
       List(S3Upload(
         "bucket-1234",
         Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -70,7 +70,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", new File("/tmp/packages/static-files"))
 
-    S3.perAppActions("uploadStaticFiles")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be(
+    S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be(
       List(S3Upload(
         "bucket-1234",
         Seq(new File("/tmp/packages/static-files") -> "CODE/myapp"),
@@ -92,7 +92,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", new File("/tmp/packages"))
 
-    Lambda.perAppActions("updateLambda")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+    Lambda.perAppActions("updateLambda")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
       List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
       ))
   }
@@ -109,7 +109,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
 
     val thrown = the[FailException] thrownBy {
-      Lambda.perAppActions("updateLambda")(p)(logger, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
+      Lambda.perAppActions("updateLambda")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack) should be (
         List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
         ))
     }
@@ -118,12 +118,12 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
   }
 
   "executable web app package type" should "have a default user of jvmuser" in {
-    
+
     val webappPackage =  DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
 
     ExecutableJarWebapp.user(webappPackage) should be ("jvmuser")
   }
-  
+
   it should "inherit defaults from base webapp" in {
     val webappPackage = DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
 
@@ -142,7 +142,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "django-webapp", webappDirectory)
     val host = Host("host_name")
 
-    Django.perHostActions("deploy")(p)(logger, host, fakeKeyRing) should be (List(
+    Django.perHostActions("deploy")(p)(reporter, host, fakeKeyRing) should be (List(
       BlockFirewall(host as "django"),
       CompressedCopy(host as "django", Some(specificBuildFile), "/django-apps/"),
       Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),

@@ -13,7 +13,7 @@ import java.util.UUID
 
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "double the size of the autoscaling group" in {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
@@ -27,7 +27,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
                                       (implicit keyRing: KeyRing, reporter: DeployReporter) = asg
     }
 
-    task.execute(logger)
+    task.execute(reporter)
 
     verify(asgClientMock).setDesiredCapacity(
       new SetDesiredCapacityRequest().withAutoScalingGroupName("test").withDesiredCapacity(6)
@@ -48,7 +48,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
                                       (implicit keyRing: KeyRing, reporter: DeployReporter) = asg
     }
 
-    val thrown = intercept[FailException](task.execute(logger))
+    val thrown = intercept[FailException](task.execute(reporter))
 
     thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
 

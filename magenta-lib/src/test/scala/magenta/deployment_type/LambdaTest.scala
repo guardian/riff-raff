@@ -12,7 +12,7 @@ import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
 class LambdaTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -26,7 +26,7 @@ class LambdaTest extends FlatSpec with Matchers {
   val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", new File("/tmp/packages/webapp"))
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(logger, lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
@@ -36,7 +36,7 @@ class LambdaTest extends FlatSpec with Matchers {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(logger, lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("test"))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",

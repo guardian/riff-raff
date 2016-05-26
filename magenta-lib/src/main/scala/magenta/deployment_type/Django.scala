@@ -35,7 +35,7 @@ object Django extends DeploymentType {
     "The prefix of the deploy artifact, used to find directories to cleanup").defaultFromPackage( _.name )
 
   override def perHostActions = {
-    case "deploy" => pkg => (logger, host, keyRing) => {
+    case "deploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       val destDir = "/django-apps/"
       // During preview the pkg.srcDir is not available, so we have to be a bit funky with options

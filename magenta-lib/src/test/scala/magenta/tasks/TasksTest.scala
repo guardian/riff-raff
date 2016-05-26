@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "block firewall task" should "use configurable path" in {
     val host = Host("some-host") as ("some-user")
@@ -71,7 +71,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   "waitForPort task" should "fail after timeout" in {
     val task = WaitForPort(Host("localhost"), 9998, 200)
     a [FailException] should be thrownBy {
-      task.execute(logger)
+      task.execute(reporter)
     }
   }
 
@@ -82,7 +82,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       server.accept().close()
       server.close()
     }
-    task.execute(logger)
+    task.execute(reporter)
   }
 
   it should "connect to an open port after a short time" in {
@@ -93,14 +93,14 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       server.accept().close()
       server.close()
     }
-    task.execute(logger)
+    task.execute(reporter)
   }
 
 
   "check_url task" should "fail after timeout" in {
     val task = CheckUrls(Host("localhost"), 9997,List("/"), 200, 5)
     a [FailException] should be thrownBy {
-      task.execute(logger)
+      task.execute(reporter)
     }
   }
 
@@ -109,7 +109,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     Future {
       new TestServer().withResponse("HTTP/1.0 200 OK")
     }
-    task.execute(logger)
+    task.execute(reporter)
 
   }
 
@@ -119,7 +119,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       new TestServer().withResponse("HTTP/1.0 404 NOT FOUND")
     }
     a [FailException] should be thrownBy {
-      task.execute(logger)
+      task.execute(reporter)
     }
   }
 
@@ -129,10 +129,10 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       new TestServer().withResponse("HTTP/1.0 500 ERROR")
     }
     a [FailException] should be thrownBy {
-      task.execute(logger)
+      task.execute(reporter)
     }
   }
-  
+
   "remote shell task" should "build a remote ssh line if no credentials" in {
     val remoteTask = new RemoteShellTask {
       def host = Host("some-host")
@@ -152,7 +152,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     remoteTaskWithUser.remoteCommandLine should be (CommandLine(List("ssh", "-qtt", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "resin@some-host", "ls -l")))
   }
-  
+
   it should "execute the command line" in {
     var passed = false
     val remoteTask = new RemoteShellTask {
@@ -166,9 +166,9 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       def commandLine = null
       def keyRing = KeyRing(SystemUser(None))
     }
-    
-    remoteTask.execute(logger)
-    
+
+    remoteTask.execute(reporter)
+
     passed should be (true)
   }
 
@@ -227,7 +227,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     request.getFile should be(fileToUpload)
     request.getKey should be (s"keyPrefix/the-jar.jar")
 
-    task.execute(logger)
+    task.execute(reporter)
     val s3Client = task.s3client(fakeKeyRing)
 
     verify(s3Client).putObject(request)
@@ -271,7 +271,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val task = new S3Upload("bucket", Seq((baseDir -> "myStack/CODE/myApp"))) with StubS3
-    task.execute(logger)
+    task.execute(reporter)
     val s3Client = task.s3client(fakeKeyRing)
 
     val files = task.flattenedFiles
@@ -299,7 +299,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     fileThree.createNewFile()
 
     val task = new S3Upload("bucket", Seq(baseDir -> "")) with StubS3
-    task.execute(logger)
+    task.execute(reporter)
     val s3Client = task.s3client(fakeKeyRing)
 
     val files = task.flattenedFiles

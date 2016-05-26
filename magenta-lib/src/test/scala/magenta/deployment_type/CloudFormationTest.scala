@@ -14,7 +14,7 @@ import scalax.file.Path
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "cloudformation deployment type" should "have an updateStack action" in {
     val data: Map[String, JValue] = Map()
@@ -23,7 +23,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val cfnStackName = s"cfn-app-PROD"
     val p = DeploymentPackage("app", app, data, "cloudformation", new File("/tmp/packages/webapp"))
 
-    inside(CloudFormation.perAppActions("updateStack")(p)(logger, lookupEmpty, parameters(), stack)) {
+    inside(CloudFormation.perAppActions("updateStack")(p)(reporter, lookupEmpty, parameters(), stack)) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>

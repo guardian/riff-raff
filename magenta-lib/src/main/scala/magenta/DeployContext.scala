@@ -18,7 +18,7 @@ object DeployContext {
 }
 
 case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Project,
-  tasks: List[Task], rootReporter: DeployReporter) {
+  tasks: List[Task], reporter: DeployReporter) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id
@@ -26,10 +26,10 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Proj
   val stage = parameters.stage
 
   def execute() {
-    if (tasks.isEmpty) rootReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+    if (tasks.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
     tasks.foreach { task =>
-      rootReporter.taskContext(task) { taskLogger =>
+      reporter.taskContext(task) { taskLogger =>
         task.execute(taskLogger)
       }
     }

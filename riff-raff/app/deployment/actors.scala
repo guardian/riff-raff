@@ -106,7 +106,7 @@ case class UniqueTask(id: Int, task: Task)
 
 case class DeployRunState(
   record: Record,
-  rootLogger: DeployReporter,
+  logger: DeployReporter,
   artifactDir: Option[File] = None,
   context: Option[DeployContext] = None
 ) {
@@ -153,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        DeployReporter.failAllContexts(state.rootLogger, stopMessage, DeployStoppedException(stopMessage))
+        DeployReporter.failAllContexts(state.logger, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -170,11 +170,11 @@ class DeployCoordinator extends Actor with Logging {
 
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
-      val rootLogger = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
-      val state = DeployRunState(record, rootLogger)
+      val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+      val state = DeployRunState(record, reporter)
       ifStopFlagClear(state) {
         deployStateMap += (record.uuid -> state)
-        runners ! PrepareDeploy(record, rootLogger)
+        runners ! PrepareDeploy(record, reporter)
       }
 
     case StopDeploy(uuid, userName) =>
@@ -191,7 +191,7 @@ class DeployCoordinator extends Actor with Logging {
         ifStopFlagClear(newState) {
           newState.firstTask.foreach { task =>
             log.debug("Starting first task")
-            runners ! RunTask(newState.record, task, newState.rootLogger, new DateTime())
+            runners ! RunTask(newState.record, task, newState.logger, new DateTime())
           }
         }
       }
@@ -205,9 +205,9 @@ class DeployCoordinator extends Actor with Logging {
           state.nextTask(task) match {
             case Some(nextTask) =>
               log.debug("Running next task")
-              runners ! RunTask(state.record, state.nextTask(task).get, state.rootLogger, new DateTime())
+              runners ! RunTask(state.record, state.nextTask(task).get, state.logger, new DateTime())
             case None =>
-              DeployReporter.finishContext(state.rootLogger)
+              DeployReporter.finishContext(state.logger)
               log.debug("Cleaning up")
               cleanup(state)
           }
@@ -255,7 +255,7 @@ object TaskRunner {
   case class TaskCompleted(record: Record, task: UniqueTask) extends Message
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
-  case class PrepareDeploy(record: Record, rootReporter: DeployReporter) extends Message
+  case class PrepareDeploy(record: Record, reporter: DeployReporter) extends Message
   case class DeployReady(record: Record, artifactDir: File, context: DeployContext) extends Message
   case class RemoveArtifact(artifactDir: File) extends Message
 }
@@ -264,16 +264,16 @@ class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
   def receive = {
-    case PrepareDeploy(record, rootLogger) =>
-      implicit val logger = rootLogger
+    case PrepareDeploy(record, reporter) =>
+      implicit val logger = reporter
       try {
         import Configuration.artifact.aws._
         val artifactDir = S3Artifact.download(record.parameters.build)
-        rootLogger.info("Reading deploy.json")
+        reporter.info("Reading deploy.json")
         val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-        val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), rootLogger)
+        val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), reporter)
         if (context.tasks.isEmpty)
-          rootLogger.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+          reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
         sender ! DeployReady(record, artifactDir, context)
       } catch {
@@ -283,7 +283,7 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, task, rootLogger, queueTime) => {
+    case RunTask(record, task, reporter, queueTime) => {
       import DeployMetricsActor._
       deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
@@ -298,8 +298,8 @@ class TaskRunner extends Actor with Logging {
             case t:Throwable => false
           }
         }
-        rootLogger.taskContext(task.task) { taskLogger =>
-          task.task.execute(taskLogger, stopFlagAsker)
+        reporter.taskContext(task.task) { taskReporter =>
+          task.task.execute(taskReporter, stopFlagAsker)
         }
         log.debug("Sending completed message")
         sender ! TaskCompleted(record, task)

@@ -85,7 +85,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   ).default(true)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (logger, lookup, parameters, stack) => {
+    case "deploy" => (pkg) => (reporter, lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       List(
         CheckForStabilization(pkg, parameters.stage, stack),
@@ -101,7 +101,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (logger, lookup, parameters, stack) =>
+    case "uploadArtifacts" => (pkg) => (reporter, lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       val prefix = S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg)) Some(stack) else None,

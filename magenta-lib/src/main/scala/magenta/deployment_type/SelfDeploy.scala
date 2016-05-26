@@ -34,7 +34,7 @@ object SelfDeploy extends DeploymentType with S3AclParams {
   ).default("/management/switchboard")
 
   def perAppActions = {
-    case "uploadArtifacts" => (pkg) => (logger, lookup, parameters, stack) =>
+    case "uploadArtifacts" => (pkg) => (reporter, lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       val prefix = S3Upload.prefixGenerator(stack, parameters.stage, pkg.name)
       List(
@@ -46,7 +46,7 @@ object SelfDeploy extends DeploymentType with S3AclParams {
   }
 
   override def perHostActions = {
-    case "selfDeploy" => pkg => (logger, host, keyRing) => {
+    case "selfDeploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       ChangeSwitch(host, managementProtocol(pkg), managementPort(pkg), switchboardPath(pkg),
         "shutdown-when-inactive", desiredState=true) :: Nil

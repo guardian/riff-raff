@@ -13,7 +13,7 @@ import magenta.deployment_type.AutoScaling
 
 class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing = KeyRing(SystemUser(None))
-  implicit val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "auto-scaling with ELB package type" should "have a deploy action" in {
     val data: Map[String, JValue] = Map(
@@ -24,7 +24,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
-    AutoScaling.perAppActions("deploy")(p)(logger, lookupEmpty, parameters(), UnnamedStack) should be (List(
+    AutoScaling.perAppActions("deploy")(p)(reporter, lookupEmpty, parameters(), UnnamedStack) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),
       CheckGroupSize(p, PROD, UnnamedStack),
       SuspendAlarmNotifications(p, PROD, UnnamedStack),
@@ -51,7 +51,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("app", app, data, "asg-elb", new File("/tmp/packages/webapp"))
 
-    AutoScaling.perAppActions("deploy")(p)(logger, lookupEmpty, parameters(), UnnamedStack) should be (List(
+    AutoScaling.perAppActions("deploy")(p)(reporter, lookupEmpty, parameters(), UnnamedStack) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),
       CheckGroupSize(p, PROD, UnnamedStack),
       SuspendAlarmNotifications(p, PROD, UnnamedStack),

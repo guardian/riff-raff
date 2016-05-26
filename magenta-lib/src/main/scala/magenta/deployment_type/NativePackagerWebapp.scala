@@ -45,7 +45,7 @@ object NativePackagerWebapp extends WebApp {
   ).defaultFromPackage{ pkg => s"${applicationName(pkg)}.tar.gz" }
 
   override def perHostActions = {
-    case "deploy" => pkg => (logger, host, keyRing) => {
+    case "deploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       val applicationRoot = s"/$containerName-apps/${servicename(pkg)}"
       val remoteTarballLocation = s"$applicationRoot/readyToDeploy.tar.gz"

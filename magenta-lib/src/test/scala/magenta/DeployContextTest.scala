@@ -13,9 +13,9 @@ import scala.collection.mutable.Buffer
 
 class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   it should ("resolve a set of tasks") in {
-    val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+    val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
-    val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, logger)
+    val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, reporter)
     context.tasks should be(List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
@@ -24,12 +24,12 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("send a Info and TaskList message when resolving tasks") in {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
-    val logger = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
+    val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
 
     val messages = Buffer[Message]()
     DeployReporter.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
 
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
 
     messages.filter(_.getClass == classOf[Info]) should have size (1)
     messages.filter(_.getClass == classOf[TaskList]) should have size (1)
@@ -37,8 +37,8 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should ("execute the task") in {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
-    val logger = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, logger)
+    val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter)
     context.execute()
     val task = context.tasks.head
 
@@ -58,12 +58,12 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
       }
     )
 
-    val logger = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
+    val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
 
     context.execute()
 
-    DeployReporter.finishContext(logger)
+    DeployReporter.finishContext(reporter)
 
     start.filter(_.getClass == classOf[Deploy]) should have size (1)
     start.filter(_.getClass == classOf[TaskRun]) should have size (2)
@@ -84,12 +84,12 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
       }
     )
 
-    val logger = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
-    val context = DeployContext(logger.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, logger)
+    val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
 
     context.execute()
 
-    DeployReporter.finishContext(logger)
+    DeployReporter.finishContext(reporter)
 
     start.head.getClass should be(classOf[Deploy])
     finished.last.getClass should be(classOf[Deploy])
