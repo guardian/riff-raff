@@ -13,13 +13,13 @@ case class CommandLine(commandLine: List[String], successCodes: List[Int] = List
         filteredOut(line)
   }
 
-  def run() {
+  def run(reporter: DeployReporter) {
     import sys.process._
-    MessageBroker.infoContext("$ " + quoted) {
-      val returnValue = commandLine ! ProcessLogger(MessageBroker.commandOutput(_), suppressor(MessageBroker.commandError(_)))
-      MessageBroker.verbose("return value " + returnValue)
+    reporter.infoContext(s"$$ $quoted") { infoContext =>
+      val returnValue = commandLine ! ProcessLogger(infoContext.commandOutput(_), suppressor(infoContext.commandError(_)))
+      infoContext.verbose("return value " + returnValue)
       if (!successCodes.contains(returnValue)) {
-        MessageBroker.fail("Exit code %d from command: %s" format (returnValue, quoted))
+        infoContext.fail("Exit code %d from command: %s" format (returnValue, quoted))
       }
     }
   }

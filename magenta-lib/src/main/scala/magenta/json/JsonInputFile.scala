@@ -4,7 +4,7 @@ package json
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.JsonParser
-import io.Source
+import scala.io.Source
 import java.io.{FileNotFoundException, File}
 
 
@@ -38,12 +38,12 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File): Project = {
+  def parse(f: File)(implicit reporter: DeployReporter): Project = {
     try {
       parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
     } catch {
       case e:FileNotFoundException =>
-        MessageBroker.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
+        reporter.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
     }
   }
 

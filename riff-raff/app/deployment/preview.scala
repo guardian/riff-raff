@@ -1,26 +1,24 @@
 package deployment
 
-import _root_.resources.LookupSelector
-import ci.S3Build
-import magenta._
-import magenta.artifact.S3Artifact
-import persistence.Persistence
 import java.io.File
-import io.Source
-import magenta.json.JsonReader
-import controllers.routes
-import magenta.DeployParameters
-import magenta.Project
-import magenta.Build
-import tasks.{ Task => MagentaTask }
 import java.util.UUID
-import akka.agent.Agent
-import org.joda.time.DateTime
-import conf.Configuration
-import scala.concurrent._
+
+import _root_.resources.LookupSelector
 import akka.actor.ActorSystem
-import ExecutionContext.Implicits.global
-import duration._
+import akka.agent.Agent
+import conf.Configuration
+import controllers.routes
+import magenta.{Build, DeployParameters, Project, _}
+import magenta.artifact.S3Artifact
+import magenta.json.JsonReader
+import magenta.tasks.{Task => MagentaTask}
+import org.joda.time.DateTime
+import persistence.Persistence
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+import scala.concurrent.duration._
+import scala.io.Source
 
 case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -42,7 +40,8 @@ object PreviewController {
   def startPreview(parameters: DeployParameters): UUID = {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
-    val previewFuture = future { Preview(parameters) }
+    val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
+    val previewFuture = Future { Preview(parameters, muteLogger) }
     Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
   }
@@ -54,9 +53,10 @@ object Preview {
   import Configuration.artifact.aws._
 
   def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build): String = S3Artifact.withDownload(build) { artifactDir =>
-    Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
-  }
+  def getJsonFromArtifact(build: Build)(implicit reporter: DeployReporter): String =
+    S3Artifact.withDownload(build) { artifactDir =>
+      Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
+    }
   def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))
 
   /**
@@ -64,9 +64,9 @@ object Preview {
    * cannot be used for an actual deploy.
    * This is cached in the database so future previews are faster.
    */
-  def getProject(build: Build): Project = {
+  def getProject(build: Build, reporter: DeployReporter): Project = {
     val json = getJsonFromStore(build).getOrElse {
-      val json = getJsonFromArtifact(build)
+      val json = getJsonFromArtifact(build)(reporter)
       Persistence.store.writeDeployJson(build, json)
       json
     }
@@ -76,13 +76,13 @@ object Preview {
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters): Preview = {
-    val project = Preview.getProject(parameters.build)
-    Preview(project, parameters)
+  def apply(parameters: DeployParameters, reporter: DeployReporter): Preview = {
+    val project = Preview.getProject(parameters.build, reporter)
+    Preview(project, parameters, reporter)
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters) {
+case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter) {
   lazy val lookup = LookupSelector()
   lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
     case NamedStack(s) => s
@@ -93,18 +93,18 @@ case class Preview(project: Project, parameters: DeployParameters) {
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
-  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters)
+  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, reporter)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
   def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil)).distinct
+    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter).distinct
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
-    val allTasks = allRecipes.flatMap(recipe => Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil))).distinct
+    val allTasks = allRecipes.flatMap(recipe => Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter)).distinct
     taskHosts(allTasks)
   }
 

@@ -46,7 +46,7 @@ object RPM extends DeploymentType {
   }
 
   override def perHostActions = {
-    case "deploy" => pkg => (host, keyRing) => {
+    case "deploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       // During preview the pkg.srcDir is not available, so we have to be a bit funky with options
       lazy val rpmFilePath = Option(pkg.srcDir.listFiles()).flatMap(_.headOption).map(_.toString).getOrElse("UnknownDuringPreview")

@@ -49,7 +49,7 @@ object DeployControlActor extends Logging {
   import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
 
   def interruptibleDeploy(record: Record) {
-    log.debug("Sending start deploy mesage to co-ordinator")
+    log.debug("Sending start deploy message to co-ordinator")
     deployCoordinator ! StartDeploy(record)
   }
 
@@ -106,7 +106,7 @@ case class UniqueTask(id: Int, task: Task)
 
 case class DeployRunState(
   record: Record,
-  loggingContext: MessageBrokerContext,
+  logger: DeployReporter,
   artifactDir: Option[File] = None,
   context: Option[DeployContext] = None
 ) {
@@ -153,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        MessageBroker.failAllContexts(state.loggingContext, stopMessage, DeployStoppedException(stopMessage))
+        DeployReporter.failAllContexts(state.logger, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -170,11 +170,11 @@ class DeployCoordinator extends Actor with Logging {
 
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
-      val loggingContext = MessageBroker.startDeployContext(record.uuid, record.parameters)
-      val state = DeployRunState(record, loggingContext)
+      val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+      val state = DeployRunState(record, reporter)
       ifStopFlagClear(state) {
         deployStateMap += (record.uuid -> state)
-        runners ! PrepareDeploy(record, loggingContext)
+        runners ! PrepareDeploy(record, reporter)
       }
 
     case StopDeploy(uuid, userName) =>
@@ -191,11 +191,11 @@ class DeployCoordinator extends Actor with Logging {
         ifStopFlagClear(newState) {
           newState.firstTask.foreach { task =>
             log.debug("Starting first task")
-            runners ! RunTask(newState.record, task, newState.loggingContext, new DateTime())
+            runners ! RunTask(newState.record, task, newState.logger, new DateTime())
           }
         }
       }
-      
+
     case TaskCompleted(record, task) =>
       log.debug("Task completed")
       deployStateMap.get(record.uuid).foreach { state =>
@@ -205,9 +205,9 @@ class DeployCoordinator extends Actor with Logging {
           state.nextTask(task) match {
             case Some(nextTask) =>
               log.debug("Running next task")
-              runners ! RunTask(state.record, state.nextTask(task).get, state.loggingContext, new DateTime())
+              runners ! RunTask(state.record, state.nextTask(task).get, state.logger, new DateTime())
             case None =>
-              MessageBroker.finishContext(state.loggingContext)
+              DeployReporter.finishContext(state.logger)
               log.debug("Cleaning up")
               cleanup(state)
           }
@@ -251,11 +251,11 @@ class DeployCoordinator extends Actor with Logging {
 
 object TaskRunner {
   trait Message
-  case class RunTask(record: Record, task: UniqueTask, loggingContext:MessageBrokerContext, queueTime: DateTime) extends Message
+  case class RunTask(record: Record, task: UniqueTask, reporter: DeployReporter, queueTime: DateTime) extends Message
   case class TaskCompleted(record: Record, task: UniqueTask) extends Message
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
-  case class PrepareDeploy(record: Record, loggingContext: MessageBrokerContext) extends Message
+  case class PrepareDeploy(record: Record, reporter: DeployReporter) extends Message
   case class DeployReady(record: Record, artifactDir: File, context: DeployContext) extends Message
   case class RemoveArtifact(artifactDir: File) extends Message
 }
@@ -264,19 +264,18 @@ class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
   def receive = {
-    case PrepareDeploy(record, loggingContext) =>
+    case PrepareDeploy(record, reporter) =>
+      implicit val logger = reporter
       try {
-        MessageBroker.withContext(loggingContext) {
-          import Configuration.artifact.aws._
-          val artifactDir = S3Artifact.download(record.parameters.build)
-          MessageBroker.info("Reading deploy.json")
-          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-          val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector())
-          if (context.tasks.isEmpty)
-            MessageBroker.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+        import Configuration.artifact.aws._
+        val artifactDir = S3Artifact.download(record.parameters.build)
+        reporter.info("Reading deploy.json")
+        val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
+        val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), reporter)
+        if (context.tasks.isEmpty)
+          reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
-          sender ! DeployReady(record, artifactDir, context)
-        }
+        sender ! DeployReady(record, artifactDir, context)
       } catch {
         case t:Throwable =>
           log.debug("Preparing deploy failed")
@@ -284,7 +283,7 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, task, loggingContext, queueTime) => {
+    case RunTask(record, task, reporter, queueTime) => {
       import DeployMetricsActor._
       deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
@@ -299,10 +298,8 @@ class TaskRunner extends Actor with Logging {
             case t:Throwable => false
           }
         }
-        MessageBroker.withContext(loggingContext) {
-          MessageBroker.taskContext(task.task) {
-            task.task.execute(stopFlagAsker)
-          }
+        reporter.taskContext(task.task) { taskReporter =>
+          task.task.execute(taskReporter, stopFlagAsker)
         }
         log.debug("Sending completed message")
         sender ! TaskCompleted(record, task)

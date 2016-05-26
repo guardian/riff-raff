@@ -21,14 +21,14 @@ object Testing extends Controller with Logging with LoginActions {
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
 
     val testTask1 = new Task {
-      def execute(stopFlag: => Boolean) {}
+      override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
 
       def keyRing = ???
     }
     val testTask2 = new Task {
-      def execute(stopFlag: => Boolean) {}
+      override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
       def verbose = "A particularly verbose task description that lists some stuff, innit"
 

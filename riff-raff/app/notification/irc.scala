@@ -19,7 +19,7 @@ object IrcClient extends LifecycleWithoutApp {
     actor.foreach(_ ! Notify(message))
   }
 
-  val messageSub = MessageBroker.messages.subscribe(message => {
+  val messageSub = DeployReporter.messages.subscribe(message => {
     message.stack.top match {
       case StartContext(Deploy(parameters)) =>
         sendMessage("[%s] Starting deploy of %s build %s (using recipe %s) to %s" format

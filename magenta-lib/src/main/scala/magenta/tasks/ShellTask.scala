@@ -4,7 +4,7 @@ package tasks
 trait ShellTask extends Task {
   def commandLine: CommandLine
 
-  def execute(stopFlag: =>  Boolean) { commandLine.run() }
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) { commandLine.run(reporter) }
 
   lazy val verbose = "$ " + commandLine.quoted
 }

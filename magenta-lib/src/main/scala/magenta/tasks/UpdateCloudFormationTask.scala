@@ -4,11 +4,12 @@ import com.amazonaws.AmazonServiceException
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import magenta.{MessageBroker, Stage, Stack, KeyRing}
+import magenta.{DeployReporter, KeyRing, Stack, Stage}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
-import org.joda.time.{Duration, DateTime}
+import org.joda.time.{DateTime, Duration}
+
 import scalax.file.Path
 import collection.convert.wrapAsScala._
 
@@ -41,9 +42,9 @@ object JsonConverter {
     * Return the template's content as JSON,
     * converting it from YAML if necessary.
     */
-  def convert(template: Path): String = template.extension match {
+  def convert(template: Path)(implicit reporter: DeployReporter): String = template.extension match {
     case Some("yml") | Some("yaml") =>
-      MessageBroker.info(s"Converting ${template.name} from YAML to JSON")
+      reporter.info(s"Converting ${template.name} from YAML to JSON")
       val tree = new ObjectMapper(new YAMLFactory()).readTree(template.string)
       new ObjectMapper()
         .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
@@ -68,8 +69,8 @@ case class UpdateCloudFormationTask(
 
   import UpdateCloudFormationTask._
 
-  def execute(stopFlag: => Boolean) = if (!stopFlag) {
-    val templateJson = JsonConverter.convert(template)
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
+    val templateJson = JsonConverter.convert(template)(reporter)
     val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
@@ -79,23 +80,23 @@ case class UpdateCloudFormationTask(
 
     val parameters: Map[String, ParameterValue] = combineParameters(stack, stage, templateParameters, userParameters, amiParam)
 
-    MessageBroker.info(s"Parameters: $parameters")
+    reporter.info(s"Parameters: $parameters")
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
         CloudFormation.updateStack(cloudFormationStackName, templateJson, parameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
-          MessageBroker.info("Cloudformation update has no changes to template or parameters")
+          reporter.info("Cloudformation update has no changes to template or parameters")
         case ase:AmazonServiceException if ase.getMessage contains "Template format error: JSON not well-formed" =>
-          MessageBroker.info(s"Cloudformation update failed with the following template content:\n$templateJson")
+          reporter.info(s"Cloudformation update failed with the following template content:\n$templateJson")
           throw ase
       }
     else if (createStackIfAbsent) {
-      MessageBroker.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(cloudFormationStackName, templateJson, parameters)
+      reporter.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
+      CloudFormation.createStack(reporter, cloudFormationStackName, templateJson, parameters)
     } else {
-      MessageBroker.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
+      reporter.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }
   }
 
@@ -113,27 +114,27 @@ case class UpdateAmiCloudFormationParameterTask(
 
   import UpdateCloudFormationTask._
 
-  def execute(stopFlag: => Boolean) = if (!stopFlag) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
     val (existingParameters, currentAmi) = CloudFormation.describeStack(cloudFormationStackName) match {
       case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
         (cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
       case Some(_) =>
-        MessageBroker.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
+        reporter.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
       case None =>
-        MessageBroker.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
+        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
     }
 
     latestImage(CloudFormation.region.name)(amiTags) match {
       case Some(sameAmi) if currentAmi == sameAmi =>
-        MessageBroker.info(s"Current AMI is the same as the resolved AMI ($sameAmi). No update to perform.")
+        reporter.info(s"Current AMI is the same as the resolved AMI ($sameAmi). No update to perform.")
       case Some(ami) =>
-        MessageBroker.info(s"Resolved AMI: $ami")
+        reporter.info(s"Resolved AMI: $ami")
         val parameters = existingParameters + (amiParameter -> SpecifiedValue(ami))
-        MessageBroker.info(s"Updating cloudformation stack params: $parameters")
+        reporter.info(s"Updating cloudformation stack params: $parameters")
         CloudFormation.updateStackParams(cloudFormationStackName, parameters)
       case None =>
         val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-        MessageBroker.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
+        reporter.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
     }
   }
 
@@ -143,7 +144,7 @@ case class UpdateAmiCloudFormationParameterTask(
 
 case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRing) extends Task {
 
-  def execute(stopFlag: => Boolean): Unit = {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     import StackEvent._
 
     def check(lastSeenEvent: Option[StackEvent]): Unit = {
@@ -154,21 +155,21 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
         case None => events.find(updateStart) foreach (e => {
           val age = new Duration(new DateTime(e.getTimestamp), new DateTime()).getStandardSeconds
           if (age > 30) {
-            MessageBroker.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+            reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
           } else {
-            reportEvent(e)
+            reportEvent(reporter, e)
             check(Some(e))
           }
         })
         case Some(event) => {
           val newEvents = events.takeWhile(_.getTimestamp.after(event.getTimestamp))
-          newEvents.reverse.foreach(reportEvent)
+          newEvents.reverse.foreach(reportEvent(reporter, _))
 
           if (!newEvents.exists(e => updateComplete(e) || failed(e)) && !stopFlag) {
             Thread.sleep(5000)
             check(Some(newEvents.headOption.getOrElse(event)))
           }
-          newEvents.filter(failed).foreach(fail)
+          newEvents.filter(failed).foreach(fail(reporter, _))
         }
       }
     }
@@ -176,9 +177,9 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
   }
 
   object StackEvent {
-    def reportEvent(e: StackEvent): Unit = {
-      MessageBroker.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
-      if (e.getResourceStatusReason != null) MessageBroker.verbose(e.getResourceStatusReason)
+    def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
+      reporter.info(s"${e.getLogicalResourceId} (${e.getResourceType}): ${e.getResourceStatus}")
+      if (e.getResourceStatusReason != null) reporter.verbose(e.getResourceStatusReason)
     }
     def isStackEvent(e: StackEvent): Boolean =
       e.getResourceType == "AWS::CloudFormation::Stack" && e.getLogicalResourceId == stackName
@@ -189,7 +190,7 @@ case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRin
 
     def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED")
 
-    def fail(e: StackEvent): Unit = MessageBroker.fail(
+    def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
       s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
             |${e.getResourceStatusReason}""".stripMargin)
   }
@@ -236,12 +237,12 @@ trait CloudFormation extends AWS {
       )
     )
 
-  def createStack(name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
+  def createStack(reporter: DeployReporter, name: String, templateBody: String, parameters: Map[String, ParameterValue])(implicit keyRing: KeyRing) =
     client.createStack(
       new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
         parameters map {
           case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, UseExistingValue) => MessageBroker.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+          case (k, UseExistingValue) => reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
          } toSeq: _*
       )
     )

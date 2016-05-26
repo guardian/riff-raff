@@ -76,10 +76,6 @@ trait Record {
 
   def isSummarised: Boolean
 
-  def loggingContext[T](block: => T): T = {
-    MessageBroker.deployContext(uuid, parameters) { block }
-  }
-
   lazy val hoursAgo: Long = new Interval(time, new DateTime()).toDuration.getStandardHours
 
   lazy val allMetaData = metaData ++ computedMetaData

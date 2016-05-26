@@ -89,7 +89,7 @@ trait WebApp extends DeploymentType with S3AclParams {
   ).default("/management/switchboard")
 
   override def perHostActions = {
-    case "deploy" => pkg => (host, keyRing) => {
+    case "deploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
 
       BlockFirewall(host as user(pkg)) ::
@@ -100,7 +100,7 @@ trait WebApp extends DeploymentType with S3AclParams {
       UnblockFirewall(host as user(pkg)) ::
       Nil
     }
-    case "restart" => pkg => (host, keyRing) => {
+    case "restart" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       List(
         BlockFirewall(host as user(pkg)),
@@ -110,7 +110,7 @@ trait WebApp extends DeploymentType with S3AclParams {
         UnblockFirewall(host as user(pkg))
       )
     }
-    case "selfDeploy" => pkg => (host, keyRing) => {
+    case "selfDeploy" => pkg => (reporter, host, keyRing) => {
       implicit val key = keyRing
       rootCopies(pkg, host) :::
         ChangeSwitch(host, managementProtocol(pkg), managementPort(pkg), switchboardPath(pkg),
@@ -120,7 +120,7 @@ trait WebApp extends DeploymentType with S3AclParams {
   }
 
   def perAppActions = {
-    case "uploadArtifacts" => pkg => (lookup, parameters, stack) =>
+    case "uploadArtifacts" => pkg => (reporter, lookup, parameters, stack) =>
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       val prefix = S3Upload.prefixGenerator(stack, parameters.stage, pkg.name)
       List(

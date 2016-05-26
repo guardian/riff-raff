@@ -137,7 +137,7 @@ object HostList {
 trait Action {
   def apps: Seq[App]
   def description: String
-  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack): List[Task]
+  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, deployReporter: DeployReporter): List[Task]
 }
 
 case class App (name: String)
@@ -185,10 +185,9 @@ case class DeployParameters(
                              hostList: List[String] = Nil
                              ) {
 
-  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup): DeployContext = {
-
-    DeployContext(this,project, resourceLookup, uuid)
+  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup, reporter: DeployReporter): DeployContext = {
+    DeployContext(uuid, this, project, resourceLookup, reporter)
   }
-  def toDeployContext(project: Project, resourceLookup: Lookup): DeployContext = DeployContext(this,project, resourceLookup)
+
   def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)
 }
