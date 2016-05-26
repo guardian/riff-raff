@@ -99,7 +99,7 @@ object DeployReporter {
     failAllContexts(currentReporter)
   }
 
-  def withContext[T](reporter: DeployReporter)(block: DeployReporter => T): T = {
+  def withFailureHandling[T](reporter: DeployReporter)(block: DeployReporter => T): T = {
     try {
       try {
         block(reporter)
@@ -121,10 +121,10 @@ object DeployReporter {
   }
 
   private def sendContext[T](currentReporter: DeployReporter, message: Message)(block: (DeployReporter) => T): T = {
-    val newContext = pushContext(message, currentReporter)
-    withContext(newContext) { newContext =>
-      val result = block(newContext)
-      finishContext(newContext)
+    val newReporter = pushContext(message, currentReporter)
+    withFailureHandling(newReporter) { reporter =>
+      val result = block(reporter)
+      finishContext(reporter)
       result
     }
   }
