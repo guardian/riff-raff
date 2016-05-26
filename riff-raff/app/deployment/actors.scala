@@ -106,7 +106,7 @@ case class UniqueTask(id: Int, task: Task)
 
 case class DeployRunState(
   record: Record,
-  logger: DeployReporter,
+  reporter: DeployReporter,
   artifactDir: Option[File] = None,
   context: Option[DeployContext] = None
 ) {
@@ -153,7 +153,7 @@ class DeployCoordinator extends Actor with Logging {
       case true =>
         log.debug("Stop flag set")
         val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        DeployReporter.failAllContexts(state.logger, stopMessage, DeployStoppedException(stopMessage))
+        DeployReporter.failAllContexts(state.reporter, stopMessage, DeployStoppedException(stopMessage))
         log.debug("Cleaning up")
         cleanup(state)
         None
@@ -191,7 +191,7 @@ class DeployCoordinator extends Actor with Logging {
         ifStopFlagClear(newState) {
           newState.firstTask.foreach { task =>
             log.debug("Starting first task")
-            runners ! RunTask(newState.record, task, newState.logger, new DateTime())
+            runners ! RunTask(newState.record, task, newState.reporter, new DateTime())
           }
         }
       }
@@ -205,9 +205,9 @@ class DeployCoordinator extends Actor with Logging {
           state.nextTask(task) match {
             case Some(nextTask) =>
               log.debug("Running next task")
-              runners ! RunTask(state.record, state.nextTask(task).get, state.logger, new DateTime())
+              runners ! RunTask(state.record, state.nextTask(task).get, state.reporter, new DateTime())
             case None =>
-              DeployReporter.finishContext(state.logger)
+              DeployReporter.finishContext(state.reporter)
               log.debug("Cleaning up")
               cleanup(state)
           }
