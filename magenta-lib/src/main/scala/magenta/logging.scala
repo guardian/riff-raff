@@ -12,7 +12,7 @@ case class ThrowableDetail(name: String, message:String, stackTrace: String, cau
 object ThrowableDetail {
   implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
   def apply(t:Throwable): ThrowableDetail = {
-    ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTrace.mkString(""), Option(t.getCause).map(ThrowableDetail(_)))
+    ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTrace.mkString("\n"), Option(t.getCause).map(ThrowableDetail(_)))
   }
 }
 
