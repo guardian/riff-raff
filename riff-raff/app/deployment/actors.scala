@@ -264,18 +264,19 @@ class TaskRunner extends Actor with Logging {
   import TaskRunner._
 
   def receive = {
-    case PrepareDeploy(record, reporter) =>
-      implicit val logger = reporter
+    case PrepareDeploy(record, deployReporter) =>
       try {
-        import Configuration.artifact.aws._
-        val artifactDir = S3Artifact.download(record.parameters.build)
-        reporter.info("Reading deploy.json")
-        val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-        val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), reporter)
-        if (context.tasks.isEmpty)
-          reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+        DeployReporter.withFailureHandling(deployReporter) { implicit safeReporter =>
+          import Configuration.artifact.aws._
+          val artifactDir = S3Artifact.download(record.parameters.build)
+          safeReporter.info("Reading deploy.json")
+          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
+          val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter)
+          if (context.tasks.isEmpty)
+            safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
-        sender ! DeployReady(record, artifactDir, context)
+          sender ! DeployReady(record, artifactDir, context)
+        }
       } catch {
         case t:Throwable =>
           log.debug("Preparing deploy failed")
@@ -283,7 +284,7 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, task, reporter, queueTime) => {
+    case RunTask(record, task, deployReporter, queueTime) => {
       import DeployMetricsActor._
       deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
@@ -298,8 +299,10 @@ class TaskRunner extends Actor with Logging {
             case t:Throwable => false
           }
         }
-        reporter.taskContext(task.task) { taskReporter =>
-          task.task.execute(taskReporter, stopFlagAsker)
+        DeployReporter.withFailureHandling(deployReporter) { safeReporter =>
+          safeReporter.taskContext(task.task) { taskReporter =>
+            task.task.execute(taskReporter, stopFlagAsker)
+          }
         }
         log.debug("Sending completed message")
         sender ! TaskCompleted(record, task)
