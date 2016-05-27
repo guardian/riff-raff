@@ -37,13 +37,21 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
         </label>
     </div>
 }
+@helper.form(action=routes.DeployController.processForm) {
+    <input type="hidden" name="project" value="@record.buildName"/>
+    <input type="hidden" name="build" value="@record.buildId"/>
+    <input type="hidden" name="stage" value="@record.stage.name"/>
+    <input type="hidden" name="recipe" value="@record.recipe.name"/>
 
-<div class="actions">
-    <p>
-        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary pull-right">Deploy Again</button>
-    </p>
-</div>
-
+    @record.stacks.zipWithIndex.map { stack =>
+        <input type="hidden" name="stacks[@stack._2]" value="@{stack._1.name}"/>
+    }
+    <div class="actions"><p>
+        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default pull-right">
+            Deploy Again
+        </button>
+    </p></div>
+}
 </div>
 </div>
 
