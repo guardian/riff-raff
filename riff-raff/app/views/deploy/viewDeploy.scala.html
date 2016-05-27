@@ -32,7 +32,7 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
 }
 @if(!record.isSummarised){
     <div class="clearfix">
-        <label class="checkbox pull-right checkbox-fix-top checkbox-fix-right">
+        <label class="checkbox pull-right checkbox-fix-top">
             <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
         </label>
     </div>
