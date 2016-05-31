@@ -1,5 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
 @import helper.twitterBootstrap._
+@import helper.CSRF
 
 @main("UUID list", request) {
 
@@ -31,6 +32,7 @@
               <td>
                 <span>
                 @helper.form(action=routes.Testing.actionUUID(), 'class -> "modal-form") {
+                    @CSRF.formField
                     <input type="hidden" name="uuid" value="@deploy.uuid"/>
                     <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> V2</button>
                     <button name="action" type="submit" value="addStringUUID" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-wrench glyphicon glyphicon-white"></i> Add String UUID</button>

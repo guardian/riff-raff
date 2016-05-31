@@ -1,4 +1,5 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], keyList: Iterable[controllers.ApiKey])
+@import helper.CSRF
 
 @main("API keys", request) {
     <h2>API keys</h2>
@@ -31,6 +32,7 @@
                     <td>@key.totalCalls</td>
                     <td>
                     @helper.form(routes.Api.delete(), 'class -> "modal-form") {
+                        @CSRF.formField
                         <button class="btn btn-xs btn-danger" name="key" value="@key.key"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                     </td>

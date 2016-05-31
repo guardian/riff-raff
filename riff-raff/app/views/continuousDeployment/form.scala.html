@@ -1,6 +1,7 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configForm: Form[controllers.ContinuousDeployController.ConfigForm])
 @import ci.Trigger._
 @import b3.vertical.fieldConstructor
+@import helper.CSRF
 
 @main("Continuous Deployment", request, List("form-autocomplete")) {
 
@@ -8,6 +9,7 @@
 <hr/>
 
 @b3.form(action=routes.ContinuousDeployController.save) {
+@CSRF.formField
 @snippets.inputHidden(configForm("id"))
 
     @if(configForm.hasGlobalErrors) {

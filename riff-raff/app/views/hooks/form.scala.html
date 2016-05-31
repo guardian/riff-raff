@@ -1,5 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[controllers.HookForm])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[controllers.HookForm])
 @import b3.vertical.fieldConstructor
+@import helper.CSRF
 
 @main("Create Post Deploy Hook", request) {
 
@@ -9,6 +10,7 @@
     <div class="row">
         <div class="col-md-7">
             @b3.form(action=routes.Hooks.save) {
+            @CSRF.formField
 
             @snippets.inputHidden(hookForm("id"))
 

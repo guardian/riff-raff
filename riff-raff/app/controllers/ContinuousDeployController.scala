@@ -8,6 +8,7 @@ import java.util.UUID
 
 import ci.{ContinuousDeploymentConfig, Trigger}
 import org.joda.time.DateTime
+import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import utils.Forms.uuid
 
 object ContinuousDeployController extends Controller with Logging with LoginActions {
@@ -29,40 +30,50 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
     )(ConfigForm.apply)(ConfigForm.unapply)
   )
 
-  def list = AuthAction { implicit request =>
-    val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.toSeq.sortBy(q => (q.projectName, q.stage))
-    Ok(views.html.continuousDeployment.list(request, configs))
+  def list = CSRFAddToken {
+    AuthAction { implicit request =>
+      val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.toSeq.sortBy(q => (q.projectName, q.stage))
+      Ok(views.html.continuousDeployment.list(request, configs))
+    }
   }
-  def form = AuthAction { implicit request =>
-    Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
+  def form = CSRFAddToken {
+    AuthAction { implicit request =>
+      Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
+    }
   }
-  def save = AuthAction { implicit request =>
-    continuousDeploymentForm.bindFromRequest().fold(
-      formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
-      form => {
-        val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
-        )
-        ContinuousDeploymentConfigRepository.setContinuousDeployment(config)
-        Redirect(routes.ContinuousDeployController.list())
-      }
-    )
-  }
-  def edit(id: String) = AuthAction { implicit request =>
-    ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
-      Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(config))))
-    }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
-  }
-  def delete(id: String) = AuthAction { implicit request =>
-    Form("action" -> nonEmptyText).bindFromRequest().fold(
-      errors => {},
-      action => {
-        action match {
-          case "delete" =>
-            ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
+  def save = CSRFCheck { CSRFAddToken {
+    AuthAction { implicit request =>
+      continuousDeploymentForm.bindFromRequest().fold(
+        formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
+        form => {
+          val config = ContinuousDeploymentConfig(
+            form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
+          )
+          ContinuousDeploymentConfigRepository.setContinuousDeployment(config)
+          Redirect(routes.ContinuousDeployController.list())
         }
-      }
-    )
-    Redirect(routes.ContinuousDeployController.list())
+      )
+    }
+  }}
+  def edit(id: String) = CSRFAddToken {
+    AuthAction { implicit request =>
+      ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
+        Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(config))))
+      }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
+    }
+  }
+  def delete(id: String) = CSRFCheck {
+    AuthAction { implicit request =>
+      Form("action" -> nonEmptyText).bindFromRequest().fold(
+        errors => {},
+        action => {
+          action match {
+            case "delete" =>
+              ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
+          }
+        }
+      )
+      Redirect(routes.ContinuousDeployController.list())
+    }
   }
 }

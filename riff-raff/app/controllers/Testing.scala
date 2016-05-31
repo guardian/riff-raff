@@ -1,17 +1,20 @@
 package controllers
 
-import org.joda.time.format.{ISODateTimeFormat, DateTimeFormat}
+import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import play.api.mvc.{Action, Controller}
 import magenta._
 import resources.LookupSelector
+
 import collection.mutable.ArrayBuffer
-import deployment.{PaginationView, DeployFilter, DeployRecord}
+import deployment.{DeployFilter, DeployRecord, PaginationView}
 import java.util.UUID
+
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
-import org.joda.time.{Duration, Interval, DateTime}
-import persistence.{TaskRunDocument, DocumentStoreConverter, Persistence}
+import org.joda.time.{DateTime, Duration, Interval}
+import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
+import play.filters.csrf.CSRFCheck
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
@@ -161,29 +164,31 @@ object Testing extends Controller with Logging with LoginActions {
       (UuidForm.unapply)
   )
 
-  def actionUUID = AuthAction { implicit request =>
-    uuidForm.bindFromRequest().fold(
-      errors => Redirect(routes.Testing.uuidList()),
-      form => {
-        form.action match {
-          case "summarise" => {
-            log.info("Summarising deploy with UUID %s" format form.uuid)
-            Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
-            Redirect(routes.Testing.uuidList())
-          }
-          case "deleteV2" => {
-            log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
-            Redirect(routes.Testing.uuidList())
-          }
-          case "addStringUUID" => {
-            log.info("Adding string UUID for %s" format form.uuid)
-            Persistence.store.addStringUUID(UUID.fromString(form.uuid))
-            Redirect(routes.Testing.uuidList())
+  def actionUUID = CSRFCheck {
+    AuthAction { implicit request =>
+      uuidForm.bindFromRequest().fold(
+        errors => Redirect(routes.Testing.uuidList()),
+        form => {
+          form.action match {
+            case "summarise" => {
+              log.info("Summarising deploy with UUID %s" format form.uuid)
+              Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
+              Redirect(routes.Testing.uuidList())
+            }
+            case "deleteV2" => {
+              log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
+              Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+              Redirect(routes.Testing.uuidList())
+            }
+            case "addStringUUID" => {
+              log.info("Adding string UUID for %s" format form.uuid)
+              Persistence.store.addStringUUID(UUID.fromString(form.uuid))
+              Redirect(routes.Testing.uuidList())
+            }
           }
         }
-      }
-    )
+      )
+    }
   }
 
   def transferAllUUIDs = AuthAction { implicit request =>

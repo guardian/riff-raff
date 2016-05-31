@@ -1,5 +1,6 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import magenta.RunState
+@import helper.CSRF
 
 @main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
 <style>
@@ -25,6 +26,7 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
     fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having
     failed.
     @helper.form(action=routes.DeployController.markAsFailed, 'class -> "form-make-inline pull-right") {
+        @CSRF.formField
         <input type="hidden" name="uuid" value="@record.uuid"/>
         <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="glyphicon glyphicon-remove glyphicon glyphicon-white"></i> Mark as Failed</button>
     }

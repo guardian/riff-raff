@@ -1,27 +1,27 @@
 package controllers
 
-import _root_.resources.LookupSelector
-import play.api.mvc.{Action, Controller, Result, AnyContent, BodyParser}
-import play.api.mvc.Results._
-import org.joda.time.{LocalDate, DateTime}
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
-import play.api.data._
-import play.api.data.Forms._
 import java.security.SecureRandom
+import java.util.UUID
+
+import _root_.resources.LookupSelector
+import com.mongodb.casbah.Imports._
+import deployment.DeployInfoManager._
+import deployment.{DeployFilter, DeployInfoManager, Deployments, Record}
+import magenta._
+import org.joda.time.{DateTime, LocalDate}
+import org.json4s.native.Serialization
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import play.api.data.Forms._
+import play.api.data._
+import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import com.mongodb.casbah.Imports._
-import deployment.{Deployments, Record, DeployFilter, DeployInfoManager}
-import DeployInfoManager._
-import utils.{ChangeFreeze, Graph}
-import magenta._
 import play.api.mvc.BodyParsers.parse
-import java.util.UUID
+import play.api.mvc.Results._
+import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
+import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import utils.Json.DefaultJodaDateWrites
-import org.json4s._
-import org.json4s.native.Serialization
-import org.json4s.native.Serialization.{ read, write }
+import utils.{ChangeFreeze, Graph}
 
 case class ApiKey(
   application:String,
@@ -149,34 +149,42 @@ object Api extends Controller with Logging with LoginActions {
     "key" -> nonEmptyText
   )
 
-  def createKeyForm = AuthAction { implicit request =>
-    Ok(views.html.api.form(request, applicationForm))
+  def createKeyForm = CSRFAddToken {
+    AuthAction { implicit request =>
+      Ok(views.html.api.form(request, applicationForm))
+    }
   }
 
-  def createKey = AuthAction { implicit request =>
-    applicationForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.api.form(request, errors)),
-      applicationName => {
-        val randomKey = ApiKeyGenerator.newKey()
-        val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
-        Persistence.store.createApiKey(key)
-        Redirect(routes.Api.listKeys)
-      }
-    )
+  def createKey = CSRFCheck { CSRFAddToken {
+    AuthAction { implicit request =>
+      applicationForm.bindFromRequest().fold(
+        errors => BadRequest(views.html.api.form(request, errors)),
+        applicationName => {
+          val randomKey = ApiKeyGenerator.newKey()
+          val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
+          Persistence.store.createApiKey(key)
+          Redirect(routes.Api.listKeys)
+        }
+      )
+    }
+  }}
+
+  def listKeys = CSRFAddToken {
+    AuthAction { implicit request =>
+      Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
+    }
   }
 
-  def listKeys = AuthAction { implicit request =>
-    Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
-  }
-
-  def delete = AuthAction { implicit request =>
-    apiKeyForm.bindFromRequest().fold(
-      errors => Redirect(routes.Api.listKeys()),
-      apiKey => {
-        Persistence.store.deleteApiKey(apiKey)
-        Redirect(routes.Api.listKeys())
-      }
-    )
+  def delete = CSRFCheck {
+    AuthAction { implicit request =>
+      apiKeyForm.bindFromRequest().fold(
+        errors => Redirect(routes.Api.listKeys()),
+        apiKey => {
+          Persistence.store.deleteApiKey(apiKey)
+          Redirect(routes.Api.listKeys())
+        }
+      )
+    }
   }
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
@@ -276,7 +284,7 @@ object Api extends Controller with Logging with LoginActions {
       filter.app.map("app" -> toJson(_)) ++
       Some("hostList" -> toJson(filter.hostList))
 
-    import org.json4s.{Serialization,NoTypeHints}
+    import org.json4s.NoTypeHints
     implicit val format = Serialization.formats(NoTypeHints)
     val deployInfo = DeployInfoManager.deployInfo
     val filtered = deployInfo.filterHosts { host =>
