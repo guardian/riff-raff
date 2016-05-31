@@ -43,7 +43,7 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
     <input type="hidden" name="stage" value="@record.stage.name"/>
     <input type="hidden" name="recipe" value="@record.recipe.name"/>
 
-    @record.stacks.zipWithIndex.foreach { case (stack, index) =>
+    @record.stacks.zipWithIndex.map { case (stack, index) =>
         <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
     }
     <div class="actions"><p>
