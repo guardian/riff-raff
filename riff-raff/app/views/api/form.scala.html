@@ -1,5 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], apiForm: Form[String])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], apiForm: Form[String])
 @import b3.vertical.fieldConstructor
+@import helper.CSRF
 
 @main("Create new API key", request) {
 
@@ -7,6 +8,7 @@
     <hr/>
 
     @b3.form(action=routes.Api.createKey()) {
+        @CSRF.formField
         @b3.text(apiForm("application"), '_label -> "Application that will use this key")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Create</button> or

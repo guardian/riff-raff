@@ -2,6 +2,7 @@
 @import utils.ChangeFreeze
 @import org.joda.time.format.DateTimeFormat._
 @import ci.Trigger._
+@import helper.CSRF
 
 @main("Continuous Deployment Configurations", request) {
 <h2>Continuous Deployment Configurations</h2>
@@ -47,6 +48,7 @@
                 </td>
                 <td>
                     @helper.form(action=routes.ContinuousDeployController.delete(config.id.toString), 'class -> "form-make-inline") {
+                        @CSRF.formField
                         <button class="btn btn-xs btn-danger" name="action" value="delete"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
                 </td>
