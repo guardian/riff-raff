@@ -16,8 +16,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers {
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 8
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
+    S3.params should have size 9
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
   }
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {
