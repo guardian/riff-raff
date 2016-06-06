@@ -14,10 +14,20 @@ import scalax.file.Path
 import collection.convert.wrapAsScala._
 
 object UpdateCloudFormationTask {
+
   sealed trait ParameterValue
   case class SpecifiedValue(value: String) extends ParameterValue
   case object UseExistingValue extends ParameterValue
   case class TemplateParameter(key:String, default:Boolean)
+
+  sealed trait CloudFormationStackLookupStrategy
+  case class LookupByName(cloudFormationStackName: String) extends CloudFormationStackLookupStrategy {
+    override def toString = s"called $cloudFormationStackName"
+  }
+  case class LookupByTags(tags: Map[String, String]) extends CloudFormationStackLookupStrategy {
+    override def toString = s"with tags $tags"
+  }
+
 
   def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String], amiParam: Option[(String, String)]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
@@ -105,7 +115,7 @@ case class UpdateCloudFormationTask(
 }
 
 case class UpdateAmiCloudFormationParameterTask(
-  cloudFormationStackName: String,
+  cloudFormationStackLookupStrategy: UpdateCloudFormationTask.CloudFormationStackLookupStrategy,
   amiParameter: String,
   amiTags: Map[String, String],
   latestImage: String => Map[String, String] => Option[String],
@@ -115,13 +125,17 @@ case class UpdateAmiCloudFormationParameterTask(
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
-    val (existingParameters, currentAmi) = CloudFormation.describeStack(cloudFormationStackName) match {
+    val maybeCfStack = cloudFormationStackLookupStrategy match {
+      case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName)
+      case LookupByTags(tags) => CloudFormation.findStackByTags(tags)
+    }
+    val (cfStackName, existingParameters, currentAmi) = maybeCfStack match {
       case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
-        (cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
-      case Some(_) =>
-        reporter.fail(s"stack $cloudFormationStackName does not have an $amiParameter parameter to update")
+        (cfStack.getStackName, cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
+      case Some(cfStack) =>
+        reporter.fail(s"stack ${cfStack.getStackName} does not have an $amiParameter parameter to update")
       case None =>
-        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackName")
+        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
     }
 
     latestImage(CloudFormation.region.name)(amiTags) match {
@@ -131,18 +145,26 @@ case class UpdateAmiCloudFormationParameterTask(
         reporter.info(s"Resolved AMI: $ami")
         val parameters = existingParameters + (amiParameter -> SpecifiedValue(ami))
         reporter.info(s"Updating cloudformation stack params: $parameters")
-        CloudFormation.updateStackParams(cloudFormationStackName, parameters)
+        CloudFormation.updateStackParams(cfStackName, parameters)
       case None =>
         val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-        reporter.fail(s"Failed to resolve AMI for $cloudFormationStackName with tags: $tagsStr")
+        reporter.fail(s"Failed to resolve AMI for $cfStackName with tags: $tagsStr")
     }
   }
 
-  def description = s"Update $amiParameter to latest AMI with tags $amiTags in CloudFormation stack: $cloudFormationStackName"
+  def description = s"Update $amiParameter to latest AMI with tags $amiTags in CloudFormation stack $cloudFormationStackLookupStrategy"
   def verbose = description
 }
 
-case class CheckUpdateEventsTask(stackName: String)(implicit val keyRing: KeyRing) extends Task {
+case class CheckUpdateEventsTask(stackLookupStrategy: UpdateCloudFormationTask.CloudFormationStackLookupStrategy)(implicit val keyRing: KeyRing) extends Task {
+  import UpdateCloudFormationTask._
+
+  private val stackName = stackLookupStrategy match {
+    case LookupByName(name) => name
+    case strategy @ LookupByTags(tags) =>
+      val stack = CloudFormation.findStackByTags(tags).getOrElse(sys.error(s"Could not find CloudFormation stack $strategy"))
+      stack.getStackName
+  }
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     import StackEvent._
@@ -251,6 +273,16 @@ trait CloudFormation extends AWS {
     client.describeStacks(
       new DescribeStacksRequest()
     ).getStacks.find(_.getStackName == name)
+
+  /**
+    * Find a stack that matches ALL of the given tag filters
+    */
+  def findStackByTags(tags: Map[String, String])(implicit keyRing:KeyRing) =
+    client.describeStacks(
+      new DescribeStacksRequest()
+    ).getStacks.find { stack =>
+      tags.forall { case (key, value) => stack.getTags.exists(t => t.getKey == key && t.getValue == value) }
+    }
 
   def describeStackEvents(name: String)(implicit keyRing: KeyRing) =
     client.describeStackEvents(

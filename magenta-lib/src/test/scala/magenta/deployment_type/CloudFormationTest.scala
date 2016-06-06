@@ -37,8 +37,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
             ifAbsent should be(true)
         }
         inside(checkTask) {
-          case CheckUpdateEventsTask(updateStackName) =>
-            updateStackName should be(cfnStackName)
+          case CheckUpdateEventsTask(lookupStrategy) =>
+            lookupStrategy should be(LookupByName(cfnStackName))
         }
     }
   }
