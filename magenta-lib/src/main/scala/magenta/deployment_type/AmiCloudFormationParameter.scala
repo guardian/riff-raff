@@ -24,7 +24,7 @@ object AmiCloudFormationParameter extends DeploymentType {
   val cloudFormationStackTags = Param[Map[String, String]]("cloudFormationStackTags",
     documentation =
       """
-        |The tags used to find the CloudFormation stack to update. The Stack and Stage tags will be automatically added.
+        |The tags used to find the CloudFormation stack to update. The Stack and Stage tags will be automatically added if not present.
         |
         |If this parameter is set, it will override any other parameters related to the CloudFormation stack name.
       """.stripMargin
@@ -44,9 +44,11 @@ object AmiCloudFormationParameter extends DeploymentType {
       val cloudFormationStackLookupStrategy = {
         val tagsMap = cloudFormationStackTags(pkg)
         if (tagsMap.nonEmpty) {
-          val withStackAndStageTags = tagsMap ++
-            stack.nameOption.map("Stack" -> _) ++
-            Map("Stage" -> parameters.stage.name)
+          val stackAndStage = Map("Stage" -> parameters.stage.name) ++ stack.nameOption.map("Stack" -> _)
+          val withStackAndStageTags = stackAndStage.foldLeft[Map[String, String]](tagsMap){
+            // Don't overwrite any Stack or Stage tags that the user has specified
+            case (acc, (k, v)) => if (tagsMap.contains(k)) acc else acc + (k -> v)
+          }
           LookupByTags(withStackAndStageTags)
         } else {
           val stackName = stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
