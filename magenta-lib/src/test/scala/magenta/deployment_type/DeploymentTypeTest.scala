@@ -76,7 +76,23 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       case upload: S3Upload => upload.cacheControlPatterns should be(List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
     }
   }
+
+  it should "allow the path to be varied by Deployment Resource lookup" in {
+    val data: Map[String, JValue] = Map(
+      "bucket" -> "bucket-1234",
+      "cacheControl" -> "no-cache",
+      "pathPrefixResource" -> "s3-path-prefix",
+      "prefixStage" -> false, // when we are using pathPrefixResource, we generally don't need or want the stage prefixe - we're already varying based on stage
+      "prefixPackage" -> false
     )
+
+    val p = DeploymentPackage("myapp", Seq(app1), data, "aws-s3", sourceFiles)
+
+    val lookup = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)), Map("s3-path-prefix" -> Seq(Datum(None, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
+
+    inside(S3.perAppActions("uploadStaticFiles")(p)(reporter, lookup, parameters(CODE), UnnamedStack).head) {
+      case upload: S3Upload => upload.files should be(Seq(sourceFiles -> "testing/2016/05/brexit-companion/"))
+    }
   }
 
   "AWS Lambda" should "have a updateLambda action" in {
