@@ -2,6 +2,7 @@ package magenta.deployment_type
 
 import java.io.File
 
+import magenta.Datum
 import magenta.json.JValueExtractable
 import magenta.tasks.S3Upload
 import org.json4s.JsonAST._
@@ -13,8 +14,8 @@ object S3 extends DeploymentType with S3AclParams {
       |Provides one deploy action, `uploadStaticFiles`, that uploads the package files to an S3 bucket. In order for this to work, magenta
       |must have credentials that are valid to write to the bucket in the specified location.
       |
-      |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
-      |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
+      |Each file path and name is used to generate the key, optionally prefixing with a configured path prefix, target stage, and/or the
+      |package name to the key. The generated key looks like: `/<pathPrefix>/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
     """.stripMargin
 
   val prefixStage = Param("prefixStage",
@@ -23,6 +24,10 @@ object S3 extends DeploymentType with S3AclParams {
     "Prefix the S3 bucket key with the package name").default(true)
   val prefixStack = Param("prefixStack",
     "Prefix the S3 bucket key with the target stack").default(true)
+  val pathPrefixResource = Param[String]("pathPrefixResource",
+    """Deploy Info resource key to use to look up an additional prefix for the path key.
+    """.stripMargin
+  )
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
@@ -99,19 +104,26 @@ object S3 extends DeploymentType with S3AclParams {
 
   def perAppActions = {
     case "uploadStaticFiles" => (pkg) => (reporter, resourceLookup, parameters, stack) => {
+      def resourceLookupFor(resource: Param[String]): Option[Datum] = {
+        resource.get(pkg).fold[Option[Datum]](None) { resourceName =>
+          assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
+          resourceLookup.data.datum(resourceName, pkg.apps.head, parameters.stage, stack)
+        }
+      }
+
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
-        assert(pkg.apps.size == 1, s"The $name package type, in conjunction with bucketResource, cannot be used when more than one app is specified")
-        val data = resourceLookup.data.datum(bucketResource(pkg), pkg.apps.head, parameters.stage, stack)
+        val data = resourceLookupFor(bucketResource)
         assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${parameters.stage.name})")
         data.get.value
       }
-      val prefix:String = S3Upload.prefixGenerator(
+
+      val prefix:String = (resourceLookupFor(pathPrefixResource).map(_.value).toSeq :+ S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg)) Some(stack) else None,
         stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
-      )
+      )).mkString("/")
       List(
         S3Upload(
           bucket = bucketName,
