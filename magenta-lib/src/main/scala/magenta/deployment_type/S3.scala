@@ -106,7 +106,7 @@ object S3 extends DeploymentType with S3AclParams {
     case "uploadStaticFiles" => (pkg) => (reporter, resourceLookup, parameters, stack) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
         resource.get(pkg).fold[Option[Datum]](None) { resourceName =>
-          assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, cannot be used when more than one app is specified")
+          assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
           resourceLookup.data.datum(resourceName, pkg.apps.head, parameters.stage, stack)
         }
       }
