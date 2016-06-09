@@ -1,4 +1,5 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.DeployRecord)
+@import helper.CSRF
 
 @main("Debug Viewer", request) {
 <h2>Table of messages for @record.uuid</h2>
@@ -9,6 +10,7 @@
 
     <span>
     @helper.form(action=routes.Testing.actionUUID(), 'class -> "modal-form") {
+        @CSRF.formField
         <input type="hidden" name="uuid" value="@record.uuid"/>
         <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
         @if(!record.isSummarised){<button name="action" type="submit" value="summarise" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-resize-small glyphicon glyphicon-white"></i> Summarise</button>}

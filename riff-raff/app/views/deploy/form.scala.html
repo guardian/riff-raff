@@ -1,5 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm])
 @import b3.vertical.fieldConstructor
+@import helper.CSRF
 
 @main("Deploy request", request, List("form-autocomplete")) {
 
@@ -7,6 +8,7 @@
 
 <div class="col-md-6">
 @b3.form(routes.DeployController.processForm, 'class -> "well") {
+    @CSRF.formField
     <fieldset>
         <legend>What would you like to deploy?</legend>
 @b3.text(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")

@@ -1,7 +1,8 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], preview: deployment.Preview)
+@import helper.CSRF
 
 @helper.form(action=routes.DeployController.processForm) {
-
+    @CSRF.formField
     <table class="table table-hover">
         <tbody>
         @preview.recipeTasks.filterNot(rt => rt.recipe.actionsBeforeApp.isEmpty && rt.recipe.actionsPerHost.isEmpty).map { recipeTasks =>

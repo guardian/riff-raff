@@ -1,6 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)
 @import helper.twitterBootstrap._
-
+@import helper.CSRF
 @main("Deploy confirmation", request) {
 
 <h2>Deploy confirmation</h2>
@@ -29,6 +29,7 @@
         <div class="clearfix"></div>
 
         @helper.form(action=routes.DeployController.processForm) {
+            @CSRF.formField
 
             @fields.map { fieldName =>
                 @snippets.inputHidden(deployForm(fieldName))
