@@ -193,12 +193,17 @@ object DeployController extends Controller with Logging with LoginActions {
 
   def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
     val parametersJson = Json.parse(deployFormJson)
-    Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
+    Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson), isExternal = true))
   }
 
-  def deployConfirmationWithParameters = AuthAction { implicit request =>
+  def deployConfirmationExternal = AuthAction { implicit request =>
     val form = deployForm.bindFromRequest()
-    Ok(views.html.deploy.deployConfirmation(request, form))
+    Ok(views.html.deploy.deployConfirmation(request, form, isExternal = true))
+  }
+
+  def deployAgain = AuthAction { implicit request =>
+    val form = deployForm.bindFromRequest()
+    Ok(views.html.deploy.deployConfirmation(request, form, isExternal = false))
   }
 
   def markAsFailed = AuthAction { implicit request =>

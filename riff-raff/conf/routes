@@ -18,7 +18,8 @@ GET         /deployment/request                             controllers.DeployCo
 POST        /deployment/request                             controllers.DeployController.processForm
 POST        /deployment/:uuid/stop                          controllers.DeployController.stop(uuid)
 GET         /deployment/confirm                             controllers.DeployController.deployConfirmation(parametersJson:String)
-GET         /deployment/externalRequest                     controllers.DeployController.deployConfirmationWithParameters
+GET         /deployment/externalRequest                     controllers.DeployController.deployConfirmationExternal
+GET         /deployment/deployAgain                         controllers.DeployController.deployAgain
 
 GET         /deployment/history                             controllers.DeployController.history
 GET         /deployment/history/update                      controllers.DeployController.historyContent

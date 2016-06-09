@@ -37,7 +37,7 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
         </label>
     </div>
 }
-@helper.form(action=routes.DeployController.processForm) {
+@helper.form(action=routes.DeployController.deployAgain) {
     <input type="hidden" name="project" value="@record.buildName"/>
     <input type="hidden" name="build" value="@record.buildId"/>
     <input type="hidden" name="stage" value="@record.stage.name"/>
