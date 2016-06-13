@@ -204,14 +204,21 @@ object DeployController extends Controller with Logging with LoginActions {
   def deployConfirmation(deployFormJson: String) = CSRFAddToken {
     AuthAction { implicit request =>
       val parametersJson = Json.parse(deployFormJson)
-      Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson)))
+      Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson), isExternal = true))
     }
   }
 
-  def deployConfirmationWithParameters = CSRFAddToken {
+  def deployConfirmationExternal = CSRFAddToken {
     AuthAction { implicit request =>
       val form = deployForm.bindFromRequest()
-      Ok(views.html.deploy.deployConfirmation(request, form))
+      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = true))
+    }
+  }
+
+  def deployAgain = CSRFAddToken {
+    AuthAction { implicit request =>
+      val form = deployForm.bindFromRequest()
+      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = false))
     }
   }
 

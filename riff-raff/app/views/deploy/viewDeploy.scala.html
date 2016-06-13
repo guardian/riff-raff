@@ -32,9 +32,28 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
     }
 </div>
 }
-@if(!record.isSummarised){<label class="checkbox pull-right checkbox-fix-top checkbox-fix-right">
-    <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
-</label>}
+@if(!record.isSummarised){
+    <div class="clearfix">
+        <label class="checkbox pull-right checkbox-fix-top">
+            <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
+        </label>
+    </div>
+}
+@helper.form(action=routes.DeployController.deployAgain) {
+    <input type="hidden" name="project" value="@record.buildName"/>
+    <input type="hidden" name="build" value="@record.buildId"/>
+    <input type="hidden" name="stage" value="@record.stage.name"/>
+    <input type="hidden" name="recipe" value="@record.recipe.name"/>
+
+    @record.stacks.zipWithIndex.map { case (stack, index) =>
+        <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
+    }
+    <div class="actions"><p>
+        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default pull-right">
+            Deploy Again
+        </button>
+    </p></div>
+}
 </div>
 </div>
 
