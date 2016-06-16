@@ -91,7 +91,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     val lookup = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)), Map("s3-path-prefix" -> Seq(Datum(None, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
 
     inside(S3.perAppActions("uploadStaticFiles")(p)(reporter, lookup, parameters(CODE), UnnamedStack).head) {
-      case upload: S3Upload => upload.files should be(Seq(sourceFiles -> "testing/2016/05/brexit-companion/"))
+      case upload: S3Upload => upload.files should be(Seq(sourceFiles -> "testing/2016/05/brexit-companion"))
     }
   }
 

@@ -14,8 +14,12 @@ object S3 extends DeploymentType with S3AclParams {
       |Provides one deploy action, `uploadStaticFiles`, that uploads the package files to an S3 bucket. In order for this to work, magenta
       |must have credentials that are valid to write to the bucket in the specified location.
       |
-      |Each file path and name is used to generate the key, optionally prefixing with a configured path prefix, target stage, and/or the
-      |package name to the key. The generated key looks like: `/<pathPrefix>/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
+      |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
+      |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
+      |
+      |Alternatively, you can specify a pathPrefixResource (eg `s3-path-prefix`) to lookup the path prefix, giving you
+      |greater control. The generated key looks like: `/<pathPrefix>/<filePathAndName>`.
+      |
     """.stripMargin
 
   val prefixStage = Param("prefixStage",
@@ -25,7 +29,9 @@ object S3 extends DeploymentType with S3AclParams {
   val prefixStack = Param("prefixStack",
     "Prefix the S3 bucket key with the target stack").default(true)
   val pathPrefixResource = Param[String]("pathPrefixResource",
-    """Deploy Info resource key to use to look up an additional prefix for the path key.
+    """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
+       the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
+       full control over the path with the resource lookup.
     """.stripMargin
   )
 
@@ -126,11 +132,11 @@ object S3 extends DeploymentType with S3AclParams {
         data.get.value
       }
 
-      val prefix:String = (resourceLookupFor(pathPrefixResource).map(_.value).toSeq :+ S3Upload.prefixGenerator(
+      val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg)) Some(stack) else None,
         stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
-      )).mkString("/")
+      ))
       List(
         S3Upload(
           bucket = bucketName,
