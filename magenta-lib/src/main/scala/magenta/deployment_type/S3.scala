@@ -105,9 +105,15 @@ object S3 extends DeploymentType with S3AclParams {
   def perAppActions = {
     case "uploadStaticFiles" => (pkg) => (reporter, resourceLookup, parameters, stack) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-        resource.get(pkg).fold[Option[Datum]](None) { resourceName =>
+        resource.get(pkg).flatMap { resourceName =>
           assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
-          resourceLookup.data.datum(resourceName, pkg.apps.head, parameters.stage, stack)
+          val dataLookup = resourceLookup.data
+          val app = pkg.apps.head
+          val datumOpt = dataLookup.datum(resourceName, app, parameters.stage, stack)
+          if (datumOpt.isEmpty) {
+            reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${parameters.stage} stack=$stack - values *are* defined for app=[${dataLookup.get(resourceName).map(_.app).mkString(", ")}]")
+          }
+          datumOpt
         }
       }
 

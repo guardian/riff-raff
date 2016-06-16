@@ -132,7 +132,7 @@ case class S3Upload(
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     val client = s3client(keyRing)
-    reporter.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3")
+    reporter.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3 ${client}")
     requests.take(detailedLoggingThreshold).foreach(r => reporter.verbose(s"Uploading ${requestToString(r)}"))
     requests.par foreach { request => client.putObject(request) }
     reporter.verbose(s"Finished upload of ${fileString(files.size)} to S3")
