@@ -111,7 +111,8 @@ object S3 extends DeploymentType with S3AclParams {
           val app = pkg.apps.head
           val datumOpt = dataLookup.datum(resourceName, app, parameters.stage, stack)
           if (datumOpt.isEmpty) {
-            reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${parameters.stage} stack=$stack - values *are* defined for app=[${dataLookup.get(resourceName).map(_.app).mkString(", ")}]")
+            def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
+            reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${parameters.stage} stack=$stack - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
           }
           datumOpt
         }
