@@ -2,39 +2,38 @@ package persistence
 
 import java.util.UUID
 
-import cats.data.Validated
 import ci.{ContinuousDeploymentConfig, Trigger}
-import com.gu.scanamo.{DynamoFormat, Scanamo, TypeCoercionError}
+import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
+import com.gu.scanamo.{DynamoFormat, Scanamo, Table}
 import conf.Configuration
 import org.joda.time.DateTime
 
 object ContinuousDeploymentConfigRepository {
-  val tableName = "continuous-deployment-config"
   val client = Configuration.continuousDeployment.dynamoClient
 
-  implicit val uuidFormat = DynamoFormat.xmap[UUID, String](
-    s => Validated.catchOnly[IllegalArgumentException](UUID.fromString(s)).leftMap(TypeCoercionError(_)).toValidatedNel
-  )(_.toString)
+  implicit val uuidFormat =
+    DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](UUID.fromString)(_.toString)
 
-  implicit val jodaStringFormat = DynamoFormat.xmap[DateTime, String](
-    s => Validated.catchOnly[IllegalArgumentException](DateTime.parse(s)).leftMap(TypeCoercionError(_)).toValidatedNel
-  )(_.toString)
+  implicit val jodaStringFormat =
+    DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](DateTime.parse)(_.toString)
 
-  implicit val triggerModeFormat = DynamoFormat.xmap[Trigger.Mode, String](
-    s => Validated.catchOnly[NoSuchElementException](Trigger.withName(s)).leftMap(TypeCoercionError(_)).toValidatedNel
-  )(_.toString)
+  implicit val triggerModeFormat =
+    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
 
-  def getContinuousDeploymentList(): Iterable[ContinuousDeploymentConfig] =
-    Scanamo.scan[ContinuousDeploymentConfig](client)(tableName).toList.flatMap(_.toOption)
+  val table = Table[ContinuousDeploymentConfig]("continuous-deployment-config")
+  def exec[A](ops: ScanamoOps[A]): A = Scanamo.exec(client)(ops)
+
+  def getContinuousDeploymentList(): List[ContinuousDeploymentConfig] =
+    exec(table.scan()).flatMap(_.toOption)
 
   def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
-    Scanamo.get[ContinuousDeploymentConfig](client)(tableName)('id -> id).flatMap(_.toOption)
+    exec(table.get('id -> id)).flatMap(_.toOption)
 
-  def setContinuousDeployment(cd: ContinuousDeploymentConfig): Unit = {
-    Scanamo.put(client)(tableName)(cd)
-  }
-  def deleteContinuousDeployment(id: UUID): Unit = {
-    Scanamo.delete(client)(tableName)('id -> id)
-  }
+  def setContinuousDeployment(cd: ContinuousDeploymentConfig): Unit =
+    exec(table.put(cd))
+
+  def deleteContinuousDeployment(id: UUID): Unit =
+    exec(table.delete('id -> id))
+
 }
