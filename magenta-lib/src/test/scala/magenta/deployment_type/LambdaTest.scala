@@ -45,4 +45,24 @@ class LambdaTest extends FlatSpec with Matchers {
       )
     ))
   }
+
+  it should "prefix stack name to function name" in {
+    val dataWithStack: Map[String, JValue] = Map(
+      "bucket" -> "lambda-bucket",
+      "fileName" -> "test-file.zip",
+      "prefixStack" -> true,
+      "functionNames" -> List("MyFunction-")
+    )
+    val app = Seq(App("lambda"))
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", new File("/tmp/packages/webapp"))
+
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("some-stack"))
+    tasks should be (List(
+      UpdateS3Lambda(
+        functionName = "some-stackMyFunction-PROD",
+        s3Bucket = "lambda-bucket",
+        s3Key = "some-stack/PROD/lambda/test-file.zip"
+      )
+    ))
+  }
 }
