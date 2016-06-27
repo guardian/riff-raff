@@ -34,6 +34,9 @@ object Lambda extends DeploymentType  {
       |Each function name will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE""".stripMargin
   )
 
+  val prefixStackParam = Param[Boolean]("prefixStack",
+    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(false)
+
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function")
     .defaultFromPackage(pkg => s"${pkg.name}.zip")
 
@@ -60,12 +63,13 @@ object Lambda extends DeploymentType  {
       """.stripMargin
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String)(reporter: DeployReporter): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
-    (functionNamesParam.get(pkg), functionsParam.get(pkg)) match {
-      case (Some(functionNames), None) =>
-        functionNames.map(name => LambdaFunction(s"$name$stage", fileNameParam(pkg), bucketOption))
-      case (None, Some(functionsMap)) =>
+    (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg)) match {
+      case (Some(functionNames), None, prefixStack) =>
+        val stackNamePrefix = stack.nameOption.filter(_ => prefixStack).getOrElse("")
+        functionNames.map(name => LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg), bucketOption))
+      case (None, Some(functionsMap), _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
@@ -81,7 +85,7 @@ object Lambda extends DeploymentType  {
   def perAppActions = {
     case "uploadLambda" => (pkg) => (deployLogger, resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name)(deployLogger).flatMap {
+      lambdaToProcess(pkg, parameters.stage.name, stack)(deployLogger).flatMap {
         case LambdaFunctionFromZip(_,_) => None
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
@@ -94,7 +98,7 @@ object Lambda extends DeploymentType  {
     }
     case "updateLambda" => (pkg) => (deployLogger, resourceLookup, parameters, stack) => {
       implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name)(deployLogger).flatMap {
+      lambdaToProcess(pkg, parameters.stage.name, stack)(deployLogger).flatMap {
         case LambdaFunctionFromZip(functionName, fileName) =>
           Some(UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName))
 
