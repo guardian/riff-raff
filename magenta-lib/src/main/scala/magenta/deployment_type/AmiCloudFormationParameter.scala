@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import magenta.tasks.UpdateCloudFormationTask.{LookupByName, LookupByTags}
 import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
 
 object AmiCloudFormationParameter extends DeploymentType {
@@ -20,6 +21,14 @@ object AmiCloudFormationParameter extends DeploymentType {
   val appendStageToCloudFormationStackName = Param[Boolean]("appendStageToCloudFormationStackName",
     documentation = "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD"
   ).default(true)
+  val cloudFormationStackTags = Param[Map[String, String]]("cloudFormationStackTags",
+    documentation =
+      """
+        |The tags used to find the CloudFormation stack to update. The Stack and Stage tags will be automatically added if not present.
+        |
+        |If this parameter is set, it will override any other parameters related to the CloudFormation stack name.
+      """.stripMargin
+  ).default(Map.empty)
   val amiTags = Param[Map[String,String]]("amiTags",
     documentation = "Specify the set of tags to use to find the latest AMI"
   )
@@ -31,21 +40,35 @@ object AmiCloudFormationParameter extends DeploymentType {
     case "update" => pkg => (reporter, lookup, parameters, stack) => {
       implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
 
-      val stackName = stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
-      val stageName = Some(parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
-      val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
+      // Based on the supplied params, decide whether to look up the CF stack by name or by tags
+      val cloudFormationStackLookupStrategy = {
+        val tagsMap = cloudFormationStackTags(pkg)
+        if (tagsMap.nonEmpty) {
+          val stackAndStage = Map("Stage" -> parameters.stage.name) ++ stack.nameOption.map("Stack" -> _)
+          val withStackAndStageTags = stackAndStage.foldLeft[Map[String, String]](tagsMap){
+            // Don't overwrite any Stack or Stage tags that the user has specified
+            case (acc, (k, v)) => if (tagsMap.contains(k)) acc else acc + (k -> v)
+          }
+          LookupByTags(withStackAndStageTags)
+        } else {
+          val stackName = stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
+          val stageName = Some(parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
+          val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
+          val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
+          LookupByName(fullCloudFormationStackName)
+        }
+      }
 
       List(
         UpdateAmiCloudFormationParameterTask(
-          fullCloudFormationStackName,
+          cloudFormationStackLookupStrategy,
           amiParameter(pkg),
           amiTags(pkg),
           lookup.getLatestAmi,
           parameters.stage,
           stack
         ),
-        CheckUpdateEventsTask(fullCloudFormationStackName)
+        CheckUpdateEventsTask(cloudFormationStackLookupStrategy)
       )
     }
   }

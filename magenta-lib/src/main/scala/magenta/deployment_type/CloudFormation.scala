@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import magenta.tasks.UpdateCloudFormationTask.LookupByName
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 
 import scalax.file.Path
@@ -86,7 +87,7 @@ object CloudFormation extends DeploymentType {
           stack,
           createStackIfAbsent(pkg)
         ),
-        CheckUpdateEventsTask(fullCloudFormationStackName)
+        CheckUpdateEventsTask(LookupByName(fullCloudFormationStackName))
       )
     }
   }
