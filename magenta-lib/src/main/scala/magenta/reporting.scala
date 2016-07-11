@@ -1,8 +1,8 @@
 package magenta
 
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
-import java.util.UUID
+import java.util.{UUID, Locale}
 
 object RunState extends Enumeration {
   type State = Value
@@ -33,9 +33,9 @@ object MessageState {
 }
 
 trait MessageState {
-  val timeOfDayFormatter=DateTimeFormat.mediumTime()
+  val timeOfDayFormatter = DateTimeFormat.mediumTime.withLocale(Locale.UK).withZone(DateTimeZone.forID("Europe/London"))
   def time:DateTime
-  def timeOfDay() = timeOfDayFormatter.print(time)
+  def timeOfDay = timeOfDayFormatter.print(time)
   def message:Message
   def startContext:StartContext
   def finished:Option[Message]

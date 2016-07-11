@@ -26,7 +26,7 @@
         <tbody>
           @for(config <- hooks) {
             <tr @if(!config.enabled){ class="danger" }>
-                <td>@shortDateTime.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
+                <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.stage</td>
                 <td>@config.url</td>

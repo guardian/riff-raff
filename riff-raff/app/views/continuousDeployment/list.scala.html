@@ -34,7 +34,7 @@
         <tbody>
           @for(config <- configs) {
             <tr @if(config.trigger == Disabled){ class="danger" }>
-                <td>@shortDateTime.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
+                <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                 <td>@config.projectName</td>
                 <td>@config.branchRE.toString()</td>
                 <td>@config.stage</td>

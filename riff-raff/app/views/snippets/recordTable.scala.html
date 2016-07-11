@@ -23,7 +23,7 @@
     <tbody class="rowlink" data-provides="rowlink">
     @records.map{ record =>
     <tr class="rowlink">
-        <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@org.joda.time.format.DateTimeFormat.mediumDateTime.print(record.time)</time></td>
+        <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
         <td><span class="label label-default">@record.deployerName</span></td>
         <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
         <td>@record.stage.name</td>
