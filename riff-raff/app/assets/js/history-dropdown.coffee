@@ -1,15 +1,17 @@
-updateOrAddParam = (url, param, value) ->
+updateOrAddParam = (location, param, value) ->
   re = new RegExp("([?|&])" + param + "=.*?(&|$)", "i")
-  separator = if url.indexOf('?') != -1 then "&" else "?"
+  separator = if location.search == "" then "?" else "&"
   encodedValue=encodeURIComponent(value)
-  if url.match(re)
-    url.replace(re,'$1'+param+'='+encodedValue+'$2')
-  else
-    url+separator+param+'='+encodedValue
+  queryString =
+    if location.search.match(re)
+      location.search.replace(re,'$1'+param+'='+encodedValue+'$2')
+    else
+      location.search + separator + param+'='+encodedValue
+  location.pathname + queryString + location.hash
 
 filterByProjectName = ->
   projectName = $('#projectInput').val()
-  newUrl = updateOrAddParam(document.URL, "projectName", projectName)
+  newUrl = updateOrAddParam(document.location, "projectName", projectName)
   pageResetUrl = updateOrAddParam(newUrl, "page", "1")
   window.location = pageResetUrl
 
