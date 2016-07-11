@@ -7,7 +7,7 @@ updateOrAddParam = (location, param, value) ->
       location.search.replace(re,'$1'+param+'='+encodedValue+'$2')
     else
       location.search + separator + param+'='+encodedValue
-  location.pathname + queryString + location.hash
+  location.origin + location.pathname + queryString + location.hash
 
 filterByProjectName = ->
   projectName = $('#projectInput').val()
