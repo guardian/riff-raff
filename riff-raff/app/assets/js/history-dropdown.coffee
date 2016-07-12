@@ -1,17 +1,17 @@
-updateOrAddParam = (url, param, value) ->
+updateOrAddParam = (queryString, param, value) ->
   re = new RegExp("([?|&])" + param + "=.*?(&|$)", "i")
-  separator = if url.indexOf('?') != -1 then "&" else "?"
-  encodedValue=encodeURIComponent(value)
-  if url.match(re)
-    url.replace(re,'$1'+param+'='+encodedValue+'$2')
+  separator = if queryString == "" then "?" else "&"
+  encodedValue = encodeURIComponent(value)
+  if queryString.match(re)
+    queryString.replace(re,'$1'+param+'='+encodedValue+'$2')
   else
-    url+separator+param+'='+encodedValue
+    queryString + separator + param+'='+encodedValue
 
 filterByProjectName = ->
   projectName = $('#projectInput').val()
-  newUrl = updateOrAddParam(document.URL, "projectName", projectName)
-  pageResetUrl = updateOrAddParam(newUrl, "page", "1")
-  window.location = pageResetUrl
+  newQueryString = updateOrAddParam(window.location.search, "projectName", projectName)
+  pageResetQueryString = updateOrAddParam(newQueryString, "page", "1")
+  window.location.search = pageResetQueryString
 
 $ ->
   $('.dropdown-toggle').dropdown()
