@@ -32,7 +32,7 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
 
   def list = CSRFAddToken {
     AuthAction { implicit request =>
-      val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.toSeq.sortBy(q => (q.projectName, q.stage))
+      val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.sortBy(q => (q.projectName, q.stage))
       Ok(views.html.continuousDeployment.list(request, configs))
     }
   }
