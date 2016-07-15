@@ -1,10 +1,11 @@
 package magenta
 package json
 
-import org.scalatest.{Matchers, FlatSpec}
 import java.io.File
+
 import org.json4s.JsonDSL._
 import org.json4s._
+import org.scalatest.{FlatSpec, Matchers}
 
 class JsonReaderTest extends FlatSpec with Matchers {
   val deployJsonExample = """
@@ -12,11 +13,11 @@ class JsonReaderTest extends FlatSpec with Matchers {
     "stack":"content-api",
     "packages":{
       "index-builder":{
-        "type":"jetty-webapp",
+        "type":"autoscaling",
         "apps":["index-builder"],
       },
       "api":{
-        "type":"jetty-webapp",
+        "type":"autoscaling",
         "apps":["api"],
         "data": {
           "healthcheck_paths": [
@@ -26,7 +27,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
         }
       },
       "solr":{
-        "type":"jetty-webapp",
+        "type":"autoscaling",
         "apps":["solr"],
         "data": {
           "port": "8400"
@@ -67,9 +68,9 @@ class JsonReaderTest extends FlatSpec with Matchers {
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "jetty-webapp", new File("/tmp/abc/packages/index-builder")))
-    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "jetty-webapp", new File("/tmp/abc/packages/api")))
-    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> "8400"), "jetty-webapp", new File("/tmp/abc/packages/solr")))
+    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", new File("/tmp/abc/packages/index-builder")))
+    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "autoscaling", new File("/tmp/abc/packages/api")))
+    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> "8400"), "autoscaling", new File("/tmp/abc/packages/solr")))
 
     val recipes = parsed.recipes
     recipes.size should be (4)
@@ -84,7 +85,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
   val minimalExample = """
 {
   "packages": {
-    "dinky": { "type": "jetty-webapp" }
+    "dinky": { "type": "autoscaling" }
   }
 }
 """
@@ -98,8 +99,8 @@ class JsonReaderTest extends FlatSpec with Matchers {
   val twoPackageExample = """
 {
   "packages": {
-    "one": { "type": "jetty-webapp" },
-    "two": { "type": "jetty-webapp" }
+    "one": { "type": "autoscaling" },
+    "two": { "type": "autoscaling" }
   }
 }
 """
@@ -122,7 +123,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
 {
   "packages": {
     "dinky": {
-      "type": "jetty-webapp",
+      "type": "autoscaling",
       "fileName": "awkward"
     }
   }

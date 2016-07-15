@@ -1,18 +1,17 @@
 package magenta.tasks
 
-import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
-import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import magenta._
-import org.mockito.Mockito._
-import org.scalatest.{FlatSpec, Matchers}
-import magenta.KeyRing
-import magenta.Stage
-import org.scalatest.mock.MockitoSugar
 import java.io.File
 import java.util.UUID
 
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
+import magenta.{KeyRing, Stage, _}
+import org.mockito.Mockito._
+import org.scalatest.mock.MockitoSugar
+import org.scalatest.{FlatSpec, Matchers}
+
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "double the size of the autoscaling group" in {

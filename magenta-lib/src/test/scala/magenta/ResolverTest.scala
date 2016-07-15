@@ -6,19 +6,19 @@ import java.util.UUID
 
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
 import magenta.json._
-import magenta.tasks.CopyFile
+import magenta.tasks.S3Upload
 import org.scalatest.{FlatSpec, Matchers}
 
 
 class ResolverTest extends FlatSpec with Matchers {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   val simpleExample = """
   {
     "stack": "web",
     "packages":{
-      "htmlapp":{ "type":"file", "apps":["apache"]  }
+      "htmlapp":{ "type":"aws-s3", "data":{"bucket":"test", "cacheControl":[]} }
     },
     "recipes":{
       "all":{
@@ -26,7 +26,7 @@ class ResolverTest extends FlatSpec with Matchers {
         "depends":["index-build-only","api-only"]
       },
       "htmlapp-only":{
-        "actions":["htmlapp.deploy"],
+        "actions":["htmlapp.uploadStaticFiles"],
       }
     }
   }
@@ -43,7 +43,7 @@ class ResolverTest extends FlatSpec with Matchers {
 
     tasks.size should be (1)
     tasks should be (List(
-      CopyFile(host, "/tmp/packages/htmlapp", "/")
+      S3Upload("test", Seq((new File("/tmp/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
     ))
   }
 

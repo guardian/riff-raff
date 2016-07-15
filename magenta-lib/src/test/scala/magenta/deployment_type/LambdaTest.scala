@@ -3,15 +3,15 @@ package magenta.deployment_type
 import java.io.File
 import java.util.UUID
 
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, SystemUser, fixtures}
+import magenta.fixtures._
+import magenta.tasks.{S3Upload, UpdateS3Lambda}
+import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, fixtures}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
-import magenta.fixtures._
-import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
 class LambdaTest extends FlatSpec with Matchers {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   behavior of "Lambda deployment action uploadLambda"
