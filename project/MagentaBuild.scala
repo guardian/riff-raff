@@ -9,11 +9,9 @@ import sbtbuildinfo.BuildInfoPlugin.BuildInfoKey
 import sbtbuildinfo.BuildInfoKeys._
 
 object MagentaBuild extends Build {
-  lazy val root = Project("root", file(".")) aggregate (lib, cli, riffraff)
+  lazy val root = Project("root", file(".")) aggregate (lib, riffraff)
 
   lazy val lib = magentaProject("magenta-lib")
-
-  lazy val cli = magentaProject("magenta-cli") dependsOn(lib)
 
   lazy val riffraff = magentaPlayProject("riff-raff", "riffraff") dependsOn(lib)
 
