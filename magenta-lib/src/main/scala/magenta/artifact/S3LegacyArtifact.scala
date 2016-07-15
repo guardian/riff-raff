@@ -12,10 +12,7 @@ import scalax.file.ImplicitConversions.defaultPath2jfile
 import scalax.file.Path
 import scalax.io.{Resource, ScalaIOException}
 
-object S3Artifact {
-
-  lazy val client = new AmazonS3Client()
-
+object S3LegacyArtifact {
   def download(build: Build)(implicit bucket: Option[String], client: AmazonS3, reporter: DeployReporter): File = {
     val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
     download(build, dir)(bucket, client, reporter)

@@ -4,8 +4,6 @@ resolvers ++= Seq(
     "spray repo" at "http://repo.spray.cc"
 )
 
-val awsVersion = "1.10.35"
-
 libraryDependencies ++= Seq(
     "net.databinder" %% "dispatch-http" % "0.8.10",
     "org.json4s" %% "json4s-native" % "3.2.11",

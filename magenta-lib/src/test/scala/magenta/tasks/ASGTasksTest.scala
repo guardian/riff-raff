@@ -5,6 +5,7 @@ import java.util.UUID
 
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
+import magenta.artifact.S3Package
 import magenta.{KeyRing, Stage, _}
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
@@ -18,7 +19,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Package("artifact-bucket", "project/123/test"))
 
     val task = new DoubleSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock
@@ -39,7 +40,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", new File("/tmp/packages/webapp"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Package("artifact-bucket", "project/123/test"))
 
     val task = new CheckGroupSize(p, Stage("PROD"), UnnamedStack) {
       override def client(implicit keyRing: KeyRing) = asgClientMock

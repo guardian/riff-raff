@@ -2,12 +2,12 @@ package controllers
 
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
-
-import play.api.{Play, Routes, Logger}
-import io.Source
+import play.api.{Logger, Play, Routes}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import java.io.File
+
+import magenta.artifact.S3Package
 import resources.LookupSelector
 
 import scala.io.Source
@@ -177,7 +177,7 @@ object Application extends Controller with Logging with LoginActions {
                       case (Some(default), _) => Some(default.toString)
                       case (None, Some(pkgFunction)) =>
                         Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>",new File("<file>"))
+                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Package("<bucket>", "<prefix>"))
                         ).toString)
                       case (_, _) => None
                     }

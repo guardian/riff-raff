@@ -8,6 +8,8 @@ import magenta.{DeployReporter, KeyRing, Stack, Stage}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import magenta.artifact.{S3Location, S3Path}
 import org.joda.time.{DateTime, Duration}
 
 import scalax.file.Path
@@ -36,41 +38,40 @@ object UpdateCloudFormationTask {
   }
 }
 
-object JsonConverter {
+object YamlToJsonConverter {
 
-  /**
-    * Return the template's content as JSON,
-    * converting it from YAML if necessary.
-    */
-  def convert(template: Path)(implicit reporter: DeployReporter): String = template.extension match {
-    case Some("yml") | Some("yaml") =>
-      reporter.info(s"Converting ${template.name} from YAML to JSON")
-      val tree = new ObjectMapper(new YAMLFactory()).readTree(template.string)
+  def isYamlFile(template: S3Location): Boolean = template.extension match {
+    case Some("yml") | Some("yaml") => true
+    case _ => false
+  }
+
+  def convert(yamlTemplate: String): String = {
+      val tree = new ObjectMapper(new YAMLFactory()).readTree(yamlTemplate)
       new ObjectMapper()
         .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
         .writeValueAsString(tree)
-    case _ =>
-      // Assume it's already in JSON, so just return the file contents
-      template.string
   }
 
 }
 
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
-  template: Path,
+  template: S3Path,
   userParameters: Map[String, String],
   amiParamName: String,
   amiTags: Map[String, String],
   latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
-  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing) extends Task {
+  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
-    val templateJson = JsonConverter.convert(template)(reporter)
+    val templateJson = if (YamlToJsonConverter.isYamlFile(template)) {
+      YamlToJsonConverter.convert(template.string.get)
+    } else template.string.get
+
     val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
@@ -100,7 +101,7 @@ case class UpdateCloudFormationTask(
     }
   }
 
-  def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.name}"
+  def description = s"Updating CloudFormation stack: $cloudFormationStackName with ${template.fileName}"
   def verbose = description
 }
 

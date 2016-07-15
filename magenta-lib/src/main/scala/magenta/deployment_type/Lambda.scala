@@ -2,7 +2,8 @@ package magenta.deployment_type
 
 import java.io.File
 
-import magenta.{DeployReporter, DeployParameters, DeploymentPackage, KeyRing, Stack, Stage}
+import magenta.artifact.S3Path
+import magenta.{DeployParameters, DeployReporter, DeploymentPackage, KeyRing, Stack, Stage}
 import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
 
 object Lambda extends DeploymentType  {
@@ -85,6 +86,7 @@ object Lambda extends DeploymentType  {
   def perAppActions = {
     case "uploadLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val artifactClient = resources.artifactClient
       lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(_,_) => None
 
@@ -92,15 +94,16 @@ object Lambda extends DeploymentType  {
           val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(S3Upload(
             s3Bucket,
-            Seq(new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key)
+            Seq(S3Path(pkg.s3Package, fileName) -> s3Key)
           ))
       }.distinct
     }
     case "updateLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val artifactClient = resources.artifactClient
       lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(functionName, fileName) =>
-          Some(UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName))
+          Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName))
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
           val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)

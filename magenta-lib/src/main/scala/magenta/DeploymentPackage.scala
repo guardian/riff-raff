@@ -1,6 +1,8 @@
 package magenta
 
 import java.io.File
+
+import magenta.artifact.S3Package
 import org.json4s._
 import magenta.deployment_type.DeploymentType
 
@@ -9,7 +11,7 @@ case class DeploymentPackage(
   pkgApps: Seq[App],
   pkgSpecificData: Map[String, JValue],
   deploymentTypeName: String,
-  srcDir: File) {
+  s3Package: S3Package) {
 
   def mkAction(name: String): Action = pkgType.mkAction(name)(this)
 

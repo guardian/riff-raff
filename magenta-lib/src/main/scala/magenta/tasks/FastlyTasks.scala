@@ -5,15 +5,17 @@ import java.util.concurrent.Executors
 import magenta.{DeployReporter, DeployStoppedException, DeploymentPackage, KeyRing}
 import java.io.File
 
+import com.amazonaws.services.s3.AmazonS3
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import com.gu.fastly.api.FastlyApiClient
+import magenta.artifact.{ArtifactHelper, S3LegacyArtifact, S3Package}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyRing) extends Task {
+case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   implicit val formats = DefaultFormats
 
@@ -29,7 +31,7 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
 
       deleteAllVclFilesFrom(nextVersionNumber, client, reporter, stopFlag)
 
-      uploadNewVclFilesTo(nextVersionNumber, pkg.srcDir, client, reporter, stopFlag)
+      uploadNewVclFilesTo(nextVersionNumber, s3Package, client, reporter, stopFlag)
       activateVersion(nextVersionNumber, client, reporter, stopFlag)
 
       reporter.info(s"Fastly version $nextVersionNumber is now active")
@@ -70,14 +72,15 @@ case class UpdateFastlyConfig(pkg: DeploymentPackage)(implicit val keyRing: KeyR
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, srcDir: File, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Package, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
-      val vclFilesToUpload = srcDir.listFiles().toList
-      vclFilesToUpload.foreach { file =>
-        if (file.getName.endsWith(".vcl")) {
-          reporter.info(s"Uploading ${file.getName}")
-          val vcl = scala.io.Source.fromFile(file.getAbsolutePath).mkString
-          block(client.vclUpload(versionNumber, vcl, file.getName, file.getName))
+      ArtifactHelper.listObjects(s3Package)(artifactClient).map { obj =>
+        if (obj.extension.contains("vcl")) {
+          val fileName = obj.relativeTo(s3Package)
+          val stream = artifactClient.getObject(obj.bucket, obj.key).getObjectContent
+          reporter.info(s"Uploading $fileName")
+          val vcl = scala.io.Source.fromInputStream(stream).mkString
+          block(client.vclUpload(versionNumber, vcl, fileName, fileName))
         }
       }
       block(client.vclSetAsMain(versionNumber, "main.vcl"))

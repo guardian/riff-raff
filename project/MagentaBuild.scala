@@ -9,6 +9,8 @@ import sbtbuildinfo.BuildInfoPlugin.BuildInfoKey
 import sbtbuildinfo.BuildInfoKeys._
 
 object MagentaBuild extends Build {
+  val awsVersion = "1.11.18"
+
   lazy val root = Project("root", file(".")) aggregate (lib, riffraff)
 
   lazy val lib = magentaProject("magenta-lib")
@@ -46,7 +48,8 @@ object MagentaBuild extends Build {
     scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
     version := magentaVersion,
     resolvers += "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases",
-    resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven"
+    resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
+    testOptions in Test += Tests.Argument("-oF")
   )
 
   val magentaVersion = "1.0"

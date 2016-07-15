@@ -138,7 +138,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object artifact {
     object aws {
-      implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName")
+      implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
       lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
       implicit lazy val client = new AmazonS3Client(credentialsProvider)
