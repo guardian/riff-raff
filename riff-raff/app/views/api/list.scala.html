@@ -24,11 +24,11 @@
             <tbody>
             @keyList.map { key =>
                 <tr>
-                    <td>@org.joda.time.format.DateTimeFormat.shortDateTime.print(key.created)</td>
+                    <td>@utils.DateFormats.Short.print(key.created)</td>
                     <td><span class="label label-default">@key.issuedBy</span></td>
                     <td>@key.application</td>
                     <td>@key.key</td>
-                    <td>@key.lastUsed.map(org.joda.time.format.DateTimeFormat.shortDateTime.print).getOrElse("never")</td>
+                    <td>@key.lastUsed.map(utils.DateFormats.Short.print).getOrElse("never")</td>
                     <td>@key.totalCalls</td>
                     <td>
                     @helper.form(routes.Api.delete(), 'class -> "modal-form") {

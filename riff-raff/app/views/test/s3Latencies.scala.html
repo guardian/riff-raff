@@ -21,7 +21,7 @@
       <tbody>
           @deploys.map { case(deploy, duration) =>
             <tr>
-              <td>@org.joda.time.format.DateTimeFormat.mediumDateTime.print(deploy.time)</td>
+              <td>@utils.DateFormats.Medium.print(deploy.time)</td>
               <td>@deploy.parameters.build.projectName</td>
                 <td>@duration.map(_.getStandardSeconds).getOrElse("")</td>
               <td>
