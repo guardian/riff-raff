@@ -1,102 +1,11 @@
 package magenta
 package tasks
 
+import java.io.File
 
-import scala.io.Source
-import java.net.Socket
-import java.io.{IOException, FileNotFoundException, File}
-import java.net.URL
 import com.amazonaws.services.s3.model.PutObjectRequest
-import magenta.deployment_type.PatternValue
 import dispatch.classic._
-
-object CommandLocator {
-  var rootPath = "/opt/deploy/bin"
-  def conditional(binary: String) = List("if", "[", "-f", rootPath+"/"+binary, "];", "then", rootPath+"/"+binary,";", "fi" )
-}
-
-object CopyFile {
-  val ADDITIVE_MODE = "additive"
-  val MIRROR_MODE = "mirror"
-  lazy val MODES = List(ADDITIVE_MODE, MIRROR_MODE)
-}
-case class CopyFile(host: Host, source: String, dest: String, copyMode: String = CopyFile.ADDITIVE_MODE)
-                   (implicit val keyRing: KeyRing) extends ShellTask {
-  override val taskHost = Some(host)
-  val noHostKeyChecking = "-o" :: "UserKnownHostsFile=/dev/null" :: "-o" :: "StrictHostKeyChecking=no" :: Nil
-
-  def commandLine = {
-    val rsyncOptions = copyMode match {
-      case CopyFile.ADDITIVE_MODE => List("-rpv")
-      case CopyFile.MIRROR_MODE => List("-rpv", "--delete", "--delete-after")
-      case _ => throw new IllegalArgumentException(s"Unknown copyMode: $copyMode (use one of ${CopyFile.MODES.mkString(",")})")
-    }
-    "rsync" :: rsyncOptions ::: source :: s"${host.connectStr}:$dest" :: Nil
-  }
-  def commandLine(keyRing: KeyRing): CommandLine = {
-    val keyFileArgs = keyRing.sshCredentials.keyFile.toList.flatMap("-i" :: _.getPath :: Nil)
-    val shellCommand = CommandLine("ssh" :: noHostKeyChecking ::: keyFileArgs ::: Nil).quoted
-    CommandLine(commandLine.commandLine.head :: "-e" :: shellCommand :: commandLine.commandLine.tail)
-  }
-
-  lazy val description = "%s -> %s:%s" format (source, host.connectStr, dest)
-
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    commandLine(keyRing).run(reporter)
-  }
-}
-
-case class CompressedCopy(host: Host, source: Option[File], dest: String)(implicit val keyRing: KeyRing)
-  extends CompositeTask with CompressedFilename {
-
-  val tasks = Seq(
-    Compress(source),
-    CopyFile(host, if (source.isEmpty) "unknown at preview time" else compressedPath, dest),
-    Decompress(host, dest, source)
-  )
-
-  def description: String = "%s -> %s:%s using a compressed archive while copying to the target" format
-    (source.getOrElse("Unknown"), host.connectStr, dest)
-
-  def verbose: String = description
-
-  override val taskHost = Some(host)
-}
-
-trait CompositeTask extends Task {
-  def tasks: Seq[Task]
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    for (task <- tasks) { if (!stopFlag) task.execute(reporter, stopFlag) }
-  }
-}
-
-
-case class Compress(source:  Option[File])(implicit val keyRing: KeyRing) extends ShellTask with CompressedFilename {
-  def commandLine: CommandLine = {
-    CommandLine("tar" :: "--bzip2" :: "--directory" :: sourceFile.getParent :: "-cf" :: compressedPath :: sourceFile.getName :: Nil)
-  }
-
-  def description: String = "Compress %s to %s" format (source, compressedName)
-}
-
-case class Decompress(host: Host, dest: String, source: Option[File])(implicit val keyRing: KeyRing) extends RemoteShellTask with CompressedFilename {
-  def commandLine: CommandLine = {
-    CommandLine("tar" :: "--bzip2" :: "--directory" :: dest :: "-xmf" :: dest + compressedName:: Nil)
-  }
-}
-
-case class DecompressTarBall(host: Host, tarball: String, dest: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine: CommandLine = {
-    CommandLine("tar" :: "--directory" :: dest :: "-xmzf" :: tarball :: Nil)
-  }
-}
-
-trait CompressedFilename {
-  def source: Option[File]
-  def sourceFile = source.getOrElse(throw new FileNotFoundException())
-  def compressedPath = sourceFile.getPath + ".tar.bz2"
-  def compressedName = sourceFile.getName + ".tar.bz2"
-}
+import magenta.deployment_type.PatternValue
 
 case class S3Upload(
   bucket: String,
@@ -157,63 +66,6 @@ object S3Upload {
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
-case class BlockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = CommandLocator conditional "block-load-balancer"
-}
-
-case class Service(host: Host, appName: String, command: String = "restart")(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("sudo", "/sbin/service", appName, command)
-
-  override lazy val description = s" of $appName using $command command"
-}
-
-case class UnblockFirewall(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine =  CommandLocator conditional "unblock-load-balancer"
-}
-
-case class WaitForPort(host: Host, port: Int, duration: Long)(implicit val keyRing: KeyRing) extends Task with RepeatedPollingCheck {
-  override def taskHost = Some(host)
-  def description = "to %s on %s" format(host.name, port)
-  def verbose = "Wail until a socket connection can be made to %s:%s" format(host.name, port)
-
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    check(reporter, stopFlag) {
-      try {
-        new Socket(host.name, port).close()
-        true
-      } catch {
-        case e: IOException => false
-      }
-    }
-  }
-}
-
-case class CheckUrls(host: Host, port: Int, paths: List[String], duration: Long, checkUrlReadTimeoutSeconds: Int)(implicit val keyRing: KeyRing)
-    extends Task with RepeatedPollingCheck {
-  override def taskHost = Some(host)
-  def description = "check [%s] on %s" format(paths, host)
-  def verbose = "Check that [%s] returns a 200" format(paths)
-
-  def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    for (path <- paths) {
-      val url = new URL( "http://%s:%s%s" format (host.connectStr, port, path) )
-      reporter.verbose("Checking %s" format url)
-      check(reporter, stopFlag) {
-        try {
-          val connection = url.openConnection()
-          connection.setConnectTimeout( 2000 )
-          connection.setReadTimeout( checkUrlReadTimeoutSeconds * 1000 )
-          Source.fromInputStream( connection.getInputStream )
-          true
-        } catch {
-          case e: FileNotFoundException => reporter.fail("404 Not Found", e)
-          case e:Throwable => false
-        }
-      }
-    }
-  }
-}
-
 trait PollingCheck {
   def duration: Long
 
@@ -267,54 +119,6 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   def verbose = fullDescription
 }
 
-case class EchoHello(host: Host)(implicit val keyRing: KeyRing) extends ShellTask {
-  override def taskHost = Some(host)
-  def commandLine = List("echo", "hello to " + host.name)
-  def description = "to " + host.name
-}
-
-case class Link(host: Host, target: Option[String], linkName: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("ln", "-sfn", target.getOrElse(throw new FileNotFoundException()), linkName)
-}
-
-case class ApacheGracefulRestart(host: Host)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("sudo", "/usr/sbin/apachectl", "graceful")
-}
-
-case class Mkdir(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-	def commandLine = List("/bin/mkdir", "-p", path)
-}
-
-case class deleteCompressedFiles(host: Host, path: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("rm", "-rf", s"$path*.tar.bz2")
-}
-
-case class deleteOldDeploys(host: Host, amount: Int, path: String, prefix: String)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def commandLine = List("ls", "-tdr", s"$path$prefix?*", "|", "head", "-n", s"-$amount", "|", "xargs", "-t", "-n1", "rm", "-rf")
-}
-
-case class CleanupOldDeploys(host: Host, amount: Int = 0, path: String, prefix: String)(implicit val keyRing: KeyRing) extends CompositeTask {
-
-  val tasks = if (amount > 0) Seq( deleteCompressedFiles(host, path), deleteOldDeploys(host, amount, path, prefix) ) else Seq.empty
-
-  def description: String = "Cleanup old deploys "
-
-  def verbose: String = description
-
-  override val taskHost = Some(host)
-
-}
-
-case class RemoveFile(host: Host, path: String, recursive: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  def conditional(test: List[String], command: List[String]) = List("if", "[") ++ test ++ List("];", "then") ++ command ++ List(";", "fi" )
-  val recursiveFlag = if (recursive) List("-r") else Nil
-  def commandLine = conditional(
-    List("-e", path),
-    List("/bin/rm") ++ recursiveFlag :+ path
-  )
-  override lazy val description = s"$path from ${host.name} (recursion=$recursive)"
-}
-
 case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
   val desiredStateName = if (desiredState) "ON" else "OFF"
   val switchboardUrl = s"$protocol://${host.name}:$port$path"
@@ -327,12 +131,6 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 
   def verbose: String = s"$description using switchboard at $switchboardUrl"
   def description: String = s"$switchName to $desiredStateName"
-}
-
-case class InstallRpm(host: Host, path: String, noFileDigest: Boolean = false)(implicit val keyRing: KeyRing) extends RemoteShellTask {
-  val extraFlags = if (noFileDigest) List("--nofiledigest") else Nil
-  def commandLine = List("sudo", "/bin/rpm", "-U", "--oldpackage", "--replacepkgs") ++ extraFlags :+ path
-  override lazy val description = s"$path on ${host.name}"
 }
 
 case class UpdateLambda(

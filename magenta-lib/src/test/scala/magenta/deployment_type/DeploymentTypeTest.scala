@@ -1,18 +1,17 @@
 package magenta
 
-import org.scalatest.{FlatSpec, Inside, Matchers}
-import org.scalatest.matchers.ShouldMatchers
 import java.io.File
 import java.util.UUID
 
-import org.json4s._
-import org.json4s.JsonDSL._
-import fixtures._
-import magenta.deployment_type.{Django, ExecutableJarWebapp, Lambda, PatternValue, S3}
+import magenta.deployment_type.{Lambda, PatternValue, S3}
+import magenta.fixtures._
 import magenta.tasks._
+import org.json4s.JsonDSL._
+import org.json4s._
+import org.scalatest.{FlatSpec, Inside, Matchers}
 
 class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "Deployment types" should "automatically register params in the params Seq" in {
@@ -130,43 +129,6 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     }
 
     thrown.getMessage should equal ("Function not defined for stage CODE")
-  }
-
-  "executable web app package type" should "have a default user of jvmuser" in {
-
-    val webappPackage =  DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
-
-    ExecutableJarWebapp.user(webappPackage) should be ("jvmuser")
-  }
-
-  it should "inherit defaults from base webapp" in {
-    val webappPackage = DeploymentPackage("foo", Seq.empty, Map.empty, "executable-jar-webapp", new File("."))
-
-    ExecutableJarWebapp.port(webappPackage) should be (8080)
-    ExecutableJarWebapp.servicename(webappPackage) should be ("foo")
-  }
-
-  "django web app package type" should "have a deploy action" in {
-    val webappDirectory = new File("/tmp/packages/webapp")
-    webappDirectory.mkdirs()
-    for (file <- webappDirectory.listFiles()) {
-      file.delete()
-    }
-    val specificBuildFile = File.createTempFile("webbapp-build.7", "", webappDirectory)
-
-    val p = DeploymentPackage("webapp", Seq.empty, Map.empty, "django-webapp", webappDirectory)
-    val host = Host("host_name")
-
-    Django.perHostActions("deploy")(p)(reporter, host, fakeKeyRing) should be (List(
-      BlockFirewall(host as "django"),
-      CompressedCopy(host as "django", Some(specificBuildFile), "/django-apps/"),
-      Link(host as "django", Some("/django-apps/" + specificBuildFile.getName), "/django-apps/webapp"),
-      ApacheGracefulRestart(host as "django"),
-      CleanupOldDeploys(host as "django", 0, "/django-apps/", "webapp"),
-      WaitForPort(host, 80, 1 * 60 * 1000),
-      CheckUrls(host, 80, List.empty, 120000, 5),
-      UnblockFirewall(host as "django")
-    ))
   }
 
   def parameters(stage: Stage) = DeployParameters(Deployer("tester"), Build("project", "version"), stage)

@@ -1,14 +1,13 @@
 package magenta
 package fixtures
 
-import tasks.Task
 import magenta.deployment_type.DeploymentType
-import magenta.Lookup
+import magenta.tasks.Task
 
 case class StubTask(description: String, override val taskHost: Option[Host] = None, stack: Option[Stack] = None) extends Task {
   def execute(reporter: DeployReporter, stopFlag: => Boolean) { }
   def verbose = "stub(%s)" format description
-  def keyRing = KeyRing(SystemUser(None))
+  def keyRing = KeyRing()
 }
 
 case class StubPerHostAction(description: String, apps: Seq[App]) extends Action {

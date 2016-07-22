@@ -131,11 +131,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
-  object sshKey {
-    lazy val path: Option[String] = configuration.getStringProperty("sshKey.path")
-    lazy val file: Option[File] = path map (new File(_))
-  }
-
   object stages {
     lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
     lazy val ordering = UnnaturalOrdering(order, false)

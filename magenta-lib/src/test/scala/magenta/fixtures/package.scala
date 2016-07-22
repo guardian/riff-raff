@@ -1,6 +1,5 @@
 package magenta
 
-import json.{DeployInfoData, DeployInfoJsonInputFile, DeployInfoHost}
 import org.joda.time.DateTime
 
 package object fixtures {
@@ -85,7 +84,7 @@ package object fixtures {
         def all: Seq[Host] = hostsSeq
       }
 
-      def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing(SystemUser(None))
+      def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing()
 
       def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] = ???
     }

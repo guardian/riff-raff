@@ -3,16 +3,15 @@ package magenta
 import java.io.File
 import java.util.UUID
 
+import magenta.deployment_type.AutoScaling
+import magenta.fixtures._
+import magenta.tasks._
 import org.json4s.JsonAST.JValue
-import tasks._
-import fixtures._
-import org.json4s._
 import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
-import magenta.deployment_type.AutoScaling
 
 class AutoScalingTest extends FlatSpec with Matchers {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "auto-scaling with ELB package type" should "have a deploy action" in {

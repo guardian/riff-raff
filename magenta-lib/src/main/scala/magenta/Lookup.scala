@@ -25,7 +25,6 @@ trait Lookup {
 }
 
 trait SecretProvider {
-  def sshCredentials: SshCredentials
   def lookup(service: String, account: String): Option[String]
 }
 
@@ -33,7 +32,6 @@ trait MagentaCredentials {
   def data: DataLookup
   def secretProvider: SecretProvider
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
-    sshCredentials = secretProvider.sshCredentials,
     apiCredentials = apps.toSeq.flatMap {
       app => {
         val KeyPattern = """credentials:(.*)""".r

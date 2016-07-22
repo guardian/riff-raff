@@ -4,16 +4,16 @@ import java.io.File
 import java.util.UUID
 
 import magenta._
-import magenta.tasks._
+import magenta.fixtures._
 import magenta.tasks.UpdateCloudFormationTask._
+import magenta.tasks._
 import org.json4s.JsonAST.JValue
 import org.scalatest.{FlatSpec, Inside, Matchers}
-import fixtures._
 
 import scalax.file.Path
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
-  implicit val fakeKeyRing = KeyRing(SystemUser(None))
+  implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "cloudformation deployment type" should "have an updateStack action" in {
