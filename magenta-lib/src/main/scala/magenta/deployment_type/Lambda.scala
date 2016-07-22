@@ -83,27 +83,27 @@ object Lambda extends DeploymentType  {
   }
 
   def perAppActions = {
-    case "uploadLambda" => (pkg) => (deployLogger, resourceLookup, parameters, stack) => {
-      implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name, stack)(deployLogger).flatMap {
+    case "uploadLambda" => (pkg) => (resources, target) => {
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(_,_) => None
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
-          val s3Key = makeS3Key(stack, parameters, pkg, fileName)
+          val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(S3Upload(
             s3Bucket,
             Seq(new File(s"${pkg.srcDir.getPath}/$fileName") -> s3Key)
           ))
       }.distinct
     }
-    case "updateLambda" => (pkg) => (deployLogger, resourceLookup, parameters, stack) => {
-      implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      lambdaToProcess(pkg, parameters.stage.name, stack)(deployLogger).flatMap {
+    case "updateLambda" => (pkg) => (resources, target) => {
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(functionName, fileName) =>
           Some(UpdateLambda(new File(s"${pkg.srcDir.getPath}/$fileName"), functionName))
 
         case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
-          val s3Key = makeS3Key(stack, parameters, pkg, fileName)
+          val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(
           UpdateS3Lambda(
             functionName,

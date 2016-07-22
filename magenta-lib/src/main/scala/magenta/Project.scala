@@ -1,10 +1,11 @@
 package magenta
 
-import json.{DeployInfoHost, DeployInfoJsonInputFile}
-import tasks.Task
-import collection.SortedSet
 import java.util.UUID
+
+import magenta.json.{DeployInfoHost, DeployInfoJsonInputFile}
+import magenta.tasks.Task
 import org.joda.time.DateTime
+
 import scala.math.Ordering.OptionOrdering
 
 object DeployInfo {
@@ -130,6 +131,13 @@ object HostList {
   implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 
+case class DeploymentResources(reporter: DeployReporter, lookup: Lookup) {
+  def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing =
+    lookup.keyRing(target.parameters.stage, pkg.apps.toSet, target.stack)
+}
+
+case class DeployTarget(parameters: DeployParameters, stack: Stack)
+
 /*
  An action represents a step within a recipe. It isn't executable
  until it's resolved against a particular host.
@@ -137,7 +145,7 @@ object HostList {
 trait Action {
   def apps: Seq[App]
   def description: String
-  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, deployReporter: DeployReporter): List[Task]
+  def resolve(resources: DeploymentResources, target: DeployTarget): List[Task]
 }
 
 case class App (name: String)

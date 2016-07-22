@@ -109,32 +109,32 @@ object S3 extends DeploymentType with S3AclParams {
   }
 
   def perAppActions = {
-    case "uploadStaticFiles" => (pkg) => (reporter, resourceLookup, parameters, stack) => {
+    case "uploadStaticFiles" => (pkg) => (resources, target) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
         resource.get(pkg).flatMap { resourceName =>
           assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
-          val dataLookup = resourceLookup.data
+          val dataLookup = resources.lookup.data
           val app = pkg.apps.head
-          val datumOpt = dataLookup.datum(resourceName, app, parameters.stage, stack)
+          val datumOpt = dataLookup.datum(resourceName, app, target.parameters.stage, target.stack)
           if (datumOpt.isEmpty) {
             def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-            reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${parameters.stage} stack=$stack - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
+            resources.reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
           }
           datumOpt
         }
       }
 
-      implicit val keyRing = resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
         val data = resourceLookupFor(bucketResource)
-        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${parameters.stage.name})")
+        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${target.parameters.stage.name})")
         data.get.value
       }
 
       val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg)) Some(stack) else None,
-        stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
+        stack = if (prefixStack(pkg)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       ))
       List(

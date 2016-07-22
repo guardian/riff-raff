@@ -26,20 +26,20 @@ object Resolver {
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter): List[RecipeTasks] = {
 
-    def resolveTree(recipeName: String, stack: Stack, deployReporter: DeployReporter): RecipeTasksNode = {
+    def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
-      val recipeTasks = resolveRecipe(recipe, stack, deployReporter)
-      val children = recipe.dependsOn.map(resolveTree(_, stack, deployReporter: DeployReporter))
+      val recipeTasks = resolveRecipe(recipe, resources, target)
+      val children = recipe.dependsOn.map(resolveTree(_, resources, target))
       RecipeTasksNode(recipeTasks, children)
     }
 
-    def resolveRecipe(recipe: Recipe, stack: Stack, deployReporter: DeployReporter): RecipeTasks = {
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resourceLookup, parameters, stack, deployReporter) }
+    def resolveRecipe(recipe: Recipe, resources: DeploymentResources, target: DeployTarget): RecipeTasks = {
+      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resources, target) }
 
       val perHostTasks = {
         for {
           action <- recipe.actionsPerHost
-          tasks <- action.resolve(resourceLookup, parameters, stack, deployReporter)
+          tasks <- action.resolve(resources, target)
         } yield {
           tasks
         }
@@ -60,8 +60,10 @@ object Resolver {
     for {
       stack <- stacks.toList
       tasks <- {
-        val resolvedTree = resolveTree(parameters.recipe.name, stack, deployReporter)
-        val filteredTree = resolvedTree.disable(rt => !rt.recipe.actionsPerHost.isEmpty && rt.hostTasks.isEmpty)
+        val resources = DeploymentResources(deployReporter, resourceLookup)
+        val target = DeployTarget(parameters, stack)
+        val resolvedTree = resolveTree(parameters.recipe.name, resources, target)
+        val filteredTree = resolvedTree.disable(rt => rt.recipe.actionsPerHost.nonEmpty && rt.hostTasks.isEmpty)
         filteredTree.toList.distinct
       }
     } yield tasks

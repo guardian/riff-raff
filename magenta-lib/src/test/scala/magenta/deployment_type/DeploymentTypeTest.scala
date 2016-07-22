@@ -29,7 +29,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceFiles)
 
     val thrown = the[NoSuchElementException] thrownBy {
-      S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(CODE), UnnamedStack) should be (
+      S3.perAppActions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost), DeployTarget(parameters(CODE), UnnamedStack)) should be (
         List(S3Upload(
           "bucket-1234",
           Seq(sourceFiles -> "CODE/myapp"),
@@ -50,7 +50,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceFiles)
 
-    S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(CODE), UnnamedStack) should be (
+    S3.perAppActions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost), DeployTarget(parameters(CODE), UnnamedStack)) should be (
       List(S3Upload(
         "bucket-1234",
         Seq(sourceFiles -> "CODE/myapp"),
@@ -71,7 +71,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceFiles)
 
-    inside(S3.perAppActions("uploadStaticFiles")(p)(reporter, lookupSingleHost, parameters(Stage("CODE")), UnnamedStack).head) {
+    inside(S3.perAppActions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost), DeployTarget(parameters(CODE), UnnamedStack)).head) {
       case upload: S3Upload => upload.cacheControlPatterns should be(List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
     }
   }
@@ -89,7 +89,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
     val lookup = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)), Map("s3-path-prefix" -> Seq(Datum(None, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
 
-    inside(S3.perAppActions("uploadStaticFiles")(p)(reporter, lookup, parameters(CODE), UnnamedStack).head) {
+    inside(S3.perAppActions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookup), DeployTarget(parameters(CODE), UnnamedStack)).head) {
       case upload: S3Upload => upload.files should be(Seq(sourceFiles -> "testing/2016/05/brexit-companion"))
     }
   }
@@ -106,7 +106,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", new File("/tmp/packages"))
 
-    Lambda.perAppActions("updateLambda")(p)(reporter, lookupSingleHost, parameters(CODE), UnnamedStack) should be (
+    Lambda.perAppActions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost), DeployTarget(parameters(CODE), UnnamedStack)) should be (
       List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
       ))
   }
@@ -123,7 +123,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", new File("/tmp/packages"))
 
     val thrown = the[FailException] thrownBy {
-      Lambda.perAppActions("updateLambda")(p)(reporter, lookupSingleHost, parameters(CODE), UnnamedStack) should be (
+      Lambda.perAppActions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost), DeployTarget(parameters(CODE), UnnamedStack)) should be (
         List(UpdateLambda(new File("/tmp/packages/lambda.zip"), "myLambda")
         ))
     }

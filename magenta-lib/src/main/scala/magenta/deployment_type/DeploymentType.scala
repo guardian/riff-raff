@@ -16,28 +16,26 @@ trait DeploymentType {
   }
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
-  def perAppActions: PartialFunction[String, DeploymentPackage =>
-    (DeployReporter, Lookup, DeployParameters, Stack) => List[Task]]
+  def perAppActions: PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]]
   def perHostActions: PartialFunction[String, DeploymentPackage =>
     (DeployReporter, Host, KeyRing) => List[Task]] = PartialFunction.empty
 
   def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
     perHostActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName)  {
-        def resolve(resourceLookup: Lookup, parameters: DeployParameters, stack: Stack, deployReporter: DeployReporter) = {
+        def resolve(resources: DeploymentResources, target: DeployTarget) = {
           val hostsForApps = apps.toList.flatMap { app =>
-            resourceLookup.hosts.get(pkg, app, parameters, stack)
+            resources.lookup.hosts.get(pkg, app, target.parameters, target.stack)
           } filter { instance =>
-            parameters.matchingHost(instance.name)
+            target.parameters.matchingHost(instance.name)
           }
-          hostsForApps flatMap (action(pkg)(deployReporter, _,
-            resourceLookup.keyRing(parameters.stage, pkg.apps.toSet, stack)))
+          hostsForApps flatMap (action(pkg)(resources.reporter, _, resources.assembleKeyring(target, pkg)))
         }
       }
     } orElse perAppActions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName) {
-        def resolve(resourceLookup: Lookup, parameters: DeployParameters, stack: Stack, deployReporter: DeployReporter) =
-          action(pkg)(deployReporter, resourceLookup, parameters, stack)
+        def resolve(resources: DeploymentResources, target: DeployTarget) =
+          action(pkg)(resources, target)
       }
     } getOrElse sys.error(s"Action $actionName is not supported on package ${pkg.name} of type $name")
   }

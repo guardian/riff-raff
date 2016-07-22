@@ -28,11 +28,11 @@ object AmiCloudFormationParameter extends DeploymentType {
   ).default("AMI")
 
   override def perAppActions = {
-    case "update" => pkg => (reporter, lookup, parameters, stack) => {
-      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+    case "update" => pkg => (resources, target) => {
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
 
-      val stackName = stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
-      val stageName = Some(parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
+      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
+      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
       val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
@@ -41,9 +41,9 @@ object AmiCloudFormationParameter extends DeploymentType {
           fullCloudFormationStackName,
           amiParameter(pkg),
           amiTags(pkg),
-          lookup.getLatestAmi,
-          parameters.stage,
-          stack
+          resources.lookup.getLatestAmi,
+          target.parameters.stage,
+          target.stack
         ),
         CheckUpdateEventsTask(fullCloudFormationStackName)
       )

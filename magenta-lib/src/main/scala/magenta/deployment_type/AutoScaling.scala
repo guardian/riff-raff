@@ -85,8 +85,10 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   ).default(true)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (reporter, lookup, parameters, stack) => {
-      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+    case "deploy" => (pkg) => (resources, target) => {
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val parameters = target.parameters
+      val stack = target.stack
       List(
         CheckForStabilization(pkg, parameters.stage, stack),
         CheckGroupSize(pkg, parameters.stage, stack),
@@ -101,16 +103,16 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (reporter, lookup, parameters, stack) =>
-      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+    case "uploadArtifacts" => (pkg) => (resources, target) =>
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
       val prefix = S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg)) Some(stack) else None,
-        stage = if (prefixStage(pkg)) Some(parameters.stage) else None,
+        stack = if (prefixStack(pkg)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
       List(
         S3Upload(
-          bucket.get(pkg).orElse(stack.nameOption.map(stackName => s"$stackName-dist")).get,
+          bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(new File(pkg.srcDir.getPath) -> prefix),
           publicReadAcl = publicReadAcl(pkg)
         )

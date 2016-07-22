@@ -18,8 +18,10 @@ object ElasticSearch extends DeploymentType with S3AclParams {
   ).default(15 * 60)
 
   def perAppActions = {
-    case "deploy" => (pkg) => (reporter, lookup, parameters, stack) => {
-      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
+    case "deploy" => (pkg) => (resources, target) => {
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val parameters = target.parameters
+      val stack = target.stack
       List(
         CheckGroupSize(pkg, parameters.stage, stack),
         WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
@@ -31,9 +33,9 @@ object ElasticSearch extends DeploymentType with S3AclParams {
         ResumeAlarmNotifications(pkg, parameters.stage, stack)
       )
     }
-    case "uploadArtifacts" => (pkg) => (reporter, lookup, parameters, stack) =>
-      implicit val keyRing = lookup.keyRing(parameters.stage, pkg.apps.toSet, stack)
-      val prefix: String = S3Upload.prefixGenerator(stack, parameters.stage, pkg.name)
+    case "uploadArtifacts" => (pkg) => (resources, target) =>
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val prefix: String = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
       List(
         S3Upload(
           bucket(pkg),
