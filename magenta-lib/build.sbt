@@ -26,7 +26,7 @@ libraryDependencies ++= Seq(
     "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
     "org.parboiled" %% "parboiled" % "2.0.1",
     "com.gu" %% "management" % guardianManagementVersion,
-    "com.gu" %% "fastly-api-client" % "0.2.4",
+    "com.gu" %% "fastly-api-client" % "0.2.5",
     "io.reactivex" %% "rxscala" % "0.23.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.7.1",
     "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.1"
