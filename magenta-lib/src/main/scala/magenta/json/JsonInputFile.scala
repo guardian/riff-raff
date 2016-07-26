@@ -46,8 +46,9 @@ object JsonReader {
   def parse(artifact: S3Artifact)(implicit s3Client: AmazonS3Client, reporter: DeployReporter): Project = {
     try {
       val deployJson = s3Client.getObject(artifact.bucket, s"${artifact.key}/${artifact.deployObject}")
-      val deployJsonInputStream = deployJson.getObjectContent
-      parse(Source.fromInputStream(deployJsonInputStream).mkString, artifact)
+      withResource(deployJson.getObjectContent) { deployJsonInputStream =>
+         parse(Source.fromInputStream(deployJsonInputStream).mkString, artifact)
+      }
     } catch {
       case e:AmazonS3Exception if e.getErrorCode == "NoSuchKey" =>
         reporter.fail("Artifact cannot be deployed: deploy.json file doesn't exist")

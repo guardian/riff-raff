@@ -4,8 +4,8 @@ import java.util.concurrent.Executors
 
 import com.amazonaws.services.s3.AmazonS3
 import com.gu.fastly.api.FastlyApiClient
-import magenta.artifact.{S3Location, S3Package}
-import magenta.{DeployReporter, DeployStoppedException, KeyRing}
+import magenta.artifact.S3Package
+import magenta._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
@@ -74,9 +74,10 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {
           val fileName = obj.relativeTo(s3Package)
-          val stream = artifactClient.getObject(obj.bucket, obj.key).getObjectContent
-          reporter.info(s"Uploading $fileName")
-          val vcl = scala.io.Source.fromInputStream(stream).mkString
+          val vcl = withResource(artifactClient.getObject(obj.bucket, obj.key).getObjectContent) { stream =>
+            reporter.info(s"Uploading $fileName")
+            scala.io.Source.fromInputStream(stream).mkString
+          }
           block(client.vclUpload(versionNumber, vcl, fileName, fileName))
         }
       }
