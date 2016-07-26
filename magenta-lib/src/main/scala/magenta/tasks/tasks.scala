@@ -1,56 +1,78 @@
 package magenta
 package tasks
 
-import java.io.File
+import java.io.InputStream
+import java.nio.ByteBuffer
 
-import com.amazonaws.services.s3.model.PutObjectRequest
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.model.CannedAccessControlList._
+import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
+import com.amazonaws.util.IOUtils
+import com.gu.management.Loggable
 import dispatch.classic._
+import magenta.artifact._
 import magenta.deployment_type.PatternValue
 
 case class S3Upload(
   bucket: String,
-  files: Seq[(File, String)],
+  paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing) extends Task with S3 {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with S3 with Loggable {
 
-  lazy val flattenedFiles = files flatMap {
-    case (file, key) => resolveFiles(file, key)
+  lazy val objectMappings = paths flatMap {
+    case (file, targetKey) => resolveMappings(file, targetKey, bucket)
   }
 
-  lazy val totalSize = flattenedFiles.map{ case (file, key) => file.length}.sum
+  lazy val totalSize = objectMappings.map{ case (source, target) => source.size}.sum
 
-  lazy val requests = flattenedFiles map {
-    case (file, key) => S3.putObjectRequest(bucket, key, file, cacheControlLookup(key), contentTypeLookup(key), publicReadAcl)
+  lazy val requests = objectMappings.map { case (source, target) =>
+    PutReq(source, target, cacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
   }
 
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
 
   // A verbose description of this task. For command line tasks,
-  def verbose: String = s"$description using file mapping $files"
+  def verbose: String = s"$description using file mapping $paths"
 
   // end-user friendly description of this task
-  def description: String = s"Upload ${fileString(requests.size)} to S3 bucket $bucket"
+  def description: String = s"Upload ${fileString(objectMappings.size)} to S3 bucket $bucket"
 
-  def requestToString(request: PutObjectRequest): String =
-    s"${request.getFile.getPath} to s3://${request.getBucketName}/${request.getKey} with "+
+  def requestToString(source: S3Object, request: PutObjectRequest): String =
+    s"s3://${source.bucket}/${source.key} to s3://${request.getBucketName}/${request.getKey} with "+
       s"CacheControl:${request.getMetadata.getCacheControl} ContentType:${request.getMetadata.getContentType} ACL:${request.getCannedAcl}"
 
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     val client = s3client(keyRing)
-    reporter.verbose(s"Starting upload of ${fileString(files.size)} ($totalSize bytes) to S3 ${client}")
-    requests.take(detailedLoggingThreshold).foreach(r => reporter.verbose(s"Uploading ${requestToString(r)}"))
-    requests.par foreach { request => client.putObject(request) }
-    reporter.verbose(s"Finished upload of ${fileString(files.size)} to S3")
+
+    reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
+    requests.zipWithIndex.par foreach { case (req, index) =>
+      val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
+      val putRequest = req.toAwsRequest(inputStream)
+      reporter.verbose(s"Transferring ${requestToString(req.source, putRequest)}")
+      try {
+        client.putObject(putRequest)
+      } finally {
+        inputStream.close()
+      }
+    }
+    reporter.verbose(s"Finished transfer of ${fileString(paths.size)}")
   }
 
-  private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"
-  private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
-    if (!file.isDirectory) Seq((file, key))
-    else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
+  private def subDirectoryPrefix(key: String, fileName: String): String =
+    if (fileName.isEmpty)
+      key
+    else if (key.isEmpty)
+      fileName
+    else s"$key/$fileName"
+
+  private def resolveMappings(path: S3Location, targetKey: String, targetBucket: String): Seq[(S3Object, S3Path)] = {
+    path.listAll()(artifactClient).map { obj =>
+      obj -> S3Path(targetBucket, subDirectoryPrefix(targetKey, obj.relativeTo(path)))
+    }
   }
 
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
@@ -64,6 +86,16 @@ object S3Upload {
   }
   def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
+}
+
+case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], contentType: Option[String], publicReadAcl: Boolean) {
+  def toAwsRequest(inputStream: InputStream): PutObjectRequest = {
+    val metaData = new ObjectMetadata
+    cacheControl foreach metaData.setCacheControl
+    contentType foreach metaData.setContentType
+    val req = new PutObjectRequest(target.bucket, target.key, inputStream, metaData)
+    if (publicReadAcl) req.withCannedAcl(PublicRead) else req
+  }
 }
 
 trait PollingCheck {
@@ -134,17 +166,22 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 }
 
 case class UpdateLambda(
-                   file: File,
+                   s3Path: S3Path,
                    functionName: String)
-                 (implicit val keyRing: KeyRing) extends Task with Lambda {
+                 (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with Lambda {
   def description = s"Updating $functionName Lambda"
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-
     val client = lambdaClient(keyRing)
     reporter.verbose(s"Starting update $functionName Lambda")
-    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, file))
+    val inputStream = artifactClient.getObject(s3Path.bucket, s3Path.key).getObjectContent
+    val buffer = try {
+      ByteBuffer.wrap(IOUtils.toByteArray(inputStream))
+    } finally {
+      inputStream.close()
+    }
+    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, buffer))
     reporter.verbose(s"Finished update $functionName Lambda")
   }
 

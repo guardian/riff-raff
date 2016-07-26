@@ -1,8 +1,7 @@
 package magenta.deployment_type
 
+import magenta.artifact.S3Path
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
-
-import scalax.file.Path
 
 object CloudFormation extends DeploymentType {
   val name = "cloud-formation"
@@ -64,6 +63,7 @@ object CloudFormation extends DeploymentType {
   override def perAppActions = {
     case "updateStack" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val artifactClient = resources.artifactClient
 
       val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
       val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
@@ -77,7 +77,7 @@ object CloudFormation extends DeploymentType {
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
-          Path(pkg.srcDir) \ Path.fromString(templatePath(pkg)),
+          S3Path(pkg.s3Package, templatePath(pkg)),
           params,
           amiParameter(pkg),
           amiTags(pkg),

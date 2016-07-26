@@ -3,13 +3,15 @@ package magenta
 import tasks.Task
 import java.util.UUID
 
+import com.amazonaws.services.s3.AmazonS3
+
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,
-    resourceLookup: Lookup, rootReporter: DeployReporter): DeployContext = {
+    resourceLookup: Lookup, rootReporter: DeployReporter, artifactClient: AmazonS3): DeployContext = {
 
     val tasks = {
       rootReporter.info("Resolving tasks...")
-      val taskList = Resolver.resolve(project, resourceLookup, parameters, rootReporter)
+      val taskList = Resolver.resolve(project, resourceLookup, parameters, rootReporter, artifactClient)
       rootReporter.taskList(taskList)
       taskList
     }

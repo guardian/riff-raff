@@ -3,16 +3,20 @@ package magenta.deployment_type
 import java.io.File
 import java.util.UUID
 
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import magenta.artifact.{S3Package, S3Path}
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
 import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, NamedStack, DeploymentResources, fixtures}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
+import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-class LambdaTest extends FlatSpec with Matchers {
+class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val artifactClient: AmazonS3 = mock[AmazonS3Client]
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -23,20 +27,20 @@ class LambdaTest extends FlatSpec with Matchers {
   )
 
   val app = Seq(App("lambda"))
-  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", new File("/tmp/packages/webapp"))
+  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("test")))
+    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
-        files = Seq(new File(pkg.srcDir, "test-file.zip") -> s"test/PROD/lambda/test-file.zip")
+        paths = Seq(S3Path("artifact-bucket", "test/123/lambda/test-file.zip") -> s"test/PROD/lambda/test-file.zip")
       )
     ))
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("test")))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
@@ -54,9 +58,9 @@ class LambdaTest extends FlatSpec with Matchers {
       "functionNames" -> List("MyFunction-")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", new File("/tmp/packages/webapp"))
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
 
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("some-stack")))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "some-stackMyFunction-PROD",

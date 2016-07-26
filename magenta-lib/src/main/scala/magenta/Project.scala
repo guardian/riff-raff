@@ -2,6 +2,7 @@ package magenta
 
 import java.util.UUID
 
+import com.amazonaws.services.s3.AmazonS3
 import magenta.json.{DeployInfoHost, DeployInfoJsonInputFile}
 import magenta.tasks.Task
 import org.joda.time.DateTime
@@ -131,7 +132,7 @@ object HostList {
   implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
 }
 
-case class DeploymentResources(reporter: DeployReporter, lookup: Lookup) {
+case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: AmazonS3) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing =
     lookup.keyRing(target.parameters.stage, pkg.apps.toSet, target.stack)
 }
@@ -193,8 +194,8 @@ case class DeployParameters(
                              hostList: List[String] = Nil
                              ) {
 
-  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup, reporter: DeployReporter): DeployContext = {
-    DeployContext(uuid, this, project, resourceLookup, reporter)
+  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup, reporter: DeployReporter, artifactClient: AmazonS3): DeployContext = {
+    DeployContext(uuid, this, project, resourceLookup, reporter, artifactClient)
   }
 
   def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)

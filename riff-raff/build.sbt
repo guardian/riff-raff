@@ -22,6 +22,7 @@ libraryDependencies ++= Seq(
   "org.parboiled" %% "parboiled" % "2.0.1",
   "com.adrianhurt" %% "play-bootstrap3" % "0.3",
   "com.gu" %% "scanamo" % "0.6.0",
+  "com.amazonaws" % "aws-java-sdk-dynamodb" % awsVersion,
   filters,
   ws,
   "org.scalatestplus" %% "play" % "1.2.0" % "test"

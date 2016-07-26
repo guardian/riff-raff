@@ -12,8 +12,9 @@ object Fastly  extends DeploymentType {
   def perAppActions = {
     case "deploy" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val artifactClient = resources.artifactClient
       resources.reporter.verbose(s"Keyring is $keyRing")
-      List(UpdateFastlyConfig(pkg))
+      List(UpdateFastlyConfig(pkg.s3Package)(keyRing, artifactClient))
     }
   }
 }

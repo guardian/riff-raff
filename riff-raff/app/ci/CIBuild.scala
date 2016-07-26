@@ -6,6 +6,7 @@ import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import controllers.Logging
+import magenta.artifact.S3Object
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -45,7 +46,7 @@ object CIBuild extends Logging {
       .doOnTerminate(log.info("Terminated whilst waiting for new builds"))
   }
 
-  lazy val initialFiles: Seq[S3Location] = for {
+  lazy val initialFiles: Seq[S3Object] = for {
     location <- S3Build.buildJsons
   } yield location
 

@@ -2,6 +2,7 @@ package magenta
 
 import java.util.UUID
 
+import com.amazonaws.services.s3.AmazonS3Client
 import magenta.fixtures.{StubTask, _}
 import magenta.tasks.Task
 import org.mockito.Mockito._
@@ -12,10 +13,12 @@ import org.mockito.Matchers.any
 import scala.collection.mutable.Buffer
 
 class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
+  val artifactClient = mock[AmazonS3Client]
+
   it should ("resolve a set of tasks") in {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
-    val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, reporter)
+    val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
     context.tasks should be(List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
@@ -29,7 +32,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val messages = Buffer[Message]()
     DeployReporter.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(messages += _.stack.top)
 
-    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
 
     messages.filter(_.getClass == classOf[Info]) should have size (1)
     messages.filter(_.getClass == classOf[TaskList]) should have size (1)
@@ -38,7 +41,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   it should ("execute the task") in {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
-    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter, artifactClient)
     context.execute()
     val task = context.tasks.head
 
@@ -59,7 +62,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     )
 
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
-    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
 
     context.execute()
 
@@ -85,7 +88,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     )
 
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
-    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter)
+    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
 
     context.execute()
 

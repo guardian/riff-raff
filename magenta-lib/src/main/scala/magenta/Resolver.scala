@@ -1,5 +1,6 @@
 package magenta
 
+import com.amazonaws.services.s3.AmazonS3
 import tasks.Task
 
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
@@ -21,10 +22,10 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter): List[Task] =
-    resolveDetail(project, resourceLookup, parameters, deployReporter).flatMap(_.tasks)
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[Task] =
+    resolveDetail(project, resourceLookup, parameters, deployReporter, artifactClient).flatMap(_.tasks)
 
-  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter): List[RecipeTasks] = {
+  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
@@ -60,7 +61,7 @@ object Resolver {
     for {
       stack <- stacks.toList
       tasks <- {
-        val resources = DeploymentResources(deployReporter, resourceLookup)
+        val resources = DeploymentResources(deployReporter, resourceLookup, artifactClient)
         val target = DeployTarget(parameters, stack)
         val resolvedTree = resolveTree(parameters.recipe.name, resources, target)
         val filteredTree = resolvedTree.disable(rt => rt.recipe.actionsPerHost.nonEmpty && rt.hostTasks.isEmpty)

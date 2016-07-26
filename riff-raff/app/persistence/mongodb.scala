@@ -64,13 +64,12 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
   val deployLogCollection = getCollection("deployV2Logs")
   val hookConfigsCollection = getCollection("hookConfigs")
   val authCollection = getCollection("auth")
-  val deployJsonCollection = getCollection("deployJson")
   val apiKeyCollection = getCollection("apiKeys")
   val continuousDeployCollection = getCollection("continuousDeploy")
   val keyValuesCollection = getCollection("keyValues")
 
   val collections = List(deployCollection, deployLogCollection, hookConfigsCollection,
-    authCollection, deployJsonCollection, apiKeyCollection, continuousDeployCollection)
+    authCollection, apiKeyCollection, continuousDeployCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
     val stats = collection.stats
@@ -294,22 +293,6 @@ class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
       deployCollection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
       deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
-    }
-  }
-
-  override def writeDeployJson(id: Build, json: String) {
-    logAndSquashExceptions(None,()) {
-      val key = MongoDBObject("projectName" -> id.projectName, "buildId" -> id.id)
-      deployJsonCollection.insert(MongoDBObject("_id" -> key, "json" -> JSON.parse(json)))
-    }
-  }
-
-  override def getDeployJson(id: Build) = {
-    logAndSquashExceptions[Option[String]](None,None) {
-      val key = MongoDBObject("projectName" -> id.projectName, "buildId" -> id.id)
-      deployJsonCollection.findOneByID(key).map{ result =>
-        JSON.serialize(result.get("json"))
-      }
     }
   }
 

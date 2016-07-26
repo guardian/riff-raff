@@ -1,27 +1,29 @@
 package deployment
 
+import java.io.File
+import java.util.UUID
+
 import _root_.resources.LookupSelector
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor._
+import akka.pattern.ask
+import akka.routing.RoundRobinPool
+import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
+import conf.{Configuration, TaskMetrics}
+import controllers.Logging
+import magenta._
 import magenta.artifact.S3Artifact
 import magenta.json.JsonReader
-import java.io.File
-import magenta._
-import akka.actor._
-import controllers.Logging
-import scala.concurrent.duration._
-import akka.actor.SupervisorStrategy.Restart
-import akka.pattern.ask
-import tasks.Task
-import java.util.UUID
-import collection.mutable.ListBuffer
-import akka.routing.{RoundRobinPool, RoundRobinRouter}
-import com.typesafe.config.ConfigFactory
-import scala.collection.JavaConversions._
-import concurrent.Await
-import akka.util.Timeout
-import scalax.file.Path
-import conf.{TaskMetrics, Configuration}
+import magenta.tasks.Task
 import org.joda.time.DateTime
+
+import scala.collection.JavaConversions._
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.util.Try
+import scalax.file.Path
 
 object DeployControlActor extends Logging {
   trait Event
@@ -46,7 +48,7 @@ object DeployControlActor extends Logging {
 
   lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
 
-  import deployment.DeployCoordinator.{StopDeploy, StartDeploy, CheckStopFlag}
+  import deployment.DeployCoordinator.{CheckStopFlag, StartDeploy, StopDeploy}
 
   def interruptibleDeploy(record: Record) {
     log.debug("Sending start deploy message to co-ordinator")
@@ -107,7 +109,6 @@ case class UniqueTask(id: Int, task: Task)
 case class DeployRunState(
   record: Record,
   reporter: DeployReporter,
-  artifactDir: Option[File] = None,
   context: Option[DeployContext] = None
 ) {
   lazy val taskList = context.map(_.tasks.zipWithIndex.map(t => UniqueTask(t._2, t._1))).getOrElse(Nil)
@@ -123,8 +124,8 @@ object DeployCoordinator {
 }
 
 class DeployCoordinator extends Actor with Logging {
-  import TaskRunner._
   import DeployCoordinator._
+  import TaskRunner._
 
   override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute ) {
     case _ => Restart
@@ -181,10 +182,9 @@ class DeployCoordinator extends Actor with Logging {
       log.debug("Processing deploy stop request")
       stopFlagMap += (uuid -> Some(userName))
 
-    case DeployReady(record, artifactDir, deployContext) =>
+    case DeployReady(record, deployContext) =>
       deployStateMap.get(record.uuid).foreach  { state =>
         val newState = state.copy(
-          artifactDir = Some(artifactDir),
           context = Some(deployContext)
         )
         deployStateMap += (record.uuid -> newState)
@@ -233,13 +233,6 @@ class DeployCoordinator extends Actor with Logging {
   }
 
   private def cleanup(state: DeployRunState) {
-    try {
-      state.artifactDir.map(Path(_).deleteRecursively(continueOnFailure = true))
-    } catch {
-      case t:Throwable =>
-        log.warn("Exception whilst trying to delete artifact directory", t)
-    }
-
     deferredDeployQueue.foreach(self ! _)
     deferredDeployQueue.clear()
 
@@ -256,7 +249,7 @@ object TaskRunner {
   case class TaskFailed(record: Record, exception: Throwable) extends Message
 
   case class PrepareDeploy(record: Record, reporter: DeployReporter) extends Message
-  case class DeployReady(record: Record, artifactDir: File, context: DeployContext) extends Message
+  case class DeployReady(record: Record, context: DeployContext) extends Message
   case class RemoveArtifact(artifactDir: File) extends Message
 }
 
@@ -268,14 +261,17 @@ class TaskRunner extends Actor with Logging {
       try {
         DeployReporter.withFailureHandling(deployReporter) { implicit safeReporter =>
           import Configuration.artifact.aws._
-          val artifactDir = S3Artifact.download(record.parameters.build)
           safeReporter.info("Reading deploy.json")
-          val project = JsonReader.parse(new File(artifactDir, "deploy.json"))
-          val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter)
+          val s3Artifact = S3Artifact(record.parameters.build, bucketName)
+          val json = S3Artifact.withZipFallback(s3Artifact){ artifact =>
+            Try(artifact.deployObject.fetchContentAsString()(client).get)
+          }(client, safeReporter)
+          val project = JsonReader.parse(json, s3Artifact)
+          val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter, client)
           if (context.tasks.isEmpty)
             safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
-          sender ! DeployReady(record, artifactDir, context)
+          sender ! DeployReady(record, context)
         }
       } catch {
         case t:Throwable =>

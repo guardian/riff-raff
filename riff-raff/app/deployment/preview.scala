@@ -1,24 +1,23 @@
 package deployment
 
-import java.io.File
 import java.util.UUID
 
 import _root_.resources.LookupSelector
 import akka.actor.ActorSystem
 import akka.agent.Agent
+import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
-import magenta.{Build, DeployParameters, Project, _}
-import magenta.artifact.S3Artifact
+import magenta.artifact.{S3Artifact, S3ZipArtifact}
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
+import magenta.{Build, DeployParameters, Project, _}
 import org.joda.time.DateTime
-import persistence.Persistence
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.io.Source
+import scala.util.Try
 
 case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -52,25 +51,15 @@ object PreviewController {
 object Preview {
   import Configuration.artifact.aws._
 
-  def getJsonFromStore(build: Build): Option[String] = Persistence.store.getDeployJson(build)
-  def getJsonFromArtifact(build: Build)(implicit reporter: DeployReporter): String =
-    S3Artifact.withDownload(build) { artifactDir =>
-      Source.fromFile(new File(artifactDir, "deploy.json")).getLines().mkString
-    }
-  def parseJson(json:String) = JsonReader.parse(json, new File(System.getProperty("java.io.tmpdir")))
-
   /**
-   * Get the project for the build for preview purposes.  The project returned will not have a valid artifactDir so
-   * cannot be used for an actual deploy.
-   * This is cached in the database so future previews are faster.
+   * Get the project for the build for preview purposes.
    */
   def getProject(build: Build, reporter: DeployReporter): Project = {
-    val json = getJsonFromStore(build).getOrElse {
-      val json = getJsonFromArtifact(build)(reporter)
-      Persistence.store.writeDeployJson(build, json)
-      json
-    }
-    parseJson(json)
+    val s3Artifact = S3Artifact(build, bucketName)
+    val json = S3Artifact.withZipFallback(s3Artifact){ artifact =>
+      Try(artifact.deployObject.fetchContentAsString()(client).get)
+    }(client, reporter)
+    JsonReader.parse(json, s3Artifact)
   }
 
   /**
@@ -78,11 +67,11 @@ object Preview {
    */
   def apply(parameters: DeployParameters, reporter: DeployReporter): Preview = {
     val project = Preview.getProject(parameters.build, reporter)
-    Preview(project, parameters, reporter)
+    Preview(project, parameters, reporter, client)
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter) {
+case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter, artifactClient: AmazonS3) {
   lazy val lookup = LookupSelector()
   lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
     case NamedStack(s) => s
@@ -93,18 +82,20 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
-  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, reporter)
+  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, reporter, artifactClient)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
   def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter).distinct
+    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).distinct
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
-    val allTasks = allRecipes.flatMap(recipe => Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter)).distinct
+    val allTasks = allRecipes.flatMap(recipe =>
+      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+    ).distinct
     taskHosts(allTasks)
   }
 

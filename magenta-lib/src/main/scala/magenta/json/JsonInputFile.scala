@@ -4,8 +4,13 @@ package json
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.JsonParser
+
 import scala.io.Source
-import java.io.{FileNotFoundException, File}
+import java.io.{File, FileNotFoundException}
+
+import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.model.AmazonS3Exception
+import magenta.artifact.S3Artifact
 
 
 case class JsonInputFile(
@@ -38,24 +43,15 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(f: File)(implicit reporter: DeployReporter): Project = {
-    try {
-      parse(Source.fromFile(f).mkString, f.getAbsoluteFile.getParentFile)
-    } catch {
-      case e:FileNotFoundException =>
-        reporter.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
-    }
-  }
-
-  def parse(s: String, artifactSrcDir: File): Project = {
-    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifactSrcDir)
+  def parse(s: String, artifact: S3Artifact): Project = {
+    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifact)
   }
   
   def defaultRecipes(packages: Map[String, DeploymentPackage]) =
     Map("default" -> JsonRecipe(actions = packages.values.map(_.name + ".deploy").toList))
 
-  private def parse(input: JsonInputFile, artifactSrcDir: File): Project = {
-    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifactSrcDir) }
+  private def parse(input: JsonInputFile, artifact: S3Artifact): Project = {
+    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
     Project(packages, recipes, input.defaultStacks.map(NamedStack(_)))
@@ -81,7 +77,7 @@ object JsonReader {
     )
   }
 
-  private def parsePackage(name: String, jsonPackage: JsonPackage, artifactSrcDir: File) =
+  private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3Artifact) =
     DeploymentPackage(
       name,
       jsonPackage.apps match {
@@ -90,7 +86,7 @@ object JsonReader {
       },
       jsonPackage.safeData,
       jsonPackage.`type`,
-      new File(artifactSrcDir, "/packages/%s" format(jsonPackage.fileName.getOrElse(name)))
+      artifact.getPackage(jsonPackage.fileName.getOrElse(name))
     )
 
 }

@@ -2,11 +2,12 @@ package ci
 
 import conf.Configuration
 import controllers.Logging
+import magenta.artifact.{S3Location, S3Object}
 import org.joda.time.DateTime
 import play.api.libs.json.{JsPath, Json, Reads}
 
+import scala.util.Try
 import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
 
 case class S3Build(
   id: Long,
@@ -26,17 +27,17 @@ object S3Build extends Logging {
   lazy val bucketName = Configuration.build.aws.bucketName.get
   implicit lazy val client = Configuration.build.aws.client
 
-  def buildJsons: Seq[S3Location] = Try {
-    S3Location.all(bucketName).filter(_.path.endsWith("build.json"))
+  def buildJsons: Seq[S3Object] = Try {
+    S3Location.listAll(bucketName).filter(_.key.endsWith("build.json"))
   } recover {
     case NonFatal(e) =>
       log.error(s"Error finding buildJsons", e)
       Nil
   } get
 
-  def buildAt(location: S3Location): Option[S3Build] = Try {
-    log.debug(s"Parsing ${location.path}")
-    S3Location.contents(location).map(parse)
+  def buildAt(location: S3Object): Option[S3Build] = Try {
+    log.debug(s"Parsing ${location.key}")
+    location.fetchContentAsString().map(parse)
   } recover {
     case NonFatal(e) =>
       log.error(s"Error parsing $location", e)
