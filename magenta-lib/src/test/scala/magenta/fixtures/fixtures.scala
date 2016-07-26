@@ -11,18 +11,18 @@ case class StubTask(description: String, override val taskHost: Option[Host] = N
 }
 
 case class StubPerHostAction(description: String, apps: Seq[App]) extends Action {
-  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, reporter: DeployReporter) = ???
+  def resolve(resources: DeploymentResources, target: DeployTarget) = ???
 }
 
 case class StubPerAppAction(description: String, apps: Seq[App]) extends Action {
-  def resolve(resourceLookup: Lookup, params: DeployParameters, stack: Stack, reporter: DeployReporter) = ???
+  def resolve(resources: DeploymentResources, target: DeployTarget) = ???
 }
 
 case class StubDeploymentType(
   override val perHostActions:
     PartialFunction[String, DeploymentPackage => (DeployReporter, Host, KeyRing) => List[Task]] = Map.empty,
   override val perAppActions:
-    PartialFunction[String, DeploymentPackage => (DeployReporter, Lookup, DeployParameters, Stack) => List[Task]] = Map.empty
+    PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty
                             ) extends DeploymentType {
   def name = "stub-package-type"
 

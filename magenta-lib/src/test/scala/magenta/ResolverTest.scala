@@ -218,8 +218,7 @@ class ResolverTest extends FlatSpec with Matchers {
   it should "resolve tasks from multiple stacks" in {
     val pkgType = StubDeploymentType(
       perAppActions = {
-        case "deploy" => pkg => (reporter, lookup, params, stack) =>
-          List(StubTask("stacked", stack = Some(stack)))
+        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
       }
     )
     val recipe = Recipe("stacked",

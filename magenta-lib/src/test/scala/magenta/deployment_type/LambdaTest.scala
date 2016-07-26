@@ -5,7 +5,7 @@ import java.util.UUID
 
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, fixtures}
+import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, NamedStack, DeploymentResources, fixtures}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.scalatest.{FlatSpec, Matchers}
@@ -26,7 +26,7 @@ class LambdaTest extends FlatSpec with Matchers {
   val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", new File("/tmp/packages/webapp"))
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
@@ -36,7 +36,7 @@ class LambdaTest extends FlatSpec with Matchers {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("test"))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
@@ -56,7 +56,7 @@ class LambdaTest extends FlatSpec with Matchers {
     val app = Seq(App("lambda"))
     val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", new File("/tmp/packages/webapp"))
 
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(reporter, lookupEmpty, parameters(PROD), NamedStack("some-stack"))
+    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty), DeployTarget(parameters(PROD), NamedStack("some-stack")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "some-stackMyFunction-PROD",
