@@ -69,8 +69,8 @@ case class UpdateCloudFormationTask(
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
     val templateJson = if (YamlToJsonConverter.isYamlFile(template)) {
-      YamlToJsonConverter.convert(template.string.get)
-    } else template.string.get
+      YamlToJsonConverter.convert(template.fetchContentAsString.get)
+    } else template.fetchContentAsString.get
 
     val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))

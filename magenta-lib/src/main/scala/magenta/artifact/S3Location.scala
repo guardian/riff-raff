@@ -13,7 +13,7 @@ trait S3Location {
   def prefixElements: List[String] = key.split("/").toList
   def fileName:String = prefixElements.last
   def extension:Option[String] = if (fileName.contains(".")) Some(fileName.split('.').last) else None
-  def string()(implicit client:AmazonS3):Option[String] = {
+  def fetchContentAsString()(implicit client:AmazonS3):Option[String] = {
     try {
       Some(client.getObjectAsString(bucket, key))
     } catch {
