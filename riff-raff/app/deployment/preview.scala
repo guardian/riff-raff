@@ -8,7 +8,7 @@ import akka.agent.Agent
 import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
-import magenta.artifact.{S3Artifact, S3LegacyArtifact}
+import magenta.artifact.{S3Artifact, S3ZipArtifact}
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
 import magenta.{Build, DeployParameters, Project, _}
@@ -17,6 +17,7 @@ import org.joda.time.DateTime
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.Try
 
 case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -54,8 +55,11 @@ object Preview {
    * Get the project for the build for preview purposes.
    */
   def getProject(build: Build, reporter: DeployReporter): Project = {
-    val artifact = S3Artifact.withLegacyFallback(build, bucketName)(client, reporter)
-    JsonReader.parse(artifact)(client, reporter)
+    val s3Artifact = S3Artifact(build, bucketName)
+    val json = S3Artifact.withZipFallback(s3Artifact){ artifact =>
+      Try(artifact.deployObject.fetchContentAsString()(client).get)
+    }(client, reporter)
+    JsonReader.parse(json, s3Artifact)
   }
 
   /**

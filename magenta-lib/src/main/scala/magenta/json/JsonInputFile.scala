@@ -43,18 +43,6 @@ case class JsonRecipe(
 object JsonReader {
   private implicit val formats = DefaultFormats
 
-  def parse(artifact: S3Artifact)(implicit s3Client: AmazonS3Client, reporter: DeployReporter): Project = {
-    try {
-      val deployJson = s3Client.getObject(artifact.bucket, s"${artifact.key}/${artifact.deployObject}")
-      withResource(deployJson.getObjectContent) { deployJsonInputStream =>
-         parse(Source.fromInputStream(deployJsonInputStream).mkString, artifact)
-      }
-    } catch {
-      case e:AmazonS3Exception if e.getErrorCode == "NoSuchKey" =>
-        reporter.fail("Artifact cannot be deployed: deploy.json file doesn't exist")
-    }
-  }
-
   def parse(s: String, artifact: S3Artifact): Project = {
     parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifact)
   }

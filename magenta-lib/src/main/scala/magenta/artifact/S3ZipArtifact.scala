@@ -12,26 +12,24 @@ import scalax.file.ImplicitConversions.defaultPath2jfile
 import scalax.file.Path
 import scalax.io.{Resource, ScalaIOException}
 
-object S3LegacyArtifact {
-  def download(build: Build)(implicit bucket: Option[String], client: AmazonS3, reporter: DeployReporter): File = {
+object S3ZipArtifact {
+  def download(artifact: S3Artifact)(implicit client: AmazonS3, reporter: DeployReporter): File = {
     val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
-    download(build, dir)(bucket, client, reporter)
+    download(artifact, dir)(client, reporter)
     dir
   }
 
-  def download(build: Build, dir: File)(implicit bucket: Option[String], client: AmazonS3, reporter: DeployReporter) {
+  def download(artifact: S3Artifact, dir: File)(implicit client: AmazonS3, reporter: DeployReporter) {
     reporter.info("Downloading artifact")
 
-    if (bucket.isEmpty) reporter.fail("Don't know where to get artifact - no bucket set")
-
-    val path = s"${build.projectName}/${build.id}/artifacts.zip"
+    val path = s"${artifact.key}/artifacts.zip"
 
     reporter.verbose(s"Downloading from $path to ${dir.getAbsolutePath}...")
 
     try {
       val artifactPath = Path.createTempFile(prefix = "riffraff-artifact-", suffix = ".zip")
 
-      val blob = Resource.fromInputStream(client.getObject(bucket.get, path).getObjectContent)
+      val blob = Resource.fromInputStream(client.getObject(artifact.bucket, path).getObjectContent)
 
       artifactPath.write(blob.bytes)
 
@@ -41,14 +39,14 @@ object S3LegacyArtifact {
     } catch {
       case e: ScalaIOException => e.getCause match {
         case e: AmazonS3Exception if e.getStatusCode == 404 =>
-          reporter.fail(s"404 downloading s3://${bucket.get}/$path\n - have you got the project name and build number correct?")
+          reporter.fail(s"404 downloading s3://${artifact.bucket}/$path\n - have you got the project name and build number correct?")
       }
     }
   }
 
-  def withDownload[T](build: Build)(block: File => T)
-    (implicit bucket: Option[String], client: AmazonS3, reporter: DeployReporter): T = {
-    val tempDir = Try { download(build)(bucket, client, reporter) }
+  def withDownload[T](artifact: S3Artifact)(block: File => T)
+    (client: AmazonS3, reporter: DeployReporter): T = {
+    val tempDir = Try { download(artifact)(client, reporter) }
     val result = tempDir.map(block)
     tempDir.map(dir => Path(dir).deleteRecursively(continueOnFailure = true))
     result.get

@@ -262,8 +262,11 @@ class TaskRunner extends Actor with Logging {
         DeployReporter.withFailureHandling(deployReporter) { implicit safeReporter =>
           import Configuration.artifact.aws._
           safeReporter.info("Reading deploy.json")
-          val artifact = S3Artifact.withLegacyFallback(record.parameters.build, bucketName)(client, safeReporter)
-          val project = JsonReader.parse(artifact)
+          val s3Artifact = S3Artifact(record.parameters.build, bucketName)
+          val json = S3Artifact.withZipFallback(s3Artifact){ artifact =>
+            Try(artifact.deployObject.fetchContentAsString()(client).get)
+          }(client, safeReporter)
+          val project = JsonReader.parse(json, s3Artifact)
           val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter, client)
           if (context.tasks.isEmpty)
             safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")

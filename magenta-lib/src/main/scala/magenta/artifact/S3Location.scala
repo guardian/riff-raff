@@ -10,6 +10,7 @@ import magenta.{Build, DeployReporter}
 import scala.annotation.tailrec
 import scala.util.Try
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 trait S3Location {
   def bucket: String
@@ -85,36 +86,27 @@ object S3Artifact extends Loggable {
     s"${build.projectName}/${build.id}"
   }
 
-  /*
-  This is essentially the same as the apply method in function, but in this case we actually confirm that the
-  deployObject exists. If it doesn't then we try to convert a legacy artifacts.zip file into the new format.
-   */
-  def withLegacyFallback(build: Build, bucket: String)(implicit client: AmazonS3, reporter: DeployReporter): S3Artifact = {
-    val artifact = S3Artifact(build, bucket)
-    try {
-      val metadata = client.getObjectMetadata(artifact.bucket, s"${artifact.key}/${artifact.deployObject}")
-      logger.debug(s"Verified format package exists: $metadata")
-      artifact
-    } catch {
-      case e:AmazonS3Exception if e.getStatusCode == 404 => convertFromLegacy(build, bucket)
+  def withZipFallback[T](artifact: S3Artifact)(f: S3Artifact => Try[T])(implicit client: AmazonS3, reporter: DeployReporter): T = {
+    val attempt = f(artifact) recoverWith {
+      case NonFatal(e) =>
+        convertFromZipBundle(artifact)
+        f(artifact)
     }
+    attempt.get
   }
 
-  def convertFromLegacy(build:Build, bucket: String)(implicit client: AmazonS3, reporter: DeployReporter): S3Artifact = {
-    reporter.info("Converting legacy artifact.zip to new S3 layout")
-    implicit val sourceBucket: Option[String] = Some(bucket)
-    S3LegacyArtifact.withDownload(build){ dir =>
-      // use our deployment task to upload the downloaded artifact to S3
-      val prefix = buildPrefix(build)
-      val filesToUpload = resolveFiles(dir, prefix)
+  def convertFromZipBundle(artifact: S3Artifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
+    reporter.info("Converting artifact.zip to S3 layout")
+    implicit val sourceBucket: Option[String] = Some(artifact.bucket)
+    S3ZipArtifact.withDownload(artifact){ dir =>
+      val filesToUpload = resolveFiles(dir, artifact.key)
       reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
       filesToUpload.foreach{ case (file, key) =>
-          client.putObject(bucket, key, file)
+          client.putObject(artifact.bucket, key, file)
       }
-      reporter.info(s"Legacy artifact converted")
-      S3Artifact(bucket, prefix)
-    }
-    // TODO: Delete the legacy format (not yet as we might need to rollback)
+      reporter.info(s"Zip artifact converted")
+    }(client, reporter)
+    // TODO: Delete the zip format (not yet as we might need to rollback)
   }
 
   private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"
@@ -124,8 +116,9 @@ object S3Artifact extends Loggable {
   }
 }
 
-case class S3Artifact(bucket: String, key: String, deployObject: String = "deploy.json") extends S3Location {
+case class S3Artifact(bucket: String, key: String, deployObjectName: String = "deploy.json") extends S3Location {
   def getPackage(packageName: String): S3Package = S3Package(bucket, s"$key/packages/$packageName")
+  lazy val deployObject = S3Path(bucket, s"$key/$deployObjectName")
 }
 
 case class S3Package(bucket: String, key: String) extends S3Location
