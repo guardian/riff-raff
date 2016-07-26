@@ -1,10 +1,10 @@
 package magenta
 package tasks
 
-import java.io.{File, InputStream}
+import java.io.InputStream
 import java.nio.ByteBuffer
 
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.CannedAccessControlList._
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import com.amazonaws.util.IOUtils
@@ -70,7 +70,7 @@ case class S3Upload(
     else s"$key/$fileName"
 
   private def resolveMappings(path: S3Location, targetKey: String, targetBucket: String): Seq[(S3Object, S3Path)] = {
-    ArtifactHelper.listObjects(path)(artifactClient).map { obj =>
+    path.listAll()(artifactClient).map { obj =>
       obj -> S3Path(targetBucket, subDirectoryPrefix(targetKey, obj.relativeTo(path)))
     }
   }

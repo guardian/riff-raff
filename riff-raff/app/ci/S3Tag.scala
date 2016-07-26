@@ -1,6 +1,7 @@
 package ci
 
 import conf.Configuration
+import magenta.artifact.S3Path
 import play.api.libs.json.Json
 
 object S3Tag {
@@ -10,7 +11,7 @@ object S3Tag {
   def of(build: CIBuild): Option[Seq[String]] = {
     for {
       bucket <- bucketName
-      tagContent <- S3Location.contents(S3Location(bucket, s"${build.jobName}/${build.number}/tags.json"))
+      tagContent <- S3Path(bucket, s"${build.jobName}/${build.number}/tags.json").fetchContentAsString()
       tags <- Json.parse(tagContent).asOpt[Seq[String]]
     } yield tags
   }

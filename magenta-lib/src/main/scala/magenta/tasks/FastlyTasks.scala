@@ -2,18 +2,15 @@ package magenta.tasks
 
 import java.util.concurrent.Executors
 
-import magenta.{DeployReporter, DeployStoppedException, DeploymentPackage, KeyRing}
-import java.io.File
-
 import com.amazonaws.services.s3.AmazonS3
+import com.gu.fastly.api.FastlyApiClient
+import magenta.artifact.{S3Location, S3Package}
+import magenta.{DeployReporter, DeployStoppedException, KeyRing}
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import com.gu.fastly.api.FastlyApiClient
-import magenta.artifact.{ArtifactHelper, S3LegacyArtifact, S3Package}
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
@@ -74,7 +71,7 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
 
   private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Package, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
-      ArtifactHelper.listObjects(s3Package)(artifactClient).map { obj =>
+      s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {
           val fileName = obj.relativeTo(s3Package)
           val stream = artifactClient.getObject(obj.bucket, obj.key).getObjectContent

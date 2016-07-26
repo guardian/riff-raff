@@ -2,10 +2,14 @@ package magenta.artifact
 
 import java.io.File
 
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.model.AmazonS3Exception
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import com.amazonaws.services.s3.model.{AmazonS3Exception, ListObjectsV2Request, ListObjectsV2Result}
 import com.gu.management.Loggable
 import magenta.{Build, DeployReporter}
+
+import scala.annotation.tailrec
+import scala.util.Try
+import scala.collection.JavaConverters._
 
 trait S3Location {
   def bucket: String
@@ -13,15 +17,53 @@ trait S3Location {
   def prefixElements: List[String] = key.split("/").toList
   def fileName:String = prefixElements.last
   def extension:Option[String] = if (fileName.contains(".")) Some(fileName.split('.').last) else None
-  def fetchContentAsString()(implicit client:AmazonS3):Option[String] = {
-    try {
-      Some(client.getObjectAsString(bucket, key))
-    } catch {
-      case e:AmazonS3Exception if e.getErrorCode == "NoSuchKey" => None
-    }
-  }
   def relativeTo(path: S3Location): String = {
     key.stripPrefix(path.key).stripPrefix("/")
+  }
+  def fetchContentAsString()(implicit client: AmazonS3) = S3Location.fetchContentAsString(this)
+  def listAll()(implicit client: AmazonS3) = S3Location.listObjects(this)
+}
+
+object S3Location extends Loggable {
+  def listAll(bucket: String)(implicit s3Client: AmazonS3): Seq[S3Object] = listObjects(bucket, None)
+
+  def listObjects(location: S3Location)(implicit s3Client: AmazonS3): Seq[S3Object] =
+    listObjects(location.bucket, Some(location.key))
+
+  val maxKeysInBucketListing = 1000 // AWS won't return more than this, even if you set the parameter to a larger value
+
+  private def listObjects(bucket: String, prefix: Option[String])(implicit s3Client: AmazonS3): Seq[S3Object] = {
+    def request(continuationToken: Option[String]) = new ListObjectsV2Request()
+      .withBucketName(bucket)
+      .withPrefix(prefix.orNull)
+      .withMaxKeys(maxKeysInBucketListing)
+      .withContinuationToken(continuationToken.orNull)
+
+    @tailrec
+    def pageListings(acc: Seq[ListObjectsV2Result], previousListing: ListObjectsV2Result): Seq[ListObjectsV2Result] = {
+      if (!previousListing.isTruncated) {
+        acc
+      } else {
+        val listing = s3Client.listObjectsV2(
+          request(Some(previousListing.getNextContinuationToken))
+        )
+        pageListings(acc :+ listing, listing)
+      }
+    }
+
+    val initialListing = s3Client.listObjectsV2(request(None))
+    for {
+      summaries <- pageListings(Seq(initialListing), initialListing)
+      summary <- summaries.getObjectSummaries.asScala
+    } yield S3Object(summary.getBucketName, summary.getKey, summary.getSize)
+  }
+
+  def fetchContentAsString(location: S3Location)(implicit client:AmazonS3):Option[String] = {
+    Try {
+      Some(client.getObjectAsString(location.bucket, location.key))
+    }.recover {
+      case e: AmazonS3Exception if e.getStatusCode == 404 => None
+    }.get
   }
 }
 
