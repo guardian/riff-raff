@@ -26,21 +26,21 @@ object S3ZipArtifact {
 
     reporter.verbose(s"Downloading from $path to ${dir.getAbsolutePath}...")
 
+    val artifactPath = Path.createTempFile(prefix = "riffraff-artifact-", suffix = ".zip")
     try {
-      val artifactPath = Path.createTempFile(prefix = "riffraff-artifact-", suffix = ".zip")
-
       val blob = Resource.fromInputStream(client.getObject(artifact.bucket, path).getObjectContent)
-
-      artifactPath.write(blob.bytes)
+      blob.copyDataTo(artifactPath)
 
       CommandLine("unzip" :: "-q" :: "-d" :: dir.getAbsolutePath :: artifactPath.getAbsolutePath :: Nil).run(reporter)
-      artifactPath.delete()
+
       reporter.verbose("Extracted files")
     } catch {
       case e: ScalaIOException => e.getCause match {
         case e: AmazonS3Exception if e.getStatusCode == 404 =>
           reporter.fail(s"404 downloading s3://${artifact.bucket}/$path\n - have you got the project name and build number correct?")
       }
+    } finally {
+      artifactPath.delete()
     }
   }
 
