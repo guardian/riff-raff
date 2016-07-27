@@ -53,14 +53,18 @@ case class S3Upload(
     requests.zipWithIndex.par foreach { case (req, index) =>
       val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
       val putRequest = req.toAwsRequest(inputStream)
-      reporter.verbose(s"Transferring ${requestToString(req.source, putRequest)}")
+      index match {
+        case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, putRequest)}")
+        case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
+        case _ =>
+      }
       try {
         client.putObject(putRequest)
       } finally {
         inputStream.close()
       }
     }
-    reporter.verbose(s"Finished transfer of ${fileString(paths.size)}")
+    reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
   }
 
   private def subDirectoryPrefix(key: String, fileName: String): String =
