@@ -3,7 +3,7 @@ package magenta.artifact
 import java.io.File
 
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
-import com.amazonaws.services.s3.model.{AmazonS3Exception, ListObjectsV2Request, ListObjectsV2Result}
+import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
 import magenta.{Build, DeployReporter}
 
@@ -102,7 +102,10 @@ object S3Artifact extends Loggable {
       val filesToUpload = resolveFiles(dir, artifact.key)
       reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
       filesToUpload.foreach{ case (file, key) =>
-          client.putObject(artifact.bucket, key, file)
+        val metadata = new ObjectMetadata()
+        metadata.setContentLength(file.length)
+        val req = new PutObjectRequest(artifact.bucket, key, file).withMetadata(metadata)
+        client.putObject(req)
       }
       reporter.info(s"Zip artifact converted")
     }(client, reporter)
