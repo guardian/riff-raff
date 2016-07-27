@@ -5,6 +5,7 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.internal.Mimetypes
 import com.amazonaws.services.s3.model.CannedAccessControlList._
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import com.amazonaws.util.IOUtils
@@ -81,6 +82,10 @@ case class S3Upload(
 }
 
 object S3Upload {
+  private val mimeTypes = Mimetypes.getInstance()
+
+  def awsMimeTypeLookup(fileName: String): String = mimeTypes.getMimetype(fileName)
+
   def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
     (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }
@@ -92,7 +97,7 @@ case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String]
   def toAwsRequest(inputStream: InputStream): PutObjectRequest = {
     val metaData = new ObjectMetadata
     cacheControl foreach metaData.setCacheControl
-    contentType foreach metaData.setContentType
+    metaData.setContentType(contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key)))
     val req = new PutObjectRequest(target.bucket, target.key, inputStream, metaData)
     if (publicReadAcl) req.withCannedAcl(PublicRead) else req
   }

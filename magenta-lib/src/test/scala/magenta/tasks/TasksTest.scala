@@ -41,7 +41,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     awsRequest.getKey should be ("foo/bar/the-jar.jar")
     awsRequest.getInputStream should be (stream)
     Option(awsRequest.getMetadata.getCacheControl) should be (None)
-    Option(awsRequest.getMetadata.getContentType) should be (None)
+    awsRequest.getMetadata.getContentType should be ("application/octet-stream")
 
     val reqWithoutAcl = putRec.copy(publicReadAcl = true)
 
@@ -67,6 +67,36 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     awsRequest.getInputStream should be (stream)
     Option(awsRequest.getMetadata.getCacheControl) should be (Some("no-cache"))
     Option(awsRequest.getMetadata.getContentType) should be (Some("application/json"))
+  }
+
+  it should "use a default mime type from S3" in {
+    val putRecOne = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.css", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.css"),
+      Some("no-cache"), None,
+      publicReadAcl = false
+    )
+    val putRecTwo = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.xpi"),
+      Some("no-cache"), None,
+      publicReadAcl = false
+    )
+    val putRecThree = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.js", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.js"),
+      Some("no-cache"), None,
+      publicReadAcl = false
+    )
+
+    val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
+    val awsRequestOne = putRecOne.toAwsRequest(stream)
+    val awsRequestTwo = putRecTwo.toAwsRequest(stream)
+    val awsRequestThree = putRecThree.toAwsRequest(stream)
+
+    awsRequestOne.getMetadata.getContentType should be ("text/css")
+    awsRequestTwo.getMetadata.getContentType should be ("application/octet-stream")
+    awsRequestThree.getMetadata.getContentType should be ("application/x-javascript")
   }
 
   "S3Upload" should "upload a single file to S3" in {
