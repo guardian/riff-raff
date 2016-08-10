@@ -30,7 +30,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
       None, None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      headers = None
     )
 
     val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
@@ -55,7 +56,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
       Some("no-cache"), Some("application/json"),
-      publicReadAcl = false
+      publicReadAcl = false,
+      headers = None
     )
 
     val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
@@ -74,19 +76,22 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.css", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.css"),
       Some("no-cache"), None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      headers = None
     )
     val putRecTwo = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.xpi"),
       Some("no-cache"), None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      headers = None
     )
     val putRecThree = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.js", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.js"),
       Some("no-cache"), None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      headers = None
     )
 
     val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
@@ -210,6 +215,25 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     task.requests.find(_.source == fileOne).get.contentType should be(None)
     task.requests.find(_.source == fileTwo).get.contentType should be(Some("application/x-xpinstall"))
+  }
+
+  it should "create an upload request with custom headers" in {
+    val putRec = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
+      None, None,
+      publicReadAcl = false,
+      headers = Some(List(("x-amz-meta-hello", "world")))
+    )
+
+    val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
+    val awsRequest = putRec.toAwsRequest(stream)
+
+    awsRequest.getBucketName should be ("artifact-bucket")
+    awsRequest.getCannedAcl should be (null)
+    awsRequest.getKey should be ("foo/bar/the-jar.jar")
+    awsRequest.getInputStream should be (stream)
+    Option(awsRequest.getMetadata.getRawMetadataValue("x-amz-meta-hello")) should be (Some("world"))
   }
 
   def mockListObjects(objs: List[MagentaS3Object]) = {

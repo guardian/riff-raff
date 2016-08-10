@@ -12,7 +12,7 @@ import com.amazonaws.util.IOUtils
 import com.gu.management.Loggable
 import dispatch.classic._
 import magenta.artifact._
-import magenta.deployment_type.PatternValue
+import magenta.deployment_type.{PatternList, PatternValue}
 
 case class S3Upload(
   bucket: String,
@@ -20,7 +20,8 @@ case class S3Upload(
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
-  detailedLoggingThreshold: Int = 10
+  detailedLoggingThreshold: Int = 10,
+  headersPatterns: List[PatternList] = Nil
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with S3 with Loggable {
 
   lazy val objectMappings = paths flatMap {
@@ -30,7 +31,7 @@ case class S3Upload(
   lazy val totalSize = objectMappings.map{ case (source, target) => source.size}.sum
 
   lazy val requests = objectMappings.map { case (source, target) =>
-    PutReq(source, target, cacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
+    PutReq(source, target, cacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl, headersLookup(target.key))
   }
 
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
@@ -83,6 +84,7 @@ case class S3Upload(
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
   private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
+  private def headersLookup(fileName: String) = headersPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.list)
 }
 
 object S3Upload {
@@ -97,12 +99,14 @@ object S3Upload {
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
-case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], contentType: Option[String], publicReadAcl: Boolean) {
+case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], contentType: Option[String],
+                  publicReadAcl: Boolean, headers: Option[List[(String, String)]]) {
   def toAwsRequest(inputStream: InputStream): PutObjectRequest = {
     val metaData = new ObjectMetadata
     cacheControl foreach metaData.setCacheControl
     metaData.setContentType(contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key)))
     metaData.setContentLength(source.size)
+    headers.foreach(_ foreach { case (key, value) => metaData.setHeader(key, value) } )
     val req = new PutObjectRequest(target.bucket, target.key, inputStream, metaData)
     if (publicReadAcl) req.withCannedAcl(PublicRead) else req
   }
