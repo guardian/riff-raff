@@ -96,6 +96,32 @@ object S3 extends DeploymentType with S3AclParams {
     """.stripMargin
   ).default(Map.empty)
 
+  val headers = Param[List[PatternList]]("headers",
+    """
+      |Set custom headers for the uploaded files.
+      |headers parameter is set to an array of JSON objects, each of which have `pattern` and `list` keys.
+      |`pattern` is a Java regular expression whilst `list` is an array of JSON objects with `name` and `value` keys.
+      |For each file being uploaded, the array of regular expressions is evaluated against the file path and name. The
+      |first regular expression that matches the file is used to determine the custom headers map.
+      |If there is no match then no headers will be set.
+      |
+      |In the example below, if the file path matches the regular expression then the custom header
+      |`x-amz-website-redirect-location` will be set to `/key`.
+      |
+      |   "headers": [
+      |     {
+      |       "pattern": "^.redirect$",
+      |       "list": [
+      |         {
+      |           "name": "x-amz-website-redirect-location",
+      |           "value": "/key"
+      |         }
+      |       }
+      |     }
+      |   ]
+    """.stripMargin
+  ).default(List.empty)
+
   implicit object PatternValueExtractable extends JValueExtractable[List[PatternValue]] {
     def extract(json: JValue) = json match {
       case JString(default) => Some(List(PatternValue(".*", default)))
@@ -105,6 +131,22 @@ object S3 extends DeploymentType with S3AclParams {
         JField("value", JString(value)) <- patternValue
       } yield PatternValue(regex, value))
       case _ => throw new IllegalArgumentException("cacheControl is a required parameter")
+    }
+  }
+  implicit object PatternMapExtractable extends JValueExtractable[List[PatternList]] {
+    private def arrayToTuples(json:List[JValue]): List[(String, String)] = for {
+      JObject(listValue) <- json
+      JField("name", JString(name)) <- listValue
+      JField("value", JString(value)) <- listValue
+    } yield (name, value)
+
+    def extract(json: JValue) = json match {
+      case JArray(patternValues) => Some(for {
+        JObject(patternValue) <- patternValues
+        JField("pattern", JString(regex)) <- patternValue
+        JField("list", JArray(patternList)) <- patternValue
+      } yield PatternList(regex, arrayToTuples(patternList)))
+      case _ => throw new IllegalArgumentException("headers dos not match the expected format")
     }
   }
 
@@ -145,7 +187,8 @@ object S3 extends DeploymentType with S3AclParams {
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg),
           extensionToMimeType = mimeTypes(pkg),
-          publicReadAcl = publicReadAcl(pkg)
+          publicReadAcl = publicReadAcl(pkg),
+          headersPatterns = headers(pkg)
         )
       )
     }
@@ -153,6 +196,10 @@ object S3 extends DeploymentType with S3AclParams {
 }
 
 case class PatternValue(pattern: String, value: String) {
+  lazy val regex = pattern.r
+}
+
+case class PatternList(pattern: String, list: List[(String, String)]) {
   lazy val regex = pattern.r
 }
 

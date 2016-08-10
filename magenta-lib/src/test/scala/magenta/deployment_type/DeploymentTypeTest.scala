@@ -18,8 +18,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   implicit val artifactClient: AmazonS3 = null
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 9
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
+    S3.params should have size 10
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes","headers"))
   }
 
   private val sourceS3Package = S3Package("artifact-bucket", "test/123/static-files")
