@@ -48,10 +48,11 @@ to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
     @record.stacks.zipWithIndex.map { case (stack, index) =>
         <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
     }
-    <div class="actions"><p>
-        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default pull-right">
+    <div class="actions pull-right"><p>
+        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
             Deploy Again
         </button>
+        <a class="btn btn-default" href="@routes.DeployController.deployObject(record.buildName, record.buildId)" role="button">See deploy.json</a>
     </p></div>
 }
 </div>
