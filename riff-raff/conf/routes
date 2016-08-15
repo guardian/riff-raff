@@ -40,6 +40,8 @@ GET         /deployment/preview/content                     controllers.DeployCo
 GET         /deployment/dashboard                           controllers.DeployController.dashboard(projects:String, search:Boolean?=false)
 GET         /deployment/dashboard/content                   controllers.DeployController.dashboardContent(projects:String, search:Boolean?=false)
 
+GET         /deployment/request/deployObject                controllers.DeployController.deployObject(projectName:String, id:String)
+
 # Continuous deployment
 GET         /deployment/continuous                          controllers.ContinuousDeployController.list
 GET         /deployment/continuous/new                      controllers.ContinuousDeployController.form
