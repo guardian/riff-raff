@@ -68,9 +68,13 @@ case class UpdateCloudFormationTask(
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
+    val templateString = template.fetchContentAsString match {
+      case Some(string) => string
+      case None => reporter.fail(s"Unable to locate cloudformation template s3://${template.bucket}/${template.key}")
+    }
     val templateJson = if (YamlToJsonConverter.isYamlFile(template)) {
-      YamlToJsonConverter.convert(template.fetchContentAsString.get)
-    } else template.fetchContentAsString.get
+      YamlToJsonConverter.convert(templateString)
+    } else templateString
 
     val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
