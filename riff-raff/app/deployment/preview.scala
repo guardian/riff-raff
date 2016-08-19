@@ -10,7 +10,7 @@ import conf.Configuration
 import controllers.routes
 import magenta.artifact.{S3Artifact, S3ZipArtifact}
 import magenta.json.JsonReader
-import magenta.tasks.{Task => MagentaTask}
+import magenta.tasks.{TaskGraph, Task => MagentaTask}
 import magenta.{Build, DeployParameters, Project, _}
 import org.joda.time.DateTime
 
@@ -89,12 +89,15 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val allTasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).distinct
+    val tasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+    val allTasks = TaskGraph.toTaskList(tasks)
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap(recipe =>
-      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+      TaskGraph.toTaskList(
+        Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+      )
     ).distinct
     taskHosts(allTasks)
   }

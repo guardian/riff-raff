@@ -13,6 +13,10 @@ object Builds extends LifecycleWithoutApp with Logging {
   def jobs: Iterable[Job] = jobsAgent.get()
   def all: List[CIBuild] = buildsAgent.get().toList
   def build(project: String, number: String) = all.find(b => b.jobName == project && b.number == number)
+  def buildFromRevision(project: String, revision: String) = all.find {
+    case build:S3Build => build.jobName == project && build.revision == revision
+    case _ => false
+  }
 
   val buildsAgent = Agent[Set[CIBuild]](BoundedSet(100000))
   val jobsAgent = Agent[Set[Job]](Set())

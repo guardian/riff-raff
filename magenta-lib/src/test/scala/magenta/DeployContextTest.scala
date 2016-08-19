@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.fixtures.{StubTask, _}
-import magenta.tasks.Task
+import magenta.tasks.{Task, TaskGraph}
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
@@ -19,7 +19,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
     val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
-    context.tasks should be(List(
+    TaskGraph.toTaskList(context.tasks) should be(List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
     ))
@@ -43,7 +43,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter, artifactClient)
     context.execute()
-    val task = context.tasks.head
+    val task = TaskGraph.toTaskList(context.tasks).head
 
     verify(task, times(1)).execute(any[DeployReporter])
   }
