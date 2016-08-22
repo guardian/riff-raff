@@ -25,7 +25,8 @@ libraryDependencies ++= Seq(
   "com.amazonaws" % "aws-java-sdk-dynamodb" % awsVersion,
   filters,
   ws,
-  "org.scalatestplus" %% "play" % "1.2.0" % "test"
+  "org.scalatestplus" %% "play" % "1.2.0" % "test",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.8" % "test"
 )
 
 riffRaffPackageType := (packageZipTarball in Universal).value
