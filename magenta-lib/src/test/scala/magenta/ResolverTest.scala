@@ -1,7 +1,6 @@
 package magenta
 
 
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
@@ -9,13 +8,11 @@ import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Resul
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
 import magenta.json._
-import magenta.tasks.{S3Upload, Task, TaskGraph, TaskNode}
+import magenta.tasks.{S3Upload, Task, TaskGraph}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-
-import scalax.collection.constrained.DAG
 
 
 class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
@@ -246,10 +243,13 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val recipe = Recipe("stacked",
       actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
 
-    val taskGraph = Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe), reporter, artifactClient)
-    TaskGraph.toTaskList(taskGraph) should be (List(
+    val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
+    val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
+    TaskGraph.toTaskList(taskGraph, proj.defaultStacks) should be (List(
       StubTask("stacked", stack = Some(NamedStack("foo"))),
-      StubTask("stacked", stack = Some(NamedStack("bar")))
+      StubTask("stacked", stack = Some(NamedStack("bar"))),
+      StubTask("stacked", stack = Some(NamedStack("monkey"))),
+      StubTask("stacked", stack = Some(NamedStack("litre")))
     ))
   }
 

@@ -14,7 +14,7 @@ object DeployContext {
     val tasks = {
       rootReporter.info("Resolving tasks...")
       val tasks = Resolver.resolve(project, resourceLookup, parameters, rootReporter, artifactClient)
-      rootReporter.taskList(TaskGraph.toTaskList(tasks))
+      rootReporter.taskList(TaskGraph.toTaskList(tasks, parameters.stacks))
       tasks
     }
     DeployContext(deployId, parameters, project, tasks, rootReporter)
@@ -30,7 +30,7 @@ case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Proj
   val stage = parameters.stage
 
   def execute() {
-    val taskList = TaskGraph.toTaskList(tasks)
+    val taskList = TaskGraph.toTaskList(tasks, parameters.stacks)
     if (taskList.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
     taskList.foreach { task =>

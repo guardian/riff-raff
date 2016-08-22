@@ -27,7 +27,7 @@ object Resolver {
   def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): DAG[TaskNode] = {
     resolveStacks(project, parameters).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
-      TaskGraph.toTaskGraph(stackTasks)
+      TaskGraph.toTaskGraph(stackTasks, stack)
     }.reduce(_++_)
   }
 
