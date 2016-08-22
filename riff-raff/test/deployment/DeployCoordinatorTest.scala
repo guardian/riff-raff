@@ -36,11 +36,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   "DeployCoordinator" should "respond to StartDeploy with PrepareDeploy to runner" in {
-    val dc = createDeployCoordinatorWithUnderlying
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinatorWithUnderlying()
+    val record = createRecord()
     dc.actor ! StartDeploy(record)
 
     dc.probe.expectMsgPF(){
@@ -54,15 +51,9 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "queue a StartDeploy message if the deploy is already running" in {
-    val dc = createDeployCoordinatorWithUnderlying
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
-    val recordTwo = DeployRecord(
-      UUID.fromString("60efc45c-8441-4abb-81cf-e7d84e3469c6"),
-      DeployParameters(Deployer("TesterTwo"), Build("test", "6"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinatorWithUnderlying()
+    val record = createRecord(projectName="test", stage="TEST")
+    val recordTwo = createRecord(projectName="test", stage="TEST")
 
     dc.actor ! StartDeploy(record)
     dc.probe.expectMsgClass(classOf[PrepareDeploy])
@@ -73,12 +64,29 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.ul.deferredDeployQueue.head should be(StartDeploy(recordTwo))
   }
 
+  it should "queue a StartDeploy message if there are already too many running" in {
+    val dc = createDeployCoordinatorWithUnderlying(2)
+    val record = createRecord(projectName="test", stage="TEST")
+    val recordTwo = createRecord(projectName="test2", stage="TEST")
+    val recordThree = createRecord(projectName="test3", stage="TEST")
+
+    dc.actor ! StartDeploy(record)
+    dc.probe.expectMsgClass(classOf[PrepareDeploy])
+    dc.ul.deferredDeployQueue.size should be(0)
+
+    dc.actor ! StartDeploy(recordTwo)
+    dc.probe.expectMsgClass(classOf[PrepareDeploy])
+    dc.ul.deferredDeployQueue.size should be(0)
+
+    dc.actor ! StartDeploy(recordThree)
+    dc.probe.expectNoMsg()
+    dc.ul.deferredDeployQueue.size should be(1)
+    dc.ul.deferredDeployQueue.head should be(StartDeploy(recordThree))
+  }
+
   it should "respond to a DeployReady message with the appropriate first task" in {
-    val dc = createDeployCoordinator
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinator()
+    val record = createRecord()
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
@@ -92,11 +100,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "respond to a final TaskCompleted message with cleanup" in {
-    val dc = createDeployCoordinatorWithUnderlying
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinatorWithUnderlying()
+    val record = createRecord()
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
@@ -110,15 +115,9 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "dequeue StartDeploy messages when deploys complete" in {
-    val dc = createDeployCoordinator
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
-    val recordTwo = DeployRecord(
-      UUID.fromString("60efc45c-8441-4abb-81cf-e7d84e3469c6"),
-      DeployParameters(Deployer("TesterTwo"), Build("test", "6"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinator()
+    val record = createRecord(projectName="test", stage="TEST")
+    val recordTwo = createRecord(projectName="test", stage="TEST")
 
     dc.actor ! StartDeploy(record)
     dc.actor ! StartDeploy(recordTwo)
@@ -133,11 +132,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "process a list of tasks" in {
-    val dc = createDeployCoordinator
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinator()
+    val record = createRecord()
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
@@ -165,11 +161,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "process a task failure" in {
-    val dc = createDeployCoordinatorWithUnderlying
-    val record = DeployRecord(
-      UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"),
-      DeployParameters(Deployer("Tester"), Build("test", "1"), Stage("TEST"))
-    )
+    val dc = createDeployCoordinatorWithUnderlying()
+    val record = createRecord()
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
@@ -190,7 +183,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   }
 
   it should "set the stop flag" in {
-    val dc = createDeployCoordinatorWithUnderlying
+    val dc = createDeployCoordinatorWithUnderlying()
     dc.actor ! StopDeploy(UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622"), "testUser")
     dc.probe.expectNoMsg()
     dc.ul.stopFlagMap should contain(UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622") -> Some("testUser"))
@@ -200,7 +193,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     import akka.pattern.ask
     implicit val timeout = Timeout(1 second)
 
-    val dc = createDeployCoordinator
+    val dc = createDeployCoordinator()
     val stopFlagResult = dc.actor ? CheckStopFlag(UUID.fromString("967c5ca9-36cb-4e1c-b317-983792cdf622")) mapTo manifest[Boolean]
     Await.result(stopFlagResult, timeout.duration) should be(false)
 
@@ -213,19 +206,27 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
   case class DC(probe: TestProbe, actor: ActorRef)
 
-  def createDeployCoordinator = {
+  def createDeployCoordinator(maxDeploys: Int = 5) = {
     val runnerProbe = TestProbe()
     val taskRunnerFactory = (_: ActorRefFactory) => runnerProbe.ref
-    val ref = system.actorOf(Props(classOf[DeployCoordinator], taskRunnerFactory))
+    val ref = system.actorOf(Props(classOf[DeployCoordinator], taskRunnerFactory, maxDeploys))
     DC(runnerProbe, ref)
   }
 
   case class DCwithUnderlying(probe: TestProbe, actor: ActorRef, ul: DeployCoordinator)
 
-  def createDeployCoordinatorWithUnderlying = {
+  def createDeployCoordinatorWithUnderlying(maxDeploys: Int = 5) = {
     val runnerProbe = TestProbe()
     val taskRunnerFactory = (_: ActorRefFactory) => runnerProbe.ref
-    val ref = TestActorRef(new DeployCoordinator(taskRunnerFactory))
+    val ref = TestActorRef(new DeployCoordinator(taskRunnerFactory, maxDeploys))
     DCwithUnderlying(runnerProbe, ref, ref.underlyingActor)
   }
+
+  def createRecord(
+    projectName: String = "test",
+    stage: String = "TEST",
+    buildId: String = "1",
+    deployer: String = "Tester",
+    uuid:UUID = UUID.randomUUID()
+  ) = DeployRecord(uuid, DeployParameters(Deployer(deployer), Build(projectName, buildId), Stage(stage)))
 }

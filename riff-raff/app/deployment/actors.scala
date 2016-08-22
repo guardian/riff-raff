@@ -55,7 +55,9 @@ object DeployControlActor extends Logging {
       name = "taskRunners"
     )
   }
-  lazy val deployCoordinator = system.actorOf(Props(classOf[DeployCoordinator], taskRunnerFactory))
+  lazy val deployCoordinator = system.actorOf(Props(
+    classOf[DeployCoordinator], taskRunnerFactory, concurrentDeploys
+  ))
 
   import deployment.DeployCoordinator.{CheckStopFlag, StartDeploy, StopDeploy}
 
@@ -132,7 +134,7 @@ object DeployCoordinator {
   case class CheckStopFlag(uuid: UUID) extends Message
 }
 
-class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef) extends Actor with Logging {
+class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeploys: Int) extends Actor with Logging {
   import DeployCoordinator._
   import TaskRunner._
 
@@ -147,7 +149,7 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef) extends 
   var stopFlagMap = Map.empty[UUID, Option[String]]
 
   def schedulable(record: Record): Boolean = {
-    deployStateMap.size < conf.Configuration.concurrency.maxDeploys &&
+    deployStateMap.size < maxDeploys &&
       !deployStateMap.values.exists(state =>
         state.record.parameters.build.projectName == record.parameters.build.projectName &&
           state.record.parameters.stage == record.parameters.stage)
