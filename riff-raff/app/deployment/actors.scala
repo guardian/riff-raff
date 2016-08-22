@@ -3,7 +3,7 @@ package deployment
 import java.io.File
 import java.util.UUID
 
-import _root_.resources.LookupSelector
+import resources.LookupSelector
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor._
 import akka.pattern.ask
@@ -46,7 +46,18 @@ object DeployControlActor extends Logging {
   )
   lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
 
-  lazy val deployCoordinator = system.actorOf(Props[DeployCoordinator])
+  lazy val taskRunnerFactory = { context:ActorRefFactory =>
+    context.actorOf(
+      props = RoundRobinPool(
+        concurrentDeploys,
+        supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
+      ).props(Props[TaskRunner].withDispatcher("akka.task-dispatcher")),
+      name = "taskRunners"
+    )
+  }
+  lazy val deployCoordinator = system.actorOf(Props(
+    classOf[DeployCoordinator], taskRunnerFactory, concurrentDeploys
+  ))
 
   import deployment.DeployCoordinator.{CheckStopFlag, StartDeploy, StopDeploy}
 
@@ -123,7 +134,7 @@ object DeployCoordinator {
   case class CheckStopFlag(uuid: UUID) extends Message
 }
 
-class DeployCoordinator extends Actor with Logging {
+class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeploys: Int) extends Actor with Logging {
   import DeployCoordinator._
   import TaskRunner._
 
@@ -131,22 +142,17 @@ class DeployCoordinator extends Actor with Logging {
     case _ => Restart
   }
 
-  val taskStrategy = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute) { case _ => Restart }
-  val runners = context.actorOf(
-    RoundRobinPool(conf.Configuration.concurrency.maxDeploys, supervisorStrategy = taskStrategy)
-      .props(Props[TaskRunner].withDispatcher("akka.task-dispatcher")), "taskRunners"
-  )
+  val runners = runnerFactory(context)
 
   var deployStateMap = Map.empty[UUID, DeployRunState]
   var deferredDeployQueue = ListBuffer[DeployCoordinator.Message]()
   var stopFlagMap = Map.empty[UUID, Option[String]]
 
   def schedulable(record: Record): Boolean = {
-    deployStateMap.size < conf.Configuration.concurrency.maxDeploys &&
-      deployStateMap.values.find(state =>
+    deployStateMap.size < maxDeploys &&
+      !deployStateMap.values.exists(state =>
         state.record.parameters.build.projectName == record.parameters.build.projectName &&
-          state.record.parameters.stage == record.parameters.stage
-      ).isEmpty
+          state.record.parameters.stage == record.parameters.stage)
   }
 
   def ifStopFlagClear[T](state: DeployRunState)(block: => T): Option[T] = {
@@ -280,7 +286,7 @@ class TaskRunner extends Actor with Logging {
       }
 
 
-    case RunTask(record, task, deployReporter, queueTime) => {
+    case RunTask(record, task, deployReporter, queueTime) =>
       import DeployMetricsActor._
       deployMetricsProcessor ! TaskStart(record.uuid, task.id, queueTime, new DateTime())
       log.debug("Running task %d" format task.id)
@@ -309,11 +315,9 @@ class TaskRunner extends Actor with Logging {
       } finally {
         deployMetricsProcessor ! TaskComplete(record.uuid, task.id, new DateTime())
       }
-    }
 
-    case RemoveArtifact(artifactDir) => {
+    case RemoveArtifact(artifactDir) =>
       log.debug("Delete artifact dir")
       Path(artifactDir).delete()
-    }
   }
 }
