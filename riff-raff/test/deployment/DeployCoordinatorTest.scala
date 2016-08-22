@@ -9,15 +9,14 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.typesafe.config.ConfigFactory
 import deployment.DeployCoordinator.{CheckStopFlag, StartDeploy, StopDeploy}
 import deployment.TaskRunner._
-import magenta.tasks.{HealthcheckGrace, S3Upload, SayHello, SuspendAlarmNotifications}
-import magenta.{Build, DeployContext, DeployParameters, Deployer, DeploymentPackage, Host, KeyRing, Project, Stage}
+import magenta.tasks._
+import magenta.{Build, DeployContext, DeployParameters, Deployer, Host, KeyRing, NamedStack, Project, Stage}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Success
 
 object DeployCoordinatorTest {
   lazy val testConfig = ConfigFactory.parseMap(
@@ -90,7 +89,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = DeployContext(record.uuid, record.parameters, Project(), List(S3Upload("test-bucket", Seq())), prepareDeploy.reporter)
+    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
     dc.probe.reply(DeployReady(record, context))
     dc.probe.expectMsgPF(){
       case RunTask(r, t, _, _) =>
@@ -105,7 +104,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = DeployContext(record.uuid, record.parameters, Project(), List(S3Upload("test-bucket", Seq())), prepareDeploy.reporter)
+    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
     dc.probe.reply(TaskCompleted(record, runTask.task))
@@ -122,7 +121,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! StartDeploy(record)
     dc.actor ! StartDeploy(recordTwo)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = DeployContext(record.uuid, record.parameters, Project(), List(S3Upload("test-bucket", Seq())), prepareDeploy.reporter)
+    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
     dc.probe.reply(TaskCompleted(record, runTask.task))
@@ -142,7 +141,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
       SayHello(Host("testHost")),
       HealthcheckGrace(1000)
     )
-    val context = DeployContext(record.uuid, record.parameters, Project(), tasks, prepareDeploy.reporter)
+    val context = createContext(prepareDeploy, tasks)
 
     dc.probe.reply(DeployReady(record, context))
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
@@ -171,13 +170,13 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
       SayHello(Host("testHost")),
       HealthcheckGrace(1000)
     )
-    val context = DeployContext(record.uuid, record.parameters, Project(), tasks, prepareDeploy.reporter)
+    val context = createContext(prepareDeploy, tasks)
 
     dc.probe.reply(DeployReady(record, context))
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
     runS3Upload.task.task should be(S3Upload("test-bucket", Seq()))
 
-    dc.probe.reply(TaskFailed(runS3Upload.record, new RuntimeException("Something bad happened")))
+    dc.probe.reply(TaskFailed(runS3Upload.record, Some(runS3Upload.task), new RuntimeException("Something bad happened")))
     dc.probe.expectNoMsg()
     dc.ul.deployStateMap.keySet shouldNot contain(record.uuid)
   }
@@ -227,6 +226,18 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     stage: String = "TEST",
     buildId: String = "1",
     deployer: String = "Tester",
+    stacks: Seq[String] = Seq("test"),
     uuid:UUID = UUID.randomUUID()
-  ) = DeployRecord(uuid, DeployParameters(Deployer(deployer), Build(projectName, buildId), Stage(stage)))
+  ) = DeployRecord(uuid,
+    DeployParameters(Deployer(deployer),
+      Build(projectName, buildId),
+      Stage(stage),
+      stacks = stacks.map(NamedStack.apply)
+    )
+  )
+
+  def createContext(prepareDeploy: PrepareDeploy, tasks: List[Task]) = {
+    val taskGraph = TaskGraph.toTaskGraph(tasks, prepareDeploy.record.parameters.stacks.head)
+    DeployContext(prepareDeploy.record.uuid, prepareDeploy.record.parameters, Project(), taskGraph, prepareDeploy.reporter)
+  }
 }

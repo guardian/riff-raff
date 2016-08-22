@@ -124,16 +124,16 @@ case class DeployRunState(
   completed: Set[TaskReference] = Set.empty
 ) {
   lazy val taskGraph = context.map(_.tasks).getOrElse(Graph.empty)
+  lazy val allTasks = taskGraph.nodes.toOuter.flatMap(_.taskReference)
 
   def predecessors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diPredecessors.flatMap(_.value.taskReference)
   def successors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diSuccessors.flatMap(_.value.taskReference)
-  def lastTask(task: TaskNode): Boolean = {
-    executing.isEmpty && taskGraph.get(task).diSuccessors.map(_.value) == Set(EndMarker)
-  }
+  def isCompleted: Boolean = allTasks == completed
+  def isExecuting: Boolean = executing.nonEmpty
   def firstTasks: Set[TaskReference] = successors(taskGraph.get(StartMarker))
   def nextTasks(task: TaskReference): Option[Set[TaskReference]] = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
-    if (lastTask(task)) None
+    if (isCompleted) None
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
@@ -149,6 +149,7 @@ case class DeployRunState(
   override def toString: String = {
     s"""
        |UUID: ${record.uuid.toString}
+       |Total: ${allTasks.size}
        |Executing: ${executing.mkString("; ")}
        |Completed: ${completed.size}
      """.stripMargin
@@ -256,10 +257,28 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
         }
       }
 
-    case TaskFailed(record, task, exception) =>
+    case TaskFailed(record, maybeTask, exception) =>
       log.debug("Task failed")
       deployStateMap.get(record.uuid).foreach{ state =>
-        if (task.forall(state.lastTask)) cleanup(state)
+        log.debug(s"State: $state")
+        maybeTask match {
+          case None =>
+            // failed during preparation - no tasks started
+            log.debug("Failed during prep, cleaning up")
+            cleanup(state)
+          case Some(task) =>
+            // failed whilst running a task
+            val newState = state.withCompleted(task)
+            deployStateMap += (record.uuid -> newState)
+            log.debug(s"New state: $newState")
+
+            if (!newState.isExecuting) {
+              log.debug("Failed during task but none left executing - cleaning up")
+              cleanup(newState)
+            } else {
+              log.debug("Failed during task and others still running - deferring clean up")
+            }
+        }
       }
 
     case CheckStopFlag(uuid) =>
@@ -341,10 +360,15 @@ class TaskRunner extends Actor with Logging {
         }
         DeployReporter.withFailureHandling(deployReporter) { safeReporter =>
           safeReporter.taskContext(task.task) { taskReporter =>
-            // TODO: remove fake work here
-//            val sleepTime = Random.nextInt(10)
-//            log.info(s"Would execute ${task.task} here. Sleeping for $sleepTime seconds")
-//            Thread.sleep(sleepTime * 1000)
+//            // TODO: remove fake work here
+//            task.task match {
+//              case DoubleSize(_, _, stack) if stack.nameOption == Some("flexible") =>
+//                taskReporter.fail("I'm failing here to see what happens...")
+//              case _ =>
+//                val sleepTime = Random.nextInt(10)
+//                log.info(s"Would execute ${task.task} here. Sleeping for $sleepTime seconds")
+//                Thread.sleep(sleepTime * 1000)
+//            }
             task.task.execute(taskReporter, stopFlagAsker)
           }
         }

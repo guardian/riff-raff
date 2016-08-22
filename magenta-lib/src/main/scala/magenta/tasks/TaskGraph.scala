@@ -49,12 +49,10 @@ object TaskGraph {
       } else {
         // if we've visited all the predecessors then follow all the successors
         val successors = taskGraph.get(node).diSuccessors.toList.sortBy{ succ =>
-          println(s"Stack params: $stackParameters")
           val sortOption = succ.value.taskReference.map { ref =>
             // sort on the location of this stack in the parameter list and then the task ID (meaningless but deterministic)
             (stackParameters.indexOf(ref.stack), ref.id)
           }
-          println(s"Sorting on $sortOption")
           sortOption
         }
         successors.foldLeft(List(node)){ case (acc, successor) =>
