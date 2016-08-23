@@ -121,19 +121,20 @@ case class DeployRunState(
   reporter: DeployReporter,
   context: Option[DeployContext] = None,
   executing: Set[TaskReference] = Set.empty,
-  completed: Set[TaskReference] = Set.empty
+  completed: Set[TaskReference] = Set.empty,
+  failed: Set[TaskReference] = Set.empty
 ) {
   lazy val taskGraph = context.map(_.tasks).getOrElse(Graph.empty)
   lazy val allTasks = taskGraph.nodes.toOuter.flatMap(_.taskReference)
 
   def predecessors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diPredecessors.flatMap(_.value.taskReference)
   def successors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diSuccessors.flatMap(_.value.taskReference)
-  def isCompleted: Boolean = allTasks == completed
+  def isFinished: Boolean = allTasks == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
   def firstTasks: Set[TaskReference] = successors(taskGraph.get(StartMarker))
   def nextTasks(task: TaskReference): Option[Set[TaskReference]] = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
-    if (isCompleted) None
+    if (isFinished) None
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
@@ -143,15 +144,26 @@ case class DeployRunState(
       Some(nextTasks)
     }
   }
+  // fail this task and all others on this path through the graph
+  def failedFrom(task: TaskReference, failed: Set[TaskReference] = Set.empty): Set[TaskReference] = {
+    if ((predecessors(task) -- failed).nonEmpty && failed.nonEmpty)
+    // if the set of predecessors has elements that are not in the failed set then it has foreign incoming paths
+      Set.empty
+    else
+      // otherwise, if there are only predecessors that we've failed then recurse
+      Set(task) ++ successors(task).flatMap(succ => failedFrom(succ, failed + task))
+  }
   def withExecuting(tasks: Set[TaskReference]) = this.copy(executing = executing ++ tasks)
   def withCompleted(task: TaskReference) = this.copy(executing = executing - task, completed = completed + task)
+  def withFailed(task: TaskReference) = this.copy(executing = executing - task, failed = failed ++ failedFrom(task))
 
   override def toString: String = {
     s"""
        |UUID: ${record.uuid.toString}
-       |Total: ${allTasks.size}
-       |Executing: ${executing.mkString("; ")}
-       |Completed: ${completed.size}
+       |#Tasks: ${allTasks.size}
+       |#Executing: ${executing.mkString("; ")}
+       |#Completed: ${completed.size} Failed: ${failed.size}
+       |#Done: ${completed.size+failed.size}
      """.stripMargin
   }
 }
@@ -188,10 +200,12 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
     stopFlagMap.contains(state.record.uuid) match {
       case true =>
         log.debug("Stop flag set")
-        val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-        DeployReporter.failAllContexts(state.reporter, stopMessage, DeployStoppedException(stopMessage))
-        log.debug("Cleaning up")
-        cleanup(state)
+        if (!state.isExecuting) {
+          val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
+          DeployReporter.failContext(state.reporter, stopMessage, DeployStoppedException(stopMessage))
+          log.debug("Cleaning up")
+          cleanup(state)
+        }
         None
 
       case false =>
@@ -268,7 +282,7 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
             cleanup(state)
           case Some(task) =>
             // failed whilst running a task
-            val newState = state.withCompleted(task)
+            val newState = state.withFailed(task)
             deployStateMap += (record.uuid -> newState)
             log.debug(s"New state: $newState")
 
@@ -296,6 +310,8 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
   }
 
   private def cleanup(state: DeployRunState) {
+    DeployReporter.finishContext(state.reporter)
+
     deferredDeployQueue.foreach(self ! _)
     deferredDeployQueue.clear()
 
@@ -358,19 +374,8 @@ class TaskRunner extends Actor with Logging {
             case t:Throwable => false
           }
         }
-        DeployReporter.withFailureHandling(deployReporter) { safeReporter =>
-          safeReporter.taskContext(task.task) { taskReporter =>
-//            // TODO: remove fake work here
-//            task.task match {
-//              case DoubleSize(_, _, stack) if stack.nameOption == Some("flexible") =>
-//                taskReporter.fail("I'm failing here to see what happens...")
-//              case _ =>
-//                val sleepTime = Random.nextInt(10)
-//                log.info(s"Would execute ${task.task} here. Sleeping for $sleepTime seconds")
-//                Thread.sleep(sleepTime * 1000)
-//            }
-            task.task.execute(taskReporter, stopFlagAsker)
-          }
+        deployReporter.taskContext(task.task) { taskReporter =>
+          task.task.execute(taskReporter, stopFlagAsker)
         }
         log.debug("Sending completed message")
         sender ! TaskCompleted(record, task)

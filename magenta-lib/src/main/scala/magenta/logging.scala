@@ -81,22 +81,14 @@ object DeployReporter {
     currentReporter.messageStack.headOption.foreach(msg => send(currentReporter, FinishContext(msg)))
     currentReporter.previousReporter
   }
-  // finish all contexts recursively
-  def finishAllContexts(currentReporter: DeployReporter) {
-    finishContext(currentReporter).foreach(finishAllContexts)
-  }
   // fail the reporter by sending a FailContext event
   def failContext(currentReporter: DeployReporter): Option[DeployReporter] = {
     currentReporter.messageStack.headOption.foreach(msg => send(currentReporter, FailContext(msg)))
     currentReporter.previousReporter
   }
-  // fail all contexts recursively
-  def failAllContexts(currentReporter: DeployReporter) {
-    failContext(currentReporter).foreach(failAllContexts)
-  }
-  def failAllContexts(currentReporter: DeployReporter, message: String, reason: Throwable) {
+  def failContext(currentReporter: DeployReporter, message: String, reason: Throwable) {
     send(currentReporter, Fail(message, reason))
-    failAllContexts(currentReporter)
+    failContext(currentReporter)
   }
 
   def withFailureHandling[T](reporter: DeployReporter)(block: DeployReporter => T): T = {
