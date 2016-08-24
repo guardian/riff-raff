@@ -5,12 +5,11 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import akka.util.Timeout
-import com.amazonaws.services.s3.AmazonS3Client
 import com.typesafe.config.ConfigFactory
 import deployment.DeployCoordinator.{CheckStopFlag, StartDeploy, StopDeploy}
 import deployment.TaskRunner._
+import magenta.Host
 import magenta.tasks._
-import magenta.{Build, DeployContext, DeployParameters, Deployer, Host, KeyRing, NamedStack, Project, Stage}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
@@ -27,8 +26,7 @@ object DeployCoordinatorTest {
 class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest", DeployCoordinatorTest.testConfig))
   with FlatSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar {
 
-  implicit val fakeKeyRing = KeyRing()
-  implicit val artifactClient = mock[AmazonS3Client]
+  import Fixtures._
 
   override def afterAll {
     TestKit.shutdownActorSystem(system)
@@ -89,7 +87,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
+    val context = createContext(List(S3Upload("test-bucket", Seq())), prepareDeploy)
     dc.probe.reply(DeployReady(record, context))
     dc.probe.expectMsgPF(){
       case RunTask(r, t, _, _) =>
@@ -104,7 +102,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
+    val context = createContext(List(S3Upload("test-bucket", Seq())), prepareDeploy)
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
     dc.probe.reply(TaskCompleted(record, runTask.task))
@@ -121,7 +119,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! StartDeploy(record)
     dc.actor ! StartDeploy(recordTwo)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val context = createContext(prepareDeploy, List(S3Upload("test-bucket", Seq())))
+    val context = createContext(List(S3Upload("test-bucket", Seq())), prepareDeploy)
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
     dc.probe.reply(TaskCompleted(record, runTask.task))
@@ -136,12 +134,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val tasks = List(
-      S3Upload("test-bucket", Seq()),
-      SayHello(Host("testHost")),
-      HealthcheckGrace(1000)
-    )
-    val context = createContext(prepareDeploy, tasks)
+    val context = createContext(threeSimpleTasks, prepareDeploy)
 
     dc.probe.reply(DeployReady(record, context))
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
@@ -165,12 +158,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
 
     dc.actor ! StartDeploy(record)
     val prepareDeploy = dc.probe.expectMsgClass(classOf[PrepareDeploy])
-    val tasks = List(
-      S3Upload("test-bucket", Seq()),
-      SayHello(Host("testHost")),
-      HealthcheckGrace(1000)
-    )
-    val context = createContext(prepareDeploy, tasks)
+    val context = createContext(threeSimpleTasks, prepareDeploy)
 
     dc.probe.reply(DeployReady(record, context))
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
@@ -219,25 +207,5 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val taskRunnerFactory = (_: ActorRefFactory) => runnerProbe.ref
     val ref = TestActorRef(new DeployCoordinator(taskRunnerFactory, maxDeploys))
     DCwithUnderlying(runnerProbe, ref, ref.underlyingActor)
-  }
-
-  def createRecord(
-    projectName: String = "test",
-    stage: String = "TEST",
-    buildId: String = "1",
-    deployer: String = "Tester",
-    stacks: Seq[String] = Seq("test"),
-    uuid:UUID = UUID.randomUUID()
-  ) = DeployRecord(uuid,
-    DeployParameters(Deployer(deployer),
-      Build(projectName, buildId),
-      Stage(stage),
-      stacks = stacks.map(NamedStack.apply)
-    )
-  )
-
-  def createContext(prepareDeploy: PrepareDeploy, tasks: List[Task]) = {
-    val taskGraph = TaskGraph.toTaskGraph(tasks, prepareDeploy.record.parameters.stacks.head)
-    DeployContext(prepareDeploy.record.uuid, prepareDeploy.record.parameters, Project(), taskGraph, prepareDeploy.reporter)
   }
 }

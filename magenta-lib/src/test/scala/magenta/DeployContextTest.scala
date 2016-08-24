@@ -19,7 +19,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
     val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
     val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
-    TaskGraph.toTaskList(context.tasks) should be(List(
+    context.tasks.toTaskList() should be(List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", lookupSingleHost.hosts.all.headOption)
     ))
@@ -43,7 +43,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter, artifactClient)
     context.execute()
-    val task = TaskGraph.toTaskList(context.tasks).head
+    val task = context.tasks.toTaskList().head
 
     verify(task, times(1)).execute(any[DeployReporter])
   }

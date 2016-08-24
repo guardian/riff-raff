@@ -2,15 +2,15 @@ package deployment
 
 import java.util.UUID
 
-import _root_.resources.LookupSelector
+import resources.LookupSelector
 import akka.actor.ActorSystem
 import akka.agent.Agent
 import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
-import magenta.artifact.{S3Artifact, S3ZipArtifact}
+import magenta.artifact.S3Artifact
 import magenta.json.JsonReader
-import magenta.tasks.{TaskGraph, Task => MagentaTask}
+import magenta.tasks.{Task => MagentaTask}
 import magenta.{Build, DeployParameters, Project, _}
 import org.joda.time.DateTime
 
@@ -90,14 +90,12 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
     val tasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
-    val allTasks = TaskGraph.toTaskList(tasks)
+    val allTasks = tasks.toTaskList()
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap(recipe =>
-      TaskGraph.toTaskList(
-        Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
-      )
+      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).toTaskList()
     ).distinct
     taskHosts(allTasks)
   }
