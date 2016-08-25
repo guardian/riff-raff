@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.fixtures.{StubTask, _}
-import magenta.tasks.{Task, TaskGraph}
+import magenta.tasks.Task
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}

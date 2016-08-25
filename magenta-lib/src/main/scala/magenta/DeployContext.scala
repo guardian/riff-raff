@@ -5,8 +5,6 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
 
-import scalax.collection.constrained.DAG
-
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,
     resourceLookup: Lookup, rootReporter: DeployReporter, artifactClient: AmazonS3): DeployContext = {
@@ -22,7 +20,7 @@ object DeployContext {
 }
 
 case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Project,
-  tasks: DAG[TaskNode], reporter: DeployReporter) {
+  tasks: TaskGraph, reporter: DeployReporter) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id

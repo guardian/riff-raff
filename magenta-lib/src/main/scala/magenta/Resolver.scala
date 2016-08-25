@@ -3,8 +3,6 @@ package magenta
 import com.amazonaws.services.s3.AmazonS3
 import magenta.tasks._
 
-import scalax.collection.constrained._
-
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
   lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs=None)).distinct
   lazy val tasks = if (disabled) Nil else preTasks ++ hostTasks
@@ -24,8 +22,8 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): DAG[TaskNode] = {
-    resolveStacks(project, parameters).map { stack =>
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): TaskGraph = {
+    resolveStacks(project, parameters).zipWithIndex.map { case (stack, order) =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
       TaskGraph(stackTasks, stack)
     }.reduce(_++_)
