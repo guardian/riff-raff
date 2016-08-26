@@ -3,7 +3,6 @@ package deployment
 import java.io.File
 import java.util.UUID
 
-import resources.LookupSelector
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor._
 import akka.pattern.ask
@@ -17,13 +16,14 @@ import magenta.artifact.S3Artifact
 import magenta.json.JsonReader
 import magenta.tasks._
 import org.joda.time.DateTime
+import resources.LookupSelector
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Random, Try}
-import scalax.collection.constrained.{DAG, Graph}
+import scala.util.Try
+import scalax.collection.constrained.Graph
 import scalax.file.Path
 
 object DeployControlActor extends Logging {
@@ -118,7 +118,7 @@ class DeployMetricsActor extends Actor with Logging {
 
 case class DeployRunState(
   record: Record,
-  reporter: DeployReporter,
+  rootReporter: DeployReporter,
   context: Option[DeployContext] = None,
   executing: Set[TaskReference] = Set.empty,
   completed: Set[TaskReference] = Set.empty,
@@ -202,7 +202,7 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
         log.debug("Stop flag set")
         if (!state.isExecuting) {
           val stopMessage = "Deploy has been stopped by %s" format stopFlagMap(state.record.uuid).getOrElse("an unknown user")
-          DeployReporter.failContext(state.reporter, stopMessage, DeployStoppedException(stopMessage))
+          DeployReporter.failContext(state.rootReporter, stopMessage, DeployStoppedException(stopMessage))
           log.debug("Cleaning up")
           cleanup(state)
         }
@@ -223,7 +223,7 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
       val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
       val state = DeployRunState(record, reporter)
       ifStopFlagClear(state) {
-        deployStateMap += (record.uuid -> state)
+        updateState(state)
         runners ! PrepareDeploy(record, reporter)
       }
 
@@ -232,66 +232,39 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
       stopFlagMap += (uuid -> Some(userName))
 
     case DeployReady(record, deployContext) =>
-      deployStateMap.get(record.uuid).foreach  { state =>
-        val newState = state.copy(
-          context = Some(deployContext)
-        )
-        deployStateMap += (record.uuid -> newState)
-        ifStopFlagClear(newState) {
-          val firstTasks = newState.firstTasks
-          firstTasks.foreach { task =>
-            log.debug(s"Starting initial tasks: $firstTasks")
-            runners ! RunTask(newState.record, task, newState.reporter, new DateTime())
-          }
-          deployStateMap += (record.uuid -> newState.withExecuting(firstTasks))
+      withUpdatedStateFor(record)(_.copy(context = Some(deployContext))) { state =>
+        ifStopFlagClear(state) {
+          runTasks(state, state.firstTasks)
         }
       }
+
+    case PreparationFailed(record, exception) =>
+      log.debug("Preparation failed")
+      withStateFor(record)(cleanup)
 
     case TaskCompleted(record, task) =>
       log.debug("Task completed")
-      deployStateMap.get(record.uuid).foreach { state =>
-        log.debug(s"State: $state")
-        val newState = state.withCompleted(task)
-        deployStateMap += (record.uuid -> newState)
-        ifStopFlagClear(newState) {
-          log.debug("Stop flag clear")
+      withUpdatedStateFor(record)(_.withCompleted(task)) { state =>
+        ifStopFlagClear(state) {
           // start next task
-          newState.nextTasks(task) match {
+          state.nextTasks(task) match {
             case Some(nextTasks) =>
-              log.debug(s"Running next tasks: $nextTasks")
-              nextTasks.foreach { task =>
-                runners ! RunTask(newState.record, task, newState.reporter, new DateTime())
-              }
-              deployStateMap += (record.uuid -> newState.withExecuting(nextTasks))
+              runTasks(state, nextTasks)
             case None =>
-              DeployReporter.finishContext(newState.reporter)
-              log.debug("Cleaning up")
-              cleanup(newState)
+              DeployReporter.finishContext(state.rootReporter)
+              cleanup(state)
           }
         }
       }
 
-    case TaskFailed(record, maybeTask, exception) =>
+    case TaskFailed(record, task, exception) =>
       log.debug("Task failed")
-      deployStateMap.get(record.uuid).foreach{ state =>
-        log.debug(s"State: $state")
-        maybeTask match {
-          case None =>
-            // failed during preparation - no tasks started
-            log.debug("Failed during prep, cleaning up")
-            cleanup(state)
-          case Some(task) =>
-            // failed whilst running a task
-            val newState = state.withFailed(task)
-            deployStateMap += (record.uuid -> newState)
-            log.debug(s"New state: $newState")
-
-            if (!newState.isExecuting) {
-              log.debug("Failed during task but none left executing - cleaning up")
-              cleanup(newState)
-            } else {
-              log.debug("Failed during task and others still running - deferring clean up")
-            }
+      withUpdatedStateFor(record)(_.withFailed(task)) { state =>
+        // failed whilst running a task
+        if (!state.isExecuting) {
+          cleanup(state)
+        } else {
+          log.debug("Failed during task and others still running - deferring clean up")
         }
       }
 
@@ -309,8 +282,30 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
       log.warn(s"Received terminate from ${actor.path}")
   }
 
+  private def runTasks(state: DeployRunState, tasks: Set[TaskReference]): Unit = {
+    log.debug(s"Running next tasks: $tasks")
+    tasks.foreach { task =>
+      runners ! RunTask(state.record, task, state.rootReporter, new DateTime())
+    }
+    updateState(state.withExecuting(tasks))
+  }
+
+  private def updateState(state: DeployRunState): DeployRunState = {
+    deployStateMap += (state.record.uuid -> state)
+    state
+  }
+
+  def withStateFor[T](record: Record)(block: DeployRunState => T) = deployStateMap.get(record.uuid).map(block)
+
+  def withUpdatedStateFor[T](record: Record)(transform: DeployRunState => DeployRunState)(block: DeployRunState => T) = {
+    deployStateMap.get(record.uuid).map { state =>
+      block(updateState(transform(state)))
+    }
+  }
+
   private def cleanup(state: DeployRunState) {
-    DeployReporter.finishContext(state.reporter)
+    log.debug("Cleaning up")
+    DeployReporter.finishContext(state.rootReporter)
 
     deferredDeployQueue.foreach(self ! _)
     deferredDeployQueue.clear()
@@ -325,7 +320,8 @@ object TaskRunner {
   trait Message
   case class RunTask(record: Record, task: TaskReference, reporter: DeployReporter, queueTime: DateTime) extends Message
   case class TaskCompleted(record: Record, task: TaskReference) extends Message
-  case class TaskFailed(record: Record, task: Option[TaskReference], exception: Throwable) extends Message
+  case class TaskFailed(record: Record, task: TaskReference, exception: Throwable) extends Message
+  case class PreparationFailed(record: Record, exception: Throwable) extends Message
 
   case class PrepareDeploy(record: Record, reporter: DeployReporter) extends Message
   case class DeployReady(record: Record, context: DeployContext) extends Message
@@ -355,7 +351,7 @@ class TaskRunner extends Actor with Logging {
       } catch {
         case t:Throwable =>
           log.debug("Preparing deploy failed")
-          sender ! TaskFailed(record, None, t)
+          sender ! PreparationFailed(record, t)
       }
 
 
@@ -382,7 +378,7 @@ class TaskRunner extends Actor with Logging {
       } catch {
         case t:Throwable =>
           log.debug("Sending failed message")
-          sender ! TaskFailed(record, Some(task), t)
+          sender ! TaskFailed(record, task, t)
       } finally {
         deployMetricsProcessor ! TaskComplete(record.uuid, task.id, new DateTime())
       }

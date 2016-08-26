@@ -164,7 +164,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
     runS3Upload.task.task should be(S3Upload("test-bucket", Seq()))
 
-    dc.probe.reply(TaskFailed(runS3Upload.record, Some(runS3Upload.task), new RuntimeException("Something bad happened")))
+    dc.probe.reply(TaskFailed(runS3Upload.record, runS3Upload.task, new RuntimeException("Something bad happened")))
     dc.probe.expectNoMsg()
     dc.ul.deployStateMap.keySet shouldNot contain(record.uuid)
   }
