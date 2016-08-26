@@ -23,10 +23,10 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 object Resolver {
 
   def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): TaskGraph = {
-    resolveStacks(project, parameters).zipWithIndex.map { case (stack, order) =>
+    resolveStacks(project, parameters).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
       TaskGraph(stackTasks, stack)
-    }.reduce(_++_)
+    }.reduce(_ joinParallel _)
   }
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {

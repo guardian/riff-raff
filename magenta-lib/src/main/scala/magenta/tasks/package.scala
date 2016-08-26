@@ -13,12 +13,12 @@ package object tasks {
   type TaskGraph = Graph[TaskNode, LDiEdge]
   /** Companion module for default (immutable) directed acyclic `Graph`. */
   object TaskGraph extends CompanionAlias[LDiEdge](dagConstraint) {
-    private def toDiEdges[T](nodes: List[T], pathInfo: PartialFunction[T, Label]): List[LDiEdge[T]] = {
+    private def toDiEdges[T](nodes: List[T], pathInfo: PartialFunction[T, TaskGraphLabel]): List[LDiEdge[T]] = {
       nodes match {
         case Nil => Nil
         case single :: Nil => Nil
         case first :: second :: tail =>
-          (first ~+> second)(pathInfo.lift(first).getOrElse(NoLabel)) :: toDiEdges(second :: tail, pathInfo)
+          (first ~+> second)(pathInfo.lift(first).getOrElse(Nowt)) :: toDiEdges(second :: tail, pathInfo)
       }
     }
 
@@ -35,12 +35,20 @@ package object tasks {
     }
   }
 
+  implicit class RichEdge(edge: TaskGraph#EdgeT) {
+    def taskGraphLabel: TaskGraphLabel = edge.label.asInstanceOf[TaskGraphLabel]
+    def pathInfo: Option[PathInfo] = taskGraphLabel match {
+      case pi:PathInfo => Some(pi)
+      case Nowt() => None
+    }
+  }
+
   implicit class RichTaskGraph(graph: TaskGraph) {
     def start: TaskGraph#NodeT = graph.get(StartMarker)
     def end: TaskGraph#NodeT = graph.get(EndMarker)
 
     // traverse graph to build flat list
-    def toTaskList(stackParameters: Seq[Stack] = Nil): List[Task] = {
+    def toTaskList: List[Task] = {
       def traverseFrom(node: TaskNode, visited: Set[TaskNode]): List[TaskNode] = {
         val predecessors: Set[TaskNode] = graph.get(node).diPredecessors.map(_.value)
         if ((predecessors -- visited).nonEmpty) {
@@ -48,32 +56,26 @@ package object tasks {
           Nil
         } else {
           // if we've visited all the predecessors then follow all the successors
-          val successors = graph.get(node).diSuccessors.toList.sortBy{ succ =>
-            val sortOption = succ.value.taskReference.map { ref =>
-              // sort on the location of this stack in the parameter list and then the task ID (meaningless but deterministic)
-              (stackParameters.indexOf(ref.stack), ref.id)
-            }
-            sortOption
-          }
+          val successors = graph.get(node).outgoing.toList.sortBy{ edge =>
+            // order by the priority of the edge
+            edge.pathInfo.map(_.priority)
+          }.map(_.to)
           successors.foldLeft(List(node)){ case (acc, successor) =>
             acc ::: traverseFrom(successor, visited ++ acc)
           }
         }
       }
 
-      val nodes = traverseFrom(graph.get(StartMarker), Set.empty)
+      val nodes = traverseFrom(graph.start, Set.empty)
       nodes.flatMap(_.taskReference).map(_.task)
     }
 
-    def composite(graph2: TaskGraph): TaskGraph = {
-      val maxPriority = graph.get(StartMarker).outgoing.flatMap(_.label match {
-        case PathInfo(_, priority) => Some(priority)
-        case NoLabel() => None
-      }).max
-      graph ++ graph2.get(StartMarker).outgoing.foldLeft(graph2){ case(g, edge) =>
-        val newLabel = edge.label match {
+    def joinParallel(graph2: TaskGraph): TaskGraph = {
+      val maxPriority = graph.start.outgoing.flatMap(_.pathInfo).map(_.priority).max
+      graph ++ graph2.start.outgoing.foldLeft(graph2){ case(g, edge) =>
+        val newLabel = edge.taskGraphLabel match {
           case PathInfo(name, priority) => PathInfo(name, priority + maxPriority)
-          case NoLabel() => NoLabel
+          case Nowt() => Nowt()
         }
         val newEdge = (edge.from.value ~+> edge.to.value)(newLabel)
         g - edge + newEdge

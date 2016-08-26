@@ -90,12 +90,12 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
     val tasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
-    val allTasks = tasks.toTaskList()
+    val allTasks = tasks.toTaskList
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap(recipe =>
-      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).toTaskList()
+      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).toTaskList
     ).distinct
     taskHosts(allTasks)
   }

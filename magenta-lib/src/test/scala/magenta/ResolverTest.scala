@@ -48,7 +48,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe), reporter, artifactClient)
 
-    val taskList: List[Task] = tasks.toTaskList()
+    val taskList: List[Task] = tasks.toTaskList
     taskList.size should be (1)
     taskList should be (List(
       S3Upload("test", Seq((new S3Package("artifact-bucket","tmp/123/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
@@ -66,7 +66,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "generate the tasks from the actions supplied" in {
     val taskGraph = Resolver.resolve(project(baseRecipe), lookupSingleHost, parameters(baseRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -75,7 +75,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   it should "only generate tasks for hosts that have apps" in {
     val taskGraph = Resolver.resolve(project(baseRecipe),
       stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -83,7 +83,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "generate tasks for all hosts with app" in {
     val taskGraph = Resolver.resolve(project(baseRecipe), lookupTwoHosts, parameters(baseRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_one per host task on host2", Some(host2))
@@ -109,7 +109,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val lookupMultiHost = stubLookup(List(host1, host2WithApp2))
 
     val taskGraph = Resolver.resolve(project(multiRoleRecipe), lookupMultiHost, parameters(multiRoleRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -127,7 +127,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     )
 
     val taskGraph = Resolver.resolve(project(recipe), lookupTwoHosts, parameters(recipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -145,7 +145,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       dependsOn = List("one"))
 
     val taskGraph = Resolver.resolve(project(mainRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("main_init_action per app task"),
@@ -167,7 +167,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       dependsOn = List("two", "one"))
 
     val taskGraph = Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("init_action_two per app task"),
@@ -199,7 +199,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       reporter,
       artifactClient
     )
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
     ))
@@ -207,7 +207,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "observe ordering of hosts in deployInfo" in {
     val taskGraph = Resolver.resolve(project(baseRecipe), stubLookup(List(host2, host1)), parameters(baseRecipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host2", Some(host2)),
       StubTask("action_one per host task on host1", Some(host1))
@@ -226,7 +226,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")(pkg)))
 
     val taskGraph = Resolver.resolve(project(recipe), stubLookup(List(host2, host1)), parameters(recipe), reporter, artifactClient)
-    taskGraph.toTaskList() should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("with conn", Some(host2 as "user")),
       StubTask("without conn", Some(host2)),
       StubTask("with conn", Some(host1 as "user")),
@@ -245,7 +245,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
-    taskGraph.toTaskList(proj.defaultStacks) should be (List(
+    taskGraph.toTaskList should be (List(
       StubTask("stacked", stack = Some(NamedStack("foo"))),
       StubTask("stacked", stack = Some(NamedStack("bar"))),
       StubTask("stacked", stack = Some(NamedStack("monkey"))),

@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{Host, KeyRing, NamedStack, UnnamedStack}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, ShouldMatchers}
+import scala.language.existentials
 
 class TaskGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
@@ -13,23 +14,23 @@ class TaskGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar {
     val graph = TaskGraph(threeSimpleTasks, UnnamedStack)
     graph.nodes.size should be(5)
     graph.edges.size should be(4)
-    graph.toTaskList() should be(threeSimpleTasks)
+    graph.toTaskList should be(threeSimpleTasks)
   }
 
   it should "label the first edge" in {
     val graph = TaskGraph(threeSimpleTasks, NamedStack("bobbins"))
     graph.start.outgoing.size should be(1)
-    val label = graph.start.outgoing.head.label.asInstanceOf[Label]
+    val label = graph.start.outgoing.head.taskGraphLabel.asInstanceOf[TaskGraphLabel]
     label should be(PathInfo("bobbins", 1))
   }
 
   it should "merge two graphs together" in {
     val graph = TaskGraph(threeSimpleTasks, NamedStack("bobbins"))
     val graph2 = TaskGraph(threeSimpleTasks, NamedStack("bobbins-the-second"))
-    val mergedGraph = graph.composite(graph2)
+    val mergedGraph = graph.joinParallel(graph2)
     val outgoing = mergedGraph.start.outgoing
     outgoing.size should be(2)
-    val labels = outgoing.map(_.label.asInstanceOf[Label])
+    val labels = outgoing.map(_.taskGraphLabel.asInstanceOf[TaskGraphLabel])
     labels should contain(PathInfo("bobbins", 1))
     labels should contain(PathInfo("bobbins-the-second", 2))
   }
@@ -37,20 +38,20 @@ class TaskGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar {
   it should "merge two complex graphs together" in {
     val graph = TaskGraph(threeSimpleTasks, NamedStack("bobbins"))
     val graph2 = TaskGraph(threeSimpleTasks, NamedStack("bobbins-the-second"))
-    val joinedGraph = graph.composite(graph2)
+    val joinedGraph = graph.joinParallel(graph2)
     val graph3 = TaskGraph(threeSimpleTasks, NamedStack("bobbins-the-third"))
     val graph4 = TaskGraph(threeSimpleTasks, NamedStack("bobbins-the-fourth"))
-    val joinedGraph2 = graph3.composite(graph4)
-    val mergedGraph = joinedGraph.composite(joinedGraph2)
+    val joinedGraph2 = graph3.joinParallel(graph4)
+    val mergedGraph = joinedGraph.joinParallel(joinedGraph2)
     val outgoing = mergedGraph.start.outgoing
     outgoing.size should be(4)
-    val labels = outgoing.map(_.label.asInstanceOf[Label])
+    val labels = outgoing.map(_.taskGraphLabel.asInstanceOf[TaskGraphLabel])
     labels should contain(PathInfo("bobbins", 1))
     labels should contain(PathInfo("bobbins-the-second", 2))
     labels should contain(PathInfo("bobbins-the-third", 3))
     labels should contain(PathInfo("bobbins-the-fourth", 4))
 
-    joinedGraph.composite(graph3).composite(graph4) should be(mergedGraph)
+    joinedGraph.joinParallel(graph3).joinParallel(graph4) should be(mergedGraph)
   }
 
   val threeSimpleTasks = List(
