@@ -131,7 +131,7 @@ case class DeployRunState(
   def successors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diSuccessors.flatMap(_.value.taskReference)
   def isFinished: Boolean = allTasks == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
-  def firstTasks: Set[TaskReference] = successors(taskGraph.start)
+  def firstTasks: Set[TaskReference] = successors(taskGraph.start.value)
   def nextTasks(task: TaskReference): Option[Set[TaskReference]] = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
     if (isFinished) None

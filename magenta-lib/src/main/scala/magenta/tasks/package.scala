@@ -13,33 +13,37 @@ package object tasks {
   type TaskGraph = Graph[TaskNode, LDiEdge]
   /** Companion module for default (immutable) directed acyclic `Graph`. */
   object TaskGraph extends CompanionAlias[LDiEdge](dagConstraint) {
-    private def toDiEdges[T](nodes: List[T], pathInfo: PartialFunction[T, TaskGraphLabel]): List[LDiEdge[T]] = {
+    private def toDiEdges[T](nodes: List[T]): Set[LDiEdge[T]] = {
       nodes match {
-        case Nil => Nil
-        case single :: Nil => Nil
+        case Nil => Set.empty
+        case single :: Nil => Set.empty
         case first :: second :: tail =>
-          (first ~+> second)(pathInfo.lift(first).getOrElse(Nowt)) :: toDiEdges(second :: tail, pathInfo)
+          toDiEdges(second :: tail) + (first ~+> second)(None)
       }
     }
 
-    private def toTaskGraph[T](edges: List[LDiEdge[TaskNode]]): TaskGraph = {
+    private def toTaskGraph[T](edges: Set[LDiEdge[TaskNode]]): TaskGraph = {
       implicit val conf: Config = Acyclic
       from(Nil, edges)
     }
 
-    def apply(tasks: List[Task], stack: Stack): TaskGraph = {
-      val taskReferences = tasks.zipWithIndex.map{case (t, i) => TaskReference(t, i, stack)}
-      val nodeToInfo = stack.nameOption.map(PathInfo(_)).map(StartMarker ->).toMap[TaskNode, PathInfo]
-      val edges = toDiEdges(StartMarker :: (taskReferences :+ EndMarker), nodeToInfo)
-      toTaskGraph(edges)
+    def fromTaskList(tasks: List[Task], name: String): TaskGraph = {
+      val taskReferences = tasks.zipWithIndex.map{case (t, i) => TaskReference(t, i, name)}
+      val taskEdges: Set[LDiEdge[TaskNode]] = toDiEdges(taskReferences)
+      val startEdge: LDiEdge[TaskNode] = (StartMarker ~+> taskReferences.head) (PathStart(name))
+      val endEdge: LDiEdge[TaskNode] = (taskReferences.last ~+> EndMarker) (PathEnd(name))
+      toTaskGraph(taskEdges + startEdge + endEdge)
     }
   }
 
   implicit class RichEdge(edge: TaskGraph#EdgeT) {
-    def taskGraphLabel: TaskGraphLabel = edge.label.asInstanceOf[TaskGraphLabel]
-    def pathInfo: Option[PathInfo] = taskGraphLabel match {
-      case pi:PathInfo => Some(pi)
-      case Nowt() => None
+    def pathAnnotation: Option[PathAnnotation] = edge.label match {
+      case pa:PathAnnotation => Some(pa)
+      case _ => None
+    }
+    def pathStartPriority: Option[Int] = pathAnnotation.flatMap {
+      case PathStart(_, priority) => Some(priority)
+      case _ => None
     }
   }
 
@@ -58,7 +62,7 @@ package object tasks {
           // if we've visited all the predecessors then follow all the successors
           val successors = graph.get(node).outgoing.toList.sortBy{ edge =>
             // order by the priority of the edge
-            edge.pathInfo.map(_.priority)
+            edge.pathStartPriority
           }.map(_.to)
           successors.foldLeft(List(node)){ case (acc, successor) =>
             acc ::: traverseFrom(successor, visited ++ acc)
@@ -66,16 +70,16 @@ package object tasks {
         }
       }
 
-      val nodes = traverseFrom(graph.start, Set.empty)
+      val nodes = traverseFrom(graph.start.value, Set.empty)
       nodes.flatMap(_.taskReference).map(_.task)
     }
 
     def joinParallel(graph2: TaskGraph): TaskGraph = {
-      val maxPriority = graph.start.outgoing.flatMap(_.pathInfo).map(_.priority).max
+      val maxPriority = graph.start.outgoing.flatMap(_.pathStartPriority).max
       graph ++ graph2.start.outgoing.foldLeft(graph2){ case(g, edge) =>
-        val newLabel = edge.taskGraphLabel match {
-          case PathInfo(name, priority) => PathInfo(name, priority + maxPriority)
-          case Nowt() => Nowt()
+        val newLabel = edge.pathAnnotation match {
+          case Some(PathStart(name, priority)) => PathStart(name, priority + maxPriority)
+          case other => other
         }
         val newEdge = (edge.from.value ~+> edge.to.value)(newLabel)
         g - edge + newEdge

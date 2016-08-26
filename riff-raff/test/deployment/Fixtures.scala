@@ -36,7 +36,7 @@ object Fixtures extends MockitoSugar {
   def createContext(tasks: List[Task], prepareDeploy: PrepareDeploy): DeployContext =
     createContext(tasks, prepareDeploy.record, prepareDeploy.reporter)
   def createContext(tasks: List[Task], record: Record, reporter: DeployReporter): DeployContext = {
-    val taskGraph = TaskGraph(tasks, record.parameters.stacks.head)
+    val taskGraph = TaskGraph.fromTaskList(tasks, record.parameters.stacks.head.name)
     DeployContext(record.uuid, record.parameters, Project(), taskGraph, reporter)
   }
 
