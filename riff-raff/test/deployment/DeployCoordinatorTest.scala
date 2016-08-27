@@ -105,7 +105,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val context = createContext(List(S3Upload("test-bucket", Seq())), prepareDeploy)
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
-    dc.probe.reply(TaskCompleted(record, runTask.task))
+    dc.probe.reply(TaskCompleted(record, runTask.reporter, runTask.task))
     dc.probe.expectNoMsg()
 
     dc.ul.deployStateMap.keys shouldNot contain(record.uuid)
@@ -122,7 +122,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val context = createContext(List(S3Upload("test-bucket", Seq())), prepareDeploy)
     dc.probe.reply(DeployReady(record, context))
     val runTask = dc.probe.expectMsgClass(classOf[RunTask])
-    dc.probe.reply(TaskCompleted(record, runTask.task))
+    dc.probe.reply(TaskCompleted(record, runTask.reporter, runTask.task))
 
     val prepareDeployTwo = dc.probe.expectMsgClass(classOf[PrepareDeploy])
     prepareDeployTwo.record should be(recordTwo)
@@ -140,15 +140,15 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
     runS3Upload.task.task should be(S3Upload("test-bucket", Seq()))
 
-    dc.probe.reply(TaskCompleted(runS3Upload.record, runS3Upload.task))
+    dc.probe.reply(TaskCompleted(runS3Upload.record, runS3Upload.reporter, runS3Upload.task))
     val runSayHello = dc.probe.expectMsgClass(classOf[RunTask])
     runSayHello.task.task should be(SayHello(Host("testHost")))
 
-    dc.probe.reply(TaskCompleted(runSayHello.record, runSayHello.task))
+    dc.probe.reply(TaskCompleted(runSayHello.record, runSayHello.reporter, runSayHello.task))
     val runGrace = dc.probe.expectMsgClass(classOf[RunTask])
     runGrace.task.task should be(HealthcheckGrace(1000))
 
-    dc.probe.reply(TaskCompleted(runGrace.record, runGrace.task))
+    dc.probe.reply(TaskCompleted(runGrace.record, runGrace.reporter, runGrace.task))
     dc.probe.expectNoMsg()
   }
 
@@ -164,7 +164,8 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val runS3Upload = dc.probe.expectMsgClass(classOf[RunTask])
     runS3Upload.task.task should be(S3Upload("test-bucket", Seq()))
 
-    dc.probe.reply(TaskFailed(runS3Upload.record, runS3Upload.task, new RuntimeException("Something bad happened")))
+    dc.probe.reply(TaskFailed(runS3Upload.record, runS3Upload.reporter,
+      runS3Upload.task, new RuntimeException("Something bad happened")))
     dc.probe.expectNoMsg()
     dc.ul.deployStateMap.keySet shouldNot contain(record.uuid)
   }

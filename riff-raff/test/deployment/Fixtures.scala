@@ -18,6 +18,14 @@ object Fixtures extends MockitoSugar {
     HealthcheckGrace(1000)
   )
 
+  val simpleGraph = {
+    val twoTasks = List(
+      S3Upload("test-bucket", Seq()),
+      HealthcheckGrace(1000)
+    )
+    TaskGraph.fromTaskList(twoTasks, "branch one") joinParallel TaskGraph.fromTaskList(twoTasks, "branch two")
+  }
+
   def createRecord(
     projectName: String = "test",
     stage: String = "TEST",
@@ -36,7 +44,9 @@ object Fixtures extends MockitoSugar {
   def createContext(tasks: List[Task], prepareDeploy: PrepareDeploy): DeployContext =
     createContext(tasks, prepareDeploy.record, prepareDeploy.reporter)
   def createContext(tasks: List[Task], record: Record, reporter: DeployReporter): DeployContext = {
-    val taskGraph = TaskGraph.fromTaskList(tasks, record.parameters.stacks.head.name)
+    createContext(TaskGraph.fromTaskList(tasks, record.parameters.stacks.head.name), record, reporter)
+  }
+  def createContext(taskGraph: TaskGraph, record: Record, reporter: DeployReporter): DeployContext = {
     DeployContext(record.uuid, record.parameters, Project(), taskGraph, reporter)
   }
 

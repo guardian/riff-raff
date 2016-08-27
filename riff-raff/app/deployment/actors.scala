@@ -116,6 +116,14 @@ class DeployMetricsActor extends Actor with Logging {
   }
 }
 
+object DeployRunState {
+  type TaskWithAnnotation = (TaskReference, Option[PathAnnotation])
+  sealed trait NextResult
+  case class Tasks(tasks: List[TaskWithAnnotation]) extends NextResult
+  case class FinishPath() extends NextResult
+  case class FinishDeploy() extends NextResult
+}
+
 case class DeployRunState(
   record: Record,
   rootReporter: DeployReporter,
@@ -124,24 +132,38 @@ case class DeployRunState(
   completed: Set[TaskReference] = Set.empty,
   failed: Set[TaskReference] = Set.empty
 ) {
+  import DeployRunState._
+
   lazy val taskGraph = context.map(_.tasks).getOrElse(Graph.empty)
   lazy val allTasks = taskGraph.nodes.toOuter.flatMap(_.taskReference)
 
   def predecessors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diPredecessors.flatMap(_.value.taskReference)
-  def successors(task: TaskNode): Set[TaskReference] = taskGraph.get(task).diSuccessors.flatMap(_.value.taskReference)
+  def successors(task: TaskNode): List[TaskWithAnnotation] = {
+    taskGraph.get(task).outgoing.toList.sortBy(_.pathStartPriority).flatMap{ edge =>
+      edge.to.value.taskReference.map(_ -> edge.pathAnnotation)
+    }
+  }
   def isFinished: Boolean = allTasks == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
-  def firstTasks: Set[TaskReference] = successors(taskGraph.start.value)
-  def nextTasks(task: TaskReference): Option[Set[TaskReference]] = {
+  // these two functions can return a number of things
+  // 1. A list of tasks with any path annotation that led to them in the graph
+  // 2. Nothing at all
+  // typically, first will only
+  def first: Tasks = Tasks(successors(taskGraph.start.value))
+  def next(task: TaskReference): NextResult = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
-    if (isFinished) None
+    if (isFinished) FinishDeploy()
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextTaskCandidates = successors(task) -- completed -- executing
+      val nextTaskCandidates = successors(task).filterNot{ case (t, _) => (completed ++ executing).contains(t)}
       // now filter for only tasks whose predecessors are all completed
-      val nextTasks = nextTaskCandidates.filter { task => (predecessors(task) -- completed).isEmpty }
-      Some(nextTasks)
+      val nextTasks = nextTaskCandidates.filter { case (t, _) => (predecessors(t) -- completed).isEmpty }
+      if (nextTasks.nonEmpty) {
+        Tasks(nextTasks)
+      } else {
+        FinishPath()
+      }
     }
   }
   // fail this task and all others on this path through the graph
@@ -151,7 +173,7 @@ case class DeployRunState(
       Set.empty
     else
       // otherwise, if there are only predecessors that we've failed then recurse
-      Set(task) ++ successors(task).flatMap(succ => failedFrom(succ, failed + task))
+      Set(task) ++ successors(task).flatMap{case (succ, _) => failedFrom(succ, failed + task)}
   }
   def withExecuting(tasks: Set[TaskReference]) = this.copy(executing = executing ++ tasks)
   def withCompleted(task: TaskReference) = this.copy(executing = executing - task, completed = completed + task)
@@ -234,7 +256,8 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
     case DeployReady(record, deployContext) =>
       withUpdatedStateFor(record)(_.copy(context = Some(deployContext))) { state =>
         ifStopFlagClear(state) {
-          runTasks(state, state.firstTasks)
+          val temp = state.first
+          runTasks(state, state.rootReporter, temp.tasks)
         }
       }
 
@@ -242,25 +265,28 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
       log.debug("Preparation failed")
       withStateFor(record)(cleanup)
 
-    case TaskCompleted(record, task) =>
+    case TaskCompleted(record, reporter, task) =>
+      import DeployRunState._
       log.debug("Task completed")
       withUpdatedStateFor(record)(_.withCompleted(task)) { state =>
         ifStopFlagClear(state) {
-          // start next task
-          state.nextTasks(task) match {
-            case Some(nextTasks) =>
-              runTasks(state, nextTasks)
-            case None =>
-              DeployReporter.finishContext(state.rootReporter)
+          state.next(task) match {
+            case Tasks(taskMap) =>
+              runTasks(state, reporter, taskMap)
+            case FinishPath() =>
+              if (reporter != state.rootReporter) DeployReporter.finishContext(reporter)
+            case FinishDeploy() =>
+              if (reporter != state.rootReporter) DeployReporter.finishContext(reporter)
               cleanup(state)
           }
         }
       }
 
-    case TaskFailed(record, task, exception) =>
+    case TaskFailed(record, reporter, task, exception) =>
       log.debug("Task failed")
+
       withUpdatedStateFor(record)(_.withFailed(task)) { state =>
-        // failed whilst running a task
+        if (reporter != state.rootReporter) DeployReporter.failContext(reporter)
         if (!state.isExecuting) {
           cleanup(state)
         } else {
@@ -282,12 +308,21 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
       log.warn(s"Received terminate from ${actor.path}")
   }
 
-  private def runTasks(state: DeployRunState, tasks: Set[TaskReference]): Unit = {
+  private def runTasks(state: DeployRunState,
+    currentReporter: DeployReporter,
+    tasks: List[(TaskReference, Option[PathAnnotation])]
+  ): Unit = {
     log.debug(s"Running next tasks: $tasks")
-    tasks.foreach { task =>
-      runners ! RunTask(state.record, task, state.rootReporter, new DateTime())
+    tasks.foreach { case (task, maybeAnnotation) =>
+      val reporter = maybeAnnotation match {
+        case Some(PathStart(name, _)) =>
+          if (currentReporter != state.rootReporter) DeployReporter.finishContext(currentReporter)
+          DeployReporter.pushContext(Info(s"Deploy path $name"), currentReporter)
+        case _ => currentReporter
+      }
+      runners ! RunTask(state.record, task, reporter, new DateTime())
     }
-    updateState(state.withExecuting(tasks))
+    updateState(state.withExecuting(tasks.map(_._1).toSet))
   }
 
   private def updateState(state: DeployRunState): DeployRunState = {
@@ -319,8 +354,8 @@ class DeployCoordinator(val runnerFactory: ActorRefFactory => ActorRef, maxDeplo
 object TaskRunner {
   trait Message
   case class RunTask(record: Record, task: TaskReference, reporter: DeployReporter, queueTime: DateTime) extends Message
-  case class TaskCompleted(record: Record, task: TaskReference) extends Message
-  case class TaskFailed(record: Record, task: TaskReference, exception: Throwable) extends Message
+  case class TaskCompleted(record: Record, reporter: DeployReporter, task: TaskReference) extends Message
+  case class TaskFailed(record: Record, reporter: DeployReporter, task: TaskReference, exception: Throwable) extends Message
   case class PreparationFailed(record: Record, exception: Throwable) extends Message
 
   case class PrepareDeploy(record: Record, reporter: DeployReporter) extends Message
@@ -374,11 +409,11 @@ class TaskRunner extends Actor with Logging {
           task.task.execute(taskReporter, stopFlagAsker)
         }
         log.debug("Sending completed message")
-        sender ! TaskCompleted(record, task)
+        sender ! TaskCompleted(record, deployReporter, task)
       } catch {
         case t:Throwable =>
           log.debug("Sending failed message")
-          sender ! TaskFailed(record, task, t)
+          sender ! TaskFailed(record, deployReporter, task, t)
       } finally {
         deployMetricsProcessor ! TaskComplete(record.uuid, task.id, new DateTime())
       }
