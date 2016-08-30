@@ -139,7 +139,7 @@ object Deployments extends Logging with LifecycleWithoutApp {
     DeployControlActor.stopDeploy(uuid, fullName)
   }
 
-  def getStopFlag(uuid: UUID) = DeployControlActor.getDeployStopFlag(uuid)
+  def getStopFlag(uuid: UUID): Boolean = DeployControlActor.getDeployStopFlag(uuid)
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =

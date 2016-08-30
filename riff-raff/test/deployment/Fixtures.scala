@@ -42,13 +42,15 @@ object Fixtures extends MockitoSugar {
   )
 
   def createContext(tasks: List[Task], prepareDeploy: PrepareDeploy): DeployContext =
-    createContext(tasks, prepareDeploy.record, prepareDeploy.reporter)
-  def createContext(tasks: List[Task], record: Record, reporter: DeployReporter): DeployContext = {
-    createContext(TaskGraph.fromTaskList(tasks, record.parameters.stacks.head.name), record, reporter)
-  }
-  def createContext(taskGraph: TaskGraph, record: Record, reporter: DeployReporter): DeployContext = {
-    DeployContext(record.uuid, record.parameters, Project(), taskGraph, reporter)
-  }
+    createContext(TaskGraph.fromTaskList(tasks, prepareDeploy.parameters.stacks.head.name), prepareDeploy)
+  def createContext(tasks: TaskGraph, prepareDeploy: PrepareDeploy): DeployContext =
+    createContext(tasks, prepareDeploy.uuid, prepareDeploy.parameters, prepareDeploy.reporter)
+
+  def createContext(tasks: List[Task], record: Record, reporter: DeployReporter): DeployContext =
+    createContext(TaskGraph.fromTaskList(tasks, record.parameters.stacks.head.name), record.uuid, record.parameters, reporter)
+  def createContext(taskGraph: TaskGraph, uuid: UUID, parameters: DeployParameters, reporter: DeployReporter): DeployContext =
+    DeployContext(uuid, parameters, Project(), taskGraph, reporter)
+
 
   def createReporter(record: Record) = DeployReporter.rootReporterFor(record.uuid, record.parameters)
 }
