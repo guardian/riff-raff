@@ -390,17 +390,7 @@ class TaskRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Log
           stopFlagAgent().contains(uuid)
         }
         deployReporter.taskContext(task.task) { taskReporter =>
-          //task.task.execute(taskReporter, stopFlagAsker)
-          // TODO: remove fake work here
-          task.task match {
-            case DoubleSize(_, _, stack) if stack.nameOption == Some("flexible") =>
-              //taskReporter.fail("I'm failing here to see what happens...")
-            case _ =>
-              import scala.util.Random
-              val sleepTime = Random.nextInt(5)
-              log.info(s"Would execute ${task.task} here. Sleeping for $sleepTime seconds")
-              Thread.sleep(sleepTime * 1000)
-          }
+          task.task.execute(taskReporter, stopFlagAsker)
         }
         log.debug("Sending completed message")
         sender ! DeployRunner.TaskCompleted(deployReporter, task)
