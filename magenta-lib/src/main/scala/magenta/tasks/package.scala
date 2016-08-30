@@ -27,6 +27,11 @@ package object tasks {
       from(Nil, edges)
     }
 
+    def fromEdges(edges: LDiEdge[TaskNode]*): TaskGraph = {
+      implicit val conf: Config = Acyclic
+      from(Nil, edges)
+    }
+
     def fromTaskList(tasks: List[Task], name: String): TaskGraph = {
       val taskReferences = tasks.zipWithIndex.map{case (t, i) => TaskReference(t, i, name)}
       val taskEdges: Set[LDiEdge[TaskNode]] = toDiEdges(taskReferences)
