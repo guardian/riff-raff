@@ -27,8 +27,7 @@ libraryDependencies ++= Seq(
     "com.gu" %% "fastly-api-client" % "0.2.5",
     "io.reactivex" %% "rxscala" % "0.23.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.7.1",
-    "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.1",
-    "com.assembla.scala-incubator" %% "graph-constrained" % "1.11.0"
+    "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.1"
 ).map((m: ModuleID) =>
   // don't even ask why I need to do this
   m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))

@@ -42,7 +42,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), lookupSingleHost, reporter, artifactClient)
-    context.execute()
+    context.execute(reporter)
     val task = context.tasks.toTaskList.head
 
     verify(task, times(1)).execute(any[DeployReporter])
@@ -64,7 +64,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
 
-    context.execute()
+    context.execute(reporter)
 
     DeployReporter.finishContext(reporter)
 
@@ -90,7 +90,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), lookupSingleHost, reporter, artifactClient)
 
-    context.execute()
+    context.execute(reporter)
 
     DeployReporter.finishContext(reporter)
 

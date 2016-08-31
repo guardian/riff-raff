@@ -34,7 +34,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(record)
 
     dc.deployProbe.expectMsgPF(){
-      case DeployRunner.Start() =>
+      case DeployGroupRunner.Start() =>
     }
 
     dc.ul.deployRunners.keys should contain(record.uuid)
@@ -48,7 +48,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val recordTwo = createRecord(projectName="test", stage="TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
-    dc.deployProbe.expectMsgClass(classOf[DeployRunner.Start])
+    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
 
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
     dc.deployProbe.expectNoMsg()
@@ -63,11 +63,11 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val recordThree = createRecord(projectName="test3", stage="TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
-    dc.deployProbe.expectMsgClass(classOf[DeployRunner.Start])
+    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
     dc.ul.deferredDeployQueue.size should be(0)
 
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
-    dc.deployProbe.expectMsgClass(classOf[DeployRunner.Start])
+    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
     dc.ul.deferredDeployQueue.size should be(0)
 
     dc.actor ! DeployCoordinator.StartDeploy(recordThree)
@@ -84,14 +84,14 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(record)
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
 
-    dc.deployProbe.expectMsgClass(classOf[DeployRunner.Start])
+    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
     dc.ul.deferredDeployQueue.size should be(1)
     dc.ul.deferredDeployQueue.head should be(DeployCoordinator.StartDeploy(recordTwo))
 
     dc.deployProbe.expectNoMsg()
     dc.actor ! DeployCoordinator.CleanupDeploy(record.uuid)
 
-    dc.deployProbe.expectMsgClass(classOf[DeployRunner.Start])
+    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
     dc.ul.deferredDeployQueue.size should be(0)
   }
 
@@ -100,10 +100,10 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   def createDeployCoordinator(maxDeploys: Int = 5) = {
     val taskProbe = TestProbe()
     val deployProbe = TestProbe()
-    val taskRunnerFactory = (_: ActorRefFactory) => taskProbe.ref
-    val deployRunnerFactory = (_: ActorRefFactory, _: Record, _: ActorRef, _: ActorRef) => deployProbe.ref
+    val deploymentRunnerFactory = (_: ActorRefFactory, _: String) => taskProbe.ref
+    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef , _: ((ActorRefFactory, String) => ActorRef)) => deployProbe.ref
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = system.actorOf(Props(classOf[DeployCoordinator], taskRunnerFactory, deployRunnerFactory, maxDeploys, stopFlagAgent))
+    val ref = system.actorOf(Props(classOf[DeployCoordinator], deploymentRunnerFactory, deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
     DC(taskProbe, deployProbe, ref)
   }
 
@@ -112,14 +112,14 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   def createDeployCoordinatorWithUnderlying(maxDeploys: Int = 5) = {
     val taskProbe = TestProbe()
     val deployProbe = TestProbe()
-    val taskRunnerFactory = (_: ActorRefFactory) => taskProbe.ref
+    val deploymentRunnerFactory = (_: ActorRefFactory, _: String) => taskProbe.ref
     val deployRunnerRecords = mutable.Set.empty[Record]
-    val deployRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef, _: ActorRef) => {
+    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef , _: ((ActorRefFactory, String) => ActorRef)) => {
       deployRunnerRecords.add(record)
       deployProbe.ref
     }
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = TestActorRef(new DeployCoordinator(taskRunnerFactory, deployRunnerFactory, maxDeploys, stopFlagAgent))
+    val ref = TestActorRef(new DeployCoordinator(deploymentRunnerFactory, deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
     DCwithUnderlying(taskProbe, deployProbe, ref, ref.underlyingActor, deployRunnerRecords)
   }
 }

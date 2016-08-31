@@ -6,14 +6,14 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
+import magenta.graph.{DeploymentNode, StartNode}
 import magenta.json._
-import magenta.tasks.{EndMarker, PathEnd, PathStart, S3Upload, StartMarker, Task, TaskGraph, TaskReference}
+import magenta.tasks.{S3Upload, Task}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-import scalax.collection.edge.Implicits._
 import scala.language.existentials
 
 class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
@@ -265,39 +265,13 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
-    val outgoingFromStart = taskGraph.start.outgoing
-    outgoingFromStart.size should be(4)
-    val annotations = outgoingFromStart.flatMap(_.pathAnnotation)
-    val fooStart = PathStart("foo", 1)
-    annotations should contain(fooStart)
-    val barStart = PathStart("bar", 2)
-    annotations should contain(barStart)
-    val monkeyStart = PathStart("monkey", 3)
-    annotations should contain(monkeyStart)
-    val litreStart = PathStart("litre", 4)
-    annotations should contain(litreStart)
-    val taskNodes = outgoingFromStart.map(_.to.value)
-    taskNodes.size should be(4)
-    val fooTask = TaskReference(StubTask("stacked", stack = Some(NamedStack("foo"))), 0, "foo")
-    taskNodes should contain(fooTask)
-    val barTask = TaskReference(StubTask("stacked", stack = Some(NamedStack("bar"))), 0, "bar")
-    taskNodes should contain(barTask)
-    val monkeyTask = TaskReference(StubTask("stacked", stack = Some(NamedStack("monkey"))), 0, "monkey")
-    taskNodes should contain(monkeyTask)
-    val litreTask = TaskReference(StubTask("stacked", stack = Some(NamedStack("litre"))), 0, "litre")
-    taskNodes should contain(litreTask)
+    val successors = taskGraph.successors(StartNode())
+    successors.size should be(4)
 
-    // equality test here actually ignores the labels
-    taskGraph should be(TaskGraph.fromEdges(
-      (StartMarker ~+> fooTask)(fooStart),
-      (fooTask ~+> EndMarker)(PathEnd("foo")),
-      (StartMarker ~+> barTask)(barStart),
-      (barTask ~+> EndMarker)(PathEnd("bar")),
-      (StartMarker ~+> monkeyTask)(monkeyStart),
-      (monkeyTask ~+> EndMarker)(PathEnd("monkey")),
-      (StartMarker ~+> litreTask)(litreStart),
-      (litreTask ~+> EndMarker)(PathEnd("litre"))
-    ))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "foo", 1))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "bar", 2))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "monkey", 3))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "litre", 4))
   }
 
   def parameters(recipe: Recipe) =

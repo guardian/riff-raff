@@ -1,9 +1,9 @@
 package magenta
 
-import tasks._
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
+import magenta.graph.DeploymentGraph
 
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,
@@ -15,19 +15,19 @@ object DeployContext {
       rootReporter.taskList(tasks.toTaskList)
       tasks
     }
-    DeployContext(deployId, parameters, project, tasks, rootReporter)
+    DeployContext(deployId, parameters, project, tasks)
   }
 }
 
 case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Project,
-  tasks: TaskGraph, reporter: DeployReporter) {
+  tasks: DeploymentGraph) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  def execute() {
+  def execute(reporter: DeployReporter) {
     val taskList = tasks.toTaskList
     if (taskList.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 

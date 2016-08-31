@@ -1,6 +1,7 @@
 package magenta
 
 import com.amazonaws.services.s3.AmazonS3
+import magenta.graph.DeploymentGraph
 import magenta.tasks._
 
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
@@ -22,10 +23,10 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): TaskGraph = {
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): DeploymentGraph = {
     resolveStacks(project, parameters).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
-      TaskGraph.fromTaskList(stackTasks, stack.nameOption.getOrElse("unnamed"))
+      DeploymentGraph(stackTasks, stack.nameOption.getOrElse("unnamed"))
     }.reduce(_ joinParallel _)
   }
 
