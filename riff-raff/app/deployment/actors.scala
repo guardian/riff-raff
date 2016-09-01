@@ -32,15 +32,15 @@ object DeployControlActor extends Logging {
 
   lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(
-      "akka.task-dispatcher.type" -> "akka.dispatch.BalancingDispatcherConfigurator",
-      "akka.task-dispatcher.executor" -> "thread-pool-executor",
-      "akka.task-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
-      "akka.task-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
-      "akka.task-dispatcher.thread-pool-executor.core-pool-size-max" -> ("%d" format concurrentDeploys * 4),
-      "akka.task-dispatcher.thread-pool-executor.max-pool-size-min" -> ("%d" format concurrentDeploys),
-      "akka.task-dispatcher.thread-pool-executor.max-pool-size-factor" -> ("%d" format concurrentDeploys),
-      "akka.task-dispatcher.thread-pool-executor.max-pool-size-max" -> ("%d" format concurrentDeploys * 4),
-      "akka.task-dispatcher.throughput" -> "100"
+      "akka.deploy-dispatcher.type" -> "akka.dispatch.BalancingDispatcherConfigurator",
+      "akka.deploy-dispatcher.executor" -> "thread-pool-executor",
+      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
+      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
+      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-max" -> ("%d" format concurrentDeploys * 4),
+      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-min" -> ("%d" format concurrentDeploys),
+      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-factor" -> ("%d" format concurrentDeploys),
+      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-max" -> ("%d" format concurrentDeploys * 4),
+      "akka.deploy-dispatcher.throughput" -> "100"
     )
   )
   lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
@@ -48,13 +48,13 @@ object DeployControlActor extends Logging {
   lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
 
   lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
-    props = Props(classOf[DeploymentRunner], stopFlagAgent).withDispatcher("akka.task-dispatcher"),
+    props = Props(classOf[DeploymentRunner], stopFlagAgent).withDispatcher("akka.deploy-dispatcher"),
     name = s"deploymentRunner-$runnerName"
   )
 
   lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
-      props = Props(classOf[DeployGroupRunner], record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent),
+      props = Props(classOf[DeployGroupRunner], record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
 
