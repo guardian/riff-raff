@@ -2,7 +2,7 @@ package deployment
 
 import java.util.UUID
 
-import akka.actor.SupervisorStrategy.Restart
+import akka.actor.SupervisorStrategy.Stop
 import akka.actor._
 import akka.agent.Agent
 import akka.pattern.ask
@@ -14,7 +14,6 @@ import magenta._
 import magenta.artifact.S3Artifact
 import magenta.graph.{DeploymentGraph, DeploymentNode, StartNode}
 import magenta.json.JsonReader
-import magenta.tasks._
 import org.joda.time.DateTime
 import resources.LookupSelector
 
@@ -133,10 +132,16 @@ case class DeployGroupRunner(
 ) extends Actor with Logging {
   import DeployGroupRunner._
 
+  override def supervisorStrategy() = OneForOneStrategy() {
+    case throwable =>
+      log.warn("DeploymentRunner died with exception", throwable)
+      Stop
+  }
+
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+  var rootContextClosed = false
 
   var deployContext: Option[DeployContext] = None
-  var deploymentRunnerActors = Set.empty[ActorRef]
 
   var executing: Set[DeploymentNode] = Set.empty
   var completed: Set[DeploymentNode] = Set.empty
@@ -181,8 +186,20 @@ case class DeployGroupRunner(
     executing -= deployment
     failed += deployment
   }
-  private def cleanup = {
+  def finishRootContext() = if (!rootContextClosed) {
+    rootContextClosed = true
     DeployReporter.finishContext(rootReporter)
+  }
+  def failRootContext() = if (!rootContextClosed) {
+    rootContextClosed = true
+    DeployReporter.failContext(rootReporter)
+  }
+  def failRootContext(message: String, exception: Throwable) = if (!rootContextClosed) {
+    rootContextClosed = true
+    DeployReporter.failContext(rootReporter, message, exception)
+  }
+  private def cleanup = {
+    finishRootContext()
     deployCoordinator ! DeployCoordinator.CleanupDeploy(record.uuid)
     context.stop(self)
   }
@@ -203,8 +220,8 @@ case class DeployGroupRunner(
         self ! ContextCreated(createContext)
         self ! StartDeployment()
       } catch {
-        case t:Throwable =>
-          log.debug("Preparing deploy failed", t)
+        case NonFatal(t) =>
+          failRootContext("Preparing deploy failed", t)
           cleanup
       }
 
@@ -235,6 +252,7 @@ case class DeployGroupRunner(
       }
 
     case Terminated(actor) =>
+      failRootContext("DeploymentRunner unexpectedly terminated", new RuntimeException("DeploymentRunner unexpectedly terminated"))
       log.warn(s"Received terminate from ${actor.path}")
   }
 
@@ -259,8 +277,7 @@ case class DeployGroupRunner(
     try {
       honourStopFlag(rootReporter) {
         deployments.foreach { deployment =>
-          val deploymentRunner =  deploymentRunnerFactory(context, s"${record.uuid}-${deployment.pathName}-${deployment.priority}")
-          deploymentRunnerActors += deploymentRunner
+          val deploymentRunner = context.watch(deploymentRunnerFactory(context, s"${record.uuid}-${deployment.pathName}-${deployment.priority}"))
           deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
           markExecuting(deployment)
         }
@@ -286,6 +303,11 @@ case class DeployGroupRunner(
     }
   }
 
+  @scala.throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    failRootContext()
+    super.postStop()
+  }
 }
 
 object DeployCoordinator {
@@ -299,9 +321,10 @@ class DeployCoordinator(
   maxDeploys: Int, stopFlagAgent: Agent[Map[UUID, String]]
 ) extends Actor with Logging {
 
-  // TODO: Review supervisor strategy
-  override def supervisorStrategy() = OneForOneStrategy(maxNrOfRetries = 3, withinTimeRange = 1 minute ) {
-    case _ => Restart
+  override def supervisorStrategy() = OneForOneStrategy() {
+    case throwable =>
+      log.warn("DeployGroupRunner died with exception", throwable)
+      Stop
   }
 
   var deployRunners = Map.empty[UUID, (Record, ActorRef)]
@@ -334,7 +357,7 @@ class DeployCoordinator(
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
       try {
-        val deployGroupRunner = deployGroupRunnerFactory(context, record, context.self)
+        val deployGroupRunner = context.watch(deployGroupRunnerFactory(context, record, context.self))
         deployRunners += (record.uuid -> (record, deployGroupRunner))
         deployGroupRunner ! DeployGroupRunner.Start()
       } catch {
@@ -345,7 +368,10 @@ class DeployCoordinator(
       cleanup(uuid)
 
     case Terminated(actor) =>
-      log.warn(s"Received terminate from ${actor.path}")
+      val maybeUUID = deployRunners.find{case (_, (_, ref)) => ref == actor}.map(_._1)
+      log.warn(s"Received terminate from ${actor.path} (found $maybeUUID)")
+      maybeUUID.foreach(cleanup)
+
   }
 }
 
