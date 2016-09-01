@@ -23,6 +23,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
+import scala.util.control.NonFatal
 
 object DeployControlActor extends Logging {
   trait Event
@@ -49,17 +50,17 @@ object DeployControlActor extends Logging {
 
   lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
     props = Props(classOf[DeploymentRunner], stopFlagAgent).withDispatcher("akka.task-dispatcher"),
-    name = s"taskRunners-$runnerName"
+    name = s"deploymentRunner-$runnerName"
   )
 
-  lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef, taskRunners: ActorRef) =>
+  lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
-      props = Props(classOf[DeployGroupRunner], record, deployCoordinator, taskRunners, stopFlagAgent),
-      name = s"deployRunner-${record.uuid.toString}"
+      props = Props(classOf[DeployGroupRunner], record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent),
+      name = s"deployGroupRunner-${record.uuid.toString}"
     )
 
   lazy val deployCoordinator = system.actorOf(Props(
-    classOf[DeployCoordinator], deploymentRunnerFactory, deployRunnerFactory, concurrentDeploys, stopFlagAgent
+    classOf[DeployCoordinator], deployRunnerFactory, concurrentDeploys, stopFlagAgent
   ), name = "deployCoordinator")
 
   def interruptibleDeploy(record: Record) {
@@ -135,6 +136,8 @@ case class DeployGroupRunner(
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
 
   var deployContext: Option[DeployContext] = None
+  var deploymentRunnerActors = Set.empty[ActorRef]
+
   var executing: Set[DeploymentNode] = Set.empty
   var completed: Set[DeploymentNode] = Set.empty
   var failed: Set[DeploymentNode] = Set.empty
@@ -145,7 +148,7 @@ case class DeployGroupRunner(
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def firstDeployments: List[DeploymentNode] = deploymentGraph.successorDeploymentNodes(StartNode())
+  def firstDeployments: List[DeploymentNode] = deploymentGraph.successorDeploymentNodes(StartNode)
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
@@ -235,7 +238,7 @@ case class DeployGroupRunner(
       log.warn(s"Received terminate from ${actor.path}")
   }
 
-  def createContext: DeployContext = {
+  private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import Configuration.artifact.aws._
       safeReporter.info("Reading deploy.json")
@@ -253,12 +256,17 @@ case class DeployGroupRunner(
 
   private def runDeployments(deployments: List[DeploymentNode]) = {
     log.debug(s"Running next deployments: $deployments")
-    honourStopFlag(rootReporter) {
-      deployments.foreach { deployment =>
-        val deploymentRunner = deploymentRunnerFactory(context, s"${deployment.pathName}/${deployment.priority}")
-        deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
-        markExecuting(deployment)
+    try {
+      honourStopFlag(rootReporter) {
+        deployments.foreach { deployment =>
+          val deploymentRunner =  deploymentRunnerFactory(context, s"${record.uuid}-${deployment.pathName}-${deployment.priority}")
+          deploymentRunnerActors += deploymentRunner
+          deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
+          markExecuting(deployment)
+        }
       }
+    } catch {
+      case NonFatal(t) => log.error("Couldn't run deployment", t)
     }
   }
 
@@ -267,7 +275,6 @@ case class DeployGroupRunner(
       case Some(userName) =>
         log.debug("Stop flag set")
         val stopMessage = s"Deploy has been stopped by $userName"
-        if (reporter != rootReporter) DeployReporter.failContext(reporter, stopMessage, DeployStoppedException(stopMessage))
         if (!isExecuting) {
           DeployReporter.failContext(rootReporter, stopMessage, DeployStoppedException(stopMessage))
           log.debug("Cleaning up")
@@ -288,8 +295,7 @@ object DeployCoordinator {
 }
 
 class DeployCoordinator(
-  val deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
-  val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef, (ActorRefFactory, String) => ActorRef) => ActorRef,
+  val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef) => ActorRef,
   maxDeploys: Int, stopFlagAgent: Agent[Map[UUID, String]]
 ) extends Actor with Logging {
 
@@ -327,9 +333,13 @@ class DeployCoordinator(
 
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
-      val deployGroupRunner = deployGroupRunnerFactory(context, record, context.self, deploymentRunnerFactory)
-      deployRunners += (record.uuid -> (record, deployGroupRunner))
-      deployGroupRunner ! DeployGroupRunner.Start()
+      try {
+        val deployGroupRunner = deployGroupRunnerFactory(context, record, context.self)
+        deployRunners += (record.uuid -> (record, deployGroupRunner))
+        deployGroupRunner ! DeployGroupRunner.Start()
+      } catch {
+        case NonFatal(t) => log.error("Couldn't schedule deploy", t)
+      }
 
     case CleanupDeploy(uuid) =>
       cleanup(uuid)
@@ -350,27 +360,31 @@ class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor wi
   def receive = {
     case RunDeployment(uuid, deploymentNode, rootReporter, queueTime) =>
       import DeployMetricsActor._
+
+      def stopFlagAsker: Boolean = {
+        stopFlagAgent().contains(uuid)
+      }
+
       rootReporter.infoContext(s"Deployment ${deploymentNode.pathName}"){ deployReporter =>
-        deploymentNode.tasks.zipWithIndex.foreach { case (task, index) =>
-          val taskId = s"${deploymentNode.pathName}/$index"
-          deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
-          log.debug(s"Running task $taskId")
-          try {
-            def stopFlagAsker: Boolean = {
-              stopFlagAgent().contains(uuid)
+        try {
+          deploymentNode.tasks.zipWithIndex.foreach { case (task, index) =>
+            val taskId = s"${deploymentNode.pathName}/$index"
+            try {
+              log.debug(s"Running task $taskId")
+              deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
+              deployReporter.taskContext(task) { taskReporter =>
+                task.execute(taskReporter, stopFlagAsker)
+              }
+            } finally {
+              deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
             }
-            deployReporter.taskContext(task) { taskReporter =>
-              task.execute(taskReporter, stopFlagAsker)
-            }
-            log.debug("Sending completed message")
-            sender ! DeployGroupRunner.DeploymentCompleted(deploymentNode)
-          } catch {
-            case t:Throwable =>
-              log.debug("Sending failed message")
-              sender ! DeployGroupRunner.DeploymentFailed(deploymentNode, t)
-          } finally {
-            deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
           }
+          log.debug("Sending completed message")
+          sender ! DeployGroupRunner.DeploymentCompleted(deploymentNode)
+        } catch {
+          case t:Throwable =>
+            log.debug("Sending failed message")
+            sender ! DeployGroupRunner.DeploymentFailed(deploymentNode, t)
         }
       }
       context.stop(self)

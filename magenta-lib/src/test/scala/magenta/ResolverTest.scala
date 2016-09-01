@@ -265,7 +265,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
-    val successors = taskGraph.successors(StartNode())
+    val successors = taskGraph.successors(StartNode)
     successors.size should be(4)
 
     successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "foo", 1))

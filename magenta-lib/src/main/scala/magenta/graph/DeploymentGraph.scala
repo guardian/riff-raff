@@ -6,12 +6,12 @@ sealed trait Node {
   def ~>(to: Node) = Edge(this, to)
   def maybePriority: Option[Int] = None
 }
-case class StartNode() extends Node
+case object StartNode extends Node
 case class DeploymentNode(tasks: List[Task], pathName: String, priority: Int = 1) extends Node {
   override def maybePriority: Option[Int] = Some(priority)
   def incPriority(n: Int): DeploymentNode = this.copy(priority = priority + n)
 }
-case class EndNode() extends Node
+case object EndNode extends Node
 
 case class Edge(from: Node, to: Node)
 
@@ -23,12 +23,12 @@ case class Edge(from: Node, to: Node)
 object DeploymentGraph {
   def apply(tasks: List[Task], pathName: String, priority: Int = 1): DeploymentGraph = {
     val deploymentNode = DeploymentNode(tasks, pathName, priority)
-    DeploymentGraph(StartNode() ~> deploymentNode, deploymentNode ~> EndNode())
+    DeploymentGraph(StartNode ~> deploymentNode, deploymentNode ~> EndNode)
   }
 
   def apply(edges: Edge*): DeploymentGraph = DeploymentGraph(edges.toSet)
 
-  val empty = DeploymentGraph(StartNode() ~> EndNode())
+  val empty = DeploymentGraph(StartNode ~> EndNode)
 }
 
 case class DeploymentGraph(edges: Set[Edge]) {
@@ -36,8 +36,8 @@ case class DeploymentGraph(edges: Set[Edge]) {
 
   val isValid: Either[List[String], Boolean] = {
     val errors =
-      ((if (!nodes.contains(StartNode())) Some("No start node") else None) ::
-        (if (!nodes.contains(EndNode())) Some("No end node") else None) :: Nil).flatten
+      ((if (!nodes.contains(StartNode)) Some("No start node") else None) ::
+        (if (!nodes.contains(EndNode)) Some("No end node") else None) :: Nil).flatten
     if (errors.isEmpty) Right(true) else Left(errors)
   }
   assert(isValid.isRight, s"Graph isn't valid: ${isValid.left.get.mkString(", ")}")
@@ -59,8 +59,8 @@ case class DeploymentGraph(edges: Set[Edge]) {
   }
 
   def joinParallel(other: DeploymentGraph): DeploymentGraph = {
-    val maxPriority = successorDeploymentNodes(StartNode()).map(_.priority).max
-    val otherEdges = other.successorDeploymentNodes(StartNode()).foldLeft(other){ case(g, node) =>
+    val maxPriority = successorDeploymentNodes(StartNode).map(_.priority).max
+    val otherEdges = other.successorDeploymentNodes(StartNode).foldLeft(other){ case(g, node) =>
       g.replace(node, node.incPriority(maxPriority))
     }.edges
     DeploymentGraph(edges ++ otherEdges)
@@ -83,7 +83,7 @@ case class DeploymentGraph(edges: Set[Edge]) {
         }
       }
     }
-    traverseFrom(StartNode(), Set.empty)
+    traverseFrom(StartNode, Set.empty)
   }
 
   def toTaskList = toList.filterDeploymentNodes.flatMap(_.tasks)

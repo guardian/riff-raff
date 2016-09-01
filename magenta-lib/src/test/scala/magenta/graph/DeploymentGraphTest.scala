@@ -22,7 +22,7 @@ class DeploymentGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar
     val graph = DeploymentGraph(threeSimpleTasks, "bobbins")
     val graph2 = DeploymentGraph(threeSimpleTasks, "bobbins-the-second")
     val mergedGraph = graph.joinParallel(graph2)
-    val successors = mergedGraph.successors(StartNode())
+    val successors = mergedGraph.successors(StartNode)
     successors.size should be(2)
     val deploymentNodes = successors.filterDeploymentNodes.toList.sortBy(_.priority)
     deploymentNodes.head should matchPattern{case DeploymentNode(_, "bobbins", 1) =>}
@@ -37,7 +37,7 @@ class DeploymentGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar
     val graph4 = DeploymentGraph(threeSimpleTasks, "bobbins-the-fourth")
     val joinedGraph2 = graph3.joinParallel(graph4)
     val mergedGraph = joinedGraph.joinParallel(joinedGraph2)
-    val outgoing = mergedGraph.successors(StartNode())
+    val outgoing = mergedGraph.successors(StartNode)
     outgoing.size should be(4)
     joinedGraph.joinParallel(graph3).joinParallel(graph4) should be(mergedGraph)
   }

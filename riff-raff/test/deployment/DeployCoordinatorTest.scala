@@ -95,31 +95,27 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.ul.deferredDeployQueue.size should be(0)
   }
 
-  case class DC(taskProbe: TestProbe, deployProbe: TestProbe, actor: ActorRef)
+  case class DC(deployProbe: TestProbe, actor: ActorRef)
 
   def createDeployCoordinator(maxDeploys: Int = 5) = {
-    val taskProbe = TestProbe()
-    val deployProbe = TestProbe()
-    val deploymentRunnerFactory = (_: ActorRefFactory, _: String) => taskProbe.ref
-    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef , _: ((ActorRefFactory, String) => ActorRef)) => deployProbe.ref
+    val deployGroupProbe = TestProbe()
+    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef) => deployGroupProbe.ref
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = system.actorOf(Props(classOf[DeployCoordinator], deploymentRunnerFactory, deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
-    DC(taskProbe, deployProbe, ref)
+    val ref = system.actorOf(Props(classOf[DeployCoordinator], deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
+    DC(deployGroupProbe, ref)
   }
 
-  case class DCwithUnderlying(taskProbe: TestProbe, deployProbe: TestProbe, actor: ActorRef, ul: DeployCoordinator, deployRunnerRecords: mutable.Set[Record])
+  case class DCwithUnderlying(deployProbe: TestProbe, actor: ActorRef, ul: DeployCoordinator, deployRunnerRecords: mutable.Set[Record])
 
   def createDeployCoordinatorWithUnderlying(maxDeploys: Int = 5) = {
-    val taskProbe = TestProbe()
     val deployProbe = TestProbe()
-    val deploymentRunnerFactory = (_: ActorRefFactory, _: String) => taskProbe.ref
     val deployRunnerRecords = mutable.Set.empty[Record]
-    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef , _: ((ActorRefFactory, String) => ActorRef)) => {
+    val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef) => {
       deployRunnerRecords.add(record)
       deployProbe.ref
     }
     val stopFlagAgent = Agent(Map.empty[UUID, String])
-    val ref = TestActorRef(new DeployCoordinator(deploymentRunnerFactory, deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
-    DCwithUnderlying(taskProbe, deployProbe, ref, ref.underlyingActor, deployRunnerRecords)
+    val ref = TestActorRef(new DeployCoordinator(deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
+    DCwithUnderlying(deployProbe, ref, ref.underlyingActor, deployRunnerRecords)
   }
 }
