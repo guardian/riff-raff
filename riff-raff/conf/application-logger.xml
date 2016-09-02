@@ -29,6 +29,7 @@
     <!--<logger name="ci" level="DEBUG" />-->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
     <!--<logger name="persistence.MongoDatastore" level="DEBUG" />-->
+    <logger name="org.mongodb.driver.cluster" level="WARN" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>

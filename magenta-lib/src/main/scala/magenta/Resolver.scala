@@ -26,7 +26,7 @@ object Resolver {
   def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): DeploymentGraph = {
     resolveStacks(project, parameters).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
-      DeploymentGraph(stackTasks, stack.nameOption.getOrElse("unnamed"))
+      DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")
     }.reduce(_ joinParallel _)
   }
 

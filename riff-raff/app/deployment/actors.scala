@@ -32,15 +32,13 @@ object DeployControlActor extends Logging {
 
   lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(
-      "akka.deploy-dispatcher.type" -> "akka.dispatch.BalancingDispatcherConfigurator",
-      "akka.deploy-dispatcher.executor" -> "thread-pool-executor",
-      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-min" -> ("%d" format concurrentDeploys),
-      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-factor" -> ("%d" format concurrentDeploys),
-      "akka.deploy-dispatcher.thread-pool-executor.core-pool-size-max" -> ("%d" format concurrentDeploys * 4),
-      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-min" -> ("%d" format concurrentDeploys),
-      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-factor" -> ("%d" format concurrentDeploys),
-      "akka.deploy-dispatcher.thread-pool-executor.max-pool-size-max" -> ("%d" format concurrentDeploys * 4),
-      "akka.deploy-dispatcher.throughput" -> "100"
+      "akka.deploy-dispatcher.type" -> "Dispatcher",
+      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
+      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
+      "akka.deploy-dispatcher.throughput" -> "1"
     )
   )
   lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
@@ -273,11 +271,12 @@ case class DeployGroupRunner(
   }
 
   private def runDeployments(deployments: List[DeploymentNode]) = {
-    log.debug(s"Running next deployments: $deployments")
     try {
       honourStopFlag(rootReporter) {
         deployments.foreach { deployment =>
-          val deploymentRunner = context.watch(deploymentRunnerFactory(context, s"${record.uuid}-${deployment.pathName}-${deployment.priority}"))
+          val actorName = s"${record.uuid}-${context.children.size}"
+          log.debug(s"Running next deployment (${deployment.pathName}/${deployment.priority}) on actor $actorName")
+          val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
           markExecuting(deployment)
         }
@@ -305,6 +304,7 @@ case class DeployGroupRunner(
 
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
+    log.debug(s"Deployment group runner ${self.path} stopped")
     failRootContext()
     super.postStop()
   }
@@ -369,8 +369,10 @@ class DeployCoordinator(
 
     case Terminated(actor) =>
       val maybeUUID = deployRunners.find{case (_, (_, ref)) => ref == actor}.map(_._1)
-      log.warn(s"Received terminate from ${actor.path} (found $maybeUUID)")
-      maybeUUID.foreach(cleanup)
+      maybeUUID.foreach { uuid =>
+        log.warn(s"Received premature terminate from ${actor.path} (had not been cleaned up)")
+        cleanup(uuid)
+      }
 
   }
 }
@@ -382,6 +384,8 @@ object DeploymentRunner {
 
 class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
   import DeploymentRunner._
+
+  log.debug(s"New deployment runner created with path ${self.path}")
 
   def receive = {
     case RunDeployment(uuid, deploymentNode, rootReporter, queueTime) =>
@@ -413,7 +417,12 @@ class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor wi
             sender ! DeployGroupRunner.DeploymentFailed(deploymentNode, t)
         }
       }
-      context.stop(self)
 
+  }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    log.debug(s"Deployment runner ${self.path} stopped")
+    super.postStop()
   }
 }
