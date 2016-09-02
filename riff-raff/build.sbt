@@ -27,6 +27,9 @@ libraryDependencies ++= Seq(
   ws,
   "org.scalatestplus" %% "play" % "1.2.0" % "test",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.8" % "test"
+).map((m: ModuleID) =>
+  // don't even ask why I need to do this
+  m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
 )
 
 riffRaffPackageType := (packageZipTarball in Universal).value

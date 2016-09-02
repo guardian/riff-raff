@@ -28,6 +28,9 @@ libraryDependencies ++= Seq(
     "io.reactivex" %% "rxscala" % "0.23.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % "2.7.1",
     "com.fasterxml.jackson.core" % "jackson-databind" % "2.7.1"
+).map((m: ModuleID) =>
+  // don't even ask why I need to do this
+  m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
 )
 
 resourceDirectory in Compile := baseDirectory.value / "docs"
