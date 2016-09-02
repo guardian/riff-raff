@@ -268,10 +268,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val successors = taskGraph.successors(StartNode)
     successors.size should be(4)
 
-    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "foo", 1))
-    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "bar", 2))
-    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "monkey", 3))
-    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "litre", 4))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo", 1))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar", 2))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey", 3))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre", 4))
   }
 
   def parameters(recipe: Recipe) =

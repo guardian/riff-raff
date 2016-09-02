@@ -34,7 +34,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(record)
 
     dc.deployProbe.expectMsgPF(){
-      case DeployGroupRunner.Start() =>
+      case DeployGroupRunner.Start =>
     }
 
     dc.ul.deployRunners.keys should contain(record.uuid)
@@ -48,7 +48,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val recordTwo = createRecord(projectName="test", stage="TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
-    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
+    dc.deployProbe.expectMsg(DeployGroupRunner.Start)
 
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
     dc.deployProbe.expectNoMsg()
@@ -63,11 +63,11 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     val recordThree = createRecord(projectName="test3", stage="TEST")
 
     dc.actor ! DeployCoordinator.StartDeploy(record)
-    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
+    dc.deployProbe.expectMsg(DeployGroupRunner.Start)
     dc.ul.deferredDeployQueue.size should be(0)
 
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
-    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
+    dc.deployProbe.expectMsg(DeployGroupRunner.Start)
     dc.ul.deferredDeployQueue.size should be(0)
 
     dc.actor ! DeployCoordinator.StartDeploy(recordThree)
@@ -84,14 +84,14 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
     dc.actor ! DeployCoordinator.StartDeploy(record)
     dc.actor ! DeployCoordinator.StartDeploy(recordTwo)
 
-    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
+    dc.deployProbe.expectMsg(DeployGroupRunner.Start)
     dc.ul.deferredDeployQueue.size should be(1)
     dc.ul.deferredDeployQueue.head should be(DeployCoordinator.StartDeploy(recordTwo))
 
     dc.deployProbe.expectNoMsg()
     dc.actor ! DeployCoordinator.CleanupDeploy(record.uuid)
 
-    dc.deployProbe.expectMsgClass(classOf[DeployGroupRunner.Start])
+    dc.deployProbe.expectMsg(DeployGroupRunner.Start)
     dc.ul.deferredDeployQueue.size should be(0)
   }
 

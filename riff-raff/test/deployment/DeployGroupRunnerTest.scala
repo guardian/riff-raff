@@ -23,7 +23,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   it should "request the first task from a simple list is run" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ref ! DeployGroupRunner.StartDeployment()
+    dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
     firstDeployment should be(DeploymentNode(threeSimpleTasks, "test", 1))
@@ -33,7 +33,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   it should "process a list of tasks and clean up" in {
     val dr = createDeployRunner()
     prepare(dr, threeSimpleTasks)
-    dr.ref ! DeployGroupRunner.StartDeployment()
+    dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
     firstDeployment should be(DeploymentNode(threeSimpleTasks, "test", 1))
@@ -51,16 +51,16 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     firstDeployments should contain(DeploymentNode(twoTasks, "branch two", 2))
     dr.ul.markComplete(firstDeployments.head)
     val nextResult = dr.ul.nextDeployments(firstDeployments.head)
-    nextResult should be(DeployGroupRunner.FinishPath())
+    nextResult should be(DeployGroupRunner.FinishPath)
     dr.ul.markComplete(firstDeployments.tail.head)
     val nextResult2 = dr.ul.nextDeployments(firstDeployments.tail.head)
-    nextResult2 should be(DeployGroupRunner.FinishDeploy())
+    nextResult2 should be(DeployGroupRunner.FinishDeploy)
   }
 
   it should "mark a state and task as executing" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ref ! DeployGroupRunner.StartDeployment()
+    dr.ref ! DeployGroupRunner.StartDeployment
     val firstDeployments = dr.ul.firstDeployments
     firstDeployments.size should be(1)
     dr.ul.isExecuting should be(true)
@@ -71,7 +71,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   it should "mark a task as completed" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ref ! DeployGroupRunner.StartDeployment()
+    dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(runDeployment.deployment))
     dr.ul.isExecuting should be(false)
@@ -82,7 +82,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   it should "mark a task as failed" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ref ! DeployGroupRunner.StartDeployment()
+    dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
     dr.ul.isExecuting should be(false)

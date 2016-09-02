@@ -111,13 +111,13 @@ class DeployMetricsActor extends Actor with Logging {
 object DeployGroupRunner {
   sealed trait NextResult
   case class Deployments(deployments: List[DeploymentNode]) extends NextResult
-  case class FinishPath() extends NextResult
-  case class FinishDeploy() extends NextResult
+  case object FinishPath extends NextResult
+  case object FinishDeploy extends NextResult
 
   sealed trait Message
-  case class Start() extends Message
+  case object Start extends Message
   case class ContextCreated(context: DeployContext) extends Message
-  case class StartDeployment() extends Message
+  case object StartDeployment extends Message
   case class DeploymentCompleted(deploymentNode: DeploymentNode) extends Message
   case class DeploymentFailed(deploymentNode: DeploymentNode, exception: Throwable) extends Message
 }
@@ -159,7 +159,7 @@ case class DeployGroupRunner(
       first will actually only ever return the first of these.  */
   def nextDeployments(deployment: DeploymentNode): NextResult = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
-    if (isFinished) FinishDeploy()
+    if (isFinished) FinishDeploy
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
@@ -169,7 +169,7 @@ case class DeployGroupRunner(
       if (nextDeployments.nonEmpty) {
         Deployments(nextDeployments)
       } else {
-        FinishPath()
+        FinishPath
       }
     }
   }
@@ -184,20 +184,20 @@ case class DeployGroupRunner(
     executing -= deployment
     failed += deployment
   }
-  def finishRootContext() = if (!rootContextClosed) {
+  def finishRootContext() = {
     rootContextClosed = true
     DeployReporter.finishContext(rootReporter)
   }
-  def failRootContext() = if (!rootContextClosed) {
+  def failRootContext() = {
     rootContextClosed = true
     DeployReporter.failContext(rootReporter)
   }
-  def failRootContext(message: String, exception: Throwable) = if (!rootContextClosed) {
+  def failRootContext(message: String, exception: Throwable) = {
     rootContextClosed = true
     DeployReporter.failContext(rootReporter, message, exception)
   }
-  private def cleanup = {
-    finishRootContext()
+  private def cleanup() = {
+    if (!rootContextClosed) finishRootContext()
     deployCoordinator ! DeployCoordinator.CleanupDeploy(record.uuid)
     context.stop(self)
   }
@@ -213,20 +213,20 @@ case class DeployGroupRunner(
   }
 
   def receive = {
-    case Start() =>
+    case Start =>
       try {
         self ! ContextCreated(createContext)
-        self ! StartDeployment()
+        self ! StartDeployment
       } catch {
         case NonFatal(t) =>
-          failRootContext("Preparing deploy failed", t)
+          if (!rootContextClosed) failRootContext("Preparing deploy failed", t)
           cleanup
       }
 
     case ContextCreated(preparedContext) =>
       deployContext = Some(preparedContext)
 
-    case StartDeployment() =>
+    case StartDeployment =>
       runDeployments(firstDeployments)
 
     case DeploymentCompleted(deployment) =>
@@ -235,8 +235,8 @@ case class DeployGroupRunner(
       nextDeployments(deployment) match {
         case Deployments(deployments) =>
           runDeployments(deployments)
-        case FinishPath() =>
-        case FinishDeploy() =>
+        case FinishPath =>
+        case FinishDeploy =>
           cleanup
       }
 
@@ -250,7 +250,7 @@ case class DeployGroupRunner(
       }
 
     case Terminated(actor) =>
-      failRootContext("DeploymentRunner unexpectedly terminated", new RuntimeException("DeploymentRunner unexpectedly terminated"))
+      if (!rootContextClosed) failRootContext("DeploymentRunner unexpectedly terminated", new RuntimeException("DeploymentRunner unexpectedly terminated"))
       log.warn(s"Received terminate from ${actor.path}")
   }
 
@@ -305,7 +305,7 @@ case class DeployGroupRunner(
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
     log.debug(s"Deployment group runner ${self.path} stopped")
-    failRootContext()
+    if (!rootContextClosed) failRootContext()
     super.postStop()
   }
 }
@@ -359,7 +359,7 @@ class DeployCoordinator(
       try {
         val deployGroupRunner = context.watch(deployGroupRunnerFactory(context, record, context.self))
         deployRunners += (record.uuid -> (record, deployGroupRunner))
-        deployGroupRunner ! DeployGroupRunner.Start()
+        deployGroupRunner ! DeployGroupRunner.Start
       } catch {
         case NonFatal(t) => log.error("Couldn't schedule deploy", t)
       }
