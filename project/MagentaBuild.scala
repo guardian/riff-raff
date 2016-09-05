@@ -54,7 +54,7 @@ object MagentaBuild extends Build {
 
   val magentaVersion = "1.0"
 
-  implicit def string2Dequote(s: String): Object {val dequote: String} = new {
-    lazy val dequote = s.replace("\"", "")
+  implicit class RichString(val s: String) extends AnyVal {
+    def dequote = s.replace("\"", "")
   }
 }
