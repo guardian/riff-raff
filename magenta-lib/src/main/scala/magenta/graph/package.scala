@@ -1,15 +1,15 @@
 package magenta
 
 package object graph {
-  implicit class RichNodeSet(nodes: Set[Node]) {
-    def filterDeploymentNodes: Set[DeploymentNode] = nodes.flatMap{
-      case deploymentNode:DeploymentNode => Some(deploymentNode)
+  implicit class RichNodeSet[T](nodes: Set[Node[T]]) {
+    def filterMidNodes: Set[MidNode[T]] = nodes.flatMap{
+      case deploymentNode:MidNode[T] => Some(deploymentNode)
       case _ => None
     }
   }
-  implicit class RichNodeList(nodes: List[Node]) {
-    def filterDeploymentNodes: List[DeploymentNode] = nodes.flatMap{
-      case deploymentNode:DeploymentNode => Some(deploymentNode)
+  implicit class RichNodeList[T](nodes: List[Node[T]]) {
+    def filterMidNodes: List[MidNode[T]] = nodes.flatMap{
+      case deploymentNode:MidNode[T] => Some(deploymentNode)
       case _ => None
     }
   }

@@ -9,6 +9,7 @@ import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
 import magenta.artifact.S3Artifact
+import magenta.graph.DeploymentGraph
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
 import magenta.{Build, DeployParameters, Project, _}
@@ -90,13 +91,14 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
     val tasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
-    val allTasks = tasks.toTaskList
+    val allTasks = DeploymentGraph.toTaskList(tasks)
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
-    val allTasks = allRecipes.flatMap(recipe =>
-      Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient).toTaskList
-    ).distinct
+    val allTasks = allRecipes.flatMap { recipe =>
+      val graph = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+      DeploymentGraph.toTaskList(graph)
+    }.distinct
     taskHosts(allTasks)
   }
 
