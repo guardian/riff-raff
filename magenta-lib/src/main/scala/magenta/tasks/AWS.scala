@@ -2,7 +2,9 @@ package magenta.tasks
 
 import java.nio.ByteBuffer
 
+import com.amazonaws._
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
+import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
 import com.amazonaws.services.ec2.AmazonEC2Client
@@ -12,17 +14,17 @@ import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstanc
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.AmazonS3Client
-import magenta.{DeployReporter, DeploymentPackage, KeyRing, NamedStack, Stack, Stage, UnnamedStack, App}
+import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Stack, Stage, UnnamedStack}
 
 import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
-  def s3client(keyRing: KeyRing) = new AmazonS3Client(credentials(keyRing))
+  def s3client(keyRing: KeyRing) = new AmazonS3Client(provider(keyRing), clientConfiguration)
 }
 
 trait Lambda extends AWS {
   def lambdaClient(implicit keyRing: KeyRing) = {
-    val client = new AWSLambdaClient(credentials(keyRing))
+    val client = new AWSLambdaClient(provider(keyRing), clientConfiguration)
     client.setEndpoint("lambda.eu-west-1.amazonaws.com")
     client
   }
@@ -46,7 +48,7 @@ trait ASG extends AWS {
   def elb: ELB = ELB
 
   def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonAutoScalingClient(credentials(keyRing))
+    val client = new AmazonAutoScalingClient(provider(keyRing), clientConfiguration)
     client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
     client
   }
@@ -153,7 +155,7 @@ trait ASG extends AWS {
 
 trait ELB extends AWS {
   def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonElasticLoadBalancingClient(credentials(keyRing))
+    val client = new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration)
     client.setEndpoint("elasticloadbalancing.eu-west-1.amazonaws.com")
     client
   }
@@ -171,7 +173,7 @@ object ELB extends ELB
 
 trait EC2 extends AWS {
   def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonEC2Client(credentials(keyRing))
+    val client = new AmazonEC2Client(provider(keyRing), clientConfiguration)
     client.setEndpoint("ec2.eu-west-1.amazonaws.com")
     client
   }
@@ -223,4 +225,12 @@ trait AWS {
       def getCredentials = envCredentials
     }
   )
+
+  val clientConfiguration = new ClientConfiguration().
+    withRetryPolicy(new RetryPolicy(
+      PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
+      PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
+      20,
+      false
+    ))
 }
