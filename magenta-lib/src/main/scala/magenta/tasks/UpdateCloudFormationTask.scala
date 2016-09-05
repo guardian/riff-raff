@@ -211,7 +211,7 @@ trait CloudFormation extends AWS {
   val region = Regions.EU_WEST_1
   def client(implicit keyRing: KeyRing) = {
     com.amazonaws.regions.Region.getRegion(region).createClient(
-      classOf[AmazonCloudFormationAsyncClient], provider(keyRing), null
+      classOf[AmazonCloudFormationAsyncClient], provider(keyRing), clientConfiguration
     )
   }
 

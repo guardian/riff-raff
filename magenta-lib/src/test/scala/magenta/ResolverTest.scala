@@ -1,20 +1,20 @@
 package magenta
 
-
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
+import magenta.graph.{DeploymentNode, StartNode}
 import magenta.json._
-import magenta.tasks.S3Upload
+import magenta.tasks.{S3Upload, Task}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.language.existentials
 
 class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
@@ -49,8 +49,9 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val tasks = Resolver.resolve(project(deployRecipe), lookup, parameters(deployRecipe), reporter, artifactClient)
 
-    tasks.size should be (1)
-    tasks should be (List(
+    val taskList: List[Task] = tasks.toTaskList
+    taskList.size should be (1)
+    taskList should be (List(
       S3Upload("test", Seq((new S3Package("artifact-bucket","tmp/123/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
     ))
   }
@@ -65,22 +66,25 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   val lookupTwoHosts = stubLookup(List(host1, host2))
 
   it should "generate the tasks from the actions supplied" in {
-    Resolver.resolve(project(baseRecipe), lookupSingleHost, parameters(baseRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(baseRecipe), lookupSingleHost, parameters(baseRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "only generate tasks for hosts that have apps" in {
-    Resolver.resolve(project(baseRecipe),
-      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(baseRecipe),
+      stubLookup(Host("other_host").app(App("other_app")) +: lookupSingleHost.hosts.all), parameters(baseRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
         StubTask("init_action_one per app task"),
         StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "generate tasks for all hosts with app" in {
-    Resolver.resolve(project(baseRecipe), lookupTwoHosts, parameters(baseRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(baseRecipe), lookupTwoHosts, parameters(baseRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_one per host task on host2", Some(host2))
@@ -105,7 +109,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val host2WithApp2 = Host("host2", stage = CODE.name, tags = Map("group" -> "")).app(app2)
     val lookupMultiHost = stubLookup(List(host1, host2WithApp2))
 
-    Resolver.resolve(project(multiRoleRecipe), lookupMultiHost, parameters(multiRoleRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(multiRoleRecipe), lookupMultiHost, parameters(multiRoleRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -122,7 +127,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
         allOnAllPackageType.mkAction("action_two")(stubPackage) :: Nil
     )
 
-    Resolver.resolve(project(recipe), lookupTwoHosts, parameters(recipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(recipe), lookupTwoHosts, parameters(recipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host1", Some(host1)),
       StubTask("action_two per host task on host1", Some(host1)),
@@ -139,7 +145,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       actionsPerHost = basePackageType.mkAction("main_action")(stubPackage) :: Nil,
       dependsOn = List("one"))
 
-    Resolver.resolve(project(mainRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(mainRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("main_init_action per app task"),
@@ -160,7 +167,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       actionsPerHost = basePackageType.mkAction("main_action")(stubPackage) :: Nil,
       dependsOn = List("two", "one"))
 
-    Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), lookupSingleHost, parameters(mainRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host)),
       StubTask("init_action_two per app task"),
@@ -185,20 +193,22 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "only resolve tasks on hosts in the correct stage" in {
-    Resolver.resolve(
+    val taskGraph = Resolver.resolve(
       project(baseRecipe),
       stubLookup(List(host, Host("host_in_other_stage", Set(app1), "other_stage"))),
       parameters(baseRecipe),
       reporter,
       artifactClient
-    ) should be (List(
+    )
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on the_host", Some(host))
     ))
   }
 
   it should "observe ordering of hosts in deployInfo" in {
-    Resolver.resolve(project(baseRecipe), stubLookup(List(host2, host1)), parameters(baseRecipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(baseRecipe), stubLookup(List(host2, host1)), parameters(baseRecipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("init_action_one per app task"),
       StubTask("action_one per host task on host2", Some(host2)),
       StubTask("action_one per host task on host1", Some(host1))
@@ -216,7 +226,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val recipe = Recipe("with-user",
       actionsPerHost = List(pkgTypeWithUser.mkAction("deploy")(pkg)))
 
-    Resolver.resolve(project(recipe), stubLookup(List(host2, host1)), parameters(recipe), reporter, artifactClient) should be (List(
+    val taskGraph = Resolver.resolve(project(recipe), stubLookup(List(host2, host1)), parameters(recipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("with conn", Some(host2 as "user")),
       StubTask("without conn", Some(host2)),
       StubTask("with conn", Some(host1 as "user")),
@@ -233,10 +244,34 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val recipe = Recipe("stacked",
       actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
 
-    Resolver.resolve(project(recipe, NamedStack("foo"), NamedStack("bar")), stubLookup(), parameters(recipe), reporter, artifactClient) should be (List(
+    val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
+    val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
+    taskGraph.toTaskList should be (List(
       StubTask("stacked", stack = Some(NamedStack("foo"))),
-      StubTask("stacked", stack = Some(NamedStack("bar")))
+      StubTask("stacked", stack = Some(NamedStack("bar"))),
+      StubTask("stacked", stack = Some(NamedStack("monkey"))),
+      StubTask("stacked", stack = Some(NamedStack("litre")))
     ))
+  }
+
+  it should "resolve tasks from multiple stacks into a parallel task graph" in {
+    val pkgType = StubDeploymentType(
+      perAppActions = {
+        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
+      }
+    )
+    val recipe = Recipe("stacked",
+      actionsPerHost = List(pkgType.mkAction("deploy")(stubPackage)))
+
+    val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
+    val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
+    val successors = taskGraph.successors(StartNode)
+    successors.size should be(4)
+
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo", 1))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar", 2))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey", 3))
+    successors should contain(DeploymentNode(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre", 4))
   }
 
   def parameters(recipe: Recipe) =

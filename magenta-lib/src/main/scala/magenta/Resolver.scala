@@ -1,7 +1,8 @@
 package magenta
 
 import com.amazonaws.services.s3.AmazonS3
-import tasks.Task
+import magenta.graph.DeploymentGraph
+import magenta.tasks._
 
 case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Task], disabled: Boolean = false) {
   lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs=None)).distinct
@@ -22,10 +23,22 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[Task] =
-    resolveDetail(project, resourceLookup, parameters, deployReporter, artifactClient).flatMap(_.tasks)
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): DeploymentGraph = {
+    resolveStacks(project, parameters).map { stack =>
+      val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
+      DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")
+    }.reduce(_ joinParallel _)
+  }
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {
+    val stacks = resolveStacks(project, parameters)
+    for {
+      stack <- stacks.toList
+      tasks <- resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack)
+    } yield tasks
+  }
+
+  def resolveStack( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3, stack: Stack): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
@@ -56,10 +69,7 @@ object Resolver {
       RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
     }
 
-    val stacks = resolveStacks(project, parameters)
-
     for {
-      stack <- stacks.toList
       tasks <- {
         val resources = DeploymentResources(deployReporter, resourceLookup, artifactClient)
         val target = DeployTarget(parameters, stack)
@@ -70,7 +80,6 @@ object Resolver {
     } yield tasks
   }
 
-
   def resolveStacks(project: Project, parameters: DeployParameters): Seq[Stack] = {
     parameters.stacks match {
       case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
@@ -79,7 +88,3 @@ object Resolver {
   }
 }
 class NoHostsFoundException extends Exception("No hosts found")
-
-
-
-

@@ -1,9 +1,9 @@
 package magenta
 
-import tasks.Task
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
+import magenta.graph.DeploymentGraph
 
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,
@@ -11,26 +11,27 @@ object DeployContext {
 
     val tasks = {
       rootReporter.info("Resolving tasks...")
-      val taskList = Resolver.resolve(project, resourceLookup, parameters, rootReporter, artifactClient)
-      rootReporter.taskList(taskList)
-      taskList
+      val tasks = Resolver.resolve(project, resourceLookup, parameters, rootReporter, artifactClient)
+      rootReporter.taskList(tasks.toTaskList)
+      tasks
     }
-    DeployContext(deployId, parameters, project, tasks, rootReporter)
+    DeployContext(deployId, parameters, project, tasks)
   }
 }
 
 case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Project,
-  tasks: List[Task], reporter: DeployReporter) {
+  tasks: DeploymentGraph) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id
   val recipe = parameters.recipe.name
   val stage = parameters.stage
 
-  def execute() {
-    if (tasks.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
+  def execute(reporter: DeployReporter) {
+    val taskList = tasks.toTaskList
+    if (taskList.isEmpty) reporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
 
-    tasks.foreach { task =>
+    taskList.foreach { task =>
       reporter.taskContext(task) { taskLogger =>
         task.execute(taskLogger)
       }

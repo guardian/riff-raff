@@ -26,9 +26,10 @@
     <logger name="deployment" level="DEBUG" />
     <!--<logger name="deployment.DeployCoordinator" level="DEBUG" />-->
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
-    <logger name="ci" level="DEBUG" />
+    <!--<logger name="ci" level="DEBUG" />-->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
     <!--<logger name="persistence.MongoDatastore" level="DEBUG" />-->
+    <logger name="org.mongodb.driver.cluster" level="WARN" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>

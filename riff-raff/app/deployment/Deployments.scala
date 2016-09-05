@@ -91,12 +91,8 @@ object Deployments extends Logging with LifecycleWithoutApp {
         if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
         if (record.totalTasks != updated.totalTasks || record.completedTasks != updated.completedTasks)
           DocumentStoreConverter.updateDeploySummary(updated)
+        if (updated.isDone) cleanup(record.uuid)
         updated
-      }
-      wrapper.stack.messages match {
-        case List(FinishContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
-        case List(FailContext(_),Deploy(_)) => cleanup(wrapper.context.deployId)
-        case _ =>
       }
     }
   }
@@ -143,7 +139,7 @@ object Deployments extends Logging with LifecycleWithoutApp {
     DeployControlActor.stopDeploy(uuid, fullName)
   }
 
-  def getStopFlag(uuid: UUID) = DeployControlActor.getDeployStopFlag(uuid)
+  def getStopFlag(uuid: UUID): Boolean = DeployControlActor.getDeployStopFlag(uuid)
 
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =

@@ -87,7 +87,7 @@ object DeployController extends Controller with Logging with LoginActions {
     AuthAction { implicit request =>
       val uuid = UUID.fromString(uuidString)
       val record = Deployments.get(uuid)
-      val stopFlag = if (record.isDone) false else Deployments.getStopFlag(uuid).getOrElse(false)
+      val stopFlag = if (record.isDone) false else Deployments.getStopFlag(uuid)
       Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
     }
   }
