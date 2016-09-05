@@ -53,9 +53,6 @@ lazy val riffraff = project.in(file("riff-raff"))
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
     riffRaffPackageType := (packageZipTarball in Universal).value,
-    riffRaffBuildIdentifier := sys.env.getOrElse("TRAVIS_BUILD_NUMBER", "DEV"), // TODO Travis??
-    riffRaffUploadArtifactBucket := Some("riffraff-artifact"),
-    riffRaffUploadManifestBucket := Some("riffraff-builds"),
 
     ivyXML := {
       <dependencies>
@@ -66,13 +63,7 @@ lazy val riffraff = project.in(file("riff-raff"))
       </dependencies>
     },
 
-    unmanagedClasspath in Test += Attributed.blank(baseDirectory.value / "test"), // TODO what's this for?
     fork in Test := false,
 
-    includeFilter in (Assets, LessKeys.less) := "*.less",
-
-    magenta := riffRaffArtifact.value
+    includeFilter in (Assets, LessKeys.less) := "*.less"
   ))
-
-// TODO what's this about?
-lazy val magenta = taskKey[File]("Alias to riffRaffArtifact for TeamCity compatibility")
