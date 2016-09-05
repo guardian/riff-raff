@@ -91,7 +91,7 @@ object Deployments extends Logging with LifecycleWithoutApp {
         if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
         if (record.totalTasks != updated.totalTasks || record.completedTasks != updated.completedTasks)
           DocumentStoreConverter.updateDeploySummary(updated)
-        if (record.isDone) cleanup(record.uuid)
+        if (updated.isDone) cleanup(record.uuid)
         updated
       }
     }
