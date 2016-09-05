@@ -14,10 +14,5 @@ RiffRaff as development hub
 
 It may be desirable to allow RiffRaff to do things like track pull requests so that it can act as a hub for tracking project activity.
 
-Move repository to RiffRaff
-===========================
-
-Since that's what everyone calls it
-
 Upgrade Scala/Play etc.
 ======================
