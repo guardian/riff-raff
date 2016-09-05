@@ -30,6 +30,7 @@ lazy val riffraff = project.in(file("riff-raff"))
   .enablePlugins(play.PlayScala, SbtWeb, RiffRaffArtifact, UniversalPlugin, BuildInfoPlugin)
   .settings(commonSettings)
   .settings(Seq(
+    name := "riff-raff",
     TwirlKeys.templateImports ++= Seq(
       "magenta._",
       "deployment._",
