@@ -23,6 +23,7 @@ object Graph {
 
 case class Graph[T](edges: Set[Edge[T]]) {
   val nodes = edges.map(_.from) ++ edges.map(_.to)
+  val underlyingNodes = nodes.flatMap(_.maybeValue)
   val dataNodes = nodes.filterMidNodes
 
   val isValid: Either[List[String], Boolean] = {
@@ -36,9 +37,14 @@ case class Graph[T](edges: Set[Edge[T]]) {
   val isEmpty = dataNodes.isEmpty
 
   def get(node: T): MidNode[T] = dataNodes.find(_.value == node).get
-  def successors(node: Node[T]): Set[Node[T]] = edges.filter(_.from == node).map(_.to)
-  def orderedSuccessors(node: Node[T]): List[Node[T]] = edges.filter(_.from == node).toList.sortBy(_.priority).map(_.to)
-  def predecessors(node: Node[T]): Set[Node[T]] = edges.filter(_.to == node).map(_.from)
+
+  def outgoing(node: Node[T]): Set[Edge[T]] = edges.filter(_.from == node)
+  def successors(node: Node[T]): Set[Node[T]] = outgoing(node).map(_.to)
+  def orderedOutgoing(node: Node[T]): List[Edge[T]] = outgoing(node).toList.sortBy(_.priority)
+  def orderedSuccessors(node: Node[T]): List[Node[T]] = orderedOutgoing(node).map(_.to)
+
+  def incoming(node: Node[T]): Set[Edge[T]] = edges.filter(_.to == node)
+  def predecessors(node: Node[T]): Set[Node[T]] = incoming(node).map(_.from)
 
   def replace(node: Node[T], withNode: Node[T]): Graph[T] = {
     val newEdges = edges.map {
@@ -49,13 +55,13 @@ case class Graph[T](edges: Set[Edge[T]]) {
     Graph(newEdges)
   }
 
-  def map[R](f: MidNode[T] => MidNode[R]): Graph[R] = {
+  def map[R](f: T => R): Graph[R] = {
     val newNodeMap: Map[Node[T], Node[R]] = dataNodes.map { currentNode =>
-      currentNode -> f(currentNode)
+      currentNode -> MidNode(f(currentNode.value))
     }.toMap ++ Map(StartNode -> StartNode, EndNode -> EndNode)
     assert(newNodeMap.size == newNodeMap.values.toSet.size, "Source nodes must be mapped onto unique target nodes")
     val newEdges = edges.map { oldEdge =>
-      Edge(newNodeMap(oldEdge.from), newNodeMap(oldEdge.to))
+      Edge(newNodeMap(oldEdge.from), newNodeMap(oldEdge.to), oldEdge.priority)
     }
     Graph(newEdges)
   }
@@ -74,29 +80,46 @@ case class Graph[T](edges: Set[Edge[T]]) {
   }
 
   def joinSeries(other: Graph[T]): Graph[T] = {
-    val ourEndEdges = edges.filter(_.to == EndNode)
-    val otherStartEdges = other.edges.filter(_.from == StartNode)
-    val joiningEdges = ourEndEdges.flatMap { endEdge =>
-      otherStartEdges.map(startEdge => Edge(endEdge.from, startEdge.to, startEdge.priority))
+    val ourEndEdges = incoming(EndNode)
+    val otherStartEdges = other.orderedOutgoing(StartNode)
+    val joiningEdges = ourEndEdges.foldLeft(edges) { case (acc, endEdge) =>
+      val existingOutgoing = orderedOutgoing(endEdge.from)
+      val targetEdges = otherStartEdges.map(startEdge => Edge(endEdge.from, startEdge.to))
+      val replacementEdges = existingOutgoing.replace(endEdge, targetEdges).reprioritise
+      acc -- existingOutgoing ++ replacementEdges
     }
-    val mergedEdges = (edges -- ourEndEdges) ++ (other.edges -- otherStartEdges) ++ joiningEdges
+    val mergedEdges = joiningEdges ++ (other.edges -- otherStartEdges)
     Graph(mergedEdges)
   }
 
-  def toList: List[T] = {
-    def traverseFrom(node: Node[T], visited: Set[Node[T]]): List[Node[T]] = {
-      val predecessors: Set[Node[T]] = this.predecessors(node)
-      if ((predecessors -- visited).nonEmpty) {
-        // if there are some predecessors of this node that we haven't yet visited then return empty list - we'll be back
-        Nil
+  lazy val nodeList: List[Node[T]] = {
+    def traverseFrom(node: Node[T], traversed: Set[Edge[T]]): (List[Node[T]], Set[Edge[T]]) = {
+      val incoming: Set[Edge[T]] = this.incoming(node)
+      if ((incoming -- traversed).nonEmpty) {
+        // if there are some incoming edges to this node that we haven't yet traversed then ignore this node - we'll be back
+        (Nil, traversed)
       } else {
-        // if we've visited all the predecessors then follow all the successors
-        val successors = this.orderedSuccessors(node)
-        successors.foldLeft(List(node)){ case (acc, successor) =>
-          acc ::: traverseFrom(successor, visited ++ acc)
+        // if we've traversed all of the incoming edges then follow all the outgoing edges
+        val outgoing = this.orderedOutgoing(node)
+        outgoing.foldLeft((List(node), traversed)){ case ((nodeAcc, edgeAcc), successor) =>
+          val next = traverseFrom(successor.to, edgeAcc + successor)
+          (nodeAcc ::: next._1, edgeAcc ++ next._2)
         }
       }
     }
-    traverseFrom(StartNode, Set.empty).flatMap(_.maybeValue)
+    traverseFrom(StartNode, Set.empty)._1
+  }
+
+  lazy val toList: List[T] = nodeList.flatMap(_.maybeValue)
+
+  override def toString: String = {
+    val nodeNumbers = nodeList.zipWithIndex
+    val nodeNumberMap = nodeNumbers.toMap
+    val numberedEdges = edges.toList.map { case Edge(from, to, priority) =>
+      (nodeNumberMap(from), priority, nodeNumberMap(to))
+    }.sorted
+    val edgeList = numberedEdges.map{ case (f, p, t) => s"$f --($p)--> $t"}
+    val nodeNumberList = nodeNumbers.map{case(n, i) => s"$i: $n"}
+    s"Graph(nodes: ${nodeNumberList.mkString("; ")} edges: ${edgeList.mkString(", ")}"
   }
 }
