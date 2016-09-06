@@ -6,7 +6,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
-import magenta.graph.{Deployment, DeploymentGraph, MidNode, StartNode}
+import magenta.graph.{Deployment, DeploymentGraph, EndNode, Graph, MidNode, StartNode}
 import magenta.json._
 import magenta.tasks.{S3Upload, Task}
 import org.mockito.Matchers._
@@ -176,6 +176,36 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       StubTask("main_init_action per app task"),
       StubTask("main_action per host task on the_host", Some(host))
     ))
+
+    val deployment1 = Deployment(List(
+      StubTask("init_action_one per app task"),
+      StubTask("action_one per host task on the_host", Some(host))
+    ), "project (one)")
+    val node1 = MidNode(deployment1)
+    taskGraph.underlyingNodes should contain(deployment1)
+    val deployment2 = Deployment(List(
+      StubTask("init_action_two per app task"),
+      StubTask("action_two per host task on the_host", Some(host))
+    ), "project (two)")
+    val node2 = MidNode(deployment2)
+    taskGraph.underlyingNodes should contain(deployment2)
+    val deploymentMain = Deployment(List(
+      StubTask("main_init_action per app task"),
+      StubTask("main_action per host task on the_host", Some(host))
+    ), "project (main)")
+    val nodeMain = MidNode(deploymentMain)
+    taskGraph.underlyingNodes should contain(deploymentMain)
+
+    val nodeMapping = Map(deployment1 -> "one", deployment2 -> "two", deploymentMain -> "main")
+    val textGraph = taskGraph.map(nodeMapping.apply)
+
+    val targetGraph = Graph(
+      StartNode ~> node1, node1 ~> node2, (node1 ~> nodeMain).incPriority(1), node2 ~> nodeMain, nodeMain ~> EndNode
+    )
+    val targetTextGraph = targetGraph.map(nodeMapping.apply)
+
+    textGraph should be(targetTextGraph)
+    taskGraph should be(targetGraph)
   }
 
   it should "disable the recipe if no hosts found and actions require some" in {
@@ -269,10 +299,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     successors.size should be(4)
 
     successors should be(List(
-      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo")),
-      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar")),
-      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey")),
-      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"))
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo (stacked)")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar (stacked)")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey (stacked)")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre (stacked)"))
     ))
   }
 
