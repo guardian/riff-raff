@@ -8,10 +8,11 @@ import java.util.UUID
 
 import ci.{ContinuousDeploymentConfig, Trigger}
 import org.joda.time.DateTime
+import play.api.i18n.I18nSupport
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import utils.Forms.uuid
 
-object ContinuousDeployController extends Controller with Logging with LoginActions {
+object ContinuousDeployController extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
 
   case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
   object ConfigForm {
@@ -32,19 +33,19 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
 
   def list = CSRFAddToken {
     AuthAction { implicit request =>
-      val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList.sortBy(q => (q.projectName, q.stage))
+      val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList().sortBy(q => (q.projectName, q.stage))
       Ok(views.html.continuousDeployment.list(request, configs))
     }
   }
   def form = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
+      Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
     }
   }
   def save = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       continuousDeploymentForm.bindFromRequest().fold(
-        formWithErrors => Ok(views.html.continuousDeployment.form(request,formWithErrors)),
+        formWithErrors => Ok(views.html.continuousDeployment.form(formWithErrors)),
         form => {
           val config = ContinuousDeploymentConfig(
             form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
@@ -58,7 +59,7 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
   def edit(id: String) = CSRFAddToken {
     AuthAction { implicit request =>
       ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
-        Ok(views.html.continuousDeployment.form(request,continuousDeploymentForm.fill(ConfigForm(config))))
+        Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(config))))
       }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
     }
   }
@@ -66,11 +67,9 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
     AuthAction { implicit request =>
       Form("action" -> nonEmptyText).bindFromRequest().fold(
         errors => {},
-        action => {
-          action match {
-            case "delete" =>
-              ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
-          }
+        {
+          case "delete" =>
+            ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
         }
       )
       Redirect(routes.ContinuousDeployController.list())

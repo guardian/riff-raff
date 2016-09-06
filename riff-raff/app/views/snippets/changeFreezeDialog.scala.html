@@ -2,7 +2,7 @@
 @import utils.ChangeFreeze
 
 @if(ChangeFreeze.frozen){
- <script src='@routes.Assets.at("js/modal-confirm.js")'></script>
+ <script src='@routes.Assets.at("javascripts/modal-confirm.js")'></script>
  <div id="freezeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="freezeModalLabel" aria-hidden="true" data-stages="@ChangeFreeze.stages.mkString(",")">
      <div class="modal-header">
          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>

@@ -13,6 +13,7 @@ import org.json4s.native.Serialization
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
+import play.api.i18n.I18nSupport
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
@@ -123,8 +124,8 @@ object ApiJsonEndpoint extends LoginActions {
       Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
     } getOrElse {
       response \ "response" \ "status" match {
-        case JsString("ok") => Ok(responseObject)
-        case JsString("error") => BadRequest(responseObject)
+        case JsDefined(JsString("ok")) => Ok(responseObject)
+        case JsDefined(JsString("error")) => BadRequest(responseObject)
         case _ => throw new IllegalStateException("Response status missing or invalid")
       }
     }
@@ -139,7 +140,7 @@ object ApiJsonEndpoint extends LoginActions {
   }
 }
 
-object Api extends Controller with Logging with LoginActions {
+object Api extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
 
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)
@@ -151,14 +152,14 @@ object Api extends Controller with Logging with LoginActions {
 
   def createKeyForm = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.api.form(request, applicationForm))
+      Ok(views.html.api.form(applicationForm))
     }
   }
 
   def createKey = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       applicationForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.api.form(request, errors)),
+        errors => BadRequest(views.html.api.form(errors)),
         applicationName => {
           val randomKey = ApiKeyGenerator.newKey()
           val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())

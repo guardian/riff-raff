@@ -84,7 +84,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   def lastUpdated: DateTime = prism.get("/sources?resource=instance"){ json =>
     val sourceCreatedAt = json \ "data" match {
-      case JsArray(sources) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
+      case JsDefined(JsArray(sources)) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
       case _ => Seq(new DateTime(0))
     }
     sourceCreatedAt.minBy(_.getMillis)
@@ -125,7 +125,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
         case f@Failure(e) => Some(f)
         case _ => None
       }
-      if (errors.size > 0) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
+      if (errors.nonEmpty) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
       if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
 
       tryHosts.flatMap {

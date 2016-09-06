@@ -10,7 +10,7 @@ import conf.{DeployInfoMode, Configuration}
 import utils.ScheduledAgent
 import java.io.{FileNotFoundException, File}
 import java.net.{URLConnection, URL, URLStreamHandler}
-import io.Source
+import scala.io.Source
 import lifecycle.LifecycleWithoutApp
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -29,7 +29,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
   }
 
   private val classpathHandler = new URLStreamHandler {
-    val classloader = getClass.getClassLoader
+    val classloader: ClassLoader = getClass.getClassLoader
     override def openConnection(u: URL): URLConnection = {
       val resourceURL = classloader.getResource(u.getPath)
       if (resourceURL == null)
@@ -47,7 +47,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
           val buffer = mutable.Buffer[String]()
           val process = Configuration.deployinfo.location.run(ProcessLogger( (s) => buffer += s, _ => ()))
           try {
-            val futureExitValue = Await.result(future {
+            val futureExitValue = Await.result(Future {
               process.exitValue()
             }, Configuration.deployinfo.timeoutSeconds.seconds)
             if (futureExitValue == 0) Some(buffer.mkString("")) else None
@@ -58,7 +58,7 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
               None
           }
         } else {
-          log.warn("No file found at '%s', defaulting to empty DeployInfo" format (Configuration.deployinfo.location))
+          log.warn("No file found at '%s', defaulting to empty DeployInfo" format Configuration.deployinfo.location)
           None
         }
       case DeployInfoMode.URL =>
@@ -73,17 +73,16 @@ object DeployInfoManager extends LifecycleWithoutApp with Logging {
     deployInfoJsonOption.map{ deployInfoJson =>
       implicit val formats = DefaultFormats
       val json = parse(deployInfoJson)
-      val deployInfo = (json \ "response") match {
-        case response:JObject => {
+      val deployInfo = json \ "response" match {
+        case response:JObject =>
           val updateTime = (response \ "updateTime").extractOpt[String].map(s => new DateTime(s))
           DeployInfoJsonReader.parse(response \ "results").copy(createdAt = updateTime.orElse(Some(new DateTime())))
-        }
         case _ => DeployInfoJsonReader.parse(deployInfoJson)
       }
 
 
       log.info("Successfully retrieved deployinfo (%d hosts and %d data found)" format (
-        deployInfo.hosts.size, deployInfo.data.values.map(_.size).fold(0)(_+_)))
+        deployInfo.hosts.size, deployInfo.data.values.map(_.size).sum))
 
       deployInfo
     }

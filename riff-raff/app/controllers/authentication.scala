@@ -12,9 +12,11 @@ import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import play.api.data._
 import play.api.data.Forms._
-import deployment.{Deployments, DeployFilter}
+import deployment.{DeployFilter, Deployments}
 import play.api.libs.concurrent.Execution.Implicits._
 import com.gu.googleauth._
+import play.api.i18n.I18nSupport
+
 import scala.concurrent.Future
 import play.api.libs.json.Json
 
@@ -77,14 +79,14 @@ trait LoginActions extends Actions {
   def authConfig: GoogleAuthConfig = auth.googleAuthConfig
 }
 
-object Login extends Controller with Logging with LoginActions {
+object Login extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
   val ANTI_FORGERY_KEY = "antiForgeryToken"
 
   import play.api.Play.current
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
-    def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
+    def emailWhitelistEnabled = auth.whitelist.useDatabase || auth.whitelist.addresses.nonEmpty
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
       auth.whitelist.addresses.contains(lowerCaseEmail) ||
@@ -145,13 +147,13 @@ object Login extends Controller with Logging with LoginActions {
     Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
   }
 
-  def authForm = AuthAction { request =>
-    Ok(views.html.auth.form(request, authorisationForm))
+  def authForm = AuthAction { implicit request =>
+    Ok(views.html.auth.form(authorisationForm))
   }
 
   def authSave = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.auth.form(request, errors)),
+      errors => BadRequest(views.html.auth.form(errors)),
       email => {
         val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
         Persistence.store.setAuthorisation(auth)

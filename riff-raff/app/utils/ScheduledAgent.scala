@@ -25,7 +25,7 @@ object ScheduledAgent extends LifecycleWithoutApp {
   def init() {}
 
   def shutdown() {
-    scheduleSystem.shutdown()
+    scheduleSystem.terminate()
   }
 }
 
@@ -52,14 +52,14 @@ object PeriodicScheduledAgentUpdate {
 
 case class DailyScheduledAgentUpdate[T](block: T => T, timeOfDay: LocalTime) extends ScheduledAgentUpdate[T] {
   def timeToNextExecution: FiniteDuration = {
-    val executionToday = (new LocalDate()).toDateTime(timeOfDay)
+    val executionToday = new LocalDate().toDateTime(timeOfDay)
 
     val interval = if (executionToday.isAfterNow)
       // today if before the time of day
       new Interval(new DateTime(), executionToday)
     else {
       // tomorrow if after the time of day
-      val executionTomorrow = (new LocalDate()).plusDays(1).toDateTime(timeOfDay)
+      val executionTomorrow = new LocalDate().plusDays(1).toDateTime(timeOfDay)
       new Interval(new DateTime(), executionTomorrow)
     }
     interval.toDurationMillis milliseconds

@@ -14,7 +14,8 @@ import utils.{HstsFilter, ScheduledAgent}
 import scala.collection.mutable
 import scala.concurrent.Future
 
-object Global extends WithFilters(new GzipFilter() :: new HstsFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
+
+object Global extends WithFilters(/* TODO re-enable this once we have DI. new GzipFilter() :: */ new HstsFilter() :: PlayRequestMetrics.asFilters: _*) with Logging {
 
   val lifecycleSingletons = mutable.Buffer[Lifecycle]()
 

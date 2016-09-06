@@ -14,11 +14,12 @@ import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.{DateTime, Duration, Interval}
 import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
+import play.api.i18n.I18nSupport
 import play.filters.csrf.CSRFCheck
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-object Testing extends Controller with Logging with LoginActions {
+object Testing extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
@@ -91,17 +92,17 @@ object Testing extends Controller with Logging with LoginActions {
       (TestForm.unapply)
   )
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>
-      Ok(views.html.test.form(request, testForm))
+      Ok(views.html.test.form(testForm))
     }
 
   def formPost =
     AuthAction { implicit request =>
       testForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.test.form(request,errors)),
+        errors => BadRequest(views.html.test.form(errors)),
         form => {
           log.info("Form post: %s" format form.toString)
           Redirect(routes.Testing.form)

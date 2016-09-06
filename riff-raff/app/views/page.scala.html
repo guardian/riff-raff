@@ -32,10 +32,10 @@
     <script src='/assets/javascripts/moment.min.js'></script>
     <!-- routes used in AJAX functions -->
     <script src='@routes.Application.javascriptRoutes'></script>
-    <script src='@routes.Assets.at("js/tooltips.js")'></script>
+    <script src='@routes.Assets.at("javascripts/tooltips.js")'></script>
     <!-- page specific scripts -->
     @for(script <- scripts) {
-        <script src='@routes.Assets.at(s"js/$script.js")'></script>
+        <script src='@routes.Assets.at(s"javascripts/$script.js")'></script>
     }
 </head>
 <body>

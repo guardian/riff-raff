@@ -2,11 +2,10 @@ package controllers
 
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
-import play.api.{Logger, Play, Routes}
+import play.api.{Logger, Play}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
-
 import magenta.artifact.S3Package
 import resources.LookupSelector
 
@@ -199,13 +198,13 @@ object Application extends Controller with Logging with LoginActions {
   }
 
   def javascriptRoutes = Action { implicit request =>
-    import routes.javascript._
+    import play.Routes._
     Ok{
-      Routes.javascriptRouter("jsRoutes")(
-        DeployController.stop,
-        DeployController.projectHistory,
-        DeployController.dashboardContent,
-        DeployController.buildInfo
+      javascriptRouter("jsRoutes",
+        routes.javascript.DeployController.stop,
+        routes.javascript.DeployController.projectHistory,
+        routes.javascript.DeployController.dashboardContent,
+        routes.javascript.DeployController.buildInfo
       )
     }.as("text/javascript")
   }

@@ -1,5 +1,5 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)
-@import helper.twitterBootstrap._
+@(deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@* TODO replace this with b3? @import helper.twitterBootstrap._ *@
 @import helper.CSRF
 @main("Deploy confirmation", request) {
 

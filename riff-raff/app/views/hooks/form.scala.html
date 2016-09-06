@@ -1,4 +1,4 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[controllers.HookForm])
+@(hookForm: Form[controllers.HookForm])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 

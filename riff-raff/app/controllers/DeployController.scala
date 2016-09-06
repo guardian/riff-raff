@@ -11,6 +11,7 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
 import play.api.data.Forms._
+import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.mvc.Controller
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
@@ -21,7 +22,7 @@ import scala.util.{Failure, Success}
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-object DeployController extends Controller with Logging with LoginActions {
+object DeployController extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(
@@ -45,14 +46,14 @@ object DeployController extends Controller with Logging with LoginActions {
 
   def deploy = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.deploy.form(request, deployForm))
+      Ok(views.html.deploy.form(deployForm))
     }
   }
 
   def processForm = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       deployForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.deploy.form(request, errors)),
+        errors => BadRequest(views.html.deploy.form(errors)),
         form => {
           log.info(s"Host list: ${form.hosts}")
           val defaultRecipe = LookupSelector().data
@@ -206,21 +207,21 @@ object DeployController extends Controller with Logging with LoginActions {
   def deployConfirmation(deployFormJson: String) = CSRFAddToken {
     AuthAction { implicit request =>
       val parametersJson = Json.parse(deployFormJson)
-      Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson), isExternal = true))
+      Ok(views.html.deploy.deployConfirmation(deployForm.bind(parametersJson), isExternal = true))
     }
   }
 
   def deployConfirmationExternal = CSRFAddToken {
     AuthAction { implicit request =>
       val form = deployForm.bindFromRequest()
-      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = true))
+      Ok(views.html.deploy.deployConfirmation(form, isExternal = true))
     }
   }
 
   def deployAgain = CSRFAddToken {
     AuthAction { implicit request =>
       val form = deployForm.bindFromRequest()
-      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = false))
+      Ok(views.html.deploy.deployConfirmation(form, isExternal = false))
     }
   }
 
