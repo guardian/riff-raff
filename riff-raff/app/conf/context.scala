@@ -65,7 +65,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       credentialsProviderChain(None, None),
       new ClientConfiguration()
     )
-    val dynamoTableName = configuration.getStringProperty("continuousDeployment.dynamoTable").getOrException("Dynamo table name for continous deployment configs not configured")
+    val dynamoTableName = configuration.getStringProperty("continuousDeployment.dynamoTableName").getOrException("Dynamo table name for continous deployment configs not configured")
   }
 
   object credentials {
