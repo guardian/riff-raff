@@ -12,7 +12,7 @@ import conf.{Configuration, TaskMetrics}
 import controllers.Logging
 import magenta._
 import magenta.artifact.S3Artifact
-import magenta.graph.{DeploymentGraph, DeploymentNode, StartNode}
+import magenta.graph.{Deployment, DeploymentGraph, MidNode, Graph, StartNode}
 import magenta.json.JsonReader
 import org.joda.time.DateTime
 import resources.LookupSelector
@@ -110,7 +110,7 @@ class DeployMetricsActor extends Actor with Logging {
 
 object DeployGroupRunner {
   sealed trait NextResult
-  case class Deployments(deployments: List[DeploymentNode]) extends NextResult
+  case class Deployments(deployments: List[MidNode[Deployment]]) extends NextResult
   case object FinishPath extends NextResult
   case object FinishDeploy extends NextResult
 
@@ -118,8 +118,8 @@ object DeployGroupRunner {
   case object Start extends Message
   case class ContextCreated(context: DeployContext) extends Message
   case object StartDeployment extends Message
-  case class DeploymentCompleted(deploymentNode: DeploymentNode) extends Message
-  case class DeploymentFailed(deploymentNode: DeploymentNode, exception: Throwable) extends Message
+  case class DeploymentCompleted(deployment: Deployment) extends Message
+  case class DeploymentFailed(deployment: Deployment, exception: Throwable) extends Message
 }
 
 case class DeployGroupRunner(
@@ -141,29 +141,29 @@ case class DeployGroupRunner(
 
   var deployContext: Option[DeployContext] = None
 
-  var executing: Set[DeploymentNode] = Set.empty
-  var completed: Set[DeploymentNode] = Set.empty
-  var failed: Set[DeploymentNode] = Set.empty
+  var executing: Set[MidNode[Deployment]] = Set.empty
+  var completed: Set[MidNode[Deployment]] = Set.empty
+  var failed: Set[MidNode[Deployment]] = Set.empty
 
-  def deploymentGraph: DeploymentGraph = deployContext.map(_.tasks).getOrElse(DeploymentGraph.empty)
-  def allDeployments = deploymentGraph.nodes.filterDeploymentNodes
+  def deploymentGraph: Graph[Deployment] = deployContext.map(_.tasks).getOrElse(Graph.empty[Deployment])
+  def allDeployments = deploymentGraph.nodes.filterMidNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def firstDeployments: List[DeploymentNode] = deploymentGraph.successorDeploymentNodes(StartNode)
+  def firstDeployments: List[MidNode[Deployment]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
       - FinishDeploy: indicator that there are no more tasks for this deploy
       first will actually only ever return the first of these.  */
-  def nextDeployments(deployment: DeploymentNode): NextResult = {
+  def nextDeployments(deployment: Deployment): NextResult = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
     if (isFinished) FinishDeploy
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextDeploymentCandidates = deploymentGraph.successorDeploymentNodes(deployment)
+      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterMidNodes
       // now filter for only tasks whose predecessors are all completed
       val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
       if (nextDeployments.nonEmpty) {
@@ -173,16 +173,18 @@ case class DeployGroupRunner(
       }
     }
   }
-  protected[deployment] def markExecuting(deployment: DeploymentNode) = {
-    executing += deployment
+  protected[deployment] def markExecuting(deployment: Deployment) = {
+    executing += deploymentGraph.get(deployment)
   }
-  protected[deployment] def markComplete(deployment: DeploymentNode) = {
-    executing -= deployment
-    completed += deployment
+  protected[deployment] def markComplete(deployment: Deployment) = {
+    val node = deploymentGraph.get(deployment)
+    executing -= node
+    completed += node
   }
-  protected[deployment] def markFailed(deployment: DeploymentNode) = {
-    executing -= deployment
-    failed += deployment
+  protected[deployment] def markFailed(deployment: Deployment) = {
+    val node = deploymentGraph.get(deployment)
+    executing -= node
+    failed += node
   }
   def finishRootContext() = {
     rootContextClosed = true
@@ -220,7 +222,7 @@ case class DeployGroupRunner(
       } catch {
         case NonFatal(t) =>
           if (!rootContextClosed) failRootContext("Preparing deploy failed", t)
-          cleanup
+          cleanup()
       }
 
     case ContextCreated(preparedContext) =>
@@ -237,7 +239,7 @@ case class DeployGroupRunner(
           runDeployments(deployments)
         case FinishPath =>
         case FinishDeploy =>
-          cleanup
+          cleanup()
       }
 
     case DeploymentFailed(deployment, exception) =>
@@ -246,7 +248,7 @@ case class DeployGroupRunner(
       if (isExecuting) {
         log.debug("Failed during deployment but others still running - deferring clean up")
       } else {
-        cleanup
+        cleanup()
       }
 
     case Terminated(actor) =>
@@ -264,18 +266,18 @@ case class DeployGroupRunner(
       }(client, safeReporter)
       val project = JsonReader.parse(json, s3Artifact)
       val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter, client)
-      if (context.tasks.toTaskList.isEmpty)
+      if (DeploymentGraph.toTaskList(context.tasks).isEmpty)
         safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
       context
     }
   }
 
-  private def runDeployments(deployments: List[DeploymentNode]) = {
+  private def runDeployments(deployments: List[MidNode[Deployment]]) = {
     try {
       honourStopFlag(rootReporter) {
-        deployments.foreach { deployment =>
+        deployments.zipWithIndex.foreach { case (MidNode(deployment), index) =>
           val actorName = s"${record.uuid}-${context.children.size}"
-          log.debug(s"Running next deployment (${deployment.pathName}/${deployment.priority}) on actor $actorName")
+          log.debug(s"Running next deployment (${deployment.pathName}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
           markExecuting(deployment)
@@ -294,7 +296,7 @@ case class DeployGroupRunner(
         if (!isExecuting) {
           DeployReporter.failContext(rootReporter, stopMessage, DeployStoppedException(stopMessage))
           log.debug("Cleaning up")
-          cleanup
+          cleanup()
         }
 
       case None =>
@@ -379,7 +381,7 @@ class DeployCoordinator(
 
 object DeploymentRunner {
   trait Message
-  case class RunDeployment(uuid: UUID, deployment: DeploymentNode, rootReporter: DeployReporter, queueTime: DateTime) extends Message
+  case class RunDeployment(uuid: UUID, deployment: Deployment, rootReporter: DeployReporter, queueTime: DateTime) extends Message
 }
 
 class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {

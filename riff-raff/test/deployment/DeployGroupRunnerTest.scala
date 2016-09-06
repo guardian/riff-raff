@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
-import magenta.graph.{DeploymentGraph, DeploymentNode}
+import magenta.graph.{Deployment, MidNode, Graph}
 import magenta.tasks.Task
 import org.scalatest.{FlatSpecLike, ShouldMatchers}
 
@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with ShouldMatchers {
   import Fixtures._
-  "DeployRunState" should "initalise the state from a set of tasks" in {
+  "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
     dr.ul.allDeployments.size should be(1)
@@ -26,8 +26,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
-    firstDeployment should be(DeploymentNode(threeSimpleTasks, "test", 1))
-    dr.ul.executing should contain(firstDeployment)
+    firstDeployment should be(Deployment(threeSimpleTasks, "test"))
+    dr.ul.executing should contain(MidNode(firstDeployment))
   }
 
   it should "process a list of tasks and clean up" in {
@@ -36,7 +36,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
-    firstDeployment should be(DeploymentNode(threeSimpleTasks, "test", 1))
+    firstDeployment should be(Deployment(threeSimpleTasks, "test"))
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(firstDeployment))
     dr.deploymentRunnerProbe.expectNoMsg()
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
@@ -47,13 +47,13 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     prepare(dr, simpleGraph)
     val firstDeployments = dr.ul.firstDeployments
     firstDeployments.size should be(2)
-    firstDeployments should contain(DeploymentNode(twoTasks, "branch one", 1))
-    firstDeployments should contain(DeploymentNode(twoTasks, "branch two", 2))
-    dr.ul.markComplete(firstDeployments.head)
-    val nextResult = dr.ul.nextDeployments(firstDeployments.head)
+    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch one")))
+    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch two")))
+    dr.ul.markComplete(firstDeployments.head.value)
+    val nextResult = dr.ul.nextDeployments(firstDeployments.head.value)
     nextResult should be(DeployGroupRunner.FinishPath)
-    dr.ul.markComplete(firstDeployments.tail.head)
-    val nextResult2 = dr.ul.nextDeployments(firstDeployments.tail.head)
+    dr.ul.markComplete(firstDeployments.tail.head.value)
+    val nextResult2 = dr.ul.nextDeployments(firstDeployments.tail.head.value)
     nextResult2 should be(DeployGroupRunner.FinishDeploy)
   }
 
@@ -76,7 +76,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(runDeployment.deployment))
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
-    dr.ul.completed should be(Set(runDeployment.deployment))
+    dr.ul.completed should be(Set(MidNode(runDeployment.deployment)))
   }
 
   it should "mark a task as failed" in {
@@ -87,7 +87,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
-    dr.ul.failed should be(Set(runDeployment.deployment))
+    dr.ul.failed should be(Set(MidNode(runDeployment.deployment)))
     dr.deploymentRunnerProbe.expectNoMsg()
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
   }
@@ -136,7 +136,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
 
-  def prepare(dr: DR, deployments: DeploymentGraph): Unit = {
+  def prepare(dr: DR, deployments: Graph[Deployment]): Unit = {
     val context = createContext(deployments, dr.record.uuid, dr.record.parameters)
     dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
