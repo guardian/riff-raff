@@ -265,13 +265,15 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val taskGraph = Resolver.resolve(proj, stubLookup(), parameters(recipe), reporter, artifactClient)
-    val successors = taskGraph.successors(StartNode)
+    val successors = taskGraph.orderedSuccessors(StartNode)
     successors.size should be(4)
 
-    successors should contain(MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo"), 1))
-    successors should contain(MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar"), 2))
-    successors should contain(MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey"), 3))
-    successors should contain(MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"), 4))
+    successors should be(List(
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey")),
+      MidNode(Deployment(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"))
+    ))
   }
 
   def parameters(recipe: Recipe) =

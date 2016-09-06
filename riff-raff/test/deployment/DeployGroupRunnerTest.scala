@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with ShouldMatchers {
   import Fixtures._
-  "DeployRunState" should "initalise the state from a set of tasks" in {
+  "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
     dr.ul.allDeployments.size should be(1)
@@ -27,7 +27,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[DeploymentRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
     firstDeployment should be(Deployment(threeSimpleTasks, "test"))
-    dr.ul.executing should contain(MidNode(firstDeployment, 1))
+    dr.ul.executing should contain(MidNode(firstDeployment))
   }
 
   it should "process a list of tasks and clean up" in {
@@ -47,8 +47,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     prepare(dr, simpleGraph)
     val firstDeployments = dr.ul.firstDeployments
     firstDeployments.size should be(2)
-    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch one"), 1))
-    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch two"), 2))
+    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch one")))
+    firstDeployments should contain(MidNode(Deployment(twoTasks, "branch two")))
     dr.ul.markComplete(firstDeployments.head.value)
     val nextResult = dr.ul.nextDeployments(firstDeployments.head.value)
     nextResult should be(DeployGroupRunner.FinishPath)
@@ -76,7 +76,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(runDeployment.deployment))
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
-    dr.ul.completed should be(Set(MidNode(runDeployment.deployment, 1)))
+    dr.ul.completed should be(Set(MidNode(runDeployment.deployment)))
   }
 
   it should "mark a task as failed" in {
@@ -87,7 +87,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
-    dr.ul.failed should be(Set(MidNode(runDeployment.deployment, 1)))
+    dr.ul.failed should be(Set(MidNode(runDeployment.deployment)))
     dr.deploymentRunnerProbe.expectNoMsg()
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
   }

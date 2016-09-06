@@ -151,7 +151,7 @@ case class DeployGroupRunner(
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def firstDeployments: List[MidNode[Deployment]] = deploymentGraph.successorNodes(StartNode)
+  def firstDeployments: List[MidNode[Deployment]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
@@ -163,7 +163,7 @@ case class DeployGroupRunner(
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextDeploymentCandidates = deploymentGraph.successorNodes(deploymentGraph.get(deployment))
+      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterMidNodes
       // now filter for only tasks whose predecessors are all completed
       val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
       if (nextDeployments.nonEmpty) {
@@ -275,9 +275,9 @@ case class DeployGroupRunner(
   private def runDeployments(deployments: List[MidNode[Deployment]]) = {
     try {
       honourStopFlag(rootReporter) {
-        deployments.foreach { case MidNode(deployment, priority) =>
+        deployments.zipWithIndex.foreach { case (MidNode(deployment), index) =>
           val actorName = s"${record.uuid}-${context.children.size}"
-          log.debug(s"Running next deployment (${deployment.pathName}/$priority) on actor $actorName")
+          log.debug(s"Running next deployment (${deployment.pathName}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
           markExecuting(deployment)

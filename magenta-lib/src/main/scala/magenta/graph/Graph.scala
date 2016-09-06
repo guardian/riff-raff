@@ -2,18 +2,18 @@ package magenta.graph
 
 sealed trait Node[+T] {
   def ~>[R >: T](to: Node[R]): Edge[R] = Edge(this, to)
-  def maybePriority: Option[Int] = None
   def maybeValue: Option[T] = None
 }
 case object StartNode extends Node[Nothing]
-case class MidNode[T](value: T, priority: Int = 1) extends Node[T] {
-  override def maybePriority: Option[Int] = Some(priority)
-  def incPriority(n: Int): MidNode[T] = this.copy(priority = priority + n)
+case class MidNode[T](value: T) extends Node[T] {
   override def maybeValue: Option[T] = Some(value)
 }
 case object EndNode extends Node[Nothing]
 
-case class Edge[+T](from: Node[T], to: Node[T])
+case class Edge[+T](from: Node[T], to: Node[T], priority: Int = 1) {
+  def incPriority(n: Int) = this.copy(priority = priority + n)
+  def ~=[R >: T](other: Edge[R]) = from == other.from && to == other.to
+}
 
 object Graph {
   def apply[T](edges: Edge[T]*): Graph[T] = Graph(edges.toSet)
@@ -33,18 +33,17 @@ case class Graph[T](edges: Set[Edge[T]]) {
   }
   assert(isValid.isRight, s"Graph isn't valid: ${isValid.left.get.mkString(", ")}")
 
+  val isEmpty = dataNodes.isEmpty
+
   def get(node: T): MidNode[T] = dataNodes.find(_.value == node).get
   def successors(node: Node[T]): Set[Node[T]] = edges.filter(_.from == node).map(_.to)
+  def orderedSuccessors(node: Node[T]): List[Node[T]] = edges.filter(_.from == node).toList.sortBy(_.priority).map(_.to)
   def predecessors(node: Node[T]): Set[Node[T]] = edges.filter(_.to == node).map(_.from)
-  def successorNodes(node: Node[T]): List[MidNode[T]] = {
-    successors(node).filterMidNodes.toList.sortBy(_.priority)
-  }
 
   def replace(node: Node[T], withNode: Node[T]): Graph[T] = {
-    assert(nodes.contains(node), "Node to replace not found in graph")
     val newEdges = edges.map {
-      case Edge(from, to) if from == node => Edge(withNode, to)
-      case Edge(from, to) if to == node => Edge(from, withNode)
+      case Edge(from, to, priority) if from == node => Edge(withNode, to, priority)
+      case Edge(from, to, priority) if to == node => Edge(from, withNode, priority)
       case other => other
     }
     Graph(newEdges)
@@ -62,18 +61,23 @@ case class Graph[T](edges: Set[Edge[T]]) {
   }
 
   def joinParallel(other: Graph[T]): Graph[T] = {
-    val maxPriority = successorNodes(StartNode).map(_.priority).max
-    val otherEdges = other.successorNodes(StartNode).foldLeft(other){ case(g, node) =>
-      g.replace(node, node.incPriority(maxPriority))
-    }.edges
-    Graph(edges ++ otherEdges)
+    if (other.isEmpty) this
+    else if (isEmpty) other
+    else {
+      val edgesToMerge = other.edges.filterNot(e1 => edges.exists(e1 ~= _))
+      val otherEdges = edgesToMerge.map { edge =>
+        val maxPriority = edges.filter(_.from == edge.from).map(_.priority).reduceOption(Math.max).getOrElse(0)
+        edge.copy(priority = edge.priority + maxPriority)
+      }
+      Graph(edges ++ otherEdges)
+    }
   }
 
   def joinSeries(other: Graph[T]): Graph[T] = {
     val ourEndEdges = edges.filter(_.to == EndNode)
     val otherStartEdges = other.edges.filter(_.from == StartNode)
-    val joiningEdges = ourEndEdges.map(_.from).flatMap { endNode =>
-      otherStartEdges.map(_.to).map(startNode => Edge(endNode, startNode))
+    val joiningEdges = ourEndEdges.flatMap { endEdge =>
+      otherStartEdges.map(startEdge => Edge(endEdge.from, startEdge.to, startEdge.priority))
     }
     val mergedEdges = (edges -- ourEndEdges) ++ (other.edges -- otherStartEdges) ++ joiningEdges
     Graph(mergedEdges)
@@ -87,10 +91,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
         Nil
       } else {
         // if we've visited all the predecessors then follow all the successors
-        val successors = this.successors(node).toList.sortBy{ node =>
-          // order by the priority of the node
-          node.maybePriority
-        }
+        val successors = this.orderedSuccessors(node)
         successors.foldLeft(List(node)){ case (acc, successor) =>
           acc ::: traverseFrom(successor, visited ++ acc)
         }
