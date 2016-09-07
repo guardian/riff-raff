@@ -11,6 +11,7 @@ import org.joda.time.DateTime
 
 object ContinuousDeploymentConfigRepository {
   val client = Configuration.continuousDeployment.dynamoClient
+  val stage = Configuration.stage
 
   implicit val uuidFormat =
     DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](UUID.fromString)(_.toString)
@@ -21,7 +22,7 @@ object ContinuousDeploymentConfigRepository {
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
 
-  val table = Table[ContinuousDeploymentConfig]("continuous-deployment-config")
+  val table = Table[ContinuousDeploymentConfig](s"continuous-deployment-config-$stage")
   def exec[A](ops: ScanamoOps[A]): A = Scanamo.exec(client)(ops)
 
   def getContinuousDeploymentList(): List[ContinuousDeploymentConfig] =
