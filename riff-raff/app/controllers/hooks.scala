@@ -3,7 +3,7 @@ package controllers
 import java.net.{MalformedURLException, URL}
 
 import notification.{GET, HookConfig, HttpMethod}
-import persistence.Persistence
+import persistence.{HookConfigRepository}
 import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
@@ -45,7 +45,7 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
   )
 
   def list = AuthAction { implicit request =>
-    val hooks = Persistence.store.getPostDeployHookList.toSeq.sortBy(q => (q.projectName, q.stage))
+    val hooks = HookConfigRepository.getPostDeployHookList.toSeq.sortBy(q => (q.projectName, q.stage))
     Ok(views.html.hooks.list(request, hooks))
   }
 
@@ -58,7 +58,7 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
       formWithErrors => Ok(views.html.hooks.form(formWithErrors, prismLookup)),
       f => {
         val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName, f.method, f.postBody)
-        Persistence.store.setPostDeployHook(config)
+        HookConfigRepository.setPostDeployHook(config)
         Redirect(routes.Hooks.list())
       }
     )
@@ -66,7 +66,7 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
 
   def edit(id: String) = AuthAction { implicit request =>
     val uuid = UUID.fromString(id)
-    Persistence.store.getPostDeployHook(uuid).map{ hc =>
+    HookConfigRepository.getPostDeployHook(uuid).map{ hc =>
       Ok(views.html.hooks.form(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
     }.getOrElse(Redirect(routes.Hooks.list()))
   }
@@ -76,10 +76,9 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
       errors => {},
       {
         case "delete" =>
-          Persistence.store.deletePostDeployHook(UUID.fromString(id))
+          HookConfigRepository.deletePostDeployHook(UUID.fromString(id))
       }
     )
     Redirect(routes.Hooks.list())
   }
-
 }

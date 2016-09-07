@@ -3,29 +3,17 @@ package persistence
 import java.util.UUID
 
 import ci.{ContinuousDeploymentConfig, Trigger}
-import com.gu.scanamo.ops.ScanamoOps
 import com.gu.scanamo.syntax._
-import com.gu.scanamo.{DynamoFormat, Scanamo, Table}
-import conf.Configuration
-import org.joda.time.DateTime
+import com.gu.scanamo.{DynamoFormat, Table}
 
-object ContinuousDeploymentConfigRepository {
-  val client = Configuration.continuousDeployment.dynamoClient
-
-  // TODO set up Dynamo local
-  val stage = if (Configuration.stage == "DEV") "CODE" else Configuration.stage
-
-  implicit val uuidFormat =
-    DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](UUID.fromString)(_.toString)
-
-  implicit val jodaStringFormat =
-    DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](DateTime.parse)(_.toString)
+object ContinuousDeploymentConfigRepository extends DynamoRepository {
 
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
 
-  val table = Table[ContinuousDeploymentConfig](s"continuous-deployment-config-$stage")
-  def exec[A](ops: ScanamoOps[A]): A = Scanamo.exec(client)(ops)
+  override val tablePrefix = "continuous-deployment-config"
+
+  val table = Table[ContinuousDeploymentConfig](tableName)
 
   def getContinuousDeploymentList(): List[ContinuousDeploymentConfig] =
     exec(table.scan()).flatMap(_.toOption)
@@ -38,5 +26,4 @@ object ContinuousDeploymentConfigRepository {
 
   def deleteContinuousDeployment(id: UUID): Unit =
     exec(table.delete('id -> id))
-
 }

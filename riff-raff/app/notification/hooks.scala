@@ -9,7 +9,7 @@ import controllers.Logging
 import lifecycle.LifecycleWithoutApp
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
-import persistence.{DeployRecordDocument, MongoFormat, MongoSerialisable, Persistence}
+import persistence.{DeployRecordDocument, HookConfigRepository, MongoFormat, MongoSerialisable, Persistence}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.libs.ws._
@@ -110,26 +110,6 @@ object HookConfig extends MongoSerialisable[HookConfig] {
   }
 }
 
-case class HookCriteria(projectName: String, stage: String)
-object HookCriteria extends MongoSerialisable[HookCriteria] {
-  def apply(parameters:DeployParameters): HookCriteria = HookCriteria(parameters.build.projectName, parameters.stage.name)
-  implicit val criteriaFormat: MongoFormat[HookCriteria] =
-    new CriteriaMongoFormat
-  private class CriteriaMongoFormat extends MongoFormat[HookCriteria] {
-    def toDBO(a: HookCriteria) = MongoDBObject("projectName" -> a.projectName, "stageName" -> a.stage)
-    def fromDBO(dbo: MongoDBObject) = Some(HookCriteria(dbo.as[String]("projectName"), dbo.as[String]("stageName")))
-  }
-}
-
-case class HookAction(url: String, enabled: Boolean) extends Logging with MongoSerialisable[HookAction]
-object HookAction extends MongoSerialisable[HookAction] {
-  implicit val actionFormat: MongoFormat[HookAction] = new ActionMongoFormat
-  private class ActionMongoFormat extends MongoFormat[HookAction] {
-    def toDBO(a: HookAction) = MongoDBObject("url" -> a.url, "enabled" -> a.enabled)
-    def fromDBO(dbo: MongoDBObject) = Some(HookAction(dbo.as[String]("url"), dbo.as[Boolean]("enabled")))
-  }
-}
-
 object HooksClient extends LifecycleWithoutApp with Logging {
   trait Event
   case class Finished(uuid: UUID, params: DeployParameters)
@@ -163,7 +143,7 @@ class HooksClient(implicit wsClient: WSClient) extends Actor with Logging {
 
   def receive = {
     case Finished(uuid, params) =>
-      Persistence.store.getPostDeployHook(params.build.projectName, params.stage.name).foreach { config =>
+      HookConfigRepository.getPostDeployHook(params.build.projectName, params.stage.name).foreach { config =>
         try {
           config.act(Persistence.store.readDeploy(uuid).get)
         } catch {
