@@ -11,8 +11,9 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import resources.LookupSelector
@@ -22,7 +23,7 @@ import scala.util.{Failure, Success}
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-object DeployController extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
+class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(

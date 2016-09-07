@@ -2,11 +2,12 @@ package controllers
 
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
-import play.api.{Logger, Play}
+import play.api.{Environment, Logger, Play}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
 import magenta.artifact.S3Package
+import play.api.libs.ws.WSClient
 import resources.LookupSelector
 
 import scala.io.Source
@@ -59,7 +60,8 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-object Application extends Controller with Logging with LoginActions {
+class Application(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
+  import Application._
   import play.api.Play.current
 
   def index = Action { implicit request =>
@@ -89,30 +91,6 @@ object Application extends Controller with Logging with LoginActions {
   val Prev = """.*prev:(\S+).*""".r
   val Next = """.*next:(\S+).*""".r
 
-  def getMarkdownLines(resource: String):List[String] = {
-    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
-    log.info(s"Getting page for $realResource")
-    try {
-      withResource(Play.resourceAsStream(s"public/docs/$realResource.md").orElse(Play.resourceAsStream(s"$realResource.md")).get) { url =>
-        log.info(s"Resolved URL $url")
-        Source.fromInputStream(url).getLines().toList
-      }
-    } catch {
-      case e:Throwable =>
-        log.warn(s"$resource is not a valid page of documentation")
-        Nil
-    }
-  }
-
-  case class Link(title:String, call:Call, url:String)
-  object Link {
-    def apply(url:String):Option[Link] = {
-      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
-        Link(prevTitle, routes.Application.documentation(url), url)
-      }
-    }
-  }
-
   def makeAbsolute(resource:String, relative:String): String = {
     if (relative.isEmpty)
       resource
@@ -140,10 +118,6 @@ object Application extends Controller with Logging with LoginActions {
     }
     log.info(s"Header is $header $prev $next")
     (next,prev)
-  }
-
-  def getMarkdownTitle(lines: List[String]):Option[String] = {
-    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
   }
 
   def documentation(resource: String) = {
@@ -208,5 +182,39 @@ object Application extends Controller with Logging with LoginActions {
       )
     }.as("text/javascript")
   }
+
+}
+
+object Application extends Logging {
+
+  case class Link(title:String, call:Call, url:String)
+  object Link {
+    def apply(url:String)(implicit environment: Environment):Option[Link] = {
+      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
+        Link(prevTitle, routes.Application.documentation(url), url)
+      }
+    }
+
+  }
+
+  def getMarkdownTitle(lines: List[String]):Option[String] = {
+    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
+  }
+
+  def getMarkdownLines(resource: String)(implicit environment: Environment): List[String] = {
+    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    log.info(s"Getting page for $realResource")
+    try {
+      withResource(environment.resourceAsStream(s"public/docs/$realResource.md").orElse(environment.resourceAsStream(s"$realResource.md")).get) { url =>
+        log.info(s"Resolved URL $url")
+        Source.fromInputStream(url).getLines().toList
+      }
+    } catch {
+      case e:Throwable =>
+        log.warn(s"$resource is not a valid page of documentation")
+        Nil
+    }
+  }
+
 
 }

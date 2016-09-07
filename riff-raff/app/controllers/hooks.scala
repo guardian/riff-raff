@@ -12,13 +12,14 @@ import java.util.UUID
 
 import utils.Forms.uuid
 import org.joda.time.DateTime
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.libs.ws.WSClient
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean,
                     method: HttpMethod, postBody: Option[String])
 
-object Hooks extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
+class Hooks(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
   implicit val httpMethodFormatter = new Formatter[HttpMethod] {
     override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], HttpMethod] = {
       data.get(key).map { value =>

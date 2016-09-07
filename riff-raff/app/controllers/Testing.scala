@@ -14,12 +14,15 @@ import play.api.data.Form
 import play.api.data.Forms._
 import org.joda.time.{DateTime, Duration, Interval}
 import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.libs.ws.WSClient
 import play.filters.csrf.CSRFCheck
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-object Testing extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
+class Testing(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+  import Testing._
+
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
@@ -38,8 +41,6 @@ object Testing extends Controller with Logging with LoginActions with I18nSuppor
 
       def keyRing = ???
     }
-
-
 
     def wrapper(parent: Option[UUID], id: UUID, messages: Message*): MessageWrapper = {
       MessageWrapper(MessageContext(logUUID, parameters, parent), id, MessageStack(messages.toList))
@@ -80,17 +81,6 @@ object Testing extends Controller with Logging with LoginActions with I18nSuppor
 
     Ok(views.html.test.reportTest(request,report,verbose))
   }
-
-  case class TestForm(project:String, action:String, hosts: List[String])
-
-  lazy val testForm = Form[TestForm](
-    mapping(
-      "project" -> text,
-      "action" -> nonEmptyText,
-      "hosts" -> list(text)
-    )(TestForm.apply)
-      (TestForm.unapply)
-  )
 
   def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
@@ -155,16 +145,6 @@ object Testing extends Controller with Logging with LoginActions with I18nSuppor
     deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
-  case class UuidForm(uuid:String, action:String)
-
-  lazy val uuidForm = Form[UuidForm](
-    mapping(
-      "uuid" -> text(36,36),
-      "action" -> nonEmptyText
-    )(UuidForm.apply)
-      (UuidForm.unapply)
-  )
-
   def actionUUID = CSRFCheck {
     AuthAction { implicit request =>
       uuidForm.bindFromRequest().fold(
@@ -197,5 +177,30 @@ object Testing extends Controller with Logging with LoginActions with I18nSuppor
     allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
   }
+
+}
+
+object Testing {
+
+  case class UuidForm(uuid:String, action:String)
+
+  lazy val uuidForm = Form[UuidForm](
+    mapping(
+      "uuid" -> text(36,36),
+      "action" -> nonEmptyText
+    )(UuidForm.apply)
+    (UuidForm.unapply)
+  )
+
+  case class TestForm(project:String, action:String, hosts: List[String])
+
+  lazy val testForm = Form[TestForm](
+    mapping(
+      "project" -> text,
+      "action" -> nonEmptyText,
+      "hosts" -> list(text)
+    )(TestForm.apply)
+    (TestForm.unapply)
+  )
 
 }

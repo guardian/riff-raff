@@ -13,10 +13,11 @@ import org.json4s.native.Serialization
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
+import play.api.libs.ws.WSClient
 import play.api.mvc.BodyParsers.parse
 import play.api.mvc.Results._
 import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
@@ -95,52 +96,53 @@ object ApiKeyGenerator {
 
 }
 
-object ApiJsonEndpoint extends LoginActions {
-  val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
 
-  def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
-    val format = authenticatedRequest.queryString.get("format").toSeq.flatten
-    val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+class Api(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
-    val response = try {
-      f(authenticatedRequest)
-    } catch {
-      case t:Throwable =>
-        toJson(Map(
-          "response" -> toJson(Map(
-            "status" -> toJson("error"),
-            "message" -> toJson(t.getMessage),
-            "stacktrace" -> toJson(t.getStackTrace.map(_.toString))
+  object ApiJsonEndpoint {
+    val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
+
+    def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
+      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
+      val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+
+      val response = try {
+        f(authenticatedRequest)
+      } catch {
+        case t:Throwable =>
+          toJson(Map(
+            "response" -> toJson(Map(
+              "status" -> toJson("error"),
+              "message" -> toJson(t.getMessage),
+              "stacktrace" -> toJson(t.getStackTrace.map(_.toString))
+            ))
           ))
-        ))
-    }
+      }
 
-    val responseObject = response match {
-      case jso:JsObject => jso
-      case jsv:JsValue => JsObject(Seq(("value", jsv)))
-    }
+      val responseObject = response match {
+        case jso:JsObject => jso
+        case jsv:JsValue => JsObject(Seq(("value", jsv)))
+      }
 
-    jsonpCallback map { callback =>
-      Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
-    } getOrElse {
-      response \ "response" \ "status" match {
-        case JsDefined(JsString("ok")) => Ok(responseObject)
-        case JsDefined(JsString("error")) => BadRequest(responseObject)
-        case _ => throw new IllegalStateException("Response status missing or invalid")
+      jsonpCallback map { callback =>
+        Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
+      } getOrElse {
+        response \ "response" \ "status" match {
+          case JsDefined(JsString("ok")) => Ok(responseObject)
+          case JsDefined(JsString("error")) => BadRequest(responseObject)
+          case _ => throw new IllegalStateException("Response status missing or invalid")
+        }
       }
     }
-  }
-  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
-    ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
-  def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
-    this.apply(counter, parse.anyContent)(f)
+    def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
+      ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
+    def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
+      this.apply(counter, parse.anyContent)(f)
   def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
-    val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
-    this.apply(apiRequest)(f)
+      val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
+      this.apply(apiRequest)(f)
+    }
   }
-}
-
-object Api extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
 
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)

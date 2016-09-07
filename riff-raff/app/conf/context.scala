@@ -47,7 +47,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   lazy val stage: String = {
     val theStage = Try(EC2MetadataUtils.getInstanceId) match {
-      case Success(instanceId) =>
+      case Success(instanceId) if instanceId != null =>
         val request = new DescribeTagsRequest().withFilters(
           new Filter("resource-type").withValues("instance"),
           new Filter("resource-id").withValues(instanceId)
@@ -61,7 +61,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
         } finally {
           ec2Client.shutdown()
         }
-      case Failure(_) => "DEV" // if we couldn't get an instance ID, we must be on a developer's machine
+      case _ => "DEV" // if we couldn't get an instance ID, we must be on a developer's machine
     }
     log.info(s"Riff Raff's stage = $theStage")
     theStage

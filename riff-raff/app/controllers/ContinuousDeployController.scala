@@ -8,17 +8,13 @@ import java.util.UUID
 
 import ci.{ContinuousDeploymentConfig, Trigger}
 import org.joda.time.DateTime
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.libs.ws.WSClient
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import utils.Forms.uuid
 
-object ContinuousDeployController extends Controller with Logging with LoginActions with I18nSupport with MessagesHack {
-
-  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
-  object ConfigForm {
-    def apply(cd: ContinuousDeploymentConfig): ConfigForm =
-      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id)
-  }
+class ContinuousDeployController(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+  import ContinuousDeployController._
 
   val continuousDeploymentForm = Form[ConfigForm](
     mapping(
@@ -76,3 +72,14 @@ object ContinuousDeployController extends Controller with Logging with LoginActi
     }
   }
 }
+
+object ContinuousDeployController {
+
+  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
+  object ConfigForm {
+    def apply(cd: ContinuousDeploymentConfig): ConfigForm =
+      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id)
+  }
+
+}
+

@@ -65,7 +65,5 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     fork in Test := false,
 
-    includeFilter in (Assets, LessKeys.less) := "*.less",
-
-    routesGenerator := StaticRoutesGenerator // TODO remove this once we are using DI
+    includeFilter in (Assets, LessKeys.less) := "*.less"
   ))
