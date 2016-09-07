@@ -9,8 +9,6 @@ import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
-import java.io.File
-
 import magenta._
 import controllers.{Logging, routes}
 import lifecycle.{LifecycleWithoutApp, ShutdownWhenInactive}
@@ -19,6 +17,9 @@ import java.util.UUID
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.regions.{Region, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
+import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
+import com.amazonaws.util.EC2MetadataUtils
 
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
@@ -26,9 +27,12 @@ import deployment.{DeployMetricsActor, Deployments}
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
 import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
 import riffraff.BuildInfo
+
+import scala.util.{Failure, Success, Try}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
@@ -39,6 +43,28 @@ class Configuration(val application: String, val webappConfDirectory: String = "
         throw new IllegalStateException(exceptionMessage)
       }
     }
+  }
+
+  lazy val stage: String = {
+    val theStage = Try(EC2MetadataUtils.getInstanceId) match {
+      case Success(instanceId) =>
+        val request = new DescribeTagsRequest().withFilters(
+          new Filter("resource-type").withValues("instance"),
+          new Filter("resource-id").withValues(instanceId)
+        )
+        val ec2Client = Regions.getCurrentRegion.createClient(classOf[AmazonEC2Client], credentialsProviderChain(None, None), null)
+        try {
+          val describeTagsResult = ec2Client.describeTags(request)
+          describeTagsResult.getTags.asScala
+            .collectFirst{ case t if t.getKey == "Stage" => t.getValue }
+            .getOrException("Couldn't find a Stage tag on the Riff Raff instance")
+        } finally {
+          ec2Client.shutdown()
+        }
+      case Failure(_) => "DEV" // if we couldn't get an instance ID, we must be on a developer's machine
+    }
+    log.info(s"Riff Raff's stage = $theStage")
+    theStage
   }
 
   object auth {
