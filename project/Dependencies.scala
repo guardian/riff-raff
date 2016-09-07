@@ -48,7 +48,6 @@ object Dependencies {
     "com.gu" %% "configuration" % "4.0",
     "com.gu" %% "play-googleauth" % "0.2.2" exclude("com.google.guava", "guava-jdk5"),
     "org.mongodb" %% "casbah" % "3.1.0",
-    "org.pircbotx" % "pircbotx" % "1.7",
     "com.typesafe.akka" %% "akka-agent" % "2.3.8",
     "org.clapper" %% "markwrap" % "1.0.2",
     "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",

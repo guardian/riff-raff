@@ -25,7 +25,6 @@ object Global extends WithFilters(/* TODO re-enable this once we have DI. new Gz
       ScheduledAgent,
       DeployInfoManager,
       Deployments,
-      IrcClient,
       DeployMetrics,
       HooksClient,
       Builds,

@@ -123,13 +123,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val minute = configuration.getIntegerProperty("housekeeping.minute", 0)
   }
 
-  object irc {
-    lazy val isConfigured = name.isDefined && host.isDefined && channel.isDefined
-    lazy val name = configuration.getStringProperty("irc.name")
-    lazy val host = configuration.getStringProperty("irc.host")
-    lazy val channel = configuration.getStringProperty("irc.channel")
-  }
-
   object logging {
     lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
   }
@@ -145,16 +138,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val isConfigured = uri.isDefined
     lazy val uri = configuration.getStringProperty("mongo.uri")
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
-  }
-
-  object notifications {
-    object aws {
-      lazy val isConfigured = topicArn.isDefined && accessKey.isDefined && secretKey.isDefined
-      lazy val topicArn = configuration.getStringProperty("notifications.aws.topicArn")
-      lazy val topicRegion = configuration.getStringProperty("notifications.aws.topicRegion")
-      lazy val accessKey = configuration.getStringProperty("notifications.aws.accessKey")
-      lazy val secretKey = configuration.getStringProperty("notifications.aws.secretKey")
-    }
   }
 
   object stages {
@@ -280,17 +263,6 @@ object TaskMetrics {
   object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
   object TasksRunning extends GaugeMetric("riffraff", "running_tasks", "Running tasks", "Number of currently running tasks", () => DeployMetricsActor.runningTaskCount)
   val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
-}
-
-object MessageMetrics {
-  object IRCMessages extends TimingMetric(
-    "messages", "irc_messages", "IRC messages", "messages sent to the IRC channel"
-  )
-  object MQMessages extends TimingMetric(
-    "messages", "mq_messages", "MQ messages", "messages sent to the message queue"
-  )
-
-  val all = Seq(IRCMessages,MQMessages)
 }
 
 object DatastoreMetrics {
