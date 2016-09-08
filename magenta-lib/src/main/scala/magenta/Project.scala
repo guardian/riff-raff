@@ -3,75 +3,10 @@ package magenta
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
-import magenta.json.{DeployInfoHost, DeployInfoJsonInputFile}
 import magenta.tasks.Task
-import org.joda.time.DateTime
 
 import scala.math.Ordering.OptionOrdering
 
-object DeployInfo {
-  def apply(): DeployInfo = DeployInfo(DeployInfoJsonInputFile(Nil,None,Map.empty), None)
-}
-
-case class DeployInfo(input:DeployInfoJsonInputFile, createdAt:Option[DateTime]) {
-
-  def asHost(host: DeployInfoHost) = {
-    val tags:List[(String,String)] =
-      List("group" -> host.group) ++
-        host.created_at.map("created_at" -> _) ++
-        host.dnsname.map("dnsname" -> _) ++
-        host.instancename.map("instancename" -> _) ++
-        host.internalname.map("internalname" -> _)
-    Host(host.hostname, Set(App(host.app)), host.stage, host.stack, tags = tags.toMap)
-  }
-
-  def forParams(params: DeployParameters): DeployInfo = {
-    if (params.hostList.isEmpty) filterHosts(_.stage == params.stage.name)
-    else filterHosts(params.hostList contains _.name)
-  }
-
-  def filterHosts(p: Host => Boolean) = this.copy(input = input.copy(hosts = input.hosts.filter(jsonHost => p(asHost(jsonHost)))))
-
-  val hosts = input.hosts.map(asHost)
-  val data = input.data mapValues { dataList =>
-    dataList.map { data => Datum(data.stack, data.app, data.stage, data.value, data.comment) }
-  }
-
-  lazy val knownHostStages: List[String] = hosts.map(_.stage).distinct.sorted
-  lazy val knownHostApps: List[Set[App]] = hosts.map(_.apps).distinct.sortWith(_.toList.head.toString < _.toList.head.toString)
-
-  def knownHostApps(stage: String): List[Set[App]] = knownHostApps.filter(stageAppToHostMap.contains(stage, _))
-
-  lazy val knownKeys: List[String] = data.keys.toList.sorted
-
-  def dataForKey(key: String): List[Datum] = data.get(key).getOrElse(List.empty)
-  def knownDataStages(key: String) = data.get(key).toList.flatMap {_.map(_.stage).distinct.sortWith(_.toString < _.toString)}
-  def knownDataApps(key: String): List[String] = data.get(key).toList.flatMap{_.map(_.app).distinct.sortWith(_.toString < _.toString)}
-
-  lazy val stageAppToHostMap: Map[(String,Set[App]),Seq[Host]] =
-    hosts.groupBy(host => (host.stage,host.apps)).mapValues(_.transposeBy(_.tags.getOrElse("group","")))
-
-  def stageAppToDataMap(key: String): Map[(String,String),List[Datum]] =
-    data.get(key).map {_.groupBy(key => (key.stage,key.app))}.getOrElse(Map.empty)
-
-  def firstMatchingData(key: String, app:App, stage: Stage, stack: Stack): Option[Datum] = {
-    val matchingList = data.getOrElse(key, List.empty)
-    stack match {
-      case UnnamedStack =>
-        matchingList.filter(_.stack.isEmpty).find{data =>
-          data.appRegex.findFirstMatchIn(app.name).isDefined &&
-          data.stageRegex.findFirstMatchIn(stage.name).isDefined
-        }
-      case NamedStack(stackName) =>
-        matchingList.filter(_.stack.isDefined).find{data =>
-          data.stackRegex.exists(_.findFirstMatchIn(stackName).isDefined) &&
-          data.appRegex.findFirstMatchIn(app.name).isDefined &&
-          data.stageRegex.findFirstMatchIn(stage.name).isDefined
-        }
-    }
-
-  }
-}
 
 case class Host(
     name: String,
@@ -91,7 +26,7 @@ case class Host(
   lazy val connectStr = (connectAs map { _ + "@" } getOrElse "") + name
 
   def isValidForStack(s: Stack) = s match {
-    case NamedStack(name) => stack.exists(_ == name)
+    case NamedStack(stackName) => stack.contains(stackName)
     case UnnamedStack => true
   }
 }
@@ -129,7 +64,7 @@ case class HostList(hosts: Seq[Host]) {
 }
 object HostList {
   implicit def listOfHostsAsHostList(hosts: Seq[Host]): HostList = new HostList(hosts)
-  implicit def hostListAsListOfHosts(hostList: HostList) = hostList.hosts
+  implicit def hostListAsListOfHosts(hostList: HostList): Seq[Host] = hostList.hosts
 }
 
 case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: AmazonS3) {
