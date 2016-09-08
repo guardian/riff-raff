@@ -319,7 +319,7 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
         Json.obj(
           "response" -> Json.obj(
             "status" -> "error",
-            "errors" -> JsError.toFlatJson(error)
+            "errors" -> JsError.toJson(error)
           )
         )
       }

@@ -5,7 +5,7 @@ import org.joda.time.DateTime
 trait DataLookup {
   def keys: Seq[String]
   def all: Map[String,Seq[Datum]]
-  def get(key:String): Seq[Datum] = all.get(key).getOrElse(Nil)
+  def get(key:String): Seq[Datum] = all.getOrElse(key, Nil)
   def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum]
 }
 
