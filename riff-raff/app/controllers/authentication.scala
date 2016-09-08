@@ -54,11 +54,15 @@ object ApiAuthAction {
 
   def apply[A](counter: Option[String], p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
     Action(p) { implicit request =>
-      val inputKey = request.queryString.get("key").flatMap(_.headOption)
-      assert(inputKey.isDefined, "An API key must be provided for this endpoint")
-      val apiKey = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter))
-      assert(apiKey.isDefined, "The ApiKey provided is not valid, please check and try again")
-      f(new ApiRequest(apiKey.get, request))
+      request.queryString.get("key").flatMap(_.headOption) match {
+        case Some(urlParam) =>
+          Persistence.store.getAndUpdateApiKey(urlParam, counter) match {
+            case Some(apiKey) => f(new ApiRequest(apiKey, request))
+            case None => Unauthorized("The API key provided is not valid. Please check and try again.")
+          }
+        case None =>
+          Unauthorized("An API key must be provided for this endpoint. Please include a 'key' URL parameter.")
+      }
     }
   }
 

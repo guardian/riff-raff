@@ -129,11 +129,14 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
         }
       }
     }
+
     def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
       ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
+
     def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
       this.apply(counter, parse.anyContent)(f)
-  def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
+
+    def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
       val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
       this.apply(apiRequest)(f)
     }
