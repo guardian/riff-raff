@@ -1,17 +1,25 @@
-package test
+package notification
 
 import java.util.UUID
 
 import com.mongodb.casbah.Imports._
 import magenta._
-import notification.{HookAction, HookConfig, HookCriteria}
+import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers}
-import org.scalatestplus.play._
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import persistence.{DeployRecordDocument, ParametersDocument}
 import play.api.libs.ws.WSAuthScheme
+import play.api.libs.ws.ahc.AhcWSClient
 
-class HooksTest extends FlatSpec with Matchers with OneAppPerSuite {
+class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
+
+  implicit val wsClient = new AhcWSClient(new DefaultAsyncHttpClientConfig.Builder().build())(materializer = null)
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    wsClient.close()
+  }
+
   "HookAction" should "serialise and deserialise" in {
     val action = HookAction("http://localhost:80/test", true)
     val dbo = action.toDBO

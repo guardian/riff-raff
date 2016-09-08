@@ -12,6 +12,7 @@ import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp with Logging {
+  import ContinuousDeployment._
 
   var sub: Option[Subscription] = None
 
@@ -42,16 +43,6 @@ class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp
     sub.foreach(_.unsubscribe())
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
-    val (config,build) = configBuildTuple
-    DeployParameters(
-      Deployer("Continuous Deployment"),
-      MagentaBuild(build.jobName,build.number),
-      Stage(config.stage),
-      RecipeName(config.recipe)
-    )
-  }
-
   def runDeploy(params: DeployParameters) {
     if (conf.Configuration.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
@@ -68,12 +59,25 @@ class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp
       log.info(s"Would deploy ${params.toString}")
   }
 
-  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig])
-    : Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
+}
+
+object ContinuousDeployment extends Logging {
+
+  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
       log.debug(s"Matching $build against $config")
       config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
+  }
+
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
+    val (config,build) = configBuildTuple
+    DeployParameters(
+      Deployer("Continuous Deployment"),
+      MagentaBuild(build.jobName,build.number),
+      Stage(config.stage),
+      RecipeName(config.recipe)
+    )
   }
 
   def retryUpTo[T](maxAttempts: Int)(thunk: () => T): Try[T] = {
@@ -82,5 +86,6 @@ class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp
 
     thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
   }
+
 }
 

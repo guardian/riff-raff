@@ -55,7 +55,6 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     filters,
     ws,
-    "org.scalatestplus" %% "play" % "1.4.0" % Test,
     "com.typesafe.akka" %% "akka-testkit" % "2.3.8" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
