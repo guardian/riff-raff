@@ -2,7 +2,11 @@
 @import helper.CSRF
 
 @main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
-    <style>{ display:@if(!verbose) {none} else {list-item}; }</style>
+    <style>
+    span.message-verbose {
+      display:@if(!verbose) {none} else {list-item};
+    }
+    </style>
 
     <div class="row">
         <div class="col-md-8">
