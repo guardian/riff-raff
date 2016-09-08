@@ -27,7 +27,7 @@ lazy val lib = project.in(file("magenta-lib"))
 
 lazy val riffraff = project.in(file("riff-raff"))
   .dependsOn(lib)
-  .enablePlugins(PlayScala, BuildInfoPlugin)
+  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact)
   .settings(commonSettings)
   .settings(Seq(
     name := "riff-raff",
