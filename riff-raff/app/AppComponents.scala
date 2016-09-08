@@ -1,12 +1,16 @@
-import conf.PlayRequestMetrics
 import controllers._
 import play.api.ApplicationLoader.Context
-import play.api.BuiltInComponentsFromContext
+import play.api.{BuiltInComponentsFromContext, Logger}
+import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
 import play.api.libs.ws.ahc.AhcWSComponents
+import play.api.mvc.{RequestHeader, Result}
+import play.api.mvc.Results.InternalServerError
 import play.api.routing.Router
 import play.filters.gzip.GzipFilter
 import utils.HstsFilter
+
+import scala.concurrent.Future
 
 import router.Routes
 
@@ -30,9 +34,13 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val testingController = new Testing
   val assets = new Assets(httpErrorHandler)
 
-  // TODO custom error page (previously done in Global.onError)
-
-  // TODO set up lifecycles
+  override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
+    override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
+      Logger.error("Error whilst trying to serve request", t)
+      val reportException = if (t.getCause != null) t.getCause else t
+      Future.successful(InternalServerError(views.html.errorPage(reportException)))
+    }
+  }
 
   override def router: Router = new Routes(
     httpErrorHandler,
