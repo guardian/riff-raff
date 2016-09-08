@@ -170,9 +170,9 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
   }
 
   def javascriptRoutes = Action { implicit request =>
-    import play.Routes._
+    import play.api.routing._
     Ok{
-      javascriptRouter("jsRoutes",
+      JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.DeployController.stop,
         routes.javascript.DeployController.projectHistory,
         routes.javascript.DeployController.dashboardContent,
