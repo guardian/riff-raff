@@ -63,7 +63,7 @@ object Persistence extends Logging {
   object NoOpDataStore extends DataStore with Logging {}
 
   lazy val store: DataStore = {
-    val dataStore = MongoDatastore.buildDatastore(maybeApplication).getOrElse(NoOpDataStore)
+    val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)
     log.info("Persistence datastore initialised as %s" format (dataStore))
     dataStore
   }

@@ -44,12 +44,12 @@ object MongoDatastore extends Logging {
 
   RegisterJodaTimeConversionHelpers()
 
-  def buildDatastore(app:Option[Application]) = try {
+  def buildDatastore() = try {
     if (Configuration.mongo.isConfigured) {
       val uri = MongoClientURI(Configuration.mongo.uri.get)
       val mongoClient = MongoClient(uri)
       val db = MongoDB(mongoClient, uri.database.get)
-      Some(new MongoDatastore(db, app.map(_.classloader)))
+      Some(new MongoDatastore(db))
     } else None
   } catch {
     case e:Throwable =>
@@ -58,7 +58,7 @@ object MongoDatastore extends Logging {
   }
 }
 
-class MongoDatastore(database: MongoDB, val loader: Option[ClassLoader]) extends DataStore with DocumentStore with Logging {
+class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
