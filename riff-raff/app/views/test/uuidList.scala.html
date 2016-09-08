@@ -1,5 +1,4 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
-@* TODO replace this with b3? @import helper.twitterBootstrap._ *@
 @import helper.CSRF
 
 @main("UUID list", request) {

@@ -11,8 +11,8 @@
     @CSRF.formField
     <fieldset>
         <legend>What would you like to deploy?</legend>
-@b3.text(deployForm("project"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
-@b3.text(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
+@b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
+@b3.text(deployForm("build"),  '_label -> "build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
 @b3.select(
 deployForm("stage"),
 helper.options(prismLookup.stages.toList),

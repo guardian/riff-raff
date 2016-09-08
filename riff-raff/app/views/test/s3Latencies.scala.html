@@ -1,5 +1,4 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[(deployment.DeployRecord, Option[org.joda.time.Duration])])
-@* TODO replace this with b3? @import helper.twitterBootstrap._ *@
 
 @main("S3 Latencies", request) {
 

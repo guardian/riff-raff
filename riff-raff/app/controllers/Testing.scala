@@ -15,7 +15,7 @@ import org.joda.time.{DateTime, Duration, Interval}
 import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.filters.csrf.CSRFCheck
+import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import resources.PrismLookup
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
@@ -104,9 +104,11 @@ class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, v
     Ok("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
   }
 
-  def uuidList(limit:Int) = AuthAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
-    Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
+  def uuidList(limit:Int) = CSRFAddToken {
+    AuthAction { implicit request =>
+      val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+      Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
+    }
   }
 
   def S3LatencyList(limit:Int, csv: Boolean) = AuthAction { implicit request =>
@@ -133,16 +135,17 @@ class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, v
         times.map{case(deploy, duration) =>
           s"${formatter.print(deploy.time)},${deploy.parameters.build.projectName},${duration.map(_.getStandardSeconds).getOrElse("")}"
         }
-      val csvCall = routes.Testing.S3LatencyList(limit, true)
       Ok(csvLines.mkString("\n")).as("text/csv").withHeaders("Content-Disposition" -> "attachment; filename=s3Latencies.csv")
     }
     else
       Ok(views.html.test.s3Latencies(request, times))
   }
 
-  def debugLogViewer(uuid: String) = AuthAction { implicit request =>
-    val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
-    deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
+  def debugLogViewer(uuid: String) = CSRFAddToken {
+    AuthAction { implicit request =>
+      val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
+      deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
+    }
   }
 
   def actionUUID = CSRFCheck {
