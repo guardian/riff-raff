@@ -221,7 +221,7 @@ object DeployMetrics extends LifecycleWithoutApp {
 
   object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
   object DeployComplete extends CountMetric("riffraff", "complete_deploy", "Complete deploy", "Number of deploys that completed", Some(DeployStart))
-  object DeployFail extends CountMetric("riffraff", "fail_deploy", "Complete deploy", "Number of deploys that failed", Some(DeployStart))
+  object DeployFail extends CountMetric("riffraff", "fail_deploy", "Fail deploy", "Number of deploys that failed", Some(DeployStart))
 
   object DeployRunning extends GaugeMetric("riffraff", "running_deploys", "Running deploys", "Number of currently running deploys", () => runningDeploys.length)
 
@@ -233,7 +233,7 @@ object DeployMetrics extends LifecycleWithoutApp {
         DeployStart.recordCount(1)
         runningDeploys += message.context.deployId
       case FailContext(Deploy(parameters)) =>
-        DeployFail.recordCount(1)
+        DeployFail.recordCount(1) // TODO this metric appears to be broken, never gets incremented
         runningDeploys -= message.context.deployId
       case FinishContext(Deploy(parameters)) =>
         DeployComplete.recordCount(1)

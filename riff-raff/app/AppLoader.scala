@@ -4,6 +4,7 @@ import lifecycle.ShutdownWhenInactive
 import notification.HooksClient
 import persistence.SummariseDeploysHousekeeping
 import ci.{Builds, ContinuousDeployment}
+import com.gu.management.play.{InternalManagementServer, InternalManagementServerImpl}
 import conf.DeployMetrics
 import deployment.Deployments
 import utils.ScheduledAgent
@@ -39,6 +40,9 @@ class AppLoader extends ApplicationLoader {
         }
       }
     }(ExecutionContext.global))
+
+    // the management server takes care of shutting itself down with a lifecycle hook
+    new InternalManagementServerImpl(context.lifecycle).startServer(conf.Management.applicationName, conf.Management.pages)
 
     components.application
   }
