@@ -1,6 +1,6 @@
 package controllers
 
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.format.DateTimeFormat
 import play.api.mvc.{Action, Controller}
 import magenta._
 
@@ -11,11 +11,10 @@ import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
-import org.joda.time.{DateTime, Duration, Interval}
-import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
+import org.joda.time.{DateTime, Duration}
+import persistence.{DocumentStoreConverter, Persistence}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.filters.csrf.{CSRFAddToken, CSRFCheck}
 import resources.PrismLookup
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
@@ -104,11 +103,9 @@ class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, v
     Ok("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
   }
 
-  def uuidList(limit:Int) = CSRFAddToken {
-    AuthAction { implicit request =>
-      val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
-      Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
-    }
+  def uuidList(limit:Int) = AuthAction { implicit request =>
+    val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
   }
 
   def S3LatencyList(limit:Int, csv: Boolean) = AuthAction { implicit request =>
@@ -141,38 +138,34 @@ class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, v
       Ok(views.html.test.s3Latencies(request, times))
   }
 
-  def debugLogViewer(uuid: String) = CSRFAddToken {
-    AuthAction { implicit request =>
-      val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
-      deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
-    }
+  def debugLogViewer(uuid: String) = AuthAction { implicit request =>
+    val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
+    deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
-  def actionUUID = CSRFCheck {
-    AuthAction { implicit request =>
-      uuidForm.bindFromRequest().fold(
-        errors => Redirect(routes.Testing.uuidList()),
-        form => {
-          form.action match {
-            case "summarise" => {
-              log.info("Summarising deploy with UUID %s" format form.uuid)
-              Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
-            case "deleteV2" => {
-              log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-              Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
-            case "addStringUUID" => {
-              log.info("Adding string UUID for %s" format form.uuid)
-              Persistence.store.addStringUUID(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
+  def actionUUID = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
+      errors => Redirect(routes.Testing.uuidList()),
+      form => {
+        form.action match {
+          case "summarise" => {
+            log.info("Summarising deploy with UUID %s" format form.uuid)
+            Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "deleteV2" => {
+            log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
+            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "addStringUUID" => {
+            log.info("Adding string UUID for %s" format form.uuid)
+            Persistence.store.addStringUUID(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
           }
         }
-      )
-    }
+      }
+    )
   }
 
   def transferAllUUIDs = AuthAction { implicit request =>

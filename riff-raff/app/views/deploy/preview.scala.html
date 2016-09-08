@@ -13,7 +13,7 @@
             <tr><td><strong>Recipe</strong></td><td>@parameters.recipe.name</td></tr>
             <tr><td><strong>Hosts</strong></td><td>@if(parameters.hostList.isEmpty) { <em>All hosts</em> } else { @parameters.hostList.mkString(", ") }</td></tr>
         </table>
-    <div>
+    </div>
 
     <div class="content" data-ajax-refresh="@parameters.previewContentCall(previewId)">
         @views.html.deploy.previewLoading(request, 0L)

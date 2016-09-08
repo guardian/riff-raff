@@ -5,44 +5,44 @@
 
 @main("Continuous Deployment", request, List("form-autocomplete")) {
 
-<h2>Continuous Deployment Configuration</h2>
-<hr/>
+    <h2>Continuous Deployment Configuration</h2>
+    <hr/>
 
-@b3.form(action=routes.ContinuousDeployController.save) {
-@CSRF.formField
-@snippets.inputHidden(configForm("id"))
+    @b3.form(action=routes.ContinuousDeployController.save) {
+        @CSRF.formField
+        @snippets.inputHidden(configForm("id"))
 
-    @if(configForm.hasGlobalErrors) {
-        <div class="alert alert-danger">
-            <h4>Error</h4>
-            <ul>
-            @configForm.globalErrors.map { error =>
-              <li>@error.message</li>
-            }
-            </ul>
+        @if(configForm.hasGlobalErrors) {
+            <div class="alert alert-danger">
+                <h4>Error</h4>
+                <ul>
+                @configForm.globalErrors.map { error =>
+                    <li>@error.message</li>
+                }
+                </ul>
+            </div>
+        }
+
+        @b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+        @b3.select(
+            configForm("stage"),
+            options = helper.options(prismLookup.stages.toList),
+            '_default -> "--- Choose a stage ---",
+            '_label -> "Stage",
+            '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+        )
+        @b3.text(configForm("recipe"), '_label -> "Recipe to Execute")
+        @b3.text(configForm("branchMatcher"), '_label -> "Branch RegEx")
+        <legend>Trigger</legend>
+        @b3.radio(
+            configForm("trigger"),
+            options = Seq(SuccessfulBuild, Disabled).map(value => value.id.toString -> value.toString),
+            Symbol("data-radio") -> "trigger"
+        )
+
+        <div class="actions">
+            <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+            <a href="@routes.ContinuousDeployController.list()" class="btn btn-danger">Cancel</a>
         </div>
     }
-
-@b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
-@b3.select(
-configForm("stage"),
-options = helper.options(prismLookup.stages.toList),
-'_default -> "--- Choose a stage ---",
-'_label -> "Stage",
-'_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
-)
-@b3.text(configForm("recipe"), '_label -> "Recipe to Execute")
-@b3.text(configForm("branchMatcher"), '_label -> "Branch RegEx")
-<legend>Trigger</legend>
-@b3.radio(
-    configForm("trigger"),
-    options = Seq(SuccessfulBuild, Disabled).map(value => value.id.toString -> value.toString),
-    Symbol("data-radio") -> "trigger"
-)
-
-<div class="actions">
-    <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
-    <a href="@routes.ContinuousDeployController.list()" class="btn btn-danger">Cancel</a>
-</div>
-}
 }

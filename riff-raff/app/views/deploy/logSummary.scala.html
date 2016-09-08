@@ -1,24 +1,25 @@
 @(record: deployment.Record)
 
-@if(record.isSummarised) {
-  <div class="alert">This log has been summarised, the full details are no longer available.</div>
-}
-@defining(record.state) { state =>
-@state match {
-case RunState.NotRunning => { <div class="alert alert-info"><p class="lead">Waiting to run</p></div> }
-case RunState.Completed => { <div class="alert alert-success"><p class="lead">Completed</p></div> }
-case RunState.Failed => {
-<div class="alert alert-danger">
-    <p class="lead">Failed</p>
-    @defining(java.util.UUID.randomUUID.toString) { id =>
-        @record.report.failureMessage.map{ fail =>
-            <strong>@fail.detail.name</strong> @fail.detail.message <a data-toggle="collapse" href="#@id">Show exception details</a>
-            <div id="@id" class="collapse">
-                <pre>@fail.detail.stackTrace</pre>
-            </div>
+    @if(record.isSummarised) {
+        <div class="alert">This log has been summarised, the full details are no longer available.</div>
+    }
+    @defining(record.state) { state =>
+        @state match {
+            case RunState.NotRunning => { <div class="alert alert-info"><p class="lead">Waiting to run</p></div> }
+            case RunState.Completed => { <div class="alert alert-success"><p class="lead">Completed</p></div> }
+            case RunState.Failed => {
+                <div class="alert alert-danger">
+                    <p class="lead">Failed</p>
+                    @defining(java.util.UUID.randomUUID.toString) { id =>
+                        @record.report.failureMessage.map{ fail =>
+                            <strong>@fail.detail.name</strong> @fail.detail.message <a data-toggle="collapse" href="#@id">Show exception details</a>
+                            <div id="@id" class="collapse">
+                                <pre>@fail.detail.stackTrace</pre>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            case _ => {}
         }
     }
-</div>
-}
-case _ => {}
-} }

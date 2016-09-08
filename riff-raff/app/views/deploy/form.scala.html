@@ -4,40 +4,40 @@
 
 @main("Deploy request", request, List("form-autocomplete")) {
 
-<div class="clearfix"><p>&nbsp;</p></div>
+    <div class="clearfix"><p>&nbsp;</p></div>
 
-<div class="col-md-6">
-@b3.form(routes.DeployController.processForm, 'class -> "well") {
-    @CSRF.formField
-    <fieldset>
-        <legend>What would you like to deploy?</legend>
-@b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
-@b3.text(deployForm("build"),  '_label -> "build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
-@b3.select(
-deployForm("stage"),
-helper.options(prismLookup.stages.toList),
-'_default -> "--- Choose a stage ---",
-'_label -> "stage",
-'_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
-'id -> "stage",
-'class -> "form-control"
-)
+    <div class="col-md-6">
+    @b3.form(routes.DeployController.processForm, 'class -> "well") {
+        @CSRF.formField
+        <fieldset>
+            <legend>What would you like to deploy?</legend>
+            @b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
+            @b3.text(deployForm("build"),  '_label -> "build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
+            @b3.select(
+                deployForm("stage"),
+                helper.options(prismLookup.stages.toList),
+                '_default -> "--- Choose a stage ---",
+                '_label -> "stage",
+                '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
+                'id -> "stage",
+                'class -> "form-control"
+            )
 
-<div class="actions">
-    <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
-    <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-    <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
-</div>
-    </fieldset>
-}
-</div>
+            <div class="actions">
+                <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
+                <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
+                <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
+            </div>
+        </fieldset>
+    }
+    </div>
 
-<div class="col-md-6">
-    <div id="deploy-info"></div>
-    <div id="build-info"></div>
-</div>
+    <div class="col-md-6">
+        <div id="deploy-info"></div>
+        <div id="build-info"></div>
+    </div>
 
-<div class="clearfix"></div>
+    <div class="clearfix"></div>
 
-@snippets.changeFreezeDialog()
+    @snippets.changeFreezeDialog()
 }

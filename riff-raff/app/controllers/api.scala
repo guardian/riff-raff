@@ -1,13 +1,5 @@
 package controllers
 
-import java.security.SecureRandom
-import java.util.UUID
-
-import com.mongodb.casbah.Imports._
-import deployment.{DeployFilter, Deployments, Record}
-import magenta._
-import org.joda.time.{DateTime, LocalDate}
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -16,7 +8,16 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
-import play.filters.csrf.{CSRFAddToken, CSRFCheck}
+
+import java.security.SecureRandom
+import java.util.UUID
+
+import org.joda.time.{DateTime, LocalDate}
+
+import com.mongodb.casbah.Imports._
+import deployment.{DeployFilter, Deployments, Record}
+import magenta._
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import utils.Json.DefaultJodaDateWrites
 import utils.{ChangeFreeze, Graph}
 
@@ -150,42 +151,34 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
     "key" -> nonEmptyText
   )
 
-  def createKeyForm = CSRFAddToken {
-    AuthAction { implicit request =>
-      Ok(views.html.api.form(applicationForm))
-    }
+  def createKeyForm = AuthAction { implicit request =>
+    Ok(views.html.api.form(applicationForm))
   }
 
-  def createKey = CSRFCheck { CSRFAddToken {
-    AuthAction { implicit request =>
-      applicationForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.api.form(errors)),
-        applicationName => {
-          val randomKey = ApiKeyGenerator.newKey()
-          val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
-          Persistence.store.createApiKey(key)
-          Redirect(routes.Api.listKeys)
-        }
-      )
-    }
-  }}
-
-  def listKeys = CSRFAddToken {
-    AuthAction { implicit request =>
-      Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
-    }
+  def createKey = AuthAction { implicit request =>
+    applicationForm.bindFromRequest().fold(
+      errors => BadRequest(views.html.api.form(errors)),
+      applicationName => {
+        val randomKey = ApiKeyGenerator.newKey()
+        val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
+        Persistence.store.createApiKey(key)
+        Redirect(routes.Api.listKeys)
+      }
+    )
   }
 
-  def delete = CSRFCheck {
-    AuthAction { implicit request =>
-      apiKeyForm.bindFromRequest().fold(
-        errors => Redirect(routes.Api.listKeys()),
-        apiKey => {
-          Persistence.store.deleteApiKey(apiKey)
-          Redirect(routes.Api.listKeys())
-        }
-      )
-    }
+  def listKeys = AuthAction { implicit request =>
+    Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
+  }
+
+  def delete = AuthAction { implicit request =>
+    apiKeyForm.bindFromRequest().fold(
+      errors => Redirect(routes.Api.listKeys()),
+      apiKey => {
+        Persistence.store.deleteApiKey(apiKey)
+        Redirect(routes.Api.listKeys())
+      }
+    )
   }
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
@@ -202,7 +195,7 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
       override def compare(x: LocalDate, y: LocalDate): Int = x.compareTo(y)
     }
     val allDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
-      case (date, _) => date
+      case (day, _) => day
     }
     val firstDate = allDataByDay.headOption.map(_._1)
     val lastDate = allDataByDay.lastOption.map(_._1)
@@ -215,15 +208,15 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
       case default => 5
     }
 
-    val deploys = deploysByState.map { case (state, deployList) =>
-      val seriesDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
-        case (date, _) => date
+    val deploys = deploysByState.map { case (state, deploysInThatState) =>
+      val seriesDataByDay = deploysInThatState.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
+        case (day, _) => day
       }
       val seriesJson = Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
-        case (day, deploys) =>
+        case (day, deploysOnThatDay) =>
           toJson(Map(
             "x" -> toJson(day.toDateTimeAtStartOfDay.getMillis / 1000),
-            "y" -> toJson(deploys)
+            "y" -> toJson(deploysOnThatDay)
           ))
       }
       Map(

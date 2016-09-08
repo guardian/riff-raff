@@ -1,6 +1,3 @@
-import ci.ContinuousDeployment
-import controllers._
-import deployment.{DeploymentEngine, Deployments}
 import play.api.ApplicationLoader.Context
 import play.api.{BuiltInComponentsFromContext, Logger}
 import play.api.http.DefaultHttpErrorHandler
@@ -9,14 +6,24 @@ import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.{RequestHeader, Result}
 import play.api.mvc.Results.InternalServerError
 import play.api.routing.Router
-import play.filters.gzip.GzipFilter
+import play.filters.csrf.CSRFComponents
+import play.filters.gzip.GzipFilterComponents
+
 import resources.PrismLookup
 import utils.HstsFilter
+import ci.ContinuousDeployment
+import controllers._
+import deployment.{DeploymentEngine, Deployments}
 
 import scala.concurrent.Future
+
 import router.Routes
 
-class AppComponents(context: Context) extends BuiltInComponentsFromContext(context) with AhcWSComponents with I18nComponents {
+class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
+  with AhcWSComponents
+  with I18nComponents
+  with CSRFComponents
+  with GzipFilterComponents {
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
@@ -27,10 +34,10 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(deployments)
 
   override lazy val httpFilters = Seq(
-    // TODO CSRF filter
-    new GzipFilter,
+    csrfFilter,
+    gzipFilter,
     new HstsFilter
-  ) // TODO this would require an upgrade of the management-play lib ++ PlayRequestMetrics.asFilters
+  ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
   val applicationController = new Application(prismLookup)(environment, wsClient)
   val deployController = new DeployController(deployments, prismLookup)

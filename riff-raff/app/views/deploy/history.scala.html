@@ -2,34 +2,34 @@
 @import deployment.DeployFilterPagination
 
 @main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
-<link href="@routes.Assets.at("stylesheets/rickshaw.css")" rel="stylesheet">
-<link href='@routes.Assets.at("stylesheets/graph.css")' rel="stylesheet">
-<script src='@routes.Assets.at("javascripts/d3.v2.min.js")'></script>
-<script src='@routes.Assets.at("javascripts/rickshaw.js")'></script>
-<script>
-$(function () { graph({
-    "container_id": 'deploy-chart',
-    "data_path": '@{routes.Api.historyGraph().url}',
-    "height": '100',
-    "renderer": 'bar'
-})  })
-</script>
+    <link href="@routes.Assets.at("stylesheets/rickshaw.css")" rel="stylesheet">
+    <link href='@routes.Assets.at("stylesheets/graph.css")' rel="stylesheet">
+    <script src='@routes.Assets.at("javascripts/d3.v2.min.js")'></script>
+    <script src='@routes.Assets.at("javascripts/rickshaw.js")'></script>
+    <script>
+            $(function () { graph({
+                "container_id": 'deploy-chart',
+                "data_path": '@{routes.Api.historyGraph().url}',
+                "height": '100',
+                "renderer": 'bar'
+            })  })
+    </script>
 
-<h2>Recent deploys</h2>
+    <h2>Recent deploys</h2>
 
-@historyFilter(DeployFilterPagination.fromRequest, prismLookup)
+    @historyFilter(DeployFilterPagination.fromRequest, prismLookup)
 
-<div class="graph-container" id="deploy-chart">
-    <!--<div class="graph-y-axis-label">Day</div>-->
-    <div class="graph-y-axis"></div>
-    <div class="graph-body">
-        <div class="graph"></div>
-        <div class="graph-slider"></div>
+    <div class="graph-container" id="deploy-chart">
+            <!--<div class="graph-y-axis-label">Day</div>-->
+        <div class="graph-y-axis"></div>
+        <div class="graph-body">
+            <div class="graph"></div>
+            <div class="graph-slider"></div>
+        </div>
+        <div class="graph-legend"></div>
     </div>
-    <div class="graph-legend"></div>
-</div>
 
-<div class="content" data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
-    <p>Loading...</p>
-</div>
+    <div class="content" data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
+        <p>Loading...</p>
+    </div>
 }
