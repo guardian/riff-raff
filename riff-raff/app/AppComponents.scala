@@ -1,4 +1,6 @@
+import ci.ContinuousDeployment
 import controllers._
+import deployment.{DeploymentEngine, Deployments}
 import play.api.ApplicationLoader.Context
 import play.api.{BuiltInComponentsFromContext, Logger}
 import play.api.http.DefaultHttpErrorHandler
@@ -8,10 +10,10 @@ import play.api.mvc.{RequestHeader, Result}
 import play.api.mvc.Results.InternalServerError
 import play.api.routing.Router
 import play.filters.gzip.GzipFilter
+import resources.PrismLookup
 import utils.HstsFilter
 
 import scala.concurrent.Future
-
 import router.Routes
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context) with AhcWSComponents with I18nComponents {
@@ -19,19 +21,24 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
+  val prismLookup = new PrismLookup(wsClient)
+  val deploymentEngine = new DeploymentEngine(prismLookup)
+  val deployments = new Deployments(deploymentEngine)
+  val continuousDeployment = new ContinuousDeployment(deployments)
+
   override lazy val httpFilters = Seq(
     // TODO CSRF filter
     new GzipFilter,
     new HstsFilter
   ) // TODO this would require an upgrade of the management-play lib ++ PlayRequestMetrics.asFilters
 
-  val applicationController = new Application()(environment, wsClient)
-  val deployController = new DeployController
-  val apiController = new Api
-  val continuousDeployController = new ContinuousDeployController
-  val hooksController = new Hooks
+  val applicationController = new Application(prismLookup)(environment, wsClient)
+  val deployController = new DeployController(deployments, prismLookup)
+  val apiController = new Api(deployments)
+  val continuousDeployController = new ContinuousDeployController(prismLookup)
+  val hooksController = new Hooks(prismLookup)
   val loginController = new Login
-  val testingController = new Testing
+  val testingController = new Testing(prismLookup)
   val assets = new Assets(httpErrorHandler)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {

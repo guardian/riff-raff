@@ -2,13 +2,13 @@ package controllers
 
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
-import play.api.{Environment, Logger, Play}
+import play.api.{Environment, Logger}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
 import magenta.artifact.S3Package
 import play.api.libs.ws.WSClient
-import resources.LookupSelector
+import resources.PrismLookup
 
 import scala.io.Source
 
@@ -60,28 +60,26 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
+class Application(prismLookup: PrismLookup)(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
   import Application._
-  import play.api.Play.current
 
   def index = Action { implicit request =>
-    val markDown = withResource(Play.resourceAsStream("public/docs/releases.md").get) { stream =>
+    val markDown = withResource(environment.resourceAsStream("public/docs/releases.md").get) { stream =>
       Source.fromInputStream(stream).mkString
     }
     Ok(views.html.index(request, markDown))
   }
 
-  def deployInfoData = AuthAction { request =>
-    Ok(views.html.deploy.deployInfoData(request))
+  def deployInfoData = AuthAction { implicit request =>
+    Ok(views.html.deploy.deployInfoData(prismLookup))
   }
 
-  def deployInfoHosts(appFilter: String) = AuthAction { request =>
-    val lookup = LookupSelector()
-    val hosts = lookup.hosts.all.filter { host =>
+  def deployInfoHosts(appFilter: String) = AuthAction { implicit request =>
+    val hosts = prismLookup.hosts.all.filter { host =>
       host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
       request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
     }.groupBy(_.stage)
-    Ok(views.html.deploy.deployInfoHosts(request, hosts, lookup))
+    Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))
   }
 
   def deployInfoAbout = AuthAction { request =>

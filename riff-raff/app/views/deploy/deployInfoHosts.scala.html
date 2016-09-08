@@ -1,12 +1,9 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hosts: Map[String,Seq[magenta.Host]], lookup: Lookup)
-@import html.helper.magenta.htmlTooltip
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hosts: Map[String,Seq[magenta.Host]], lookup: resources.PrismLookup)
 @import magenta.HostList._
 
 @main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
 
 <h2>Deployment Hosts</h2>
-
-@snippets.lookupDateBox(lookup)
 
 @if(hosts.isEmpty) {
     @if(lookup.hosts.all.isEmpty) {

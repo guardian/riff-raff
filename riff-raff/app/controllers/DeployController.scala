@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
-import deployment.{Deployments, PreviewController, PreviewResult}
+import deployment.{DeploymentEngine, Deployments, PreviewController, PreviewResult}
 import magenta._
 import magenta.artifact.S3Artifact
 import org.joda.time.{DateTime, DateTimeZone}
@@ -16,14 +16,15 @@ import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
-import resources.LookupSelector
+import resources.PrismLookup
 
 import scala.util.{Failure, Success}
 
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class DeployController(deployments: Deployments, prismLookup: PrismLookup)
+                      (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(
@@ -47,17 +48,17 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
 
   def deploy = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.deploy.form(deployForm))
+      Ok(views.html.deploy.form(deployForm, prismLookup))
     }
   }
 
   def processForm = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       deployForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.deploy.form(errors)),
+        errors => BadRequest(views.html.deploy.form(errors, prismLookup)),
         form => {
           log.info(s"Host list: ${form.hosts}")
-          val defaultRecipe = LookupSelector().data
+          val defaultRecipe = prismLookup.data
             .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
             .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
           val parameters = new DeployParameters(Deployer(request.user.fullName),
@@ -71,7 +72,7 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
             case "preview" =>
               Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
             case "deploy" =>
-              val uuid = Deployments.deploy(parameters)
+              val uuid = deployments.deploy(parameters)
               Redirect(routes.DeployController.viewUUID(uuid.toString))
             case _ => throw new RuntimeException("Unknown action")
           }
@@ -81,7 +82,7 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
   }}
 
   def stop(uuid: String) = AuthAction { implicit request =>
-    Deployments.stop(UUID.fromString(uuid), request.user.fullName)
+    deployments.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.DeployController.viewUUID(uuid))
   }
 
@@ -89,7 +90,7 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
     AuthAction { implicit request =>
       val uuid = UUID.fromString(uuidString)
       val record = Deployments.get(uuid)
-      val stopFlag = if (record.isDone) false else Deployments.getStopFlag(uuid)
+      val stopFlag = if (record.isDone) false else deployments.getStopFlag(uuid)
       Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
     }
   }
@@ -103,7 +104,7 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
     val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = PreviewController.startPreview(parameters)
+    val previewId = PreviewController.startPreview(parameters, prismLookup)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
 
@@ -139,7 +140,7 @@ class DeployController(implicit val messagesApi: MessagesApi, val wsClient: WSCl
     }
 
   def history() = AuthAction { implicit request =>
-    Ok(views.html.deploy.history(request))
+    Ok(views.html.deploy.history(prismLookup))
   }
 
   def historyContent() = AuthAction { implicit request =>

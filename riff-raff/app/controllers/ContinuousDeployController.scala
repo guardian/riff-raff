@@ -11,9 +11,10 @@ import org.joda.time.DateTime
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
+import resources.PrismLookup
 import utils.Forms.uuid
 
-class ContinuousDeployController(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class ContinuousDeployController(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
   import ContinuousDeployController._
 
   val continuousDeploymentForm = Form[ConfigForm](
@@ -35,13 +36,13 @@ class ContinuousDeployController(implicit val messagesApi: MessagesApi, val wsCl
   }
   def form = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id))))
+      Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id)), prismLookup))
     }
   }
   def save = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       continuousDeploymentForm.bindFromRequest().fold(
-        formWithErrors => Ok(views.html.continuousDeployment.form(formWithErrors)),
+        formWithErrors => Ok(views.html.continuousDeployment.form(formWithErrors, prismLookup)),
         form => {
           val config = ContinuousDeploymentConfig(
             form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
@@ -55,7 +56,7 @@ class ContinuousDeployController(implicit val messagesApi: MessagesApi, val wsCl
   def edit(id: String) = CSRFAddToken {
     AuthAction { implicit request =>
       ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
-        Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(config))))
+        Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(config)), prismLookup))
       }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
     }
   }

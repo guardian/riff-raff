@@ -4,7 +4,7 @@ import java.net.{MalformedURLException, URL}
 
 import notification.{GET, HookConfig, HttpMethod}
 import persistence.Persistence
-import play.api.data.{Form, FormError, Forms}
+import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.mvc.Controller
@@ -15,11 +15,12 @@ import org.joda.time.DateTime
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.filters.csrf.{CSRFAddToken, CSRFCheck}
+import resources.PrismLookup
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean,
                     method: HttpMethod, postBody: Option[String])
 
-class Hooks(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
   implicit val httpMethodFormatter = new Formatter[HttpMethod] {
     override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], HttpMethod] = {
       data.get(key).map { value =>
@@ -52,13 +53,13 @@ class Hooks(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
   }
   def form = CSRFAddToken {
     AuthAction { implicit request =>
-      Ok(views.html.hooks.form(hookForm.fill(HookForm(UUID.randomUUID(),"","","",enabled=true, GET, None))))
+      Ok(views.html.hooks.form(hookForm.fill(HookForm(UUID.randomUUID(),"","","",enabled=true, GET, None)), prismLookup))
     }
   }
   def save = CSRFCheck { CSRFAddToken {
     AuthAction { implicit request =>
       hookForm.bindFromRequest().fold(
-        formWithErrors => Ok(views.html.hooks.form(formWithErrors)),
+        formWithErrors => Ok(views.html.hooks.form(formWithErrors, prismLookup)),
         f => {
           val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName, f.method, f.postBody)
           Persistence.store.setPostDeployHook(config)
@@ -71,7 +72,7 @@ class Hooks(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
     AuthAction { implicit request =>
       val uuid = UUID.fromString(id)
       Persistence.store.getPostDeployHook(uuid).map{ hc =>
-        Ok(views.html.hooks.form(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody))))
+        Ok(views.html.hooks.form(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
       }.getOrElse(Redirect(routes.Hooks.list()))
     }
   }
@@ -79,11 +80,9 @@ class Hooks(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
     AuthAction { implicit request =>
       Form("action" -> nonEmptyText).bindFromRequest().fold(
         errors => {},
-        action => {
-          action match {
-            case "delete" =>
-              Persistence.store.deletePostDeployHook(UUID.fromString(id))
-          }
+        {
+          case "delete" =>
+            Persistence.store.deletePostDeployHook(UUID.fromString(id))
         }
       )
       Redirect(routes.Hooks.list())

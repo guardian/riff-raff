@@ -1,6 +1,6 @@
 package notification
 
-import java.net.{URL, URLEncoder}
+import java.net.URL
 import java.util.UUID
 
 import akka.actor.{Actor, ActorSystem, Props}
@@ -25,34 +25,31 @@ case class HookConfig(id: UUID,
                       url: String,
                       enabled: Boolean,
                       lastEdited: DateTime,
-                      user:String,
+                      user: String,
                       method: HttpMethod = GET,
                       postBody: Option[String] = None) extends Logging {
 
-  import play.api.Play.current
-
-  def request(record: DeployRecordDocument) = {
+  def request(record: DeployRecordDocument)(implicit wsClient: WSClient) = {
     val templatedUrl = new HookTemplate(url, record, urlEncode = true).Template.run().get
-    authFor(templatedUrl).map(ui => WS.url(templatedUrl).withAuth(ui.user, ui.password, ui.scheme))
-      .getOrElse(WS.url(templatedUrl))
+    authFor(templatedUrl).map(ui => wsClient.url(templatedUrl).withAuth(ui.user, ui.password, ui.scheme))
+      .getOrElse(wsClient.url(templatedUrl))
   }
 
   def authFor(url: String): Option[Auth] = Option(new URL(url).getUserInfo).flatMap { ui =>
     ui.split(':') match {
-      case Array(user, password) => Some(Auth(user, password))
+      case Array(username, password) => Some(Auth(username, password))
       case _ => None
     }
   }
 
-  def act(record: DeployRecordDocument) {
+  def act(record: DeployRecordDocument)(implicit wSClient: WSClient) {
     if (enabled) {
       val urlRequest = request(record)
       log.info(s"Calling ${urlRequest.url}")
       (method match {
-        case GET => {
+        case GET =>
           urlRequest.get()
-        }
-        case POST => {
+        case POST =>
           postBody.map { t =>
             val body = new HookTemplate(t, record, urlEncode = false).Template.run().get
             val json = Try {
@@ -72,7 +69,6 @@ case class HookConfig(id: UUID,
               "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
             ))
           )
-        }
       }).map { response =>
         log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
         log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
@@ -108,7 +104,7 @@ object HookConfig extends MongoSerialisable[HookConfig] {
       dbo.as[Boolean]("enabled"),
       dbo.as[DateTime]("lastEdited"),
       dbo.as[String]("user"),
-      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse (GET),
+      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse GET,
       dbo.getAs[String]("postBody")
     ))
   }
@@ -162,7 +158,7 @@ object HooksClient extends LifecycleWithoutApp with Logging {
   }
 }
 
-class HooksClient extends Actor with Logging {
+class HooksClient(implicit wsClient: WSClient) extends Actor with Logging {
   import notification.HooksClient._
 
   def receive = {

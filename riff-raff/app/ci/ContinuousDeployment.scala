@@ -11,7 +11,7 @@ import utils.ChangeFreeze
 import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
-object ContinuousDeployment extends LifecycleWithoutApp with Logging {
+class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp with Logging {
 
   var sub: Option[Subscription] = None
 
@@ -57,7 +57,7 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
         try {
-          Deployments.deploy(params)
+          deployments.deploy(params)
         } catch {
           case NonFatal(e) => log.error(s"Could not deploy $params", e)
         }

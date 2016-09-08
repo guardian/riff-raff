@@ -1,39 +1,34 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
-@import _root_.resources.LookupSelector
+@(lookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {
 
     <h2>Deployment Resources</h2>
 
-    @defining(LookupSelector()) { lookup =>
-        @snippets.lookupDateBox(lookup)
-
-        @defining(lookup.data.all) { data =>
-            @if(data.keys.isEmpty) {
-              <div class="alert">No data available in lookup service</div>
-            } else {
-                @snippets.tabbable(data.keys.toSeq.sorted, pushParam = "key"){ key =>
-                    <table class="table">
-                    <thead><tr>
-                        <th>Stack</th>
-                        <th>App</th>
-                        <th>Stage</th>
-                        <th>Value</th>
-                        <th>Comment</th>
-                    </tr></thead>
-                    <tbody>
-                        @data(key).map { value =>
-                            <tr>
-                                <td>@value.stack.getOrElse{ <span class='label label-warning'>none</span> }</td>
-                                <td>@value.app.toString</td>
-                                <td>@value.stage.toString</td>
-                                <td>@value.value</td>
-                                <td>@value.comment</td>
-                            </tr>
-                        }
-                    </tbody>
-                    </table>
-                }
+    @defining(lookup.data.all) { data =>
+        @if(data.keys.isEmpty) {
+          <div class="alert">No data available in lookup service</div>
+        } else {
+            @snippets.tabbable(data.keys.toSeq.sorted, pushParam = "key"){ key =>
+                <table class="table">
+                <thead><tr>
+                    <th>Stack</th>
+                    <th>App</th>
+                    <th>Stage</th>
+                    <th>Value</th>
+                    <th>Comment</th>
+                </tr></thead>
+                <tbody>
+                    @data(key).map { value =>
+                        <tr>
+                            <td>@value.stack.getOrElse{ <span class='label label-warning'>none</span> }</td>
+                            <td>@value.app.toString</td>
+                            <td>@value.stage.toString</td>
+                            <td>@value.value</td>
+                            <td>@value.comment</td>
+                        </tr>
+                    }
+                </tbody>
+                </table>
             }
         }
     }

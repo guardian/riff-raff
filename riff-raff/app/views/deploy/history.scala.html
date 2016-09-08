@@ -1,4 +1,4 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@(prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 @import deployment.DeployFilterPagination
 
 @main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
@@ -17,7 +17,7 @@ $(function () { graph({
 
 <h2>Recent deploys</h2>
 
-@historyFilter(DeployFilterPagination.fromRequest)
+@historyFilter(DeployFilterPagination.fromRequest, prismLookup)
 
 <div class="graph-container" id="deploy-chart">
     <!--<div class="graph-y-axis-label">Day</div>-->

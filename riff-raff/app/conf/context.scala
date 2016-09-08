@@ -1,10 +1,8 @@
 package conf
 
-import resources.LookupSelector
 import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3Client
-import play.api.Play
 import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{Management => PlayManagement}
@@ -32,12 +30,12 @@ import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
 import riffraff.BuildInfo
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
   protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
 
-  implicit def option2getOrException[T](option: Option[T]) = new {
+  implicit class RichOption[T](val option: Option[T]) {
     def getOrException(exceptionMessage: String): T = {
       option.getOrElse {
         throw new IllegalStateException(exceptionMessage)
@@ -99,16 +97,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
-  object deployinfo {
-    lazy val location: String = configuration.getStringProperty("deployinfo.location").getOrException("Deploy Info location not specified")
-    lazy val mode: DeployInfoMode.Value = configuration.getStringProperty("deployinfo.mode").flatMap{ name =>
-      DeployInfoMode.values.find(_.toString.equalsIgnoreCase(name))
-    }.getOrElse(DeployInfoMode.URL)
-    lazy val staleMinutes: Int = configuration.getIntegerProperty("deployinfo.staleMinutes", 15)
-    lazy val refreshSeconds: Int = configuration.getIntegerProperty("deployinfo.refreshSeconds", 60)
-    lazy val timeoutSeconds: Int = configuration.getIntegerProperty("deployinfo.timeoutSeconds", 180)
-  }
-
   object freeze {
     private val formatter = ISODateTimeFormat.dateTime()
     lazy val startDate = configuration.getStringProperty("freeze.startDate").map(formatter.parseDateTime)
@@ -124,7 +112,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object logging {
-    lazy val verbose = configuration.getStringProperty("logging").map(_.equalsIgnoreCase("VERBOSE")).getOrElse(false)
+    lazy val verbose = configuration.getStringProperty("logging").exists(_.equalsIgnoreCase("VERBOSE"))
   }
 
   object lookup {
@@ -142,7 +130,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object stages {
     lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
-    lazy val ordering = UnnaturalOrdering(order, false)
+    lazy val ordering = UnnaturalOrdering(order, aliensAtEnd = false)
   }
 
   object artifact {
@@ -182,7 +170,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
         override def getCredentials: AWSCredentials = (for {
           key <- accessKey
           secret <- secretKey
-        } yield new BasicAWSCredentials(key, secret)).getOrElse(null)
+        } yield new BasicAWSCredentials(key, secret)).orNull
 
         override def refresh(): Unit = {}
       },
@@ -198,7 +186,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   val version:String = BuildInfo.buildNumber
 
-  override def toString(): String = configuration.toString
+  override def toString: String = configuration.toString
 }
 
 object Configuration extends Configuration("riff-raff", webappConfDirectory = "env")
@@ -209,7 +197,7 @@ object DeployInfoMode extends Enumeration {
 }
 
 object Management extends PlayManagement {
-  val applicationName = Play.current.configuration.getString("application.name").getOrElse("RiffRaff")
+  val applicationName = "riff-raff"
 
   val pages = List(
     new BuildInfoPage,
@@ -296,7 +284,7 @@ object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
-    PlayRequestMetrics.asMetrics ++
+    //PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
     DatastoreMetrics.all ++
     TaskMetrics.all
@@ -304,6 +292,6 @@ object Metrics {
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: LookupSelector.switches.toList ::: Deployments.enableSwitches
+  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: Deployments.enableSwitches
 }
 

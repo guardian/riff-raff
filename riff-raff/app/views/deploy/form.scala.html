@@ -1,4 +1,4 @@
-@(deployForm: Form[controllers.DeployParameterForm])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@(deployForm: Form[controllers.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -15,7 +15,7 @@
 @b3.text(deployForm("build"), 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
 @b3.select(
 deployForm("stage"),
-helper.options(resources.LookupSelector().stages.toList),
+helper.options(prismLookup.stages.toList),
 '_default -> "--- Choose a stage ---",
 '_label -> "stage",
 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),

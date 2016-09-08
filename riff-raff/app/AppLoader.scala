@@ -1,11 +1,11 @@
 import play.api.{Application, ApplicationLoader, Logger}
 import play.api.ApplicationLoader.Context
-import deployment.{DeployInfoManager, Deployments}
 import lifecycle.ShutdownWhenInactive
 import notification.HooksClient
 import persistence.SummariseDeploysHousekeeping
 import ci.{Builds, ContinuousDeployment}
 import conf.DeployMetrics
+import deployment.Deployments
 import utils.ScheduledAgent
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,13 +18,12 @@ class AppLoader extends ApplicationLoader {
 
     val lifecycleSingletons = Seq(
       ScheduledAgent,
-      DeployInfoManager,
       Deployments,
       DeployMetrics,
       HooksClient,
       Builds,
       SummariseDeploysHousekeeping,
-      ContinuousDeployment,
+      components.continuousDeployment,
       ShutdownWhenInactive
     )
 

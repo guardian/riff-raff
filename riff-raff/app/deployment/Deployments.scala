@@ -18,6 +18,39 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
+class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
+  import Deployments._
+
+  def deploy(requestedParams: DeployParameters): UUID = {
+    log.info(s"Started deploying $requestedParams")
+    if (enableQueueingSwitch.isSwitchedOff)
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
+
+    val params = if (requestedParams.build.id != "lastSuccessful")
+      requestedParams
+    else {
+      Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
+        requestedParams.copy(build = requestedParams.build.copy(id=latestId))
+      }.getOrElse(requestedParams)
+    }
+
+    deploysEnabled.whileOnYield {
+      val record = Deployments.create(params)
+      deploymentEngine.interruptibleDeploy(record)
+      record.uuid
+    } getOrElse {
+      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
+    }
+  }
+
+  def stop(uuid: UUID, fullName: String) {
+    deploymentEngine.stopDeploy(uuid, fullName)
+  }
+
+  def getStopFlag(uuid: UUID): Boolean = deploymentEngine.getDeployStopFlag(uuid)
+
+}
+
 object Deployments extends Logging with LifecycleWithoutApp {
   lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
@@ -34,12 +67,13 @@ object Deployments extends Logging with LifecycleWithoutApp {
   def init() {}
   def shutdown() { messagesSubscription.unsubscribe() }
 
+
   val deploysEnabled = new Switch(startAsOn = true)
 
   /**
-   * Attempt to disable deploys from running.
-   * @return true if successful and false if this failed because a deploy was currently running
-   */
+    * Attempt to disable deploys from running.
+    * @return true if successful and false if this failed because a deploy was currently running
+    */
   def atomicDisableDeploys:Boolean = {
     try {
       deploysEnabled.switchOff {
@@ -112,35 +146,6 @@ object Deployments extends Logging with LifecycleWithoutApp {
       deployCompleteSubject.onNext(uuid)
     }
   }
-
-  def deploy(requestedParams: DeployParameters): UUID = {
-    log.info(s"Started deploying $requestedParams")
-    if (enableQueueingSwitch.isSwitchedOff)
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
-
-    val params = if (requestedParams.build.id != "lastSuccessful")
-      requestedParams
-    else {
-      Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
-        requestedParams.copy(build = requestedParams.build.copy(id=latestId))
-      }.getOrElse(requestedParams)
-    }
-
-    deploysEnabled.whileOnYield {
-      val record = Deployments.create(params)
-      DeployControlActor.interruptibleDeploy(record)
-      record.uuid
-    } getOrElse {
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
-    }
-  }
-
-  def stop(uuid: UUID, fullName: String) {
-    DeployControlActor.stopDeploy(uuid, fullName)
-  }
-
-  def getStopFlag(uuid: UUID): Boolean = DeployControlActor.getDeployStopFlag(uuid)
-
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =
     DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)

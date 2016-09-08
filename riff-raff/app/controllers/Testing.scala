@@ -3,7 +3,6 @@ package controllers
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import play.api.mvc.{Action, Controller}
 import magenta._
-import resources.LookupSelector
 
 import collection.mutable.ArrayBuffer
 import deployment.{DeployFilter, DeployRecord, PaginationView}
@@ -17,10 +16,11 @@ import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.filters.csrf.CSRFCheck
+import resources.PrismLookup
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
   import Testing._
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
@@ -82,7 +82,7 @@ class Testing(implicit val messagesApi: MessagesApi, val wsClient: WSClient) ext
     Ok(views.html.test.reportTest(request,report,verbose))
   }
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${prismLookup.hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>

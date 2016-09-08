@@ -84,8 +84,6 @@ trait LoginActions extends Actions {
 
 class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
-  import play.api.Play.current
-
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
     def emailWhitelistEnabled = auth.whitelist.useDatabase || auth.whitelist.addresses.nonEmpty
