@@ -1,5 +1,6 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[String])
+@(hookForm: Form[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
+@import helper.CSRF
 
 @main("Authorise a new user", request) {
 
@@ -7,7 +8,7 @@
     <hr/>
 
     @b3.form(action=routes.Login.authSave()) {
-
+        @CSRF.formField
         @b3.text(hookForm("email"), '_label -> "Email address of user")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or

@@ -1,4 +1,4 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hookForm: Form[controllers.HookForm])
+@(hookForm: Form[controllers.HookForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -17,7 +17,7 @@
             @b3.text(hookForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
             @b3.select(
             hookForm("stage"),
-            options = helper.options(resources.LookupSelector().stages.toList),
+            options = helper.options(prismLookup.stages.toList),
             '_default -> "--- Choose a stage ---",
             '_label -> "Stage",
             '_error -> hookForm.globalError.map(_.withMessage("Please select deployment stage"))

@@ -11,7 +11,7 @@ object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
   val EXITCODE = 217
 
   // switch to enable this mode
-  lazy val switch = new DefaultSwitch("shutdown-when-inactive", s"Shutdown riff-raff when there are no running deploys. Turning this on wil cause RiffRaff to exit with exitcode $EXITCODE as soon as the last queued deploy finishes.", false) {
+  lazy val switch = new DefaultSwitch("shutdown-when-inactive", s"Shutdown riff-raff when there are no running deploys. Turning this on will cause RiffRaff to exit with exitcode $EXITCODE as soon as the last queued deploy finishes.", false) {
     override def switchOn() = {
       super.switchOn()
       // try and shutdown immediately
@@ -20,7 +20,7 @@ object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
   }
 
   def attemptShutdown() {
-    future {
+    Future {
       log.info("Attempting to shutdown: trying to atomically disable deployment")
       if (Deployments.atomicDisableDeploys) {
         log.info("Deployment disabled, shutting down JVM")

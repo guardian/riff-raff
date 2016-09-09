@@ -12,11 +12,14 @@ import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import play.api.data._
 import play.api.data.Forms._
-import deployment.{Deployments, DeployFilter}
+import deployment.{DeployFilter, Deployments}
 import play.api.libs.concurrent.Execution.Implicits._
 import com.gu.googleauth._
+import play.api.i18n.{I18nSupport, MessagesApi}
+
 import scala.concurrent.Future
 import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 
 class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
@@ -51,11 +54,15 @@ object ApiAuthAction {
 
   def apply[A](counter: Option[String], p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
     Action(p) { implicit request =>
-      val inputKey = request.queryString.get("key").flatMap(_.headOption)
-      assert(inputKey.isDefined, "An API key must be provided for this endpoint")
-      val apiKey = inputKey.flatMap(Persistence.store.getAndUpdateApiKey(_,counter))
-      assert(apiKey.isDefined, "The ApiKey provided is not valid, please check and try again")
-      f(new ApiRequest(apiKey.get, request))
+      request.queryString.get("key").flatMap(_.headOption) match {
+        case Some(urlParam) =>
+          Persistence.store.getAndUpdateApiKey(urlParam, counter) match {
+            case Some(apiKey) => f(new ApiRequest(apiKey, request))
+            case None => Unauthorized("The API key provided is not valid. Please check and try again.")
+          }
+        case None =>
+          Unauthorized("An API key must be provided for this endpoint. Please include a 'key' URL parameter.")
+      }
     }
   }
 
@@ -73,18 +80,17 @@ object ApiAuthAction {
 
 trait LoginActions extends Actions {
   override def loginTarget: Call = routes.Login.loginAction()
+  override val defaultRedirectTarget = routes.Application.index()
+  override val failureRedirectTarget = routes.Login.login()
 
   def authConfig: GoogleAuthConfig = auth.googleAuthConfig
 }
 
-object Login extends Controller with Logging with LoginActions {
-  val ANTI_FORGERY_KEY = "antiForgeryToken"
-
-  import play.api.Play.current
+class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
-    def emailWhitelistEnabled = auth.whitelist.useDatabase || !auth.whitelist.addresses.isEmpty
+    def emailWhitelistEnabled = auth.whitelist.useDatabase || auth.whitelist.addresses.nonEmpty
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
       auth.whitelist.addresses.contains(lowerCaseEmail) ||
@@ -101,30 +107,30 @@ object Login extends Controller with Logging with LoginActions {
     // redirect to google with anti forgery token (that we keen in session storage - note that flashing is not secure)
     val antiForgeryToken = GoogleAuth.generateAntiForgeryToken()
     GoogleAuth.redirectToGoogle(auth.googleAuthConfig, antiForgeryToken).map {
-      _.withSession { request.session + (ANTI_FORGERY_KEY -> antiForgeryToken) }
+      _.withSession { request.session + (authConfig.antiForgeryKey -> antiForgeryToken) }
     }
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    request.session.get(ANTI_FORGERY_KEY) match {
+    request.session.get(authConfig.antiForgeryKey) match {
       case None =>
         Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
       case Some(token) =>
         GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
           require(validator.isAuthorised(identity), validator.authorisationError(identity).getOrElse("Unknown error"))
-          val redirect = request.session.get(LOGIN_ORIGIN_KEY) match {
+          val redirect = request.session.get(GoogleAuthFilters.LOGIN_ORIGIN_KEY) match {
             case Some(url) => Redirect(url)
             case None => Redirect(routes.Application.index())
           }
           redirect.withSession {
-            request.session + (UserIdentity.KEY -> Json.toJson(identity).toString) - ANTI_FORGERY_KEY - LOGIN_ORIGIN_KEY
+            request.session + (UserIdentity.KEY -> Json.toJson(identity).toString) - authConfig.antiForgeryKey - GoogleAuthFilters.LOGIN_ORIGIN_KEY
           }
         } recover {
           case t =>
             FailedLoginCounter.recordCount(1)
             log.warn("Login failure", t)
             Redirect(routes.Login.login())
-              .withSession(request.session - ANTI_FORGERY_KEY)
+              .withSession(request.session - authConfig.antiForgeryKey)
               .flashing("error" -> s"Login failure: ${t.toString}")
         }
     }
@@ -145,13 +151,13 @@ object Login extends Controller with Logging with LoginActions {
     Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
   }
 
-  def authForm = AuthAction { request =>
-    Ok(views.html.auth.form(request, authorisationForm))
+  def authForm = AuthAction { implicit request =>
+    Ok(views.html.auth.form(authorisationForm))
   }
 
   def authSave = AuthAction { implicit request =>
     authorisationForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.auth.form(request, errors)),
+      errors => BadRequest(views.html.auth.form(errors)),
       email => {
         val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
         Persistence.store.setAuthorisation(auth)

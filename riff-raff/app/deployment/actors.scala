@@ -12,10 +12,10 @@ import conf.{Configuration, TaskMetrics}
 import controllers.Logging
 import magenta._
 import magenta.artifact.S3Artifact
-import magenta.graph.{Deployment, DeploymentGraph, MidNode, Graph, StartNode}
+import magenta.graph.{Deployment, DeploymentGraph, Graph, MidNode, StartNode}
 import magenta.json.JsonReader
 import org.joda.time.DateTime
-import resources.LookupSelector
+import resources.PrismLookup
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
@@ -24,40 +24,22 @@ import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
 
-object DeployControlActor extends Logging {
-  trait Event
-  case class Deploy(record: Record) extends Event
+class DeploymentEngine(prismLookup: PrismLookup) extends Logging {
+  import DeploymentEngine._
 
-  val concurrentDeploys = conf.Configuration.concurrency.maxDeploys
-
-  lazy val dispatcherConfig = ConfigFactory.parseMap(
-    Map(
-      "akka.deploy-dispatcher.type" -> "Dispatcher",
-      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
-      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
-      "akka.deploy-dispatcher.throughput" -> "1"
-    )
-  )
-  lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
-
-  lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
-
-  lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
-    props = Props(classOf[DeploymentRunner], stopFlagAgent).withDispatcher("akka.deploy-dispatcher"),
+  private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
+    props = Props(new DeploymentRunner(stopFlagAgent)).withDispatcher("akka.deploy-dispatcher"),
     name = s"deploymentRunner-$runnerName"
   )
 
-  lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
+  private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
-      props = Props(classOf[DeployGroupRunner], record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent).withDispatcher("akka.deploy-dispatcher"),
+      props = Props(new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup)).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
 
-  lazy val deployCoordinator = system.actorOf(Props(
-    classOf[DeployCoordinator], deployRunnerFactory, concurrentDeploys, stopFlagAgent
+  private lazy val deployCoordinator = system.actorOf(Props(
+    new DeployCoordinator(deployRunnerFactory, concurrentDeploys, stopFlagAgent)
   ), name = "deployCoordinator")
 
   def interruptibleDeploy(record: Record) {
@@ -74,6 +56,27 @@ object DeployControlActor extends Logging {
   }
 }
 
+object DeploymentEngine {
+
+  private val concurrentDeploys = conf.Configuration.concurrency.maxDeploys
+
+  private lazy val dispatcherConfig = ConfigFactory.parseMap(
+    Map(
+      "akka.deploy-dispatcher.type" -> "Dispatcher",
+      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
+      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
+      "akka.deploy-dispatcher.throughput" -> "1"
+    )
+  )
+
+  private lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
+
+  private lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
+}
+
 object DeployMetricsActor {
   trait Message
   case class TaskStart(deployId: UUID, taskId: String, queueTime: DateTime, startTime: DateTime) extends Message
@@ -81,7 +84,7 @@ object DeployMetricsActor {
   case class TaskCountRequest() extends Message
 
   lazy val system = ActorSystem("deploy-metrics")
-  lazy val deployMetricsProcessor = system.actorOf(Props[DeployMetricsActor])
+  lazy val deployMetricsProcessor = system.actorOf(Props(new DeployMetricsActor))
   def runningTaskCount: Int = {
     implicit val timeout = Timeout(100 milliseconds)
     val count = deployMetricsProcessor ? TaskCountRequest() mapTo manifest[Int]
@@ -126,7 +129,8 @@ case class DeployGroupRunner(
   record: Record,
   deployCoordinator: ActorRef,
   deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
-  stopFlagAgent: Agent[Map[UUID, String]]
+  stopFlagAgent: Agent[Map[UUID, String]],
+  prismLookup: PrismLookup
 ) extends Actor with Logging {
   import DeployGroupRunner._
 
@@ -265,7 +269,7 @@ case class DeployGroupRunner(
         Try(artifact.deployObject.fetchContentAsString()(client).get)
       }(client, safeReporter)
       val project = JsonReader.parse(json, s3Artifact)
-      val context = record.parameters.toDeployContext(record.uuid, project, LookupSelector(), safeReporter, client)
+      val context = record.parameters.toDeployContext(record.uuid, project, prismLookup, safeReporter, client)
       if (DeploymentGraph.toTaskList(context.tasks).isEmpty)
         safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
       context

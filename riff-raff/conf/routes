@@ -75,7 +75,6 @@ POST        /apiKeys/create                                 controllers.Api.crea
 POST        /apiKeys/delete                                 controllers.Api.delete
 
 GET         /api/history                                    controllers.Api.history
-GET         /api/deployinfo                                 controllers.Api.deployinfo
 GET         /api/deploy/view                                controllers.Api.view(uuid:String)
 POST        /api/deploy/request                             controllers.Api.deploy
 POST        /api/deploy/stop                                controllers.Api.stop

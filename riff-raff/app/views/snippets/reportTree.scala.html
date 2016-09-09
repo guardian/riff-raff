@@ -2,13 +2,13 @@
 
 <li>
 <span class="@MessageHelper.classNames(reportTree)"><span class="magenta-timestamp">[@reportTree.messageState.timeOfDay] </span>@MessageHelper.trim{@reportTree.message.text}</span>
-@if(!reportTree.children.isEmpty) {
+@if(reportTree.children.nonEmpty) {
   <ul class="magenta-reporttree">
 }
 @reportTree.children.map{ child =>
     @snippets.reportTree(child)
 }
-@if(!reportTree.children.isEmpty) {
+@if(reportTree.children.nonEmpty) {
   </ul>
 }
 </li>

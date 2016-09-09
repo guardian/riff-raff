@@ -11,7 +11,9 @@ import org.joda.time.DateTime
 
 object ContinuousDeploymentConfigRepository {
   val client = Configuration.continuousDeployment.dynamoClient
-  val stage = Configuration.stage
+
+  // TODO set up Dynamo local
+  val stage = if (Configuration.stage == "DEV") "CODE" else Configuration.stage
 
   implicit val uuidFormat =
     DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](UUID.fromString)(_.toString)

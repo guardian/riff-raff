@@ -2,7 +2,6 @@ package deployment
 
 import java.util.UUID
 
-import resources.LookupSelector
 import akka.actor.ActorSystem
 import akka.agent.Agent
 import com.amazonaws.services.s3.AmazonS3
@@ -14,6 +13,7 @@ import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
 import magenta.{Build, DeployParameters, Project, _}
 import org.joda.time.DateTime
+import resources.PrismLookup
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -37,11 +37,11 @@ object PreviewController {
     }
   }
 
-  def startPreview(parameters: DeployParameters): UUID = {
+  def startPreview(parameters: DeployParameters, prismLookup: PrismLookup): UUID = {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val previewFuture = Future { Preview(parameters, muteLogger) }
+    val previewFuture = Future { Preview(parameters, muteLogger, prismLookup) }
     Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
   }
@@ -66,14 +66,13 @@ object Preview {
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters, reporter: DeployReporter): Preview = {
+  def apply(parameters: DeployParameters, reporter: DeployReporter, prismLookup: PrismLookup): Preview = {
     val project = Preview.getProject(parameters.build, reporter)
-    Preview(project, parameters, reporter, client)
+    Preview(project, parameters, reporter, client, prismLookup)
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter, artifactClient: AmazonS3) {
-  lazy val lookup = LookupSelector()
+case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter, artifactClient: AmazonS3, lookup: PrismLookup) {
   lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
     case NamedStack(s) => s
   }

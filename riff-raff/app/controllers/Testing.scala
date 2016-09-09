@@ -1,9 +1,8 @@
 package controllers
 
-import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
+import org.joda.time.format.DateTimeFormat
 import play.api.mvc.{Action, Controller}
 import magenta._
-import resources.LookupSelector
 
 import collection.mutable.ArrayBuffer
 import deployment.{DeployFilter, DeployRecord, PaginationView}
@@ -12,13 +11,17 @@ import java.util.UUID
 import tasks.Task
 import play.api.data.Form
 import play.api.data.Forms._
-import org.joda.time.{DateTime, Duration, Interval}
-import persistence.{DocumentStoreConverter, Persistence, TaskRunDocument}
-import play.filters.csrf.CSRFCheck
+import org.joda.time.{DateTime, Duration}
+import persistence.{DocumentStoreConverter, Persistence}
+import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.libs.ws.WSClient
+import resources.PrismLookup
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-object Testing extends Controller with Logging with LoginActions {
+class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+  import Testing._
+
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
@@ -37,8 +40,6 @@ object Testing extends Controller with Logging with LoginActions {
 
       def keyRing = ???
     }
-
-
 
     def wrapper(parent: Option[UUID], id: UUID, messages: Message*): MessageWrapper = {
       MessageWrapper(MessageContext(logUUID, parameters, parent), id, MessageStack(messages.toList))
@@ -80,28 +81,17 @@ object Testing extends Controller with Logging with LoginActions {
     Ok(views.html.test.reportTest(request,report,verbose))
   }
 
-  case class TestForm(project:String, action:String, hosts: List[String])
-
-  lazy val testForm = Form[TestForm](
-    mapping(
-      "project" -> text,
-      "action" -> nonEmptyText,
-      "hosts" -> list(text)
-    )(TestForm.apply)
-      (TestForm.unapply)
-  )
-
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${LookupSelector().hosts.all.map(h => s"${h.name} - ${h.tags.get("group").getOrElse("n/a")}").mkString("\n")}") }
+  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${prismLookup.hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
   def form =
     AuthAction { implicit request =>
-      Ok(views.html.test.form(request, testForm))
+      Ok(views.html.test.form(testForm))
     }
 
   def formPost =
     AuthAction { implicit request =>
       testForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.test.form(request,errors)),
+        errors => BadRequest(views.html.test.form(errors)),
         form => {
           log.info("Form post: %s" format form.toString)
           Redirect(routes.Testing.form)
@@ -142,7 +132,6 @@ object Testing extends Controller with Logging with LoginActions {
         times.map{case(deploy, duration) =>
           s"${formatter.print(deploy.time)},${deploy.parameters.build.projectName},${duration.map(_.getStandardSeconds).getOrElse("")}"
         }
-      val csvCall = routes.Testing.S3LatencyList(limit, true)
       Ok(csvLines.mkString("\n")).as("text/csv").withHeaders("Content-Disposition" -> "attachment; filename=s3Latencies.csv")
     }
     else
@@ -154,41 +143,29 @@ object Testing extends Controller with Logging with LoginActions {
     deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
-  case class UuidForm(uuid:String, action:String)
-
-  lazy val uuidForm = Form[UuidForm](
-    mapping(
-      "uuid" -> text(36,36),
-      "action" -> nonEmptyText
-    )(UuidForm.apply)
-      (UuidForm.unapply)
-  )
-
-  def actionUUID = CSRFCheck {
-    AuthAction { implicit request =>
-      uuidForm.bindFromRequest().fold(
-        errors => Redirect(routes.Testing.uuidList()),
-        form => {
-          form.action match {
-            case "summarise" => {
-              log.info("Summarising deploy with UUID %s" format form.uuid)
-              Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
-            case "deleteV2" => {
-              log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-              Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
-            case "addStringUUID" => {
-              log.info("Adding string UUID for %s" format form.uuid)
-              Persistence.store.addStringUUID(UUID.fromString(form.uuid))
-              Redirect(routes.Testing.uuidList())
-            }
+  def actionUUID = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
+      errors => Redirect(routes.Testing.uuidList()),
+      form => {
+        form.action match {
+          case "summarise" => {
+            log.info("Summarising deploy with UUID %s" format form.uuid)
+            Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "deleteV2" => {
+            log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
+            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
+          }
+          case "addStringUUID" => {
+            log.info("Adding string UUID for %s" format form.uuid)
+            Persistence.store.addStringUUID(UUID.fromString(form.uuid))
+            Redirect(routes.Testing.uuidList())
           }
         }
-      )
-    }
+      }
+    )
   }
 
   def transferAllUUIDs = AuthAction { implicit request =>
@@ -196,5 +173,30 @@ object Testing extends Controller with Logging with LoginActions {
     allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
   }
+
+}
+
+object Testing {
+
+  case class UuidForm(uuid:String, action:String)
+
+  lazy val uuidForm = Form[UuidForm](
+    mapping(
+      "uuid" -> text(36,36),
+      "action" -> nonEmptyText
+    )(UuidForm.apply)
+    (UuidForm.unapply)
+  )
+
+  case class TestForm(project:String, action:String, hosts: List[String])
+
+  lazy val testForm = Form[TestForm](
+    mapping(
+      "project" -> text,
+      "action" -> nonEmptyText,
+      "hosts" -> list(text)
+    )(TestForm.apply)
+    (TestForm.unapply)
+  )
 
 }

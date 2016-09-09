@@ -1,29 +1,31 @@
 package resources
 
-import magenta._
-import org.joda.time.{DateTimeZone, DateTime}
-import play.api.libs.ws.WS
+import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.format.DateTimeFormat
+
+import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import play.api.libs.concurrent.Execution.Implicits._
-import utils.Json._
-import org.joda.time.format.DateTimeFormat
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
-import controllers.Logging
-import scala.util.{Failure, Success, Try}
-import java.net.URLEncoder
 
-object PrismLookup extends Lookup with MagentaCredentials with Logging {
-  import play.api.Play.current
+import magenta._
+import controllers.Logging
+import utils.Json._
+
+import scala.util.{Failure, Success, Try}
+
+class PrismLookup(wsClient: WSClient) extends Lookup with MagentaCredentials with Logging {
 
   object prism extends Logging {
     val url = conf.Configuration.lookup.prismUrl
     val timeout = conf.Configuration.lookup.timeoutSeconds.seconds
 
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
-      val result = WS.url(s"$url$path").get().map(_.json).map { json =>
+      val result = wsClient.url(s"$url$path").get().map(_.json).map { json =>
         block(json)
       }
       try {
@@ -84,7 +86,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   def lastUpdated: DateTime = prism.get("/sources?resource=instance"){ json =>
     val sourceCreatedAt = json \ "data" match {
-      case JsArray(sources) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
+      case JsDefined(JsArray(sources)) => sources.map { source => (source \ "state" \ "createdAt").as[DateTime] }
       case _ => Seq(new DateTime(0))
     }
     sourceCreatedAt.minBy(_.getMillis)
@@ -125,7 +127,7 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
         case f@Failure(e) => Some(f)
         case _ => None
       }
-      if (errors.size > 0) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
+      if (errors.nonEmpty) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
       if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
 
       tryHosts.flatMap {
@@ -153,7 +155,10 @@ object PrismLookup extends Lookup with MagentaCredentials with Logging {
 
   def stages: Seq[String] = prism.get("/stages"){ json => (json \ "data" \ "stages").as[Seq[String]] }
 
-  def secretProvider = LookupSelector.secretProvider
+  val secretProvider = new SecretProvider {
+    def lookup(service: String, account: String): Option[String] =
+      conf.Configuration.credentials.lookupSecret(service, account)
+  }
 
   case class Image(imageId: String, creationDate: DateTime)
   implicit val imageReads = Json.reads[Image]

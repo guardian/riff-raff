@@ -11,17 +11,19 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
 import play.api.data.Forms._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
+import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
-import play.filters.csrf.{CSRFAddToken, CSRFCheck}
-import resources.LookupSelector
+import resources.PrismLookup
 
 import scala.util.{Failure, Success}
 
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-object DeployController extends Controller with Logging with LoginActions {
+class DeployController(deployments: Deployments, prismLookup: PrismLookup)
+                      (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(
@@ -43,53 +45,47 @@ object DeployController extends Controller with Logging with LoginActions {
     )(DeployParameterForm)(DeployParameterForm.unapply)
   )
 
-  def deploy = CSRFAddToken {
-    AuthAction { implicit request =>
-      Ok(views.html.deploy.form(request, deployForm))
-    }
+  def deploy = AuthAction { implicit request =>
+    Ok(views.html.deploy.form(deployForm, prismLookup))
   }
 
-  def processForm = CSRFCheck { CSRFAddToken {
-    AuthAction { implicit request =>
-      deployForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.deploy.form(request, errors)),
-        form => {
-          log.info(s"Host list: ${form.hosts}")
-          val defaultRecipe = LookupSelector().data
-            .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
-            .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
-          val parameters = new DeployParameters(Deployer(request.user.fullName),
-            Build(form.project, form.build.toString),
-            Stage(form.stage),
-            recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
-            stacks = form.stacks.map(NamedStack(_)).toSeq,
-            hostList = form.hosts)
+  def processForm = AuthAction { implicit request =>
+    deployForm.bindFromRequest().fold(
+      errors => BadRequest(views.html.deploy.form(errors, prismLookup)),
+      form => {
+        log.info(s"Host list: ${form.hosts}")
+        val defaultRecipe = prismLookup.data
+          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
+          .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
+        val parameters = new DeployParameters(Deployer(request.user.fullName),
+          Build(form.project, form.build.toString),
+          Stage(form.stage),
+          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
+          stacks = form.stacks.map(NamedStack(_)).toSeq,
+          hostList = form.hosts)
 
-          form.action match {
-            case "preview" =>
-              Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
-            case "deploy" =>
-              val uuid = Deployments.deploy(parameters)
-              Redirect(routes.DeployController.viewUUID(uuid.toString))
-            case _ => throw new RuntimeException("Unknown action")
-          }
+        form.action match {
+          case "preview" =>
+            Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
+          case "deploy" =>
+            val uuid = deployments.deploy(parameters)
+            Redirect(routes.DeployController.viewUUID(uuid.toString))
+          case _ => throw new RuntimeException("Unknown action")
         }
-      )
-    }
-  }}
+      }
+    )
+  }
 
   def stop(uuid: String) = AuthAction { implicit request =>
-    Deployments.stop(UUID.fromString(uuid), request.user.fullName)
+    deployments.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.DeployController.viewUUID(uuid))
   }
 
-  def viewUUID(uuidString: String, verbose: Boolean) = CSRFAddToken {
-    AuthAction { implicit request =>
-      val uuid = UUID.fromString(uuidString)
-      val record = Deployments.get(uuid)
-      val stopFlag = if (record.isDone) false else Deployments.getStopFlag(uuid)
-      Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
-    }
+  def viewUUID(uuidString: String, verbose: Boolean) = AuthAction { implicit request =>
+    val uuid = UUID.fromString(uuidString)
+    val record = Deployments.get(uuid)
+    val stopFlag = if (record.isDone) false else deployments.getStopFlag(uuid)
+    Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
@@ -101,43 +97,41 @@ object DeployController extends Controller with Logging with LoginActions {
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
     val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = PreviewController.startPreview(parameters)
+    val previewId = PreviewController.startPreview(parameters, prismLookup)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
 
   def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) =
-    CSRFAddToken {
-      AuthAction { implicit request =>
-        val previewUUID = UUID.fromString(previewId)
-        val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-        val parameters = DeployParameters(
-          Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
-        )
-        val result = PreviewController.getPreview(previewUUID, parameters)
-        result match {
-          case Some(PreviewResult(future, startTime)) =>
-            future.value match {
-              case Some(Success(preview)) =>
-                try {
-                  Ok(views.html.deploy.previewContent(request, preview))
-                } catch {
-                  case exception: Exception =>
-                    Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-                }
-              case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
-              case None =>
-                val duration = new org.joda.time.Duration(startTime, new DateTime())
-                Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
-            }
-          case _ =>
-            val exception = new IllegalStateException("Future for preview wasn't found")
-            Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-        }
+    AuthAction { implicit request =>
+      val previewUUID = UUID.fromString(previewId)
+      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
+      val parameters = DeployParameters(
+        Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
+      )
+      val result = PreviewController.getPreview(previewUUID, parameters)
+      result match {
+        case Some(PreviewResult(future, startTime)) =>
+          future.value match {
+            case Some(Success(preview)) =>
+              try {
+                Ok(views.html.deploy.previewContent(request, preview))
+              } catch {
+                case exception: Exception =>
+                  Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
+              }
+            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
+            case None =>
+              val duration = new org.joda.time.Duration(startTime, new DateTime())
+              Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
+          }
+        case _ =>
+          val exception = new IllegalStateException("Future for preview wasn't found")
+          Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
       }
     }
 
   def history() = AuthAction { implicit request =>
-    Ok(views.html.deploy.history(request))
+    Ok(views.html.deploy.history(prismLookup))
   }
 
   def historyContent() = AuthAction { implicit request =>
@@ -203,42 +197,34 @@ object DeployController extends Controller with Logging with LoginActions {
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }
 
-  def deployConfirmation(deployFormJson: String) = CSRFAddToken {
-    AuthAction { implicit request =>
-      val parametersJson = Json.parse(deployFormJson)
-      Ok(views.html.deploy.deployConfirmation(request, deployForm.bind(parametersJson), isExternal = true))
-    }
+  def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
+    val parametersJson = Json.parse(deployFormJson)
+    Ok(views.html.deploy.deployConfirmation(deployForm.bind(parametersJson), isExternal = true))
   }
 
-  def deployConfirmationExternal = CSRFAddToken {
-    AuthAction { implicit request =>
-      val form = deployForm.bindFromRequest()
-      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = true))
-    }
+  def deployConfirmationExternal = AuthAction { implicit request =>
+    val form = deployForm.bindFromRequest()
+    Ok(views.html.deploy.deployConfirmation(form, isExternal = true))
   }
 
-  def deployAgain = CSRFAddToken {
-    AuthAction { implicit request =>
-      val form = deployForm.bindFromRequest()
-      Ok(views.html.deploy.deployConfirmation(request, form, isExternal = false))
-    }
+  def deployAgain = AuthAction { implicit request =>
+    val form = deployForm.bindFromRequest()
+    Ok(views.html.deploy.deployConfirmation(form, isExternal = false))
   }
 
-  def markAsFailed = CSRFCheck {
-    AuthAction { implicit request =>
-      uuidForm.bindFromRequest().fold(
-        errors => Redirect(routes.DeployController.history),
-        form => {
-          form.action match {
-            case "markAsFailed" =>
-              val record = Deployments.get(UUID.fromString(form.uuid))
-              if (record.isStalled)
-                Deployments.markAsFailed(record)
-              Redirect(routes.DeployController.viewUUID(form.uuid))
-          }
+  def markAsFailed = AuthAction { implicit request =>
+    uuidForm.bindFromRequest().fold(
+      errors => Redirect(routes.DeployController.history),
+      form => {
+        form.action match {
+          case "markAsFailed" =>
+            val record = Deployments.get(UUID.fromString(form.uuid))
+            if (record.isStalled)
+              Deployments.markAsFailed(record)
+            Redirect(routes.DeployController.viewUUID(form.uuid))
         }
-      )
-    }
+      }
+    )
   }
 
   def dashboard(projects: String, search: Boolean) = AuthAction { implicit request =>

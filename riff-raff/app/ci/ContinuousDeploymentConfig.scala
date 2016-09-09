@@ -57,6 +57,7 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
         case (_, Some(triggerModeId)) => Trigger(triggerModeId)
         case (Some(true), None) => Trigger.SuccessfulBuild
         case (Some(false), None) => Trigger.Disabled
+        case _ => Trigger.Disabled
       }
 
       Some(ContinuousDeploymentConfig(

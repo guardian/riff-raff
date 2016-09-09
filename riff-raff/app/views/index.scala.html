@@ -6,15 +6,6 @@
     
     <h2>Welcome to the Guardian deployment tool.</h2>
 
-    @if(UserIdentity.fromRequest(request).isDefined && (irc.isConfigured || notifications.aws.isConfigured)) {
-        <div class="panel panel-info">
-            <div class="panel-body">
-                @if(irc.isConfigured){<div>Deployment information can also be seen in the <strong>@irc.channel</strong> IRC channel on <strong>@irc.host</strong></div>}
-                @if(notifications.aws.isConfigured){<div>Deployment notifications are available from <strong>@notifications.aws.topicArn</strong></div>}
-            </div>
-        </div>
-    }
-
     <div class="panel panel-success">
         <div class="panel-heading">
             <h3 class="panel-title">Release notes</h3>

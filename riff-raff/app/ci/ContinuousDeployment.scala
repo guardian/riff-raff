@@ -11,7 +11,8 @@ import utils.ChangeFreeze
 import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
-object ContinuousDeployment extends LifecycleWithoutApp with Logging {
+class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp with Logging {
+  import ContinuousDeployment._
 
   var sub: Option[Subscription] = None
 
@@ -42,22 +43,12 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
     sub.foreach(_.unsubscribe())
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
-    val (config,build) = configBuildTuple
-    DeployParameters(
-      Deployer("Continuous Deployment"),
-      MagentaBuild(build.jobName,build.number),
-      Stage(config.stage),
-      RecipeName(config.recipe)
-    )
-  }
-
   def runDeploy(params: DeployParameters) {
     if (conf.Configuration.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
         try {
-          Deployments.deploy(params)
+          deployments.deploy(params)
         } catch {
           case NonFatal(e) => log.error(s"Could not deploy $params", e)
         }
@@ -68,12 +59,25 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
       log.info(s"Would deploy ${params.toString}")
   }
 
-  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig])
-    : Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
+}
+
+object ContinuousDeployment extends Logging {
+
+  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
       log.debug(s"Matching $build against $config")
       config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
+  }
+
+  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
+    val (config,build) = configBuildTuple
+    DeployParameters(
+      Deployer("Continuous Deployment"),
+      MagentaBuild(build.jobName,build.number),
+      Stage(config.stage),
+      RecipeName(config.recipe)
+    )
   }
 
   def retryUpTo[T](maxAttempts: Int)(thunk: () => T): Try[T] = {
@@ -82,5 +86,6 @@ object ContinuousDeployment extends LifecycleWithoutApp with Logging {
 
     thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
   }
+
 }
 

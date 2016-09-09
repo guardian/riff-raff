@@ -1,45 +1,44 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)
-@import helper.twitterBootstrap._
+@(deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import helper.CSRF
 @main("Deploy confirmation", request) {
 
-<h2>Deploy confirmation</h2>
+    <h2>Deploy confirmation</h2>
 
-@if(isExternal) {
-    <div class="alert alert-warning alert-block">
-        <h4 class="alert-heading">External deployment request</h4>
-        <p/>
-        <p>The deploy below has been requested, please confirm that this should go ahead.</p>
-        <p>(You are seeing this message as an external system has requested this build or you tried to deploy on a
-            different riff-raff node that wasn't in the correct location on the network to reach the required hosts).</p>
-    </div>
-}
+    @if(isExternal) {
+        <div class="alert alert-warning alert-block">
+            <h4 class="alert-heading">External deployment request</h4>
+            <p/>
+            <p>The deploy below has been requested, please confirm that this should go ahead.</p>
+            <p>(You are seeing this message as an external system has requested this build or you tried to deploy on a
+                different riff-raff node that wasn't in the correct location on the network to reach the required hosts).</p>
+        </div>
+    }
 
     @defining(deployForm.data.keys.toList.sorted) { fields =>
         <div class="col-md-6">
-        <table class="table">
-            @fields.map { fieldName =>
-                <tr>
-                <td>@fieldName</td>
-                <td>@deployForm(fieldName).value</td>
-                </tr>
-            }
-        </table>
+            <table class="table">
+                @fields.map { fieldName =>
+                    <tr>
+                        <td>@fieldName</td>
+                        <td>@deployForm(fieldName).value</td>
+                    </tr>
+                }
+            </table>
         </div>
         <div class="clearfix"></div>
 
-        @helper.form(action=routes.DeployController.processForm) {
-            @CSRF.formField
+    @helper.form(action=routes.DeployController.processForm) {
+        @CSRF.formField
 
-            @fields.map { fieldName =>
-                @snippets.inputHidden(deployForm(fieldName))
-            }
-
-            <div class="actions">
-                <button name="confirmation" type="submit" value="confirm" class="btn btn-primary">Confirm</button> or
-                <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
-            </div>
+        @fields.map { fieldName =>
+            @snippets.inputHidden(deployForm(fieldName))
         }
+
+        <div class="actions">
+            <button name="confirmation" type="submit" value="confirm" class="btn btn-primary">Confirm</button> or
+            <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
+        </div>
+    }
     }
 
 }

@@ -1,17 +1,17 @@
 @(implicit request: Request[AnyContent], record: deployment.Record, verbose:Boolean)
 
 @mainNoAuth("Report test", request) {
-<!-- verbose @verbose -->
-@if(!verbose) {
-<style>
-    span.message-verbose {
-        display:none;
+    <!-- verbose @verbose -->
+    @if(!verbose) {
+        <style>
+        span.message-verbose {
+            display:none;
+        }
+        </style>
     }
-</style>
-}
-<h2>Report test (@record.report.message.text)</h2>
-<hr/>
-<div class="content">
+    <h2>Report test (@record.report.message.text)</h2>
+    <hr/>
+    <div class="content">
     @deploy.logContent(record)
-</div>
+    </div>
 }

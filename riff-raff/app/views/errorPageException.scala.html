@@ -1,4 +1,4 @@
 @(error: Throwable)
 <h4 class="alert-heading">@error.getClass.getName: @error.getMessage</h4>
 <pre>@error.getStackTrace.mkString("\n")</pre>
-@if(error.getCause != null){@errorPageException(error.getCause)}
+@if(error.getCause != null){@views.html.errorPageException(error.getCause)}

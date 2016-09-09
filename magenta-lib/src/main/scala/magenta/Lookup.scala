@@ -5,7 +5,7 @@ import org.joda.time.DateTime
 trait DataLookup {
   def keys: Seq[String]
   def all: Map[String,Seq[Datum]]
-  def get(key:String): Seq[Datum] = all.get(key).getOrElse(Nil)
+  def get(key:String): Seq[Datum] = all.getOrElse(key, Nil)
   def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum]
 }
 
@@ -50,28 +50,3 @@ trait MagentaCredentials {
   )
 }
 
-case class DeployInfoLookupShim(deployInfo: DeployInfo, secretProvider: SecretProvider) extends Lookup with MagentaCredentials {
-  val name = "DeployInfo shim"
-
-  def lastUpdated: DateTime = deployInfo.createdAt.getOrElse(new DateTime(0L))
-
-  def hosts: HostLookup = new HostLookup {
-    def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack): Seq[Host] = all.filter { host =>
-      host.stage == parameters.stage.name &&
-      host.apps.contains(app) &&
-      host.isValidForStack(stack)
-    }
-    def all: Seq[Host] = deployInfo.hosts
-  }
-
-  def data: DataLookup = new DataLookup {
-    def keys: Seq[String] = deployInfo.knownKeys
-    def all: Map[String, Seq[Datum]] = deployInfo.data
-    def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] =
-      deployInfo.firstMatchingData(key, app, stage, stack)
-  }
-
-  def stages = deployInfo.knownHostStages
-
-  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] = ???
-}

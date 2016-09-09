@@ -2,13 +2,13 @@ package controllers
 
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
-import play.api.{Logger, Play, Routes}
+import play.api.{Environment, Logger}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
-
 import magenta.artifact.S3Package
-import resources.LookupSelector
+import play.api.libs.ws.WSClient
+import resources.PrismLookup
 
 import scala.io.Source
 
@@ -60,27 +60,26 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-object Application extends Controller with Logging with LoginActions {
-  import play.api.Play.current
+class Application(prismLookup: PrismLookup)(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
+  import Application._
 
   def index = Action { implicit request =>
-    val markDown = withResource(Play.resourceAsStream("public/docs/releases.md").get) { stream =>
+    val markDown = withResource(environment.resourceAsStream("public/docs/releases.md").get) { stream =>
       Source.fromInputStream(stream).mkString
     }
     Ok(views.html.index(request, markDown))
   }
 
-  def deployInfoData = AuthAction { request =>
-    Ok(views.html.deploy.deployInfoData(request))
+  def deployInfoData = AuthAction { implicit request =>
+    Ok(views.html.deploy.deployInfoData(prismLookup))
   }
 
-  def deployInfoHosts(appFilter: String) = AuthAction { request =>
-    val lookup = LookupSelector()
-    val hosts = lookup.hosts.all.filter { host =>
+  def deployInfoHosts(appFilter: String) = AuthAction { implicit request =>
+    val hosts = prismLookup.hosts.all.filter { host =>
       host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
       request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
     }.groupBy(_.stage)
-    Ok(views.html.deploy.deployInfoHosts(request, hosts, lookup))
+    Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))
   }
 
   def deployInfoAbout = AuthAction { request =>
@@ -89,30 +88,6 @@ object Application extends Controller with Logging with LoginActions {
 
   val Prev = """.*prev:(\S+).*""".r
   val Next = """.*next:(\S+).*""".r
-
-  def getMarkdownLines(resource: String):List[String] = {
-    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
-    log.info(s"Getting page for $realResource")
-    try {
-      withResource(Play.resourceAsStream(s"public/docs/$realResource.md").orElse(Play.resourceAsStream(s"$realResource.md")).get) { url =>
-        log.info(s"Resolved URL $url")
-        Source.fromInputStream(url).getLines().toList
-      }
-    } catch {
-      case e:Throwable =>
-        log.warn(s"$resource is not a valid page of documentation")
-        Nil
-    }
-  }
-
-  case class Link(title:String, call:Call, url:String)
-  object Link {
-    def apply(url:String):Option[Link] = {
-      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
-        Link(prevTitle, routes.Application.documentation(url), url)
-      }
-    }
-  }
 
   def makeAbsolute(resource:String, relative:String): String = {
     if (relative.isEmpty)
@@ -141,10 +116,6 @@ object Application extends Controller with Logging with LoginActions {
     }
     log.info(s"Header is $header $prev $next")
     (next,prev)
-  }
-
-  def getMarkdownTitle(lines: List[String]):Option[String] = {
-    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
   }
 
   def documentation(resource: String) = {
@@ -199,15 +170,49 @@ object Application extends Controller with Logging with LoginActions {
   }
 
   def javascriptRoutes = Action { implicit request =>
-    import routes.javascript._
+    import play.api.routing._
     Ok{
-      Routes.javascriptRouter("jsRoutes")(
-        DeployController.stop,
-        DeployController.projectHistory,
-        DeployController.dashboardContent,
-        DeployController.buildInfo
+      JavaScriptReverseRouter("jsRoutes")(
+        routes.javascript.DeployController.stop,
+        routes.javascript.DeployController.projectHistory,
+        routes.javascript.DeployController.dashboardContent,
+        routes.javascript.DeployController.buildInfo
       )
     }.as("text/javascript")
   }
+
+}
+
+object Application extends Logging {
+
+  case class Link(title:String, call:Call, url:String)
+  object Link {
+    def apply(url:String)(implicit environment: Environment):Option[Link] = {
+      getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
+        Link(prevTitle, routes.Application.documentation(url), url)
+      }
+    }
+
+  }
+
+  def getMarkdownTitle(lines: List[String]):Option[String] = {
+    lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
+  }
+
+  def getMarkdownLines(resource: String)(implicit environment: Environment): List[String] = {
+    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    log.info(s"Getting page for $realResource")
+    try {
+      withResource(environment.resourceAsStream(s"public/docs/$realResource.md").orElse(environment.resourceAsStream(s"$realResource.md")).get) { url =>
+        log.info(s"Resolved URL $url")
+        Source.fromInputStream(url).getLines().toList
+      }
+    } catch {
+      case e:Throwable =>
+        log.warn(s"$resource is not a valid page of documentation")
+        Nil
+    }
+  }
+
 
 }

@@ -1,77 +1,77 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
-@import magenta.RunState
 @import helper.CSRF
 
 @main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy")) {
-<style>
+    <style>
     span.message-verbose {
-    display:@if(!verbose) {none} else {list-item};
+      display:@if(!verbose) {none} else {list-item};
     }
-</style>
-<div class="row">
-<div class="col-md-8">
-<h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage @if(record.stacks.nonEmpty) {
-to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
-}</h2>
+    </style>
 
-@record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
-    <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
-}
-</div>
-<div class="col-md-4">
-@if(record.isStalled) {
-    <div class="alert alert-danger pull-left">
-    It looks like this deploy has stalled (no activity for at least 15 minutes).
-    It might be legitimately stuck and failing to time out on the current task.  Alternately, riff-raff might have
-    fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having
-    failed.
-    @helper.form(action=routes.DeployController.markAsFailed, 'class -> "form-make-inline pull-right") {
-        @CSRF.formField
-        <input type="hidden" name="uuid" value="@record.uuid"/>
-        <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="glyphicon glyphicon-remove glyphicon glyphicon-white"></i> Mark as Failed</button>
-    }
-</div>
-}
-@if(!record.isSummarised){
-    <div class="clearfix">
-        <label class="checkbox pull-right checkbox-fix-top">
-            <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
-        </label>
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage @if(record.stacks.nonEmpty) {
+                to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
+            }</h2>
+
+            @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
+                <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
+            }
+        </div>
+        <div class="col-md-4">
+            @if(record.isStalled) {
+                <div class="alert alert-danger pull-left">
+                    It looks like this deploy has stalled (no activity for at least 15 minutes).
+                    It might be legitimately stuck and failing to time out on the current task.  Alternately, riff-raff might have
+                    fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having
+                    failed.
+                    @helper.form(action=routes.DeployController.markAsFailed, 'class -> "form-make-inline pull-right") {
+                        @CSRF.formField
+                        <input type="hidden" name="uuid" value="@record.uuid"/>
+                        <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="glyphicon glyphicon-remove glyphicon glyphicon-white"></i> Mark as Failed</button>
+                    }
+                </div>
+            }
+            @if(!record.isSummarised){
+                <div class="clearfix">
+                    <label class="checkbox pull-right checkbox-fix-top">
+                        <input id="verbose-checkbox" @if(verbose){checked="checked"} type="checkbox"/> Show verbose log lines
+                    </label>
+                </div>
+            }
+            @helper.form(action=routes.DeployController.deployAgain) {
+                <input type="hidden" name="project" value="@record.buildName"/>
+                <input type="hidden" name="build" value="@record.buildId"/>
+                <input type="hidden" name="stage" value="@record.stage.name"/>
+                <input type="hidden" name="recipe" value="@record.recipe.name"/>
+
+                @record.stacks.zipWithIndex.map { case (stack, index) =>
+                <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
+                }
+                <div class="actions pull-right"><p>
+                    <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
+                        Deploy Again
+                    </button>
+                    <a class="btn btn-default" href="@routes.DeployController.deployObject(record.buildName, record.buildId)" role="button">See deploy.json</a>
+                </p></div>
+            }
+        </div>
     </div>
-}
-@helper.form(action=routes.DeployController.deployAgain) {
-    <input type="hidden" name="project" value="@record.buildName"/>
-    <input type="hidden" name="build" value="@record.buildId"/>
-    <input type="hidden" name="stage" value="@record.stage.name"/>
-    <input type="hidden" name="recipe" value="@record.recipe.name"/>
 
-    @record.stacks.zipWithIndex.map { case (stack, index) =>
-        <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
+    <hr/>
+    @if(record.parameters.hostList.nonEmpty || record.parameters.recipe.name != "default") {
+        <div class="alert alert-info">
+            @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
+            @if(record.parameters.hostList.nonEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
+        </div>
     }
-    <div class="actions pull-right"><p>
-        <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
-            Deploy Again
-        </button>
-        <a class="btn btn-default" href="@routes.DeployController.deployObject(record.buildName, record.buildId)" role="button">See deploy.json</a>
-    </p></div>
-}
-</div>
-</div>
 
-<hr/>
-@if(!record.parameters.hostList.isEmpty || record.parameters.recipe.name != "default") {
-    <div class="alert alert-info">
-        @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
-        @if(!record.parameters.hostList.isEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
+    @stopDeployButton(record, stopFlag)
+
+    <div class="content" data-ajax-refresh="@routes.DeployController.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
+        <p>Loading...</p>
     </div>
-}
 
-@stopDeployButton(record, stopFlag)
-
-<div class="content" data-ajax-refresh="@routes.DeployController.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
-    <p>Loading...</p>
-</div>
-
-@stopDeployButton(record, stopFlag)
+    @stopDeployButton(record, stopFlag)
 
 }

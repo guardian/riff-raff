@@ -1,4 +1,4 @@
-@(view: deployment.DeployFilterPagination)
+@(view: deployment.DeployFilterPagination, prismLookup: resources.PrismLookup)
 @import magenta.RunState
 
 <div class="navbar navbar-default">
@@ -9,7 +9,7 @@
                 <ul class="dropdown-menu">
                     <li@if(!view.filter.stage.isDefined){ class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStage(None)).q}">All</a></li>
                     <li class="divider"></li>
-                    @for(stage <- resources.LookupSelector().stages) {
+                    @for(stage <- prismLookup.stages) {
                         <li @if(Some(stage)==view.filter.stage){class="active"}><a href="@{routes.DeployController.history()}?@{view.replaceFilter(_.withStage(Some(stage))).q}">@stage</a></li>
                     }
                 </ul>

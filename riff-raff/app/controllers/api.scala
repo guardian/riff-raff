@@ -1,25 +1,23 @@
 package controllers
 
-import java.security.SecureRandom
-import java.util.UUID
-
-import _root_.resources.LookupSelector
-import com.mongodb.casbah.Imports._
-import deployment.DeployInfoManager._
-import deployment.{DeployFilter, DeployInfoManager, Deployments, Record}
-import magenta._
-import org.joda.time.{DateTime, LocalDate}
-import org.json4s.native.Serialization
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
-import play.api.mvc.BodyParsers.parse
-import play.api.mvc.Results._
+import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
-import play.filters.csrf.{CSRFAddToken, CSRFCheck}
+
+import java.security.SecureRandom
+import java.util.UUID
+
+import org.joda.time.{DateTime, LocalDate}
+
+import com.mongodb.casbah.Imports._
+import deployment.{DeployFilter, Deployments, Record}
+import magenta._
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import utils.Json.DefaultJodaDateWrites
 import utils.{ChangeFreeze, Graph}
 
@@ -79,7 +77,7 @@ object ApiKeyGenerator {
     val rawData = new Array[Byte](length)
     secureRandom.nextBytes(rawData)
     rawData.map{ byteData =>
-      val char = (byteData & 63)
+      val char = byteData & 63
       char match {
         case lower if lower < 26 => ('a' + lower).toChar
         case upper if upper >= 26 && upper < 52 => ('A' + (upper - 26)).toChar
@@ -94,52 +92,56 @@ object ApiKeyGenerator {
 
 }
 
-object ApiJsonEndpoint extends LoginActions {
-  val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
 
-  def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
-    val format = authenticatedRequest.queryString.get("format").toSeq.flatten
-    val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
-    val response = try {
-      f(authenticatedRequest)
-    } catch {
-      case t:Throwable =>
-        toJson(Map(
-          "response" -> toJson(Map(
-            "status" -> toJson("error"),
-            "message" -> toJson(t.getMessage),
-            "stacktrace" -> toJson(t.getStackTrace.map(_.toString))
+  object ApiJsonEndpoint {
+    val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
+
+    def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
+      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
+      val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
+
+      val response = try {
+        f(authenticatedRequest)
+      } catch {
+        case t:Throwable =>
+          toJson(Map(
+            "response" -> toJson(Map(
+              "status" -> toJson("error"),
+              "message" -> toJson(t.getMessage),
+              "stacktrace" -> toJson(t.getStackTrace.map(_.toString))
+            ))
           ))
-        ))
-    }
+      }
 
-    val responseObject = response match {
-      case jso:JsObject => jso
-      case jsv:JsValue => JsObject(Seq(("value", jsv)))
-    }
+      val responseObject = response match {
+        case jso:JsObject => jso
+        case jsv:JsValue => JsObject(Seq(("value", jsv)))
+      }
 
-    jsonpCallback map { callback =>
-      Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
-    } getOrElse {
-      response \ "response" \ "status" match {
-        case JsString("ok") => Ok(responseObject)
-        case JsString("error") => BadRequest(responseObject)
-        case _ => throw new IllegalStateException("Response status missing or invalid")
+      jsonpCallback map { callback =>
+        Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
+      } getOrElse {
+        response \ "response" \ "status" match {
+          case JsDefined(JsString("ok")) => Ok(responseObject)
+          case JsDefined(JsString("error")) => BadRequest(responseObject)
+          case _ => throw new IllegalStateException("Response status missing or invalid")
+        }
       }
     }
-  }
-  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
-    ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
-  def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
-    this.apply(counter, parse.anyContent)(f)
-  def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
-    val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
-    this.apply(apiRequest)(f)
-  }
-}
 
-object Api extends Controller with Logging with LoginActions {
+    def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
+      ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
+
+    def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
+      this.apply(counter, parse.anyContent)(f)
+
+    def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
+      val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
+      this.apply(apiRequest)(f)
+    }
+  }
 
   val applicationForm = Form(
     "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)
@@ -149,42 +151,34 @@ object Api extends Controller with Logging with LoginActions {
     "key" -> nonEmptyText
   )
 
-  def createKeyForm = CSRFAddToken {
-    AuthAction { implicit request =>
-      Ok(views.html.api.form(request, applicationForm))
-    }
+  def createKeyForm = AuthAction { implicit request =>
+    Ok(views.html.api.form(applicationForm))
   }
 
-  def createKey = CSRFCheck { CSRFAddToken {
-    AuthAction { implicit request =>
-      applicationForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.api.form(request, errors)),
-        applicationName => {
-          val randomKey = ApiKeyGenerator.newKey()
-          val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
-          Persistence.store.createApiKey(key)
-          Redirect(routes.Api.listKeys)
-        }
-      )
-    }
-  }}
-
-  def listKeys = CSRFAddToken {
-    AuthAction { implicit request =>
-      Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
-    }
+  def createKey = AuthAction { implicit request =>
+    applicationForm.bindFromRequest().fold(
+      errors => BadRequest(views.html.api.form(errors)),
+      applicationName => {
+        val randomKey = ApiKeyGenerator.newKey()
+        val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
+        Persistence.store.createApiKey(key)
+        Redirect(routes.Api.listKeys)
+      }
+    )
   }
 
-  def delete = CSRFCheck {
-    AuthAction { implicit request =>
-      apiKeyForm.bindFromRequest().fold(
-        errors => Redirect(routes.Api.listKeys()),
-        apiKey => {
-          Persistence.store.deleteApiKey(apiKey)
-          Redirect(routes.Api.listKeys())
-        }
-      )
-    }
+  def listKeys = AuthAction { implicit request =>
+    Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
+  }
+
+  def delete = AuthAction { implicit request =>
+    apiKeyForm.bindFromRequest().fold(
+      errors => Redirect(routes.Api.listKeys()),
+      apiKey => {
+        Persistence.store.deleteApiKey(apiKey)
+        Redirect(routes.Api.listKeys())
+      }
+    )
   }
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
@@ -201,7 +195,7 @@ object Api extends Controller with Logging with LoginActions {
       override def compare(x: LocalDate, y: LocalDate): Int = x.compareTo(y)
     }
     val allDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
-      case (date, _) => date
+      case (day, _) => day
     }
     val firstDate = allDataByDay.headOption.map(_._1)
     val lastDate = allDataByDay.lastOption.map(_._1)
@@ -214,15 +208,15 @@ object Api extends Controller with Logging with LoginActions {
       case default => 5
     }
 
-    val deploys = deploysByState.map { case (state, deployList) =>
-      val seriesDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
-        case (date, _) => date
+    val deploys = deploysByState.map { case (state, deploysInThatState) =>
+      val seriesDataByDay = deploysInThatState.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
+        case (day, _) => day
       }
       val seriesJson = Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
-        case (day, deploys) =>
+        case (day, deploysOnThatDay) =>
           toJson(Map(
             "x" -> toJson(day.toDateTimeAtStartOfDay.getMillis / 1000),
-            "y" -> toJson(deploys)
+            "y" -> toJson(deploysOnThatDay)
           ))
       }
       Map(
@@ -275,42 +269,6 @@ object Api extends Controller with Logging with LoginActions {
     toJson(response)
   }
 
-  def deployinfo = ApiJsonEndpoint("deployinfo") { implicit request =>
-    assert(!LookupSelector().hosts.all.isEmpty, "No deploy information available")
-
-    val filter = deployment.HostFilter.fromRequest
-    val query:List[(String,JsValue)] = Nil ++
-      filter.stage.map("stage" -> toJson(_)) ++
-      filter.app.map("app" -> toJson(_)) ++
-      Some("hostList" -> toJson(filter.hostList))
-
-    import org.json4s.NoTypeHints
-    implicit val format = Serialization.formats(NoTypeHints)
-    val deployInfo = DeployInfoManager.deployInfo
-    val filtered = deployInfo.filterHosts { host =>
-        (filter.stage.isEmpty || filter.stage.get == host.stage) &&
-          (filter.app.isEmpty || host.apps.exists(_.name == filter.app.get) ) &&
-          (filter.hostList.isEmpty || filter.hostList.contains(host.name))
-      }
-    val results = Json.parse(Serialization.write(filtered.input))
-
-    val responseContent = Json.obj(
-      "status" -> "ok",
-      "filter" -> toJson(query.toMap),
-      "updateTime" -> deployInfo.createdAt,
-      "stale" -> deployInfo.stale,
-      "results" -> results
-    )
-
-    val response =
-      if (LookupSelector.enablePrism.isSwitchedOn)
-        Json.obj("WARNING" -> "Riff-Raff is using Prism for infrastructure information - this data is still generated by Riff-Raff") ++ responseContent
-      else
-        responseContent
-
-    toJson(Json.obj("response" -> response))
-  }
-
   val deployRequestReader =
     (__ \ "project").read[String] and
     (__ \ "build").read[String] and
@@ -334,7 +292,7 @@ object Api extends Controller with Logging with LoginActions {
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
 
-        val deployId = Deployments.deploy(params)
+        val deployId = deployments.deploy(params)
         Json.obj(
           "response" -> Json.obj(
             "status" -> "ok",
@@ -354,7 +312,7 @@ object Api extends Controller with Logging with LoginActions {
         Json.obj(
           "response" -> Json.obj(
             "status" -> "error",
-            "errors" -> JsError.toFlatJson(error)
+            "errors" -> JsError.toJson(error)
           )
         )
       }
@@ -377,7 +335,7 @@ object Api extends Controller with Logging with LoginActions {
       uuid => {
         val record = Deployments.get(UUID.fromString(uuid), fetchLog = false)
         assert(!record.isDone, "Can't stop a deploy that has already completed")
-        Deployments.stop(UUID.fromString(uuid), request.fullName)
+        deployments.stop(UUID.fromString(uuid), request.fullName)
         Json.obj(
           "response" -> Json.obj(
             "status" -> "ok",
