@@ -6,6 +6,7 @@ import java.net.ServerSocket
 import java.util
 import java.util.UUID
 
+import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model._
@@ -239,7 +240,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     override lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
     lazy val s3Client = mock[AmazonS3Client]
-    override def s3client(keyRing: KeyRing) = s3Client
+    override def s3client(keyRing: KeyRing, config: ClientConfiguration) = s3Client
   }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), RecipeName("baseRecipe.name"))

@@ -19,7 +19,8 @@ import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Sta
 import scala.collection.JavaConversions._
 
 trait S3 extends AWS {
-  def s3client(keyRing: KeyRing) = new AmazonS3Client(provider(keyRing), clientConfiguration)
+  def s3client(keyRing: KeyRing, config: ClientConfiguration = clientConfiguration) =
+    new AmazonS3Client(provider(keyRing), config)
 }
 
 trait Lambda extends AWS {
@@ -233,4 +234,6 @@ trait AWS {
       20,
       false
     ))
+
+  val clientConfigurationNoRetry = new ClientConfiguration().withRetryPolicy(PredefinedRetryPolicies.NO_RETRY_POLICY)
 }
