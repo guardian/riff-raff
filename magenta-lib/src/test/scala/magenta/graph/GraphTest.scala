@@ -9,9 +9,24 @@ class GraphTest extends FlatSpec with ShouldMatchers {
   val two = MidNode("two")
   val three = MidNode("three")
   val four = MidNode("four")
+  val five = MidNode("five")
   val end = EndNode
 
-  "SimpleGraph" should "parallel join two graphs together" in {
+  "Graph" should "correctly flatten a graph to a list" in {
+    val graph = Graph(start ~> one, one ~> end)
+    val graph2 = Graph(start ~> two, two ~> end)
+    val mergedGraph = graph.joinParallel(graph2)
+    mergedGraph.nodeList should be(List(start, one, two, end))
+  }
+
+  it should "correctly flatten a asymmetric graph to a list" in {
+    val graph = Graph(start ~> one, one ~> two, two ~> end)
+    val graph2 = Graph(start ~> one, one ~> end)
+    val joinedGraph = graph.joinParallel(graph2)
+    joinedGraph.nodeList should be(List(start, one, two, end))
+  }
+
+  it should "parallel join two graphs together" in {
     val graph = Graph(start ~> one, one ~> end)
     val graph2 = Graph(start ~> two, two ~> end)
     val mergedGraph = graph.joinParallel(graph2)
@@ -54,6 +69,28 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     ))
   }
 
+  it should "parallel join two dis-similar graphs together" in {
+    val graph = Graph(StartNode ~> one, one ~> two, two ~> EndNode)
+    val graph2 = Graph(StartNode ~> one, one ~> EndNode)
+    val joinedGraph = graph joinParallel graph2
+    joinedGraph should be(Graph(
+      StartNode ~> one,
+      one ~> two, (one ~> EndNode).incPriority(1),
+      two ~> EndNode
+    ))
+  }
+
+  it should "parallel join a one node graph to a shared two node graph" in {
+    val graph = Graph(start ~> one, one ~> two, two ~> end)
+    val graph2 = Graph(start ~> one, one ~> end)
+    val joinedGraph = graph.joinParallel(graph2)
+    joinedGraph should be(Graph(
+      start ~> one,
+      one ~> two, (one ~> end).incPriority(1),
+      two ~> end
+    ))
+  }
+
   it should "join two graphs together in series" in {
     val graph = Graph(start ~> one, one ~> end)
     val graph2 = Graph(start ~> two, two ~> end)
@@ -61,6 +98,37 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     mergedGraph.nodes.size should be(4)
     mergedGraph.successors(StartNode).size should be(1)
     mergedGraph should be(Graph(start ~> one, one ~> two, two ~> end))
+  }
+
+  it should "retain priorities when merging non-trivial graphs in series" in {
+    val graph = Graph(start ~> one, one ~> two, (one ~> end).incPriority(1), two ~> end)
+    val graph2 = Graph(start ~> three, (start ~> four).incPriority(1), three ~> end, four ~> end)
+    val joinedGraph = graph joinSeries graph2
+    joinedGraph should be(Graph(
+      start ~> one,
+      one ~> two, (one ~> three).incPriority(1), (one ~> four).incPriority(2),
+      two ~> three, (two ~> four).incPriority(1),
+      three ~> end,
+      four ~> end
+    ))
+  }
+
+  it should "retain priorities when merging more complex examples in series" in {
+    val graph = Graph(
+      start ~> one,
+      one ~> two, (one ~> end).incPriority(1), (one ~> three).incPriority(2),
+      two ~> end, three ~> end
+    )
+    val graph2 = Graph(start ~> four, (start ~> five).incPriority(1), four ~> end, five ~> end)
+    val joinedGraph = graph joinSeries graph2
+    joinedGraph should be(Graph(
+      start ~> one,
+      one ~> two, (one ~> four).incPriority(1), (one ~> five).incPriority(2), (one ~> three).incPriority(3),
+      two ~> four, (two ~> five).incPriority(1),
+      three ~> four, (three ~> five).incPriority(1),
+      four ~> end,
+      five ~> end
+    ))
   }
 
   it should "join two complex graphs together in series" in {
@@ -106,11 +174,15 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val graph3 = Graph(start ~> three, three ~> end)
     val graph4 = Graph(start ~> four, four ~> end)
     val joinedGraph2 = graph3.joinParallel(graph4)
-    val mergedGraph = joinedGraph.joinSeries(joinedGraph2)
-    val transformedGraph = mergedGraph.map { case MidNode(s) =>
-        MidNode(List(s, s))
-    }
+    val mergedGraph = joinedGraph.joinParallel(joinedGraph2)
+    val transformedGraph = mergedGraph.map(s => List(s, s))
     transformedGraph.nodes.size should be(6)
     transformedGraph.edges.size should be(mergedGraph.edges.size)
+    transformedGraph.orderedSuccessors(StartNode) should be (List(
+      MidNode(List("one", "one")),
+      MidNode(List("two", "two")),
+      MidNode(List("three", "three")),
+      MidNode(List("four", "four"))
+    ))
   }
 }

@@ -8,6 +8,8 @@ case class RecipeTasks(recipe: Recipe, preTasks: List[Task], hostTasks: List[Tas
   lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs=None)).distinct
   lazy val tasks = if (disabled) Nil else preTasks ++ hostTasks
   lazy val recipeName = recipe.name
+  // invalid if there are host-tasks but not any hosts to apply them to :(
+  lazy val invalid = recipe.actionsPerHost.nonEmpty && hostTasks.isEmpty
 }
 
 case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksNode]) {
@@ -19,6 +21,18 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
   }
 
   def toList: List[RecipeTasks] = children.flatMap(_.toList) ++ List(recipeTasks)
+
+  def toGraph(name: String): Graph[Deployment] = {
+    val thisGraph: Graph[Deployment] =
+      if (recipeTasks.invalid) Graph.empty
+      else DeploymentGraph(recipeTasks.tasks, s"$name (${recipeTasks.recipeName})")
+
+    val childGraph: Graph[Deployment] =
+      children.map(_.toGraph(name)).reduceLeftOption(_ joinParallel _).getOrElse(Graph.empty)
+
+    val graph = childGraph joinSeries thisGraph
+    graph
+  }
 }
 
 object Resolver {
@@ -28,7 +42,7 @@ object Resolver {
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
       DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")
     }.reduce(_ joinParallel _)
-  }
+    }
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {
     val stacks = resolveStacks(project, parameters)
@@ -48,35 +62,35 @@ object Resolver {
     }
 
     def resolveRecipe(recipe: Recipe, resources: DeploymentResources, target: DeployTarget): RecipeTasks = {
-      val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resources, target) }
+    val tasksToRunBeforeApp = recipe.actionsBeforeApp.toList flatMap { _.resolve(resources, target) }
 
-      val perHostTasks = {
-        for {
-          action <- recipe.actionsPerHost
-          tasks <- action.resolve(resources, target)
-        } yield {
-          tasks
-        }
+    val perHostTasks = {
+      for {
+        action <- recipe.actionsPerHost
+        tasks <- action.resolve(resources, target)
+      } yield {
+        tasks
       }
-
-      val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
-      val taskHostsInOriginalOrder = resourceLookup.hosts.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
-      val groupedHosts = taskHostsInOriginalOrder.transposeBy(_.tags.getOrElse("group",""))
-      val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
-        t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
-      )
-
-      RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
     }
+
+    val taskHosts = perHostTasks.flatMap(_.taskHost).toSet
+      val taskHostsInOriginalOrder = resourceLookup.hosts.all.filter(h => taskHosts.contains(h.copy(connectAs = None)))
+    val groupedHosts = taskHostsInOriginalOrder.transposeBy(_.tags.getOrElse("group",""))
+    val sortedPerHostTasks = perHostTasks.toList.sortBy(t =>
+      t.taskHost.map(h => groupedHosts.indexOf(h.copy(connectAs = None))).getOrElse(-1)
+    )
+
+    RecipeTasks(recipe, tasksToRunBeforeApp, sortedPerHostTasks)
+  }
 
     for {
       tasks <- {
-        val resources = DeploymentResources(deployReporter, resourceLookup, artifactClient)
-        val target = DeployTarget(parameters, stack)
+    val resources = DeploymentResources(deployReporter, resourceLookup, artifactClient)
+    val target = DeployTarget(parameters, stack)
         val resolvedTree = resolveTree(parameters.recipe.name, resources, target)
-        val filteredTree = resolvedTree.disable(rt => rt.recipe.actionsPerHost.nonEmpty && rt.hostTasks.isEmpty)
+        val filteredTree = resolvedTree.disable(_.invalid)
         filteredTree.toList.distinct
-      }
+  }
     } yield tasks
   }
 
@@ -84,7 +98,7 @@ object Resolver {
     parameters.stacks match {
       case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
       case s => s
-    }
+  }
   }
 }
 class NoHostsFoundException extends Exception("No hosts found")
