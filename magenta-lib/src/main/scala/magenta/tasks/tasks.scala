@@ -1,9 +1,10 @@
 package magenta
 package tasks
 
-import java.io.InputStream
+import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
+import com.amazonaws.ResetException
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.internal.Mimetypes
 import com.amazonaws.services.s3.model.CannedAccessControlList._
@@ -41,27 +42,29 @@ case class S3Upload(
   // end-user friendly description of this task
   def description: String = s"Upload ${fileString(objectMappings.size)} to S3 bucket $bucket"
 
-  def requestToString(source: S3Object, request: PutObjectRequest): String =
-    s"s3://${source.bucket}/${source.key} to s3://${request.getBucketName}/${request.getKey} with "+
-      s"CacheControl:${request.getMetadata.getCacheControl} ContentType:${request.getMetadata.getContentType} ACL:${request.getCannedAcl}"
+  def requestToString(source: S3Object, request: PutReq): String =
+    s"s3://${source.bucket}/${source.key} to s3://${request.target.bucket}/${request.target.key} with "+
+      s"CacheControl:${request.cacheControl} ContentType:${request.contentType} PublicRead:${request.publicReadAcl}"
 
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = s3client(keyRing)
+    val client = s3client(keyRing, clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
     requests.zipWithIndex.par foreach { case (req, index) =>
-      val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
-      val putRequest = req.toAwsRequest(inputStream)
       index match {
-        case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, putRequest)}")
+        case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
         case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
         case _ =>
       }
-      try {
-        client.putObject(putRequest)
-      } finally {
-        inputStream.close()
+      retryOnException(clientConfiguration) {
+        val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
+        val putRequest = req.toAwsRequest(inputStream)
+        try {
+          client.putObject(putRequest)
+        } finally {
+          inputStream.close()
+        }
       }
     }
     reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
