@@ -2,14 +2,14 @@ package magenta.artifact
 
 import java.io.File
 
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
 import magenta.{Build, DeployReporter}
 
 import scala.annotation.tailrec
-import scala.util.Try
 import scala.collection.JavaConverters._
+import scala.util.Try
 import scala.util.control.NonFatal
 
 trait S3Location {
@@ -109,7 +109,9 @@ object S3Artifact extends Loggable {
       }
       reporter.info(s"Zip artifact converted")
     }(client, reporter)
-    // TODO: Delete the zip format (not yet as we might need to rollback)
+
+    S3ZipArtifact.delete(artifact)
+    reporter.verbose("Zip artifact deleted")
   }
 
   private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"

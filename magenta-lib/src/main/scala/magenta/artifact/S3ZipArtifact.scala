@@ -2,10 +2,10 @@ package magenta.artifact
 
 import java.io.File
 
+import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.AmazonS3Exception
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import magenta.DeployReporter
 import magenta.tasks.CommandLine
-import magenta.{Build, DeployReporter}
 
 import scala.util.Try
 import scalax.file.ImplicitConversions.defaultPath2jfile
@@ -42,6 +42,11 @@ object S3ZipArtifact {
     } finally {
       artifactPath.delete()
     }
+  }
+
+  def delete(artifact: S3Artifact)(implicit client: AmazonS3): Unit = {
+    val path = s"${artifact.key}/artifacts.zip"
+    client.deleteObject(artifact.bucket, path)
   }
 
   def withDownload[T](artifact: S3Artifact)(block: File => T)
