@@ -111,11 +111,13 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
+      val readAcl = publicReadAcl(pkg)
+      if (readAcl) resources.reporter.warning("DEPRECATED: publicReadAcl should be set to false when uploading an artifact for an autoscaling deploy (this is not currently the default but will be at some stage).")
       List(
         S3Upload(
           bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(pkg.s3Package -> prefix),
-          publicReadAcl = publicReadAcl(pkg)
+          publicReadAcl = readAcl
         )
       )
   }

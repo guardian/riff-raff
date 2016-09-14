@@ -40,6 +40,7 @@ case class DeployReporter(messageStack: List[Message], messageContext: MessageCo
   def commandOutput(message: String) { DeployReporter.send(this, CommandOutput(message)) }
   def commandError(message: String) { DeployReporter.send(this, CommandError(message)) }
   def verbose(message: String) { DeployReporter.send(this, Verbose(message)) }
+  def warning(message: String) { DeployReporter.send(this, Warning(message)) }
   def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw DeployReporter.failException(this, message, e)
   }
@@ -141,12 +142,12 @@ case class MessageStack(messages: List[Message], time:DateTime = new DateTime())
 
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
 
-trait Message {
+sealed trait Message {
   def text: String
   def deployParameters: Option[DeployParameters] = None
 }
 
-trait ContextMessage extends Message {
+sealed trait ContextMessage extends Message {
   def originalMessage: Message
   override def deployParameters: Option[DeployParameters] = originalMessage.deployParameters
 }
@@ -165,6 +166,7 @@ case class CommandOutput(text: String) extends Message
 case class CommandError(text: String) extends Message
 case class Verbose(text: String) extends Message
 case class Fail(text: String, detail: ThrowableDetail) extends Message
+case class Warning(text: String) extends Message
 
 case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Starting ${originalMessage.text}" }
 case class FailContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Failed during ${originalMessage.text}" }
