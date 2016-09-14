@@ -9,7 +9,7 @@ import com.mongodb.casbah.MongoCursor
 import org.joda.time.{LocalDate, DateMidnight}
 
 object `package` {
-  implicit def deployFilter2Criteria(filter: DeployFilter) = new {
+  implicit class deployFilter2Criteria(filter: DeployFilter) {
     def criteria: DBObject = {
       val criteriaList: List[(String, Any)] = Nil ++
         filter.projectName.map(p => ("parameters.projectName", s"(?i)$p".r)) ++
@@ -24,13 +24,13 @@ object `package` {
     }
   }
 
-  implicit def mongoCursor2pagination(cursor: MongoCursor) = new {
+  implicit class mongoCursor2pagination(cursor: MongoCursor) {
     def pagination(p: PaginationView): MongoCursor = {
       p.pageSize.map(l => cursor.skip(p.skip.get).limit(l)).getOrElse(cursor)
     }
   }
 
-  implicit def message2MessageDocument(message: Message) = new {
+  implicit class message2MessageDocument(message: Message) {
     def asMessageDocument: MessageDocument = MessageDocument(message)
   }
 }

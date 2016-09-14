@@ -216,7 +216,7 @@ object DetailConversions {
   }
 }
 
-trait MessageDocument {
+sealed trait MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message] = None): Message
   def asDBObject:DBObject = {
     val fields:List[(String,Any)] =
@@ -253,6 +253,10 @@ case class VerboseDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
   override lazy val dboFields = List("text" -> text)
 }
+case class WarningDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
+  override lazy val dboFields = List("text" -> text)
+}
 case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
   override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
@@ -277,8 +281,8 @@ object MessageDocument {
       case Fail(text, detail) => FailDocument(text,detail)
       case FinishContext(message) => FinishContextDocument()
       case FailContext(message) => FailContextDocument()
-      case _ =>
-        throw new IllegalArgumentException(s"Don't know how to serialise Message of type ${from.getClass.getName}")
+      case Warning(text) => WarningDocument(text)
+      case StartContext(_) => throw new IllegalArgumentException("StartContext can not be turned into a MessageDocument")
     }
   }
   def from(dbo:DBObject): MessageDocument = {
@@ -296,6 +300,7 @@ object MessageDocument {
         FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
       case "persistence.FinishContextDocument" => FinishContextDocument()
       case "persistence.FailContextDocument" => FailContextDocument()
+      case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
       case hint =>
         throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
     }

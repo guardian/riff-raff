@@ -38,14 +38,14 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 object Resolver {
 
   def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): Graph[Deployment] = {
-    resolveStacks(project, parameters).map { stack =>
+    resolveStacks(project, parameters, deployReporter).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
       DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")
     }.reduce(_ joinParallel _)
     }
 
   def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {
-    val stacks = resolveStacks(project, parameters)
+    val stacks = resolveStacks(project, parameters, deployReporter)
     for {
       stack <- stacks.toList
       tasks <- resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack)
@@ -94,11 +94,14 @@ object Resolver {
     } yield tasks
   }
 
-  def resolveStacks(project: Project, parameters: DeployParameters): Seq[Stack] = {
+  def resolveStacks(project: Project, parameters: DeployParameters, reporter: DeployReporter): Seq[Stack] = {
     parameters.stacks match {
-      case Nil => if (project.defaultStacks.nonEmpty) project.defaultStacks else Seq(UnnamedStack)
+      case Nil if project.defaultStacks.nonEmpty => project.defaultStacks
+      case Nil =>
+        reporter.warning("DEPRECATED: Your deploy.json should always specify stacks using the top level defaultStacks parameter.")
+        Seq(UnnamedStack)
       case s => s
-  }
+    }
   }
 }
 class NoHostsFoundException extends Exception("No hosts found")

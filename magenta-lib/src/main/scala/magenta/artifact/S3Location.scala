@@ -96,6 +96,7 @@ object S3Artifact extends Loggable {
   }
 
   def convertFromZipBundle(artifact: S3Artifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
+    reporter.warning("DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you are using sbt-riffraff-artifact then simply upgrade to >= 0.9.1)")
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
     S3ZipArtifact.withDownload(artifact){ dir =>

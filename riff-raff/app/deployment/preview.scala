@@ -73,7 +73,7 @@ object Preview {
 }
 
 case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter, artifactClient: AmazonS3, lookup: PrismLookup) {
-  lazy val stacks = Resolver.resolveStacks(project, parameters) collect {
+  lazy val stacks = Resolver.resolveStacks(project, parameters, reporter) collect {
     case NamedStack(s) => s
   }
   lazy val recipeNames = recipeTasks.map(_.recipe.name).distinct

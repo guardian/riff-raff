@@ -64,6 +64,7 @@ trait PersistenceTestInstances {
   val finishInfo = FinishContext(infoMsg)
   val failInfo = FailContext(infoMsg)
   val failDep = FailContext(deploy)
+  val warning = Warning("deprecation")
   val messageStacks: List[MessageStack] =
     stack(startDeploy) ::
       stack(startInfo, deploy) ::

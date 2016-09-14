@@ -28,6 +28,7 @@ object MessageState {
     end match {
       case finish:FinishContext => FinishMessageState(message, finish, time)
       case fail:FailContext => FailMessageState(message, fail, time)
+      case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
     }
   }
 }

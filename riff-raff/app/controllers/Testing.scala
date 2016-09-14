@@ -65,6 +65,7 @@ class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, v
       /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/deploy.json
     /var/folders/ZO/ZOSa3fR3FsCiU3jxetWKQU+++TQ/-Tmp-/sbt_5489e15/packages/riff-raff/riff-raff.jar"""), message.deploy),
       wrapper(Some(message.deployUUID), UUID.randomUUID(), Info("Reading deploy.json"), message.deploy),
+      wrapper(Some(message.deployUUID), UUID.randomUUID(), Warning("DEPRECATED: Something in your deploy.json is deprecated!"), message.deploy),
       wrapper(Some(message.deployUUID), message.task1UUID, StartContext(message.task1), message.deploy),
       wrapper(Some(message.task1UUID), UUID.randomUUID(), FinishContext(message.task1), message.task1, message.deploy),
       wrapper(Some(message.deployUUID), message.task2UUID, StartContext(message.task2), message.deploy),
