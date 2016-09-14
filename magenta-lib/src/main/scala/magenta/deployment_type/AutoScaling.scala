@@ -111,13 +111,19 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
-      val readAcl = publicReadAcl(pkg)
-      if (readAcl) resources.reporter.warning("DEPRECATED: publicReadAcl should be set to false when uploading an artifact for an autoscaling deploy (this is not currently the default but will be at some stage).")
+      if (publicReadAcl.get(pkg).isEmpty)
+        resources.reporter.warning(
+          "DEPRECATED: publicReadAcl should be specified for an autoscaling deploy. Not setting this means that it " +
+            "defaults to true which is insecure and probably not what you want. It is not a good idea for artifacts " +
+            "to be publically available on the internet - it is much better to ensure this is set to false and your " +
+            "instances download the artifact from S3 using IAM instance credentials. If you are CERTAIN that this is" +
+            "what you want you can also get rid of this message by explicitly setting publicReadAcl to true."
+        )
       List(
         S3Upload(
           bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(pkg.s3Package -> prefix),
-          publicReadAcl = readAcl
+          publicReadAcl = publicReadAcl(pkg)
         )
       )
   }
