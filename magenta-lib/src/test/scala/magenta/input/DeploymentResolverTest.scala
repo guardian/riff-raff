@@ -1,16 +1,15 @@
 package magenta.input
 
-import org.scalatest.{FlatSpec, ShouldMatchers}
+import org.scalatest.{EitherValues, FlatSpec, ShouldMatchers}
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 
-class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
+class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
-    val yaml = RiffRaffYaml(None, None, None,
+    val yaml = RiffRaffDeployConfig(None, None, None,
       Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack")))
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have (
+    deployments.head.right.value should have (
       'type ("testType"),
       'stacks (List("testStack")),
       'regions (List("eu-west-1")),
@@ -22,12 +21,11 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "fill in global defaults and regions when not specified in the deployment" in {
-    val yaml = RiffRaffYaml(Some(List("stack1", "stack2")), Some(List("oceania-south-1")), None,
+    val yaml = RiffRaffDeployConfig(Some(List("stack1", "stack2")), Some(List("oceania-south-1")), None,
       Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue"))))
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have (
+    deployments.head.right.value should have (
       'type ("testType"),
       'stacks (List("stack1", "stack2")),
       'regions (List("oceania-south-1")),
@@ -39,15 +37,14 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "override the global defaults when specified in the deployment" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("overriden-stack1")),
       Some(List("oceania-south-1")), None,
       Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack").withRegions("eurasia-north-1"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have (
+    deployments.head.right.value should have (
       'type ("testType"),
       'stacks (List("testStack")),
       'regions (List("eurasia-north-1")),
@@ -59,15 +56,14 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "use values from a simple template" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       None, None,
       Some(Map("testTemplate" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack"))),
       Map("test" -> deploymentTemplate("testTemplate").withParameters("anotherParam" -> JsNumber(1984)))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have (
+    deployments.head.right.value should have (
       'type ("testType"),
       'stacks (List("testStack")),
       'regions (List("eu-west-1")),
@@ -79,52 +75,49 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "correctly prioritise stacks and regions from deployment when specified everywhere" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withStacks("template-stack").withRegions("template-region"))),
       Map("test" -> deploymentTemplate("testTemplate").withStacks("deployment-stack").withRegions("deployment-region"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have(
+    deployments.head.right.value should have(
       'stacks (List("deployment-stack")),
       'regions (List("deployment-region"))
     )
   }
 
   it should "correctly prioritise stacks and regions from template when not specified in deployment" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withStacks("template-stack").withRegions("template-region"))),
       Map("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have(
+    deployments.head.right.value should have(
       'stacks (List("template-stack")),
       'regions (List("template-region"))
     )
   }
 
   it should "correctly prioritise stacks and regions from global when not specified in deployment or template" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType"))),
       Map("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have(
+    deployments.head.right.value should have(
       'stacks (List("global-stack")),
       'regions (List("global-region"))
     )
   }
 
   it should "resolve nested templates" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withStacks("nested-template-stack").withRegions("nested-template-region"),
@@ -134,15 +127,14 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have(
+    deployments.head.right.value should have(
       'stacks (List("nested-template-stack")),
       'regions (List("template-region"))
     )
   }
 
   it should "correctly merge parameters from templates deployments" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withParameters(
@@ -165,8 +157,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    val deployment = deployments.head.right.get
+    val deployment = deployments.head.right.value
     deployment.parameters.size should be(6)
     deployment.parameters should contain("nestedParameter" -> JsNumber(1984))
     deployment.parameters should contain("templateParameter" -> JsNumber(2016))
@@ -177,22 +168,21 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "not default app and contentDirectory if specified in template" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withApp("templateApp").withContentDirectory("templateContentDirectory"))),
       Map("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isRight should be(true)
-    deployments.head.right.get should have(
+    deployments.head.right.value should have(
       'app ("templateApp"),
       'contentDirectory ("templateContentDirectory")
     )
   }
 
   it should "correctly prioritise dependencies from deployment when specified everywhere" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), None,
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
@@ -212,7 +202,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "correctly prioritise dependencies from template when not specified in deployment" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), None,
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
@@ -231,7 +221,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "correctly prioritise dependencies from nested template when not specified in deployment or template" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), None,
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
@@ -249,7 +239,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "report an error if a named template doesn't exist" in {
-    val yaml = RiffRaffYaml(
+    val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), None,
       Some(Map(
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
@@ -259,27 +249,22 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers {
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.isLeft should be(true)
-    val errors = deployments.head.left.get
-    errors should be(List("Template with name nonExistentTemplate (specified in test) does not exist"))
+    deployments.head.left.value should be("test" -> "Template with name nonExistentTemplate does not exist")
   }
 
-  it should "report missing dependencies" in {
-    val yaml = RiffRaffYaml(
-      Some(List("global-stack")), None,
+  it should "report an error if no stacks are provided" in {
+    val yaml = RiffRaffDeployConfig(
+      None, None,
       None,
       Map(
-        "test" -> deploymentTemplate("testTemplate").withDependencies("missing-dep")
+        "test" -> deploymentType("autoscaling")
       )
     )
     val deployments = DeploymentResolver.resolve(yaml)
-    deployments.size should be (1)
-    deployments.head.isLeft should be(true)
-    val errors = deployments.head.left.get
-    errors should be(List("Missing dependency missing-dep in test"))
+    deployments.head.left.value should be("test" -> "No stacks provided")
   }
 
-  def assertDeployments(maybeDeployments: List[Either[List[String], Deployment]]): List[Deployment] = {
+  def assertDeployments(maybeDeployments: List[Either[(String, String), Deployment]]): List[Deployment] = {
     maybeDeployments.flatMap{ either =>
       either should matchPattern { case Right(_) => }
       either.right.toOption
