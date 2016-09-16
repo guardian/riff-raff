@@ -1,68 +1,67 @@
 package magenta.input
 
-import play.api.libs.json.JsValue
-
-case class Deployment(
-  name: String,
-  `type`: String,
-  stacks: List[String],
-  regions: List[String],
-  dependencies: List[String],
-  app: String,
-  contentDirectory: String,
-  parameters: Map[String, JsValue]
-)
 
 object DeploymentResolver {
   val DEFAULT_REGIONS = List("eu-west-1")
 
-  def resolveDeployment(name: String, deployment: DeploymentOrTemplate, yaml: RiffRaffYaml): Either[List[String], DeploymentOrTemplate] = {
-    val missingDeps = yaml.missingDependencies(deployment.dependencies.getOrElse(Nil))
-    if (missingDeps.nonEmpty)
-      Left(missingDeps.map(dep => s"Missing dependency $dep in $name"))
-    else {
-      deployment match {
-        case deployment @ DeploymentOrTemplate(Some(deploymentType), None, stacks, regions, _, _, _, _) =>
-          // terminating case - apply any default stacks and regions
-          val deploymentWithGlobalDefaults = deployment.copy(stacks = stacks.orElse(yaml.stacks), regions = regions.orElse(yaml.regions))
-          Right(deploymentWithGlobalDefaults)
-
-        case template @ DeploymentOrTemplate(None, Some(templateName), stacks, regions, app, contentDirectory, dependencies, parameters) =>
-          // template case - recursively resolve
-          for {
-            template <- yaml.templates.flatMap(_.get(templateName))
-              .toRight(List(s"Template with name $templateName (specified in $name) does not exist")).right
-            resolved <- resolveDeployment(templateName, template, yaml).right
-          } yield {
-            DeploymentOrTemplate(
-              resolved.`type`,
-              None,
-              stacks.orElse(resolved.stacks),
-              regions.orElse(resolved.regions),
-              app.orElse(resolved.app),
-              contentDirectory.orElse(resolved.contentDirectory),
-              dependencies.orElse(resolved.dependencies),
-              Some(resolved.parameters.getOrElse(Map.empty) ++ parameters.getOrElse(Map.empty))
-            )
-          }
-      }
+  def resolve(yaml: RiffRaffDeployConfig): List[Either[(String, String), Deployment]] = {
+    yaml.deployments.toList.map { case (label, rawDeployment) =>
+      for {
+        templated <- applyTemplates(label, rawDeployment, yaml.templates).right
+        deployment <- resolveDeployment(label, templated, yaml.stacks, yaml.regions).right
+      } yield deployment
     }
   }
 
-  def resolve(yaml: RiffRaffYaml): List[Either[List[String], Deployment]] = {
-    yaml.deployments.map { case (name, deployment) =>
-      resolveDeployment(name, deployment, yaml).right.map { resolved =>
-        Deployment(
-          name = name,
-          `type` = resolved.`type`.get,
-          stacks = resolved.stacks.get,
-          regions = resolved.regions.getOrElse(DEFAULT_REGIONS),
-          dependencies = resolved.dependencies.getOrElse(Nil),
-          app = resolved.app.getOrElse(name),
-          contentDirectory = resolved.contentDirectory.getOrElse(name),
-          parameters = resolved.parameters.getOrElse(Map.empty)
-        )
-      }
-    }.toList
+  /**
+    * Validates and resolves a templated deployment by merging its
+    * deployment attributes with any globally defined properties.
+    */
+  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Either[(String, String), Deployment] = {
+    for {
+      deploymentType <- templated.`type`.toRight(label -> "No type field provided").right
+      stacks <- templated.stacks.orElse(globalStacks).toRight(label -> "No stacks provided").right
+    } yield {
+      Deployment(
+        name              = label,
+        `type`            = deploymentType,
+        stacks            = stacks,
+        regions           = templated.regions.orElse(globalRegions).getOrElse(DEFAULT_REGIONS),
+        app               = templated.app.getOrElse(label),
+        contentDirectory  = templated.contentDirectory.getOrElse(label),
+        dependencies      = templated.dependencies.getOrElse(Nil),
+        // TODO? do we need to validate required parameters here,
+        // or is that up to the deployment type to do later?
+        parameters        = templated.parameters.getOrElse(Map.empty)
+      )
+    }
+  }
+
+  /**
+    * Recursively apply named templates by merging the provided
+    * deployment template with named parent templates.
+    */
+  private[input] def applyTemplates(templateName: String, template: DeploymentOrTemplate, templates: Option[Map[String, DeploymentOrTemplate]]): Either[(String, String), DeploymentOrTemplate] = {
+    template.template match {
+      case None =>
+        Right(template)
+      case Some(parentTemplateName) =>
+        for {
+          parentTemplate <- templates.flatMap(_.get(parentTemplateName))
+            .toRight(templateName -> s"Template with name $parentTemplateName does not exist").right
+          resolvedParent <- applyTemplates(parentTemplateName, parentTemplate, templates).right
+        } yield {
+          DeploymentOrTemplate(
+            `type`            = template.`type`.orElse(resolvedParent.`type`),
+            template          = None,
+            stacks            = template.stacks.orElse(resolvedParent.stacks),
+            regions           = template.regions.orElse(resolvedParent.regions),
+            app               = template.app.orElse(resolvedParent.app),
+            contentDirectory  = template.contentDirectory.orElse(resolvedParent.contentDirectory),
+            dependencies      = template.dependencies.orElse(resolvedParent.dependencies),
+            parameters        = Some(resolvedParent.parameters.getOrElse(Map.empty) ++ template.parameters.getOrElse(Map.empty))
+          )
+        }
+    }
   }
 }
