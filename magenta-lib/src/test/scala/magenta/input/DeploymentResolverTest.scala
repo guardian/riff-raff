@@ -252,6 +252,18 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     deployments.head.left.value should be("test" -> "Template with name nonExistentTemplate does not exist")
   }
 
+  it should "report an error if a named dependency does not exist" in {
+    val yaml = RiffRaffDeployConfig(
+      Some(List("global-stack")), None,
+      None,
+      List("test" -> deploymentType("autoscaling").withDependencies("missing-dep"))
+    )
+    val deployments = DeploymentResolver.resolve(yaml)
+    deployments.size should be (1)
+    deployments.head.left.value should be("test" -> "Missing deployment dependencies missing-dep")
+
+  }
+
   it should "report an error if no stacks are provided" in {
     val yaml = RiffRaffDeployConfig(
       None, None,

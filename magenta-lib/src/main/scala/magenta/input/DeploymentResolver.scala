@@ -9,6 +9,7 @@ object DeploymentResolver {
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates).right
         deployment <- resolveDeployment(label, templated, config.stacks, config.regions).right
+        _ <- validateDependencies(label, deployment, config.deployments).right
       } yield deployment
     }
   }
@@ -30,8 +31,6 @@ object DeploymentResolver {
         app               = templated.app.getOrElse(label),
         contentDirectory  = templated.contentDirectory.getOrElse(label),
         dependencies      = templated.dependencies.getOrElse(Nil),
-        // TODO? do we need to validate required parameters here,
-        // or is that up to the deployment type to do later?
         parameters        = templated.parameters.getOrElse(Map.empty)
       )
     }
@@ -62,6 +61,18 @@ object DeploymentResolver {
             parameters        = Some(resolvedParent.parameters.getOrElse(Map.empty) ++ template.parameters.getOrElse(Map.empty))
           )
         }
+    }
+  }
+
+  /**
+    * Ensures that when deployments have named dependencies, deployments with those names exists.
+    */
+  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Either[(String, String), Deployment] = {
+    deployment.dependencies.filterNot(allDeployments.map(_._1).contains) match {
+      case Nil =>
+        Right(deployment)
+      case missingDependencies =>
+        Left(label -> missingDependencies.mkString(s"Missing deployment dependencies ", ", ", ""))
     }
   }
 }
