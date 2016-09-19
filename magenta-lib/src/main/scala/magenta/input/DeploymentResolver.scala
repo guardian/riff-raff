@@ -4,7 +4,7 @@ package magenta.input
 object DeploymentResolver {
   val DEFAULT_REGIONS = List("eu-west-1")
 
-  def resolve(config: RiffRaffDeployConfig): List[Either[(String, String), Deployment]] = {
+  def resolve(config: RiffRaffDeployConfig): List[Either[ConfigError, Deployment]] = {
     config.deployments.map { case (label, rawDeployment) =>
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates).right
@@ -18,10 +18,10 @@ object DeploymentResolver {
     * Validates and resolves a templated deployment by merging its
     * deployment attributes with any globally defined properties.
     */
-  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Either[(String, String), Deployment] = {
+  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Either[ConfigError, Deployment] = {
     for {
-      deploymentType <- templated.`type`.toRight(label -> "No type field provided").right
-      stacks <- templated.stacks.orElse(globalStacks).toRight(label -> "No stacks provided").right
+      deploymentType <- templated.`type`.toRight(ConfigError(label, "No type field provided")).right
+      stacks <- templated.stacks.orElse(globalStacks).toRight(ConfigError(label, "No stacks provided")).right
     } yield {
       Deployment(
         name              = label,
@@ -40,14 +40,14 @@ object DeploymentResolver {
     * Recursively apply named templates by merging the provided
     * deployment template with named parent templates.
     */
-  private[input] def applyTemplates(templateName: String, template: DeploymentOrTemplate, templates: Option[Map[String, DeploymentOrTemplate]]): Either[(String, String), DeploymentOrTemplate] = {
+  private[input] def applyTemplates(templateName: String, template: DeploymentOrTemplate, templates: Option[Map[String, DeploymentOrTemplate]]): Either[ConfigError, DeploymentOrTemplate] = {
     template.template match {
       case None =>
         Right(template)
       case Some(parentTemplateName) =>
         for {
           parentTemplate <- templates.flatMap(_.get(parentTemplateName))
-            .toRight(templateName -> s"Template with name $parentTemplateName does not exist").right
+            .toRight(ConfigError(templateName, s"Template with name $parentTemplateName does not exist")).right
           resolvedParent <- applyTemplates(parentTemplateName, parentTemplate, templates).right
         } yield {
           DeploymentOrTemplate(
@@ -67,13 +67,13 @@ object DeploymentResolver {
   /**
     * Ensures that when deployments have named dependencies, deployments with those names exists.
     */
-  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Either[(String, String), Deployment] = {
+  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Either[ConfigError, Deployment] = {
     val allDeploymentNames = allDeployments.map { case (name, _) => name }
     deployment.dependencies.filterNot(allDeploymentNames.contains) match {
       case Nil =>
         Right(deployment)
       case missingDependencies =>
-        Left(label -> missingDependencies.mkString(s"Missing deployment dependencies ", ", ", ""))
+        Left(ConfigError(label, missingDependencies.mkString(s"Missing deployment dependencies ", ", ", "")))
     }
   }
 }

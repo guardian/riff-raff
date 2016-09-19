@@ -362,7 +362,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.left.value should be("test" -> "Template with name nonExistentTemplate does not exist")
+    deployments.head.left.value should be(ConfigError("test", "Template with name nonExistentTemplate does not exist"))
   }
 
   it should "report an error if a named dependency does not exist" in {
@@ -377,7 +377,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
-    deployments.head.left.value should be("test" -> "Missing deployment dependencies missing-dep")
+    deployments.head.left.value should be(ConfigError("test", "Missing deployment dependencies missing-dep"))
 
   }
 
@@ -390,10 +390,10 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = DeploymentResolver.resolve(yaml)
-    deployments.head.left.value should be("test" -> "No stacks provided")
+    deployments.head.left.value should be(ConfigError("test", "No stacks provided"))
   }
 
-  def assertDeployments(maybeDeployments: List[Either[(String, String), Deployment]]): List[Deployment] = {
+  def assertDeployments(maybeDeployments: List[Either[ConfigError, Deployment]]): List[Deployment] = {
     maybeDeployments.flatMap{ either =>
       either should matchPattern { case Right(_) => }
       either.right.toOption

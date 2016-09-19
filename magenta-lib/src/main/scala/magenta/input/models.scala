@@ -2,6 +2,7 @@ package magenta.input
 
 import play.api.libs.json._
 
+case class ConfigError(context: String, message: String)
 
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],
