@@ -1,11 +1,30 @@
 package magenta.input
 
 import magenta.tasks.YamlToJsonConverter
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
-
 
 object RiffRaffYamlReader {
+  implicit def readObjectAsList[V](implicit fmtv: Reads[V]) = new Reads[List[(String, V)]] {
+    // copied from the map implementation in play.api.libs.json.Reads but builds an ordered
+    // list instead of an unordered map
+    def reads(json: JsValue): JsResult[List[(String, V)]] = json match {
+      case JsObject(linkedMap) =>
+        type Errors = Seq[(JsPath, Seq[ValidationError])]
+        def locate(e: Errors, key: String) = e.map { case (p, valerr) => (JsPath \ key) ++ p -> valerr }
+
+        linkedMap.foldLeft(Right(Nil): Either[Errors, List[(String, V)]]) {
+          case (acc, (key, value)) => (acc, Json.fromJson[V](value)(fmtv)) match {
+            case (Right(vs), JsSuccess(v, _)) => Right(vs :+ (key -> v))
+            case (Right(_), JsError(e)) => Left(locate(e, key))
+            case (Left(e), _: JsSuccess[_]) => Left(e)
+            case (Left(e1), JsError(e2)) => Left(e1 ++ locate(e2, key))
+          }
+        }.fold(JsError.apply, res => JsSuccess(res))
+      case _ => JsError(Seq(JsPath() -> Seq(ValidationError("error.expected.jsobject"))))
+    }
+  }
+
   def fromString(yaml: String) = {
     // convert form YAML to JSON
     val jsonString = YamlToJsonConverter.convert(yaml)
