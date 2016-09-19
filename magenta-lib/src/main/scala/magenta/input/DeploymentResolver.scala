@@ -4,11 +4,11 @@ package magenta.input
 object DeploymentResolver {
   val DEFAULT_REGIONS = List("eu-west-1")
 
-  def resolve(yaml: RiffRaffDeployConfig): List[Either[(String, String), Deployment]] = {
-    yaml.deployments.toList.map { case (label, rawDeployment) =>
+  def resolve(config: RiffRaffDeployConfig): List[Either[(String, String), Deployment]] = {
+    config.deployments.map { case (label, rawDeployment) =>
       for {
-        templated <- applyTemplates(label, rawDeployment, yaml.templates).right
-        deployment <- resolveDeployment(label, templated, yaml.stacks, yaml.regions).right
+        templated <- applyTemplates(label, rawDeployment, config.templates).right
+        deployment <- resolveDeployment(label, templated, config.stacks, config.regions).right
       } yield deployment
     }
   }

@@ -6,7 +6,7 @@ import play.api.libs.json.{JsNumber, JsString, JsValue}
 class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
     val yaml = RiffRaffDeployConfig(None, None, None,
-      Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack")))
+      List("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack")))
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
     deployments.head.right.value should have (
@@ -22,7 +22,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
 
   it should "fill in global defaults and regions when not specified in the deployment" in {
     val yaml = RiffRaffDeployConfig(Some(List("stack1", "stack2")), Some(List("oceania-south-1")), None,
-      Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue"))))
+      List("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue"))))
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
     deployments.head.right.value should have (
@@ -40,7 +40,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       Some(List("overriden-stack1")),
       Some(List("oceania-south-1")), None,
-      Map("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack").withRegions("eurasia-north-1"))
+      List("test" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack").withRegions("eurasia-north-1"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -59,7 +59,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       None, None,
       Some(Map("testTemplate" -> deploymentType("testType").withParameters("testParam" -> JsString("testValue")).withStacks("testStack"))),
-      Map("test" -> deploymentTemplate("testTemplate").withParameters("anotherParam" -> JsNumber(1984)))
+      List("test" -> deploymentTemplate("testTemplate").withParameters("anotherParam" -> JsNumber(1984)))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -78,7 +78,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withStacks("template-stack").withRegions("template-region"))),
-      Map("test" -> deploymentTemplate("testTemplate").withStacks("deployment-stack").withRegions("deployment-region"))
+      List("test" -> deploymentTemplate("testTemplate").withStacks("deployment-stack").withRegions("deployment-region"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -92,7 +92,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withStacks("template-stack").withRegions("template-region"))),
-      Map("test" -> deploymentTemplate("testTemplate"))
+      List("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -106,7 +106,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType"))),
-      Map("test" -> deploymentTemplate("testTemplate"))
+      List("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -123,7 +123,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         "nestedTemplate" -> deploymentType("testType").withStacks("nested-template-stack").withRegions("nested-template-region"),
         "testTemplate" -> deploymentTemplate("nestedTemplate").withRegions("template-region")
       )),
-      Map("test" -> deploymentTemplate("testTemplate"))
+      List("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -149,7 +149,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
           "allParameter" -> JsString("template")
         )
       )),
-      Map("test" -> deploymentTemplate("testTemplate").withParameters(
+      List("test" -> deploymentTemplate("testTemplate").withParameters(
         "deploymentParameter" -> JsNumber(1234),
         "allParameter" -> JsString("deployment"),
         "sandwichParameter" -> JsString("deployment")
@@ -171,7 +171,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       Some(List("global-stack")), Some(List("global-region")),
       Some(Map("testTemplate" -> deploymentType("testType").withApp("templateApp").withContentDirectory("templateContentDirectory"))),
-      Map("test" -> deploymentTemplate("testTemplate"))
+      List("test" -> deploymentTemplate("testTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -188,7 +188,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
         "testTemplate" -> deploymentTemplate("nestedTemplate").withDependencies("template-dep")
       )),
-      Map(
+      List(
         "nested-dep" -> deploymentType("autoscaling"),
         "template-dep" -> deploymentType("autoscaling"),
         "deployment-dep" -> deploymentType("autoscaling"),
@@ -208,7 +208,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
         "testTemplate" -> deploymentTemplate("nestedTemplate").withDependencies("template-dep")
       )),
-      Map(
+      List(
         "nested-dep" -> deploymentType("autoscaling"),
         "template-dep" -> deploymentType("autoscaling"),
         "test" -> deploymentTemplate("testTemplate")
@@ -227,7 +227,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
         "testTemplate" -> deploymentTemplate("nestedTemplate")
       )),
-      Map(
+      List(
         "nested-dep" -> deploymentType("autoscaling"),
         "test" -> deploymentTemplate("testTemplate")
       )
@@ -245,7 +245,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         "nestedTemplate" -> deploymentType("testType").withDependencies("nested-dep"),
         "testTemplate" -> deploymentTemplate("nestedTemplate")
       )),
-      Map("test" -> deploymentTemplate("nonExistentTemplate"))
+      List("test" -> deploymentTemplate("nonExistentTemplate"))
     )
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.size should be (1)
@@ -256,7 +256,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffDeployConfig(
       None, None,
       None,
-      Map(
+      List(
         "test" -> deploymentType("autoscaling")
       )
     )

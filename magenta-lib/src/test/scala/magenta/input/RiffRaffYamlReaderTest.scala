@@ -68,5 +68,6 @@ class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers{
       DeploymentOrTemplate(Some("autoscaling"), None, None, None, Some("ook"), None, Some(List("elephant")), None))
     input.deployments should contain("elephant" ->
       DeploymentOrTemplate(Some("dung"), None, None, None, None, None, None, None))
+    input.deployments.map(_._1) should be(List("human", "monkey", "elephant"))
   }
 }
