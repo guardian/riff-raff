@@ -68,7 +68,8 @@ object DeploymentResolver {
     * Ensures that when deployments have named dependencies, deployments with those names exists.
     */
   private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Either[(String, String), Deployment] = {
-    deployment.dependencies.filterNot(allDeployments.map(_._1).contains) match {
+    val allDeploymentNames = allDeployments.map { case (name, _) => name }
+    deployment.dependencies.filterNot(allDeploymentNames.contains) match {
       case Nil =>
         Right(deployment)
       case missingDependencies =>
