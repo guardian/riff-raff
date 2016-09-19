@@ -9,7 +9,7 @@ case class RiffRaffDeployConfig(
   templates: Option[Map[String, DeploymentOrTemplate]],
   deployments: Map[String, DeploymentOrTemplate]
 )
-object RiffRaff {
+object RiffRaffDeployConfig {
   implicit val reads: Reads[RiffRaffDeployConfig] = Json.reads
 }
 
