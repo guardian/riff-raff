@@ -9,7 +9,7 @@ object Fastly  extends DeploymentType {
       |Deploy a new set of VCL configuration files to the [fastly](http://www.fastly.com/) CDN via the fastly API.
     """.stripMargin
 
-  def perAppActions = {
+  def actions = {
     case "deploy" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient

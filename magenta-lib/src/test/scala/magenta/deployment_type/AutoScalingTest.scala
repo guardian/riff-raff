@@ -26,7 +26,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("app", app, data, "asg-elb", S3Package("artifact-bucket", "test/123/app"))
 
-    AutoScaling.perAppActions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
+    AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),
       CheckGroupSize(p, PROD, UnnamedStack),
       SuspendAlarmNotifications(p, PROD, UnnamedStack),
@@ -53,7 +53,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("app", app, data, "asg-elb", S3Package("artifact-bucket", "test/123/app"))
 
-    AutoScaling.perAppActions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
+    AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),
       CheckGroupSize(p, PROD, UnnamedStack),
       SuspendAlarmNotifications(p, PROD, UnnamedStack),

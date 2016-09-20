@@ -60,7 +60,7 @@ object CloudFormation extends DeploymentType {
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
-  override def perAppActions = {
+  override def actions = {
     case "updateStack" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient

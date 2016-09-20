@@ -27,7 +27,7 @@ object AmiCloudFormationParameter extends DeploymentType {
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
-  override def perAppActions = {
+  override def actions = {
     case "update" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
 

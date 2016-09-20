@@ -30,7 +30,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.perAppActions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
+    val tasks = Lambda.actions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       S3Upload(
         bucket = "lambda-bucket",
@@ -40,7 +40,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
+    val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
@@ -60,7 +60,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val app = Seq(App("lambda"))
     val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
 
-    val tasks = Lambda.perAppActions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack")))
+    val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack")))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "some-stackMyFunction-PROD",
