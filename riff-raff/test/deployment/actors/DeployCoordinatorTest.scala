@@ -1,4 +1,4 @@
-package deployment
+package deployment.actors
 
 import java.util.UUID
 
@@ -6,6 +6,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
+import deployment.{Fixtures, Record}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 

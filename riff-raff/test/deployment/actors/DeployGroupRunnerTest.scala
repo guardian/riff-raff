@@ -1,11 +1,12 @@
-package deployment
+package deployment.actors
 
 import java.util.UUID
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
-import magenta.graph.{Deployment, MidNode, Graph}
+import deployment.{Fixtures, Record}
+import magenta.graph.{Deployment, Graph, MidNode}
 import magenta.tasks.Task
 import org.scalatest.{FlatSpecLike, ShouldMatchers}
 
@@ -114,8 +115,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
   }
 
-  case class DRwithUnderlying(deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
-    val record = ul.record
+  case class DRwithUnderlying(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
   }
 
   def createDeployRunnerWithUnderlying(): DRwithUnderlying = {
@@ -128,7 +128,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
       new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent, prismLookup = null),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
-    DRwithUnderlying(deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)
+    DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)
   }
 
   def prepare(dr: DR, tasks: List[Task]): Unit = {
