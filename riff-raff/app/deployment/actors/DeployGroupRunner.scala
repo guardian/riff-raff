@@ -173,7 +173,7 @@ class DeployGroupRunner(
       honourStopFlag(rootReporter) {
         deployments.zipWithIndex.foreach { case (MidNode(deployment), index) =>
           val actorName = s"${record.uuid}-${context.children.size}"
-          log.debug(s"Running next deployment (${deployment.pathName}/$index) on actor $actorName")
+          log.debug(s"Running next deployment (${deployment.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
           markExecuting(deployment)

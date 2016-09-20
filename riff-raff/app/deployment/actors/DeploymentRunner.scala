@@ -23,10 +23,10 @@ class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor wi
         stopFlagAgent().contains(uuid)
       }
 
-      rootReporter.infoContext(s"Deployment ${deploymentNode.pathName}"){ deployReporter =>
+      rootReporter.infoContext(s"Deployment ${deploymentNode.name}"){ deployReporter =>
         try {
           deploymentNode.tasks.zipWithIndex.foreach { case (task, index) =>
-            val taskId = s"${deploymentNode.pathName}/$index"
+            val taskId = s"${deploymentNode.name}/$index"
             try {
               log.debug(s"Running task $taskId")
               deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
