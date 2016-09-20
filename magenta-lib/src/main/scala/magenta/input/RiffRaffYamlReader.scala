@@ -1,6 +1,8 @@
 package magenta.input
 
-import magenta.tasks.YamlToJsonConverter
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
@@ -27,7 +29,10 @@ object RiffRaffYamlReader {
 
   def fromString(yaml: String) = {
     // convert form YAML to JSON
-    val jsonString = YamlToJsonConverter.convert(yaml)
+    val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
+    val jsonString = new ObjectMapper()
+      .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
+      .writeValueAsString(tree)
 
     val json = Json.parse(jsonString)
     Json.fromJson[RiffRaffDeployConfig](json) match {

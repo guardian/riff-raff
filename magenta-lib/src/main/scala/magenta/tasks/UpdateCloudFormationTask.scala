@@ -38,22 +38,6 @@ object UpdateCloudFormationTask {
   }
 }
 
-object YamlToJsonConverter {
-
-  def isYamlFile(template: S3Location): Boolean = template.extension match {
-    case Some("yml") | Some("yaml") => true
-    case _ => false
-  }
-
-  def convert(yamlTemplate: String): String = {
-      val tree = new ObjectMapper(new YAMLFactory()).readTree(yamlTemplate)
-      new ObjectMapper()
-        .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
-        .writeValueAsString(tree)
-  }
-
-}
-
 case class UpdateCloudFormationTask(
   cloudFormationStackName: String,
   template: S3Path,
@@ -72,11 +56,8 @@ case class UpdateCloudFormationTask(
       case Some(string) => string
       case None => reporter.fail(s"Unable to locate cloudformation template s3://${template.bucket}/${template.key}")
     }
-    val templateJson = if (YamlToJsonConverter.isYamlFile(template)) {
-      YamlToJsonConverter.convert(templateString)
-    } else templateString
 
-    val templateParameters = CloudFormation.validateTemplate(templateJson).getParameters
+    val templateParameters = CloudFormation.validateTemplate(templateString).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
@@ -89,17 +70,17 @@ case class UpdateCloudFormationTask(
 
     if (CloudFormation.describeStack(cloudFormationStackName).isDefined)
       try {
-        CloudFormation.updateStack(cloudFormationStackName, templateJson, parameters)
+        CloudFormation.updateStack(cloudFormationStackName, templateString, parameters)
       } catch {
         case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
           reporter.info("Cloudformation update has no changes to template or parameters")
         case ase:AmazonServiceException if ase.getMessage contains "Template format error: JSON not well-formed" =>
-          reporter.info(s"Cloudformation update failed with the following template content:\n$templateJson")
+          reporter.info(s"Cloudformation update failed with the following template content:\n$templateString")
           throw ase
       }
     else if (createStackIfAbsent) {
       reporter.info(s"Stack $cloudFormationStackName doesn't exist. Creating stack.")
-      CloudFormation.createStack(reporter, cloudFormationStackName, templateJson, parameters)
+      CloudFormation.createStack(reporter, cloudFormationStackName, templateString, parameters)
     } else {
       reporter.fail(s"Stack $cloudFormationStackName doesn't exist and createStackIfAbsent is false")
     }

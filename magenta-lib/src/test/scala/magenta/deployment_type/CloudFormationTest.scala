@@ -69,46 +69,4 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       "Stage" -> SpecifiedValue(PROD.name)
     ))
   }
-
-  "YamlToJsonConverter" should "convert YAML to JSON" in {
-    val yaml =
-      """
-        |AWSTemplateFormatVersion: 2010-09-09
-        |Description: 'Example CloudFormation template'
-        |Parameters:
-        |  FirstParam:
-        |    Description: An EC2 key pair
-        |    Type: AWS::EC2::KeyPair::KeyName
-      """.stripMargin
-
-    val expectedJson =
-      """
-        |{
-        |  "AWSTemplateFormatVersion":"2010-09-09",
-        |  "Description":"Example CloudFormation template",
-        |  "Parameters":{
-        |    "FirstParam":{
-        |      "Description":"An EC2 key pair",
-        |      "Type":"AWS::EC2::KeyPair::KeyName"
-        |    }
-        |  }
-        |}
-      """.stripMargin.trim
-
-    YamlToJsonConverter.convert(yaml) should be(expectedJson)
-  }
-
-  it should "detect a yaml file extension" in {
-    val yaml = S3Path("bucket", "template/this.yaml")
-    val yml = S3Path("bucket", "template/this.yml")
-
-    YamlToJsonConverter.isYamlFile(yaml) should be(true)
-    YamlToJsonConverter.isYamlFile(yml) should be(true)
-  }
-
-  it should "detect a json file as non-yaml" in {
-    val json = S3Path("bucket", "template/this.json")
-
-    YamlToJsonConverter.isYamlFile(json) should be(false)
-  }
 }
