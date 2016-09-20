@@ -2,6 +2,7 @@ package notification
 
 import java.util.UUID
 
+import com.gu.scanamo.DynamoFormat
 import com.mongodb.casbah.Imports._
 import magenta._
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
@@ -18,14 +19,6 @@ class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
   override protected def afterAll(): Unit = {
     super.afterAll()
     wsClient.close()
-  }
-
-  "HookAction" should "serialise and deserialise" in {
-    val action = HookAction("http://localhost:80/test", true)
-    val dbo = action.toDBO
-    dbo.as[String]("url") should be("http://localhost:80/test")
-    dbo.as[Boolean]("enabled") should be(true)
-    HookAction.fromDBO(dbo) should be(Some(action))
   }
 
   it should "create an authenticated request" in {
@@ -56,14 +49,6 @@ class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     val action = HookConfig("testProject", "TEST", "http://localhost:80/test?build=%deploy.build%&sha=%deploy.tag.vcsRevision%", true, "Mr. Tester")
     val req = action.request(testDeployParams)
     req.url should be("http://localhost:80/test?build=23&sha=9110598b83a908d7882ac4e3cd4b643d7d8bc54e")
-  }
-
-  "HookCriteria" should "serialise and deserialise" in {
-    val criteria = HookCriteria("testProject","CODE")
-    val dbo = criteria.toDBO
-    dbo.as[String]("projectName") should be("testProject")
-    dbo.as[String]("stageName") should be("CODE")
-    HookCriteria.fromDBO(dbo) should be(Some(criteria))
   }
 
   val testUUID = UUID.fromString("758fa00e-e9da-41e0-b31f-1af417e333a1")

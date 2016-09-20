@@ -1,7 +1,5 @@
 package persistence
 
-import notification.{HookConfig, HookAction, HookCriteria}
-import play.api.Play.maybeApplication
 import play.api.Logger
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import magenta.Build
@@ -29,17 +27,6 @@ trait DataStore extends DocumentStore {
   }
 
   def collectionStats:Map[String, CollectionStats] = Map.empty
-
-  def getPostDeployHooks:Map[HookCriteria,HookAction] = Map.empty
-  def setPostDeployHook(criteria: HookCriteria, action: HookAction) {}
-  def getPostDeployHook(criteria: HookCriteria):Option[HookAction] = None
-  def deletePostDeployHook(criteria: HookCriteria) {}
-
-  def getPostDeployHook(id: UUID): Option[HookConfig] = None
-  def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] = Nil
-  def getPostDeployHookList:Iterable[HookConfig] = Nil
-  def setPostDeployHook(config: HookConfig) {}
-  def deletePostDeployHook(id: UUID) {}
 
   def getAuthorisation(email: String): Option[AuthorisationRecord] = None
   def getAuthorisationList:List[AuthorisationRecord] = Nil

@@ -1,21 +1,19 @@
 package persistence
 
-import java.util.{UUID}
+import java.util.UUID
+
 import com.mongodb.casbah._
 import com.mongodb.casbah.Imports.WriteConcern
 import conf.Configuration
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
-import play.api.Application
-import deployment.{PaginationView, DeployFilter}
+import deployment.{DeployFilter, PaginationView}
 import magenta.{Build, RunState}
-import scala.Some
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import notification.{HookConfig, HookAction, HookCriteria}
 import com.mongodb.casbah.commons.MongoDBObject
-import org.joda.time.{Period, DateTime}
+import org.joda.time.{DateTime, Period}
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
-import ci.ContinuousDeploymentConfig
+import notification.HookConfig
 
 trait MongoSerialisable[A] {
 
@@ -65,11 +63,9 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   val hookConfigsCollection = getCollection("hookConfigs")
   val authCollection = getCollection("auth")
   val apiKeyCollection = getCollection("apiKeys")
-  val continuousDeployCollection = getCollection("continuousDeploy")
   val keyValuesCollection = getCollection("keyValues")
 
-  val collections = List(deployCollection, deployLogCollection, hookConfigsCollection,
-    authCollection, apiKeyCollection, continuousDeployCollection)
+  val collections = List(deployCollection, deployLogCollection, authCollection, apiKeyCollection)
 
   private def collectionStats(collection: MongoCollection): CollectionStats = {
     val stats = collection.stats
@@ -87,42 +83,11 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   deployLogCollection.createIndex("deploy")
   apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
-  override def getPostDeployHook(id: UUID): Option[HookConfig] =
-    logAndSquashExceptions[Option[HookConfig]](Some("Getting hook config for %s" format id), None) {
-      hookConfigsCollection.findOneByID(id).flatMap(HookConfig.fromDBO(_))
-    }
-
-  override def getPostDeployHook(projectName: String, stage: String): Iterable[HookConfig] =
-    logAndSquashExceptions[Iterable[HookConfig]](Some(s"Getting hook deploy configs for project $projectName and stage $stage"), Nil) {
-      hookConfigsCollection.find(MongoDBObject("projectName" -> projectName, "stage" -> stage))
-        .toIterable.flatMap(HookConfig.fromDBO(_))
-    }
-
-  override def getPostDeployHookList: Iterable[HookConfig] =
+  def getPostDeployHookList: Iterable[HookConfig] =
     logAndSquashExceptions[Iterable[HookConfig]](Some("Getting all hook deploy configs"), Nil) {
       hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
         .toIterable.flatMap(HookConfig.fromDBO(_))
     }
-
-  override def setPostDeployHook(config: HookConfig) {
-    logAndSquashExceptions(Some(s"Saving hook deploy config: $config"),()) {
-      hookConfigsCollection.findAndModify(
-        query = MongoDBObject("_id" -> config.id),
-        update = config.toDBO,
-        upsert = true,
-        fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew = false
-      )
-    }
-  }
-
-  override def deletePostDeployHook(id: UUID) {
-    logAndSquashExceptions(Some(s"Deleting post deploy hook $id"),()) {
-      hookConfigsCollection.findAndRemove(MongoDBObject("_id" -> id))
-    }
-  }
 
   override def setAuthorisation(auth: AuthorisationRecord) {
     logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
