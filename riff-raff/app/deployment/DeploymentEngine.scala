@@ -6,7 +6,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import com.typesafe.config.ConfigFactory
 import controllers.Logging
-import deployment.actors.{DeployCoordinator, DeployGroupRunner, DeploymentRunner}
+import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
 import resources.PrismLookup
 
 import scala.collection.JavaConverters._
@@ -15,7 +15,7 @@ class DeploymentEngine(prismLookup: PrismLookup) extends Logging {
   import DeploymentEngine._
 
   private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
-    props = Props(new DeploymentRunner(stopFlagAgent)).withDispatcher("akka.deploy-dispatcher"),
+    props = Props(new TasksRunner(stopFlagAgent)).withDispatcher("akka.deploy-dispatcher"),
     name = s"deploymentRunner-$runnerName"
   )
 

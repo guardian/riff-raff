@@ -5,28 +5,27 @@ import java.util.UUID
 import akka.actor.Actor
 import akka.agent.Agent
 import controllers.Logging
-import deployment.actors.DeployMetricsActor.{TaskComplete, TaskStart}
 import magenta.DeployReporter
-import magenta.graph.Deployment
+import magenta.graph.Tasks
 import org.joda.time.DateTime
 
-class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
-  import DeploymentRunner._
+class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
   import DeployMetricsActor._
+  import TasksRunner._
 
-  log.debug(s"New deployment runner created with path ${self.path}")
+  log.debug(s"New tasks runner created with path ${self.path}")
 
   def receive = {
-    case RunDeployment(uuid, deploymentNode, rootReporter, queueTime) =>
+    case RunDeployment(uuid, tasks, rootReporter, queueTime) =>
 
       def stopFlagAsker: Boolean = {
         stopFlagAgent().contains(uuid)
       }
 
-      rootReporter.infoContext(s"Deployment ${deploymentNode.name}"){ deployReporter =>
+      rootReporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
         try {
-          deploymentNode.tasks.zipWithIndex.foreach { case (task, index) =>
-            val taskId = s"${deploymentNode.name}/$index"
+          tasks.tasks.zipWithIndex.foreach { case (task, index) =>
+            val taskId = s"${tasks.name}/$index"
             try {
               log.debug(s"Running task $taskId")
               deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
@@ -38,11 +37,11 @@ class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor wi
             }
           }
           log.debug("Sending completed message")
-          sender ! DeployGroupRunner.DeploymentCompleted(deploymentNode)
+          sender ! DeployGroupRunner.DeploymentCompleted(tasks)
         } catch {
           case t:Throwable =>
             log.debug("Sending failed message")
-            sender ! DeployGroupRunner.DeploymentFailed(deploymentNode, t)
+            sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
         }
       }
 
@@ -55,7 +54,7 @@ class DeploymentRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor wi
   }
 }
 
-object DeploymentRunner {
+object TasksRunner {
   trait Message
-  case class RunDeployment(uuid: UUID, deployment: Deployment, rootReporter: DeployReporter, queueTime: DateTime) extends Message
+  case class RunDeployment(uuid: UUID, deployment: Tasks, rootReporter: DeployReporter, queueTime: DateTime) extends Message
 }

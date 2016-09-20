@@ -8,7 +8,7 @@ import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
 import magenta.artifact.S3Artifact
-import magenta.graph.{Deployment, DeploymentGraph, Graph, MidNode, StartNode}
+import magenta.graph.{Tasks, DeploymentGraph, Graph, MidNode, StartNode}
 import magenta.json.JsonReader
 import magenta.{DeployContext, DeployReporter, DeployStoppedException}
 import org.joda.time.DateTime
@@ -37,25 +37,25 @@ class DeployGroupRunner(
 
   var deployContext: Option[DeployContext] = None
 
-  var executing: Set[MidNode[Deployment]] = Set.empty
-  var completed: Set[MidNode[Deployment]] = Set.empty
-  var failed: Set[MidNode[Deployment]] = Set.empty
+  var executing: Set[MidNode[Tasks]] = Set.empty
+  var completed: Set[MidNode[Tasks]] = Set.empty
+  var failed: Set[MidNode[Tasks]] = Set.empty
 
-  def deploymentGraph: Graph[Deployment] = deployContext.map(_.tasks).getOrElse(Graph.empty[Deployment])
+  def deploymentGraph: Graph[Tasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[Tasks])
   def allDeployments = deploymentGraph.nodes.filterMidNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def firstDeployments: List[MidNode[Deployment]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
+  def first: List[MidNode[Tasks]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
       - FinishDeploy: indicator that there are no more tasks for this deploy
       first will actually only ever return the first of these.  */
-  def nextDeployments(deployment: Deployment): NextResult = {
+  def next(deployment: Tasks): NextResult = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
-    if (isFinished) FinishDeploy
+    if (isFinished) DeployFinished
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
@@ -63,21 +63,21 @@ class DeployGroupRunner(
       // now filter for only tasks whose predecessors are all completed
       val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
       if (nextDeployments.nonEmpty) {
-        Deployments(nextDeployments)
+        NextTasks(nextDeployments)
       } else {
-        FinishPath
+        DeployUnfinished
       }
     }
   }
-  protected[deployment] def markExecuting(deployment: Deployment) = {
+  protected[deployment] def markExecuting(deployment: Tasks) = {
     executing += deploymentGraph.get(deployment)
   }
-  protected[deployment] def markComplete(deployment: Deployment) = {
+  protected[deployment] def markComplete(deployment: Tasks) = {
     val node = deploymentGraph.get(deployment)
     executing -= node
     completed += node
   }
-  protected[deployment] def markFailed(deployment: Deployment) = {
+  protected[deployment] def markFailed(deployment: Tasks) = {
     val node = deploymentGraph.get(deployment)
     executing -= node
     failed += node
@@ -125,22 +125,22 @@ class DeployGroupRunner(
       deployContext = Some(preparedContext)
 
     case StartDeployment =>
-      runDeployments(firstDeployments)
+      runTasks(first)
 
-    case DeploymentCompleted(deployment) =>
+    case DeploymentCompleted(tasks) =>
       log.debug("Deployment completed")
-      markComplete(deployment)
-      nextDeployments(deployment) match {
-        case Deployments(deployments) =>
-          runDeployments(deployments)
-        case FinishPath =>
-        case FinishDeploy =>
+      markComplete(tasks)
+      next(tasks) match {
+        case NextTasks(tasks) =>
+          runTasks(tasks)
+        case DeployUnfinished =>
+        case DeployFinished =>
           cleanup()
       }
 
-    case DeploymentFailed(deployment, exception) =>
+    case DeploymentFailed(tasks, exception) =>
       log.debug("Deployment failed")
-      markFailed(deployment)
+      markFailed(tasks)
       if (isExecuting) {
         log.debug("Failed during deployment but others still running - deferring clean up")
       } else {
@@ -168,19 +168,19 @@ class DeployGroupRunner(
     }
   }
 
-  private def runDeployments(deployments: List[MidNode[Deployment]]) = {
+  private def runTasks(tasksList: List[MidNode[Tasks]]) = {
     try {
       honourStopFlag(rootReporter) {
-        deployments.zipWithIndex.foreach { case (MidNode(deployment), index) =>
+        tasksList.zipWithIndex.foreach { case (MidNode(tasks), index) =>
           val actorName = s"${record.uuid}-${context.children.size}"
-          log.debug(s"Running next deployment (${deployment.name}/$index) on actor $actorName")
+          log.debug(s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
-          deploymentRunner ! DeploymentRunner.RunDeployment(record.uuid, deployment, rootReporter, new DateTime())
-          markExecuting(deployment)
+          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
+          markExecuting(tasks)
         }
       }
     } catch {
-      case NonFatal(t) => log.error("Couldn't run deployment", t)
+      case NonFatal(t) => log.error("Couldn't run tasks", t)
     }
   }
 
@@ -210,14 +210,14 @@ class DeployGroupRunner(
 
 object DeployGroupRunner {
   sealed trait NextResult
-  case class Deployments(deployments: List[MidNode[Deployment]]) extends NextResult
-  case object FinishPath extends NextResult
-  case object FinishDeploy extends NextResult
+  case class NextTasks(tasksList: List[MidNode[Tasks]]) extends NextResult
+  case object DeployUnfinished extends NextResult
+  case object DeployFinished extends NextResult
 
   sealed trait Message
   case object Start extends Message
   case class ContextCreated(context: DeployContext) extends Message
   case object StartDeployment extends Message
-  case class DeploymentCompleted(deployment: Deployment) extends Message
-  case class DeploymentFailed(deployment: Deployment, exception: Throwable) extends Message
+  case class DeploymentCompleted(tasks: Tasks) extends Message
+  case class DeploymentFailed(tasks: Tasks, exception: Throwable) extends Message
 }

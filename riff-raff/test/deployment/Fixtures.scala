@@ -3,7 +3,7 @@ package deployment
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
-import magenta.graph.{Deployment, DeploymentGraph, Graph}
+import magenta.graph.{Tasks, DeploymentGraph, Graph}
 import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Stage}
 import magenta.tasks._
 import org.scalatest.mock.MockitoSugar
@@ -23,7 +23,7 @@ object Fixtures extends MockitoSugar {
     HealthcheckGrace(1000)
   )
 
-  val simpleGraph: Graph[Deployment] = {
+  val simpleGraph: Graph[Tasks] = {
     DeploymentGraph(twoTasks, "branch one") joinParallel DeploymentGraph(twoTasks, "branch two")
   }
 
@@ -44,7 +44,7 @@ object Fixtures extends MockitoSugar {
 
   def createContext(tasks: List[Task], uuid: UUID, parameters: DeployParameters): DeployContext =
     createContext(DeploymentGraph(tasks, parameters.stacks.head.name), uuid, parameters)
-  def createContext(taskGraph: Graph[Deployment], uuid: UUID, parameters: DeployParameters): DeployContext =
+  def createContext(taskGraph: Graph[Tasks], uuid: UUID, parameters: DeployParameters): DeployContext =
     DeployContext(uuid, parameters, Project(), taskGraph)
 
   def createReporter(record: Record) = DeployReporter.rootReporterFor(record.uuid, record.parameters)
