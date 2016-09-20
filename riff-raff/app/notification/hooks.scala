@@ -80,34 +80,9 @@ case class HookConfig(id: UUID,
     }
   }
 }
-object HookConfig extends MongoSerialisable[HookConfig] {
+object HookConfig {
   def apply(projectName: String, stage: String, url: String, enabled: Boolean, updatedBy:String): HookConfig =
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
-  implicit val hookFormat: MongoFormat[HookConfig] = new HookMongoFormat
-  private class HookMongoFormat extends MongoFormat[HookConfig] {
-    def toDBO(a: HookConfig) = MongoDBObject(
-      "_id" -> a.id,
-      "projectName" -> a.projectName,
-      "stage" -> a.stage,
-      "url" -> a.url,
-      "enabled" -> a.enabled,
-      "lastEdited" -> a.lastEdited,
-      "user" -> a.user,
-      "method" -> a.method.serialised,
-      "postBody" -> a.postBody
-    )
-    def fromDBO(dbo: MongoDBObject) = Some(HookConfig(
-      dbo.as[UUID]("_id"),
-      dbo.as[String]("projectName"),
-      dbo.as[String]("stage"),
-      dbo.as[String]("url"),
-      dbo.as[Boolean]("enabled"),
-      dbo.as[DateTime]("lastEdited"),
-      dbo.as[String]("user"),
-      dbo.getAs[String]("method") map (HttpMethod(_)) getOrElse GET,
-      dbo.getAs[String]("postBody")
-    ))
-  }
 }
 
 object HooksClient extends LifecycleWithoutApp with Logging {

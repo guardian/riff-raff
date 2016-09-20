@@ -60,7 +60,6 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
-  val hookConfigsCollection = getCollection("hookConfigs")
   val authCollection = getCollection("auth")
   val apiKeyCollection = getCollection("apiKeys")
   val keyValuesCollection = getCollection("keyValues")
@@ -82,12 +81,6 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   deployCollection.createIndex("startTime")
   deployLogCollection.createIndex("deploy")
   apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
-
-  def getPostDeployHookList: Iterable[HookConfig] =
-    logAndSquashExceptions[Iterable[HookConfig]](Some("Getting all hook deploy configs"), Nil) {
-      hookConfigsCollection.find().sort(MongoDBObject("enabled" -> 1, "projectName" -> 1, "stage" -> 1))
-        .toIterable.flatMap(HookConfig.fromDBO(_))
-    }
 
   override def setAuthorisation(auth: AuthorisationRecord) {
     logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
