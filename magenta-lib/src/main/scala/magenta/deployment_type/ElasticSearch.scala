@@ -17,6 +17,8 @@ object ElasticSearch extends DeploymentType with S3AclParams {
       | (also used as the wait time for the instance termination)"""
   ).default(15 * 60)
 
+  def defaultActions = List("uploadArtifacts", "deploy")
+
   def actions = {
     case "deploy" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)

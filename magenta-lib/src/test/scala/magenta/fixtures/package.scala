@@ -30,7 +30,8 @@ package object fixtures {
         StubTask(name + " per app task number one"),
         StubTask(name + " per app task number two")
       )
-    }
+    },
+    actionNames.toList
   )
 
   def testParams() = DeployParameters(

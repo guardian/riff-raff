@@ -17,6 +17,7 @@ trait DeploymentType {
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
   def actions: PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]]
+  def defaultActions: List[String]
 
   def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
     actions.lift(actionName).map { action =>

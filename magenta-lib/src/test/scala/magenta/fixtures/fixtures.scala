@@ -10,20 +10,16 @@ case class StubTask(description: String, override val taskHost: Option[Host] = N
   def keyRing = KeyRing()
 }
 
-case class StubPerHostAction(description: String, apps: Seq[App]) extends Action {
-  def resolve(resources: DeploymentResources, target: DeployTarget) = ???
-}
-
 case class StubPerAppAction(description: String, apps: Seq[App]) extends Action {
   def resolve(resources: DeploymentResources, target: DeployTarget) = ???
 }
 
 case class StubDeploymentType(
   override val actions:
-    PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty
-                            ) extends DeploymentType {
+    PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty,
+  override val defaultActions: List[String]
+) extends DeploymentType {
   def name = "stub-package-type"
 
   val documentation = "Documentation for the testing stub"
 }
-

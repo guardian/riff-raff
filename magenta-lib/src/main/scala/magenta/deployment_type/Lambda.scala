@@ -64,6 +64,8 @@ object Lambda extends DeploymentType  {
       """.stripMargin
   )
 
+  def defaultActions = List("uploadLambda", "updateLambda")
+
   def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     if (bucketOption.isEmpty) reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
