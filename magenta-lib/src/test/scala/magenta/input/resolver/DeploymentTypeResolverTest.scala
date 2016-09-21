@@ -1,6 +1,7 @@
-package magenta.input
+package magenta.input.resolver
 
 import magenta.fixtures._
+import magenta.input.Deployment
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
 class DeploymentTypeResolverTest extends FlatSpec with Matchers with EitherValues {

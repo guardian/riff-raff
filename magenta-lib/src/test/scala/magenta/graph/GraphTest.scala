@@ -62,9 +62,9 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val graph2 = Graph(start ~> two, two ~> three, three ~> end)
     val joinedGraph = graph.joinParallel(graph2)
     joinedGraph should be(Graph(
-      start ~> one, (start ~> two).incPriority(1),
+      start ~> one, start ~2~> two,
       one ~> two,
-      two ~> end, (two ~> three).incPriority(1),
+      two ~> end, two ~2~> three,
       three ~> end
     ))
   }
@@ -75,7 +75,7 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val joinedGraph = graph joinParallel graph2
     joinedGraph should be(Graph(
       StartNode ~> one,
-      one ~> two, (one ~> EndNode).incPriority(1),
+      one ~> two, one ~2~> EndNode,
       two ~> EndNode
     ))
   }
@@ -86,7 +86,7 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val joinedGraph = graph.joinParallel(graph2)
     joinedGraph should be(Graph(
       start ~> one,
-      one ~> two, (one ~> end).incPriority(1),
+      one ~> two, one ~2~> end,
       two ~> end
     ))
   }
@@ -96,18 +96,18 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val graph2 = Graph(start ~> two, two ~> end)
     val mergedGraph = graph.joinSeries(graph2)
     mergedGraph.nodes.size should be(4)
-    mergedGraph.successors(StartNode).size should be(1)
+    //mergedGraph.successors(StartNode).size should be(1)
     mergedGraph should be(Graph(start ~> one, one ~> two, two ~> end))
   }
 
   it should "retain priorities when merging non-trivial graphs in series" in {
-    val graph = Graph(start ~> one, one ~> two, (one ~> end).incPriority(1), two ~> end)
-    val graph2 = Graph(start ~> three, (start ~> four).incPriority(1), three ~> end, four ~> end)
-    val joinedGraph = graph joinSeries graph2
+    val graph = Graph(start ~> one, one ~> two, one ~2~> end, two ~> end)
+    val graph2 = Graph(start ~> three, start ~2~> four, three ~> end, four ~> end)
+    val joinedGraph = graph joinSeries(graph2)
     joinedGraph should be(Graph(
       start ~> one,
-      one ~> two, (one ~> three).incPriority(1), (one ~> four).incPriority(2),
-      two ~> three, (two ~> four).incPriority(1),
+      one ~> two, one ~2~> three, one ~3~> four,
+      two ~> three, two ~2~> four,
       three ~> end,
       four ~> end
     ))
@@ -116,16 +116,16 @@ class GraphTest extends FlatSpec with ShouldMatchers {
   it should "retain priorities when merging more complex examples in series" in {
     val graph = Graph(
       start ~> one,
-      one ~> two, (one ~> end).incPriority(1), (one ~> three).incPriority(2),
+      one ~> two, one ~2~> end, one ~3~> three,
       two ~> end, three ~> end
     )
-    val graph2 = Graph(start ~> four, (start ~> five).incPriority(1), four ~> end, five ~> end)
+    val graph2 = Graph(start ~> four, start ~2~> five, four ~> end, five ~> end)
     val joinedGraph = graph joinSeries graph2
     joinedGraph should be(Graph(
       start ~> one,
-      one ~> two, (one ~> four).incPriority(1), (one ~> five).incPriority(2), (one ~> three).incPriority(3),
-      two ~> four, (two ~> five).incPriority(1),
-      three ~> four, (three ~> five).incPriority(1),
+      one ~> two, one ~2~> four, one ~3~> five, one ~4~> three,
+      two ~> four, two ~2~> five,
+      three ~> four, three ~2~> five,
       four ~> end,
       five ~> end
     ))
@@ -142,9 +142,9 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     mergedGraph.nodes.size should be(6)
     mergedGraph.edges should contain(one ~> three)
     mergedGraph should be(Graph(
-      start ~> one, (start ~> two).incPriority(1),
-      one ~> three, (one ~> four).incPriority(1),
-      two ~> three, (two ~> four).incPriority(1),
+      start ~> one, start ~2~> two,
+      one ~> three, one ~2~> four,
+      two ~> three, two ~2~> four,
       three ~> end, four ~> end
     ))
   }
@@ -167,7 +167,7 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     mergedGraph2 should be(graph)
   }
 
-  it should "allow nodes to be mapped" in {
+  "map" should "allow nodes to be replaced" in {
     val graph = Graph(start ~> one, one ~> end)
     val graph2 = Graph(start ~> two, two ~> end)
     val joinedGraph = graph.joinParallel(graph2)
@@ -184,5 +184,79 @@ class GraphTest extends FlatSpec with ShouldMatchers {
       MidNode(List("three", "three")),
       MidNode(List("four", "four"))
     ))
+  }
+
+  "flatMap" should "work with empty graphs" in {
+    Graph.empty[Int] flatMap { case _ => Graph.empty[String] } shouldBe Graph.empty[String]
+  }
+
+  it should "join a small graph into the end of an empty graph" in {
+    Graph.empty[Int] flatMap {
+      case EndNode => Graph(4)
+      case _ => Graph.empty[Int]
+    } shouldBe Graph(4)
+  }
+
+  it should "noop when adding an empty graph onto the end of a graph" in {
+    Graph(4) flatMap {
+      case MidNode(n) => Graph(n)
+      case _ => Graph.empty[Int]
+    } shouldBe Graph(4)
+  }
+
+
+  it should "allow nodes to be flatMapped to a series graph" in {
+    val graph = Graph(start ~> one, one ~> end).joinParallel(Graph(start ~> two, two ~> end))
+    val mappedGraph = graph.flatMap{
+      case MidNode(node) => Graph(start ~> MidNode((node, 1)), MidNode((node, 1)) ~> MidNode((node, 2)), MidNode((node, 2)) ~> end)
+      case _ => Graph.empty[(String, Int)]
+    }
+    mappedGraph should be(Graph(
+      start ~> MidNode(("one", 1)), MidNode(("one", 1)) ~> MidNode(("one", 2)), MidNode(("one", 2)) ~> end,
+      start ~2~> MidNode(("two", 1)), MidNode(("two", 1)) ~> MidNode(("two", 2)), MidNode(("two", 2)) ~> end
+    ))
+  }
+
+  it should "allow nodes to be flatMapped to a parallel graph" in {
+    val graph = Graph(start ~> one, one ~> end).joinParallel(Graph(start ~> two, two ~> end))
+    val mappedGraph = graph.flatMap{
+      case MidNode(node) =>
+        Graph(
+          start ~> MidNode((node, 1)), MidNode((node, 1)) ~> end,
+          start ~2~> MidNode((node, 2)), MidNode((node, 2)) ~> end
+        )
+      case _ => Graph.empty[(String, Int)]
+    }
+    mappedGraph should be(Graph(
+      start ~> MidNode(("one", 1)), MidNode(("one", 1)) ~> end,
+      start ~2~> MidNode(("one", 2)), MidNode(("one", 2)) ~> end,
+      start ~3~> MidNode(("two", 1)), MidNode(("two", 1)) ~> end,
+      start ~4~> MidNode(("two", 2)), MidNode(("two", 2)) ~> end
+    ))
+  }
+
+  it should "not allow a mid node to be replaced with an empty graph" in {
+    // this is because sowing up the hole that is left is far harder than replacing nodes or even adding multiple nodes
+    an [AssertionError] should be thrownBy {
+      Graph(4) flatMap {
+        case _ => Graph.empty[Int]
+      }
+    }
+  }
+
+  "joiningEdges" should "produce no edges for two empty graphs" in {
+    Graph.joiningEdges(Graph.empty[Int], Graph.empty[Int]) shouldBe Set(StartNode ~> EndNode)
+  }
+
+  it should "produce a single edge for two simple graphs" in {
+    Graph.joiningEdges(Graph(1), Graph(2)) shouldBe Set(MidNode(1) ~> MidNode(2))
+  }
+
+  it should "produce a set of edges for two more complex graphs" in {
+    val graph = Graph(start ~> one, one ~> end).joinParallel(Graph(start ~> two, two ~> end))
+    val graph2 = Graph(start ~> three, three ~> end).joinParallel(Graph(start ~> four, four ~> end))
+    Graph.joiningEdges(graph, graph2) shouldBe Set(
+      one ~> three, one ~2~> four, two ~> three, two ~2~> four
+    )
   }
 }

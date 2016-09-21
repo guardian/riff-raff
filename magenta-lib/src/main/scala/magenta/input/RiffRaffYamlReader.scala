@@ -27,7 +27,7 @@ object RiffRaffYamlReader {
     }
   }
 
-  def fromString(yaml: String) = {
+  def fromString(yaml: String): RiffRaffDeployConfig = {
     // convert form YAML to JSON
     val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
     val jsonString = new ObjectMapper()

@@ -1,6 +1,7 @@
-package magenta.input
+package magenta.input.resolver
 
 import magenta.deployment_type.DeploymentType
+import magenta.input.{ConfigError, Deployment}
 
 object DeploymentTypeResolver {
   def validateDeploymentType(deployment: Deployment, availableTypes: Seq[DeploymentType]): Either[ConfigError, Deployment] = {

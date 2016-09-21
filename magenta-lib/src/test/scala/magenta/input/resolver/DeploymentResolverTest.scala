@@ -1,7 +1,8 @@
-package magenta.input
+package magenta.input.resolver
 
+import magenta.input.{ConfigError, Deployment, RiffRaffYamlReader}
 import org.scalatest.{EitherValues, FlatSpec, ShouldMatchers}
-import play.api.libs.json.{JsNumber, JsString, JsValue}
+import play.api.libs.json.{JsNumber, JsString}
 
 class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
