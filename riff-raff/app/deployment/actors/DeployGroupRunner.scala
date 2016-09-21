@@ -8,7 +8,7 @@ import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
 import magenta.artifact.S3Artifact
-import magenta.graph.{Tasks, DeploymentGraph, Graph, MidNode, StartNode}
+import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph, MidNode, StartNode}
 import magenta.json.JsonReader
 import magenta.{DeployContext, DeployReporter, DeployStoppedException}
 import org.joda.time.DateTime
@@ -37,23 +37,23 @@ class DeployGroupRunner(
 
   var deployContext: Option[DeployContext] = None
 
-  var executing: Set[MidNode[Tasks]] = Set.empty
-  var completed: Set[MidNode[Tasks]] = Set.empty
-  var failed: Set[MidNode[Tasks]] = Set.empty
+  var executing: Set[MidNode[DeploymentTasks]] = Set.empty
+  var completed: Set[MidNode[DeploymentTasks]] = Set.empty
+  var failed: Set[MidNode[DeploymentTasks]] = Set.empty
 
-  def deploymentGraph: Graph[Tasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[Tasks])
+  def deploymentGraph: Graph[DeploymentTasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
   def allDeployments = deploymentGraph.nodes.filterMidNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def first: List[MidNode[Tasks]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
+  def first: List[MidNode[DeploymentTasks]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
       - FinishDeploy: indicator that there are no more tasks for this deploy
       first will actually only ever return the first of these.  */
-  def next(deployment: Tasks): NextResult = {
+  def next(deployment: DeploymentTasks): NextResult = {
     // if this was a last node and there is no other nodes executing then there is nothing left to do
     if (isFinished) DeployFinished
     // otherwise let's see what children are valid to return
@@ -69,15 +69,15 @@ class DeployGroupRunner(
       }
     }
   }
-  protected[deployment] def markExecuting(deployment: Tasks) = {
+  protected[deployment] def markExecuting(deployment: DeploymentTasks) = {
     executing += deploymentGraph.get(deployment)
   }
-  protected[deployment] def markComplete(deployment: Tasks) = {
+  protected[deployment] def markComplete(deployment: DeploymentTasks) = {
     val node = deploymentGraph.get(deployment)
     executing -= node
     completed += node
   }
-  protected[deployment] def markFailed(deployment: Tasks) = {
+  protected[deployment] def markFailed(deployment: DeploymentTasks) = {
     val node = deploymentGraph.get(deployment)
     executing -= node
     failed += node
@@ -168,7 +168,7 @@ class DeployGroupRunner(
     }
   }
 
-  private def runTasks(tasksList: List[MidNode[Tasks]]) = {
+  private def runTasks(tasksList: List[MidNode[DeploymentTasks]]) = {
     try {
       honourStopFlag(rootReporter) {
         tasksList.zipWithIndex.foreach { case (MidNode(tasks), index) =>
@@ -210,7 +210,7 @@ class DeployGroupRunner(
 
 object DeployGroupRunner {
   sealed trait NextResult
-  case class NextTasks(tasksList: List[MidNode[Tasks]]) extends NextResult
+  case class NextTasks(tasksList: List[MidNode[DeploymentTasks]]) extends NextResult
   case object DeployUnfinished extends NextResult
   case object DeployFinished extends NextResult
 
@@ -218,6 +218,6 @@ object DeployGroupRunner {
   case object Start extends Message
   case class ContextCreated(context: DeployContext) extends Message
   case object StartDeployment extends Message
-  case class DeploymentCompleted(tasks: Tasks) extends Message
-  case class DeploymentFailed(tasks: Tasks, exception: Throwable) extends Message
+  case class DeploymentCompleted(tasks: DeploymentTasks) extends Message
+  case class DeploymentFailed(tasks: DeploymentTasks, exception: Throwable) extends Message
 }

@@ -3,7 +3,7 @@ package magenta
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
-import magenta.graph.{Tasks, DeploymentGraph, Graph}
+import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph}
 
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,
@@ -20,7 +20,7 @@ object DeployContext {
 }
 
 case class DeployContext(uuid: UUID, parameters: DeployParameters, project: Project,
-  tasks: Graph[Tasks]) {
+  tasks: Graph[DeploymentTasks]) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName
   val buildId = parameters.build.id

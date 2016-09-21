@@ -6,7 +6,7 @@ import akka.actor.Actor
 import akka.agent.Agent
 import controllers.Logging
 import magenta.DeployReporter
-import magenta.graph.Tasks
+import magenta.graph.DeploymentTasks
 import org.joda.time.DateTime
 
 class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
@@ -56,5 +56,5 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
 
 object TasksRunner {
   trait Message
-  case class RunDeployment(uuid: UUID, deployment: Tasks, rootReporter: DeployReporter, queueTime: DateTime) extends Message
+  case class RunDeployment(uuid: UUID, deployment: DeploymentTasks, rootReporter: DeployReporter, queueTime: DateTime) extends Message
 }

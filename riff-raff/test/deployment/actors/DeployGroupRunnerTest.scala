@@ -6,7 +6,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import deployment.{Fixtures, Record}
-import magenta.graph.{Tasks, Graph, MidNode}
+import magenta.graph.{DeploymentTasks, Graph, MidNode}
 import magenta.tasks.Task
 import org.scalatest.{FlatSpecLike, ShouldMatchers}
 
@@ -27,7 +27,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
-    firstDeployment should be(Tasks(threeSimpleTasks, "test"))
+    firstDeployment should be(DeploymentTasks(threeSimpleTasks, "test"))
     dr.ul.executing should contain(MidNode(firstDeployment))
   }
 
@@ -37,7 +37,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
-    firstDeployment should be(Tasks(threeSimpleTasks, "test"))
+    firstDeployment should be(DeploymentTasks(threeSimpleTasks, "test"))
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(firstDeployment))
     dr.deploymentRunnerProbe.expectNoMsg()
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
@@ -48,8 +48,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     prepare(dr, simpleGraph)
     val firstDeployments = dr.ul.first
     firstDeployments.size should be(2)
-    firstDeployments should contain(MidNode(Tasks(twoTasks, "branch one")))
-    firstDeployments should contain(MidNode(Tasks(twoTasks, "branch two")))
+    firstDeployments should contain(MidNode(DeploymentTasks(twoTasks, "branch one")))
+    firstDeployments should contain(MidNode(DeploymentTasks(twoTasks, "branch two")))
     dr.ul.markComplete(firstDeployments.head.value)
     val nextResult = dr.ul.next(firstDeployments.head.value)
     nextResult should be(DeployGroupRunner.DeployUnfinished)
@@ -136,7 +136,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
 
-  def prepare(dr: DR, deployments: Graph[Tasks]): Unit = {
+  def prepare(dr: DR, deployments: Graph[DeploymentTasks]): Unit = {
     val context = createContext(deployments, dr.record.uuid, dr.record.parameters)
     dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
