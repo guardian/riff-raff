@@ -19,9 +19,7 @@ case class StubPerAppAction(description: String, apps: Seq[App]) extends Action 
 }
 
 case class StubDeploymentType(
-  override val perHostActions:
-    PartialFunction[String, DeploymentPackage => (DeployReporter, Host, KeyRing) => List[Task]] = Map.empty,
-  override val perAppActions:
+  override val actions:
     PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty
                             ) extends DeploymentType {
   def name = "stub-package-type"

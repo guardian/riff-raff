@@ -84,7 +84,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
     documentation = "Whether to prefix `stack` to the S3 location"
   ).default(true)
 
-  def perAppActions = {
+  def actions = {
     case "deploy" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val parameters = target.parameters

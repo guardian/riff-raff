@@ -16,23 +16,10 @@ trait DeploymentType {
   }
   val paramsList = mutable.Map.empty[String, Param[_]]
   lazy val params = paramsList.values.toSeq
-  def perAppActions: PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]]
-  def perHostActions: PartialFunction[String, DeploymentPackage =>
-    (DeployReporter, Host, KeyRing) => List[Task]] = PartialFunction.empty
+  def actions: PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]]
 
   def mkAction(actionName: String)(pkg: DeploymentPackage): Action = {
-    perHostActions.lift(actionName).map { action =>
-      new PackageAction(pkg, actionName)  {
-        def resolve(resources: DeploymentResources, target: DeployTarget) = {
-          val hostsForApps = apps.toList.flatMap { app =>
-            resources.lookup.hosts.get(pkg, app, target.parameters, target.stack)
-          } filter { instance =>
-            target.parameters.matchingHost(instance.name)
-          }
-          hostsForApps flatMap (action(pkg)(resources.reporter, _, resources.assembleKeyring(target, pkg)))
-        }
-      }
-    } orElse perAppActions.lift(actionName).map { action =>
+    actions.lift(actionName).map { action =>
       new PackageAction(pkg, actionName) {
         def resolve(resources: DeploymentResources, target: DeployTarget) =
           action(pkg)(resources, target)

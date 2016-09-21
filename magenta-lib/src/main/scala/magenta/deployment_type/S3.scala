@@ -108,7 +108,7 @@ object S3 extends DeploymentType with S3AclParams {
     }
   }
 
-  def perAppActions = {
+  def actions = {
     case "uploadStaticFiles" => (pkg) => (resources, target) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
         resource.get(pkg).flatMap { resourceName =>

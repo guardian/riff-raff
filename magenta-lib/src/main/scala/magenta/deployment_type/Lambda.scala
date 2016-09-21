@@ -84,7 +84,7 @@ object Lambda extends DeploymentType  {
     List(stack.nameOption, Some(params.stage.name), Some(pkg.name), Some(fileName)).flatten.mkString("/")
   }
 
-  def perAppActions = {
+  def actions = {
     case "uploadLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient

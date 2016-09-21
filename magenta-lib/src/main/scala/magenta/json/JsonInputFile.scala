@@ -33,7 +33,6 @@ case class JsonPackage(
 case class JsonRecipe(
   actionsBeforeApp: List[String] = Nil,
   actionsPerHost: List[String] = Nil,
-  @deprecated(message = "only here for backwards compatibility - use 'actionsPerHost'", since = "1.0")
   actions: List[String] = Nil,
   depends: List[String] = Nil
 ) {
@@ -71,8 +70,7 @@ object JsonReader {
 
     Recipe(
       name = name,
-      actionsBeforeApp = jsonRecipe.actionsBeforeApp map parseAction,
-      actionsPerHost = (jsonRecipe.actionsPerHost ++ jsonRecipe.actions) map parseAction,
+      actions = (jsonRecipe.actionsBeforeApp ++ jsonRecipe.actionsPerHost ++ jsonRecipe.actions) map parseAction,
       dependsOn = jsonRecipe.depends
     )
   }

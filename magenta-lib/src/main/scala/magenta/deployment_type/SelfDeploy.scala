@@ -33,7 +33,7 @@ object SelfDeploy extends DeploymentType with S3AclParams {
     "For deferred deployment only: The URL path on the host to the switchboard management page"
   ).default("/management/switchboard")
 
-  def perAppActions = {
+  def actions = {
     case "uploadArtifacts" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
@@ -44,14 +44,19 @@ object SelfDeploy extends DeploymentType with S3AclParams {
           paths = Seq(pkg.s3Package -> prefix)
         )
       )
-  }
-
-  override def perHostActions = {
-    case "selfDeploy" => pkg => (reporter, host, keyRing) => {
-      implicit val key = keyRing
-      ChangeSwitch(host, managementProtocol(pkg), managementPort(pkg), switchboardPath(pkg),
-        "shutdown-when-inactive", desiredState=true) :: Nil
-    }
+    case "selfDeploy" => (pkg) => (resources, target) =>
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
+      hosts.map{ host =>
+        ChangeSwitch(
+          host,
+          managementProtocol(pkg),
+          managementPort(pkg),
+          switchboardPath(pkg),
+          "shutdown-when-inactive",
+          desiredState=true
+        )
+      }
   }
 }
 
