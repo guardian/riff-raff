@@ -21,13 +21,15 @@ import com.amazonaws.util.EC2MetadataUtils
 
 import collection.mutable
 import persistence.{CollectionStats, Persistence}
-import deployment.{DeployMetricsActor, Deployments}
+import deployment.Deployments
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
 import scala.concurrent.duration._
 import scala.collection.JavaConverters._
 import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
+import deployment.actors.DeployMetricsActor
+
 import riffraff.BuildInfo
 
 import scala.util.{Success, Try}
