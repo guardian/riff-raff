@@ -74,7 +74,7 @@ object Resolver {
     parameters.stacks match {
       case Nil if project.defaultStacks.nonEmpty => project.defaultStacks
       case Nil =>
-        reporter.warning("DEPRECATED: Your deploy.json should always specify stacks using the top level defaultStacks parameter.")
+        reporter.warning("DEPRECATED: Your deploy.json should always specify stacks using the top level defaultStacks parameter. Not doing so means that stacks are not taken into account when determining which AWS credentials to use and therefore which AWS account to deploy to.")
         Seq(UnnamedStack)
       case s => s
     }
