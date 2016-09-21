@@ -1,7 +1,7 @@
 package magenta
 
 import com.amazonaws.services.s3.AmazonS3
-import magenta.graph.{Deployment, DeploymentGraph, Graph}
+import magenta.graph.{Tasks, DeploymentGraph, Graph}
 import magenta.tasks._
 
 case class RecipeTasks(recipe: Recipe, tasks: List[Task]) {
@@ -12,10 +12,10 @@ case class RecipeTasks(recipe: Recipe, tasks: List[Task]) {
 case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksNode]) {
   def toList: List[RecipeTasks] = children.flatMap(_.toList) ++ List(recipeTasks)
 
-  def toGraph(name: String): Graph[Deployment] = {
-    val thisGraph: Graph[Deployment] = DeploymentGraph(recipeTasks.tasks, s"$name (${recipeTasks.recipeName})")
+  def toGraph(name: String): Graph[Tasks] = {
+    val thisGraph: Graph[Tasks] = DeploymentGraph(recipeTasks.tasks, s"$name (${recipeTasks.recipeName})")
 
-    val childGraph: Graph[Deployment] =
+    val childGraph: Graph[Tasks] =
       children.map(_.toGraph(name)).reduceLeftOption(_ joinParallel _).getOrElse(Graph.empty)
 
     val graph = childGraph joinSeries thisGraph
@@ -25,7 +25,7 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): Graph[Deployment] = {
+  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): Graph[Tasks] = {
     resolveStacks(project, parameters, deployReporter).map { stack =>
       val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
       DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")

@@ -8,7 +8,6 @@ import play.api.mvc.Results.InternalServerError
 import play.api.routing.Router
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
-
 import resources.PrismLookup
 import utils.HstsFilter
 import ci.ContinuousDeployment
