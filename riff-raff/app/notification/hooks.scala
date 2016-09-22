@@ -92,7 +92,11 @@ object HooksClient extends LifecycleWithoutApp with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
     Some(system.actorOf(Props[HooksClient], "hook-client"))
-  } catch { case t:Throwable => None }
+  } catch {
+    case t:Throwable =>
+      log.error("Failed to start HookClient", t)
+      None
+  }
 
   def finishedBuild(uuid: UUID, parameters: DeployParameters) {
     actor.foreach(_ ! Finished(uuid, parameters))
