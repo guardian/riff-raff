@@ -1,12 +1,12 @@
-import play.api.{Application, ApplicationLoader, Logger}
-import play.api.ApplicationLoader.Context
+import ci.Builds
+import com.gu.management.play.InternalManagementServerImpl
+import conf.DeployMetrics
+import deployment.Deployments
 import lifecycle.ShutdownWhenInactive
 import notification.HooksClient
 import persistence.SummariseDeploysHousekeeping
-import ci.{Builds, ContinuousDeployment}
-import com.gu.management.play.{InternalManagementServer, InternalManagementServerImpl}
-import conf.DeployMetrics
-import deployment.Deployments
+import play.api.ApplicationLoader.Context
+import play.api.{Application, ApplicationLoader, Logger}
 import utils.ScheduledAgent
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,11 +17,13 @@ class AppLoader extends ApplicationLoader {
   override def load(context: Context): Application = {
     val components = new AppComponents(context)
 
+    val hooksClient = new HooksClient(components.wsClient)
+
     val lifecycleSingletons = Seq(
       ScheduledAgent,
       Deployments,
       DeployMetrics,
-      HooksClient,
+      hooksClient,
       Builds,
       SummariseDeploysHousekeeping,
       components.continuousDeployment,

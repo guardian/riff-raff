@@ -3,11 +3,11 @@ package utils
 import akka.actor.{Cancellable, ActorSystem}
 import akka.agent.Agent
 import controllers.Logging
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import scala.concurrent.duration._
 import org.joda.time.{DateTime, Interval, LocalDate, LocalTime}
 
-object ScheduledAgent extends LifecycleWithoutApp {
+object ScheduledAgent extends Lifecycle {
   val scheduleSystem = ActorSystem("scheduled-agent")
 
   def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration)(block: => T): ScheduledAgent[T] = {

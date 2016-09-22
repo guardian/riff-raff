@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorSystem, Props}
 import com.mongodb.casbah.commons.MongoDBObject
 import controllers.Logging
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
 import persistence.{DeployRecordDocument, HookConfigRepository, MongoFormat, MongoSerialisable, Persistence}
@@ -85,17 +85,18 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-object HooksClient extends LifecycleWithoutApp with Logging {
-  trait Event
-  case class Finished(uuid: UUID, params: DeployParameters)
-
+class HooksClient(wsClient: WSClient) extends Lifecycle with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
-    Some(system.actorOf(Props[HooksClient], "hook-client"))
-  } catch { case t:Throwable => None }
+    Some(system.actorOf(Props(classOf[HooksClientActor], wsClient), "hook-client"))
+  } catch {
+    case t:Throwable =>
+      log.error("Failed to start HookClient", t)
+      None
+  }
 
   def finishedBuild(uuid: UUID, parameters: DeployParameters) {
-    actor.foreach(_ ! Finished(uuid, parameters))
+    actor.foreach(_ ! HooksClientActor.Finished(uuid, parameters))
   }
 
   val messageSub = DeployReporter.messages.subscribe(message => {
@@ -113,8 +114,13 @@ object HooksClient extends LifecycleWithoutApp with Logging {
   }
 }
 
-class HooksClient(implicit wsClient: WSClient) extends Actor with Logging {
-  import notification.HooksClient._
+object HooksClientActor {
+  trait Event
+  case class Finished(uuid: UUID, params: DeployParameters)
+}
+
+class HooksClientActor(implicit wsClient: WSClient) extends Actor with Logging {
+  import notification.HooksClientActor._
 
   def receive = {
     case Finished(uuid, params) =>
