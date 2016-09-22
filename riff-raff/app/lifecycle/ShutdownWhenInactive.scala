@@ -7,7 +7,7 @@ import deployment.Deployments
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 
-object ShutdownWhenInactive extends LifecycleWithoutApp with Logging {
+object ShutdownWhenInactive extends Lifecycle with Logging {
   val EXITCODE = 217
 
   // switch to enable this mode

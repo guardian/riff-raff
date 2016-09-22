@@ -3,10 +3,10 @@ package ci
 import akka.agent.Agent
 import ci.Context._
 import controllers.Logging
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import rx.lang.scala.Subscription
 
-object Builds extends LifecycleWithoutApp with Logging {
+object Builds extends Lifecycle with Logging {
 
   private var subscriptions = Seq.empty[Subscription]
 

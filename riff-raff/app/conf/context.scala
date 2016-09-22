@@ -9,7 +9,7 @@ import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import magenta._
 import controllers.{Logging, routes}
-import lifecycle.{LifecycleWithoutApp, ShutdownWhenInactive}
+import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
@@ -216,7 +216,7 @@ class BuildInfoPage extends ManagementPage {
 
 object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
-object DeployMetrics extends LifecycleWithoutApp {
+object DeployMetrics extends Lifecycle {
   val runningDeploys = mutable.Buffer[UUID]()
 
   object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")

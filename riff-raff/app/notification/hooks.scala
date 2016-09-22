@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.actor.{Actor, ActorSystem, Props}
 import com.mongodb.casbah.commons.MongoDBObject
 import controllers.Logging
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
 import persistence.{DeployRecordDocument, HookConfigRepository, MongoFormat, MongoSerialisable, Persistence}
@@ -85,7 +85,7 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-object HooksClient extends LifecycleWithoutApp with Logging {
+object HooksClient extends Lifecycle with Logging {
   trait Event
   case class Finished(uuid: UUID, params: DeployParameters)
 

@@ -2,7 +2,7 @@ package ci
 
 import controllers.Logging
 import deployment.Deployments
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
@@ -11,7 +11,7 @@ import utils.ChangeFreeze
 import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
-class ContinuousDeployment(deployments: Deployments) extends LifecycleWithoutApp with Logging {
+class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logging {
   import ContinuousDeployment._
 
   var sub: Option[Subscription] = None

@@ -1,13 +1,13 @@
 package persistence
 
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import conf.Configuration.housekeeping
 import org.joda.time.{LocalDate, LocalTime}
 import persistence.Persistence.store
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 import controllers.Logging
 
-object SummariseDeploysHousekeeping extends LifecycleWithoutApp with Logging {
+object SummariseDeploysHousekeeping extends Lifecycle with Logging {
   lazy val maxAgeDays = housekeeping.summariseDeploysAfterDays
   lazy val housekeepingTime = new LocalTime(housekeeping.hour, housekeeping.minute)
 

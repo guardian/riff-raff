@@ -8,7 +8,7 @@ import akka.util.Switch
 import ci._
 import com.gu.management.DefaultSwitch
 import controllers.Logging
-import lifecycle.LifecycleWithoutApp
+import lifecycle.Lifecycle
 import magenta._
 import persistence.DocumentStoreConverter
 import play.api.libs.concurrent.Execution.Implicits._
@@ -51,7 +51,7 @@ class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
 
 }
 
-object Deployments extends Logging with LifecycleWithoutApp {
+object Deployments extends Logging with Lifecycle {
   lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
 
