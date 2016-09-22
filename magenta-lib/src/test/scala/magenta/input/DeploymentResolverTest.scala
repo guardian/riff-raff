@@ -23,6 +23,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
       'regions (List("eu-west-1")),
       'app ("test"),
       'contentDirectory ("test"),
+      'actions (None),
       'dependencies (Nil),
       'parameters (Map("testParam" -> JsString("testValue")))
     )
@@ -48,6 +49,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
       'regions (List("oceania-south-1")),
       'app ("test"),
       'contentDirectory ("test"),
+      'actions (None),
       'dependencies (Nil),
       'parameters (Map("testParam" -> JsString("testValue")))
     )
@@ -63,6 +65,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         |    type: testType
         |    parameters:
         |      testParam: testValue
+        |    actions: [deploymentAction]
         |    stacks: [testStack]
         |    regions: [eurasia-north-1]
       """.stripMargin
@@ -75,6 +78,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
       'regions (List("eurasia-north-1")),
       'app ("test"),
       'contentDirectory ("test"),
+      'actions (Some(List("deploymentAction"))),
       'dependencies (Nil),
       'parameters (Map("testParam" -> JsString("testValue")))
     )
@@ -244,7 +248,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     deployment.parameters should contain("sandwichParameter" -> JsString("deployment"))
   }
 
-  it should "not default app and contentDirectory if specified in template" in {
+  it should "not default actions, app and contentDirectory if specified in template" in {
     val yamlString =
       """
         |stacks: [global-stack]
@@ -253,6 +257,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         |  testTemplate:
         |    type: testType
         |    app: templateApp
+        |    actions: [templateAction]
         |    contentDirectory: templateContentDirectory
         |deployments:
         |  test:
@@ -263,6 +268,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     deployments.size should be (1)
     deployments.head.right.value should have(
       'app ("templateApp"),
+      'actions (Some(List("templateAction"))),
       'contentDirectory ("templateContentDirectory")
     )
   }

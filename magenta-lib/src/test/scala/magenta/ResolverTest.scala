@@ -123,7 +123,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val pkgType = StubDeploymentType(
       actions = {
         case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
-      }
+      },
+      List("deploy")
     )
     val recipe = Recipe("stacked",
       actions = List(pkgType.mkAction("deploy")(stubPackage)))
@@ -142,7 +143,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val pkgType = StubDeploymentType(
       actions = {
         case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
-      }
+      },
+      List("deploy")
     )
     val recipe = Recipe("stacked",
       actions = List(pkgType.mkAction("deploy")(stubPackage)))

@@ -23,6 +23,7 @@ object RiffRaffDeployConfig {
   * @param template         Name of the custom deploy template to use for this deployment.
   * @param stacks           Stack tags to apply to this deployment. The deployment will be executed once for each stack.
   * @param regions          A list of the regions in which this deploy will be executed. Defaults to just 'eu-west-1'
+  * @param actions          Override the list of actions to execute for this deployment type.
   * @param app              The `app` tag to use for this deployment. By default the deployment's key is used.
   * @param contentDirectory The path where this deployment is found in the build output. Defaults to app.
   * @param dependencies     This deployment's execution will be delayed until all named dependencies have completed. (Default empty)
@@ -33,6 +34,7 @@ case class DeploymentOrTemplate(
   template: Option[String],
   stacks: Option[List[String]],
   regions: Option[List[String]],
+  actions: Option[List[String]],
   app: Option[String],
   contentDirectory: Option[String],
   dependencies: Option[List[String]],
@@ -50,6 +52,7 @@ case class Deployment(
   `type`: String,
   stacks: List[String],
   regions: List[String],
+  actions: Option[List[String]],
   app: String,
   contentDirectory: String,
   dependencies: List[String],

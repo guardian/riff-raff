@@ -33,6 +33,8 @@ object SelfDeploy extends DeploymentType with S3AclParams {
     "For deferred deployment only: The URL path on the host to the switchboard management page"
   ).default("/management/switchboard")
 
+  def defaultActions = List("uploadArtifacts", "selfDeploy")
+
   def actions = {
     case "uploadArtifacts" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
