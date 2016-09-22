@@ -72,6 +72,7 @@ object Deployments extends Logging with Lifecycle {
 
   /**
     * Attempt to disable deploys from running.
+ *
     * @return true if successful and false if this failed because a deploy was currently running
     */
   def atomicDisableDeploys:Boolean = {

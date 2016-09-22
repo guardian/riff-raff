@@ -85,13 +85,10 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-object HooksClient extends Lifecycle with Logging {
-  trait Event
-  case class Finished(uuid: UUID, params: DeployParameters)
-
+class HooksClient(wsClient: WSClient) extends Lifecycle with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
-    Some(system.actorOf(Props[HooksClient], "hook-client"))
+    Some(system.actorOf(Props(classOf[HooksClientActor], wsClient), "hook-client"))
   } catch {
     case t:Throwable =>
       log.error("Failed to start HookClient", t)
@@ -99,7 +96,7 @@ object HooksClient extends Lifecycle with Logging {
   }
 
   def finishedBuild(uuid: UUID, parameters: DeployParameters) {
-    actor.foreach(_ ! Finished(uuid, parameters))
+    actor.foreach(_ ! HooksClientActor.Finished(uuid, parameters))
   }
 
   val messageSub = DeployReporter.messages.subscribe(message => {
@@ -117,8 +114,13 @@ object HooksClient extends Lifecycle with Logging {
   }
 }
 
-class HooksClient(implicit wsClient: WSClient) extends Actor with Logging {
-  import notification.HooksClient._
+object HooksClientActor {
+  trait Event
+  case class Finished(uuid: UUID, params: DeployParameters)
+}
+
+class HooksClientActor(implicit wsClient: WSClient) extends Actor with Logging {
+  import notification.HooksClientActor._
 
   def receive = {
     case Finished(uuid, params) =>
