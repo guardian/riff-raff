@@ -1,6 +1,5 @@
 package magenta
 
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
@@ -9,9 +8,8 @@ import magenta.artifact.{S3Package, S3Path}
 import magenta.deployment_type.{Lambda, PatternValue, S3}
 import magenta.fixtures._
 import magenta.tasks._
-import org.json4s.JsonDSL._
-import org.json4s._
 import org.scalatest.{FlatSpec, Inside, Matchers}
+import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 
 class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing()
@@ -28,8 +26,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   private val defaultRegion = Region.getRegion(Regions.fromName("eu-west-1"))
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {
-    val data: Map[String, JValue] = Map(
-      "bucket" -> "bucket-1234"
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234")
     )
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
@@ -49,9 +47,9 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
   "Amazon Web Services S3" should "have a uploadStaticFiles action" in {
 
-    val data: Map[String, JValue] = Map(
-      "bucket" -> "bucket-1234",
-      "cacheControl" -> "no-cache"
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234"),
+      "cacheControl" -> JsString("no-cache")
     )
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
@@ -67,12 +65,12 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "take a pattern list for cache control" in {
-    val data: Map[String, JValue] = Map(
-      "bucket" -> "bucket-1234",
-      "cacheControl" -> JArray(List(
-        JObject(List(JField("pattern", JString("^sub")), JField("value", JString("no-cache")))),
-        JObject(List(JField("pattern", JString(".*")), JField("value", JString("public; max-age:3600"))))
-      ))
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234"),
+      "cacheControl" -> Json.arr(
+        Json.obj("pattern" -> "^sub", "value" -> "no-cache"),
+        Json.obj("pattern" -> ".*", "value" -> "public; max-age:3600")
+      )
     )
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
@@ -83,12 +81,12 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "allow the path to be varied by Deployment Resource lookup" in {
-    val data: Map[String, JValue] = Map(
-      "bucket" -> "bucket-1234",
-      "cacheControl" -> "no-cache",
-      "pathPrefixResource" -> "s3-path-prefix",
-      "prefixStage" -> false, // when we are using pathPrefixResource, we generally don't need or want the stage prefixe - we're already varying based on stage
-      "prefixPackage" -> false
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234"),
+      "cacheControl" -> JsString("no-cache"),
+      "pathPrefixResource" -> JsString("s3-path-prefix"),
+      "prefixStage" -> JsBoolean(false), // when we are using pathPrefixResource, we generally don't need or want the stage prefixe - we're already varying based on stage
+      "prefixPackage" -> JsBoolean(false)
     )
 
     val p = DeploymentPackage("myapp", Seq(app1), data, "aws-s3", sourceS3Package)
@@ -102,12 +100,12 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
   "AWS Lambda" should "have a updateLambda action" in {
 
-    val data: Map[String, JValue] = Map(
-      "functions" ->(
-        "CODE" -> {
+    val data: Map[String, JsValue] = Map(
+      "functions" -> Json.obj(
+        "CODE" -> Json.obj(
           "name" -> "myLambda"
-        }
         )
+      )
     )
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Package("artifact-bucket", "test/123"))
@@ -118,12 +116,12 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "throw an exception if a required mapping is missing" in {
-    val badData: Map[String, JValue] = Map(
-      "functions" ->(
-        "BADSTAGE" -> {
+    val badData: Map[String, JsValue] = Map(
+      "functions" -> Json.obj(
+        "BADSTAGE" -> Json.obj(
           "name" -> "myLambda"
-        }
         )
+      )
     )
 
     val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", S3Package("artifact-bucket", "test/123"))

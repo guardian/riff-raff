@@ -1,6 +1,5 @@
 package magenta.deployment_type
 
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
@@ -9,10 +8,8 @@ import magenta.artifact.{S3Package, S3Path}
 import magenta.fixtures._
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
-import org.json4s.JsonAST.JValue
 import org.scalatest.{FlatSpec, Inside, Matchers}
-
-import scalax.file.Path
+import play.api.libs.json.JsValue
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing()
@@ -20,7 +17,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val artifactClient: AmazonS3 = null
 
   "cloudformation deployment type" should "have an updateStack action" in {
-    val data: Map[String, JValue] = Map()
+    val data: Map[String, JsValue] = Map()
     val app = Seq(App("app"))
     val stack = NamedStack("cfn")
     val cfnStackName = s"cfn-app-PROD"

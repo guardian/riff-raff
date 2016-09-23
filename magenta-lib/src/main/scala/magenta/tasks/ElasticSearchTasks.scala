@@ -1,15 +1,14 @@
 package magenta.tasks
 
-import magenta._
-import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
-import collection.JavaConversions._
-import dispatch.classic._
-import org.json4s._
-import org.json4s.native.JsonMethods._
 import java.net.ConnectException
-import magenta.DeploymentPackage
-import magenta.KeyRing
-import magenta.Stage
+
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
+import dispatch.classic._
+import magenta.{DeploymentPackage, KeyRing, Stage, _}
+import org.json4s._
+import play.api.libs.json.Json
+
+import scala.collection.JavaConversions._
 
 case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
                                            (implicit val keyRing: KeyRing)
@@ -67,11 +66,11 @@ case class ElasticSearchNode(address: String) {
 
   val http = new Http()
   private def clusterHealth = http(:/(address, 9200) / "_cluster" / "health" >- {json =>
-    parse(json)
+    Json.parse(json)
   })
 
-  def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").extract[Int]
-  def clusterIsHealthy = (clusterHealth \ "status").extract[String] == "green"
+  def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").as[Int]
+  def clusterIsHealthy = (clusterHealth \ "status").as[String] == "green"
 
   def inHealthyClusterOfSize(desiredClusterSize: Int) =
     try {

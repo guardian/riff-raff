@@ -4,17 +4,24 @@ import java.util.concurrent.Executors
 
 import com.amazonaws.services.s3.AmazonS3
 import com.gu.fastly.api.FastlyApiClient
-import magenta.artifact.S3Package
 import magenta._
-import org.json4s._
-import org.json4s.native.JsonMethods._
+import magenta.artifact.S3Package
+import play.api.libs.json.{JsString, Json}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class Version(number: Int, active: Option[Boolean])
+object Version {
+  implicit val reads = Json.reads[Version]
+}
 
-  implicit val formats = DefaultFormats
+case class Vcl(name: String)
+object Vcl {
+  implicit val reads = Json.reads[Vcl]
+}
+
+case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
@@ -42,7 +49,7 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
   private def getActiveVersionNumber(client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val versionList = block(client.versionList())
-      val versions = parse(versionList.getResponseBody).extract[List[Version]]
+      val versions = Json.parse(versionList.getResponseBody).as[List[Version]]
       val activeVersion = versions.filter(x => x.active.getOrElse(false))(0)
       reporter.info(s"Current active version ${activeVersion.number}")
       activeVersion.number
@@ -52,7 +59,7 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
   private def clone(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Int = {
     stopOnFlag(stopFlag) {
       val cloned = block(client.versionClone(versionNumber))
-      val clonedVersion = parse(cloned.getResponseBody).extract[Version]
+      val clonedVersion = Json.parse(cloned.getResponseBody).as[Version]
       reporter.info(s"Cloned version ${clonedVersion.number}")
       clonedVersion.number
     }
@@ -61,7 +68,7 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
   private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclListResponse = block(client.vclList(versionNumber))
-      val vclFilesToDelete = parse(vclListResponse.getResponseBody).extract[List[Vcl]]
+      val vclFilesToDelete = Json.parse(vclListResponse.getResponseBody).as[List[Vcl]]
       vclFilesToDelete.foreach { file =>
         reporter.info(s"Deleting ${file.name}")
         block(client.vclDelete(versionNumber, file.name).map(_.getResponseBody))
@@ -101,8 +108,8 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
 
       reporter.info(s"Validating new config $versionNumber")
       val response = block(client.versionValidate(versionNumber))
-      val validationResponse = parse(response.getResponseBody) \\ "status"
-      validationResponse == JString("ok")
+      val validationResponse = Json.parse(response.getResponseBody) \\ "status"
+      validationResponse == JsString("ok")
     }
   }
 
@@ -110,10 +117,6 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
 
   override def verbose: String = description
 }
-
-case class Version(number: Int, active: Option[Boolean])
-
-case class Vcl(name: String)
 
 object FastlyApiClientProvider {
 

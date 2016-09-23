@@ -1,17 +1,18 @@
 package test
 
-import ci.{Trigger, ContinuousDeploymentConfig}
-import org.scalatest.{Matchers, FlatSpec}
-import persistence._
-import org.bson.{BasicBSONDecoder, BasicBSONEncoder}
-import org.joda.time.DateTime
-import com.mongodb.util.JSON
+import java.util.UUID
+
+import ci.{ContinuousDeploymentConfig, Trigger}
 import com.mongodb.DBObject
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.conversions.scala._
-import magenta._
-import java.util.UUID
+import com.mongodb.util.JSON
 import controllers.ApiKey
+import magenta._
+import org.bson.{BasicBSONDecoder, BasicBSONEncoder}
+import org.joda.time.DateTime
+import org.scalatest.{FlatSpec, Matchers}
+import persistence._
 
 
 class RepresentationTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances {
@@ -74,7 +75,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
       if (json.isEmpty) {
         jsonLogDocument should be(json)
       } else {
-        diff.toString should be("")
+        diff.toString should be("[ ]")
         // TODO - check ordering as well?
         //jsonLogDocument should be(json)
       }
@@ -115,7 +116,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
     val jsonDeployDocument = JSON.serialize(gratedDeployDocument)
     val diff = compareJson(dataModelDump, jsonDeployDocument)
-    diff.toString should be("")
+    diff.toString should be("[ ]")
     // TODO - check ordering as well?
     //jsonDeployDocument should be(dataModelDump)
 
@@ -153,7 +154,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
     val jsonApiKey = JSON.serialize(gratedApiKey)
     val diff = compareJson(apiKeyDump, jsonApiKey)
-    diff.toString should be("")
+    diff.toString should be("[ ]")
     // TODO - check ordering as well?
     //jsonApiKey should be(apiKeyDump)
 
@@ -175,7 +176,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
     val jsonConfig = JSON.serialize(gratedConfig)
     val diff = compareJson(configV2Dump, jsonConfig)
-    diff.toString should be("")
+    diff.toString should be("[ ]")
     // TODO - check ordering as well?
     //jsonConfig should be(configDump)
 

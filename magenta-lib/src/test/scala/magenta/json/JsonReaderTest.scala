@@ -1,12 +1,9 @@
 package magenta
 package json
 
-import java.io.File
-
 import magenta.artifact.{S3Artifact, S3Package}
-import org.json4s.JsonDSL._
-import org.json4s._
 import org.scalatest.{FlatSpec, Matchers}
+import play.api.libs.json.{JsString, Json}
 
 class JsonReaderTest extends FlatSpec with Matchers {
   val deployJsonExample = """
@@ -15,7 +12,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
     "packages":{
       "index-builder":{
         "type":"autoscaling",
-        "apps":["index-builder"],
+        "apps":["index-builder"]
       },
       "api":{
         "type":"autoscaling",
@@ -42,14 +39,14 @@ class JsonReaderTest extends FlatSpec with Matchers {
       },
       "index-build-only":{
         "default":false,
-        "actions":["index-builder.deploy"],
+        "actions":["index-builder.deploy"]
       },
       "api-only":{
         "default":false,
         "actions":[
           "api.deploy","solr.deploy"
-        ],
-      }
+        ]
+      },
       "api-counter-only":{
         "default":false,
         "actionsPerHost":[
@@ -57,7 +54,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
         ],
         "actionsBeforeApp":[
           "api.uploadArtifacts","solr.uploadArtifacts"
-        ],
+        ]
       }
     }
   }
@@ -70,8 +67,8 @@ class JsonReaderTest extends FlatSpec with Matchers {
 
     parsed.packages.size should be (3)
     parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Package("artifact-bucket", "test/123/packages/index-builder")))
-    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> JArray(List("/api/index.json","/api/search.json"))), "autoscaling", S3Package("artifact-bucket", "test/123/packages/api")))
-    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> "8400"), "autoscaling", S3Package("artifact-bucket", "test/123/packages/solr")))
+    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Package("artifact-bucket", "test/123/packages/api")))
+    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Package("artifact-bucket", "test/123/packages/solr")))
 
     val recipes = parsed.recipes
     recipes.size should be (4)
