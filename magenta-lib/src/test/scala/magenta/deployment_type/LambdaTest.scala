@@ -75,12 +75,12 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "create an update lambda for each region" in {
-    val dataWithStack: Map[String, JValue] = Map(
-      "bucket" -> "lambda-bucket",
-      "fileName" -> "test-file.zip",
-      "prefixStack" -> true,
-      "functionNames" -> List("MyFunction-"),
-      "regions" -> List("us-east-1", "ap-southeast-2")
+    val dataWithStack: Map[String, JsValue] = Map(
+      "bucket" -> JsString("lambda-bucket"),
+      "fileName" -> JsString("test-file.zip"),
+      "prefixStack" -> JsBoolean(true),
+      "functionNames" -> Json.arr("MyFunction-"),
+      "regions" -> Json.arr("us-east-1", "ap-southeast-2")
     )
     val app = Seq(App("lambda"))
     val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
