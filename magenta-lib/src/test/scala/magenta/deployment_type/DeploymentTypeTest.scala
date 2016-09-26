@@ -4,6 +4,7 @@ import java.io.File
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.regions.{Region, Regions}
 import magenta.artifact.{S3Package, S3Path}
 import magenta.deployment_type.{Lambda, PatternValue, S3}
 import magenta.fixtures._
@@ -23,6 +24,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
   }
 
   private val sourceS3Package = S3Package("artifact-bucket", "test/123/static-files")
+
+  private val defaultRegion = Region.getRegion(Regions.fromName("eu-west-1"))
 
   it should "throw a NoSuchElementException if a required parameter is missing" in {
     val data: Map[String, JValue] = Map(
@@ -110,7 +113,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Package("artifact-bucket", "test/123"))
 
     Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack)) should be (
-      List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda")
+      List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
       ))
   }
 
@@ -127,7 +130,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
 
     val thrown = the[FailException] thrownBy {
       Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack)) should be (
-        List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda")
+        List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
         ))
     }
 

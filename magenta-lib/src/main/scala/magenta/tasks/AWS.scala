@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 import com.amazonaws._
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
+import com.amazonaws.regions.Region
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
@@ -18,15 +19,16 @@ import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Sta
 
 import scala.collection.JavaConversions._
 
+
 trait S3 extends AWS {
   def s3client(keyRing: KeyRing, config: ClientConfiguration = clientConfiguration) =
     new AmazonS3Client(provider(keyRing), config)
 }
 
 trait Lambda extends AWS {
-  def lambdaClient(implicit keyRing: KeyRing) = {
+  def lambdaClient(region: Region)(implicit keyRing: KeyRing) = {
     val client = new AWSLambdaClient(provider(keyRing), clientConfiguration)
-    client.setEndpoint("lambda.eu-west-1.amazonaws.com")
+    client.withRegion(region)
     client
   }
 

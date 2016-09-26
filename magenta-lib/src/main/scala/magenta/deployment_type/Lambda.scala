@@ -1,7 +1,9 @@
 package magenta.deployment_type
 
 import java.io.File
+import scala.util.Try
 
+import com.amazonaws.regions.{Region, Regions}
 import magenta.artifact.S3Path
 import magenta.{DeployParameters, DeployReporter, DeploymentPackage, KeyRing, Stack, Stage}
 import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
@@ -21,6 +23,14 @@ object Lambda extends DeploymentType  {
       |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
       |As a result you can bundle stage specific configuration into the respective files.
     """.stripMargin
+
+  val regionsParam = Param[List[String]]("regions",
+    documentation = 
+      """
+      |One or more AWS region name where the lambda should be deployed - If this is not specified then `eu-west-1` will be used.
+      """.stripMargin,
+      defaultValue = Some(List("eu-west-1"))
+  )
 
   val bucketParam = Param[String]("bucket",
     documentation =
@@ -69,17 +79,37 @@ object Lambda extends DeploymentType  {
   def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     if (bucketOption.isEmpty) reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
+    
+    val regions: List[Region] = regionsParam(pkg).flatMap(name => toRegion(name)(reporter))
+
     (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg)) match {
       case (Some(functionNames), None, prefixStack) =>
         val stackNamePrefix = stack.nameOption.filter(_ => prefixStack).getOrElse("")
-        functionNames.map(name => LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg), bucketOption))
+        for {
+          name <- functionNames
+          region <- regions
+        } yield LambdaFunction(s"${stackNamePrefix}${name}${stage}", fileNameParam(pkg), region, bucketOption)
+        
       case (None, Some(functionsMap), _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        List(LambdaFunction(functionName, fileName, bucketOption))
+        for {
+          region <- regions
+        } yield LambdaFunction(functionName, fileName, region, bucketOption)
+
       case _ => reporter.fail("Must specify one of 'functions' or 'functionNames' parameters")
     }
+  }
+
+  private def toRegion(name: String)(reporter: DeployReporter): Option[Region] = {
+    /* sdk can throw IllegalArgumentException if region name is unknown */
+    val region = Try(Region.getRegion(Regions.fromName(name))).toOption
+    if (region.isEmpty) {
+       reporter.warning(s"${name} is not a recognised AWS region and has been ignored.")
+    }
+    region
+
   }
 
   def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
@@ -91,9 +121,9 @@ object Lambda extends DeploymentType  {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
-        case LambdaFunctionFromZip(_,_) => None
+        case LambdaFunctionFromZip(_,_, _) => None
 
-        case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
+        case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
           val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(S3Upload(
             s3Bucket,
@@ -105,16 +135,17 @@ object Lambda extends DeploymentType  {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
-        case LambdaFunctionFromZip(functionName, fileName) =>
-          Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName))
+        case LambdaFunctionFromZip(functionName, fileName, region) =>
+          Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
 
-        case LambdaFunctionFromS3(functionName, fileName, s3Bucket) =>
+        case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
           val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(
           UpdateS3Lambda(
             functionName,
             s3Bucket,
-            s3Key
+            s3Key,
+            region
           ))
       }.distinct
     }
@@ -124,17 +155,18 @@ object Lambda extends DeploymentType  {
 sealed trait LambdaFunction {
   def functionName: String
   def fileName: String
+  def region: Region
 }
 
-case class LambdaFunctionFromS3(functionName: String, fileName: String, s3Bucket: String) extends LambdaFunction
-case class LambdaFunctionFromZip(functionName: String, fileName: String) extends LambdaFunction
+case class LambdaFunctionFromS3(functionName: String, fileName: String, region: Region, s3Bucket: String) extends LambdaFunction
+case class LambdaFunctionFromZip(functionName: String, fileName: String, region: Region) extends LambdaFunction
 
 object LambdaFunction {
-  def apply(functionName: String, fileName: String, s3Bucket: Option[String] = None): LambdaFunction = {
+  def apply(functionName: String, fileName: String, region: Region, s3Bucket: Option[String] = None): LambdaFunction = {
     s3Bucket.fold[LambdaFunction]{
-      LambdaFunctionFromZip(functionName, fileName)
+      LambdaFunctionFromZip(functionName, fileName, region)
     }{ bucket =>
-      LambdaFunctionFromS3(functionName, fileName, bucket)
+      LambdaFunctionFromS3(functionName, fileName, region, bucket)
     }
   }
 }

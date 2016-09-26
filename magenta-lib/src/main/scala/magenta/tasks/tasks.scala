@@ -4,6 +4,7 @@ package tasks
 import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
+import com.amazonaws.regions.Region
 import com.amazonaws.ResetException
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.internal.Mimetypes
@@ -180,13 +181,13 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 
 case class UpdateLambda(
                    s3Path: S3Path,
-                   functionName: String)
+                   functionName: String, region: Region)
                  (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with Lambda {
   def description = s"Updating $functionName Lambda"
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = lambdaClient(keyRing)
+    val client = lambdaClient(region)(keyRing)
     reporter.verbose(s"Starting update $functionName Lambda")
     val inputStream = artifactClient.getObject(s3Path.bucket, s3Path.key).getObjectContent
     val buffer = try {
@@ -200,12 +201,12 @@ case class UpdateLambda(
 
 }
 
-case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String)(implicit val keyRing: KeyRing) extends Task with Lambda {
+case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task with Lambda {
   def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = lambdaClient(keyRing)
+    val client = lambdaClient(region)(keyRing)
     reporter.verbose(s"Starting update $functionName Lambda")
     client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
     reporter.verbose(s"Finished update $functionName Lambda")
