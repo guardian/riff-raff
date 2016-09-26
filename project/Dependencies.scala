@@ -1,6 +1,5 @@
-import sbt._
-import sbt.Keys._
 import play.sbt.PlayImport._
+import sbt._
 
 object Dependencies {
 
@@ -22,7 +21,6 @@ object Dependencies {
 
   val magentaLibDeps = commonDeps ++ Seq(
     "net.databinder" %% "dispatch-http" % "0.8.10",
-    "org.json4s" %% "json4s-native" % "3.2.11",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
     "com.decodified" %% "scala-ssh" % "0.7.0" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
@@ -59,7 +57,8 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test
+    "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
+    "org.gnieh" %% "diffson" % "2.0.2" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))

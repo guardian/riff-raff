@@ -1,30 +1,16 @@
 package test
 
-import org.json4s._
-import org.json4s.Diff
-import org.json4s.native.JsonMethods._
-import org.joda.time.DateTime
 import java.util.UUID
-import magenta._
+
 import deployment.DeployRecord
-import persistence.{RecordConverter, LogDocument, DeployRecordDocument}
-import java.io.File
-
-case class RenderDiff(diff: Diff) {
-  lazy val attributes = Map("changed" -> diff.changed, "added" -> diff.added, "deleted" -> diff.deleted)
-  lazy val isEmpty = !attributes.values.exists(_ != JNothing)
-
-  def renderJV(json: JValue): Option[String] = if (json == JNothing) None else Some(compact(render(json)))
-  override def toString: String = {
-    val jsonMap = attributes.mapValues(renderJV(_))
-    jsonMap.flatMap { case (key: String, rendered: Option[String]) =>
-      rendered.map{r => "%s: %s" format (key,r)}
-    } mkString("\n")
-  }
-}
+import gnieh.diffson.playJson._
+import magenta._
+import org.joda.time.DateTime
+import persistence.{LogDocument, RecordConverter}
+import play.api.libs.json.Json
 
 trait Utilities {
-  def compareJson(from: String, to: String) = RenderDiff(Diff.diff(parse(from), parse(to)))
+  def compareJson(from: String, to: String) = JsonDiff.diff(Json.parse(from), Json.parse(to), remember = true)
 }
 
 trait PersistenceTestInstances {

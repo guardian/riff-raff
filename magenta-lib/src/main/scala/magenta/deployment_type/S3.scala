@@ -1,11 +1,8 @@
 package magenta.deployment_type
 
-import java.io.File
-
 import magenta.Datum
-import magenta.json.JValueExtractable
+import magenta.deployment_type.param_reads.PatternValue
 import magenta.tasks.S3Upload
-import org.json4s.JsonAST._
 
 object S3 extends DeploymentType with S3AclParams {
   val name = "aws-s3"
@@ -96,18 +93,6 @@ object S3 extends DeploymentType with S3AclParams {
     """.stripMargin
   ).default(Map.empty)
 
-  implicit object PatternValueExtractable extends JValueExtractable[List[PatternValue]] {
-    def extract(json: JValue) = json match {
-      case JString(default) => Some(List(PatternValue(".*", default)))
-      case JArray(patternValues) => Some(for {
-        JObject(patternValue) <- patternValues
-        JField("pattern", JString(regex)) <- patternValue
-        JField("value", JString(value)) <- patternValue
-      } yield PatternValue(regex, value))
-      case _ => throw new IllegalArgumentException("cacheControl is a required parameter")
-    }
-  }
-
   def defaultActions = List("uploadStaticFiles")
 
   def actions = {
@@ -152,10 +137,6 @@ object S3 extends DeploymentType with S3AclParams {
       )
     }
   }
-}
-
-case class PatternValue(pattern: String, value: String) {
-  lazy val regex = pattern.r
 }
 
 trait S3AclParams { this: DeploymentType =>

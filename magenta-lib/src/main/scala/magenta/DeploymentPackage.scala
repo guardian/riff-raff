@@ -1,15 +1,13 @@
 package magenta
 
-import java.io.File
-
 import magenta.artifact.S3Package
-import org.json4s._
 import magenta.deployment_type.DeploymentType
+import play.api.libs.json.JsValue
 
 case class DeploymentPackage(
   name: String,
   pkgApps: Seq[App],
-  pkgSpecificData: Map[String, JValue],
+  pkgSpecificData: Map[String, JsValue],
   deploymentTypeName: String,
   s3Package: S3Package) {
 

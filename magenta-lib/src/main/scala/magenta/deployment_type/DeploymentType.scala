@@ -1,8 +1,9 @@
 package magenta.deployment_type
 
 import magenta._
-import magenta.json.JValueExtractable
 import magenta.tasks.Task
+import play.api.libs.json.{Json, Reads}
+
 import scala.collection.mutable
 
 trait DeploymentType {
@@ -50,9 +51,9 @@ case class Param[T](name: String,
                     defaultValueFromPackage: Option[DeploymentPackage => T] = None)(implicit register:ParamRegister) {
   register.add(this)
 
-  def get(pkg: DeploymentPackage)(implicit extractable: JValueExtractable[T]): Option[T] =
-    pkg.pkgSpecificData.get(name).flatMap(extractable.extract(_))
-  def apply(pkg: DeploymentPackage)(implicit extractable: JValueExtractable[T], manifest: Manifest[T]): T =
+  def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
+    pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
+  def apply(pkg: DeploymentPackage)(implicit reads: Reads[T], manifest: Manifest[T]): T =
     get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse{
       throw new NoSuchElementException(
         s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"

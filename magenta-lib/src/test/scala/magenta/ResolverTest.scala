@@ -6,7 +6,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
-import magenta.graph.{DeploymentTasks, DeploymentGraph, MidNode, StartNode}
+import magenta.graph.{DeploymentGraph, DeploymentTasks, MidNode, StartNode}
 import magenta.json._
 import magenta.tasks.{S3Upload, Task}
 import org.mockito.Matchers._
@@ -34,7 +34,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
         "depends":["index-build-only","api-only"]
       },
       "htmlapp-only":{
-        "actions":["htmlapp.uploadStaticFiles"],
+        "actions":["htmlapp.uploadStaticFiles"]
       }
     }
   }

@@ -1,59 +1,58 @@
 package magenta
 package json
 
-import org.json4s._
-import org.json4s.native.JsonMethods._
-import org.json4s.native.JsonParser
-
-import scala.io.Source
-import java.io.{File, FileNotFoundException}
-
-import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.AmazonS3Exception
 import magenta.artifact.S3Artifact
-
-
-case class JsonInputFile(
-  defaultStacks: List[String],
-  packages: Map[String, JsonPackage],
-  recipes: Option[Map[String, JsonRecipe]]
-)
-
+import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 
 case class JsonPackage(
   `type`: String,
-  apps: List[String],
-  data: Option[Map[String, JValue]] = None,
-  fileName: Option[String] = None
+  apps: Option[List[String]],
+  data: Option[Map[String, JsValue]],
+  fileName: Option[String]
 ) {
   def safeData = data getOrElse Map.empty
 }
-
+object JsonPackage {
+  implicit val reads = Json.reads[JsonPackage]
+}
 
 case class JsonRecipe(
-  actionsBeforeApp: List[String] = Nil,
-  actionsPerHost: List[String] = Nil,
-  actions: List[String] = Nil,
-  depends: List[String] = Nil
-) {
+  actionsBeforeApp: Option[List[String]] = None,
+  actionsPerHost: Option[List[String]] = None,
+  actions: Option[List[String]] = None,
+  depends: Option[List[String]] = None
+)
+object JsonRecipe {
+  implicit val reads = Json.reads[JsonRecipe]
+}
+
+case class JsonInputFile(
+  defaultStacks: Option[List[String]],
+  packages: Map[String, JsonPackage],
+  recipes: Option[Map[String, JsonRecipe]]
+)
+object JsonInputFile {
+  implicit val reads = Json.reads[JsonInputFile]
 }
 
 
 object JsonReader {
-  private implicit val formats = DefaultFormats
-
   def parse(s: String, artifact: S3Artifact): Project = {
-    parse(Extraction.extract[JsonInputFile](JsonParser.parse(s)), artifact)
+    val inputFile: JsonInputFile = Json.fromJson[JsonInputFile](Json.parse(s)) match {
+      case JsSuccess(result, _) => result
+      case JsError(errors) => throw new IllegalArgumentException(s"Failed to parse JSON: $errors")
+    }
+    parse(inputFile, artifact)
   }
   
   def defaultRecipes(packages: Map[String, DeploymentPackage]) =
-    Map("default" -> JsonRecipe(actions = packages.values.map(_.name + ".deploy").toList))
+    Map("default" -> JsonRecipe(actions = Some(packages.values.map(_.name + ".deploy").toList)))
 
   private def parse(input: JsonInputFile, artifact: S3Artifact): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
-    Project(packages, recipes, input.defaultStacks.map(NamedStack(_)))
+    Project(packages, recipes, input.defaultStacks.getOrElse(Nil).map(NamedStack(_)))
   }
 
 
@@ -70,15 +69,19 @@ object JsonReader {
 
     Recipe(
       name = name,
-      actions = (jsonRecipe.actionsBeforeApp ++ jsonRecipe.actionsPerHost ++ jsonRecipe.actions) map parseAction,
-      dependsOn = jsonRecipe.depends
+      actions = (
+        jsonRecipe.actionsBeforeApp.getOrElse(Nil)
+          ++ jsonRecipe.actionsPerHost.getOrElse(Nil)
+          ++ jsonRecipe.actions.getOrElse(Nil)
+        ) map parseAction,
+      dependsOn = jsonRecipe.depends.getOrElse(Nil)
     )
   }
 
   private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3Artifact) =
     DeploymentPackage(
       name,
-      jsonPackage.apps match {
+      jsonPackage.apps.getOrElse(Nil) match {
         case Nil => Seq(App(name))
         case x => x.map(App(_))
       },
