@@ -12,7 +12,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model._
 import magenta.artifact.{S3Object => MagentaS3Object}
 import magenta.artifact.S3Path
-import magenta.deployment_type.PatternValue
+import magenta.deployment_type.param_reads.PatternValue
 import org.mockito.ArgumentCaptor
 import org.mockito.Matchers.any
 import org.mockito.Mockito._

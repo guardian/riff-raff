@@ -5,7 +5,8 @@ import java.util.UUID
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.regions.{Region, Regions}
 import magenta.artifact.{S3Package, S3Path}
-import magenta.deployment_type.{Lambda, PatternValue, S3}
+import magenta.deployment_type.param_reads.PatternValue
+import magenta.deployment_type.{Lambda, S3}
 import magenta.fixtures._
 import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}

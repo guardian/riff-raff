@@ -14,7 +14,7 @@ import com.amazonaws.util.IOUtils
 import com.gu.management.Loggable
 import dispatch.classic._
 import magenta.artifact._
-import magenta.deployment_type.PatternValue
+import magenta.deployment_type.param_reads.PatternValue
 
 case class S3Upload(
   bucket: String,
