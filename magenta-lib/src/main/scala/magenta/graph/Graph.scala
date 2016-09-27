@@ -22,9 +22,12 @@ case class Edge[+T](from: Node[T], to: Node[T], priority: Int = 1) {
 object Graph {
   def apply[T](edges: Edge[T]*): Graph[T] = Graph(edges.toSet)
 
-  def apply[T](singleton: T): Graph[T] = Graph(StartNode ~> MidNode(singleton), MidNode(singleton) ~> EndNode)
+  def apply[T](singleton: T): Graph[T] = {
+    val node = MidNode(singleton)
+    Graph(StartNode ~> node, node ~> EndNode)
+  }
 
-  def from[T](values: T*): Graph[T] = {
+  def from[T](values: Seq[T]): Graph[T] = {
     val nodes: Seq[Node[T]] = StartNode +: values.map(MidNode.apply) :+ EndNode
     val edges = nodes.sliding(2).map{ window => window.head ~> window.tail.head }.toSet
     Graph(edges)
@@ -101,10 +104,10 @@ case class Graph[T](edges: Set[Edge[T]]) {
     * End or Mid nodes with multiple nodes. The incoming and outgoing edges of each node of this graph will be replaced
     * by edges that map to the start and end nodes of the graph returned from f.
     *
-    * An identity mapping for flatMap would be start and end nodes to empty map and mid nodes to a single value graph
+    * An identity mapping for flatMap would be start and end nodes to empty graph and mid nodes to a single value graph
     * containing the value of the node.
     *
-    * It is not possible to map a mid node to an empty node.
+    * It is not possible to map a mid node to an empty graph.
     * @param f the function to apply to each element
     * @return a new graph with the graphs substituted
     */

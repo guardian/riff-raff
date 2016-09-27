@@ -11,7 +11,7 @@ object DeploymentGraphActionFlattening {
           actionsList <- deployment.actions.toList
           action <- actionsList
         } yield deployment.copy(actions = Some(List(action)))
-        Graph.from(deploymentPerAction: _*)
+        Graph.from(deploymentPerAction)
       case _ => Graph.empty
     }
   }
