@@ -108,8 +108,11 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
 
       reporter.info(s"Validating new config $versionNumber")
       val response = block(client.versionValidate(versionNumber))
-      val validationResponse = Json.parse(response.getResponseBody) \\ "status"
-      validationResponse == JsString("ok")
+      val jsonString = response.getResponseBody
+      val validationResponse = (Json.parse(jsonString) \ "status").toOption
+      val isOk = validationResponse.contains(JsString("ok"))
+      if (!isOk) reporter.warning(s"Validation of configuration not OK. API response: $jsonString")
+      isOk
     }
   }
 
