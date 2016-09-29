@@ -2,10 +2,10 @@ package magenta
 
 package object graph {
   implicit class RichNodeSet[T](nodes: Set[Node[T]]) {
-    def filterMidNodes: Set[MidNode[T]] = nodes.collect{ case mn:MidNode[T] => mn }
+    def filterValueNodes: Set[ValueNode[T]] = nodes.collect{ case valueNode:ValueNode[T] => valueNode }
   }
   implicit class RichNodeList[T](nodes: List[Node[T]]) {
-    def filterMidNodes: List[MidNode[T]] = nodes.collect{ case mn:MidNode[T] => mn }
+    def filterValueNodes: List[ValueNode[T]] = nodes.collect{ case valueNode:ValueNode[T] => valueNode }
   }
   implicit class RichEdgeList[T](edges: List[Edge[T]]) {
     def replace(old: Edge[T], newEdges: List[Edge[T]]): List[Edge[T]] = edges.patch(edges.indexOf(old), newEdges, 1)

@@ -6,7 +6,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3Artifact, S3Package}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
-import magenta.graph.{DeploymentGraph, DeploymentTasks, MidNode, StartNode}
+import magenta.graph.{DeploymentGraph, DeploymentTasks, ValueNode, StartNode}
 import magenta.json._
 import magenta.tasks.{S3Upload, Task}
 import org.mockito.Matchers._
@@ -155,10 +155,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     successors.size should be(4)
 
     successors should be(List(
-      MidNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo")),
-      MidNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar")),
-      MidNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey")),
-      MidNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"))
+      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"))
     ))
   }
 

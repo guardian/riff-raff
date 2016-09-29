@@ -1,12 +1,12 @@
 package magenta.input.resolver
 
-import magenta.graph.{Graph, MidNode}
+import magenta.graph.{Graph, ValueNode}
 import magenta.input.Deployment
 
 object DeploymentGraphActionFlattening {
   def flattenActions(deploymentGraph: Graph[Deployment]): Graph[Deployment] = {
     deploymentGraph.flatMap{
-      case MidNode(deployment) =>
+      case ValueNode(deployment) =>
         val deploymentPerAction = for {
           actionsList <- deployment.actions.toList
           action <- actionsList

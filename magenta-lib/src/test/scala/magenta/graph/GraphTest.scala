@@ -5,11 +5,11 @@ import org.scalatest._
 class GraphTest extends FlatSpec with ShouldMatchers {
 
   val start = StartNode
-  val one = MidNode("one")
-  val two = MidNode("two")
-  val three = MidNode("three")
-  val four = MidNode("four")
-  val five = MidNode("five")
+  val one = ValueNode("one")
+  val two = ValueNode("two")
+  val three = ValueNode("three")
+  val four = ValueNode("four")
+  val five = ValueNode("five")
   val end = EndNode
 
   "Graph" should "correctly flatten a graph to a list" in {
@@ -32,9 +32,9 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     val mergedGraph = graph.joinParallel(graph2)
     val successors = mergedGraph.orderedSuccessors(StartNode)
     successors.size should be(2)
-    val nodes = successors.filterMidNodes
-    nodes.head should matchPattern{case MidNode("one") =>}
-    nodes(1) should matchPattern{case MidNode("two") =>}
+    val nodes = successors.filterValueNodes
+    nodes.head should matchPattern{case ValueNode("one") =>}
+    nodes(1) should matchPattern{case ValueNode("two") =>}
   }
 
   it should "parallel join two complex graphs together" in {
@@ -179,10 +179,10 @@ class GraphTest extends FlatSpec with ShouldMatchers {
     transformedGraph.nodes.size should be(6)
     transformedGraph.edges.size should be(mergedGraph.edges.size)
     transformedGraph.orderedSuccessors(StartNode) should be (List(
-      MidNode(List("one", "one")),
-      MidNode(List("two", "two")),
-      MidNode(List("three", "three")),
-      MidNode(List("four", "four"))
+      ValueNode(List("one", "one")),
+      ValueNode(List("two", "two")),
+      ValueNode(List("three", "three")),
+      ValueNode(List("four", "four"))
     ))
   }
 
@@ -199,7 +199,7 @@ class GraphTest extends FlatSpec with ShouldMatchers {
 
   it should "noop when adding an empty graph onto the end of a graph" in {
     Graph(4) flatMap {
-      case MidNode(n) => Graph(n)
+      case ValueNode(n) => Graph(n)
       case _ => Graph.empty[Int]
     } shouldBe Graph(4)
   }
@@ -208,30 +208,30 @@ class GraphTest extends FlatSpec with ShouldMatchers {
   it should "allow nodes to be flatMapped to a series graph" in {
     val graph = Graph(start ~> one, one ~> end).joinParallel(Graph(start ~> two, two ~> end))
     val mappedGraph = graph.flatMap{
-      case MidNode(node) => Graph(start ~> MidNode((node, 1)), MidNode((node, 1)) ~> MidNode((node, 2)), MidNode((node, 2)) ~> end)
+      case ValueNode(node) => Graph(start ~> ValueNode((node, 1)), ValueNode((node, 1)) ~> ValueNode((node, 2)), ValueNode((node, 2)) ~> end)
       case _ => Graph.empty[(String, Int)]
     }
     mappedGraph should be(Graph(
-      start ~> MidNode(("one", 1)), MidNode(("one", 1)) ~> MidNode(("one", 2)), MidNode(("one", 2)) ~> end,
-      start ~2~> MidNode(("two", 1)), MidNode(("two", 1)) ~> MidNode(("two", 2)), MidNode(("two", 2)) ~> end
+      start ~> ValueNode(("one", 1)), ValueNode(("one", 1)) ~> ValueNode(("one", 2)), ValueNode(("one", 2)) ~> end,
+      start ~2~> ValueNode(("two", 1)), ValueNode(("two", 1)) ~> ValueNode(("two", 2)), ValueNode(("two", 2)) ~> end
     ))
   }
 
   it should "allow nodes to be flatMapped to a parallel graph" in {
     val graph = Graph(start ~> one, one ~> end).joinParallel(Graph(start ~> two, two ~> end))
     val mappedGraph = graph.flatMap{
-      case MidNode(node) =>
+      case ValueNode(node) =>
         Graph(
-          start ~> MidNode((node, 1)), MidNode((node, 1)) ~> end,
-          start ~2~> MidNode((node, 2)), MidNode((node, 2)) ~> end
+          start ~> ValueNode((node, 1)), ValueNode((node, 1)) ~> end,
+          start ~2~> ValueNode((node, 2)), ValueNode((node, 2)) ~> end
         )
       case _ => Graph.empty[(String, Int)]
     }
     mappedGraph should be(Graph(
-      start ~> MidNode(("one", 1)), MidNode(("one", 1)) ~> end,
-      start ~2~> MidNode(("one", 2)), MidNode(("one", 2)) ~> end,
-      start ~3~> MidNode(("two", 1)), MidNode(("two", 1)) ~> end,
-      start ~4~> MidNode(("two", 2)), MidNode(("two", 2)) ~> end
+      start ~> ValueNode(("one", 1)), ValueNode(("one", 1)) ~> end,
+      start ~2~> ValueNode(("one", 2)), ValueNode(("one", 2)) ~> end,
+      start ~3~> ValueNode(("two", 1)), ValueNode(("two", 1)) ~> end,
+      start ~4~> ValueNode(("two", 2)), ValueNode(("two", 2)) ~> end
     ))
   }
 
@@ -249,7 +249,7 @@ class GraphTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "produce a single edge for two simple graphs" in {
-    Graph.joiningEdges(Graph(1), Graph(2)) shouldBe Set(MidNode(1) ~> MidNode(2))
+    Graph.joiningEdges(Graph(1), Graph(2)) shouldBe Set(ValueNode(1) ~> ValueNode(2))
   }
 
   it should "produce a set of edges for two more complex graphs" in {

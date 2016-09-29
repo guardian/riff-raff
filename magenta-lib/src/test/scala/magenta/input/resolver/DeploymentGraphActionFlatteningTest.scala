@@ -1,6 +1,6 @@
 package magenta.input.resolver
 
-import magenta.graph.{EndNode, Graph, MidNode, StartNode}
+import magenta.graph.{EndNode, Graph, ValueNode, StartNode}
 import magenta.input.Deployment
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -14,7 +14,7 @@ class DeploymentGraphActionFlatteningTest extends FlatSpec with Matchers {
     val action1 = deploymentWithActions.copy(actions=Some(List("action1")))
     val action2 = deploymentWithActions.copy(actions=Some(List("action2")))
     flattenedGraph shouldBe Graph(
-      StartNode ~> MidNode(action1), MidNode(action1) ~> MidNode(action2), MidNode(action2) ~> EndNode
+      StartNode ~> ValueNode(action1), ValueNode(action1) ~> ValueNode(action2), ValueNode(action2) ~> EndNode
     )
   }
 }

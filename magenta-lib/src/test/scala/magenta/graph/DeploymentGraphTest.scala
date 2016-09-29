@@ -14,7 +14,7 @@ class DeploymentGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar
     val graph = DeploymentGraph(threeSimpleTasks, "unnamed")
     graph.nodes.size should be(3)
     graph.edges.size should be(2)
-    graph.nodes.filterMidNodes.head.value.tasks should be(threeSimpleTasks)
+    graph.nodes.filterValueNodes.head.value.tasks should be(threeSimpleTasks)
     DeploymentGraph.toTaskList(graph) should be(threeSimpleTasks)
   }
 
