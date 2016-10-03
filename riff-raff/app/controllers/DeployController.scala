@@ -6,7 +6,7 @@ import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
-import magenta.artifact.S3Artifact
+import magenta.artifact.{S3JsonArtifact, S3Location}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
@@ -245,9 +245,9 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
   }
 
   def deployObject(projectName: String, id: String) = AuthAction { implicit request =>
-    val artifact = S3Artifact(Build(projectName, id), Configuration.artifact.aws.bucketName)
+    val artifact = S3JsonArtifact(Build(projectName, id), Configuration.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
-    val deployObjectContent = deployObjectPath.fetchContentAsString()(Configuration.artifact.aws.client)
+    val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
     (deployObjectContent, deployObjectPath.extension) match {
       case (Some(json), Some("json")) => Ok(json).as("application/json")
       case _ => NotFound(s"JSON file ${artifact.deployObjectName} not found for $projectName $id")

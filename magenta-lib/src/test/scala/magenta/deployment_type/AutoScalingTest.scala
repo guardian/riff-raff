@@ -3,7 +3,7 @@ package magenta
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
-import magenta.artifact.S3Package
+import magenta.artifact.S3Path
 import magenta.deployment_type.AutoScaling
 import magenta.fixtures._
 import magenta.tasks._
@@ -22,7 +22,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val app = Seq(App("app"))
 
-    val p = DeploymentPackage("app", app, data, "asg-elb", S3Package("artifact-bucket", "test/123/app"))
+    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"))
 
     AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),
@@ -49,7 +49,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val app = Seq(App("app"))
 
-    val p = DeploymentPackage("app", app, data, "asg-elb", S3Package("artifact-bucket", "test/123/app"))
+    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"))
 
     AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack),

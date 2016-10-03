@@ -7,7 +7,7 @@ import akka.agent.Agent
 import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
-import magenta.artifact.S3Artifact
+import magenta.artifact.S3JsonArtifact
 import magenta.graph.DeploymentGraph
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
@@ -41,7 +41,8 @@ object PreviewController {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val previewFuture = Future { Preview(parameters, muteLogger, prismLookup) }
+    val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
+    val previewFuture = Future { Preview(parameters, resources) }
     Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
   }
@@ -50,30 +51,30 @@ object PreviewController {
 }
 
 object Preview {
-  import Configuration.artifact.aws._
+  import Configuration._
 
   /**
    * Get the project for the build for preview purposes.
    */
-  def getProject(build: Build, reporter: DeployReporter): Project = {
-    val s3Artifact = S3Artifact(build, bucketName)
-    val json = S3Artifact.withZipFallback(s3Artifact){ artifact =>
-      Try(artifact.deployObject.fetchContentAsString()(client).get)
-    }(client, reporter)
+  def getProject(build: Build, resources: DeploymentResources): Project = {
+    val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
+    val json = S3JsonArtifact.withZipFallback(s3Artifact){ artifact =>
+      Try(artifact.deployObject.fetchContentAsString()(resources.artifactClient).get)
+    }(resources.artifactClient, resources.reporter)
     JsonReader.parse(json, s3Artifact)
   }
 
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters, reporter: DeployReporter, prismLookup: PrismLookup): Preview = {
-    val project = Preview.getProject(parameters.build, reporter)
-    Preview(project, parameters, reporter, client, prismLookup)
+  def apply(parameters: DeployParameters, resources: DeploymentResources): Preview = {
+    val project = Preview.getProject(parameters.build, resources)
+    Preview(project, parameters, resources)
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, reporter: DeployReporter, artifactClient: AmazonS3, lookup: PrismLookup) {
-  lazy val stacks = Resolver.resolveStacks(project, parameters, reporter) collect {
+case class Preview(project: Project, parameters: DeployParameters, resources: DeploymentResources) {
+  lazy val stacks = Resolver.resolveStacks(project, parameters, resources.reporter) collect {
     case NamedStack(s) => s
   }
   lazy val recipeNames = recipeTasks.map(_.recipe.name).distinct
@@ -82,20 +83,20 @@ case class Preview(project: Project, parameters: DeployParameters, reporter: Dep
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
-  lazy val recipeTasks = Resolver.resolveDetail(project, lookup, parameters, reporter, artifactClient)
+  lazy val recipeTasks = Resolver.resolveDetail(project, parameters, resources)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
-  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(lookup.hosts.all.contains).distinct
+  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(resources.lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val tasks = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+    val tasks = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources)
     val allTasks = DeploymentGraph.toTaskList(tasks)
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap { recipe =>
-      val graph = Resolver.resolve(project, lookup, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), reporter, artifactClient)
+      val graph = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources)
       DeploymentGraph.toTaskList(graph)
     }.distinct
     taskHosts(allTasks)

@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.regions.{Region, Regions}
-import magenta.artifact.{S3Package, S3Path}
+import magenta.artifact.S3Path
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.deployment_type.{Lambda, S3}
 import magenta.fixtures._
@@ -22,7 +22,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
   }
 
-  private val sourceS3Package = S3Package("artifact-bucket", "test/123/static-files")
+  private val sourceS3Package = S3Path("artifact-bucket", "test/123/static-files")
 
   private val defaultRegion = Region.getRegion(Regions.fromName("eu-west-1"))
 
@@ -109,7 +109,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       )
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Package("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Path("artifact-bucket", "test/123"))
 
     Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack)) should be (
       List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
@@ -125,7 +125,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       )
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", S3Package("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", S3Path("artifact-bucket", "test/123"))
 
     val thrown = the[FailException] thrownBy {
       Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack)) should be (

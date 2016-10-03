@@ -6,7 +6,7 @@ import play.api.{Environment, Logger}
 import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
-import magenta.artifact.S3Package
+import magenta.artifact.S3Path
 import play.api.libs.ws.WSClient
 import resources.PrismLookup
 
@@ -150,7 +150,7 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
                       case (Some(default), _) => Some(default.toString)
                       case (None, Some(pkgFunction)) =>
                         Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Package("<bucket>", "<prefix>"))
+                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"))
                         ).toString)
                       case (_, _) => None
                     }

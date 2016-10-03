@@ -25,22 +25,22 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): Graph[DeploymentTasks] = {
-    resolveStacks(project, parameters, deployReporter).map { stack =>
-      val stackTasks = resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack).flatMap(_.tasks)
-      DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> "+_).getOrElse("")}")
+  def resolve(project: Project, parameters: DeployParameters, resources: DeploymentResources): Graph[DeploymentTasks] = {
+    resolveStacks(project, parameters, resources.reporter).map { stack =>
+      val stackTasks = resolveStack(project, parameters, resources, stack).flatMap(_.tasks)
+      DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> " + _).getOrElse("")}")
     }.reduce(_ joinParallel _)
-    }
+  }
 
-  def resolveDetail( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3): List[RecipeTasks] = {
-    val stacks = resolveStacks(project, parameters, deployReporter)
+  def resolveDetail(project: Project, parameters: DeployParameters, resources: DeploymentResources): List[RecipeTasks] = {
+    val stacks = resolveStacks(project, parameters, resources.reporter)
     for {
       stack <- stacks.toList
-      tasks <- resolveStack(project, resourceLookup, parameters, deployReporter, artifactClient, stack)
+      tasks <- resolveStack(project, parameters, resources, stack)
     } yield tasks
   }
 
-  def resolveStack( project: Project, resourceLookup: Lookup, parameters: DeployParameters, deployReporter: DeployReporter, artifactClient: AmazonS3, stack: Stack): List[RecipeTasks] = {
+  def resolveStack(project: Project, parameters: DeployParameters, resources: DeploymentResources, stack: Stack): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
@@ -51,22 +51,21 @@ object Resolver {
 
     def resolveRecipe(recipe: Recipe, resources: DeploymentResources, target: DeployTarget): RecipeTasks = {
       val tasks = for {
-          action <- recipe.actions
-          tasks <- action.resolve(resources, target)
-        } yield {
-          tasks
-        }
+        action <- recipe.actions
+        tasks <- action.resolve(resources, target)
+      } yield {
+        tasks
+      }
 
       RecipeTasks(recipe, tasks.toList)
     }
 
     for {
       tasks <- {
-    val resources = DeploymentResources(deployReporter, resourceLookup, artifactClient)
-    val target = DeployTarget(parameters, stack)
+        val target = DeployTarget(parameters, stack)
         val resolvedTree = resolveTree(parameters.recipe.name, resources, target)
         resolvedTree.toList.distinct
-  }
+      }
     } yield tasks
   }
 
@@ -80,4 +79,5 @@ object Resolver {
     }
   }
 }
+
 class NoHostsFoundException extends Exception("No hosts found")

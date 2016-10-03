@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
 import magenta._
-import magenta.artifact.{S3Package, S3Path}
+import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
@@ -21,7 +21,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val app = Seq(App("app"))
     val stack = NamedStack("cfn")
     val cfnStackName = s"cfn-app-PROD"
-    val p = DeploymentPackage("app", app, data, "cloudformation", S3Package("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("app", app, data, "cloudformation", S3Path("artifact-bucket", "test/123"))
 
     inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack))) {
       case List(updateTask, checkTask) =>

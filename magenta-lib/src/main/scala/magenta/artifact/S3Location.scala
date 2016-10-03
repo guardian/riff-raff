@@ -76,17 +76,28 @@ object S3Path {
 
 case class S3Object(bucket: String, key: String, size: Long) extends S3Location
 
-object S3Artifact extends Loggable {
-  def apply(build: Build, bucket: String): S3Artifact = {
-    val prefix = buildPrefix(build)
-    S3Artifact(bucket, prefix)
-  }
+trait S3Artifact extends S3Location {
+  def deployObjectName: String
+  def deployObject = S3Path(bucket, s"$key/$deployObjectName")
+}
 
+object S3Artifact {
   def buildPrefix(build: Build): String = {
     s"${build.projectName}/${build.id}"
   }
+}
 
-  def withZipFallback[T](artifact: S3Artifact)(f: S3Artifact => Try[T])(implicit client: AmazonS3, reporter: DeployReporter): T = {
+case class S3JsonArtifact(bucket: String, key: String) extends S3Artifact {
+  val deployObjectName: String = "deploy.json"
+}
+
+object S3JsonArtifact extends Loggable {
+  def apply(build: Build, bucket: String): S3JsonArtifact = {
+    val prefix = S3Artifact.buildPrefix(build)
+    S3JsonArtifact(bucket, prefix)
+  }
+
+  def withZipFallback[T](artifact: S3JsonArtifact)(f: S3JsonArtifact => Try[T])(implicit client: AmazonS3, reporter: DeployReporter): T = {
     val attempt = f(artifact) recoverWith {
       case NonFatal(e) =>
         convertFromZipBundle(artifact)
@@ -95,7 +106,7 @@ object S3Artifact extends Loggable {
     attempt.get
   }
 
-  def convertFromZipBundle(artifact: S3Artifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
+  def convertFromZipBundle(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
     reporter.warning("DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task)")
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
@@ -122,9 +133,13 @@ object S3Artifact extends Loggable {
   }
 }
 
-case class S3Artifact(bucket: String, key: String, deployObjectName: String = "deploy.json") extends S3Location {
-  def getPackage(packageName: String): S3Package = S3Package(bucket, s"$key/packages/$packageName")
-  lazy val deployObject = S3Path(bucket, s"$key/$deployObjectName")
+case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
+  val deployObjectName: String = "riff-raff.yaml"
 }
 
-case class S3Package(bucket: String, key: String) extends S3Location
+object S3YamlArtifact {
+  def apply(build: Build, bucket: String): S3YamlArtifact = {
+    val prefix = S3Artifact.buildPrefix(build)
+    S3YamlArtifact(bucket, prefix)
+  }
+}

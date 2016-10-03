@@ -5,7 +5,7 @@ import java.util.concurrent.Executors
 import com.amazonaws.services.s3.AmazonS3
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
-import magenta.artifact.S3Package
+import magenta.artifact.S3Path
 import play.api.libs.json.{JsString, Json}
 
 import scala.concurrent.duration._
@@ -21,7 +21,7 @@ object Vcl {
   implicit val reads = Json.reads[Vcl]
 }
 
-case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
@@ -76,7 +76,7 @@ case class UpdateFastlyConfig(s3Package: S3Package)(implicit val keyRing: KeyRin
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Package, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Path, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {

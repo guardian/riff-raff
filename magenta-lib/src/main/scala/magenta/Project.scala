@@ -128,8 +128,8 @@ case class DeployParameters(
                              hostList: List[String] = Nil
                              ) {
 
-  def toDeployContext(uuid: UUID, project: Project, resourceLookup: Lookup, reporter: DeployReporter, artifactClient: AmazonS3): DeployContext = {
-    DeployContext(uuid, this, project, resourceLookup, reporter, artifactClient)
+  def toDeployContext(uuid: UUID, project: Project, resources: DeploymentResources): DeployContext = {
+    DeployContext(uuid, this, project, resources)
   }
 
   def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)

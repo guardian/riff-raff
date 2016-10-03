@@ -7,10 +7,12 @@ import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminat
 import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
-import magenta.artifact.S3Artifact
-import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph, ValueNode, StartNode}
+import magenta.artifact.{S3JsonArtifact, S3YamlArtifact}
+import magenta.deployment_type.DeploymentType
+import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
+import magenta.input.resolver.Resolver
 import magenta.json.JsonReader
-import magenta.{DeployContext, DeployReporter, DeployStoppedException}
+import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources}
 import org.joda.time.DateTime
 import resources.PrismLookup
 
@@ -154,14 +156,35 @@ class DeployGroupRunner(
 
   private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
-      import conf.Configuration.artifact.aws._
-      safeReporter.info("Reading deploy.json")
-      val s3Artifact = S3Artifact(record.parameters.build, bucketName)
-      val json = S3Artifact.withZipFallback(s3Artifact) { artifact =>
-        Try(artifact.deployObject.fetchContentAsString()(client).get)
-      }(client, safeReporter)
-      val project = JsonReader.parse(json, s3Artifact)
-      val context = record.parameters.toDeployContext(record.uuid, project, prismLookup, safeReporter, client)
+      import conf.Configuration._
+      val client = artifact.aws.client
+      val bucketName = artifact.aws.bucketName
+
+      safeReporter.info("Reading riff-raff.yaml")
+      val resources = DeploymentResources(safeReporter, prismLookup, client)
+
+      val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
+      val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
+
+      val context: DeployContext = riffRaffYamlString.map { yaml =>
+//        val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
+//        graph.right.map(DeployContext(record.uuid, record.parameters, _)) match {
+//          case Left(errors) =>
+//            errors.errors.foreach(error => safeReporter.info(s"${error.context}: ${error.message}"))
+//            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.size} errors")
+//          case Right(success) => success
+//        }
+        ???
+      } getOrElse {
+        safeReporter.info("Falling back to deploy.json")
+        val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
+        val json = S3JsonArtifact.withZipFallback(s3Artifact) { artifact =>
+          Try(artifact.deployObject.fetchContentAsString()(client).get)
+        }(client, safeReporter)
+        val project = JsonReader.parse(json, s3Artifact)
+        record.parameters.toDeployContext(record.uuid, project, resources))
+      }
+
       if (DeploymentGraph.toTaskList(context.tasks).isEmpty)
         safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
       context

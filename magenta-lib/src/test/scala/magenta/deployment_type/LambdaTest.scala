@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.regions.{Regions, Region}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
-import magenta.artifact.{S3Package, S3Path}
+import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
 import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, NamedStack, fixtures}
@@ -28,7 +28,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   )
 
   val app = Seq(App("lambda"))
-  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
+  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"))
   val defaultRegion = Region.getRegion(Regions.fromName("eu-west-1"))
 
   it should "produce an S3 upload task" in {
@@ -61,7 +61,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "functionNames" -> Json.arr("MyFunction-")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Package("artifact-bucket", "test/123/lambda"))
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"))
 
     val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack")))
     tasks should be (List(
