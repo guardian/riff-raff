@@ -6,7 +6,7 @@ case class DeploymentTasks(tasks: List[Task], name: String)
 
 object DeploymentGraph {
   def apply(tasks: List[Task], name: String, priority: Int = 1): Graph[DeploymentTasks] = {
-    val deploymentNode = MidNode(DeploymentTasks(tasks, name))
+    val deploymentNode = ValueNode(DeploymentTasks(tasks, name))
     Graph(StartNode ~> deploymentNode, deploymentNode ~> EndNode)
   }
 

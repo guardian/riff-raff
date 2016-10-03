@@ -8,7 +8,7 @@ import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
 import magenta.artifact.S3Artifact
-import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph, MidNode, StartNode}
+import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph, ValueNode, StartNode}
 import magenta.json.JsonReader
 import magenta.{DeployContext, DeployReporter, DeployStoppedException}
 import org.joda.time.DateTime
@@ -37,17 +37,17 @@ class DeployGroupRunner(
 
   var deployContext: Option[DeployContext] = None
 
-  var executing: Set[MidNode[DeploymentTasks]] = Set.empty
-  var completed: Set[MidNode[DeploymentTasks]] = Set.empty
-  var failed: Set[MidNode[DeploymentTasks]] = Set.empty
+  var executing: Set[ValueNode[DeploymentTasks]] = Set.empty
+  var completed: Set[ValueNode[DeploymentTasks]] = Set.empty
+  var failed: Set[ValueNode[DeploymentTasks]] = Set.empty
 
   def deploymentGraph: Graph[DeploymentTasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
-  def allDeployments = deploymentGraph.nodes.filterMidNodes
+  def allDeployments = deploymentGraph.nodes.filterValueNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def first: List[MidNode[DeploymentTasks]] = deploymentGraph.orderedSuccessors(StartNode).filterMidNodes
+  def first: List[ValueNode[DeploymentTasks]] = deploymentGraph.orderedSuccessors(StartNode).filterValueNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
@@ -59,7 +59,7 @@ class DeployGroupRunner(
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterMidNodes
+      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterValueNodes
       // now filter for only tasks whose predecessors are all completed
       val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
       if (nextDeployments.nonEmpty) {
@@ -168,10 +168,10 @@ class DeployGroupRunner(
     }
   }
 
-  private def runTasks(tasksList: List[MidNode[DeploymentTasks]]) = {
+  private def runTasks(tasksList: List[ValueNode[DeploymentTasks]]) = {
     try {
       honourStopFlag(rootReporter) {
-        tasksList.zipWithIndex.foreach { case (MidNode(tasks), index) =>
+        tasksList.zipWithIndex.foreach { case (ValueNode(tasks), index) =>
           val actorName = s"${record.uuid}-${context.children.size}"
           log.debug(s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
@@ -210,7 +210,7 @@ class DeployGroupRunner(
 
 object DeployGroupRunner {
   sealed trait NextResult
-  case class NextTasks(tasksList: List[MidNode[DeploymentTasks]]) extends NextResult
+  case class NextTasks(tasksList: List[ValueNode[DeploymentTasks]]) extends NextResult
   case object DeployUnfinished extends NextResult
   case object DeployFinished extends NextResult
 

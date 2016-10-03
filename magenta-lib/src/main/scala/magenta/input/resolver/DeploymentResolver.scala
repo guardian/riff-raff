@@ -1,5 +1,6 @@
-package magenta.input
+package magenta.input.resolver
 
+import magenta.input.{ConfigError, Deployment, DeploymentOrTemplate, RiffRaffDeployConfig}
 
 object DeploymentResolver {
   val DEFAULT_REGIONS = List("eu-west-1")
