@@ -2,8 +2,7 @@ package magenta
 
 import java.util.UUID
 
-import com.amazonaws.services.s3.AmazonS3
-import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph}
+import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 
 object DeployContext {
   def apply(deployId: UUID, parameters: DeployParameters, project: Project,

@@ -3,8 +3,8 @@ package deployment
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
-import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph}
-import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Stage}
+import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
+import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Region, Stage}
 import magenta.tasks._
 import org.scalatest.mock.MockitoSugar
 
@@ -13,13 +13,13 @@ object Fixtures extends MockitoSugar {
   implicit val artifactClient = mock[AmazonS3Client]
 
   val threeSimpleTasks: List[Task] = List(
-    S3Upload("test-bucket", Seq()),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(Host("testHost")),
     HealthcheckGrace(1000)
   )
 
   val twoTasks = List(
-    S3Upload("test-bucket", Seq()),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     HealthcheckGrace(1000)
   )
 

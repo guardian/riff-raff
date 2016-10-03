@@ -128,6 +128,7 @@ object S3 extends DeploymentType with S3AclParams {
       ))
       List(
         S3Upload(
+          target.region,
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg),

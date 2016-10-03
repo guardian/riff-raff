@@ -72,7 +72,7 @@ case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifac
     lookup.keyRing(target.parameters.stage, pkg.apps.toSet, target.stack)
 }
 
-case class DeployTarget(parameters: DeployParameters, stack: Stack)
+case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Region)
 
 /*
  An action represents a step within a recipe. It isn't executable
@@ -117,6 +117,8 @@ case object UnnamedStack extends Stack {
   override def nameOption = None
 }
 
+case class Region(name: String) extends AnyVal
+
 case class Deployer(name: String)
 
 case class DeployParameters(
@@ -128,8 +130,8 @@ case class DeployParameters(
                              hostList: List[String] = Nil
                              ) {
 
-  def toDeployContext(uuid: UUID, project: Project, resources: DeploymentResources): DeployContext = {
-    DeployContext(uuid, this, project, resources)
+  def toDeployContext(uuid: UUID, project: Project, resources: DeploymentResources, region: Region): DeployContext = {
+    DeployContext(uuid, this, project, resources, region)
   }
 
   def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)

@@ -1,12 +1,11 @@
 package magenta.deployment_type
 
-import java.io.File
-import scala.util.Try
-
-import com.amazonaws.regions.{Region, Regions}
+import com.amazonaws.regions.{Regions => AwsRegions, Region => AwsRegion}
 import magenta.artifact.S3Path
-import magenta.{DeployParameters, DeployReporter, DeploymentPackage, KeyRing, Stack, Stage}
 import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
+import magenta.{DeployParameters, DeployReporter, DeploymentPackage, Region, Stack}
+
+import scala.util.Try
 
 object Lambda extends DeploymentType  {
   val name = "aws-lambda"
@@ -27,9 +26,8 @@ object Lambda extends DeploymentType  {
   val regionsParam = Param[List[String]]("regions",
     documentation = 
       """
-      |One or more AWS region name where the lambda should be deployed - If this is not specified then `eu-west-1` will be used.
-      """.stripMargin,
-      defaultValue = Some(List("eu-west-1"))
+      |One or more AWS region name where the lambda should be deployed - If this is not specified then the default region will be used (typically set to eu-west-1).
+      """.stripMargin
   )
 
   val bucketParam = Param[String]("bucket",
@@ -76,11 +74,11 @@ object Lambda extends DeploymentType  {
 
   def defaultActions = List("uploadLambda", "updateLambda")
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack)(reporter: DeployReporter): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     if (bucketOption.isEmpty) reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
     
-    val regions: List[Region] = regionsParam(pkg).flatMap(name => toRegion(name)(reporter))
+    val regions: List[Region] = regionsParam.get(pkg).map(_.filter(regionExists(_)(reporter)).map(Region)).getOrElse(List(targetRegion))
 
     (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg)) match {
       case (Some(functionNames), None, prefixStack) =>
@@ -88,7 +86,7 @@ object Lambda extends DeploymentType  {
         for {
           name <- functionNames
           region <- regions
-        } yield LambdaFunction(s"${stackNamePrefix}${name}${stage}", fileNameParam(pkg), region, bucketOption)
+        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg), region, bucketOption)
         
       case (None, Some(functionsMap), _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
@@ -102,14 +100,13 @@ object Lambda extends DeploymentType  {
     }
   }
 
-  private def toRegion(name: String)(reporter: DeployReporter): Option[Region] = {
+  private def regionExists(name: String)(reporter: DeployReporter): Boolean = {
     /* sdk can throw IllegalArgumentException if region name is unknown */
-    val region = Try(Region.getRegion(Regions.fromName(name))).toOption
-    if (region.isEmpty) {
-       reporter.warning(s"${name} is not a recognised AWS region and has been ignored.")
+    val exists = Try(AwsRegion.getRegion(AwsRegions.fromName(name))).toOption.isDefined
+    if (!exists) {
+      reporter.warning(s"$name is not a recognised AWS region and has been ignored.")
     }
-    region
-
+    exists
   }
 
   def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
@@ -120,12 +117,13 @@ object Lambda extends DeploymentType  {
     case "uploadLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(_,_, _) => None
 
         case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
           val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
           Some(S3Upload(
+            target.region,
             s3Bucket,
             Seq(S3Path(pkg.s3Package, fileName) -> s3Key)
           ))
@@ -134,7 +132,7 @@ object Lambda extends DeploymentType  {
     case "updateLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target.parameters.stage.name, target.stack)(resources.reporter).flatMap {
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region)(resources.reporter).flatMap {
         case LambdaFunctionFromZip(functionName, fileName, region) =>
           Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
 

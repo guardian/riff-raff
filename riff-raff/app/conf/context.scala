@@ -13,7 +13,7 @@ import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
-import com.amazonaws.regions.{Region, Regions}
+import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
 import com.amazonaws.services.ec2.AmazonEC2Client
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
@@ -138,8 +138,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
       lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
-      implicit lazy val client = new AmazonS3Client(credentialsProvider)
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
+      lazy val region = awsRegion(regionName)
+      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
     }
   }
 
@@ -149,8 +151,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       implicit lazy val bucketName = configuration.getStringProperty("build.aws.bucketName")
       lazy val accessKey = configuration.getStringProperty("build.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
-      implicit lazy val client = new AmazonS3Client(credentialsProvider)
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val regionName = configuration.getStringProperty("build.aws.region", "eu-west-1")
+      lazy val region = awsRegion(regionName)
+      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
     }
   }
 
@@ -159,8 +163,16 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       implicit lazy val bucketName = configuration.getStringProperty("tag.aws.bucketName")
       lazy val accessKey = configuration.getStringProperty("tag.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
-      implicit lazy val client = new AmazonS3Client(credentialsProvider)
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val regionName = configuration.getStringProperty("tag.aws.region", "eu-west-1")
+      lazy val region = awsRegion(regionName)
+      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
+    }
+  }
+
+  object target {
+    object aws {
+      lazy val defaultRegionName = configuration.getStringProperty("target.aws.defaultRegion", "eu-west-1")
     }
   }
 
@@ -179,6 +191,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       new ProfileCredentialsProvider("deployTools"),
       new InstanceProfileCredentialsProvider
     )
+
+  def awsRegion(name: String): Region = RegionUtils.getRegion(name)
 
   object urls {
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")

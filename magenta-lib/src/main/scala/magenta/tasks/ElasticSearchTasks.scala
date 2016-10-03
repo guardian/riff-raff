@@ -2,7 +2,10 @@ package magenta.tasks
 
 import java.net.ConnectException
 
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
+import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import dispatch.classic._
 import magenta.{DeploymentPackage, KeyRing, Stage, _}
 import org.json4s._
@@ -10,7 +13,7 @@ import play.api.libs.json.Json
 
 import scala.collection.JavaConversions._
 
-case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
                                            (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck {
 
@@ -20,37 +23,40 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean) {
-    val instance = EC2(asg.getInstances().headOption.getOrElse {
+  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean)(implicit asgClient: AmazonAutoScalingClient) {
+    implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
+    val instance = EC2(asg.getInstances.headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     })
     val node = ElasticSearchNode(instance.getPublicDnsName)
     check(reporter, stopFlag) {
-      node.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
+      node.inHealthyClusterOfSize(ASG.refresh(asg).getDesiredCapacity)
     }
   }
 }
 
-case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long)
+case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
                                                        (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean) {
+  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean)(implicit asgClient: AmazonAutoScalingClient) {
+    implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
+    implicit val elbClient = ELB.makeElbClient(keyRing, region)
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate")).head
     val newESNode = ElasticSearchNode(EC2(newNode).getPublicDnsName)
 
     def cullInstance(instance: Instance) {
         val node = ElasticSearchNode(EC2(instance).getPublicDnsName)
         check(reporter, stopFlag) {
-          newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity)
+          newESNode.inHealthyClusterOfSize(ASG.refresh(asg).getDesiredCapacity)
         }
         if (!stopFlag) {
           node.shutdown()
           check(reporter, stopFlag) {
-            newESNode.inHealthyClusterOfSize(refresh(asg).getDesiredCapacity - 1)
+            newESNode.inHealthyClusterOfSize(ASG.refresh(asg).getDesiredCapacity - 1)
           }
         }
-        if (!stopFlag) cull(asg, instance)
+        if (!stopFlag) ASG.cull(asg, instance)
     }
 
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate"))

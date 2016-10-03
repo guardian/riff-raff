@@ -2,6 +2,7 @@ package magenta.deployment_type
 
 import java.util.UUID
 
+import com.amazonaws.regions.RegionUtils
 import com.amazonaws.services.s3.AmazonS3
 import magenta._
 import magenta.artifact.S3Path
@@ -15,6 +16,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: AmazonS3 = null
+  val region = Region("eu-west-1")
 
   "cloudformation deployment type" should "have an updateStack action" in {
     val data: Map[String, JsValue] = Map()
@@ -23,7 +25,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val cfnStackName = s"cfn-app-PROD"
     val p = DeploymentPackage("app", app, data, "cloudformation", S3Path("artifact-bucket", "test/123"))
 
-    inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack))) {
+    inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>

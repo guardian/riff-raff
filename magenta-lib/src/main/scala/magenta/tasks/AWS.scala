@@ -2,35 +2,31 @@ package magenta.tasks
 
 import java.nio.ByteBuffer
 
-import com.amazonaws._
+import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
-import com.amazonaws.regions.Region
+import com.amazonaws.regions.{RegionUtils, Region => AwsRegion}
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
+import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, Tag => _, _}
 import com.amazonaws.services.ec2.AmazonEC2Client
-import com.amazonaws.services.ec2.model.{Tag => EC2Tag, _}
+import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.AmazonS3Client
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Stack, Stage, UnnamedStack}
+import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
 import scala.collection.JavaConversions._
 
-
-trait S3 extends AWS {
-  def s3client(keyRing: KeyRing, config: ClientConfiguration = clientConfiguration) =
-    new AmazonS3Client(provider(keyRing), config)
+object S3 extends AWS {
+  def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3Client =
+    new AmazonS3Client(provider(keyRing), config).withRegion(awsRegion(region))
 }
 
-trait Lambda extends AWS {
-  def lambdaClient(region: Region)(implicit keyRing: KeyRing) = {
-    val client = new AWSLambdaClient(provider(keyRing), clientConfiguration)
-    client.withRegion(region)
-    client
-  }
+object Lambda extends AWS {
+  def makeLambdaClient(keyRing: KeyRing, region: Region): AWSLambdaClient =
+    new AWSLambdaClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
   def lambdaUpdateFunctionCodeRequest(functionName: String, buffer: ByteBuffer): UpdateFunctionCodeRequest = {
     val request = new UpdateFunctionCodeRequest
@@ -47,28 +43,23 @@ trait Lambda extends AWS {
   }
 }
 
-trait ASG extends AWS {
-  def elb: ELB = ELB
+object ASG extends AWS {
+  def makeAsgClient(keyRing: KeyRing, region: Region): AmazonAutoScalingClient =
+    new AmazonAutoScalingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonAutoScalingClient(provider(keyRing), clientConfiguration)
-    client.setEndpoint("autoscaling.eu-west-1.amazonaws.com")
-    client
-  }
-
-  def desiredCapacity(name: String, capacity: Int)(implicit keyRing: KeyRing) =
+  def desiredCapacity(name: String, capacity: Int)(implicit client: AmazonAutoScalingClient) =
     client.setDesiredCapacity(
       new SetDesiredCapacityRequest().withAutoScalingGroupName(name).withDesiredCapacity(capacity)
     )
 
-  def maxCapacity(name: String, capacity: Int)(implicit keyRing: KeyRing) =
+  def maxCapacity(name: String, capacity: Int)(implicit client: AmazonAutoScalingClient) =
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup)(implicit keyRing: KeyRing) = {
+  def isStabilized(asg: AutoScalingGroup)(implicit asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) match {
       case Some(name) => {
-        val elbHealth = elb.instanceHealth(name)
+        val elbHealth = ELB.instanceHealth(name)
         elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
       }
       case None => {
@@ -81,30 +72,30 @@ trait ASG extends AWS {
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.headOption
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance)(implicit keyRing: KeyRing) = {
+  def cull(asg: AutoScalingGroup, instance: ASGInstance)(implicit asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) foreach (ELB.deregister(_, instance))
 
-    client.terminateInstanceInAutoScalingGroup(
+    asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
         .withInstanceId(instance.getInstanceId).withShouldDecrementDesiredCapacity(true)
     )
   }
 
-  def refresh(asg: AutoScalingGroup)(implicit keyRing: KeyRing) =
+  def refresh(asg: AutoScalingGroup)(implicit client: AmazonAutoScalingClient) =
     client.describeAutoScalingGroups(
       new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
     ).getAutoScalingGroups.head
 
-  def suspendAlarmNotifications(name: String)(implicit keyRing: KeyRing) = client.suspendProcesses(
+  def suspendAlarmNotifications(name: String)(implicit client: AmazonAutoScalingClient) = client.suspendProcesses(
     new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def resumeAlarmNotifications(name: String)(implicit keyRing: KeyRing) = client.resumeProcesses(
+  def resumeAlarmNotifications(name: String)(implicit client: AmazonAutoScalingClient) = client.resumeProcesses(
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
   def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)
-    (implicit keyRing: KeyRing, reporter: DeployReporter): AutoScalingGroup = {
+    (implicit client: AmazonAutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
@@ -156,32 +147,25 @@ trait ASG extends AWS {
   }
 }
 
-trait ELB extends AWS {
-  def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration)
-    client.setEndpoint("elasticloadbalancing.eu-west-1.amazonaws.com")
-    client
-  }
+object ELB extends AWS {
+  def makeElbClient(implicit keyRing: KeyRing, region: Region): AmazonElasticLoadBalancingClient =
+    new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def instanceHealth(elbName: String)(implicit keyRing: KeyRing) =
+  def instanceHealth(elbName: String)(implicit client: AmazonElasticLoadBalancingClient) =
     client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates
 
-  def deregister(elbName: String, instance: ASGInstance)(implicit keyRing: KeyRing) =
+  def deregister(elbName: String, instance: ASGInstance)(implicit client: AmazonElasticLoadBalancingClient) =
     client.deregisterInstancesFromLoadBalancer(
       new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
         .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
 }
 
-object ELB extends ELB
-
-trait EC2 extends AWS {
-  def client(implicit keyRing: KeyRing) = {
-    val client = new AmazonEC2Client(provider(keyRing), clientConfiguration)
-    client.setEndpoint("ec2.eu-west-1.amazonaws.com")
-    client
+object EC2 extends AWS {
+  def makeEc2Client(implicit keyRing: KeyRing, region: Region): AmazonEC2Client = {
+    new AmazonEC2Client(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
   }
 
-  def setTag(instances: List[ASGInstance], key: String, value: String)(implicit keyRing: KeyRing) {
+  def setTag(instances: List[ASGInstance], key: String, value: String)(implicit client: AmazonEC2Client) {
     val request = new CreateTagsRequest().
       withResources(instances map { _.getInstanceId }).
       withTags(new EC2Tag(key, value))
@@ -189,18 +173,16 @@ trait EC2 extends AWS {
     client.createTags(request)
   }
 
-  def hasTag(instance: ASGInstance, key: String, value: String)(implicit keyRing: KeyRing): Boolean = {
-    describe(instance).getTags() exists { tag =>
-      tag.getKey() == key && tag.getValue() == value
+  def hasTag(instance: ASGInstance, key: String, value: String)(implicit client: AmazonEC2Client): Boolean = {
+    describe(instance).getTags exists { tag =>
+      tag.getKey == key && tag.getValue == value
     }
   }
 
-  def describe(instance: ASGInstance)(implicit keyRing: KeyRing) = client.describeInstances(
+  def describe(instance: ASGInstance)(implicit client: AmazonEC2Client) = client.describeInstances(
     new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
-}
 
-object EC2 extends EC2 {
-  def apply(instance: ASGInstance)(implicit keyRing: KeyRing) = describe(instance)
+  def apply(instance: ASGInstance)(implicit client: AmazonEC2Client) = describe(instance)
 }
 
 trait AWS {
@@ -225,6 +207,8 @@ trait AWS {
       def getCredentials = envCredentials
     }
   )
+
+  def awsRegion(region: Region): AwsRegion = RegionUtils.getRegion(region.name)
 
   val clientConfiguration = new ClientConfiguration().
     withRetryPolicy(new RetryPolicy(

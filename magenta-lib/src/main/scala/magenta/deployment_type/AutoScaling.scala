@@ -92,17 +92,17 @@ object AutoScaling  extends DeploymentType with S3AclParams {
       val parameters = target.parameters
       val stack = target.stack
       List(
-        CheckForStabilization(pkg, parameters.stage, stack),
-        CheckGroupSize(pkg, parameters.stage, stack),
-        SuspendAlarmNotifications(pkg, parameters.stage, stack),
-        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
-        DoubleSize(pkg, parameters.stage, stack),
+        CheckForStabilization(pkg, parameters.stage, stack, target.region),
+        CheckGroupSize(pkg, parameters.stage, stack, target.region),
+        SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
+        DoubleSize(pkg, parameters.stage, stack, target.region),
         HealthcheckGrace(healthcheckGrace(pkg) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
         WarmupGrace(warmupGrace(pkg) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
-        CullInstancesWithTerminationTag(pkg, parameters.stage, stack),
-        ResumeAlarmNotifications(pkg, parameters.stage, stack)
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
+        CullInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
+        ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
       )
     }
     case "uploadArtifacts" => (pkg) => (resources, target) =>
@@ -123,6 +123,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         )
       List(
         S3Upload(
+          target.region,
           bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(pkg.s3Package -> prefix),
           publicReadAcl = publicReadAcl(pkg)

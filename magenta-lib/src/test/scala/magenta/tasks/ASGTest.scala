@@ -20,10 +20,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   it should "find the matching auto-scaling group with App tagging" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val desiredGroup = AutoScalingGroup("App" -> "example", "Stage" -> "PROD")
 
@@ -35,14 +32,11 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       ))
 
     val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
-    asg.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
   }
 
   it should "find the matching auto-scaling group with Role tagging" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val desiredGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
 
@@ -54,14 +48,11 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       ))
 
     val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
-    asg.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), UnnamedStack) should be (desiredGroup)
   }
 
   it should "find the matching auto-scaling group with Stack and App tags" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
@@ -76,14 +67,11 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       ))
 
     val p = DeploymentPackage("example", Seq(App("logcabin")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
-    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
@@ -98,14 +86,11 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       ))
 
     val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
-    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
   }
 
   it should "fail if more than one ASG matches the Stack and App tags" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
 
@@ -123,20 +108,13 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
 
     a [FailException] should be thrownBy {
-      asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
+      ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
     }
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val elbClientMock = mock[AmazonElasticLoadBalancingClient]
-
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def elb = new ELB {
-        override def client(implicit keyRing: KeyRing) = elbClientMock
-      }
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
+    implicit val elbClientMock = mock[AmazonElasticLoadBalancingClient]
 
     val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD").withDesiredCapacity(1)
 
@@ -144,25 +122,18 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    asg.isStabilized(group) should be (false)
+    ASG.isStabilized(group) should be (false)
 
     when (elbClientMock.describeInstanceHealth(
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("InService")))
 
-    asg.isStabilized(group) should be (true)
+    ASG.isStabilized(group) should be (true)
   }
 
   it should "just check ASG health for stability if there is no ELB" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val elbClientMock = mock[AmazonElasticLoadBalancingClient]
-
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-      override def elb = new ELB {
-        override def client(implicit keyRing: KeyRing) = elbClientMock
-      }
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
+    implicit val elbClientMock = mock[AmazonElasticLoadBalancingClient]
 
     val group = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withHealthStatus("Foobar"))
@@ -171,19 +142,16 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    asg.isStabilized(group) should be (false)
+    ASG.isStabilized(group) should be (false)
 
     val updatedGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withLifecycleState(LifecycleState.InService))
 
-    asg.isStabilized(updatedGroup) should be (true)
+    ASG.isStabilized(updatedGroup) should be (true)
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
-    val asg = new ASG {
-      override def client(implicit keyRing: KeyRing) = asgClientMock
-    }
+    implicit val asgClientMock = mock[AmazonAutoScalingClient]
 
     val firstRequest = new DescribeAutoScalingGroupsRequest
     val secondRequest = new DescribeAutoScalingGroupsRequest().withNextToken("someToken")
@@ -205,7 +173,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       ))
 
     val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"))
-    asg.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi")) should be (desiredGroup)
   }
 
   object AutoScalingGroup {

@@ -1,11 +1,10 @@
 package magenta
 package tasks
 
-import java.io.{IOException, InputStream}
+import java.io.InputStream
 import java.nio.ByteBuffer
 
-import com.amazonaws.regions.Region
-import com.amazonaws.ResetException
+import com.amazonaws.ClientConfiguration
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.internal.Mimetypes
 import com.amazonaws.services.s3.model.CannedAccessControlList._
@@ -17,13 +16,15 @@ import magenta.artifact._
 import magenta.deployment_type.param_reads.PatternValue
 
 case class S3Upload(
+  region: Region,
   bucket: String,
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with S3 with Loggable {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3,
+  clientFactory: (KeyRing, Region, ClientConfiguration) => AmazonS3 = S3.makeS3client) extends Task with Loggable {
 
   lazy val objectMappings = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
@@ -49,7 +50,7 @@ case class S3Upload(
 
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = s3client(keyRing, clientConfigurationNoRetry)
+    val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
     requests.zipWithIndex.par foreach { case (req, index) =>
@@ -58,7 +59,7 @@ case class S3Upload(
         case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
         case _ =>
       }
-      retryOnException(clientConfiguration) {
+      retryOnException(S3.clientConfiguration) {
         val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
         val putRequest = req.toAwsRequest(inputStream)
         try {
@@ -182,12 +183,12 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 case class UpdateLambda(
                    s3Path: S3Path,
                    functionName: String, region: Region)
-                 (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with Lambda {
+                 (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   def description = s"Updating $functionName Lambda"
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = lambdaClient(region)(keyRing)
+    val client = Lambda.makeLambdaClient(keyRing, region)
     reporter.verbose(s"Starting update $functionName Lambda")
     val inputStream = artifactClient.getObject(s3Path.bucket, s3Path.key).getObjectContent
     val buffer = try {
@@ -195,20 +196,20 @@ case class UpdateLambda(
     } finally {
       inputStream.close()
     }
-    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, buffer))
+    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, buffer))
     reporter.verbose(s"Finished update $functionName Lambda")
   }
 
 }
 
-case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task with Lambda {
+case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = lambdaClient(region)(keyRing)
+    val client = Lambda.makeLambdaClient(keyRing, region)
     reporter.verbose(s"Starting update $functionName Lambda")
-    client.updateFunctionCode(lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
+    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
     reporter.verbose(s"Finished update $functionName Lambda")
   }
 

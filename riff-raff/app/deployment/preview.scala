@@ -4,7 +4,6 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import akka.agent.Agent
-import com.amazonaws.services.s3.AmazonS3
 import conf.Configuration
 import controllers.routes
 import magenta.artifact.S3JsonArtifact
@@ -69,11 +68,11 @@ object Preview {
    */
   def apply(parameters: DeployParameters, resources: DeploymentResources): Preview = {
     val project = Preview.getProject(parameters.build, resources)
-    Preview(project, parameters, resources)
+    Preview(project, parameters, resources, Region(target.aws.defaultRegionName))
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, resources: DeploymentResources) {
+case class Preview(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region) {
   lazy val stacks = Resolver.resolveStacks(project, parameters, resources.reporter) collect {
     case NamedStack(s) => s
   }
@@ -83,20 +82,20 @@ case class Preview(project: Project, parameters: DeployParameters, resources: De
   def isDependantRecipe(r: String) = r != recipe && recipeNames.contains(r)
   def dependsOn(r: String) = project.recipes(r).dependsOn
 
-  lazy val recipeTasks = Resolver.resolveDetail(project, parameters, resources)
+  lazy val recipeTasks = Resolver.resolveDetail(project, parameters, resources, region)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
   def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(resources.lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val tasks = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources)
+    val tasks = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources, region)
     val allTasks = DeploymentGraph.toTaskList(tasks)
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap { recipe =>
-      val graph = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources)
+      val graph = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources, region)
       DeploymentGraph.toTaskList(graph)
     }.distinct
     taskHosts(allTasks)

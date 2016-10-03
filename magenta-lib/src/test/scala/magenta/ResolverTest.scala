@@ -2,6 +2,7 @@ package magenta
 
 import java.util.UUID
 
+import com.amazonaws.regions.RegionUtils
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3JsonArtifact, S3Path}
@@ -21,6 +22,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient = mock[AmazonS3Client]
   when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(new ListObjectsV2Result())
+  val region = Region("eu-west-1")
 
   val simpleExample = """
   {
@@ -48,12 +50,12 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val lookup = stubLookup(host :: Nil)
 
     val resources = DeploymentResources(reporter, lookup, artifactClient)
-    val tasks = Resolver.resolve(project(deployRecipe), parameters(deployRecipe), resources)
+    val tasks = Resolver.resolve(project(deployRecipe), parameters(deployRecipe), resources, region)
 
     val taskList: List[Task] = DeploymentGraph.toTaskList(tasks)
     taskList.size should be (1)
     taskList should be (List(
-      S3Upload("test", Seq((new S3Path("artifact-bucket","tmp/123/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
+      S3Upload(Region("eu-west-1"), "test", Seq((new S3Path("artifact-bucket","tmp/123/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
     ))
   }
 
@@ -68,7 +70,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
 
   it should "generate the tasks from the actions supplied" in {
-    val taskGraph = Resolver.resolve(project(baseRecipe), parameters(baseRecipe), resources)
+    val taskGraph = Resolver.resolve(project(baseRecipe), parameters(baseRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
       StubTask("init_action_one per app task number one"),
       StubTask("init_action_one per app task number two")
@@ -83,7 +85,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       dependsOn = List("one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
-    val taskGraph = Resolver.resolve(project(mainRecipe, baseRecipe), parameters(mainRecipe), resources)
+    val taskGraph = Resolver.resolve(project(mainRecipe, baseRecipe), parameters(mainRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
       StubTask("init_action_one per app task number one"),
       StubTask("init_action_one per app task number two"),
@@ -104,7 +106,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       dependsOn = List("two", "one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
-    val taskGraph = Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), parameters(mainRecipe), resources)
+    val taskGraph = Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), parameters(mainRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
       StubTask("init_action_one per app task number one"),
       StubTask("init_action_one per app task number two"),
@@ -121,7 +123,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       dependsOn = Nil)
 
     val resources = DeploymentResources(reporter, stubLookup(List()), artifactClient)
-    Resolver.resolve(project(nonHostRecipe), parameters(nonHostRecipe), resources)
+    Resolver.resolve(project(nonHostRecipe), parameters(nonHostRecipe), resources, region)
   }
 
   it should "resolve tasks from multiple stacks" in {
@@ -136,7 +138,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
-    val taskGraph = Resolver.resolve(proj, parameters(recipe), resources)
+    val taskGraph = Resolver.resolve(proj, parameters(recipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
       StubTask("stacked", stack = Some(NamedStack("foo"))),
       StubTask("stacked", stack = Some(NamedStack("bar"))),
@@ -157,7 +159,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
-    val taskGraph = Resolver.resolve(proj, parameters(recipe), resources)
+    val taskGraph = Resolver.resolve(proj, parameters(recipe), resources, region)
     val successors = taskGraph.orderedSuccessors(StartNode)
     successors.size should be(4)
 

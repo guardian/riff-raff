@@ -1,6 +1,5 @@
 package magenta
 
-import com.amazonaws.services.s3.AmazonS3
 import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph}
 import magenta.tasks._
 
@@ -25,22 +24,22 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve(project: Project, parameters: DeployParameters, resources: DeploymentResources): Graph[DeploymentTasks] = {
+  def resolve(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region): Graph[DeploymentTasks] = {
     resolveStacks(project, parameters, resources.reporter).map { stack =>
-      val stackTasks = resolveStack(project, parameters, resources, stack).flatMap(_.tasks)
+      val stackTasks = resolveStack(project, parameters, resources, stack, region).flatMap(_.tasks)
       DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> " + _).getOrElse("")}")
     }.reduce(_ joinParallel _)
   }
 
-  def resolveDetail(project: Project, parameters: DeployParameters, resources: DeploymentResources): List[RecipeTasks] = {
+  def resolveDetail(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region): List[RecipeTasks] = {
     val stacks = resolveStacks(project, parameters, resources.reporter)
     for {
       stack <- stacks.toList
-      tasks <- resolveStack(project, parameters, resources, stack)
+      tasks <- resolveStack(project, parameters, resources, stack, region)
     } yield tasks
   }
 
-  def resolveStack(project: Project, parameters: DeployParameters, resources: DeploymentResources, stack: Stack): List[RecipeTasks] = {
+  def resolveStack(project: Project, parameters: DeployParameters, resources: DeploymentResources, stack: Stack, region: Region): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
       val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
@@ -62,7 +61,7 @@ object Resolver {
 
     for {
       tasks <- {
-        val target = DeployTarget(parameters, stack)
+        val target = DeployTarget(parameters, stack, region)
         val resolvedTree = resolveTree(parameters.recipe.name, resources, target)
         resolvedTree.toList.distinct
       }

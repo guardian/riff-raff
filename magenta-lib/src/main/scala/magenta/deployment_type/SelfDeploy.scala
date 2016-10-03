@@ -42,6 +42,7 @@ object SelfDeploy extends DeploymentType with S3AclParams {
       val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
       List(
         S3Upload(
+          target.region,
           bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           paths = Seq(pkg.s3Package -> prefix)
         )

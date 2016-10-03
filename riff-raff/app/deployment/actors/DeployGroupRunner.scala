@@ -12,7 +12,7 @@ import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
 import magenta.input.resolver.Resolver
 import magenta.json.JsonReader
-import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources}
+import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources, Region}
 import org.joda.time.DateTime
 import resources.PrismLookup
 
@@ -182,7 +182,7 @@ class DeployGroupRunner(
           Try(artifact.deployObject.fetchContentAsString()(client).get)
         }(client, safeReporter)
         val project = JsonReader.parse(json, s3Artifact)
-        record.parameters.toDeployContext(record.uuid, project, resources))
+        record.parameters.toDeployContext(record.uuid, project, resources, Region(target.aws.defaultRegionName))
       }
 
       if (DeploymentGraph.toTaskList(context.tasks).isEmpty)
