@@ -141,7 +141,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
       lazy val region = awsRegion(regionName)
-      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
     }
   }
 
@@ -154,7 +154,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("build.aws.region", "eu-west-1")
       lazy val region = awsRegion(regionName)
-      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
     }
   }
 
@@ -166,7 +166,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("tag.aws.region", "eu-west-1")
       lazy val region = awsRegion(regionName)
-      implicit lazy val client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
     }
   }
 
