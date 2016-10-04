@@ -14,6 +14,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
         |    parameters:
         |      testParam: testValue
         |    stacks: [testStack]
+        |    regions: [eu-west-1]
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = DeploymentResolver.resolve(yaml)
@@ -88,6 +89,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
   it should "use values from a simple template" in {
     val yamlString =
       """
+        |regions: ["eu-west-1"]
         |templates:
         |  testTemplate:
         |    type: testType
@@ -278,6 +280,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yamlString =
       """
         |stacks: [global-stack]
+        |regions: [global-region]
         |templates:
         |  nestedTemplate:
         |    type: testType
@@ -307,6 +310,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yamlString =
       """
         |stacks: [global-stack]
+        |regions: [global-region]
         |templates:
         |  nestedTemplate:
         |    type: testType
@@ -333,6 +337,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yamlString =
       """
         |stacks: [global-stack]
+        |regions: [global-region]
         |templates:
         |  nestedTemplate:
         |    type: testType
@@ -356,6 +361,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yamlString =
       """
         |stacks: [global-stack]
+        |regions: [global-region]
         |templates:
         |  nestedTemplate:
         |    type: testType
@@ -376,6 +382,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yamlString =
       """
         |stacks: [global-stack]
+        |regions: [global-region]
         |deployments:
         |  test:
         |    type: autoscaling
@@ -391,6 +398,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
   it should "report an error if no stacks are provided" in {
     val yamlString =
       """
+        |regions: [global-region]
         |deployments:
         |  test:
         |    type: autoscaling
@@ -398,6 +406,19 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with EitherVal
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = DeploymentResolver.resolve(yaml)
     deployments.head.left.value should be(ConfigError("test", "No stacks provided"))
+  }
+
+  it should "report an error if no regions are provided" in {
+    val yamlString =
+      """
+        |stacks: [global-stack]
+        |deployments:
+        |  test:
+        |    type: autoscaling
+      """.stripMargin
+    val yaml = RiffRaffYamlReader.fromString(yamlString)
+    val deployments = DeploymentResolver.resolve(yaml)
+    deployments.head.left.value should be(ConfigError("test", "No regions provided"))
   }
 
   def assertDeployments(maybeDeployments: List[Either[ConfigError, Deployment]]): List[Deployment] = {

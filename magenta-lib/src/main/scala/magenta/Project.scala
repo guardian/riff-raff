@@ -128,11 +128,4 @@ case class DeployParameters(
                              recipe: RecipeName = DefaultRecipe(),
                              stacks: Seq[NamedStack] = Seq(),
                              hostList: List[String] = Nil
-                             ) {
-
-  def toDeployContext(uuid: UUID, project: Project, resources: DeploymentResources, region: Region): DeployContext = {
-    DeployContext(uuid, this, project, resources, region)
-  }
-
-  def matchingHost(hostName:String) = hostList.isEmpty || hostList.contains(hostName)
-}
+                             )

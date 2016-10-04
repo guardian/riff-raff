@@ -172,7 +172,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object target {
     object aws {
-      lazy val defaultRegionName = configuration.getStringProperty("target.aws.defaultRegion", "eu-west-1")
+      lazy val deployJsonRegionName = configuration.getStringProperty("target.aws.deployJsonRegion", "eu-west-1")
     }
   }
 

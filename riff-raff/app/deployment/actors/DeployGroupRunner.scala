@@ -174,7 +174,7 @@ class DeployGroupRunner(
 //            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.size} errors")
 //          case Right(success) => success
 //        }
-        ???
+        safeReporter.fail("Riff-Raff does not yet support riff-raff.yaml files")
       } getOrElse {
         safeReporter.info("Falling back to deploy.json")
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
@@ -182,7 +182,7 @@ class DeployGroupRunner(
           Try(artifact.deployObject.fetchContentAsString()(client).get)
         }(client, safeReporter)
         val project = JsonReader.parse(json, s3Artifact)
-        record.parameters.toDeployContext(record.uuid, project, resources, Region(target.aws.defaultRegionName))
+        DeployContext(record.uuid, record.parameters, project, resources, Region(target.aws.deployJsonRegionName))
       }
 
       if (DeploymentGraph.toTaskList(context.tasks).isEmpty)

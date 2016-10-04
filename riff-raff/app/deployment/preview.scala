@@ -68,7 +68,7 @@ object Preview {
    */
   def apply(parameters: DeployParameters, resources: DeploymentResources): Preview = {
     val project = Preview.getProject(parameters.build, resources)
-    Preview(project, parameters, resources, Region(target.aws.defaultRegionName))
+    Preview(project, parameters, resources, Region(target.aws.deployJsonRegionName))
   }
 }
 

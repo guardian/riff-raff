@@ -47,19 +47,19 @@ object ASG extends AWS {
   def makeAsgClient(keyRing: KeyRing, region: Region): AmazonAutoScalingClient =
     new AmazonAutoScalingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def desiredCapacity(name: String, capacity: Int)(implicit client: AmazonAutoScalingClient) =
+  def desiredCapacity(name: String, capacity: Int, client: AmazonAutoScalingClient) =
     client.setDesiredCapacity(
       new SetDesiredCapacityRequest().withAutoScalingGroupName(name).withDesiredCapacity(capacity)
     )
 
-  def maxCapacity(name: String, capacity: Int)(implicit client: AmazonAutoScalingClient) =
+  def maxCapacity(name: String, capacity: Int, client: AmazonAutoScalingClient) =
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup)(implicit asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
+  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) match {
       case Some(name) => {
-        val elbHealth = ELB.instanceHealth(name)
+        val elbHealth = ELB.instanceHealth(name, elbClient)
         elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
       }
       case None => {
@@ -72,8 +72,8 @@ object ASG extends AWS {
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.headOption
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance)(implicit asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
-    elbName(asg) foreach (ELB.deregister(_, instance))
+  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
+    elbName(asg) foreach (ELB.deregister(_, instance, elbClient))
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
@@ -81,24 +81,24 @@ object ASG extends AWS {
     )
   }
 
-  def refresh(asg: AutoScalingGroup)(implicit client: AmazonAutoScalingClient) =
+  def refresh(asg: AutoScalingGroup, client: AmazonAutoScalingClient) =
     client.describeAutoScalingGroups(
       new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
     ).getAutoScalingGroups.head
 
-  def suspendAlarmNotifications(name: String)(implicit client: AmazonAutoScalingClient) = client.suspendProcesses(
+  def suspendAlarmNotifications(name: String, client: AmazonAutoScalingClient) = client.suspendProcesses(
     new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def resumeAlarmNotifications(name: String)(implicit client: AmazonAutoScalingClient) = client.resumeProcesses(
+  def resumeAlarmNotifications(name: String, client: AmazonAutoScalingClient) = client.resumeProcesses(
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack)
-    (implicit client: AmazonAutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AmazonAutoScalingClient,
+    reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
-    implicit def autoscalingGroup2tagAndApp(asg: AutoScalingGroup) = new {
+    implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
         tag.getKey == key && tag.getValue == value
       }
@@ -148,24 +148,24 @@ object ASG extends AWS {
 }
 
 object ELB extends AWS {
-  def makeElbClient(implicit keyRing: KeyRing, region: Region): AmazonElasticLoadBalancingClient =
+  def makeElbClient(keyRing: KeyRing, region: Region): AmazonElasticLoadBalancingClient =
     new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def instanceHealth(elbName: String)(implicit client: AmazonElasticLoadBalancingClient) =
+  def instanceHealth(elbName: String, client: AmazonElasticLoadBalancingClient) =
     client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates
 
-  def deregister(elbName: String, instance: ASGInstance)(implicit client: AmazonElasticLoadBalancingClient) =
+  def deregister(elbName: String, instance: ASGInstance, client: AmazonElasticLoadBalancingClient) =
     client.deregisterInstancesFromLoadBalancer(
       new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
         .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
 }
 
 object EC2 extends AWS {
-  def makeEc2Client(implicit keyRing: KeyRing, region: Region): AmazonEC2Client = {
+  def makeEc2Client(keyRing: KeyRing, region: Region): AmazonEC2Client = {
     new AmazonEC2Client(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
   }
 
-  def setTag(instances: List[ASGInstance], key: String, value: String)(implicit client: AmazonEC2Client) {
+  def setTag(instances: List[ASGInstance], key: String, value: String, client: AmazonEC2Client) {
     val request = new CreateTagsRequest().
       withResources(instances map { _.getInstanceId }).
       withTags(new EC2Tag(key, value))
@@ -173,16 +173,16 @@ object EC2 extends AWS {
     client.createTags(request)
   }
 
-  def hasTag(instance: ASGInstance, key: String, value: String)(implicit client: AmazonEC2Client): Boolean = {
-    describe(instance).getTags exists { tag =>
+  def hasTag(instance: ASGInstance, key: String, value: String, client: AmazonEC2Client): Boolean = {
+    describe(instance, client).getTags exists { tag =>
       tag.getKey == key && tag.getValue == value
     }
   }
 
-  def describe(instance: ASGInstance)(implicit client: AmazonEC2Client) = client.describeInstances(
+  def describe(instance: ASGInstance, client: AmazonEC2Client) = client.describeInstances(
     new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
 
-  def apply(instance: ASGInstance)(implicit client: AmazonEC2Client) = describe(instance)
+  def apply(instance: ASGInstance, client: AmazonEC2Client) = describe(instance, client)
 }
 
 trait AWS {
