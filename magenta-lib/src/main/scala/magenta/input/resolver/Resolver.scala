@@ -1,34 +1,61 @@
 package magenta.input.resolver
 
-import magenta.graph.Graph
-import magenta.input.{Deployment, RiffRaffDeployConfig}
+import magenta.artifact.S3Artifact
+import magenta.{DeployParameters, DeploymentResources}
+import magenta.deployment_type.DeploymentType
+import magenta.graph.{DeploymentTasks, Graph}
+import magenta.input._
 
 object Resolver {
-  def resolve(config: RiffRaffDeployConfig) = {
-    // this is a place holder that tries to tie some things together
+  def resolve(yamlConfig: String, deploymentResources: DeploymentResources, parameters: DeployParameters,
+    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Either[ConfigErrors, Graph[DeploymentTasks]] = {
 
-    // turn the config into a set of deployments (resolve templates etc)
-    // val deployments = DeploymentResolver.resolve(config)
+    val config = RiffRaffYamlReader.fromString(yamlConfig)
+    val deployments = DeploymentResolver.resolve(config)
 
-    // validate that deployment types and dependencies all exist
-    // val validatedDeployments = DeploymentTypeResolver.validateDeploymentType(deployment, DeploymentType.all)
+    val validatedDeployments = deployments.map { either =>
+      either.right.flatMap { deployment =>
+        DeploymentTypeResolver.validateDeploymentType(deployment, DeploymentType.all)
+      }
+    }
 
-    // this is a placeholder for how we filter previews in the UI
-    // val filteredDeployment = ???
+    if (validatedDeployments.exists(_.isLeft)) {
+      Left(ConfigErrors(validatedDeployments.flatMap(_.left.toOption)))
+    } else {
+      val deployments = validatedDeployments.map(_.right.get)
 
-    // now convert it into a graph
-//    val componentGraphs: List[Graph[Deployment]] = for {
-//      stack <- stacks
-//      region <- regions
-//      deploymentsForStackAndRegion = filterDeployments(stack, region, ...)
-//      graphForStackAndRegion = DeploymentGraphBuilder.buildGraph()
-//    } yield graphForStackAndRegion
-//    val graph = componentGraphs.reduceLeft(_ joinParallel _)
+      // TODO: this is a placeholder for when we filter previews in the UI
+      val userSelectedDeployments = deployments
 
-    // now flatten out the actions
-    //val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(graph)
+      val stacks = userSelectedDeployments.flatMap(_.stacks).distinct
+      val regions = userSelectedDeployments.flatMap(_.regions).distinct
 
-    // now resolve each deployment into tasks
-    //val deploymentTaskGraph = DeploymentTaskResolver.resolveGraph(flattenedGraph)
+      val stackRegionGraphs: List[Graph[Deployment]] = for {
+        stack <- stacks
+        region <- regions
+        deploymentsForStackAndRegion = filterDeployments(userSelectedDeployments, stack, region)
+        graphForStackAndRegion = DeploymentGraphBuilder.buildGraph(deploymentsForStackAndRegion)
+      } yield graphForStackAndRegion
+
+      val combinedGraph = stackRegionGraphs.reduceLeft(_ joinParallel _)
+      val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(combinedGraph)
+      val deploymentTaskGraph = flattenedGraph.map { deployment =>
+        TaskResolver.resolve(deployment, deploymentResources, parameters, deploymentTypes, artifact)
+      }
+
+      if (deploymentTaskGraph.nodes.values.exists(_.isLeft)) {
+        Left(ConfigErrors(deploymentTaskGraph.nodes.toList.values.flatMap(_.left.toOption)))
+      } else {
+        Right(deploymentTaskGraph.map(_.right.get))
+      }
+    }
+  }
+
+  private[resolver] def filterDeployments(deployments: List[Deployment], stack: String, region: String): List[Deployment] = {
+    deployments.flatMap {
+      case d@Deployment(_, _, stacks, regions, _, _, _, _, _) if stacks.contains(stack) && regions.contains(region) =>
+        Some(d.copy(stacks = List(stack), regions = List(region)))
+      case _ => None
+    }
   }
 }

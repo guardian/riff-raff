@@ -76,9 +76,16 @@ object Lambda extends DeploymentType  {
 
   def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region)(reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
-    if (bucketOption.isEmpty) reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
-    
-    val regions: List[Region] = regionsParam.get(pkg).map(_.filter(regionExists(_)(reporter)).map(Region)).getOrElse(List(targetRegion))
+    if (bucketOption.isEmpty) {
+      if (pkg.legacyConfig)
+        reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
+      else
+        reporter.fail("Uploading directly to lambda is not supported in a riff-raff.yaml file (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
+    }
+
+    val regionsOption = regionsParam.get(pkg)
+    if (!pkg.legacyConfig && regionsOption.isDefined) reporter.fail(s"The regions parameter for the aws-lambda deployment type should not be used in the riff-raff.yaml format. Use the global, template or deployment regions fields of the riff-raff.yaml format instead.")
+    val regions: List[Region] = regionsOption.map(_.filter(regionExists(_)(reporter)).map(Region)).getOrElse(List(targetRegion))
 
     (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg)) match {
       case (Some(functionNames), None, prefixStack) =>

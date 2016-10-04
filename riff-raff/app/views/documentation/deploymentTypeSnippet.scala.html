@@ -1,4 +1,4 @@
-@(typeDescription: String, paramsDescriptions: Seq[(String,String,Option[String])])
+@(typeDescription: String, paramsDescriptions: Seq[(String,String,Option[String],Option[String])])
 
 @docs.MarkDown.toHtml(typeDescription)
 
@@ -8,14 +8,16 @@
         <tr>
             <th>Parameter</th>
             <th>Description</th>
-            <th>Default</th>
+            <th>Default (riff-raff.yaml)</th>
+            <th>Default (legacy deploy.json)</th>
         </tr>
     </thead>
-    @paramsDescriptions.map { case (name, desc, default) =>
+    @paramsDescriptions.map { case (name, desc, defaultJson, defaultYaml) =>
     <tr>
       <td>@name</td>
       <td>@docs.MarkDown.toHtml(desc)</td>
-      <td nowrap="nowrap"><em>@default.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+      <td nowrap="nowrap"><em>@defaultYaml.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+      <td nowrap="nowrap"><em>@defaultJson.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
     </tr>
     }
 </table>

@@ -133,7 +133,7 @@ object Graph {
   */
 case class Graph[T](edges: Set[Edge[T]]) {
   val nodes = edges.map(_.from) ++ edges.map(_.to)
-  private val valueNodes = nodes.filterValueNodes
+  val valueNodes = nodes.filterValueNodes
 
   /** Error is a utility class for collecting errors */
   case class Error(messages: List[String]) {

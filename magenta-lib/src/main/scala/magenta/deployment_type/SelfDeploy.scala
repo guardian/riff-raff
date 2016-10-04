@@ -1,10 +1,8 @@
 package magenta.deployment_type
 
-import java.io.File
-
 import magenta.tasks.{ChangeSwitch, S3Upload}
 
-object SelfDeploy extends DeploymentType with S3AclParams {
+object SelfDeploy extends DeploymentType {
   val name = "self-deploy"
   val documentation =
     """
@@ -22,6 +20,10 @@ object SelfDeploy extends DeploymentType with S3AclParams {
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
     """.stripMargin
   )
+
+  val publicReadAcl = Param[Boolean]("publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+  ).defaultFromPackage(_.legacyConfig)
 
   val managementPort = Param[Int]("managementPort",
     "For deferred deployment only: The port of the management pages containing the location of the switchboard"

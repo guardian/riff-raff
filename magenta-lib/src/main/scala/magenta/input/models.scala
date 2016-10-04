@@ -3,6 +3,10 @@ package magenta.input
 import play.api.libs.json._
 
 case class ConfigError(context: String, message: String)
+case class ConfigErrors(errors: List[ConfigError]) {
+  def :::(other: ConfigErrors) = ConfigErrors(other.errors ::: errors)
+  def ::(other: ConfigError) = ConfigErrors(other :: errors)
+}
 
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],

@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object ElasticSearch extends DeploymentType with S3AclParams {
+object ElasticSearch extends DeploymentType {
   def name = "elasticsearch"
   val documentation =
     """
@@ -12,6 +12,11 @@ object ElasticSearch extends DeploymentType with S3AclParams {
     """.stripMargin
 
   val bucket = Param[String]("bucket", "S3 bucket that the artifact should be uploaded into")
+
+  val publicReadAcl = Param[Boolean]("publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+  ).defaultFromPackage(_.legacyConfig)
+
   val secondsToWait = Param("secondsToWait",
     """Number of seconds to wait for the ElasticSearch cluster to become green
       | (also used as the wait time for the instance termination)"""
