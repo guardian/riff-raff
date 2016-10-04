@@ -18,7 +18,25 @@ import utils.Json._
 
 import scala.util.{Failure, Success, Try}
 
-class PrismLookup(wsClient: WSClient) extends Lookup with MagentaCredentials with Logging {
+class PrismLookup(wsClient: WSClient) extends Lookup with Logging {
+
+  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
+    apiCredentials = apps.toSeq.flatMap {
+      app => {
+        val KeyPattern = """credentials:(.*)""".r
+        val apiCredentials = data.keys flatMap {
+          case key@KeyPattern(service) =>
+            data.datum(key, app, stage, stack).flatMap { data =>
+              secretProvider.lookup(service, data.value).map { secret =>
+                service -> ApiCredentials(service, data.value, secret, data.comment)
+              }
+            }
+          case _ => None
+        }
+        apiCredentials
+      }
+    }.distinct.toMap
+  )
 
   object prism extends Logging {
     val url = conf.Configuration.lookup.prismUrl

@@ -213,9 +213,6 @@ trait AWS {
 
   lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
-  def credentials(keyRing: KeyRing): BasicAWSCredentials = {
-    keyRing.apiCredentials.get("aws").map{ credentials => new BasicAWSCredentials(credentials.id,credentials.secret) }.getOrElse{ envCredentials }
-  }
   def provider(keyRing: KeyRing): AWSCredentialsProvider = new AWSCredentialsProviderChain(
     new AWSCredentialsProvider {
       def refresh() {}
