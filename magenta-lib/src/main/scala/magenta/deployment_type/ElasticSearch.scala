@@ -25,14 +25,14 @@ object ElasticSearch extends DeploymentType with S3AclParams {
       val parameters = target.parameters
       val stack = target.stack
       List(
-        CheckGroupSize(pkg, parameters.stage, stack),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
-        SuspendAlarmNotifications(pkg, parameters.stage, stack),
-        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack),
-        DoubleSize(pkg, parameters.stage, stack),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
-        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000),
-        ResumeAlarmNotifications(pkg, parameters.stage, stack)
+        CheckGroupSize(pkg, parameters.stage, stack, target.region),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
+        SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
+        TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
+        DoubleSize(pkg, parameters.stage, stack, target.region),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
+        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
+        ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
       )
     }
     case "uploadArtifacts" => (pkg) => (resources, target) =>
@@ -41,6 +41,7 @@ object ElasticSearch extends DeploymentType with S3AclParams {
       val prefix: String = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
       List(
         S3Upload(
+          target.region,
           bucket(pkg),
           Seq(pkg.s3Package -> prefix),
           publicReadAcl = publicReadAcl(pkg)

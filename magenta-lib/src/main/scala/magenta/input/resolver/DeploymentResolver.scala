@@ -3,8 +3,6 @@ package magenta.input.resolver
 import magenta.input.{ConfigError, Deployment, DeploymentOrTemplate, RiffRaffDeployConfig}
 
 object DeploymentResolver {
-  val DEFAULT_REGIONS = List("eu-west-1")
-
   def resolve(config: RiffRaffDeployConfig): List[Either[ConfigError, Deployment]] = {
     config.deployments.map { case (label, rawDeployment) =>
       for {
@@ -23,12 +21,13 @@ object DeploymentResolver {
     for {
       deploymentType <- templated.`type`.toRight(ConfigError(label, "No type field provided")).right
       stacks <- templated.stacks.orElse(globalStacks).toRight(ConfigError(label, "No stacks provided")).right
+      regions <- templated.regions.orElse(globalRegions).toRight(ConfigError(label, "No regions provided")).right
     } yield {
       Deployment(
         name              = label,
         `type`            = deploymentType,
         stacks            = stacks,
-        regions           = templated.regions.orElse(globalRegions).getOrElse(DEFAULT_REGIONS),
+        regions           = regions,
         actions           = templated.actions,
         app               = templated.app.getOrElse(label),
         contentDirectory  = templated.contentDirectory.getOrElse(label),

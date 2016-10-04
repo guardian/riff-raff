@@ -1,7 +1,7 @@
 package magenta
 package json
 
-import magenta.artifact.{S3Artifact, S3Package}
+import magenta.artifact.{S3JsonArtifact, S3Path}
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsString, Json}
 
@@ -61,14 +61,14 @@ class JsonReaderTest extends FlatSpec with Matchers {
                           """
 
   "json parser" should "parse json and resolve links" in {
-    val parsed = JsonReader.parse(deployJsonExample, S3Artifact("artifact-bucket", "test/123"))
+    val parsed = JsonReader.parse(deployJsonExample, S3JsonArtifact("artifact-bucket", "test/123"))
 
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Package("artifact-bucket", "test/123/packages/index-builder")))
-    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Package("artifact-bucket", "test/123/packages/api")))
-    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Package("artifact-bucket", "test/123/packages/solr")))
+    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Path("artifact-bucket", "test/123/packages/index-builder")))
+    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/api")))
+    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/solr")))
 
     val recipes = parsed.recipes
     recipes.size should be (4)
@@ -88,7 +88,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """
 
   "json parser" should "infer a single app if none specified" in {
-    val parsed = JsonReader.parse(minimalExample, S3Artifact("artifact-bucket", "test/123"))
+    val parsed = JsonReader.parse(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"))
 
     parsed.applications should be (Set(App("dinky")))
   }
@@ -103,7 +103,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """
 
   "json parser" should "infer a default recipe that deploys all packages" in {
-    val parsed = JsonReader.parse(twoPackageExample, S3Artifact("artifact-bucket", "test/123"))
+    val parsed = JsonReader.parse(twoPackageExample, S3JsonArtifact("artifact-bucket", "test/123"))
 
     val recipes = parsed.recipes
     recipes.size should be(1)
@@ -111,9 +111,9 @@ class JsonReaderTest extends FlatSpec with Matchers {
   }
 
   "json parser" should "default to using the package name for the file name" in {
-    val parsed = JsonReader.parse(minimalExample, S3Artifact("artifact-bucket", "test/123"))
+    val parsed = JsonReader.parse(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"))
 
-    parsed.packages("dinky").s3Package should be(S3Package("artifact-bucket", "test/123/packages/dinky"))
+    parsed.packages("dinky").s3Package should be(S3Path("artifact-bucket", "test/123/packages/dinky"))
   }
 
   val withExplicitFileName = """
@@ -128,8 +128,8 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """
 
   "json parser" should "use override file name if specified" in {
-    val parsed = JsonReader.parse(withExplicitFileName, S3Artifact("artifact-bucket", "test/123"))
+    val parsed = JsonReader.parse(withExplicitFileName, S3JsonArtifact("artifact-bucket", "test/123"))
 
-    parsed.packages("dinky").s3Package should be(S3Package("artifact-bucket", "test/123/packages/awkward"))
+    parsed.packages("dinky").s3Package should be(S3Path("artifact-bucket", "test/123/packages/awkward"))
   }
 }

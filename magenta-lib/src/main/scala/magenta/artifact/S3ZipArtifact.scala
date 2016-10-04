@@ -13,13 +13,13 @@ import scalax.file.Path
 import scalax.io.{Resource, ScalaIOException}
 
 object S3ZipArtifact {
-  def download(artifact: S3Artifact)(implicit client: AmazonS3, reporter: DeployReporter): File = {
+  def download(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): File = {
     val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
     download(artifact, dir)(client, reporter)
     dir
   }
 
-  def download(artifact: S3Artifact, dir: File)(implicit client: AmazonS3, reporter: DeployReporter) {
+  def download(artifact: S3JsonArtifact, dir: File)(implicit client: AmazonS3, reporter: DeployReporter) {
     reporter.info("Downloading artifact")
 
     val path = s"${artifact.key}/artifacts.zip"
@@ -44,12 +44,12 @@ object S3ZipArtifact {
     }
   }
 
-  def delete(artifact: S3Artifact)(implicit client: AmazonS3): Unit = {
+  def delete(artifact: S3JsonArtifact)(implicit client: AmazonS3): Unit = {
     val path = s"${artifact.key}/artifacts.zip"
     client.deleteObject(artifact.bucket, path)
   }
 
-  def withDownload[T](artifact: S3Artifact)(block: File => T)
+  def withDownload[T](artifact: S3JsonArtifact)(block: File => T)
     (client: AmazonS3, reporter: DeployReporter): T = {
     val tempDir = Try { download(artifact)(client, reporter) }
     val result = tempDir.map(block)

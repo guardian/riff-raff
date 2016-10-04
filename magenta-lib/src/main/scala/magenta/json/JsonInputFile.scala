@@ -1,7 +1,7 @@
 package magenta
 package json
 
-import magenta.artifact.S3Artifact
+import magenta.artifact.{S3JsonArtifact, S3Path}
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 
 case class JsonPackage(
@@ -37,7 +37,7 @@ object JsonInputFile {
 
 
 object JsonReader {
-  def parse(s: String, artifact: S3Artifact): Project = {
+  def parse(s: String, artifact: S3JsonArtifact): Project = {
     val inputFile: JsonInputFile = Json.fromJson[JsonInputFile](Json.parse(s)) match {
       case JsSuccess(result, _) => result
       case JsError(errors) => throw new IllegalArgumentException(s"Failed to parse JSON: $errors")
@@ -48,7 +48,7 @@ object JsonReader {
   def defaultRecipes(packages: Map[String, DeploymentPackage]) =
     Map("default" -> JsonRecipe(actions = Some(packages.values.map(_.name + ".deploy").toList)))
 
-  private def parse(input: JsonInputFile, artifact: S3Artifact): Project = {
+  private def parse(input: JsonInputFile, artifact: S3JsonArtifact): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
@@ -78,7 +78,7 @@ object JsonReader {
     )
   }
 
-  private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3Artifact) =
+  private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3JsonArtifact) =
     DeploymentPackage(
       name,
       jsonPackage.apps.getOrElse(Nil) match {
@@ -87,7 +87,7 @@ object JsonReader {
       },
       jsonPackage.safeData,
       jsonPackage.`type`,
-      artifact.getPackage(jsonPackage.fileName.getOrElse(name))
+      S3Path(artifact, s"packages/${jsonPackage.fileName.getOrElse(name)}")
     )
 
 }

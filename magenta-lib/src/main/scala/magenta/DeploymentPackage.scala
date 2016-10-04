@@ -1,6 +1,6 @@
 package magenta
 
-import magenta.artifact.S3Package
+import magenta.artifact.S3Path
 import magenta.deployment_type.DeploymentType
 import play.api.libs.json.JsValue
 
@@ -9,7 +9,7 @@ case class DeploymentPackage(
   pkgApps: Seq[App],
   pkgSpecificData: Map[String, JsValue],
   deploymentTypeName: String,
-  s3Package: S3Package) {
+  s3Package: S3Path) {
 
   def mkAction(name: String): Action = pkgType.mkAction(name)(this)
 
