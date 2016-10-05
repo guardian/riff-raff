@@ -20,7 +20,9 @@ import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Reg
 import scala.collection.JavaConversions._
 
 object S3 extends AWS {
-  def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3Client =
+  def makeS3client(keyRing: KeyRing,
+                   region: Region,
+                   config: ClientConfiguration = clientConfiguration): AmazonS3Client =
     new AmazonS3Client(provider(keyRing), config).withRegion(awsRegion(region))
 }
 
@@ -35,11 +37,10 @@ object Lambda extends AWS {
     request
   }
 
-  def lambdaUpdateFunctionCodeRequest(functionName: String, s3Bucket: String, s3Key: String): UpdateFunctionCodeRequest = {
-    new UpdateFunctionCodeRequest()
-      .withFunctionName(functionName)
-      .withS3Bucket(s3Bucket)
-      .withS3Key(s3Key)
+  def lambdaUpdateFunctionCodeRequest(functionName: String,
+                                      s3Bucket: String,
+                                      s3Key: String): UpdateFunctionCodeRequest = {
+    new UpdateFunctionCodeRequest().withFunctionName(functionName).withS3Bucket(s3Bucket).withS3Key(s3Key)
   }
 }
 
@@ -56,35 +57,44 @@ object ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
+  def isStabilized(asg: AutoScalingGroup,
+                   asgClient: AmazonAutoScalingClient,
+                   elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) match {
       case Some(name) => {
         val elbHealth = ELB.instanceHealth(name, elbClient)
-        elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
+        elbHealth.size == asg.getDesiredCapacity && elbHealth.forall(instance => instance.getState == "InService")
       }
       case None => {
         val instances = asg.getInstances
         instances.size == asg.getDesiredCapacity &&
-          instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString)
+        instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString)
       }
     }
   }
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.headOption
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
+  def cull(asg: AutoScalingGroup,
+           instance: ASGInstance,
+           asgClient: AmazonAutoScalingClient,
+           elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) foreach (ELB.deregister(_, instance, elbClient))
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
-        .withInstanceId(instance.getInstanceId).withShouldDecrementDesiredCapacity(true)
+        .withInstanceId(instance.getInstanceId)
+        .withShouldDecrementDesiredCapacity(true)
     )
   }
 
   def refresh(asg: AutoScalingGroup, client: AmazonAutoScalingClient) =
-    client.describeAutoScalingGroups(
-      new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
-    ).getAutoScalingGroups.head
+    client
+      .describeAutoScalingGroups(
+        new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
+      )
+      .getAutoScalingGroups
+      .head
 
   def suspendAlarmNotifications(name: String, client: AmazonAutoScalingClient) = client.suspendProcesses(
     new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
@@ -94,9 +104,12 @@ object ASG extends AWS {
     new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
   )
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AmazonAutoScalingClient,
-    reporter: DeployReporter): AutoScalingGroup = {
-    case class ASGMatch(app:App, matches:List[AutoScalingGroup])
+  def groupForAppAndStage(pkg: DeploymentPackage,
+                          stage: Stage,
+                          stack: Stack,
+                          client: AmazonAutoScalingClient,
+                          reporter: DeployReporter): AutoScalingGroup = {
+    case class ASGMatch(app: App, matches: List[AutoScalingGroup])
 
     implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
       def hasTag(key: String, value: String) = asg.getTags exists { tag =>
@@ -128,7 +141,7 @@ object ASG extends AWS {
       if (matches.isEmpty) None else Some(ASGMatch(app, matches))
     }
 
-    val appMatch:ASGMatch = appToMatchingGroups match {
+    val appMatch: ASGMatch = appToMatchingGroups match {
       case Seq() =>
         reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
       case Seq(onlyMatch) => onlyMatch
@@ -142,7 +155,8 @@ object ASG extends AWS {
         reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
         singleGroup
       case ASGMatch(app, groupList) =>
-        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+        reporter.fail(
+          s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }
@@ -156,7 +170,8 @@ object ELB extends AWS {
 
   def deregister(elbName: String, instance: ASGInstance, client: AmazonElasticLoadBalancingClient) =
     client.deregisterInstancesFromLoadBalancer(
-      new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
+      new DeregisterInstancesFromLoadBalancerRequest()
+        .withLoadBalancerName(elbName)
         .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
 }
 
@@ -166,9 +181,8 @@ object EC2 extends AWS {
   }
 
   def setTag(instances: List[ASGInstance], key: String, value: String, client: AmazonEC2Client) {
-    val request = new CreateTagsRequest().
-      withResources(instances map { _.getInstanceId }).
-      withTags(new EC2Tag(key, value))
+    val request =
+      new CreateTagsRequest().withResources(instances map { _.getInstanceId }).withTags(new EC2Tag(key, value))
 
     client.createTags(request)
   }
@@ -179,17 +193,21 @@ object EC2 extends AWS {
     }
   }
 
-  def describe(instance: ASGInstance, client: AmazonEC2Client) = client.describeInstances(
-    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
+  def describe(instance: ASGInstance, client: AmazonEC2Client) =
+    client
+      .describeInstances(new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId))
+      .getReservations
+      .flatMap(_.getInstances)
+      .head
 
   def apply(instance: ASGInstance, client: AmazonEC2Client) = describe(instance, client)
 }
 
 trait AWS {
-  lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
+  lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse {
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
-  lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
+  lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse {
     sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
   }
 
@@ -198,9 +216,10 @@ trait AWS {
   def provider(keyRing: KeyRing): AWSCredentialsProvider = new AWSCredentialsProviderChain(
     new AWSCredentialsProvider {
       def refresh() {}
-      def getCredentials = keyRing.apiCredentials.get("aws") map {
-          credentials => new BasicAWSCredentials(credentials.id,credentials.secret)
-      } get
+      def getCredentials =
+        keyRing.apiCredentials.get("aws") map { credentials =>
+          new BasicAWSCredentials(credentials.id, credentials.secret)
+        } get
     },
     new AWSCredentialsProvider {
       def refresh() {}
@@ -210,8 +229,8 @@ trait AWS {
 
   def awsRegion(region: Region): AwsRegion = RegionUtils.getRegion(region.name)
 
-  val clientConfiguration = new ClientConfiguration().
-    withRetryPolicy(new RetryPolicy(
+  val clientConfiguration = new ClientConfiguration().withRetryPolicy(
+    new RetryPolicy(
       PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
       PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
       20,

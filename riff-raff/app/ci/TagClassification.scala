@@ -15,11 +15,12 @@ case class TagClassification(text: String) {
   lazy val status = keywordStatusMap.get(text.toLowerCase)
 
   lazy val link = text match {
-    case HttpMatcher(l) => try {
-      Some(new URI(l))
-    } catch {
-      case e:URISyntaxException => None
-    }
+    case HttpMatcher(l) =>
+      try {
+        Some(new URI(l))
+      } catch {
+        case e: URISyntaxException => None
+      }
     case _ => None
   }
 }

@@ -28,12 +28,12 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
   def init() {
     val builds = buildCandidates(CIBuild.newBuilds)
 
-    def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+    def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse {
       log.error("Failed to retrieve CD configs")
       Nil
     }
     sub = Some(builds.subscribe { b =>
-      getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
+      getMatchesForSuccessfulBuilds(b, cdConfigs) foreach { x =>
         runDeploy(getDeployParams(x))
       }
     })
@@ -63,29 +63,29 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
 
 object ContinuousDeployment extends Logging {
 
-  def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
+  def getMatchesForSuccessfulBuilds(
+      build: CIBuild,
+      configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
       log.debug(s"Matching $build against $config")
       config.findMatchOnSuccessfulBuild(build).map(build => config -> build)
     }
   }
 
-  def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
-    val (config,build) = configBuildTuple
+  def getDeployParams(configBuildTuple: (ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
+    val (config, build) = configBuildTuple
     DeployParameters(
       Deployer("Continuous Deployment"),
-      MagentaBuild(build.jobName,build.number),
+      MagentaBuild(build.jobName, build.number),
       Stage(config.stage),
       RecipeName(config.recipe)
     )
   }
 
   def retryUpTo[T](maxAttempts: Int)(thunk: () => T): Try[T] = {
-    val thunkStream = Stream.continually(Try(thunk()))
-      .take(maxAttempts)
+    val thunkStream = Stream.continually(Try(thunk())).take(maxAttempts)
 
     thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
   }
 
 }
-

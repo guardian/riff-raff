@@ -14,54 +14,59 @@ object SelfDeploy extends DeploymentType {
     """.stripMargin
 
   val bucket = Param[String]("bucket",
-    """
+                             """
       |S3 bucket name to upload artifact into.
       |
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
-    """.stripMargin
-  )
+    """.stripMargin)
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).defaultFromPackage(_.legacyConfig)
+  val publicReadAcl =
+    Param[Boolean]("publicReadAcl",
+                   "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)")
+      .defaultFromPackage(_.legacyConfig)
 
-  val managementPort = Param[Int]("managementPort",
-    "For deferred deployment only: The port of the management pages containing the location of the switchboard"
-  ).default(18080)
-  val managementProtocol = Param[String]("managementProtocol",
-    "For deferred deployment only: The protocol of the management pages containing the location of the switchboard"
-  ).default("http")
-  val switchboardPath = Param[String]("switchboardPath",
-    "For deferred deployment only: The URL path on the host to the switchboard management page"
-  ).default("/management/switchboard")
+  val managementPort = Param[Int](
+    "managementPort",
+    "For deferred deployment only: The port of the management pages containing the location of the switchboard")
+    .default(18080)
+  val managementProtocol = Param[String](
+    "managementProtocol",
+    "For deferred deployment only: The protocol of the management pages containing the location of the switchboard")
+    .default("http")
+  val switchboardPath =
+    Param[String]("switchboardPath",
+                  "For deferred deployment only: The URL path on the host to the switchboard management page")
+      .default("/management/switchboard")
 
   def defaultActions = List("uploadArtifacts", "selfDeploy")
 
   def actions = {
-    case "uploadArtifacts" => (pkg) => (resources, target) =>
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val artifactClient = resources.artifactClient
-      val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
-      List(
-        S3Upload(
-          target.region,
-          bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
-          paths = Seq(pkg.s3Package -> prefix)
+    case "uploadArtifacts" =>
+      (pkg) => (resources, target) =>
+        implicit val keyRing = resources.assembleKeyring(target, pkg)
+        implicit val artifactClient = resources.artifactClient
+        val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
+        List(
+          S3Upload(
+            target.region,
+            bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
+            paths = Seq(pkg.s3Package -> prefix)
+          )
         )
-      )
-    case "selfDeploy" => (pkg) => (resources, target) =>
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
-      hosts.map{ host =>
-        ChangeSwitch(
-          host,
-          managementProtocol(pkg),
-          managementPort(pkg),
-          switchboardPath(pkg),
-          "shutdown-when-inactive",
-          desiredState=true
-        )
-      }
+    case "selfDeploy" =>
+      (pkg) => (resources, target) =>
+        implicit val keyRing = resources.assembleKeyring(target, pkg)
+        val hosts =
+          pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
+        hosts.map { host =>
+          ChangeSwitch(
+            host,
+            managementProtocol(pkg),
+            managementPort(pkg),
+            switchboardPath(pkg),
+            "shutdown-when-inactive",
+            desiredState = true
+          )
+        }
   }
 }
-

@@ -21,9 +21,9 @@ object SummariseDeploysHousekeeping extends Lifecycle with Logging {
     deploys.size
   }
 
-  var summariseSchedule:Option[ScheduledAgent[Int]] = None
+  var summariseSchedule: Option[ScheduledAgent[Int]] = None
 
-  val update = DailyScheduledAgentUpdate[Int](housekeepingTime){ _ + summariseDeploys() }
+  val update = DailyScheduledAgentUpdate[Int](housekeepingTime) { _ + summariseDeploys() }
 
   def init() {
     summariseSchedule = Some(ScheduledAgent(0, update))

@@ -13,18 +13,18 @@ object Trigger extends Enumeration {
 }
 
 case class ContinuousDeploymentConfig(
-                                       id: UUID,
-                                       projectName: String,
-                                       stage: String,
-                                       recipe: String,
-                                       branchMatcher:Option[String],
-                                       trigger: Trigger.Mode,
-                                       user: String,
-                                       lastEdited: DateTime = new DateTime()
-                                       ) {
+    id: UUID,
+    projectName: String,
+    stage: String,
+    recipe: String,
+    branchMatcher: Option[String],
+    trigger: Trigger.Mode,
+    user: String,
+    lastEdited: DateTime = new DateTime()
+) {
   lazy val branchRE = branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
   lazy val buildFilter =
-    (build:CIBuild) => build.jobName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
+    (build: CIBuild) => build.jobName == projectName && branchRE.findFirstMatchIn(build.branchName).isDefined
 
   def findMatchOnSuccessfulBuild(build: CIBuild): Option[CIBuild] = {
     if (trigger == Trigger.SuccessfulBuild && buildFilter(build))
@@ -38,15 +38,15 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
   private class ConfigMongoFormat extends MongoFormat[ContinuousDeploymentConfig] {
     def toDBO(a: ContinuousDeploymentConfig) = {
       val values = Map(
-        "_id" -> a.id,
-        "projectName" -> a.projectName,
-        "stage" -> a.stage,
-        "recipe" -> a.recipe,
-        "triggerMode" -> a.trigger.id,
-        "user" -> a.user,
-        "lastEdited" -> a.lastEdited
-      ) ++
-        (a.branchMatcher map ("branchMatcher" -> _))
+          "_id" -> a.id,
+          "projectName" -> a.projectName,
+          "stage" -> a.stage,
+          "recipe" -> a.recipe,
+          "triggerMode" -> a.trigger.id,
+          "user" -> a.user,
+          "lastEdited" -> a.lastEdited
+        ) ++
+          (a.branchMatcher map ("branchMatcher" -> _))
       values.toMap
     }
 
@@ -60,16 +60,17 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
         case _ => Trigger.Disabled
       }
 
-      Some(ContinuousDeploymentConfig(
-        id = dbo.as[UUID]("_id"),
-        projectName = dbo.as[String]("projectName"),
-        stage = dbo.as[String]("stage"),
-        recipe = dbo.as[String]("recipe"),
-        trigger = triggerMode,
-        user = dbo.as[String]("user"),
-        lastEdited = dbo.as[DateTime]("lastEdited"),
-        branchMatcher = dbo.getAs[String]("branchMatcher")
-      ))
+      Some(
+        ContinuousDeploymentConfig(
+          id = dbo.as[UUID]("_id"),
+          projectName = dbo.as[String]("projectName"),
+          stage = dbo.as[String]("stage"),
+          recipe = dbo.as[String]("recipe"),
+          trigger = triggerMode,
+          user = dbo.as[String]("user"),
+          lastEdited = dbo.as[DateTime]("lastEdited"),
+          branchMatcher = dbo.getAs[String]("branchMatcher")
+        ))
 
     }
   }

@@ -7,8 +7,11 @@ import magenta.graph.{DeploymentTasks, Graph}
 import magenta.input._
 
 object Resolver {
-  def resolve(yamlConfig: String, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Either[ConfigErrors, Graph[DeploymentTasks]] = {
+  def resolve(yamlConfig: String,
+              deploymentResources: DeploymentResources,
+              parameters: DeployParameters,
+              deploymentTypes: Seq[DeploymentType],
+              artifact: S3Artifact): Either[ConfigErrors, Graph[DeploymentTasks]] = {
 
     val config = RiffRaffYamlReader.fromString(yamlConfig)
     val deployments = DeploymentResolver.resolve(config)
@@ -51,7 +54,9 @@ object Resolver {
     }
   }
 
-  private[resolver] def filterDeployments(deployments: List[Deployment], stack: String, region: String): List[Deployment] = {
+  private[resolver] def filterDeployments(deployments: List[Deployment],
+                                          stack: String,
+                                          region: String): List[Deployment] = {
     deployments.flatMap { deployment =>
       if (deployment.stacks.contains(stack) && deployment.regions.contains(region))
         Some(deployment.copy(stacks = List(stack), regions = List(region)))

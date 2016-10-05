@@ -37,7 +37,14 @@ trait DeploymentType {
 
 object DeploymentType {
   def all: Seq[DeploymentType] = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
+    ElasticSearch,
+    S3,
+    AutoScaling,
+    Fastly,
+    CloudFormation,
+    Lambda,
+    AmiCloudFormationParameter,
+    SelfDeploy
   )
 }
 
@@ -48,13 +55,13 @@ trait ParamRegister {
 case class Param[T](name: String,
                     documentation: String = "_undocumented_",
                     defaultValue: Option[T] = None,
-                    defaultValueFromPackage: Option[DeploymentPackage => T] = None)(implicit register:ParamRegister) {
+                    defaultValueFromPackage: Option[DeploymentPackage => T] = None)(implicit register: ParamRegister) {
   register.add(this)
 
   def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
   def apply(pkg: DeploymentPackage)(implicit reads: Reads[T], manifest: Manifest[T]): T =
-    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse{
+    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse {
       throw new NoSuchElementException(
         s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
       )
