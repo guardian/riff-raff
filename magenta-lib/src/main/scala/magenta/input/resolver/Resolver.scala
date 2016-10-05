@@ -52,10 +52,10 @@ object Resolver {
   }
 
   private[resolver] def filterDeployments(deployments: List[Deployment], stack: String, region: String): List[Deployment] = {
-    deployments.flatMap {
-      case d@Deployment(_, _, stacks, regions, _, _, _, _, _) if stacks.contains(stack) && regions.contains(region) =>
-        Some(d.copy(stacks = List(stack), regions = List(region)))
-      case _ => None
+    deployments.flatMap { deployment =>
+      if (deployment.stacks.contains(stack) && deployment.regions.contains(region))
+        Some(deployment.copy(stacks = List(stack), regions = List(region)))
+      else None
     }
   }
 }
