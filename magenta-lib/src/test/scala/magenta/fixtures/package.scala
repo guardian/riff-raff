@@ -22,7 +22,7 @@ package object fixtures {
 
   def project(recipe: Recipe, stacks: Stack*) = Project(Map.empty, Map(recipe.name -> recipe), defaultStacks = stacks)
 
-  def stubPackage = DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null)
+  def stubPackage = DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false)
 
   def stubPackageType(actionNames: Seq[String]) = StubDeploymentType(
     actions = {

@@ -23,7 +23,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val app = Seq(App("app"))
     val stack = NamedStack("cfn")
     val cfnStackName = s"cfn-app-PROD"
-    val p = DeploymentPackage("app", app, data, "cloudformation", S3Path("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("app", app, data, "cloudformation", S3Path("artifact-bucket", "test/123"), true)
 
     inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
