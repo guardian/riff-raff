@@ -1,12 +1,14 @@
 package magenta.input.resolver
 
+import magenta.deployment_type.Param
 import magenta.fixtures._
-import magenta.input.Deployment
+import magenta.input.{ConfigError, Deployment}
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
+import play.api.libs.json.JsNumber
 
 class DeploymentTypeResolverTest extends FlatSpec with Matchers with EitherValues {
   val deployment = Deployment("bob", "stub-package-type", List("stack"), List("eu-west-1"), actions=None, "bob", "bob", Nil, Map.empty)
-  val deploymentTypes = List(stubPackageType(Seq("upload", "deploy")))
+  val deploymentTypes = List(stubDeploymentType(Seq("upload", "deploy")))
 
   "validateDeploymentType" should "fail on invalid deployment type" in {
     val deploymentWithInvalidType = deployment.copy(`type` = "invalidType")
@@ -52,5 +54,42 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with EitherValue
       'dependencies (Nil),
       'parameters (Map.empty)
     )
+  }
+
+  it should "fail if given an invalid parameter" in {
+    val deploymentWithParameters = deployment.copy(parameters = Map("param1" -> JsNumber(1234)))
+    val configError = DeploymentTypeResolver.validateDeploymentType(deploymentWithParameters, deploymentTypes).left.value
+    configError shouldBe ConfigError("bob", "Parameters provided but not used by stub-package-type deployments: param1")
+  }
+
+  it should "fail if a parameter with no default is not provided" in {
+    val deploymentTypesWithParams = List(
+      stubDeploymentType(
+        Seq("upload", "deploy"),
+        register => List(Param[String]("param1")(register))
+      )
+    )
+    val configError = DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).left.value
+    configError shouldBe ConfigError("bob", "Parameters required for stub-package-type deployments not provided: param1")
+  }
+
+  it should "succeed if a default is provided" in {
+    val deploymentTypesWithParams = List(
+      stubDeploymentType(
+        Seq("upload", "deploy"),
+        register => List(Param[String]("param1", defaultValue = Some("defaultValue"))(register))
+      )
+    )
+    DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).right.value
+  }
+
+  it should "succeed if a default from package is provided" in {
+    val deploymentTypesWithParams = List(
+      stubDeploymentType(
+        Seq("upload", "deploy"),
+        register => List(Param[String]("param1", defaultValueFromPackage = Some(_.name))(register))
+      )
+    )
+    DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).right.value
   }
 }

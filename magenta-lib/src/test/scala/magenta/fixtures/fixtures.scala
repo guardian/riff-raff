@@ -1,7 +1,7 @@
 package magenta
 package fixtures
 
-import magenta.deployment_type.DeploymentType
+import magenta.deployment_type.{DeploymentType, Param, ParamRegister}
 import magenta.tasks.Task
 
 case class StubTask(description: String, region: Region, stack: Option[Stack] = None,
@@ -19,8 +19,11 @@ case class StubPerAppAction(description: String, apps: Seq[App]) extends Action 
 case class StubDeploymentType(
   override val actions:
     PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty,
-  override val defaultActions: List[String]
+  override val defaultActions: List[String],
+  parameters: ParamRegister => List[Param[_]] = _ => Nil
 ) extends DeploymentType {
+  parameters(register)
+
   def name = "stub-package-type"
 
   val documentation = "Documentation for the testing stub"

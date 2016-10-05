@@ -51,6 +51,7 @@ object SelfDeploy extends DeploymentType {
       )
     case "selfDeploy" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val reporter = resources.reporter
       val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
       hosts.map{ host =>
         ChangeSwitch(

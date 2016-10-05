@@ -66,6 +66,7 @@ object CloudFormation extends DeploymentType {
     case "updateStack" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
+      implicit val reporter = resources.reporter
 
       val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
       val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))

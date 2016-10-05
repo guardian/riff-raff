@@ -27,6 +27,7 @@ object ElasticSearch extends DeploymentType {
   def actions = {
     case "deploy" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val reporter = resources.reporter
       val parameters = target.parameters
       val stack = target.stack
       List(
@@ -43,6 +44,7 @@ object ElasticSearch extends DeploymentType {
     case "uploadArtifacts" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
+      implicit val reporter = resources.reporter
       val prefix: String = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
       List(
         S3Upload(

@@ -53,12 +53,18 @@ case class Param[T](name: String,
 
   def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
-  def apply(pkg: DeploymentPackage)(implicit reads: Reads[T], manifest: Manifest[T]): T =
-    get(pkg).orElse(defaultValue).orElse(defaultValueFromPackage.map(_(pkg))).getOrElse{
+  def apply(pkg: DeploymentPackage)(implicit reporter: DeployReporter, reads: Reads[T], manifest: Manifest[T]): T = {
+    val maybeValue = get(pkg)
+    val maybeDefault = defaultValue.orElse(defaultValueFromPackage.map(_ (pkg)))
+    if (!pkg.legacyConfig && maybeDefault.isDefined && maybeValue == maybeDefault) {
+      reporter.warning(s"Parameter $name is unnecessarily set to the default value of ${defaultValue.get}")
+    }
+    maybeValue.orElse(maybeDefault).getOrElse {
       throw new NoSuchElementException(
         s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
       )
     }
+  }
 
   def default(default: T) = {
     this.copy(defaultValue = Some(default))

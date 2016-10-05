@@ -74,7 +74,7 @@ object Lambda extends DeploymentType  {
 
   def defaultActions = List("uploadLambda", "updateLambda")
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region)(reporter: DeployReporter): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region)(implicit reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     if (bucketOption.isEmpty) {
       if (pkg.legacyConfig)
