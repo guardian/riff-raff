@@ -11,4 +11,3 @@ case class TaskReference(task: Task, index: Int, name: String) extends TaskNode 
 }
 case object StartMarker extends TaskNode
 case object EndMarker extends TaskNode
-

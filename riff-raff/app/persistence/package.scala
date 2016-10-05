@@ -12,10 +12,10 @@ object `package` {
   implicit class deployFilter2Criteria(filter: DeployFilter) {
     def criteria: DBObject = {
       val criteriaList: List[(String, Any)] = Nil ++
-        filter.projectName.map(p => ("parameters.projectName", s"(?i)$p".r)) ++
-        filter.stage.map(("parameters.stage", _)) ++
-        filter.deployer.map(("parameters.deployer", _)) ++
-        filter.status.map(s => ("status", s.toString))
+          filter.projectName.map(p => ("parameters.projectName", s"(?i)$p".r)) ++
+          filter.stage.map(("parameters.stage", _)) ++
+          filter.deployer.map(("parameters.deployer", _)) ++
+          filter.status.map(s => ("status", s.toString))
       filter.maxDaysAgo match {
         case None => MongoDBObject(criteriaList)
 

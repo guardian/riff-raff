@@ -15,14 +15,17 @@ object RiffRaffYamlReader {
         type Errors = Seq[(JsPath, Seq[ValidationError])]
         def locate(e: Errors, key: String) = e.map { case (p, valerr) => (JsPath \ key) ++ p -> valerr }
 
-        linkedMap.foldLeft(Right(Nil): Either[Errors, List[(String, V)]]) {
-          case (acc, (key, value)) => (acc, Json.fromJson[V](value)(fmtv)) match {
-            case (Right(vs), JsSuccess(v, _)) => Right(vs :+ (key -> v))
-            case (Right(_), JsError(e)) => Left(locate(e, key))
-            case (Left(e), _: JsSuccess[_]) => Left(e)
-            case (Left(e1), JsError(e2)) => Left(e1 ++ locate(e2, key))
+        linkedMap
+          .foldLeft(Right(Nil): Either[Errors, List[(String, V)]]) {
+            case (acc, (key, value)) =>
+              (acc, Json.fromJson[V](value)(fmtv)) match {
+                case (Right(vs), JsSuccess(v, _)) => Right(vs :+ (key -> v))
+                case (Right(_), JsError(e)) => Left(locate(e, key))
+                case (Left(e), _: JsSuccess[_]) => Left(e)
+                case (Left(e1), JsError(e2)) => Left(e1 ++ locate(e2, key))
+              }
           }
-        }.fold(JsError.apply, res => JsSuccess(res))
+          .fold(JsError.apply, res => JsSuccess(res))
       case _ => JsError(Seq(JsPath() -> Seq(ValidationError("error.expected.jsobject"))))
     }
   }
@@ -30,9 +33,8 @@ object RiffRaffYamlReader {
   def fromString(yaml: String): RiffRaffDeployConfig = {
     // convert form YAML to JSON
     val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
-    val jsonString = new ObjectMapper()
-      .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
-      .writeValueAsString(tree)
+    val jsonString =
+      new ObjectMapper().writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries()).writeValueAsString(tree)
 
     val json = Json.parse(jsonString)
     Json.fromJson[RiffRaffDeployConfig](json) match {

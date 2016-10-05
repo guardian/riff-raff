@@ -12,9 +12,11 @@ import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
 class DeployCoordinator(
-  val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef) => ActorRef,
-  maxDeploys: Int, stopFlagAgent: Agent[Map[UUID, String]]
-) extends Actor with Logging {
+    val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef) => ActorRef,
+    maxDeploys: Int,
+    stopFlagAgent: Agent[Map[UUID, String]]
+) extends Actor
+    with Logging {
 
   override def supervisorStrategy() = OneForOneStrategy() {
     case throwable =>
@@ -27,10 +29,11 @@ class DeployCoordinator(
 
   private def schedulable(recordToSchedule: Record): Boolean = {
     deployRunners.size < maxDeploys &&
-      !deployRunners.values.exists{ case (record, actor) =>
+    !deployRunners.values.exists {
+      case (record, actor) =>
         record.parameters.build.projectName == recordToSchedule.parameters.build.projectName &&
           record.parameters.stage == recordToSchedule.parameters.stage
-      }
+    }
   }
 
   private def cleanup(uuid: UUID) {
@@ -63,7 +66,7 @@ class DeployCoordinator(
       cleanup(uuid)
 
     case Terminated(actor) =>
-      val maybeUUID = deployRunners.find{case (_, (_, ref)) => ref == actor}.map(_._1)
+      val maybeUUID = deployRunners.find { case (_, (_, ref)) => ref == actor }.map(_._1)
       maybeUUID.foreach { uuid =>
         log.warn(s"Received premature terminate from ${actor.path} (had not been cleaned up)")
         cleanup(uuid)

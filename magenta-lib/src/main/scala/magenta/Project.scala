@@ -7,15 +7,12 @@ import magenta.tasks.Task
 
 import scala.math.Ordering.OptionOrdering
 
-
-case class Host(
-    name: String,
-    apps: Set[App] = Set.empty,
-    stage: String = "NO_STAGE",
-    stack: Option[String] = None,
-    connectAs: Option[String] = None,
-    tags: Map[String, String] = Map.empty)
-{
+case class Host(name: String,
+                apps: Set[App] = Set.empty,
+                stage: String = "NO_STAGE",
+                stack: Option[String] = None,
+                connectAs: Option[String] = None,
+                tags: Map[String, String] = Map.empty) {
   def app(app: App) = this.copy(apps = apps + app)
 
   def as(user: String) = this.copy(connectAs = Some(user))
@@ -32,11 +29,11 @@ case class Host(
 }
 
 case class Datum(
-  stack: Option[String],
-  app: String,
-  stage: String,
-  value: String,
-  comment: Option[String]
+    stack: Option[String],
+    app: String,
+    stage: String,
+    value: String,
+    comment: Option[String]
 ) {
   lazy val stackRegex = stack.map(s => s"^$s$$".r)
   lazy val appRegex = ("^%s$" format app).r
@@ -44,10 +41,10 @@ case class Datum(
 }
 
 case class HostList(hosts: Seq[Host]) {
-  def dump = hosts
-    .sortBy { _.name }
-    .map { h => s" ${h.name}: ${h.apps.map(_.toString).mkString(", ")}" }
-    .mkString("\n")
+  def dump =
+    hosts.sortBy { _.name }.map { h =>
+      s" ${h.name}: ${h.apps.map(_.toString).mkString(", ")}"
+    }.mkString("\n")
 
   def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
 
@@ -84,25 +81,25 @@ trait Action {
   def resolve(resources: DeploymentResources, target: DeployTarget): List[Task]
 }
 
-case class App (name: String)
+case class App(name: String)
 
 case class Recipe(
-  name: String,
-  actions: Iterable[Action] = Nil, //executed once per app (before the host actions are executed)
-  dependsOn: List[String] = Nil
+    name: String,
+    actions: Iterable[Action] = Nil, //executed once per app (before the host actions are executed)
+    dependsOn: List[String] = Nil
 )
 
 case class Project(
-  packages: Map[String, DeploymentPackage] = Map.empty,
-  recipes: Map[String, Recipe] = Map.empty,
-  defaultStacks: Seq[Stack] = Seq()
+    packages: Map[String, DeploymentPackage] = Map.empty,
+    recipes: Map[String, Recipe] = Map.empty,
+    defaultStacks: Seq[Stack] = Seq()
 ) {
   lazy val applications = packages.values.flatMap(_.apps).toSet
 }
 
 case class Stage(name: String)
-case class Build(projectName:String, id:String)
-case class RecipeName(name:String)
+case class Build(projectName: String, id: String)
+case class RecipeName(name: String)
 object DefaultRecipe {
   def apply() = RecipeName("default")
 }
@@ -122,10 +119,10 @@ case class Region(name: String) extends AnyVal
 case class Deployer(name: String)
 
 case class DeployParameters(
-                             deployer: Deployer,
-                             build: Build,
-                             stage: Stage,
-                             recipe: RecipeName = DefaultRecipe(),
-                             stacks: Seq[NamedStack] = Seq(),
-                             hostList: List[String] = Nil
-                             )
+    deployer: Deployer,
+    build: Build,
+    stage: Stage,
+    recipe: RecipeName = DefaultRecipe(),
+    stacks: Seq[NamedStack] = Seq(),
+    hostList: List[String] = Nil
+)

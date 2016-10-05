@@ -17,23 +17,30 @@ trait Logging {
 }
 
 trait MenuItem {
-  def title:String
-  def target:Call
-  def isActive(implicit request:Request[AnyContent]):Boolean
-  def isVisible(hasIdentity:Boolean):Boolean
-  def isVisible(implicit request:Request[AnyContent]):Boolean = isVisible(UserIdentity.fromRequest(request).isDefined)
+  def title: String
+  def target: Call
+  def isActive(implicit request: Request[AnyContent]): Boolean
+  def isVisible(hasIdentity: Boolean): Boolean
+  def isVisible(implicit request: Request[AnyContent]): Boolean =
+    isVisible(UserIdentity.fromRequest(request).isDefined)
 }
 
-case class SingleMenuItem(title: String, target: Call, identityRequired: Boolean = true, activeInSubPaths: Boolean = false, enabled: Boolean = true) extends MenuItem{
+case class SingleMenuItem(title: String,
+                          target: Call,
+                          identityRequired: Boolean = true,
+                          activeInSubPaths: Boolean = false,
+                          enabled: Boolean = true)
+    extends MenuItem {
   def isActive(implicit request: Request[AnyContent]): Boolean = {
     activeInSubPaths && request.path.startsWith(target.url) || request.path == target.url
   }
-  def isVisible(hasIdentity:Boolean = false) = enabled && (hasIdentity || !identityRequired)
+  def isVisible(hasIdentity: Boolean = false) = enabled && (hasIdentity || !identityRequired)
 }
 
-case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#")) extends MenuItem {
+case class DropDownMenuItem(title: String, items: Seq[SingleMenuItem], target: Call = Call("GET", "#"))
+    extends MenuItem {
   def isActive(implicit request: Request[AnyContent]) = items.exists(_.isActive(request))
-  def isVisible(hasIdentity:Boolean = false) = items.exists(_.isVisible(hasIdentity))
+  def isVisible(hasIdentity: Boolean = false) = items.exists(_.isVisible(hasIdentity))
 }
 
 object Menu {
@@ -42,16 +49,20 @@ object Menu {
     SingleMenuItem("History", routes.DeployController.history()),
     SingleMenuItem("Deploy", routes.DeployController.deploy()),
     DropDownMenuItem("Deployment Info", deployInfoMenu),
-    DropDownMenuItem("Configuration", Seq(
-      SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
-      SingleMenuItem("Hooks", routes.Hooks.list()),
-      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
-      SingleMenuItem("API keys", routes.Api.listKeys())
-    )),
-    DropDownMenuItem("Documentation", Seq(
-      SingleMenuItem("Home", routes.Application.documentation("")),
-      SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types"))
-    ))
+    DropDownMenuItem("Configuration",
+                     Seq(
+                       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
+                       SingleMenuItem("Hooks", routes.Hooks.list()),
+                       SingleMenuItem("Authorisation",
+                                      routes.Login.authList(),
+                                      enabled = conf.Configuration.auth.whitelist.useDatabase),
+                       SingleMenuItem("API keys", routes.Api.listKeys())
+                     )),
+    DropDownMenuItem("Documentation",
+                     Seq(
+                       SingleMenuItem("Home", routes.Application.documentation("")),
+                       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types"))
+                     ))
   )
 
   lazy val deployInfoMenu = Seq(
@@ -63,7 +74,10 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(prismLookup: PrismLookup)(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
+class Application(prismLookup: PrismLookup)(implicit environment: Environment, val wsClient: WSClient)
+    extends Controller
+    with Logging
+    with LoginActions {
   import Application._
 
   def index = Action { implicit request =>
@@ -92,22 +106,22 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
   val Prev = """.*prev:(\S+).*""".r
   val Next = """.*next:(\S+).*""".r
 
-  def makeAbsolute(resource:String, relative:String): String = {
+  def makeAbsolute(resource: String, relative: String): String = {
     if (relative.isEmpty)
       resource
     else if (relative.startsWith("/"))
       relative
     else {
-      val base = if (resource.endsWith("/")) resource else resource.split("/").init.mkString("","/","/")
+      val base = if (resource.endsWith("/")) resource else resource.split("/").init.mkString("", "/", "/")
       if (relative.startsWith("../")) {
-        makeAbsolute(resource.split("/").init.init.mkString("","/","/"),relative.stripPrefix("../"))
+        makeAbsolute(resource.split("/").init.init.mkString("", "/", "/"), relative.stripPrefix("../"))
       } else {
         base + relative
       }
     }
   }
 
-  def getNextPrevFromHeader(resource: String, lines: List[String]):(Option[Link], Option[Link]) = {
+  def getNextPrevFromHeader(resource: String, lines: List[String]): (Option[Link], Option[Link]) = {
     val header = lines.head
     val prev = header match {
       case Prev(prevUrl) => Link(makeAbsolute(resource, prevUrl))
@@ -118,12 +132,12 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
       case _ => None
     }
     log.info(s"Header is $header $prev $next")
-    (next,prev)
+    (next, prev)
   }
 
   def documentation(resource: String) = {
     if (resource.endsWith(".png")) {
-      Assets.at("/docs",resource)
+      Assets.at("/docs", resource)
     } else {
       AuthAction { request =>
         if (resource.endsWith("/index")) {
@@ -131,48 +145,66 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
         } else {
           val markDownLines = getMarkdownLines(resource)
           if (markDownLines.isEmpty) {
-              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
+            NotFound(views.html.notFound(request, s"No documentation found for $resource"))
           } else {
             val markDown = markDownLines.mkString("\n")
 
             val title = getMarkdownTitle(markDownLines).getOrElse(resource)
-            val (next,prev) = getNextPrevFromHeader(resource,markDownLines)
+            val (next, prev) = getNextPrevFromHeader(resource, markDownLines)
 
             val breadcrumbs = {
               val hierarchy = resource.split('/').filterNot(_.isEmpty).dropRight(1)
-              hierarchy.foldLeft(List(Link("Documentation",routes.Application.documentation(""),""))){ (acc, crumb) =>
-                acc ++ Link(List(acc.last.url.stripSuffix("/"),crumb).filterNot(_.isEmpty).mkString("","/","/"))
+              hierarchy.foldLeft(List(Link("Documentation", routes.Application.documentation(""), ""))) {
+                (acc, crumb) =>
+                  acc ++ Link(List(acc.last.url.stripSuffix("/"), crumb).filterNot(_.isEmpty).mkString("", "/", "/"))
               } ++ Some(Link(title, routes.Application.documentation(resource), resource))
             }
 
             resource match {
               case "magenta-lib/types" =>
-                val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
-                  val paramDocs = dt.params.sortBy(_.name).map{ param =>
-                    val defaultLegacy = (param.defaultValue, param.defaultValueFromPackage) match {
-                      case (Some(default), _) => Some(default.toString)
-                      case (None, Some(pkgFunction)) =>
-                        Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = true)
-                        ).toString)
-                      case (_, _) => None
+                val sections = DeploymentType.all.sortBy(_.name).map { dt =>
+                  val paramDocs = dt.params
+                    .sortBy(_.name)
+                    .map { param =>
+                      val defaultLegacy = (param.defaultValue, param.defaultValueFromPackage) match {
+                        case (Some(default), _) => Some(default.toString)
+                        case (None, Some(pkgFunction)) =>
+                          Some(
+                            pkgFunction(
+                              DeploymentPackage("<packageName>",
+                                                Seq(App("<app>")),
+                                                Map.empty,
+                                                "<deploymentType>",
+                                                S3Path("<bucket>", "<prefix>"),
+                                                legacyConfig = true)
+                            ).toString)
+                        case (_, _) => None
+                      }
+                      val defaultNew = (param.defaultValue, param.defaultValueFromPackage) match {
+                        case (Some(default), _) => Some(default.toString)
+                        case (None, Some(pkgFunction)) =>
+                          Some(
+                            pkgFunction(
+                              DeploymentPackage("<packageName>",
+                                                Seq(App("<app>")),
+                                                Map.empty,
+                                                "<deploymentType>",
+                                                S3Path("<bucket>", "<prefix>"),
+                                                legacyConfig = false)
+                            ).toString)
+                        case (_, _) => None
+                      }
+                      (param.name, param.documentation, defaultLegacy, defaultNew)
                     }
-                    val defaultNew = (param.defaultValue, param.defaultValueFromPackage) match {
-                      case (Some(default), _) => Some(default.toString)
-                      case (None, Some(pkgFunction)) =>
-                        Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = false)
-                        ).toString)
-                      case (_, _) => None
-                    }
-                    (param.name, param.documentation, defaultLegacy, defaultNew)
-                  }.sortBy(_._3.isDefined)
+                    .sortBy(_._3.isDefined)
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
                   (dt.name, typeDocumentation)
                 }
                 Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))
               case _ =>
-                Ok(views.html.documentation.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+                Ok(
+                  views.html.documentation
+                    .markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
             }
           }
         }
@@ -182,7 +214,7 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
 
   def javascriptRoutes = Action { implicit request =>
     import play.api.routing._
-    Ok{
+    Ok {
       JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.DeployController.stop,
         routes.javascript.DeployController.projectHistory,
@@ -196,9 +228,9 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
 
 object Application extends Logging {
 
-  case class Link(title:String, call:Call, url:String)
+  case class Link(title: String, call: Call, url: String)
   object Link {
-    def apply(url:String)(implicit environment: Environment):Option[Link] = {
+    def apply(url: String)(implicit environment: Environment): Option[Link] = {
       getMarkdownTitle(getMarkdownLines(url)).map { prevTitle =>
         Link(prevTitle, routes.Application.documentation(url), url)
       }
@@ -206,7 +238,7 @@ object Application extends Logging {
 
   }
 
-  def getMarkdownTitle(lines: List[String]):Option[String] = {
+  def getMarkdownTitle(lines: List[String]): Option[String] = {
     lines.find(line => !line.trim.isEmpty && !line.trim.startsWith("<!--"))
   }
 
@@ -214,16 +246,19 @@ object Application extends Logging {
     val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
     log.info(s"Getting page for $realResource")
     try {
-      withResource(environment.resourceAsStream(s"public/docs/$realResource.md").orElse(environment.resourceAsStream(s"$realResource.md")).get) { url =>
+      withResource(
+        environment
+          .resourceAsStream(s"public/docs/$realResource.md")
+          .orElse(environment.resourceAsStream(s"$realResource.md"))
+          .get) { url =>
         log.info(s"Resolved URL $url")
         Source.fromInputStream(url).getLines().toList
       }
     } catch {
-      case e:Throwable =>
+      case e: Throwable =>
         log.warn(s"$resource is not a valid page of documentation")
         Nil
     }
   }
-
 
 }

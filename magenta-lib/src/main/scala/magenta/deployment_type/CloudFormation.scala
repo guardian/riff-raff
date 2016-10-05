@@ -21,24 +21,32 @@ object CloudFormation extends DeploymentType {
       |before it is used.
     """.stripMargin
 
-  val cloudFormationStackName = Param[String]("cloudFormationStackName",
-    documentation = "The name of the CloudFormation stack to update"
-  ).defaultFromPackage(_.name)
-  val prependStackToCloudFormationStackName = Param[Boolean]("prependStackToCloudFormationStackName",
-    documentation = "Whether to prepend '`stack`-' to the `cloudFormationStackName`, e.g. MyApp => service-preview-MyApp"
-  ).default(true)
-  val appendStageToCloudFormationStackName = Param[Boolean]("appendStageToCloudFormationStackName",
-    documentation = "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD"
-  ).default(true)
-  val templatePath = Param[String]("templatePath",
-    documentation = "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
-  ).default("""cloud-formation/cfn.json""")
-  val templateParameters = Param[Map[String, String]]("templateParameters",
-    documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
-  ).default(Map.empty)
-  val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
+  val cloudFormationStackName =
+    Param[String]("cloudFormationStackName", documentation = "The name of the CloudFormation stack to update")
+      .defaultFromPackage(_.name)
+  val prependStackToCloudFormationStackName = Param[Boolean](
+    "prependStackToCloudFormationStackName",
     documentation =
-      """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
+      "Whether to prepend '`stack`-' to the `cloudFormationStackName`, e.g. MyApp => service-preview-MyApp")
+    .default(true)
+  val appendStageToCloudFormationStackName =
+    Param[Boolean]("appendStageToCloudFormationStackName",
+                   documentation =
+                     "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD")
+      .default(true)
+  val templatePath = Param[String](
+    "templatePath",
+    documentation =
+      "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON.")
+    .default("""cloud-formation/cfn.json""")
+  val templateParameters = Param[Map[String, String]](
+    "templateParameters",
+    documentation =
+      "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically.")
+    .default(Map.empty)
+  val templateStageParameters = Param[Map[String, Map[String, String]]](
+    "templateStageParameters",
+    documentation = """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
         |support stage-specific configuration. E.g.
         |
         |    {
@@ -48,48 +56,50 @@ object CloudFormation extends DeploymentType {
         |
         |At deploy time, parameters for the matching stage (if found) are merged into any
         |templateParameters parameters, with stage-specific values overriding general parameters
-        |when in conflict.""".stripMargin
-  ).default(Map.empty)
-  val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
-    documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
-  ).default(true)
-  val amiTags = Param[Map[String,String]]("amiTags",
-    documentation = "Specify the set of tags to use to find the latest AMI"
-  ).default(Map.empty)
-  val amiParameter = Param[String]("amiParameter",
-    documentation = "The CloudFormation parameter name for the AMI"
-  ).default("AMI")
+        |when in conflict.""".stripMargin).default(Map.empty)
+  val createStackIfAbsent =
+    Param[Boolean]("createStackIfAbsent",
+                   documentation =
+                     "If set to true then the cloudformation stack will be created if it doesn't already exist")
+      .default(true)
+  val amiTags =
+    Param[Map[String, String]]("amiTags", documentation = "Specify the set of tags to use to find the latest AMI")
+      .default(Map.empty)
+  val amiParameter =
+    Param[String]("amiParameter", documentation = "The CloudFormation parameter name for the AMI").default("AMI")
 
   def defaultActions = List("updateStack")
 
   override def actions = {
-    case "updateStack" => pkg => (resources, target) => {
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val artifactClient = resources.artifactClient
+    case "updateStack" =>
+      pkg => (resources, target) =>
+        {
+          implicit val keyRing = resources.assembleKeyring(target, pkg)
+          implicit val artifactClient = resources.artifactClient
 
-      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
-      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
-      val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
+          val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
+          val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
+          val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
+          val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
-      val globalParams = templateParameters(pkg)
-      val stageParams = templateStageParameters(pkg).lift.apply(target.parameters.stage.name).getOrElse(Map())
-      val params = globalParams ++ stageParams
+          val globalParams = templateParameters(pkg)
+          val stageParams = templateStageParameters(pkg).lift.apply(target.parameters.stage.name).getOrElse(Map())
+          val params = globalParams ++ stageParams
 
-      List(
-        UpdateCloudFormationTask(
-          fullCloudFormationStackName,
-          S3Path(pkg.s3Package, templatePath(pkg)),
-          params,
-          amiParameter(pkg),
-          amiTags(pkg),
-          resources.lookup.getLatestAmi,
-          target.parameters.stage,
-          target.stack,
-          createStackIfAbsent(pkg)
-        ),
-        CheckUpdateEventsTask(fullCloudFormationStackName)
-      )
-    }
+          List(
+            UpdateCloudFormationTask(
+              fullCloudFormationStackName,
+              S3Path(pkg.s3Package, templatePath(pkg)),
+              params,
+              amiParameter(pkg),
+              amiTags(pkg),
+              resources.lookup.getLatestAmi,
+              target.parameters.stage,
+              target.stack,
+              createStackIfAbsent(pkg)
+            ),
+            CheckUpdateEventsTask(fullCloudFormationStackName)
+          )
+        }
   }
 }

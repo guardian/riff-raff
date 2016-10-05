@@ -13,9 +13,13 @@ import play.api.libs.json.Json
 
 import scala.collection.JavaConversions._
 
-case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
-                                           (implicit val keyRing: KeyRing)
-  extends ASGTask with RepeatedPollingCheck {
+case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage,
+                                            stage: Stage,
+                                            stack: Stack,
+                                            duration: Long,
+                                            region: Region)(implicit val keyRing: KeyRing)
+    extends ASGTask
+    with RepeatedPollingCheck {
 
   val description = "Wait for the elasticsearch cluster status to be green"
   override val verbose =
@@ -23,7 +27,10 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
+  override def execute(asg: AutoScalingGroup,
+                       reporter: DeployReporter,
+                       stopFlag: => Boolean,
+                       asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     val instance = EC2(asg.getInstances.headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
@@ -35,28 +42,35 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
   }
 }
 
-case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
-                                                       (implicit val keyRing: KeyRing)
-  extends ASGTask with RepeatedPollingCheck{
+case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage,
+                                                        stage: Stage,
+                                                        stack: Stack,
+                                                        duration: Long,
+                                                        region: Region)(implicit val keyRing: KeyRing)
+    extends ASGTask
+    with RepeatedPollingCheck {
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
+  override def execute(asg: AutoScalingGroup,
+                       reporter: DeployReporter,
+                       stopFlag: => Boolean,
+                       asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     implicit val elbClient = ELB.makeElbClient(keyRing, region)
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
     val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).getPublicDnsName)
 
     def cullInstance(instance: Instance) {
-        val node = ElasticSearchNode(EC2(instance, ec2Client).getPublicDnsName)
+      val node = ElasticSearchNode(EC2(instance, ec2Client).getPublicDnsName)
+      check(reporter, stopFlag) {
+        newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).getDesiredCapacity)
+      }
+      if (!stopFlag) {
+        node.shutdown()
         check(reporter, stopFlag) {
-          newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).getDesiredCapacity)
+          newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).getDesiredCapacity - 1)
         }
-        if (!stopFlag) {
-          node.shutdown()
-          check(reporter, stopFlag) {
-            newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).getDesiredCapacity - 1)
-          }
-        }
-        if (!stopFlag) ASG.cull(asg, instance, asgClient, elbClient)
+      }
+      if (!stopFlag) ASG.cull(asg, instance, asgClient, elbClient)
     }
 
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
@@ -71,9 +85,10 @@ case class ElasticSearchNode(address: String) {
   implicit val format = DefaultFormats
 
   val http = new Http()
-  private def clusterHealth = http(:/(address, 9200) / "_cluster" / "health" >- {json =>
-    Json.parse(json)
-  })
+  private def clusterHealth =
+    http(:/(address, 9200) / "_cluster" / "health" >- { json =>
+      Json.parse(json)
+    })
 
   def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").as[Int]
   def clusterIsHealthy = (clusterHealth \ "status").as[String] == "green"
@@ -87,5 +102,3 @@ case class ElasticSearchNode(address: String) {
 
   def shutdown() = http((:/(address, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
 }
-
-

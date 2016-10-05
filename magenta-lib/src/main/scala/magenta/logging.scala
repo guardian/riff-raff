@@ -8,27 +8,32 @@ import collection.mutable
 import org.joda.time.DateTime
 import rx.lang.scala.{Observable, Subject}
 
-case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
+case class ThrowableDetail(name: String, message: String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
-  implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
-  def apply(t:Throwable): ThrowableDetail = {
-    ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTrace.mkString("\n"), Option(t.getCause).map(ThrowableDetail(_)))
+  implicit def Throwable2ThrowableDetail(t: Throwable): ThrowableDetail = ThrowableDetail(t)
+  def apply(t: Throwable): ThrowableDetail = {
+    ThrowableDetail(t.getClass.getName,
+                    Option(t.getMessage).getOrElse(""),
+                    t.getStackTrace.mkString("\n"),
+                    Option(t.getCause).map(ThrowableDetail(_)))
   }
 }
 
-case class TaskDetail(name: String, description:String, verbose:String, taskHosts: List[Host]) {
+case class TaskDetail(name: String, description: String, verbose: String, taskHosts: List[Host]) {
   def fullDescription = name + " " + description
 }
 object TaskDetail {
-  implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
-  implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
-  def apply(t:Task): TaskDetail = {
+  implicit def Task2TaskDetail(t: Task): TaskDetail = TaskDetail(t)
+  implicit def TaskList2TaskDetailList(tl: List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
+  def apply(t: Task): TaskDetail = {
     TaskDetail(t.name, t.description, t.verbose, t.taskHost.toList)
   }
 }
 
-case class DeployReporter(messageStack: List[Message], messageContext: MessageContext,
-  previousReporter: Option[DeployReporter] = None, publishMessages: Boolean) {
+case class DeployReporter(messageStack: List[Message],
+                          messageContext: MessageContext,
+                          previousReporter: Option[DeployReporter] = None,
+                          publishMessages: Boolean) {
   def taskContext[T](task: Task)(block: DeployReporter => T): T = {
     DeployReporter.sendContext(this, TaskRun(task))(block)
   }
@@ -44,7 +49,7 @@ case class DeployReporter(messageStack: List[Message], messageContext: MessageCo
   def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw DeployReporter.failException(this, message, e)
   }
-  def fail(message: String, e: Throwable): Nothing = { fail(message,Some(e)) }
+  def fail(message: String, e: Throwable): Nothing = { fail(message, Some(e)) }
 }
 
 object DeployReporter {
@@ -67,14 +72,14 @@ object DeployReporter {
 
   // create a new reporter with the given message at the top of the stack - sends the StartContext event
   def pushContext(message: Message, currentReporter: DeployReporter): DeployReporter = {
-      val contextUUID = UUID.randomUUID()
-      send(currentReporter, StartContext(message), contextUUID)
-      DeployReporter(
-        message :: currentReporter.messageStack,
-        currentReporter.messageContext.copy(parentId = Some(contextUUID)),
-        Some(currentReporter),
-        currentReporter.publishMessages
-      )
+    val contextUUID = UUID.randomUUID()
+    send(currentReporter, StartContext(message), contextUUID)
+    DeployReporter(
+      message :: currentReporter.messageStack,
+      currentReporter.messageContext.copy(parentId = Some(contextUUID)),
+      Some(currentReporter),
+      currentReporter.publishMessages
+    )
   }
 
   // finish the current reporter by sending the FinishContext event - returns the previous reporter if it exists
@@ -97,10 +102,10 @@ object DeployReporter {
       try {
         block(reporter)
       } catch {
-        case f:FailException =>
+        case f: FailException =>
           send(reporter, FailContext(reporter.messageStack.head))
           throw f
-        case t:Throwable =>
+        case t: Throwable =>
           // build exception (and send fail message) first
           val message = reporter.messageStack.head
           val exception = failException(reporter, s"Unhandled exception in ${message.text}", t)
@@ -108,7 +113,7 @@ object DeployReporter {
           throw exception
       }
     } catch {
-      case f:FailException =>
+      case f: FailException =>
         throw if (reporter.previousReporter.isEmpty && f.getCause != null) f.getCause else f
     }
   }
@@ -128,16 +133,18 @@ object DeployReporter {
     new FailException(message, e.orNull)
   }
   private def failException(reporter: DeployReporter, message: String, e: Throwable): FailException = {
-    failException(reporter, message,Some(e))
+    failException(reporter, message, Some(e))
   }
 }
 
 case class MessageContext(deployId: UUID, parameters: DeployParameters, parentId: Option[UUID])
 case class MessageWrapper(context: MessageContext, messageId: UUID, stack: MessageStack)
 
-case class MessageStack(messages: List[Message], time:DateTime = new DateTime()) {
+case class MessageStack(messages: List[Message], time: DateTime = new DateTime()) {
   lazy val top = messages.head
-  lazy val deployParameters: Option[DeployParameters] = { messages.filter(_.deployParameters.isDefined).lastOption.flatMap(_.deployParameters) }
+  lazy val deployParameters: Option[DeployParameters] = {
+    messages.filter(_.deployParameters.isDefined).lastOption.flatMap(_.deployParameters)
+  }
 }
 
 class FailException(val message: String, val throwable: Throwable = null) extends Throwable(message, throwable)
@@ -153,13 +160,16 @@ sealed trait ContextMessage extends Message {
 }
 
 case class Deploy(parameters: DeployParameters) extends Message {
-  lazy val text = s"deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name}"
+  lazy val text =
+    s"deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name}"
   override lazy val deployParameters = Some(parameters)
 }
 
-case class TaskList(taskList: List[TaskDetail]) extends Message { lazy val text =
-  s"""Tasks for deploy:
-     |${taskList.mkString("\n")}""".stripMargin}
+case class TaskList(taskList: List[TaskDetail]) extends Message {
+  lazy val text =
+    s"""Tasks for deploy:
+     |${taskList.mkString("\n")}""".stripMargin
+}
 case class TaskRun(task: TaskDetail) extends Message { lazy val text = s"task ${task.fullDescription}" }
 case class Info(text: String) extends Message
 case class CommandOutput(text: String) extends Message
@@ -168,6 +178,12 @@ case class Verbose(text: String) extends Message
 case class Fail(text: String, detail: ThrowableDetail) extends Message
 case class Warning(text: String) extends Message
 
-case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Starting ${originalMessage.text}" }
-case class FailContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Failed during ${originalMessage.text}" }
-case class FinishContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Successfully completed ${originalMessage.text}"}
+case class StartContext(originalMessage: Message) extends ContextMessage {
+  lazy val text = s"Starting ${originalMessage.text}"
+}
+case class FailContext(originalMessage: Message) extends ContextMessage {
+  lazy val text = s"Failed during ${originalMessage.text}"
+}
+case class FinishContext(originalMessage: Message) extends ContextMessage {
+  lazy val text = s"Successfully completed ${originalMessage.text}"
+}

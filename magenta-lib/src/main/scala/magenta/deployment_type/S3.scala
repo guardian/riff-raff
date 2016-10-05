@@ -19,34 +19,32 @@ object S3 extends DeploymentType {
       |
     """.stripMargin
 
-  val prefixStage = Param("prefixStage",
-    "Prefix the S3 bucket key with the target stage").default(true)
-  val prefixPackage = Param("prefixPackage",
-    "Prefix the S3 bucket key with the package name").default(true)
-  val prefixStack = Param("prefixStack",
-    "Prefix the S3 bucket key with the target stack").default(true)
-  val pathPrefixResource = Param[String]("pathPrefixResource",
+  val prefixStage = Param("prefixStage", "Prefix the S3 bucket key with the target stage").default(true)
+  val prefixPackage = Param("prefixPackage", "Prefix the S3 bucket key with the package name").default(true)
+  val prefixStack = Param("prefixStack", "Prefix the S3 bucket key with the target stack").default(true)
+  val pathPrefixResource = Param[String](
+    "pathPrefixResource",
     """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
        the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
        full control over the path with the resource lookup.
-    """.stripMargin
-  )
+    """.stripMargin)
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
-  val bucketResource = Param[String]("bucketResource",
+  val bucketResource = Param[String](
+    "bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
       |
       |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
       |regardless of the target stage.
-    """.stripMargin
-  )
+    """.stripMargin)
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).default(true)
+  val publicReadAcl = Param[Boolean](
+    "publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)").default(true)
 
-  val cacheControl = Param[List[PatternValue]]("cacheControl",
+  val cacheControl = Param[List[PatternValue]](
+    "cacheControl",
     """
       |Set the cache control header for the uploaded files. This can take two forms, but in either case the format of
       |the cache control value itself must be a valid HTTP `Cache-Control` value such as `public, max-age=315360000`.
@@ -78,10 +76,10 @@ object S3 extends DeploymentType {
       |        "value": "max-age=3600"
       |      }
       |    ]
-    """.stripMargin
-  )
+    """.stripMargin)
 
-  val mimeTypes = Param[Map[String,String]]("mimeTypes",
+  val mimeTypes = Param[Map[String, String]](
+    "mimeTypes",
     """
       |A map of file extension to MIME type.
       |
@@ -94,52 +92,63 @@ object S3 extends DeploymentType {
       |    "mimeTypes": {
       |      "xpi": "application/x-xpinstall"
       |    }
-    """.stripMargin
-  ).default(Map.empty)
+    """.stripMargin).default(Map.empty)
 
   def defaultActions = List("uploadStaticFiles")
 
   def actions = {
-    case "uploadStaticFiles" => (pkg) => (resources, target) => {
-      def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-        resource.get(pkg).flatMap { resourceName =>
-          assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
-          val dataLookup = resources.lookup.data
-          val app = pkg.apps.head
-          val datumOpt = dataLookup.datum(resourceName, app, target.parameters.stage, target.stack)
-          if (datumOpt.isEmpty) {
-            def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-            resources.reporter.verbose(s"No datum found for resource=$resourceName app=$app stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
+    case "uploadStaticFiles" =>
+      (pkg) => (resources, target) =>
+        {
+          def resourceLookupFor(resource: Param[String]): Option[Datum] = {
+            resource.get(pkg).flatMap { resourceName =>
+              assert(
+                pkg.apps.size == 1,
+                s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
+              val dataLookup = resources.lookup.data
+              val app = pkg.apps.head
+              val datumOpt = dataLookup.datum(resourceName, app, target.parameters.stage, target.stack)
+              if (datumOpt.isEmpty) {
+                def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
+                resources.reporter.verbose(
+                  s"No datum found for resource=$resourceName app=$app stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(
+                    _.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
+              }
+              datumOpt
+            }
           }
-          datumOpt
+
+          implicit val keyRing = resources.assembleKeyring(target, pkg)
+          implicit val artifactClient = resources.artifactClient
+
+          assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined,
+                 "One, and only one, of bucket or bucketResource must be specified")
+          val bucketName = bucket.get(pkg) getOrElse {
+            val data = resourceLookupFor(bucketResource)
+            assert(
+              data.isDefined,
+              s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${target.parameters.stage.name})")
+            data.get.value
+          }
+
+          val prefix: String = resourceLookupFor(pathPrefixResource)
+            .map(_.value)
+            .getOrElse(
+              S3Upload.prefixGenerator(
+                stack = if (prefixStack(pkg)) Some(target.stack) else None,
+                stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
+                packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
+              ))
+          List(
+            S3Upload(
+              target.region,
+              bucket = bucketName,
+              paths = Seq(pkg.s3Package -> prefix),
+              cacheControlPatterns = cacheControl(pkg),
+              extensionToMimeType = mimeTypes(pkg),
+              publicReadAcl = publicReadAcl(pkg)
+            )
+          )
         }
-      }
-
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val artifactClient = resources.artifactClient
-
-      assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
-      val bucketName = bucket.get(pkg) getOrElse {
-        val data = resourceLookupFor(bucketResource)
-        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${target.parameters.stage.name})")
-        data.get.value
-      }
-
-      val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
-      ))
-      List(
-        S3Upload(
-          target.region,
-          bucket = bucketName,
-          paths = Seq(pkg.s3Package -> prefix),
-          cacheControlPatterns = cacheControl(pkg),
-          extensionToMimeType = mimeTypes(pkg),
-          publicReadAcl = publicReadAcl(pkg)
-        )
-      )
-    }
   }
 }

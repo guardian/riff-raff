@@ -14,10 +14,10 @@ object MessageHelper {
     }
   }
   def messageClassName(message: Message): String = {
-    message.getClass.getName.toLowerCase.replace("magenta.","message-")
+    message.getClass.getName.toLowerCase.replace("magenta.", "message-")
   }
-  def classNames(reportNode:ReportTree): String = {
+  def classNames(reportNode: ReportTree): String = {
     List(stateClassName(reportNode.cascadeState), messageClassName(reportNode.message)).mkString(" ")
   }
-  def trim(html:Html): Html = { Html(html.body.trim) }
+  def trim(html: Html): Html = { Html(html.body.trim) }
 }

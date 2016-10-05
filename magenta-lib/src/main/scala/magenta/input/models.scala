@@ -9,10 +9,10 @@ case class ConfigErrors(errors: List[ConfigError]) {
 }
 
 case class RiffRaffDeployConfig(
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  templates: Option[Map[String, DeploymentOrTemplate]],
-  deployments: List[(String, DeploymentOrTemplate)]
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    templates: Option[Map[String, DeploymentOrTemplate]],
+    deployments: List[(String, DeploymentOrTemplate)]
 )
 object RiffRaffDeployConfig {
   import RiffRaffYamlReader.readObjectAsList
@@ -34,15 +34,15 @@ object RiffRaffDeployConfig {
   * @param parameters       Provides additional parameters to the deployment type. Refer to the deployment types to see what is required.
   */
 case class DeploymentOrTemplate(
-  `type`: Option[String],
-  template: Option[String],
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  actions: Option[List[String]],
-  app: Option[String],
-  contentDirectory: Option[String],
-  dependencies: Option[List[String]],
-  parameters: Option[Map[String, JsValue]]
+    `type`: Option[String],
+    template: Option[String],
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    actions: Option[List[String]],
+    app: Option[String],
+    contentDirectory: Option[String],
+    dependencies: Option[List[String]],
+    parameters: Option[Map[String, JsValue]]
 )
 object DeploymentOrTemplate {
   implicit val reads: Reads[DeploymentOrTemplate] = Json.reads
@@ -52,13 +52,13 @@ object DeploymentOrTemplate {
   * A deployment that has been parsed and validated out of a riff-raff.yml file.
   */
 case class Deployment(
-  name: String,
-  `type`: String,
-  stacks: List[String],
-  regions: List[String],
-  actions: Option[List[String]],
-  app: String,
-  contentDirectory: String,
-  dependencies: List[String],
-  parameters: Map[String, JsValue]
+    name: String,
+    `type`: String,
+    stacks: List[String],
+    regions: List[String],
+    actions: Option[List[String]],
+    app: String,
+    contentDirectory: String,
+    dependencies: List[String],
+    parameters: Map[String, JsValue]
 )

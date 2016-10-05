@@ -7,11 +7,15 @@ import magenta.input.{ConfigError, Deployment}
 import magenta.{App, DeployParameters, DeployTarget, DeploymentPackage, DeploymentResources, NamedStack, Region}
 
 object TaskResolver {
-  def resolve(deployment: Deployment, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Either[ConfigError, DeploymentTasks] = {
+  def resolve(deployment: Deployment,
+              deploymentResources: DeploymentResources,
+              parameters: DeployParameters,
+              deploymentTypes: Seq[DeploymentType],
+              artifact: S3Artifact): Either[ConfigError, DeploymentTasks] = {
     val deploymentPackage = createDeploymentPackage(deployment, artifact)
-    val deploymentTypeEither = deploymentTypes.find(_.name == deployment.`type`).
-      toRight(ConfigError(deployment.name, s"Deployment type ${deployment.`type`} not found"))
+    val deploymentTypeEither = deploymentTypes
+      .find(_.name == deployment.`type`)
+      .toRight(ConfigError(deployment.name, s"Deployment type ${deployment.`type`} not found"))
 
     deploymentTypeEither.right.map { deploymentType =>
       val tasks = for {
@@ -22,7 +26,8 @@ object TaskResolver {
         target = DeployTarget(parameters, NamedStack(stack), Region(region))
         task <- action.resolve(deploymentResources, target)
       } yield task
-      DeploymentTasks(tasks,
+      DeploymentTasks(
+        tasks,
         mkLabel(deploymentPackage.name, deployment.actions.toList.flatten, deployment.regions, deployment.stacks))
     }
   }
@@ -38,7 +43,7 @@ object TaskResolver {
   }
 
   private def mkLabel(name: String, actions: List[String], regions: List[String], stacks: List[String]): String = {
-    val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{",",","}")
+    val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{", ",", "}")
     s"$name [${actions.mkString(", ")}] => ${bracketList(regions)}/${bracketList(stacks)}"
   }
 }

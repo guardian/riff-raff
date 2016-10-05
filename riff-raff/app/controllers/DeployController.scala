@@ -19,18 +19,27 @@ import resources.PrismLookup
 
 import scala.util.{Failure, Success}
 
-case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
-case class UuidForm(uuid:String, action:String)
+case class DeployParameterForm(project: String,
+                               build: String,
+                               stage: String,
+                               recipe: Option[String],
+                               action: String,
+                               hosts: List[String],
+                               stacks: List[String])
+case class UuidForm(uuid: String, action: String)
 
-class DeployController(deployments: Deployments, prismLookup: PrismLookup)
-                      (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class DeployController(deployments: Deployments, prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi,
+                                                                           val wsClient: WSClient)
+    extends Controller
+    with Logging
+    with LoginActions
+    with I18nSupport {
 
   lazy val uuidForm = Form[UuidForm](
     mapping(
       "uuid" -> text(36, 36),
       "action" -> nonEmptyText
-    )(UuidForm.apply)
-      (UuidForm.unapply)
+    )(UuidForm.apply)(UuidForm.unapply)
   )
 
   lazy val deployForm = Form[DeployParameterForm](
@@ -50,30 +59,39 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
   }
 
   def processForm = AuthAction { implicit request =>
-    deployForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.deploy.form(errors, prismLookup)),
-      form => {
-        log.info(s"Host list: ${form.hosts}")
-        val defaultRecipe = prismLookup.data
-          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
-          .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
-        val parameters = new DeployParameters(Deployer(request.user.fullName),
-          Build(form.project, form.build.toString),
-          Stage(form.stage),
-          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
-          stacks = form.stacks.map(NamedStack(_)).toSeq,
-          hostList = form.hosts)
+    deployForm
+      .bindFromRequest()
+      .fold(
+        errors => BadRequest(views.html.deploy.form(errors, prismLookup)),
+        form => {
+          log.info(s"Host list: ${form.hosts}")
+          val defaultRecipe = prismLookup.data
+            .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
+            .map(data => RecipeName(data.value))
+            .getOrElse(DefaultRecipe())
+          val parameters = new DeployParameters(Deployer(request.user.fullName),
+                                                Build(form.project, form.build.toString),
+                                                Stage(form.stage),
+                                                recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
+                                                stacks = form.stacks.map(NamedStack(_)).toSeq,
+                                                hostList = form.hosts)
 
-        form.action match {
-          case "preview" =>
-            Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
-          case "deploy" =>
-            val uuid = deployments.deploy(parameters)
-            Redirect(routes.DeployController.viewUUID(uuid.toString))
-          case _ => throw new RuntimeException("Unknown action")
+          form.action match {
+            case "preview" =>
+              Redirect(
+                routes.DeployController.preview(parameters.build.projectName,
+                                                parameters.build.id,
+                                                parameters.stage.name,
+                                                parameters.recipe.name,
+                                                parameters.hostList.mkString(","),
+                                                ""))
+            case "deploy" =>
+              val uuid = deployments.deploy(parameters)
+              Redirect(routes.DeployController.viewUUID(uuid.toString))
+            case _ => throw new RuntimeException("Unknown action")
+          }
         }
-      }
-    )
+      )
   }
 
   def stop(uuid: String) = AuthAction { implicit request =>
@@ -93,20 +111,36 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
     Ok(views.html.deploy.logContent(record))
   }
 
-  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks: String) = AuthAction { implicit request =>
-    val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
-    val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = PreviewController.startPreview(parameters, prismLookup)
-    Ok(views.html.deploy.preview(request, parameters, previewId.toString))
-  }
+  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks: String) =
+    AuthAction { implicit request =>
+      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
+      val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
+      val parameters = DeployParameters(Deployer(request.user.fullName),
+                                        Build(projectName, buildId),
+                                        Stage(stage),
+                                        RecipeName(recipe),
+                                        stackList,
+                                        hostList)
+      val previewId = PreviewController.startPreview(parameters, prismLookup)
+      Ok(views.html.deploy.preview(request, parameters, previewId.toString))
+    }
 
-  def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) =
+  def previewContent(previewId: String,
+                     projectName: String,
+                     buildId: String,
+                     stage: String,
+                     recipe: String,
+                     hosts: String) =
     AuthAction { implicit request =>
       val previewUUID = UUID.fromString(previewId)
       val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
       val parameters = DeployParameters(
-        Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
+        Deployer(request.user.fullName),
+        Build(projectName, buildId),
+        Stage(stage),
+        RecipeName(recipe),
+        Seq(),
+        hostList
       )
       val result = PreviewController.getPreview(previewUUID, parameters)
       result match {
@@ -119,7 +153,8 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
                 case exception: Exception =>
                   Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
               }
-            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
+            case Some(Failure(exception)) =>
+              Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
             case None =>
               val duration = new org.joda.time.Duration(startTime, new DateTime())
               Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
@@ -136,7 +171,11 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
 
   def historyContent() = AuthAction { implicit request =>
     val records = try {
-      Deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
+      Deployments
+        .getDeploys(deployment.DeployFilter.fromRequest(request),
+                    deployment.PaginationView.fromRequest(request),
+                    fetchLogs = false)
+        .reverse
     } catch {
       case e: Exception =>
         log.error("Exception whilst fetching records", e)
@@ -147,23 +186,29 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
     } catch {
       case e: Exception => None
     }
-    Ok(views.html.deploy.historyContent(request, records, deployment.DeployFilterPagination.fromRequest.withItemCount(count)))
+    Ok(
+      views.html.deploy
+        .historyContent(request, records, deployment.DeployFilterPagination.fromRequest.withItemCount(count)))
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = Builds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
+    val possibleProjects =
+      Builds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
   val shortFormat = DateTimeFormat.forPattern("HH:mm d/M/yy").withZone(DateTimeZone.forID("Europe/London"))
 
   def autoCompleteBuild(project: String, term: String) = AuthAction {
-    val possibleProjects = Builds.successfulBuilds(project).filter(
-      p => p.number.contains(term) || p.branchName.contains(term)
-    ).map { build =>
-      val label = "%s [%s] (%s)" format(build.number, build.branchName, shortFormat.print(build.startTime))
-      Map("label" -> label, "value" -> build.number)
-    }
+    val possibleProjects = Builds
+      .successfulBuilds(project)
+      .filter(
+        p => p.number.contains(term) || p.branchName.contains(term)
+      )
+      .map { build =>
+        val label = "%s [%s] (%s)" format (build.number, build.branchName, shortFormat.print(build.startTime))
+        Map("label" -> label, "value" -> build.number)
+      }
     Ok(Json.toJson(possibleProjects))
   }
 
@@ -183,8 +228,9 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
       tags <- S3Tag.of(b)
     } yield (b, tags)
 
-    buildTagTuple map { case (b, tags) =>
-      Ok(views.html.deploy.buildInfo(b, tags.map(TagClassification.apply)))
+    buildTagTuple map {
+      case (b, tags) =>
+        Ok(views.html.deploy.buildInfo(b, tags.map(TagClassification.apply)))
     } getOrElse Ok("")
   }
 
@@ -192,7 +238,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
       for (build <- Builds.all.sortBy(_.jobName))
-      yield Seq(build.jobName, build.number, build.branchName, build.jobId, build.id)
+        yield Seq(build.jobName, build.number, build.branchName, build.jobId, build.id)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
   }
@@ -213,18 +259,20 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
   }
 
   def markAsFailed = AuthAction { implicit request =>
-    uuidForm.bindFromRequest().fold(
-      errors => Redirect(routes.DeployController.history),
-      form => {
-        form.action match {
-          case "markAsFailed" =>
-            val record = Deployments.get(UUID.fromString(form.uuid))
-            if (record.isStalled)
-              Deployments.markAsFailed(record)
-            Redirect(routes.DeployController.viewUUID(form.uuid))
+    uuidForm
+      .bindFromRequest()
+      .fold(
+        errors => Redirect(routes.DeployController.history),
+        form => {
+          form.action match {
+            case "markAsFailed" =>
+              val record = Deployments.get(UUID.fromString(form.uuid))
+              if (record.isStalled)
+                Deployments.markAsFailed(record)
+              Redirect(routes.DeployController.viewUUID(form.uuid))
+          }
         }
-      }
-    )
+      )
   }
 
   def dashboard(projects: String, search: Boolean) = AuthAction { implicit request =>
