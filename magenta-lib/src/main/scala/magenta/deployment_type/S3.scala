@@ -4,7 +4,7 @@ import magenta.Datum
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.tasks.S3Upload
 
-object S3 extends DeploymentType with S3AclParams {
+object S3 extends DeploymentType {
   val name = "aws-s3"
   val documentation =
     """
@@ -41,6 +41,10 @@ object S3 extends DeploymentType with S3AclParams {
       |regardless of the target stage.
     """.stripMargin
   )
+
+  val publicReadAcl = Param[Boolean]("publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+  ).default(true)
 
   val cacheControl = Param[List[PatternValue]]("cacheControl",
     """
@@ -138,11 +142,4 @@ object S3 extends DeploymentType with S3AclParams {
       )
     }
   }
-}
-
-trait S3AclParams { this: DeploymentType =>
-
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-    ).default(true)
 }

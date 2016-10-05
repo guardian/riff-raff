@@ -24,8 +24,8 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
     val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), resources, region)
     DeploymentGraph.toTaskList(context.tasks) should be(List(
-      StubTask("init_action_one per app task number one"),
-      StubTask("init_action_one per app task number two")
+      StubTask("init_action_one per app task number one", Region("eu-west-1")),
+      StubTask("init_action_one per app task number two", Region("eu-west-1"))
     ))
   }
 

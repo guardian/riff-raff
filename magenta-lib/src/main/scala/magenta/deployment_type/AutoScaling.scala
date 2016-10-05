@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object AutoScaling  extends DeploymentType with S3AclParams {
+object AutoScaling  extends DeploymentType {
   val name = "autoscaling"
   val documentation =
     """
@@ -75,7 +75,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
 
   val prefixStage = Param[Boolean]("prefixStage",
-    documentation = "Whether to prefix `stage` to the S3 location`"
+    documentation = "Whether to prefix `stage` to the S3 location"
   ).default(true)
   val prefixPackage = Param[Boolean]("prefixPackage",
     documentation = "Whether to prefix `package` to the S3 location"
@@ -83,6 +83,10 @@ object AutoScaling  extends DeploymentType with S3AclParams {
   val prefixStack = Param[Boolean]("prefixStack",
     documentation = "Whether to prefix `stack` to the S3 location"
   ).default(true)
+
+  val publicReadAcl = Param[Boolean]("publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
+  ).defaultFromPackage(_.legacyConfig)
 
   val defaultActions = List("uploadArtifacts", "deploy")
 
@@ -113,7 +117,7 @@ object AutoScaling  extends DeploymentType with S3AclParams {
         stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
       )
-      if (publicReadAcl.get(pkg).isEmpty)
+      if (pkg.legacyConfig && publicReadAcl.get(pkg).isEmpty)
         resources.reporter.warning(
           "DEPRECATED: publicReadAcl should be specified for an autoscaling deploy. Not setting this means that it " +
             "defaults to true which is insecure and probably not what you want. It is not a good idea for artifacts " +

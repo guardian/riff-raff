@@ -72,8 +72,8 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   it should "generate the tasks from the actions supplied" in {
     val taskGraph = Resolver.resolve(project(baseRecipe), parameters(baseRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
-      StubTask("init_action_one per app task number one"),
-      StubTask("init_action_one per app task number two")
+      StubTask("init_action_one per app task number one", Region("eu-west-1")),
+      StubTask("init_action_one per app task number two", Region("eu-west-1"))
     ))
   }
 
@@ -87,10 +87,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
     val taskGraph = Resolver.resolve(project(mainRecipe, baseRecipe), parameters(mainRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
-      StubTask("init_action_one per app task number one"),
-      StubTask("init_action_one per app task number two"),
-      StubTask("main_init_action per app task number one"),
-      StubTask("main_init_action per app task number two")
+      StubTask("init_action_one per app task number one", Region("eu-west-1")),
+      StubTask("init_action_one per app task number two", Region("eu-west-1")),
+      StubTask("main_init_action per app task number one", Region("eu-west-1")),
+      StubTask("main_init_action per app task number two", Region("eu-west-1"))
     ))
 
   }
@@ -108,12 +108,12 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
     val taskGraph = Resolver.resolve(project(mainRecipe, indirectDependencyRecipe, baseRecipe), parameters(mainRecipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
-      StubTask("init_action_one per app task number one"),
-      StubTask("init_action_one per app task number two"),
-      StubTask("init_action_two per app task number one"),
-      StubTask("init_action_two per app task number two"),
-      StubTask("main_init_action per app task number one"),
-      StubTask("main_init_action per app task number two")
+      StubTask("init_action_one per app task number one", Region("eu-west-1")),
+      StubTask("init_action_one per app task number two", Region("eu-west-1")),
+      StubTask("init_action_two per app task number one", Region("eu-west-1")),
+      StubTask("init_action_two per app task number two", Region("eu-west-1")),
+      StubTask("main_init_action per app task number one", Region("eu-west-1")),
+      StubTask("main_init_action per app task number two", Region("eu-west-1"))
     ))
   }
 
@@ -129,7 +129,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   it should "resolve tasks from multiple stacks" in {
     val pkgType = StubDeploymentType(
       actions = {
-        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
+        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack)))
       },
       List("deploy")
     )
@@ -140,17 +140,17 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
     val taskGraph = Resolver.resolve(proj, parameters(recipe), resources, region)
     DeploymentGraph.toTaskList(taskGraph) should be (List(
-      StubTask("stacked", stack = Some(NamedStack("foo"))),
-      StubTask("stacked", stack = Some(NamedStack("bar"))),
-      StubTask("stacked", stack = Some(NamedStack("monkey"))),
-      StubTask("stacked", stack = Some(NamedStack("litre")))
+      StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("foo"))),
+      StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("bar"))),
+      StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("monkey"))),
+      StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("litre")))
     ))
   }
 
   it should "resolve tasks from multiple stacks into a parallel task graph" in {
     val pkgType = StubDeploymentType(
       actions = {
-        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", stack = Some(target.stack)))
+        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack)))
       },
       List("deploy")
     )
@@ -164,10 +164,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     successors.size should be(4)
 
     successors should be(List(
-      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("foo")))), "project -> foo")),
-      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("bar")))), "project -> bar")),
-      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("monkey")))), "project -> monkey")),
-      ValueNode(DeploymentTasks(List(StubTask("stacked", stack = Some(NamedStack("litre")))), "project -> litre"))
+      ValueNode(DeploymentTasks(List(StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("foo")))), "project -> foo")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("bar")))), "project -> bar")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("monkey")))), "project -> monkey")),
+      ValueNode(DeploymentTasks(List(StubTask("stacked", Region("eu-west-1"), stack = Some(NamedStack("litre")))), "project -> litre"))
     ))
   }
 

@@ -167,14 +167,13 @@ class DeployGroupRunner(
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
 
       val context: DeployContext = riffRaffYamlString.map { yaml =>
-//        val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
-//        graph.right.map(DeployContext(record.uuid, record.parameters, _)) match {
-//          case Left(errors) =>
-//            errors.errors.foreach(error => safeReporter.info(s"${error.context}: ${error.message}"))
-//            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.size} errors")
-//          case Right(success) => success
-//        }
-        safeReporter.fail("Riff-Raff does not yet support riff-raff.yaml files")
+        val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
+        graph.right.map(DeployContext(record.uuid, record.parameters, _)) match {
+          case Left(errors) =>
+            errors.errors.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
+            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.size} errors")
+          case Right(success) => success
+        }
       } getOrElse {
         safeReporter.info("Falling back to deploy.json")
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)

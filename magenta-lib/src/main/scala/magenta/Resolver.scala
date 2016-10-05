@@ -4,7 +4,7 @@ import magenta.graph.{DeploymentTasks, DeploymentGraph, Graph}
 import magenta.tasks._
 
 case class RecipeTasks(recipe: Recipe, tasks: List[Task]) {
-  lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs=None)).distinct
+  lazy val hosts = tasks.flatMap(_.taskHost).map(_.copy(connectAs = None)).distinct
   lazy val recipeName = recipe.name
 }
 

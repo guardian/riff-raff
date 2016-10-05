@@ -48,7 +48,10 @@ object Menu {
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys())
     )),
-    SingleMenuItem("Documentation", routes.Application.documentation(""), activeInSubPaths = true)
+    DropDownMenuItem("Documentation", Seq(
+      SingleMenuItem("Home", routes.Application.documentation("")),
+      SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types"))
+    ))
   )
 
   lazy val deployInfoMenu = Seq(
@@ -146,15 +149,23 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
               case "magenta-lib/types" =>
                 val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
                   val paramDocs = dt.params.sortBy(_.name).map{ param =>
-                    val defaultValue = (param.defaultValue, param.defaultValueFromPackage) match {
+                    val defaultLegacy = (param.defaultValue, param.defaultValueFromPackage) match {
                       case (Some(default), _) => Some(default.toString)
                       case (None, Some(pkgFunction)) =>
                         Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"))
+                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = true)
                         ).toString)
                       case (_, _) => None
                     }
-                    (param.name, param.documentation, defaultValue)
+                    val defaultNew = (param.defaultValue, param.defaultValueFromPackage) match {
+                      case (Some(default), _) => Some(default.toString)
+                      case (None, Some(pkgFunction)) =>
+                        Some(pkgFunction(
+                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = false)
+                        ).toString)
+                      case (_, _) => None
+                    }
+                    (param.name, param.documentation, defaultLegacy, defaultNew)
                   }.sortBy(_._3.isDefined)
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
                   (dt.name, typeDocumentation)

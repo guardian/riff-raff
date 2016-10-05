@@ -6,7 +6,7 @@ import akka.actor.ActorSystem
 import akka.agent.Agent
 import conf.Configuration
 import controllers.routes
-import magenta.artifact.S3JsonArtifact
+import magenta.artifact.{S3JsonArtifact, S3YamlArtifact}
 import magenta.graph.DeploymentGraph
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
@@ -56,6 +56,9 @@ object Preview {
    * Get the project for the build for preview purposes.
    */
   def getProject(build: Build, resources: DeploymentResources): Project = {
+    val yamlArtifact = S3YamlArtifact(build, artifact.aws.bucketName)
+    if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isDefined)
+      throw new IllegalArgumentException("Preview does not currently support riff-raff.yaml configuration files")
     val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
     val json = S3JsonArtifact.withZipFallback(s3Artifact){ artifact =>
       Try(artifact.deployObject.fetchContentAsString()(resources.artifactClient).get)
