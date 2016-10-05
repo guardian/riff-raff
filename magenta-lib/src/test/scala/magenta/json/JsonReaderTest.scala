@@ -66,9 +66,12 @@ class JsonReaderTest extends FlatSpec with Matchers {
     parsed.applications should be (Set(App("index-builder"), App("api"), App("solr")))
 
     parsed.packages.size should be (3)
-    parsed.packages("index-builder") should be (DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Path("artifact-bucket", "test/123/packages/index-builder")))
-    parsed.packages("api") should be (DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/api")))
-    parsed.packages("solr") should be (DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/solr")))
+    parsed.packages("index-builder") shouldBe
+      DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Path("artifact-bucket", "test/123/packages/index-builder"), true)
+    parsed.packages("api") shouldBe
+      DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/api"), true)
+    parsed.packages("solr") shouldBe
+      DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/solr"), true)
 
     val recipes = parsed.recipes
     recipes.size should be (4)

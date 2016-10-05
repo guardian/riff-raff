@@ -18,7 +18,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Path("artifact-bucket", "project/123/test"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Path("artifact-bucket", "project/123/test"), true)
 
     val task = new DoubleSize(p, Stage("PROD"), UnnamedStack, Region("eu-west-1"))
 
@@ -35,7 +35,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Path("artifact-bucket", "project/123/test"))
+    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "test", S3Path("artifact-bucket", "project/123/test"), true)
 
     val task = new CheckGroupSize(p, Stage("PROD"), UnnamedStack, Region("eu-west-1"))
 

@@ -26,7 +26,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   )
 
   val app = Seq(App("lambda"))
-  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"))
+  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
@@ -60,7 +60,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "functionNames" -> Json.arr("MyFunction-")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"))
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
 
     val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(
@@ -82,7 +82,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "regions" -> Json.arr("us-east-1", "ap-southeast-2")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"))
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
 
     val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(

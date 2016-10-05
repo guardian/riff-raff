@@ -31,7 +31,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       "bucket" -> JsString("bucket-1234")
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true)
 
     val thrown = the[NoSuchElementException] thrownBy {
       S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
@@ -54,7 +54,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       "cacheControl" -> JsString("no-cache")
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true)
 
     S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
       List(S3Upload(
@@ -76,7 +76,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       )
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package)
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true)
 
     inside(S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)).head) {
       case upload: S3Upload => upload.cacheControlPatterns should be(List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
@@ -92,7 +92,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       "prefixPackage" -> JsBoolean(false)
     )
 
-    val p = DeploymentPackage("myapp", Seq(app1), data, "aws-s3", sourceS3Package)
+    val p = DeploymentPackage("myapp", Seq(app1), data, "aws-s3", sourceS3Package, true)
 
     val lookup = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)), Map("s3-path-prefix" -> Seq(Datum(None, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
 
@@ -111,7 +111,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       )
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Path("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Path("artifact-bucket", "test/123"), true)
 
     Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
       List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
@@ -127,7 +127,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
       )
     )
 
-    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", S3Path("artifact-bucket", "test/123"))
+    val p = DeploymentPackage("myapp", Seq.empty, badData, "aws-lambda", S3Path("artifact-bucket", "test/123"), true)
 
     val thrown = the[FailException] thrownBy {
       Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (

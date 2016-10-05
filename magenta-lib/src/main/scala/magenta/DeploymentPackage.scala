@@ -10,7 +10,7 @@ case class DeploymentPackage(
   pkgSpecificData: Map[String, JsValue],
   deploymentTypeName: String,
   s3Package: S3Path,
-  legacyConfig: Boolean = true) {
+  legacyConfig: Boolean) {
 
   def mkAction(name: String): Action = pkgType.mkAction(name)(this)
 

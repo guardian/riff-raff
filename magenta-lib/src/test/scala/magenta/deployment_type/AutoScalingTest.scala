@@ -24,7 +24,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val app = Seq(App("app"))
 
-    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"))
+    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"), true)
 
     AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
@@ -41,6 +41,20 @@ class AutoScalingTest extends FlatSpec with Matchers {
     ))
   }
 
+  it should "default publicReadAcl to false when a new style package" in {
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("asg-bucket")
+    )
+
+    val app = Seq(App("app"))
+
+    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"), false)
+
+    AutoScaling.actions("uploadArtifacts")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should matchPattern {
+      case List(S3Upload(_,_,_,_,_,false,_)) =>
+    }
+  }
+
   "seconds to wait" should "be overridable" in {
     val data: Map[String, JsValue] = Map(
       "bucket" -> JsString("asg-bucket"),
@@ -51,7 +65,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val app = Seq(App("app"))
 
-    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"))
+    val p = DeploymentPackage("app", app, data, "asg-elb", S3Path("artifact-bucket", "test/123/app"), true)
 
     AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
