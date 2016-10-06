@@ -1,17 +1,19 @@
 package magenta.input.resolver
 
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import magenta.deployment_type.DeploymentType
 import magenta.input.{ConfigError, Deployment}
 
 object DeploymentTypeResolver {
 
-  def validateDeploymentType(deployment: Deployment, availableTypes: Seq[DeploymentType]): Either[ConfigError, Deployment] = {
-    for {
+  def validateDeploymentType(deployment: Deployment, availableTypes: Seq[DeploymentType]): ValidatedNel[ConfigError, Deployment] = {
+    val result = for {
       deploymentType <- availableTypes.find(_.name == deployment.`type`)
         .toRight(ConfigError(deployment.name, s"Unknown type ${deployment.`type`}")).right
       deploymentWithActions <- resolveDeploymentActions(deployment, deploymentType).right
       deployment <- verifyDeploymentParameters(deploymentWithActions, deploymentType).right
     } yield deployment
+    Validated.fromEither(result).leftMap(NonEmptyList.of(_))
   }
 
   private[input] def resolveDeploymentActions(deployment: Deployment, deploymentType: DeploymentType): Either[ConfigError, Deployment] = {

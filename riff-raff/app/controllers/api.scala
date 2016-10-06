@@ -8,15 +8,16 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
-
 import java.security.SecureRandom
 import java.util.UUID
 
+import cats.data.Validated.{Invalid, Valid}
 import org.joda.time.{DateTime, LocalDate}
-
 import com.mongodb.casbah.Imports._
 import deployment.{DeployFilter, Deployments, Record}
 import magenta._
+import magenta.input.RiffRaffYamlReader
+import magenta.input.resolver.{Resolver => YamlResolver}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import utils.Json.DefaultJodaDateWrites
 import utils.{ChangeFreeze, Graph}
@@ -345,6 +346,54 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
         )
       }
     )
+  }
+
+  def validate = ApiJsonEndpoint("validate") { implicit request =>
+    request.body.asText.fold{
+      Json.obj(
+        "response" -> Json.obj(
+          "status" -> "error",
+          "errors" -> Json.arr("No configuration provided in request body")
+        )
+      )
+    }{ body =>
+      val validatedGraph = YamlResolver.resolveDeploymentGraph(body)
+      validatedGraph match {
+        case Valid(graph) =>
+          Json.obj(
+            "response" -> Json.obj(
+              "status" -> "ok",
+              "result" -> "passed",
+              "deployments" -> graph.toList.map { deployment =>
+                Json.obj(
+                  "name" -> deployment.name,
+                  "type" -> deployment.`type`,
+                  "stacks" -> deployment.stacks.toList,
+                  "regions" -> deployment.regions.toList,
+                  "actions" -> deployment.actions,
+                  "app" -> deployment.app,
+                  "contentDirectory" -> deployment.contentDirectory,
+                  "dependencies" -> deployment.dependencies,
+                  "parameters" -> deployment.parameters
+                )
+              }
+            )
+          )
+        case Invalid(errors) =>
+          Json.obj(
+            "response" -> Json.obj(
+              "status" -> "ok",
+              "result" -> "failed",
+              "errors" -> errors.toList.map { err =>
+                Json.obj(
+                  "context" -> err.context,
+                  "message" -> err.message
+                )
+              }
+            )
+          )
+      }
+    }
   }
 
 }

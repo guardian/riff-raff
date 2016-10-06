@@ -1,11 +1,11 @@
 package magenta.input
 
+import cats.data.NonEmptyList
 import play.api.libs.json._
 
 case class ConfigError(context: String, message: String)
-case class ConfigErrors(errors: List[ConfigError]) {
-  def :::(other: ConfigErrors) = ConfigErrors(other.errors ::: errors)
-  def ::(other: ConfigError) = ConfigErrors(other :: errors)
+object ConfigError {
+  def nel(context: String, message: String) = NonEmptyList.of(ConfigError(context, message))
 }
 
 case class RiffRaffDeployConfig(
@@ -54,8 +54,8 @@ object DeploymentOrTemplate {
 case class Deployment(
   name: String,
   `type`: String,
-  stacks: List[String],
-  regions: List[String],
+  stacks: NonEmptyList[String],
+  regions: NonEmptyList[String],
   actions: Option[List[String]],
   app: String,
   contentDirectory: String,

@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
 import akka.agent.Agent
+import cats.data.Validated.{Invalid, Valid}
 import controllers.Logging
 import deployment.Record
 import magenta.artifact.{S3JsonArtifact, S3YamlArtifact}
@@ -168,11 +169,11 @@ class DeployGroupRunner(
 
       val context: DeployContext = riffRaffYamlString.map { yaml =>
         val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
-        graph.right.map(DeployContext(record.uuid, record.parameters, _)) match {
-          case Left(errors) =>
-            errors.errors.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
-            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.size} errors")
-          case Right(success) => success
+        graph.map(DeployContext(record.uuid, record.parameters, _)) match {
+          case Invalid(errors) =>
+            errors.toList.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
+            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.toList.size} errors")
+          case Valid(success) => success
         }
       } getOrElse {
         safeReporter.info("Falling back to deploy.json")

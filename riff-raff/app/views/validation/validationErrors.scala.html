@@ -1,0 +1,11 @@
+@import cats.data.NonEmptyList
+@import magenta.input.ConfigError
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], errors: NonEmptyList[ConfigError])
+
+@main("Validation errors", request) {
+    <div class="clearfix"><p>&nbsp;</p></div>
+    @errors.map { error =>
+        Error: @error
+    }
+    <div class="clearfix"></div>
+}

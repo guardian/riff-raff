@@ -1,0 +1,11 @@
+@import magenta.input.Deployment
+@import magenta.graph.Graph
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployments: Graph[Deployment])
+
+@main("Validation output", request) {
+    <div class="clearfix"><p>&nbsp;</p></div>
+    @deployments.toList.map { deployment =>
+        Deployment: @deployment
+    }
+    <div class="clearfix"></div>
+}

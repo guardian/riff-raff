@@ -1,5 +1,6 @@
 package controllers
 
+import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
 import play.api.{Environment, Logger}
@@ -7,6 +8,7 @@ import magenta.deployment_type.DeploymentType
 import magenta.{App, DeploymentPackage}
 import magenta.withResource
 import magenta.artifact.S3Path
+import magenta.input.resolver.Resolver
 import play.api.libs.ws.WSClient
 import resources.PrismLookup
 
@@ -49,8 +51,9 @@ object Menu {
       SingleMenuItem("API keys", routes.Api.listKeys())
     )),
     DropDownMenuItem("Documentation", Seq(
-      SingleMenuItem("Home", routes.Application.documentation("")),
-      SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types"))
+      SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),
+      SingleMenuItem("Validate configuration", routes.Application.validationForm),
+      SingleMenuItem("Everything else", routes.Application.documentation(""))
     ))
   )
 
@@ -176,6 +179,27 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
             }
           }
         }
+      }
+    }
+  }
+
+  def validationForm = AuthAction { request =>
+    log.warn("Displaying form")
+    Ok(views.html.validation.validationForm(request))
+  }
+
+  def validateConfiguration = AuthAction { request =>
+    val data = request.body
+    log.warn(data.toString)
+    val maybeConfiguration = data.asFormUrlEncoded.flatMap(_.get("configuration")).getOrElse(Nil).headOption
+    maybeConfiguration.fold{
+      BadRequest("No configuration provided to validate")
+    }{ config =>
+      Resolver.resolveDeploymentGraph(config) match {
+        case Valid(deployments) =>
+          Ok(views.html.validation.validationPassed(request, deployments))
+        case Invalid(errors) =>
+          Ok(views.html.validation.validationErrors(request, errors))
       }
     }
   }

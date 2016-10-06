@@ -1,0 +1,21 @@
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import b3.vertical.fieldConstructor
+@import helper.CSRF
+
+@main("Validation form", request) {
+    <div class="clearfix"><p>&nbsp;</p></div>
+    <div class="col-md-6">
+    @b3.form(routes.Application.validateConfiguration, 'class -> "well") {
+        @CSRF.formField
+        <fieldset>
+            <legend>Paste your riff-raff.yaml content to validate it...</legend>
+            <textarea name="configuration"></textarea>
+
+            <div class="actions">
+                <button name="action" type="submit" value="deploy" class="btn btn-primary">Validate</button>
+            </div>
+        </fieldset>
+    }
+    </div>
+    <div class="clearfix"></div>
+}
