@@ -93,7 +93,7 @@ object AutoScaling  extends DeploymentType {
   def actions = {
     case "deploy" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val reporter = resources.reporter
+      val reporter = resources.reporter
       val parameters = target.parameters
       val stack = target.stack
       List(
@@ -102,10 +102,10 @@ object AutoScaling  extends DeploymentType {
         SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
         TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
         DoubleSize(pkg, parameters.stage, stack, target.region),
-        HealthcheckGrace(healthcheckGrace(pkg) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
-        WarmupGrace(warmupGrace(pkg) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg) * 1000, target.region),
+        HealthcheckGrace(healthcheckGrace(pkg, reporter) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
+        WarmupGrace(warmupGrace(pkg, reporter) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
         CullInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
         ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
       )
@@ -113,11 +113,11 @@ object AutoScaling  extends DeploymentType {
     case "uploadArtifacts" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      implicit val reporter = resources.reporter
+      val reporter = resources.reporter
       val prefix = S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
+        stack = if (prefixStack(pkg, reporter)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg, reporter)) Some(target.parameters.stage) else None,
+        packageName = if (prefixPackage(pkg, reporter)) Some(pkg.name) else None
       )
       if (pkg.legacyConfig && publicReadAcl.get(pkg).isEmpty)
         resources.reporter.warning(
@@ -132,7 +132,7 @@ object AutoScaling  extends DeploymentType {
           target.region,
           bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
           Seq(pkg.s3Package -> prefix),
-          publicReadAcl = publicReadAcl(pkg)
+          publicReadAcl = publicReadAcl(pkg, reporter)
         )
       )
   }

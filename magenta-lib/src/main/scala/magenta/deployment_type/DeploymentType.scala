@@ -53,7 +53,7 @@ case class Param[T](name: String,
 
   def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
-  def apply(pkg: DeploymentPackage)(implicit reporter: DeployReporter, reads: Reads[T], manifest: Manifest[T]): T = {
+  def apply(pkg: DeploymentPackage, reporter: DeployReporter)(implicit reads: Reads[T], manifest: Manifest[T]): T = {
     val maybeValue = get(pkg)
     val maybeDefault = defaultValue.orElse(defaultValueFromPackage.map(_ (pkg)))
     if (!pkg.legacyConfig && maybeDefault.isDefined && maybeValue == maybeDefault) {

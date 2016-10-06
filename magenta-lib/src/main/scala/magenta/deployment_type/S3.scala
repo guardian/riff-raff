@@ -117,28 +117,28 @@ object S3 extends DeploymentType {
 
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      implicit val reporter = resources.reporter
+      val reporter = resources.reporter
 
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
         val data = resourceLookupFor(bucketResource)
-        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg)} (${pkg.apps.head} in ${target.parameters.stage.name})")
+        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg, reporter)} (${pkg.apps.head} in ${target.parameters.stage.name})")
         data.get.value
       }
 
       val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg)) Some(pkg.name) else None
+        stack = if (prefixStack(pkg, reporter)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg, reporter)) Some(target.parameters.stage) else None,
+        packageName = if (prefixPackage(pkg, reporter)) Some(pkg.name) else None
       ))
       List(
         S3Upload(
           target.region,
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
-          cacheControlPatterns = cacheControl(pkg),
-          extensionToMimeType = mimeTypes(pkg),
-          publicReadAcl = publicReadAcl(pkg)
+          cacheControlPatterns = cacheControl(pkg, reporter),
+          extensionToMimeType = mimeTypes(pkg, reporter),
+          publicReadAcl = publicReadAcl(pkg, reporter)
         )
       )
     }
