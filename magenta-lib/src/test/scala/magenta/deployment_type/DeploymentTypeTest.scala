@@ -8,10 +8,13 @@ import magenta.deployment_type.param_reads.PatternValue
 import magenta.deployment_type.{Lambda, S3}
 import magenta.fixtures._
 import magenta.tasks._
+import org.mockito.Mockito._
+import org.mockito.Matchers._
+import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 
-class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
+class DeploymentTypeTest extends FlatSpec with Matchers with Inside with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: AmazonS3 = null
@@ -45,6 +48,38 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside {
     }
 
     thrown.getMessage should equal ("Package myapp [aws-s3] requires parameter cacheControl of type List")
+  }
+
+  it should "log a warning when a default is explictly set in a riff-raff.yaml" in {
+    val mockReporter = mock[DeployReporter]
+
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234"),
+      "cacheControl" -> JsString("monkey"),
+      "prefixStage" -> JsBoolean(true)
+    )
+
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, false)
+
+    S3.actions("uploadStaticFiles")(p)(DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
+
+    verify(mockReporter).warning("Parameter prefixStage is unnecessarily set to the default value of true")
+  }
+
+  it should "not log a warning when a default is explicitly set in a legacy config" in {
+    val mockReporter = mock[DeployReporter]
+
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("bucket-1234"),
+      "cacheControl" -> JsString("monkey"),
+      "prefixStage" -> JsBoolean(true)
+    )
+
+    val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true)
+
+    S3.actions("uploadStaticFiles")(p)(DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
+
+    verify(mockReporter, never).warning(any())
   }
 
   "Amazon Web Services S3" should "have a uploadStaticFiles action" in {

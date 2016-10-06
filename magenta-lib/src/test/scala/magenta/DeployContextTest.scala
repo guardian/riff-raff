@@ -130,7 +130,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   val oneRecipeName = RecipeName("one")
 
-  val basePackageType = stubPackageType(Seq("init_action_one"))
+  val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
   val baseRecipe = Recipe("one",
     actions = basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,

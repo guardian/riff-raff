@@ -74,7 +74,7 @@ object Lambda extends DeploymentType  {
 
   def defaultActions = List("uploadLambda", "updateLambda")
 
-  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region)(reporter: DeployReporter): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, stage: String, stack: Stack, targetRegion: Region, reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
     if (bucketOption.isEmpty) {
       if (pkg.legacyConfig)
@@ -87,13 +87,13 @@ object Lambda extends DeploymentType  {
     if (!pkg.legacyConfig && regionsOption.isDefined) reporter.fail(s"The regions parameter for the aws-lambda deployment type should not be used in the riff-raff.yaml format. Use the global, template or deployment regions fields of the riff-raff.yaml format instead.")
     val regions: List[Region] = regionsOption.map(_.filter(regionExists(_)(reporter)).map(Region)).getOrElse(List(targetRegion))
 
-    (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg)) match {
+    (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg, reporter)) match {
       case (Some(functionNames), None, prefixStack) =>
         val stackNamePrefix = stack.nameOption.filter(_ => prefixStack).getOrElse("")
         for {
           name <- functionNames
           region <- regions
-        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg), region, bucketOption)
+        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg, reporter), region, bucketOption)
         
       case (None, Some(functionsMap), _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
@@ -124,7 +124,7 @@ object Lambda extends DeploymentType  {
     case "uploadLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region)(resources.reporter).flatMap {
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region, resources.reporter).flatMap {
         case LambdaFunctionFromZip(_,_, _) => None
 
         case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
@@ -139,7 +139,7 @@ object Lambda extends DeploymentType  {
     case "updateLambda" => (pkg) => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region)(resources.reporter).flatMap {
+      lambdaToProcess(pkg, target.parameters.stage.name, target.stack, target.region, resources.reporter).flatMap {
         case LambdaFunctionFromZip(functionName, fileName, region) =>
           Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
 

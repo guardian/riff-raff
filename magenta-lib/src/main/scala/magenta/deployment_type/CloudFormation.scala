@@ -66,27 +66,28 @@ object CloudFormation extends DeploymentType {
     case "updateStack" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
+      val reporter = resources.reporter
 
-      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
-      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
+      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, reporter))
+      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, reporter))
+      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, reporter)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
-      val globalParams = templateParameters(pkg)
-      val stageParams = templateStageParameters(pkg).lift.apply(target.parameters.stage.name).getOrElse(Map())
+      val globalParams = templateParameters(pkg, reporter)
+      val stageParams = templateStageParameters(pkg, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
 
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
-          S3Path(pkg.s3Package, templatePath(pkg)),
+          S3Path(pkg.s3Package, templatePath(pkg, reporter)),
           params,
-          amiParameter(pkg),
-          amiTags(pkg),
+          amiParameter(pkg, reporter),
+          amiTags(pkg, reporter),
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack,
-          createStackIfAbsent(pkg)
+          createStackIfAbsent(pkg, reporter)
         ),
         CheckUpdateEventsTask(fullCloudFormationStackName)
       )

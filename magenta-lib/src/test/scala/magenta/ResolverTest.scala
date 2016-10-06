@@ -78,7 +78,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "prepare dependsOn actions correctly" in {
-    val basePackageType = stubPackageType(Seq("main_init_action"))
+    val basePackageType = stubDeploymentType(Seq("main_init_action"))
 
     val mainRecipe = Recipe("main",
       actions = basePackageType.mkAction("main_init_action")(stubPackage) :: Nil,
@@ -96,7 +96,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "only include dependencies once" in {
-    val basePackageType = stubPackageType(Seq("main_init_action", "init_action_two"))
+    val basePackageType = stubDeploymentType(Seq("main_init_action", "init_action_two"))
 
     val indirectDependencyRecipe = Recipe("two",
       actions = basePackageType.mkAction("init_action_two")(stubPackage) :: Nil,

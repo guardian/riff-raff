@@ -1,5 +1,6 @@
 package magenta
 
+import magenta.deployment_type.{Param, ParamRegister}
 import org.joda.time.DateTime
 
 package object fixtures {
@@ -12,7 +13,7 @@ package object fixtures {
 
   val lookupSingleHost = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)))
 
-  val basePackageType = stubPackageType(Seq("init_action_one"))
+  val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
   val baseRecipe = Recipe("one",
     actions = basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,
@@ -24,14 +25,15 @@ package object fixtures {
 
   def stubPackage = DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false)
 
-  def stubPackageType(actionNames: Seq[String]) = StubDeploymentType(
+  def stubDeploymentType(actionNames: Seq[String], params: ParamRegister => List[Param[_]] = _ => Nil) = StubDeploymentType(
     actions = {
       case name if actionNames.contains(name) => pkg => (_, target) => List(
         StubTask(name + " per app task number one", target.region),
         StubTask(name + " per app task number two", target.region)
       )
     },
-    actionNames.toList
+    actionNames.toList,
+    params
   )
 
   def testParams() = DeployParameters(

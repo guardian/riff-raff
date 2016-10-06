@@ -32,17 +32,18 @@ object AmiCloudFormationParameter extends DeploymentType {
   override def actions = {
     case "update" => pkg => (resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val reporter = resources.reporter
 
-      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg))
-      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg)), stageName).flatten
+      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, reporter))
+      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, reporter))
+      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, reporter)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
       List(
         UpdateAmiCloudFormationParameterTask(
           fullCloudFormationStackName,
-          amiParameter(pkg),
-          amiTags(pkg),
+          amiParameter(pkg, reporter),
+          amiTags(pkg, reporter),
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack
