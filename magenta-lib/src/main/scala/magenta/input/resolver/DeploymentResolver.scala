@@ -1,15 +1,15 @@
 package magenta.input.resolver
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyList => NEL, Validated, ValidatedNel}
+import cats.data.{Validated, NonEmptyList => NEL}
 import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.instances.list._
-import magenta.input.{ConfigError, Deployment, DeploymentOrTemplate, RiffRaffDeployConfig}
+import magenta.input._
 
 object DeploymentResolver {
-  def resolve(config: RiffRaffDeployConfig): ValidatedNel[ConfigError, List[Deployment]] = {
-    config.deployments.traverseU[ValidatedNel[ConfigError, Deployment]] { case (label, rawDeployment) =>
+  def resolve(config: RiffRaffDeployConfig): Validated[ConfigErrors, List[Deployment]] = {
+    config.deployments.traverseU[Validated[ConfigErrors, Deployment]] { case (label, rawDeployment) =>
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates)
         deployment <- resolveDeployment(label, templated, config.stacks, config.regions)
@@ -22,10 +22,10 @@ object DeploymentResolver {
     * Validates and resolves a templated deployment by merging its
     * deployment attributes with any globally defined properties.
     */
-  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): ValidatedNel[ConfigError, Deployment] = {
-    (Validated.fromOption(templated.`type`, NEL.of(ConfigError(label, "No type field provided"))) |@|
-      Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), NEL.of(ConfigError(label, "No stacks provided"))) |@|
-      Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), NEL.of(ConfigError(label, "No regions provided")))) map { (deploymentType, stacks, regions) =>
+  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Validated[ConfigErrors, Deployment] = {
+    (Validated.fromOption(templated.`type`, ConfigErrors(label, "No type field provided")) |@|
+      Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), ConfigErrors(label, "No stacks provided")) |@|
+      Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), ConfigErrors(label, "No regions provided"))) map { (deploymentType, stacks, regions) =>
       Deployment(
         name = label,
         `type` = deploymentType,
@@ -44,7 +44,9 @@ object DeploymentResolver {
     * Recursively apply named templates by merging the provided
     * deployment template with named parent templates.
     */
-  private[input] def applyTemplates(templateName: String, template: DeploymentOrTemplate, templates: Option[Map[String, DeploymentOrTemplate]]): ValidatedNel[ConfigError, DeploymentOrTemplate] = {
+  private[input] def applyTemplates(templateName: String, template: DeploymentOrTemplate,
+    templates: Option[Map[String, DeploymentOrTemplate]]): Validated[ConfigErrors, DeploymentOrTemplate] = {
+
     template.template match {
       case None =>
         Valid(template)
@@ -52,7 +54,7 @@ object DeploymentResolver {
         for {
           parentTemplate <- {
             Validated.fromOption(templates.flatMap(_.get(parentTemplateName)),
-              NEL.of(ConfigError(templateName, s"Template with name $parentTemplateName does not exist")))
+              ConfigErrors(templateName, s"Template with name $parentTemplateName does not exist"))
           }
           resolvedParent <- applyTemplates(parentTemplateName, parentTemplate, templates)
         } yield {
@@ -74,13 +76,13 @@ object DeploymentResolver {
   /**
     * Ensures that when deployments have named dependencies, deployments with those names exists.
     */
-  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): ValidatedNel[ConfigError, Deployment] = {
+  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Validated[ConfigErrors, Deployment] = {
     val allDeploymentNames = allDeployments.map { case (name, _) => name }
     deployment.dependencies.filterNot(allDeploymentNames.contains) match {
       case Nil =>
         Valid(deployment)
       case missingDependencies =>
-        Invalid(NEL.of(ConfigError(label, missingDependencies.mkString(s"Missing deployment dependencies ", ", ", ""))))
+        Invalid(ConfigErrors(label, missingDependencies.mkString(s"Missing deployment dependencies ", ", ", "")))
     }
   }
 }

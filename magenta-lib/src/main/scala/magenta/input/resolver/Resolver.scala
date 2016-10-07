@@ -1,7 +1,7 @@
 package magenta.input.resolver
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{ValidatedNel, NonEmptyList => NEL}
+import cats.data.{Validated, NonEmptyList => NEL}
 import cats.instances.all._
 import cats.syntax.traverse._
 import magenta.artifact.S3Artifact
@@ -12,7 +12,7 @@ import magenta.{DeployParameters, DeploymentResources}
 
 object Resolver {
   def resolve(yamlConfig: String, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): ValidatedNel[ConfigError, Graph[DeploymentTasks]] = {
+    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     for {
       deploymentGraph <- resolveDeploymentGraph(yamlConfig)
@@ -20,11 +20,11 @@ object Resolver {
     } yield taskGraph
   }
 
-  def resolveDeploymentGraph(yamlConfig: String): ValidatedNel[ConfigError, Graph[Deployment]] = {
+  def resolveDeploymentGraph(yamlConfig: String): Validated[ConfigErrors, Graph[Deployment]] = {
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
       deployments <- DeploymentResolver.resolve(config)
-      validatedDeployments <- deployments.traverseU[ValidatedNel[ConfigError, Deployment]]{deployment =>
+      validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
         DeploymentTypeResolver.validateDeploymentType(deployment, DeploymentType.all)
       }
       userSelectedDeployments = validatedDeployments
@@ -33,7 +33,7 @@ object Resolver {
   }
 
   private def buildTaskGraph(deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact, graph: Graph[Deployment]) = {
+    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact, graph: Graph[Deployment]): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(graph)
     val deploymentTaskGraph = flattenedGraph.map { deployment =>
@@ -41,7 +41,7 @@ object Resolver {
     }
 
     if (deploymentTaskGraph.nodes.values.exists(_.isInvalid)) {
-      Invalid(deploymentTaskGraph.toList.collect { case Invalid(errors) => errors }.reduce(_ concat _))
+      Invalid(ConfigErrors(deploymentTaskGraph.toList.collect { case Invalid(errors) => errors }.reduce(_ concat _)))
     } else {
       // we know they are all good
       Valid(deploymentTaskGraph.map(_.toOption.get))

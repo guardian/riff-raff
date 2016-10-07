@@ -384,7 +384,7 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
             "response" -> Json.obj(
               "status" -> "ok",
               "result" -> "failed",
-              "errors" -> errors.toList.map { err =>
+              "errors" -> errors.errors.toList.map { err =>
                 Json.obj(
                   "context" -> err.context,
                   "message" -> err.message

@@ -1,9 +1,18 @@
 package magenta.input
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList => NEL}
+import cats.kernel.Semigroup
 import play.api.libs.json._
 
 case class ConfigError(context: String, message: String)
+case class ConfigErrors(errors: NEL[ConfigError])
+object ConfigErrors {
+  def apply(context: String, message: String): ConfigErrors = ConfigErrors(ConfigError(context, message))
+  def apply(error: ConfigError): ConfigErrors = ConfigErrors(NEL.of(error))
+  implicit val sg = new Semigroup[ConfigErrors] {
+    def combine(x: ConfigErrors, y: ConfigErrors): ConfigErrors = ConfigErrors(x.errors.concat(y.errors))
+  }
+}
 
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],
@@ -51,8 +60,8 @@ object DeploymentOrTemplate {
 case class Deployment(
   name: String,
   `type`: String,
-  stacks: NonEmptyList[String],
-  regions: NonEmptyList[String],
+  stacks: NEL[String],
+  regions: NEL[String],
   actions: Option[List[String]],
   app: String,
   contentDirectory: String,

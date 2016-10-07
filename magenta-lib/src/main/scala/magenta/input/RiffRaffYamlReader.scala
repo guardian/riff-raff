@@ -1,7 +1,7 @@
 package magenta.input
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{ValidatedNel, NonEmptyList => NEL}
+import cats.data.{Validated, NonEmptyList => NEL}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
@@ -30,7 +30,7 @@ object RiffRaffYamlReader {
     }
   }
 
-  def fromString(yaml: String): ValidatedNel[ConfigError, RiffRaffDeployConfig] = {
+  def fromString(yaml: String): Validated[ConfigErrors, RiffRaffDeployConfig] = {
     // convert form YAML to JSON
     val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
     val jsonString = new ObjectMapper()
@@ -42,9 +42,9 @@ object RiffRaffYamlReader {
       case JsSuccess(config, _) => Valid(config)
       case JsError(errors :: tail) =>
         val nelErrors = NEL(errors, tail)
-        Invalid(nelErrors.map{ case (path, validationErrors) =>
+        Invalid(ConfigErrors(nelErrors.map{ case (path, validationErrors) =>
           ConfigError(s"Parsing $path", validationErrors.map(ve => ve.message).mkString(", "))
-        })
+        }))
       case JsError(_) => `wtf?`
     }
   }

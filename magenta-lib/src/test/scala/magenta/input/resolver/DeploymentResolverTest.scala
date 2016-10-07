@@ -375,9 +375,9 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
         |    template: nonExistentTemplate
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
-    val deployments = yaml.andThen(DeploymentResolver.resolve).invalid
-    deployments.toList.size should be (1)
-    deployments.head should be(ConfigError("test", "Template with name nonExistentTemplate does not exist"))
+    val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
+    configErrors.errors.toList.size should be (1)
+    configErrors.errors.head should be(ConfigError("test", "Template with name nonExistentTemplate does not exist"))
   }
 
   it should "report an error if a named dependency does not exist" in {
@@ -391,9 +391,9 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
         |    dependencies: [missing-dep]
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
-    val deployments = yaml.andThen(DeploymentResolver.resolve).invalid
-    deployments.toList.size should be (1)
-    deployments.head should be(ConfigError("test", "Missing deployment dependencies missing-dep"))
+    val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
+    configErrors.errors.toList.size should be (1)
+    configErrors.errors.head should be(ConfigError("test", "Missing deployment dependencies missing-dep"))
 
   }
 
@@ -406,8 +406,8 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
         |    type: autoscaling
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
-    val deployments = yaml.andThen(DeploymentResolver.resolve).invalid
-    deployments.head should be(ConfigError("test", "No stacks provided"))
+    val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
+    configErrors.errors.head should be(ConfigError("test", "No stacks provided"))
   }
 
   it should "report an error if no regions are provided" in {
@@ -419,7 +419,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
         |    type: autoscaling
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
-    val deployments = yaml.andThen(DeploymentResolver.resolve).invalid
-    deployments.head should be(ConfigError("test", "No regions provided"))
+    val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
+    configErrors.errors.head should be(ConfigError("test", "No regions provided"))
   }
 }

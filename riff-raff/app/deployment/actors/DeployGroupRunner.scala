@@ -171,8 +171,8 @@ class DeployGroupRunner(
         val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
         graph.map(DeployContext(record.uuid, record.parameters, _)) match {
           case Invalid(errors) =>
-            errors.toList.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
-            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.toList.size} errors")
+            errors.errors.toList.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
+            safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.toList.size} errors")
           case Valid(success) => success
         }
       } getOrElse {

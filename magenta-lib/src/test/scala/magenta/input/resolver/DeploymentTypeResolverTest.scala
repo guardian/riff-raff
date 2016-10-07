@@ -13,23 +13,23 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
 
   "validateDeploymentType" should "fail on invalid deployment type" in {
     val deploymentWithInvalidType = deployment.copy(`type` = "invalidType")
-    val configError = DeploymentTypeResolver.validateDeploymentType(deploymentWithInvalidType, deploymentTypes).invalid
-    configError.head.context shouldBe "bob"
-    configError.head.message should include(s"Unknown type invalidType")
+    val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithInvalidType, deploymentTypes).invalid
+    configErrors.errors.head.context shouldBe "bob"
+    configErrors.errors.head.message should include(s"Unknown type invalidType")
   }
 
   it should "fail if explicitly given empty actions" in {
     val deploymentWithNoActions = deployment.copy(actions = Some(Nil))
-    val configError = DeploymentTypeResolver.validateDeploymentType(deploymentWithNoActions, deploymentTypes).invalid
-    configError.head.context shouldBe "bob"
-    configError.head.message should include(s"Either specify at least one action or omit the actions parameter")
+    val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithNoActions, deploymentTypes).invalid
+    configErrors.errors.head.context shouldBe "bob"
+    configErrors.errors.head.message should include(s"Either specify at least one action or omit the actions parameter")
   }
 
   it should "fail if given an invalid action" in {
     val deploymentWithInvalidAction = deployment.copy(actions = Some(List("invalidAction")))
-    val configError = DeploymentTypeResolver.validateDeploymentType(deploymentWithInvalidAction, deploymentTypes).invalid
-    configError.head.context shouldBe "bob"
-    configError.head.message should include(s"Invalid action invalidAction for type stub-package-type")
+    val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithInvalidAction, deploymentTypes).invalid
+    configErrors.errors.head.context shouldBe "bob"
+    configErrors.errors.head.message should include(s"Invalid action invalidAction for type stub-package-type")
   }
 
   it should "populate the deployment with default actions if no actions are provided" in {
@@ -59,8 +59,8 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
 
   it should "fail if given an invalid parameter" in {
     val deploymentWithParameters = deployment.copy(parameters = Map("param1" -> JsNumber(1234)))
-    val configError = DeploymentTypeResolver.validateDeploymentType(deploymentWithParameters, deploymentTypes).invalid
-    configError.head shouldBe ConfigError("bob", "Parameters provided but not used by stub-package-type deployments: param1")
+    val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithParameters, deploymentTypes).invalid
+    configErrors.errors.head shouldBe ConfigError("bob", "Parameters provided but not used by stub-package-type deployments: param1")
   }
 
   it should "fail if a parameter with no default is not provided" in {
@@ -70,8 +70,8 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
         register => List(Param[String]("param1")(register))
       )
     )
-    val configError = DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).invalid
-    configError.head shouldBe ConfigError("bob", "Parameters required for stub-package-type deployments not provided: param1")
+    val configErrors = DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).invalid
+    configErrors.errors.head shouldBe ConfigError("bob", "Parameters required for stub-package-type deployments not provided: param1")
   }
 
   it should "succeed if a default is provided" in {
