@@ -22,7 +22,7 @@ case class RiffRaffDeployConfig(
 )
 object RiffRaffDeployConfig {
   import RiffRaffYamlReader.readObjectAsList
-  implicit val reads: Reads[RiffRaffDeployConfig] = Json.reads
+  implicit val reads: Reads[RiffRaffDeployConfig] = checkedReads(Json.reads)
 }
 
 /**
@@ -51,7 +51,7 @@ case class DeploymentOrTemplate(
   parameters: Option[Map[String, JsValue]]
 )
 object DeploymentOrTemplate {
-  implicit val reads: Reads[DeploymentOrTemplate] = Json.reads
+  implicit val reads: Reads[DeploymentOrTemplate] = checkedReads(Json.reads)
 }
 
 /**

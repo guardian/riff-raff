@@ -72,4 +72,39 @@ class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers with Validated
       DeploymentOrTemplate(Some("dung"), None, None, None, None, None, None, None, None))
     input.deployments.map(_._1) should be(List("human", "monkey", "elephant"))
   }
+
+  it should "give an error if an extra field is on the top level object" in {
+    val yaml =
+      """
+        |---
+        |stacks: [banana]
+        |template:
+        |  template-in-misspelled-object:
+        |    type: autoscaling
+        |deployments:
+        |  monkey:
+        |    template: template-in-misspelled-object
+      """.stripMargin
+    val error = RiffRaffYamlReader.fromString(yaml).invalid
+    error.errors.head.context shouldBe "Parsing YAML"
+    error.errors.head.message shouldBe "Unexpected fields provided: template"
+  }
+
+  it should "give an error if an extra field is on a nested object" in {
+    val yaml =
+      """
+        |---
+        |stacks: [banana]
+        |templates:
+        |  template:
+        |    type: autoscaling
+        |    region: [region-in-misspelled-field]
+        |deployments:
+        |  monkey:
+        |    template: template
+      """.stripMargin
+    val error = RiffRaffYamlReader.fromString(yaml).invalid
+    error.errors.head.context shouldBe "Parsing /templates/template"
+    error.errors.head.message shouldBe "Unexpected fields provided: region"
+  }
 }
