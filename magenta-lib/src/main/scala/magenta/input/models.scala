@@ -4,9 +4,6 @@ import cats.data.NonEmptyList
 import play.api.libs.json._
 
 case class ConfigError(context: String, message: String)
-object ConfigError {
-  def nel(context: String, message: String) = NonEmptyList.of(ConfigError(context, message))
-}
 
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],

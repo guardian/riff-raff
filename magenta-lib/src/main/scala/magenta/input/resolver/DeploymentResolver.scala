@@ -3,18 +3,19 @@ package magenta.input.resolver
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyList => NEL, Validated, ValidatedNel}
 import cats.syntax.cartesian._
-import cats.instances.all._
+import cats.syntax.traverse._
+import cats.instances.list._
 import magenta.input.{ConfigError, Deployment, DeploymentOrTemplate, RiffRaffDeployConfig}
 
 object DeploymentResolver {
   def resolve(config: RiffRaffDeployConfig): ValidatedNel[ConfigError, List[Deployment]] = {
-    config.deployments.map { case (label, rawDeployment) =>
-      applyTemplates(label, rawDeployment, config.templates).andThen { templated =>
-        resolveDeployment(label, templated, config.stacks, config.regions)
-      }.andThen { deployment =>
-        validateDependencies(label, deployment, config.deployments)
-      }.map(List(_))
-    }.reduceLeft(_ combine _)
+    config.deployments.traverseU[ValidatedNel[ConfigError, Deployment]] { case (label, rawDeployment) =>
+      for {
+        templated <- applyTemplates(label, rawDeployment, config.templates)
+        deployment <- resolveDeployment(label, templated, config.stacks, config.regions)
+        validatedDeployment <- validateDependencies(label, deployment, config.deployments)
+      } yield validatedDeployment
+    }
   }
 
   /**
@@ -22,14 +23,14 @@ object DeploymentResolver {
     * deployment attributes with any globally defined properties.
     */
   private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): ValidatedNel[ConfigError, Deployment] = {
-    (Validated.fromOption(templated.`type`, ConfigError.nel(label, "No type field provided")) |@|
-      Validated.fromOption(templated.stacks.orElse(globalStacks), ConfigError.nel(label, "No stacks provided")) |@|
-      Validated.fromOption(templated.regions.orElse(globalRegions), ConfigError.nel(label, "No regions provided"))) map { (deploymentType, stacks, regions) =>
+    (Validated.fromOption(templated.`type`, NEL.of(ConfigError(label, "No type field provided"))) |@|
+      Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), NEL.of(ConfigError(label, "No stacks provided"))) |@|
+      Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), NEL.of(ConfigError(label, "No regions provided")))) map { (deploymentType, stacks, regions) =>
       Deployment(
         name = label,
         `type` = deploymentType,
-        stacks = NEL.fromListUnsafe(stacks),
-        regions = NEL.fromListUnsafe(regions),
+        stacks = stacks,
+        regions = regions,
         actions = templated.actions,
         app = templated.app.getOrElse(label),
         contentDirectory = templated.contentDirectory.getOrElse(label),
@@ -48,10 +49,13 @@ object DeploymentResolver {
       case None =>
         Valid(template)
       case Some(parentTemplateName) =>
-        Validated.fromOption(templates.flatMap(_.get(parentTemplateName)),
-          ConfigError.nel(templateName, s"Template with name $parentTemplateName does not exist")).andThen { parentTemplate =>
-          applyTemplates(parentTemplateName, parentTemplate, templates)
-        }.map { resolvedParent =>
+        for {
+          parentTemplate <- {
+            Validated.fromOption(templates.flatMap(_.get(parentTemplateName)),
+              NEL.of(ConfigError(templateName, s"Template with name $parentTemplateName does not exist")))
+          }
+          resolvedParent <- applyTemplates(parentTemplateName, parentTemplate, templates)
+        } yield {
           DeploymentOrTemplate(
             `type` = template.`type`.orElse(resolvedParent.`type`),
             template = None,
@@ -76,7 +80,7 @@ object DeploymentResolver {
       case Nil =>
         Valid(deployment)
       case missingDependencies =>
-        Invalid(ConfigError.nel(label, missingDependencies.mkString(s"Missing deployment dependencies ", ", ", "")))
+        Invalid(NEL.of(ConfigError(label, missingDependencies.mkString(s"Missing deployment dependencies ", ", ", ""))))
     }
   }
 }

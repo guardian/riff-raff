@@ -20,7 +20,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have (
       'type ("testType"),
       'stacks (NEL.of("testStack")),
@@ -46,7 +46,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have (
       'type ("testType"),
       'stacks (NEL.of("stack1", "stack2")),
@@ -75,7 +75,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have (
       'type ("testType"),
       'stacks (NEL.of("testStack")),
@@ -106,7 +106,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have (
       'type ("testType"),
       'stacks (NEL.of("testStack")),
@@ -136,7 +136,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have(
       'stacks (NEL.of("deployment-stack")),
       'regions (NEL.of("deployment-region"))
@@ -159,7 +159,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have(
       'stacks (NEL.of("template-stack")),
       'regions (NEL.of("template-region"))
@@ -180,7 +180,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have(
       'stacks (NEL.of("global-stack")),
       'regions (NEL.of("global-region"))
@@ -206,7 +206,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have(
       'stacks (NEL.of("nested-template-stack")),
       'regions (NEL.of("template-region"))
@@ -242,7 +242,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     val deployment = deployments.head
     deployment.parameters.size should be(6)
     deployment.parameters should contain("nestedParameter" -> JsNumber(1984))
@@ -270,7 +270,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (1)
+    deployments.size should be (1)
     deployments.head should have(
       'app ("templateApp"),
       'actions (Some(List("templateAction"))),
@@ -303,7 +303,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (4)
+    deployments.size should be (4)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("deployment-dep"))
   }
@@ -330,7 +330,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (3)
+    deployments.size should be (3)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("template-dep"))
   }
@@ -354,7 +354,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
-    deployments.toList.size should be (2)
+    deployments.size should be (2)
     val deployment = deployments.find(_.name == "test").get
     deployment.dependencies should be(List("nested-dep"))
   }

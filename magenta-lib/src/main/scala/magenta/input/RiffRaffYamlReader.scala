@@ -1,10 +1,11 @@
 package magenta.input
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyList => NEL, ValidatedNel}
+import cats.data.{ValidatedNel, NonEmptyList => NEL}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import magenta._
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
@@ -44,6 +45,7 @@ object RiffRaffYamlReader {
         Invalid(nelErrors.map{ case (path, validationErrors) =>
           ConfigError(s"Parsing $path", validationErrors.map(ve => ve.message).mkString(", "))
         })
+      case JsError(_) => `wtf?`
     }
   }
 }
