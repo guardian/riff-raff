@@ -1,9 +1,10 @@
 package magenta.input
 
+import magenta.fixtures.ValidatedValues
 import org.scalatest.{FlatSpec, ShouldMatchers}
 import play.api.libs.json.{JsArray, JsNumber, JsString, Json}
 
-class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers{
+class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers with ValidatedValues {
   "RiffRaffYamlReader" should "read a minimal file" in {
     val yaml =
       """
@@ -13,7 +14,7 @@ class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers{
         |  monkey:
         |    type: autoscaling
       """.stripMargin
-    val input = RiffRaffYamlReader.fromString(yaml)
+    val input = RiffRaffYamlReader.fromString(yaml).valid
     input.stacks.isDefined should be(true)
     input.stacks.get.size should be(1)
     input.stacks.get should be(List("banana"))
@@ -51,7 +52,7 @@ class RiffRaffYamlReaderTest extends FlatSpec with ShouldMatchers{
         |  elephant:
         |    type: dung
       """.stripMargin
-    val input = RiffRaffYamlReader.fromString(yaml)
+    val input = RiffRaffYamlReader.fromString(yaml).valid
     input.stacks.isDefined should be(true)
     input.stacks.get.size should be(2)
     input.stacks.get should be(List("banana", "cabbage"))

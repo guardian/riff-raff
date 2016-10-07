@@ -1,5 +1,6 @@
 package magenta.input.resolver
 
+import cats.data.{NonEmptyList => NEL, Validated, ValidatedNel}
 import magenta.artifact.{S3Artifact, S3Path}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.DeploymentTasks
@@ -8,15 +9,15 @@ import magenta.{App, DeployParameters, DeployTarget, DeploymentPackage, Deployme
 
 object TaskResolver {
   def resolve(deployment: Deployment, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Either[ConfigError, DeploymentTasks] = {
+    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): ValidatedNel[ConfigError, DeploymentTasks] = {
     val deploymentPackage = createDeploymentPackage(deployment, artifact)
-    val deploymentTypeEither = deploymentTypes.find(_.name == deployment.`type`).
-      toRight(ConfigError(deployment.name, s"Deployment type ${deployment.`type`} not found"))
+    val validatedDeploymentType = Validated.fromOption(deploymentTypes.find(_.name == deployment.`type`),
+      NEL.of(ConfigError(deployment.name, s"Deployment type ${deployment.`type`} not found")))
 
-    deploymentTypeEither.right.map { deploymentType =>
+    validatedDeploymentType.map { deploymentType =>
       val tasks = for {
-        region <- deployment.regions
-        stack <- deployment.stacks
+        region <- deployment.regions.toList
+        stack <- deployment.stacks.toList
         actionName <- deployment.actions.toList.flatten
         action = deploymentType.mkAction(actionName)(deploymentPackage)
         target = DeployTarget(parameters, NamedStack(stack), Region(region))
@@ -38,8 +39,8 @@ object TaskResolver {
     )
   }
 
-  private def mkLabel(name: String, actions: List[String], regions: List[String], stacks: List[String]): String = {
+  private def mkLabel(name: String, actions: List[String], regions: NEL[String], stacks: NEL[String]): String = {
     val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{",",","}")
-    s"$name [${actions.mkString(", ")}] => ${bracketList(regions)}/${bracketList(stacks)}"
+    s"$name [${actions.mkString(", ")}] => ${bracketList(regions.toList)}/${bracketList(stacks.toList)}"
   }
 }

@@ -13,6 +13,9 @@ GET         /deployinfo/hosts                               controllers.Applicat
 GET         /docs/                                          controllers.Application.documentation(resource="")
 GET         /docs/*resource                                 controllers.Application.documentation(resource)
 
+GET         /configuration/validation                                controllers.Application.validationForm
+POST        /configuration/validation                                controllers.Application.validateConfiguration
+
 # Deployment pages
 GET         /deployment/request                             controllers.DeployController.deploy
 POST        /deployment/request                             controllers.DeployController.processForm
@@ -78,6 +81,7 @@ GET         /api/history                                    controllers.Api.hist
 GET         /api/deploy/view                                controllers.Api.view(uuid:String)
 POST        /api/deploy/request                             controllers.Api.deploy
 POST        /api/deploy/stop                                controllers.Api.stop
+POST        /api/validate                                   controllers.Api.validate
 
 # Testing pages (for changing styling without running deploys)
 GET         /testing/reportTestPartial                      controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)

@@ -46,4 +46,8 @@ object `package` {
       case Failure(t) => throw t
     }
   }
+
+  /** This can be used when you have high confidence it will never be reached. An example might be exhaustive cases in
+    * a match statement. */
+  def `wtf?` : Nothing = throw new IllegalStateException("WTF?")
 }

@@ -1,8 +1,11 @@
 package magenta.input
 
+import cats.data.Validated.{Invalid, Valid}
+import cats.data.{Validated, NonEmptyList => NEL}
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import magenta._
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
@@ -27,7 +30,7 @@ object RiffRaffYamlReader {
     }
   }
 
-  def fromString(yaml: String): RiffRaffDeployConfig = {
+  def fromString(yaml: String): Validated[ConfigErrors, RiffRaffDeployConfig] = {
     // convert form YAML to JSON
     val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
     val jsonString = new ObjectMapper()
@@ -36,8 +39,13 @@ object RiffRaffYamlReader {
 
     val json = Json.parse(jsonString)
     Json.fromJson[RiffRaffDeployConfig](json) match {
-      case JsSuccess(s, _) => s
-      case JsError(errors) => throw new RuntimeException(s"Errors parsing YAML: $errors")
+      case JsSuccess(config, _) => Valid(config)
+      case JsError(errors :: tail) =>
+        val nelErrors = NEL(errors, tail)
+        Invalid(ConfigErrors(nelErrors.map{ case (path, validationErrors) =>
+          ConfigError(s"Parsing $path", validationErrors.map(ve => ve.message).mkString(", "))
+        }))
+      case JsError(_) => `wtf?`
     }
   }
 }
