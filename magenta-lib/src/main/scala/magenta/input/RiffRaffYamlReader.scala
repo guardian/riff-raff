@@ -43,7 +43,8 @@ object RiffRaffYamlReader {
       case JsError(errors :: tail) =>
         val nelErrors = NEL(errors, tail)
         Invalid(ConfigErrors(nelErrors.map{ case (path, validationErrors) =>
-          ConfigError(s"Parsing $path", validationErrors.map(ve => ve.message).mkString(", "))
+          val pathName = if (path.path.isEmpty) "YAML" else path.toString
+          ConfigError(s"Parsing $pathName", validationErrors.map(ve => ve.message).mkString(", "))
         }))
       case JsError(_) => `wtf?`
     }
