@@ -1,7 +1,4 @@
-$ ->
-  $("#enable-notifications").click (e) ->
-    e.preventDefault()
-    Notification.requestPermission()
+Notification.requestPermission()
 
 intervalId = null
 
@@ -14,7 +11,7 @@ checkStatus = () ->
     disableCheck()
 
 if $('[data-run-state]').length == 0
-  intervalId = setInterval checkStatus, 1000
+  intervalId = setInterval checkStatus, 800
 
 disableCheck = ->
   clearInterval(intervalId) if intervalId?
