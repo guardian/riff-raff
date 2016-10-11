@@ -1,17 +1,21 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import helper.CSRF
 
+<script language="JavaScript">
+        window.riffraff = {
+            buildId: '@record.buildId',
+            buildName: '@record.buildName',
+            stage: '@record.stage.name',
+            isDone: @{record.isDone}
+        }
+</script>
+
 @main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy", "notifications")) {
     <style>
     span.message-verbose {
       display:@if(!verbose) {none} else {list-item};
     }
     </style>
-    <script language="JavaScript">
-        window.riffraff = {
-            buildName: '@record.buildName'
-        }
-    </script>
 
     <div class="row">
         <div class="col-md-8">
