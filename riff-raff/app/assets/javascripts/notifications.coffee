@@ -1,5 +1,3 @@
-intervalId = null
-
 checkStatus = () ->
   if $('[data-run-state]').length != 0
     buildName = window.riffraff.buildName
@@ -10,9 +8,10 @@ checkStatus = () ->
       when 'Completed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has finished'})
     disableCheck()
 
-if !window.riffraff.isDone
+if !window.riffraff.isDone && window.autoRefresh
   Notification.requestPermission()
-  intervalId = setInterval checkStatus, 800
+  window.autoRefresh.postRefresh checkStatus
 
 disableCheck = ->
-  clearInterval(intervalId) if intervalId?
+  if window.autoRefresh
+    window.autoRefresh.remove checkStatus

@@ -55,6 +55,10 @@ $ ->
 addPostRefreshCallback = (callback) ->
   callbackList.add callback
 
+removePostRefreshCallBack = (callback) ->
+  callbackList.remove callback
+
 @autoRefresh = {
   postRefresh : addPostRefreshCallback
+  remove: removePostRefreshCallBack
 }
