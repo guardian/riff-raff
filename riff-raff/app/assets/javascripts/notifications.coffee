@@ -6,8 +6,8 @@ checkStatus = () ->
   if $('[data-run-state]').length != 0
     buildName = window.riffraff.buildName
     switch $('[data-run-state]').data('run-state')
-      when 'Failed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' failed!'})
-      when 'Completed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' is finished'})
+      when 'Failed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' has failed!'})
+      when 'Completed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' has finished'})
     disableCheck()
 
 if $('[data-run-state]').length == 0
