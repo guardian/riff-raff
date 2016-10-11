@@ -1,12 +1,15 @@
+notify = (message) ->
+  new Notification('Riffraff', {body: message})
+  disableCheck()
+
 checkStatus = () ->
   if $('[data-run-state]').length != 0
     buildName = window.riffraff.buildName
     stage = window.riffraff.stage
     buildId = window.riffraff.buildId
     switch $('[data-run-state]').data('run-state')
-      when 'Failed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has failed!'})
-      when 'Completed' then new Notification('Riffraff', {body: 'Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has finished'})
-    disableCheck()
+      when 'Failed' then notify('Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has failed!')
+      when 'Completed' then notify('Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has finished')
 
 if !window.riffraff.isDone && window.autoRefresh
   Notification.requestPermission()
