@@ -4,9 +4,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.UserIdentity
 import play.api.mvc._
 import play.api.{Environment, Logger}
-import magenta.deployment_type.DeploymentType
-import magenta.{App, DeploymentPackage}
-import magenta.withResource
+import magenta.deployment_type.{DeploymentType, Param}
+import magenta.{App, Build, DeployParameters, DeployTarget, Deployer, DeploymentPackage, NamedStack, RecipeName, Region, Stage, withResource}
 import magenta.artifact.S3Path
 import magenta.input.resolver.Resolver
 import play.api.libs.ws.WSClient
@@ -148,26 +147,23 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
               } ++ Some(Link(title, routes.Application.documentation(resource), resource))
             }
 
+            def defaultFromParam(param: Param[_], legacyConfig: Boolean): Option[String] = {
+              val fakePackage = DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig)
+              val fakeTarget = DeployTarget(DeployParameters(Deployer("<deployerName>"), Build("<projectName>", "<buildNo>"), Stage("<stage>"), RecipeName("<recipe>"), stacks = Seq(NamedStack("<stack>"))), NamedStack("<stack>"), Region("<region>"))
+              (param.defaultValue, param.defaultValueFromContext.map(_(fakePackage, fakeTarget))) match {
+                case (Some(default), _) => Some(default.toString)
+                case (None, Some(Right(pkgFunction))) => Some(pkgFunction.toString)
+                case (None, Some(Left(error))) => Some(s"ERROR generating default: $error")
+                case (_, _) => None
+              }
+            }
+
             resource match {
               case "magenta-lib/types" =>
                 val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
                   val paramDocs = dt.params.sortBy(_.name).map{ param =>
-                    val defaultLegacy = (param.defaultValue, param.defaultValueFromPackage) match {
-                      case (Some(default), _) => Some(default.toString)
-                      case (None, Some(pkgFunction)) =>
-                        Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = true)
-                        ).toString)
-                      case (_, _) => None
-                    }
-                    val defaultNew = (param.defaultValue, param.defaultValueFromPackage) match {
-                      case (Some(default), _) => Some(default.toString)
-                      case (None, Some(pkgFunction)) =>
-                        Some(pkgFunction(
-                          DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig = false)
-                        ).toString)
-                      case (_, _) => None
-                    }
+                    val defaultLegacy = defaultFromParam(param, legacyConfig = true)
+                    val defaultNew = defaultFromParam(param, legacyConfig = false)
                     (param.name, param.documentation, defaultLegacy, defaultNew)
                   }.sortBy(_._3.isDefined)
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)

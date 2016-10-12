@@ -23,7 +23,7 @@ object CloudFormation extends DeploymentType {
 
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
-  ).defaultFromPackage(_.name)
+  ).defaultFromContext((pkg, _) => Right(pkg.name))
   val prependStackToCloudFormationStackName = Param[Boolean]("prependStackToCloudFormationStackName",
     documentation = "Whether to prepend '`stack`-' to the `cloudFormationStackName`, e.g. MyApp => service-preview-MyApp"
   ).default(true)
@@ -68,26 +68,26 @@ object CloudFormation extends DeploymentType {
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
 
-      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, reporter))
-      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, reporter))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, reporter)), stageName).flatten
+      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, target, reporter))
+      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, target, reporter))
+      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, target, reporter)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
-      val globalParams = templateParameters(pkg, reporter)
-      val stageParams = templateStageParameters(pkg, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
+      val globalParams = templateParameters(pkg, target, reporter)
+      val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
 
       List(
         UpdateCloudFormationTask(
           fullCloudFormationStackName,
-          S3Path(pkg.s3Package, templatePath(pkg, reporter)),
+          S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
           params,
-          amiParameter(pkg, reporter),
-          amiTags(pkg, reporter),
+          amiParameter(pkg, target, reporter),
+          amiTags(pkg, target, reporter),
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack,
-          createStackIfAbsent(pkg, reporter)
+          createStackIfAbsent(pkg, target, reporter)
         ),
         CheckUpdateEventsTask(fullCloudFormationStackName)
       )

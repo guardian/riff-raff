@@ -13,7 +13,7 @@ object AmiCloudFormationParameter extends DeploymentType {
 
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
-  ).defaultFromPackage(_.name)
+  ).defaultFromContext((pkg, _) => Right(pkg.name))
   val prependStackToCloudFormationStackName = Param[Boolean]("prependStackToCloudFormationStackName",
     documentation = "Whether to prepend '`stack`-' to the `cloudFormationStackName`, e.g. MyApp => service-preview-MyApp"
   ).default(true)
@@ -34,16 +34,16 @@ object AmiCloudFormationParameter extends DeploymentType {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
 
-      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, reporter))
-      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, reporter))
-      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, reporter)), stageName).flatten
+      val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, target, reporter))
+      val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, target, reporter))
+      val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, target, reporter)), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
 
       List(
         UpdateAmiCloudFormationParameterTask(
           fullCloudFormationStackName,
-          amiParameter(pkg, reporter),
-          amiTags(pkg, reporter),
+          amiParameter(pkg, target, reporter),
+          amiTags(pkg, target, reporter),
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack

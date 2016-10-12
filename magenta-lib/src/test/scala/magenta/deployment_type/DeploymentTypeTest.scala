@@ -63,7 +63,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     S3.actions("uploadStaticFiles")(p)(DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
 
-    verify(mockReporter).warning("Parameter prefixStage is unnecessarily set to the default value of true")
+    verify(mockReporter).warning("Parameter prefixStage is unnecessarily explicitly set to the default value of true")
   }
 
   it should "not log a warning when a default is explicitly set in a legacy config" in {

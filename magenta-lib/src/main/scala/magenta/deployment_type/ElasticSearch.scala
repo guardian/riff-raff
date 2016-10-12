@@ -15,7 +15,7 @@ object ElasticSearch extends DeploymentType {
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).defaultFromPackage(_.legacyConfig)
+  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
   val secondsToWait = Param("secondsToWait",
     """Number of seconds to wait for the ElasticSearch cluster to become green
@@ -32,12 +32,12 @@ object ElasticSearch extends DeploymentType {
       val stack = target.stack
       List(
         CheckGroupSize(pkg, parameters.stage, stack, target.region),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
         SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
         TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
         DoubleSize(pkg, parameters.stage, stack, target.region),
-        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
-        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
+        WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
         ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
       )
     }
@@ -49,9 +49,9 @@ object ElasticSearch extends DeploymentType {
       List(
         S3Upload(
           target.region,
-          bucket(pkg, reporter),
+          bucket(pkg, target, reporter),
           Seq(pkg.s3Package -> prefix),
-          publicReadAcl = publicReadAcl(pkg, reporter)
+          publicReadAcl = publicReadAcl(pkg, target, reporter)
         )
       )
   }

@@ -19,11 +19,13 @@ object SelfDeploy extends DeploymentType {
       |
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
     """.stripMargin
-  )
+  ).defaultFromContext{ case (_, target) =>
+    target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks")
+  }
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).defaultFromPackage(_.legacyConfig)
+  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
   val managementPort = Param[Int]("managementPort",
     "For deferred deployment only: The port of the management pages containing the location of the switchboard"
@@ -40,12 +42,13 @@ object SelfDeploy extends DeploymentType {
   def actions = {
     case "uploadArtifacts" => (pkg) => (resources, target) =>
       implicit val keyRing = resources.assembleKeyring(target, pkg)
+      val reporter = resources.reporter
       implicit val artifactClient = resources.artifactClient
       val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
       List(
         S3Upload(
           target.region,
-          bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
+          bucket(pkg, target, reporter),
           paths = Seq(pkg.s3Package -> prefix)
         )
       )
@@ -56,9 +59,9 @@ object SelfDeploy extends DeploymentType {
       hosts.map{ host =>
         ChangeSwitch(
           host,
-          managementProtocol(pkg, reporter),
-          managementPort(pkg, reporter),
-          switchboardPath(pkg, reporter),
+          managementProtocol(pkg, target, reporter),
+          managementPort(pkg, target, reporter),
+          switchboardPath(pkg, target, reporter),
           "shutdown-when-inactive",
           desiredState=true
         )
