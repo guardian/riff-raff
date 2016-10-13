@@ -55,7 +55,7 @@ trait ParamRegister {
   *                       might be needed if the value is not required to have a default or when only one of two
   *                       different parameters are specified.
   * @param defaultValue The default value for this parameter - used when a value is not found in the map
-  * @param defaultValueFromContext A function that returns a defualt value for this parameter based on the package for
+  * @param defaultValueFromContext A function that returns a default value for this parameter based on the package for
   *                                this deployment
   * @param register The parameter register - a Param self registers
   * @tparam T The type of the parameter to extract
