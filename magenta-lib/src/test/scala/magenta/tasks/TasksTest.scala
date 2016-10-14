@@ -108,6 +108,15 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val fileToUpload = new S3Path("artifact-bucket", "foo/bar/the-jar.jar")
     val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "destination-bucket", Seq(fileToUpload -> "keyPrefix/the-jar.jar"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
 
     val mappings = task.objectMappings
@@ -140,6 +149,15 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package")
     val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     task.execute(reporter)
 
@@ -166,6 +184,15 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package")
     val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     task.execute(reporter)
 

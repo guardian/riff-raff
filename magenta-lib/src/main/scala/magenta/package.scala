@@ -3,11 +3,12 @@ package magenta
 import java.io.Closeable
 
 import com.amazonaws.{AmazonClientException, ClientConfiguration}
+import com.gu.management.Loggable
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
-object `package` {
+object `package` extends Loggable {
   def transpose[A](xs: Seq[Seq[A]]): Seq[Seq[A]] = xs.filter(_.nonEmpty) match {
     case Nil => Nil
     case ys: Seq[Seq[A]] => ys.map{ _.head } +: transpose(ys.map{ _.tail })
@@ -41,6 +42,7 @@ object `package` {
       case Failure(exception:AmazonClientException) if currentAttempt <= retries && shouldRetryFor(exception) =>
         // use client config to calculate delay - pass in null for request as no SDK implementations actually use it
         val delay = policy.getBackoffStrategy.delayBeforeNextRetry(null, exception, currentAttempt)
+        logger.warn(s"Client exception encountered, retrying in ${delay}ms")
         Thread.sleep(delay)
         retryOnException(config, currentAttempt + 1)(f)
       case Failure(t) => throw t

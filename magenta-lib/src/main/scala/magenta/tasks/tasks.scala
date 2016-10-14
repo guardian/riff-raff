@@ -15,6 +15,8 @@ import dispatch.classic._
 import magenta.artifact._
 import magenta.deployment_type.param_reads.PatternValue
 
+import scala.collection.JavaConverters._
+
 case class S3Upload(
   region: Region,
   bucket: String,
@@ -54,6 +56,7 @@ case class S3Upload(
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
     requests.zipWithIndex.par foreach { case (req, index) =>
+      logger.debug(s"Transferring ${requestToString(req.source, req)}")
       index match {
         case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
         case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
@@ -63,7 +66,9 @@ case class S3Upload(
         val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
         val putRequest = req.toAwsRequest(inputStream)
         try {
-          client.putObject(putRequest)
+          val result = client.putObject(putRequest)
+          logger.debug(s"Put object ${putRequest.getKey}: MD5: ${result.getContentMd5} Metadata: ${result.getMetadata.getRawMetadata.asScala}")
+          result
         } finally {
           inputStream.close()
         }
