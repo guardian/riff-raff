@@ -4,8 +4,30 @@
 
 @main("Validation output", request) {
     <div class="clearfix"><p>&nbsp;</p></div>
-    @deployments.toList.map { deployment =>
-        Deployment: @deployment
-    }
+        <div class="alert alert-success" role="alert">
+            <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+            Configuration validated: parsed deployments shown below
+        </div>
+        @deployments.toList.map { deployment =>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">@deployment.name</h3>
+            </div>
+            <div class="panel-body">
+                <div><strong>Deployment type:</strong> @{deployment.`type`}</div>
+                <div><strong>Actions:</strong> @deployment.actions.toList.flatten.mkString(", ")</div>
+                <div><strong>Stacks:</strong> @deployment.stacks.toList.mkString(", ")</div>
+                <div><strong>Regions:</strong> @deployment.regions.toList.mkString(", ")</div>
+                <div><strong>App:</strong> @deployment.app</div>
+                <div><strong>Content directory:</strong> @deployment.contentDirectory</div>
+                <div><strong>Parameters:</strong><div><ul>
+                    @for((name, value) <- deployment.parameters) {
+                      <li><strong>@name:</strong> @value.toString</li>
+                    }
+                </ul></div></div>
+                <div><strong>Depends on:</strong> @deployment.dependencies.mkString(", ")</div>
+            </div>
+        </div>
+        }
     <div class="clearfix"></div>
 }
