@@ -5,7 +5,7 @@ import java.util.UUID
 import akka.actor.Actor
 import akka.agent.Agent
 import controllers.Logging
-import magenta.DeployReporter
+import magenta.{DeployReporter, DeployStoppedException}
 import magenta.graph.DeploymentTasks
 import org.joda.time.DateTime
 
@@ -26,14 +26,19 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
         try {
           tasks.tasks.zipWithIndex.foreach { case (task, index) =>
             val taskId = s"${tasks.name}/$index"
-            try {
-              log.debug(s"Running task $taskId")
-              deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
-              deployReporter.taskContext(task) { taskReporter =>
-                task.execute(taskReporter, stopFlagAsker)
+            if (stopFlagAsker) {
+              val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
+              deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
+            } else {
+              try {
+                log.debug(s"Running task $taskId")
+                deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
+                deployReporter.taskContext(task) { taskReporter =>
+                  task.execute(taskReporter, stopFlagAsker)
+                }
+              } finally {
+                deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
               }
-            } finally {
-              deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
             }
           }
           log.debug("Sending completed message")
@@ -42,6 +47,7 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
           case t:Throwable =>
             log.debug("Sending failed message")
             sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
+            throw t
         }
       }
 
