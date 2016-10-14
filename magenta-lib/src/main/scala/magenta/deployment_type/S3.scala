@@ -29,17 +29,19 @@ object S3 extends DeploymentType {
     """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
        the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
        full control over the path with the resource lookup.
-    """.stripMargin
+    """.stripMargin,
+    optionalInYaml = true
   )
 
   //required configuration, you cannot upload without setting these
-  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)")
+  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)", optionalInYaml = true)
   val bucketResource = Param[String]("bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
       |
       |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
       |regardless of the target stage.
-    """.stripMargin
+    """.stripMargin,
+    optionalInYaml = true
   )
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
@@ -122,23 +124,23 @@ object S3 extends DeploymentType {
       assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
       val bucketName = bucket.get(pkg) getOrElse {
         val data = resourceLookupFor(bucketResource)
-        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg, reporter)} (${pkg.apps.head} in ${target.parameters.stage.name})")
+        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.apps.head} in ${target.parameters.stage.name})")
         data.get.value
       }
 
       val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg, reporter)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg, reporter)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg, reporter)) Some(pkg.name) else None
+        stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
+        packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
       List(
         S3Upload(
           target.region,
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
-          cacheControlPatterns = cacheControl(pkg, reporter),
-          extensionToMimeType = mimeTypes(pkg, reporter),
-          publicReadAcl = publicReadAcl(pkg, reporter)
+          cacheControlPatterns = cacheControl(pkg, target, reporter),
+          extensionToMimeType = mimeTypes(pkg, target, reporter),
+          publicReadAcl = publicReadAcl(pkg, target, reporter)
         )
       )
     }

@@ -16,8 +16,13 @@
     <tr>
       <td>@name</td>
       <td>@docs.MarkDown.toHtml(desc)</td>
-      <td nowrap="nowrap"><em>@defaultYaml.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
-      <td nowrap="nowrap"><em>@defaultJson.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+        @if(defaultJson != defaultYaml) {
+            <td nowrap="nowrap"><em><strong>@defaultYaml.getOrElse{&lt;no default&gt;}</strong></em></td>
+            <td nowrap="nowrap"><em><strong>@defaultJson.getOrElse{&lt;no default&gt;}</strong></em></td>
+        } else {
+            <td nowrap="nowrap"><em>@defaultYaml.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+            <td nowrap="nowrap"><em>@defaultJson.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+        }
     </tr>
     }
 </table>

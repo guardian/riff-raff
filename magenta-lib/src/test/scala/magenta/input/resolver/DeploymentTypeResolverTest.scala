@@ -74,6 +74,16 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
     configErrors.errors.head shouldBe ConfigError("bob", "Parameters required for stub-package-type deployments not provided: param1")
   }
 
+  it should "succeed if an optional parameter is not provided" in {
+    val deploymentTypesWithParams = List(
+      stubDeploymentType(
+        Seq("upload", "deploy"),
+        register => List(Param[String]("param1", optionalInYaml = true)(register))
+      )
+    )
+    DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).valid
+  }
+
   it should "succeed if a default is provided" in {
     val deploymentTypesWithParams = List(
       stubDeploymentType(
@@ -88,7 +98,7 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register => List(Param[String]("param1", defaultValueFromPackage = Some(_.name))(register))
+        register => List(Param[String]("param1", defaultValueFromContext = Some((pkg, _) => Right(pkg.name)))(register))
       )
     )
     DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).valid

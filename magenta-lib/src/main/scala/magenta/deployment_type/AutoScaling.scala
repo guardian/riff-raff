@@ -68,8 +68,9 @@ object AutoScaling  extends DeploymentType {
       |S3 bucket name to upload artifact into.
       |
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
-    """.stripMargin
-  )
+    """.stripMargin,
+    optionalInYaml = true
+  ).defaultFromContext((_, target) => target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks"))
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
@@ -86,7 +87,7 @@ object AutoScaling  extends DeploymentType {
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
-  ).defaultFromPackage(_.legacyConfig)
+  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
   val defaultActions = List("uploadArtifacts", "deploy")
 
@@ -102,10 +103,10 @@ object AutoScaling  extends DeploymentType {
         SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
         TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
         DoubleSize(pkg, parameters.stage, stack, target.region),
-        HealthcheckGrace(healthcheckGrace(pkg, reporter) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
-        WarmupGrace(warmupGrace(pkg, reporter) * 1000),
-        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, reporter) * 1000, target.region),
+        HealthcheckGrace(healthcheckGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        WarmupGrace(warmupGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
         CullInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
         ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
       )
@@ -115,9 +116,9 @@ object AutoScaling  extends DeploymentType {
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
       val prefix = S3Upload.prefixGenerator(
-        stack = if (prefixStack(pkg, reporter)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg, reporter)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg, reporter)) Some(pkg.name) else None
+        stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
+        stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
+        packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       )
       if (pkg.legacyConfig && publicReadAcl.get(pkg).isEmpty)
         resources.reporter.warning(
@@ -130,9 +131,9 @@ object AutoScaling  extends DeploymentType {
       List(
         S3Upload(
           target.region,
-          bucket.get(pkg).orElse(target.stack.nameOption.map(stackName => s"$stackName-dist")).get,
+          bucket(pkg, target, reporter),
           Seq(pkg.s3Package -> prefix),
-          publicReadAcl = publicReadAcl(pkg, reporter)
+          publicReadAcl = publicReadAcl(pkg, target, reporter)
         )
       )
   }

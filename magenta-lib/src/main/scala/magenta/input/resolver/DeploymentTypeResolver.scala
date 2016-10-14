@@ -31,7 +31,7 @@ object DeploymentTypeResolver {
   private[input] def verifyDeploymentParameters(deployment: Deployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {
     val validParameterNames = deploymentType.params.map(_.name)
     val requiredParameterNames =
-      deploymentType.params.filterNot(dt => dt.defaultValue.isDefined || dt.defaultValueFromPackage.isDefined).map(_.name).toSet
+      deploymentType.params.filter(_.requiredInYaml).map(_.name).toSet
 
     val actualParamNames = deployment.parameters.keySet
     val missingParameters = requiredParameterNames -- actualParamNames
