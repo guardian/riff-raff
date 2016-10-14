@@ -10,8 +10,8 @@
             </div>
             <div class="panel-body">
                 <ul>
-                @errors.map(_.message).map { msg =>
-                  <li>@msg</li>
+                @errors.map { error =>
+                  <li>@error.message</li>
                 }
                 </ul>
             </div>
