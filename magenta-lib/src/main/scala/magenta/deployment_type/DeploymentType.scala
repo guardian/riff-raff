@@ -76,11 +76,14 @@ case class Param[T](
   def apply(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter)(implicit reads: Reads[T], manifest: Manifest[T]): T = {
     val maybeValue = get(pkg)
     val defaultFromContext = defaultValueFromContext.map(_ (pkg, target))
-    if (!pkg.legacyConfig) {
-      val default = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
-      if (default.isDefined && default == maybeValue)
-        reporter.warning(s"Parameter $name is unnecessarily explicitly set to the default value of ${defaultValue.get}")
+
+    val maybeDefault = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
+    (pkg.legacyConfig, maybeDefault, maybeValue) match {
+      case (false, Some(default), Some(value)) if default == value =>
+        reporter.warning(s"Parameter $name is unnecessarily explicitly set to the default value of $default")
+      case _ => // otherwise do nothing
     }
+
     (maybeValue, defaultValue, defaultFromContext) match {
       case (Some(userDefined), _, _) => userDefined
       case (_, Some(default), _) => default
