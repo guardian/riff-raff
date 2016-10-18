@@ -1,15 +1,15 @@
-package magenta
+package magenta.deployment_type
 
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
+import magenta._
 import magenta.artifact.S3Path
 import magenta.deployment_type.param_reads.PatternValue
-import magenta.deployment_type.{Lambda, S3}
 import magenta.fixtures._
 import magenta.tasks._
-import org.mockito.Mockito._
 import org.mockito.Matchers._
+import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
