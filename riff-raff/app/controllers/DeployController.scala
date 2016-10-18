@@ -99,7 +99,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
     val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
     val previewId = PreviewController.startPreview(parameters, prismLookup, deploymentTypes)
-    Ok(views.html.deploy.preview(request, parameters, previewId.toString))
+    Ok(views.html.preview.json.preview(request, parameters, previewId.toString))
   }
 
   def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) =
@@ -115,7 +115,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
           future.value match {
             case Some(Success(preview)) =>
               try {
-                Ok(views.html.deploy.previewContent(request, preview))
+                Ok(views.html.preview.json.content(request, preview))
               } catch {
                 case exception: Exception =>
                   Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
@@ -123,7 +123,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
             case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
             case None =>
               val duration = new org.joda.time.Duration(startTime, new DateTime())
-              Ok(views.html.deploy.previewLoading(request, duration.getStandardSeconds))
+              Ok(views.html.preview.json.loading(request, duration.getStandardSeconds))
           }
         case _ =>
           val exception = new IllegalStateException("Future for preview wasn't found")
