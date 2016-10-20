@@ -62,12 +62,16 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
           Build(form.project, form.build.toString),
           Stage(form.stage),
           recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
-          stacks = form.stacks.map(NamedStack(_)).toSeq,
+          stacks = form.stacks.map(NamedStack(_)),
           hostList = form.hosts)
 
         form.action match {
           case "preview" =>
-            Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, parameters.recipe.name, parameters.hostList.mkString(","), ""))
+            Redirect(routes.Preview.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name)).flashing(
+              "previewRecipe" -> parameters.recipe.name,
+              "previewHosts" -> parameters.hostList.mkString(","),
+              "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
+            )
           case "deploy" =>
             val uuid = deployments.deploy(parameters)
             Redirect(routes.DeployController.viewUUID(uuid.toString))

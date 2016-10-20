@@ -4,7 +4,7 @@ import magenta.DeployParameters
 import controllers.routes
 
 object ParameterHelper {
-  implicit def parameters2Calls(parameters: DeployParameters) = new {
+  implicit class RichDeployParameters(parameters: DeployParameters) {
     def previewContentCall(id: String) =
       routes.DeployController.previewContent(
         id.toString,

@@ -1,0 +1,22 @@
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
+        parameters: magenta.DeployParameters,
+        previewId: String)
+
+@main("Preview", request, List("auto-refresh")) {
+
+    <h3>Preview of deployments for @parameters.build.projectName</h3>
+
+    <div>
+        <dl class="dl-horizontal">
+            <dt>Project</dt><dd>@parameters.build.projectName</dd>
+            <dt>Build</dt><dd>@parameters.build.id</dd>
+            <dt>Stage</dt><dd>@parameters.stage.name</dd>
+        </dl>
+    </div>
+
+    <div class="content"
+      data-ajax-refresh="@routes.Preview.showTasks(previewId: String)">
+        @views.html.preview.yaml.loading(request, 0L)
+    </div>
+
+}

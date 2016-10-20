@@ -96,8 +96,11 @@ ul.magenta-list {
   font-weight: bold;
 }
 
+.glyphicon {
+  vertical-align: -7%;
+}
+
 .preview-task, .message-taskrun {
-  font-weight: bold;
   &:before {
     font-family: 'Glyphicons Halflings';
     content: "\e019";
@@ -170,4 +173,26 @@ ul.magenta-list {
 
 .breadcrumb-top {
   margin-top: 20px;
+}
+
+div.deployment-target:target {
+  padding-top: 60px;
+  margin-top: -60px;
+  .panel-default {
+    border-color: #3c763d;
+  }
+  .panel-heading {
+    animation-name: pulse;
+    animation-direction: alternate;
+    animation-duration: 0.8s;
+    animation-iteration-count: 6;
+    @keyframes pulse {
+      from {
+        background-color: #f5f5f5;
+      }
+      to {
+        background-color: #dff0d8;
+      }
+    }
+  }
 }

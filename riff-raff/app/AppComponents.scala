@@ -1,5 +1,6 @@
 import ci.ContinuousDeployment
 import controllers._
+import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import magenta.deployment_type._
 import play.api.ApplicationLoader.Context
@@ -35,6 +36,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine)
   val continuousDeployment = new ContinuousDeployment(deployments)
+  val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -46,6 +48,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes)
   val apiController = new Api(deployments, availableDeploymentTypes)
   val continuousDeployController = new ContinuousDeployController(prismLookup)
+  val previewController = new Preview(previewCoordinator)
   val hooksController = new Hooks(prismLookup)
   val loginController = new Login
   val testingController = new Testing(prismLookup)
@@ -62,6 +65,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   override def router: Router = new Routes(
     httpErrorHandler,
     applicationController,
+    previewController,
     deployController,
     apiController,
     continuousDeployController,
