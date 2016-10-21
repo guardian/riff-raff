@@ -5,6 +5,7 @@ import java.util.UUID
 import cats.data.{NonEmptyList => NEL}
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.artifact.S3YamlArtifact
+import magenta.deployment_type.AutoScaling
 import magenta.fixtures._
 import magenta.input.Deployment
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, NamedStack, Region, Stage, fixtures}
@@ -65,11 +66,11 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
       deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), Some(List("uploadArtifact", "deploy")), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
-      deploymentTypes = List(),
+      deploymentTypes = Nil,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
     )
 
-    deploymentTask.invalid.head.context shouldBe "test"
-    deploymentTask.invalid.head.message shouldBe "Deployment type autoscaling not found"
+    deploymentTask.invalid.errors.head.context shouldBe "test"
+    deploymentTask.invalid.errors.head.message shouldBe "Deployment type autoscaling not found"
   }
 }

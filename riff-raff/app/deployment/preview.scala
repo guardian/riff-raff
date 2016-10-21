@@ -7,6 +7,7 @@ import akka.agent.Agent
 import conf.Configuration
 import controllers.routes
 import magenta.artifact.{S3JsonArtifact, S3YamlArtifact}
+import magenta.deployment_type.DeploymentType
 import magenta.graph.DeploymentGraph
 import magenta.json.JsonReader
 import magenta.tasks.{Task => MagentaTask}
@@ -36,12 +37,12 @@ object PreviewController {
     }
   }
 
-  def startPreview(parameters: DeployParameters, prismLookup: PrismLookup): UUID = {
+  def startPreview(parameters: DeployParameters, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]): UUID = {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
     val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
-    val previewFuture = Future { Preview(parameters, resources) }
+    val previewFuture = Future { Preview(parameters, resources, deploymentTypes) }
     Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
     previewId
   }
@@ -55,7 +56,7 @@ object Preview {
   /**
    * Get the project for the build for preview purposes.
    */
-  def getProject(build: Build, resources: DeploymentResources): Project = {
+  def getProject(build: Build, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Project = {
     val yamlArtifact = S3YamlArtifact(build, artifact.aws.bucketName)
     if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isDefined)
       throw new IllegalArgumentException("Preview does not currently support riff-raff.yaml configuration files")
@@ -63,14 +64,14 @@ object Preview {
     val json = S3JsonArtifact.withZipFallback(s3Artifact){ artifact =>
       Try(artifact.deployObject.fetchContentAsString()(resources.artifactClient).get)
     }(resources.artifactClient, resources.reporter)
-    JsonReader.parse(json, s3Artifact)
+    JsonReader.parse(json, s3Artifact, deploymentTypes)
   }
 
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters, resources: DeploymentResources): Preview = {
-    val project = Preview.getProject(parameters.build, resources)
+  def apply(parameters: DeployParameters, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Preview = {
+    val project = Preview.getProject(parameters.build, resources, deploymentTypes)
     Preview(project, parameters, resources, Region(target.aws.deployJsonRegionName))
   }
 }

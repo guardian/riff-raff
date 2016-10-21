@@ -7,11 +7,12 @@ import akka.agent.Agent
 import com.typesafe.config.ConfigFactory
 import controllers.Logging
 import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
+import magenta.deployment_type.DeploymentType
 import resources.PrismLookup
 
 import scala.collection.JavaConverters._
 
-class DeploymentEngine(prismLookup: PrismLookup) extends Logging {
+class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Logging {
   import DeploymentEngine._
 
   private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
@@ -21,7 +22,9 @@ class DeploymentEngine(prismLookup: PrismLookup) extends Logging {
 
   private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
-      props = Props(new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup)).withDispatcher("akka.deploy-dispatcher"),
+      props = Props(
+        new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes)
+      ).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
 

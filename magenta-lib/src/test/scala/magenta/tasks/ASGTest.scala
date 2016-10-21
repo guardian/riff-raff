@@ -7,6 +7,7 @@ import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResult, InstanceState, Instance => ELBInstance}
 import magenta.artifact.S3Path
+import magenta.deployment_type.DeploymentType
 import magenta.{App, KeyRing, Stage, _}
 import org.mockito.Matchers._
 import org.mockito.Mockito._
@@ -18,6 +19,7 @@ import scala.collection.JavaConversions._
 class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  val deploymentTypes = Nil
 
   it should "find the matching auto-scaling group with App tagging" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
@@ -31,7 +33,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("App" -> "example", "Stage" -> "TEST")
       ))
 
-    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
     ASG.groupForAppAndStage(p, Stage("PROD"), UnnamedStack, asgClientMock, reporter) should be (desiredGroup)
   }
 
@@ -47,7 +50,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup(("Role" -> "example"), ("Stage" -> "TEST"))
       ))
 
-    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("app")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
     ASG.groupForAppAndStage(p, Stage("PROD"), UnnamedStack, asgClientMock, reporter) should be (desiredGroup)
   }
 
@@ -66,7 +70,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(App("logcabin")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("logcabin")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
     ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
   }
 
@@ -85,7 +90,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
     ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
   }
 
@@ -105,7 +111,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
       ))
 
-    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
 
     a [FailException] should be thrownBy {
       ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
@@ -172,7 +179,8 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         desiredGroup
       ))
 
-    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, "nowt much", S3Path("artifact-bucket", "project/123/example"), true)
+    val p = DeploymentPackage("example", Seq(App("logcabin"), App("elasticsearch")), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"), true)
     ASG.groupForAppAndStage(p, Stage("PROD"), NamedStack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
   }
 

@@ -16,6 +16,7 @@ import org.joda.time.{DateTime, LocalDate}
 import com.mongodb.casbah.Imports._
 import deployment.{DeployFilter, Deployments, Record}
 import magenta._
+import magenta.deployment_type.DeploymentType
 import magenta.input.RiffRaffYamlReader
 import magenta.input.resolver.{Resolver => YamlResolver}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -94,7 +95,7 @@ object ApiKeyGenerator {
 }
 
 
-class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   object ApiJsonEndpoint {
     val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
@@ -357,7 +358,7 @@ class Api(deployments: Deployments)(implicit val messagesApi: MessagesApi, val w
         )
       )
     }{ body =>
-      val validatedGraph = YamlResolver.resolveDeploymentGraph(body)
+      val validatedGraph = YamlResolver.resolveDeploymentGraph(body, deploymentTypes)
       validatedGraph match {
         case Valid(graph) =>
           Json.obj(

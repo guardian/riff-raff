@@ -52,11 +52,11 @@ case class Param[T](
       case (_, _, Some(Right(contextDefault))) => contextDefault
       case (_, _, Some(Left(contextError))) =>
         throw new NoSuchElementException(
-          s"Error whilst generating default for parameter $name in package ${pkg.name} [${pkg.deploymentTypeName}]: $contextError"
+          s"Error whilst generating default for parameter $name in package ${pkg.name} [${pkg.deploymentType.name}]: $contextError"
         )
       case _ =>
         throw new NoSuchElementException(
-          s"Package ${pkg.name} [${pkg.deploymentTypeName}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
+          s"Package ${pkg.name} [${pkg.deploymentType.name}] requires parameter $name of type ${manifest.runtimeClass.getSimpleName}"
         )
     }
   }

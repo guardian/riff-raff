@@ -2,6 +2,7 @@ package magenta
 package json
 
 import magenta.artifact.{S3JsonArtifact, S3Path}
+import magenta.deployment_type.DeploymentType
 import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 
 case class JsonPackage(
@@ -37,19 +38,19 @@ object JsonInputFile {
 
 
 object JsonReader {
-  def parse(s: String, artifact: S3JsonArtifact): Project = {
+  def parse(s: String, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]): Project = {
     val inputFile: JsonInputFile = Json.fromJson[JsonInputFile](Json.parse(s)) match {
       case JsSuccess(result, _) => result
       case JsError(errors) => throw new IllegalArgumentException(s"Failed to parse JSON: $errors")
     }
-    parse(inputFile, artifact)
+    parse(inputFile, artifact, deploymentTypes)
   }
   
   def defaultRecipes(packages: Map[String, DeploymentPackage]) =
     Map("default" -> JsonRecipe(actions = Some(packages.values.map(_.name + ".deploy").toList)))
 
-  private def parse(input: JsonInputFile, artifact: S3JsonArtifact): Project = {
-    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact) }
+  private def parse(input: JsonInputFile, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]): Project = {
+    val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact, deploymentTypes) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
     Project(packages, recipes, input.defaultStacks.getOrElse(Nil).map(NamedStack(_)))
@@ -78,7 +79,7 @@ object JsonReader {
     )
   }
 
-  private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3JsonArtifact) =
+  private def parsePackage(name: String, jsonPackage: JsonPackage, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]) =
     DeploymentPackage(
       name,
       jsonPackage.apps.getOrElse(Nil) match {
@@ -88,7 +89,8 @@ object JsonReader {
       jsonPackage.safeData,
       jsonPackage.`type`,
       S3Path(artifact, s"packages/${jsonPackage.fileName.getOrElse(name)}"),
-      legacyConfig = true
+      legacyConfig = true,
+      deploymentTypes
     )
 
 }

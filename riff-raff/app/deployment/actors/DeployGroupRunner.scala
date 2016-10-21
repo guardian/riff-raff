@@ -25,7 +25,8 @@ class DeployGroupRunner(
   deployCoordinator: ActorRef,
   deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
   stopFlagAgent: Agent[Map[UUID, String]],
-  prismLookup: PrismLookup
+  prismLookup: PrismLookup,
+  deploymentTypes: Seq[DeploymentType]
 ) extends Actor with Logging {
   import DeployGroupRunner._
 
@@ -168,7 +169,7 @@ class DeployGroupRunner(
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
 
       val context: DeployContext = riffRaffYamlString.map { yaml =>
-        val graph = Resolver.resolve(yaml, resources, record.parameters, DeploymentType.all, riffRaffYaml)
+        val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
         graph.map(DeployContext(record.uuid, record.parameters, _)) match {
           case Invalid(errors) =>
             errors.errors.toList.foreach(error => safeReporter.warning(s"${error.context}: ${error.message}"))
@@ -181,7 +182,7 @@ class DeployGroupRunner(
         val json = S3JsonArtifact.withZipFallback(s3Artifact) { artifact =>
           Try(artifact.deployObject.fetchContentAsString()(client).get)
         }(client, safeReporter)
-        val project = JsonReader.parse(json, s3Artifact)
+        val project = JsonReader.parse(json, s3Artifact, deploymentTypes)
         DeployContext(record.uuid, record.parameters, project, resources, Region(target.aws.deployJsonRegionName))
       }
 

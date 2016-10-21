@@ -13,9 +13,9 @@ import utils.HstsFilter
 import ci.ContinuousDeployment
 import controllers._
 import deployment.{DeploymentEngine, Deployments}
+import magenta.deployment_type.{AmiCloudFormationParameter, CloudFormation, Lambda, SelfDeploy, _}
 
 import scala.concurrent.Future
-
 import router.Routes
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
@@ -27,8 +27,11 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
+  val availableDeploymentTypes = Seq(
+    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
+  )
   val prismLookup = new PrismLookup(wsClient)
-  val deploymentEngine = new DeploymentEngine(prismLookup)
+  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine)
   val continuousDeployment = new ContinuousDeployment(deployments)
 
@@ -38,9 +41,9 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     new HstsFilter
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
-  val applicationController = new Application(prismLookup)(environment, wsClient)
-  val deployController = new DeployController(deployments, prismLookup)
-  val apiController = new Api(deployments)
+  val applicationController = new Application(prismLookup, availableDeploymentTypes)(environment, wsClient)
+  val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes)
+  val apiController = new Api(deployments, availableDeploymentTypes)
   val continuousDeployController = new ContinuousDeployController(prismLookup)
   val hooksController = new Hooks(prismLookup)
   val loginController = new Login
