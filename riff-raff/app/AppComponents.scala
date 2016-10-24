@@ -1,21 +1,22 @@
+import ci.ContinuousDeployment
+import controllers._
+import deployment.{DeploymentEngine, Deployments}
+import magenta.deployment_type._
 import play.api.ApplicationLoader.Context
-import play.api.{BuiltInComponentsFromContext, Logger}
 import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
 import play.api.libs.ws.ahc.AhcWSComponents
-import play.api.mvc.{RequestHeader, Result}
 import play.api.mvc.Results.InternalServerError
+import play.api.mvc.{RequestHeader, Result}
 import play.api.routing.Router
+import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
 import resources.PrismLookup
 import utils.HstsFilter
-import ci.ContinuousDeployment
-import controllers._
-import deployment.{DeploymentEngine, Deployments}
-import magenta.deployment_type.{AmiCloudFormationParameter, CloudFormation, Lambda, SelfDeploy, _}
 
 import scala.concurrent.Future
+
 import router.Routes
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
