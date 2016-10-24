@@ -7,6 +7,7 @@ import conf.Configuration
 import deployment.{Deployments, PreviewController, PreviewResult}
 import magenta._
 import magenta.artifact._
+import magenta.deployment_type.DeploymentType
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.data.Form
@@ -22,7 +23,7 @@ import scala.util.{Failure, Success}
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
 case class UuidForm(uuid:String, action:String)
 
-class DeployController(deployments: Deployments, prismLookup: PrismLookup)
+class DeployController(deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType])
                       (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
   lazy val uuidForm = Form[UuidForm](
@@ -97,7 +98,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup)
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
     val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = PreviewController.startPreview(parameters, prismLookup)
+    val previewId = PreviewController.startPreview(parameters, prismLookup, deploymentTypes)
     Ok(views.html.deploy.preview(request, parameters, previewId.toString))
   }
 

@@ -33,9 +33,3 @@ trait DeploymentType {
     def description = pkg.name + "." + actionName
   }
 }
-
-object DeploymentType {
-  def all: Seq[DeploymentType] = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
-  )
-}

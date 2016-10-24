@@ -1,20 +1,20 @@
 package magenta.input.resolver
 
-import cats.data.{NonEmptyList => NEL, Validated, ValidatedNel}
+import cats.data.{Validated, NonEmptyList => NEL}
 import magenta.artifact.{S3Artifact, S3Path}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.DeploymentTasks
-import magenta.input.{ConfigError, Deployment}
+import magenta.input.{ConfigErrors, Deployment}
 import magenta.{App, DeployParameters, DeployTarget, DeploymentPackage, DeploymentResources, NamedStack, Region}
 
 object TaskResolver {
   def resolve(deployment: Deployment, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): ValidatedNel[ConfigError, DeploymentTasks] = {
-    val deploymentPackage = createDeploymentPackage(deployment, artifact)
+    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, DeploymentTasks] = {
     val validatedDeploymentType = Validated.fromOption(deploymentTypes.find(_.name == deployment.`type`),
-      NEL.of(ConfigError(deployment.name, s"Deployment type ${deployment.`type`} not found")))
+      ConfigErrors(deployment.name, s"Deployment type ${deployment.`type`} not found"))
 
     validatedDeploymentType.map { deploymentType =>
+      val deploymentPackage = createDeploymentPackage(deployment, artifact, deploymentTypes)
       val tasks = for {
         region <- deployment.regions.toList
         stack <- deployment.stacks.toList
@@ -28,14 +28,17 @@ object TaskResolver {
     }
   }
 
-  private[resolver] def createDeploymentPackage(deployment: Deployment, artifact: S3Artifact): DeploymentPackage = {
+  private[resolver] def createDeploymentPackage(deployment: Deployment, artifact: S3Artifact,
+    deploymentTypes: Seq[DeploymentType]): DeploymentPackage = {
+
     DeploymentPackage(
       name = deployment.name,
       pkgApps = Seq(App(deployment.app)),
       pkgSpecificData = deployment.parameters,
       deploymentTypeName = deployment.`type`,
       s3Package = S3Path(artifact, deployment.contentDirectory),
-      legacyConfig = false
+      legacyConfig = false,
+      deploymentTypes = deploymentTypes
     )
   }
 

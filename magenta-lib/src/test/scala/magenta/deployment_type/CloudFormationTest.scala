@@ -17,13 +17,15 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: AmazonS3 = null
   val region = Region("eu-west-1")
+  val deploymentTypes = Seq(CloudFormation)
 
   "cloudformation deployment type" should "have an updateStack action" in {
     val data: Map[String, JsValue] = Map()
     val app = Seq(App("app"))
     val stack = NamedStack("cfn")
     val cfnStackName = s"cfn-app-PROD"
-    val p = DeploymentPackage("app", app, data, "cloudformation", S3Path("artifact-bucket", "test/123"), true)
+    val p = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"), true,
+      deploymentTypes)
 
     inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>

@@ -16,6 +16,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: AmazonS3 = mock[AmazonS3Client]
   val region = Region("eu-west-1")
+  val deploymentTypes = Seq(Lambda)
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -26,7 +27,8 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   )
 
   val app = Seq(App("lambda"))
-  val pkg = DeploymentPackage("lambda", app, data, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
+  val pkg = DeploymentPackage("lambda", app, data, "aws-lambda", S3Path("artifact-bucket", "test/123/lambda"), true,
+    deploymentTypes)
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
@@ -60,7 +62,8 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "functionNames" -> Json.arr("MyFunction-")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
 
     val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(
@@ -82,7 +85,8 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "regions" -> Json.arr("us-east-1", "ap-southeast-2")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-s3-lambda", S3Path("artifact-bucket", "test/123/lambda"), true)
+    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
 
     val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(

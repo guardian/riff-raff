@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
 import cats.instances.all._
 import cats.syntax.traverse._
+import cats.syntax.semigroup._
 import magenta.artifact.S3Artifact
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph}
@@ -15,17 +16,17 @@ object Resolver {
     deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     for {
-      deploymentGraph <- resolveDeploymentGraph(yamlConfig)
+      deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes)
       taskGraph <- buildTaskGraph(deploymentResources, parameters, deploymentTypes, artifact, deploymentGraph)
     } yield taskGraph
   }
 
-  def resolveDeploymentGraph(yamlConfig: String): Validated[ConfigErrors, Graph[Deployment]] = {
+  def resolveDeploymentGraph(yamlConfig: String, deploymentTypes: Seq[DeploymentType]): Validated[ConfigErrors, Graph[Deployment]] = {
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
       deployments <- DeploymentResolver.resolve(config)
       validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
-        DeploymentTypeResolver.validateDeploymentType(deployment, DeploymentType.all)
+        DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes)
       }
       userSelectedDeployments = validatedDeployments
       graph = buildParallelisedGraph(userSelectedDeployments)
@@ -41,7 +42,7 @@ object Resolver {
     }
 
     if (deploymentTaskGraph.nodes.values.exists(_.isInvalid)) {
-      Invalid(ConfigErrors(deploymentTaskGraph.toList.collect { case Invalid(errors) => errors }.reduce(_ concat _)))
+      Invalid(deploymentTaskGraph.toList.collect { case Invalid(errors) => errors }.reduce(_ |+| _))
     } else {
       // we know they are all good
       Valid(deploymentTaskGraph.map(_.toOption.get))

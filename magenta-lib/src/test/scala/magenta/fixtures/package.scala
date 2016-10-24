@@ -1,6 +1,6 @@
 package magenta
 
-import magenta.deployment_type.{Param, ParamRegister}
+import magenta.deployment_type.{DeploymentType, Param, ParamRegister}
 import org.joda.time.DateTime
 
 package object fixtures {
@@ -16,25 +16,28 @@ package object fixtures {
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
   val baseRecipe = Recipe("one",
-    actions = basePackageType.mkAction("init_action_one")(stubPackage) :: Nil,
+    actions = basePackageType.mkAction("init_action_one")(stubPackage(basePackageType)) :: Nil,
     dependsOn = Nil)
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 
   def project(recipe: Recipe, stacks: Stack*) = Project(Map.empty, Map(recipe.name -> recipe), defaultStacks = stacks)
 
-  def stubPackage = DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false)
+  def stubPackage(deploymentType: DeploymentType) =
+    DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false, Seq(deploymentType))
 
-  def stubDeploymentType(actionNames: Seq[String], params: ParamRegister => List[Param[_]] = _ => Nil) = StubDeploymentType(
-    actions = {
-      case name if actionNames.contains(name) => pkg => (_, target) => List(
-        StubTask(name + " per app task number one", target.region),
-        StubTask(name + " per app task number two", target.region)
-      )
-    },
-    actionNames.toList,
-    params
-  )
+  def stubDeploymentType(actionNames: Seq[String], params: ParamRegister => List[Param[_]] = _ => Nil,
+    name: String = "stub-package-type") = StubDeploymentType(
+      actions = {
+        case name if actionNames.contains(name) => pkg => (_, target) => List(
+          StubTask(name + " per app task number one", target.region),
+          StubTask(name + " per app task number two", target.region)
+        )
+      },
+      actionNames.toList,
+      params,
+      name
+    )
 
   def testParams() = DeployParameters(
     Deployer("default deployer"),

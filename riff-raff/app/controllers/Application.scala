@@ -65,7 +65,9 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(prismLookup: PrismLookup)(implicit environment: Environment, val wsClient: WSClient) extends Controller with Logging with LoginActions {
+class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType])(implicit environment: Environment,
+  val wsClient: WSClient) extends Controller with Logging with LoginActions {
+
   import Application._
 
   def index = Action { implicit request =>
@@ -148,7 +150,7 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
             }
 
             def defaultFromParam(param: Param[_], legacyConfig: Boolean): Option[String] = {
-              val fakePackage = DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig)
+              val fakePackage = DeploymentPackage("<packageName>",Seq(App("<app>")),Map.empty,"<deploymentType>", S3Path("<bucket>", "<prefix>"), legacyConfig, deploymentTypes)
               val fakeTarget = DeployTarget(DeployParameters(Deployer("<deployerName>"), Build("<projectName>", "<buildNo>"), Stage("<stage>"), RecipeName("<recipe>"), stacks = Seq(NamedStack("<stack>"))), NamedStack("<stack>"), Region("<region>"))
               (param.defaultValue, param.defaultValueFromContext.map(_(fakePackage, fakeTarget))) match {
                 case (Some(default), _) => Some(default.toString)
@@ -160,7 +162,7 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
 
             resource match {
               case "magenta-lib/types" =>
-                val sections = DeploymentType.all.sortBy(_.name).map{ dt =>
+                val sections = deploymentTypes.sortBy(_.name).map{ dt =>
                   val paramDocs = dt.params.sortBy(_.name).map{ param =>
                     val defaultLegacy = defaultFromParam(param, legacyConfig = true)
                     val defaultNew = defaultFromParam(param, legacyConfig = false)
@@ -191,7 +193,7 @@ class Application(prismLookup: PrismLookup)(implicit environment: Environment, v
     maybeConfiguration.fold{
       BadRequest("No configuration provided to validate")
     }{ config =>
-      Resolver.resolveDeploymentGraph(config) match {
+      Resolver.resolveDeploymentGraph(config, deploymentTypes) match {
         case Valid(deployments) =>
           Ok(views.html.validation.validationPassed(request, deployments))
         case Invalid(errors) =>

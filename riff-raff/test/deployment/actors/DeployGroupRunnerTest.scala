@@ -6,6 +6,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import deployment.{Fixtures, Record}
+import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
 import magenta.tasks.Task
 import org.scalatest.{FlatSpecLike, ShouldMatchers}
@@ -93,6 +94,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
   }
 
+  val deploymentTypes = Nil
+
   trait DR {
     def record: Record
     def deployCoordinatorProbe: TestProbe
@@ -109,7 +112,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = system.actorOf(
-      Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent, prismLookup = null)),
+      Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
+        prismLookup = null, deploymentTypes)),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
@@ -125,7 +129,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = TestActorRef(
-      new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent, prismLookup = null),
+      new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
+        prismLookup = null, deploymentTypes),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)

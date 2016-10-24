@@ -20,11 +20,10 @@ case class StubDeploymentType(
   override val actions:
     PartialFunction[String, DeploymentPackage => (DeploymentResources, DeployTarget) => List[Task]] = Map.empty,
   override val defaultActions: List[String],
-  parameters: ParamRegister => List[Param[_]] = _ => Nil
+  parameters: ParamRegister => List[Param[_]] = _ => Nil,
+  override val name: String = "stub-package-type"
 ) extends DeploymentType {
   parameters(register)
-
-  def name = "stub-package-type"
 
   val documentation = "Documentation for the testing stub"
 }
