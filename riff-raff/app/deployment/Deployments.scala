@@ -10,8 +10,9 @@ import com.gu.management.DefaultSwitch
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta._
-import persistence.DocumentStoreConverter
+import persistence.{DocumentStoreConverter, RestrictionConfigDynamoRepository}
 import play.api.libs.concurrent.Execution.Implicits._
+import restrictions.RestrictionChecker
 import rx.lang.scala.{Observable, Subject, Subscription}
 
 import scala.concurrent.Await
@@ -21,25 +22,29 @@ import scala.util.control.NonFatal
 class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
   import Deployments._
 
-  def deploy(requestedParams: DeployParameters): UUID = {
+  def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[String, UUID] = {
     log.info(s"Started deploying $requestedParams")
-    if (enableQueueingSwitch.isSwitchedOff)
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableQueueingSwitch.name)
-
-    val params = if (requestedParams.build.id != "lastSuccessful")
-      requestedParams
+    val restrictionsPreventingDeploy = RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository,
+      requestedParams.build.projectName, requestedParams.stage.name, requestSource)
+    if (restrictionsPreventingDeploy.nonEmpty) {
+      Left(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}")
+    } else if (enableQueueingSwitch.isSwitchedOff)
+      Left(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableQueueingSwitch.name} switch")
     else {
-      Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
-        requestedParams.copy(build = requestedParams.build.copy(id=latestId))
-      }.getOrElse(requestedParams)
-    }
-
-    deploysEnabled.whileOnYield {
-      val record = Deployments.create(params)
-      deploymentEngine.interruptibleDeploy(record)
-      record.uuid
-    } getOrElse {
-      throw new IllegalStateException("Unable to queue a new deploy; deploys are currently disabled by the %s switch" format enableDeploysSwitch.name)
+      val params = if (requestedParams.build.id != "lastSuccessful")
+        requestedParams
+      else {
+        Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
+          requestedParams.copy(build = requestedParams.build.copy(id=latestId))
+        }.getOrElse(requestedParams)
+      }
+      deploysEnabled.whileOnYield {
+        val record = Deployments.create(params)
+        deploymentEngine.interruptibleDeploy(record)
+        Right(record.uuid)
+      } getOrElse {
+        Left(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableDeploysSwitch.name} switch")
+      }
     }
   }
 

@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
-import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult}
+import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult, UserRequestSource}
 import magenta._
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
@@ -73,7 +73,10 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
             )
           case "deploy" =>
-            val uuid = deployments.deploy(parameters)
+            val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)) match {
+              case Right(uuid) => uuid
+              case Left(error) => throw new IllegalStateException(error)
+            }
             Redirect(routes.DeployController.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }

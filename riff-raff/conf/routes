@@ -65,6 +65,13 @@ POST        /deployment/hooks/save                          controllers.Hooks.sa
 GET         /deployment/hooks/edit                          controllers.Hooks.edit(id)
 POST        /deployment/hooks/delete                        controllers.Hooks.delete(id)
 
+# Restrictions
+GET         /deployment/restrictions                        controllers.Restrictions.list
+GET         /deployment/restrictions/new                    controllers.Restrictions.form
+POST        /deployment/restrictions/save                   controllers.Restrictions.save
+GET         /deployment/restrictions/edit                   controllers.Restrictions.edit(id)
+POST        /deployment/restrictions/delete                 controllers.Restrictions.delete(id)
+
 # authentication endpoints
 GET         /profile                                        controllers.Login.profile
 GET         /login                                          controllers.Login.login

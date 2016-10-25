@@ -1,0 +1,58 @@
+@import b3.vertical.fieldConstructor
+@import helper.CSRF
+@import _root_.restrictions.RestrictionForm
+@(restrictionForm: Form[RestrictionForm], saveDisabled: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+
+@main("Create Restriction", request) {
+
+    <h2>Create Restriction</h2>
+    <hr/>
+
+    <div class="row">
+        <div class="col-md-7">
+            @b3.form(action=routes.Restrictions.save) {
+            @CSRF.formField
+
+            @snippets.inputHidden(restrictionForm("id"))
+
+            @b3.text(restrictionForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+            @b3.text(
+            restrictionForm("stage"),
+            '_label -> "Stage",
+            '_error -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage"))
+            )
+
+            @b3.textarea(restrictionForm("whitelist"), '_label -> "Permitted e-mail addresses whitelist (one per line)",
+                'cols -> 100, 'rows -> 6)
+
+            @b3.checkbox(restrictionForm("continuousDeployment"), '_label -> s"Permit continuous deployment")
+
+            @b3.textarea(restrictionForm("note"), '_label -> "Why does this restriction exist?",
+                'cols -> 100, 'rows -> 6)
+
+            @b3.checkbox(restrictionForm("editingLocked"), '_label -> s"Lock editing of this restriction to ${request.user.fullName}?")
+
+            <div class="actions">
+                <button name="action" type="submit" value="save" class="btn btn-primary" @if(saveDisabled){disabled="disabled"}>Save</button> or
+                <a href="@routes.Restrictions.list()" class="btn btn-danger">Cancel</a>
+            </div>
+        </div>
+    </div>
+}
+<script type="text/javascript">
+    var selectedProject = '';
+    var input = $('#projectInput');
+    input.each( function() {
+        var $input = $(this);
+        var serverUrl = $input.data('url');
+        $input.autocomplete({
+            source:serverUrl,
+            minLength:0
+        });
+    });
+    input.blur( function(e) {
+        selectedProject = encodeURIComponent($(e.target).val())
+    })
+</script>
+
+}

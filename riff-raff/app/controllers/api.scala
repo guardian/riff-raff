@@ -1,5 +1,16 @@
 package controllers
 
+import java.security.SecureRandom
+import java.util.UUID
+
+import cats.data.Validated.{Invalid, Valid}
+import com.mongodb.casbah.Imports._
+import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
+import magenta._
+import magenta.deployment_type.DeploymentType
+import magenta.input.resolver.{Resolver => YamlResolver}
+import org.joda.time.{DateTime, LocalDate}
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.{I18nSupport, MessagesApi}
@@ -8,18 +19,6 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
-import java.security.SecureRandom
-import java.util.UUID
-
-import cats.data.Validated.{Invalid, Valid}
-import org.joda.time.{DateTime, LocalDate}
-import com.mongodb.casbah.Imports._
-import deployment.{DeployFilter, Deployments, Record}
-import magenta._
-import magenta.deployment_type.DeploymentType
-import magenta.input.RiffRaffYamlReader
-import magenta.input.resolver.{Resolver => YamlResolver}
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import utils.Json.DefaultJodaDateWrites
 import utils.{ChangeFreeze, Graph}
 
@@ -294,21 +293,30 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
 
-        val deployId = deployments.deploy(params)
-        Json.obj(
-          "response" -> Json.obj(
-            "status" -> "ok",
-            "request" -> Json.obj(
-              "project" -> project,
-              "build" -> build,
-              "stage" -> stage,
-              "recipe" -> recipe.name,
-              "hosts" -> toJson(hosts)
-            ),
-            "uuid" -> deployId.toString,
-            "logURL" -> routes.DeployController.viewUUID(deployId.toString).absoluteURL()
-          )
-        )
+        deployments.deploy(params, requestSource = ApiRequestSource(request.apiKey)) match {
+          case Right(deployId) =>
+            Json.obj(
+              "response" -> Json.obj(
+                "status" -> "ok",
+                "request" -> Json.obj(
+                  "project" -> project,
+                  "build" -> build,
+                  "stage" -> stage,
+                  "recipe" -> recipe.name,
+                  "hosts" -> toJson(hosts)
+                ),
+                "uuid" -> deployId.toString,
+                "logURL" -> routes.DeployController.viewUUID(deployId.toString).absoluteURL()
+              )
+            )
+          case Left(error) =>
+            Json.obj(
+              "response" -> Json.obj(
+                "status" -> "error",
+                "errors" -> Json.arr(error)
+              )
+            )
+        }
       },
       invalid = { error =>
         Json.obj(

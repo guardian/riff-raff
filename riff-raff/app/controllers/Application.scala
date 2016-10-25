@@ -48,7 +48,8 @@ object Menu {
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.Hooks.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
-      SingleMenuItem("API keys", routes.Api.listKeys())
+      SingleMenuItem("API keys", routes.Api.listKeys()),
+      SingleMenuItem("Restrictions", routes.Restrictions.list())
     )),
     DropDownMenuItem("Documentation", Seq(
       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),
