@@ -15,22 +15,45 @@
 
             @snippets.inputHidden(restrictionForm("id"))
 
-            @b3.text(restrictionForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
             @b3.text(
-            restrictionForm("stage"),
-            '_label -> "Stage",
-            '_error -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage"))
+                restrictionForm("projectName"),
+                'id -> "projectInput",
+                Symbol("data-url") -> "/deployment/request/autoComplete/project",
+                '_label -> "Project Name"
             )
 
-            @b3.textarea(restrictionForm("whitelist"), '_label -> "Permitted e-mail addresses whitelist (one per line)",
-                'cols -> 100, 'rows -> 6)
+            @b3.text(
+                restrictionForm("stage"),
+                '_label -> "Stage",
+                '_error -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage")),
+                '_help -> "Hint: this value will be interpreted as a regex if it has a special character in it - any of $^.+*?()[{|"
+            )
 
-            @b3.checkbox(restrictionForm("continuousDeployment"), '_label -> s"Permit continuous deployment")
+            @b3.textarea(
+                restrictionForm("whitelist"),
+                '_label -> "Deploy whitelist",
+                '_help -> "List of e-mail addresses (one per line) of users who should still be able to deploy whilst the restriction is in place",
+                'cols -> 100, 'rows -> 6
+            )
 
-            @b3.textarea(restrictionForm("note"), '_label -> "Why does this restriction exist?",
-                'cols -> 100, 'rows -> 6)
+            @b3.checkbox(
+                restrictionForm("continuousDeployment"),
+                '_text -> "Permit continuous deployment",
+                '_help -> "If this is checked then deploys triggered by continuous deployment will be allowed to run"
+            )
 
-            @b3.checkbox(restrictionForm("editingLocked"), '_label -> s"Lock editing of this restriction to ${request.user.fullName}?")
+            @b3.textarea(
+                restrictionForm("note"),
+                '_label -> "Why does this restriction exist?",
+                '_help -> "This note will be displayed to users attempting to deploy this project",
+                'cols -> 100, 'rows -> 6
+            )
+
+            @b3.checkbox(
+                restrictionForm("editingLocked"),
+                '_text -> "Lock editing",
+                '_help -> s"When checked, users other than you (${request.user.fullName}) will not be able to edit or delete this restriction - use sparingly!"
+            )
 
             <div class="actions">
                 <button name="action" type="submit" value="save" class="btn btn-primary" @if(saveDisabled){disabled="disabled"}>Save</button> or
