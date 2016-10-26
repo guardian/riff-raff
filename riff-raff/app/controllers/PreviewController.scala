@@ -11,7 +11,7 @@ import play.api.mvc.Controller
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class Preview(coordinator: PreviewCoordinator)(
+class PreviewController(coordinator: PreviewCoordinator)(
   implicit val wsClient: WSClient
 ) extends Controller with LoginActions {
   def preview(projectName: String, buildId: String, stage: String) = AuthAction { request =>

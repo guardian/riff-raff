@@ -1,4 +1,4 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], preview: deployment.Preview)
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], preview: deployment.LegacyPreview)
 @import helper.CSRF
 
 @helper.form(action=routes.DeployController.processForm) {

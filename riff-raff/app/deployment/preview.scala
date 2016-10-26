@@ -20,14 +20,14 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Try
 
-case class PreviewResult(future: Future[Preview], startTime: DateTime = new DateTime()) {
+case class LegacyPreviewResult(future: Future[LegacyPreview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
   def duration = new org.joda.time.Duration(startTime, new DateTime())
 }
 
-object PreviewController {
+object LegacyPreviewController {
   implicit lazy val system = ActorSystem("preview")
-  val agent = Agent[Map[UUID, PreviewResult]](Map.empty)
+  val agent = Agent[Map[UUID, LegacyPreviewResult]](Map.empty)
 
   def cleanupPreviews() {
     agent.send { resultMap =>
@@ -42,15 +42,15 @@ object PreviewController {
     val previewId = UUID.randomUUID()
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
     val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
-    val previewFuture = Future { Preview(parameters, resources, deploymentTypes) }
-    Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
+    val previewFuture = Future { LegacyPreview(parameters, resources, deploymentTypes) }
+    Await.ready(agent.alter{ _ + (previewId -> LegacyPreviewResult(previewFuture)) }, 30.second)
     previewId
   }
 
-  def getPreview(id: UUID, parameters: DeployParameters): Option[PreviewResult] = agent().get(id)
+  def getPreview(id: UUID, parameters: DeployParameters): Option[LegacyPreviewResult] = agent().get(id)
 }
 
-object Preview {
+object LegacyPreview {
   import Configuration._
 
   /**
@@ -70,13 +70,13 @@ object Preview {
   /**
    * Get the preview, extracting the artifact if necessary - this may take a long time to run
    */
-  def apply(parameters: DeployParameters, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Preview = {
-    val project = Preview.getProject(parameters.build, resources, deploymentTypes)
-    Preview(project, parameters, resources, Region(target.aws.deployJsonRegionName))
+  def apply(parameters: DeployParameters, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): LegacyPreview = {
+    val project = LegacyPreview.getProject(parameters.build, resources, deploymentTypes)
+    LegacyPreview(project, parameters, resources, Region(target.aws.deployJsonRegionName))
   }
 }
 
-case class Preview(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region) {
+case class LegacyPreview(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region) {
   lazy val stacks = Resolver.resolveStacks(project, parameters, resources.reporter) collect {
     case NamedStack(s) => s
   }

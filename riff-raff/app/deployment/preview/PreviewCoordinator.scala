@@ -1,9 +1,9 @@
 package deployment.preview
 
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
-import akka.actor.ActorSystem
-import akka.agent.Agent
+import cats.syntax.either._
 import com.gu.management.Loggable
 import conf.Configuration
 import magenta.artifact.S3YamlArtifact
@@ -11,19 +11,17 @@ import magenta.deployment_type.DeploymentType
 import magenta.{DeployParameters, DeployReporter, DeploymentResources}
 import resources.PrismLookup
 
-import scala.concurrent.{Await, Future}
+import scala.collection.JavaConverters._
+import scala.collection.concurrent.{Map => ConcurrentMap}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.Future
 
 class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Loggable {
-  implicit lazy val system = ActorSystem("preview")
-  val agent = Agent[Map[UUID, PreviewResult]](Map.empty)
+  private val previews: ConcurrentMap[UUID, PreviewResult] = new ConcurrentHashMap[UUID, PreviewResult]().asScala
 
   def cleanupPreviews() {
-    agent.send { resultMap =>
-      resultMap.filter { case (uuid, result) =>
-        !result.future.isCompleted || result.duration.toStandardMinutes.getMinutes < 60
-      }
+    previews.retain{(uuid, result) =>
+      !result.future.isCompleted || result.duration.toStandardMinutes.getMinutes < 60
     }
   }
 
@@ -37,17 +35,16 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
     val artifact = S3YamlArtifact.apply(parameters.build, conf.Configuration.artifact.aws.bucketName)
     val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 
-    maybeConfig match {
-      case Some(config) =>
+    Either.fromOption(
+      maybeConfig.map{ config =>
         logger.info(s"Got configuration for $previewId - resolving")
-        val previewFuture = Future(Preview(artifact, config, parameters, resources, deploymentTypes))
-        Await.ready(agent.alter{ _ + (previewId -> PreviewResult(previewFuture)) }, 30.second)
-        Right(previewId)
-      case None =>
-        Left(s"YAML configuration file for ${parameters.build.projectName} ${parameters.build.id} not found")
-    }
-
+        val eventualPreview = Future(Preview(artifact, config, parameters, resources, deploymentTypes))
+        previews += previewId -> PreviewResult(eventualPreview)
+        previewId
+      },
+      s"YAML configuration file for ${parameters.build.projectName} ${parameters.build.id} not found"
+    )
   }
 
-  def getPreviewResult(id: UUID): Option[PreviewResult] = agent().get(id)
+  def getPreviewResult(id: UUID): Option[PreviewResult] = previews.get(id)
 }

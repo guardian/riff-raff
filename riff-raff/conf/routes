@@ -17,8 +17,8 @@ GET         /configuration/validation                       controllers.Applicat
 POST        /configuration/validation                       controllers.Application.validateConfiguration
 
 # Preview endpoints
-GET         /preview/yaml                                   controllers.Preview.preview(project:String,build:String,stage:String)
-GET         /preview/yaml/showTasks                         controllers.Preview.showTasks(previewId:String)
+GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String)
+GET         /preview/yaml/showTasks                         controllers.PreviewController.showTasks(previewId:String)
 
 GET         /preview/json                                   controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
 GET         /preview/json/content                           controllers.DeployController.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)

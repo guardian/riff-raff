@@ -4,7 +4,7 @@ import java.util.UUID
 
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
-import deployment.{Deployments, PreviewController, PreviewResult}
+import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult}
 import magenta._
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
@@ -67,7 +67,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
         form.action match {
           case "preview" =>
-            Redirect(routes.Preview.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name)).flashing(
+            Redirect(routes.PreviewController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name)).flashing(
               "previewRecipe" -> parameters.recipe.name,
               "previewHosts" -> parameters.hostList.mkString(","),
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
@@ -102,7 +102,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
     val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
     val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = PreviewController.startPreview(parameters, prismLookup, deploymentTypes)
+    val previewId = LegacyPreviewController.startPreview(parameters, prismLookup, deploymentTypes)
     Ok(views.html.preview.json.preview(request, parameters, previewId.toString))
   }
 
@@ -113,9 +113,9 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
       val parameters = DeployParameters(
         Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
       )
-      val result = PreviewController.getPreview(previewUUID, parameters)
+      val result = LegacyPreviewController.getPreview(previewUUID, parameters)
       result match {
-        case Some(PreviewResult(future, startTime)) =>
+        case Some(LegacyPreviewResult(future, startTime)) =>
           future.value match {
             case Some(Success(preview)) =>
               try {

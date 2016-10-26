@@ -48,7 +48,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes)
   val apiController = new Api(deployments, availableDeploymentTypes)
   val continuousDeployController = new ContinuousDeployController(prismLookup)
-  val previewController = new Preview(previewCoordinator)
+  val previewController = new PreviewController(previewCoordinator)
   val hooksController = new Hooks(prismLookup)
   val loginController = new Login
   val testingController = new Testing(prismLookup)
