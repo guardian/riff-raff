@@ -18,4 +18,21 @@ package object input {
       }
     }
   }
+
+  // serialisation and de-serialisation code for deployment IDs
+  val DEPLOYMENT_DELIMITER = '!'
+  val FIELD_DELIMITER = '*'
+  def idToStringRepresentation(d: List[DeploymentId]): String = {
+    d.map(idToStringRepresentation).mkString(DEPLOYMENT_DELIMITER.toString)
+  }
+  def idToStringRepresentation(d: DeploymentId): String = {
+    List(d.name, d.action, d.region, d.stack).mkString(FIELD_DELIMITER.toString)
+  }
+  def stringRepresentationToId(s: String): List[DeploymentId] = {
+    def forDeployment(d: String) = d.split(FIELD_DELIMITER).toList match {
+      case name :: action :: region :: stack :: Nil => Some(DeploymentId(name, action, stack, region))
+      case _ => None
+    }
+    s.split(DEPLOYMENT_DELIMITER).toList.flatMap(forDeployment)
+  }
 }

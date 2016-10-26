@@ -8,6 +8,7 @@ import play.api.{Environment, Logger}
 import magenta.deployment_type.{DeploymentType, Param}
 import magenta.{App, Build, DeployParameters, DeployTarget, Deployer, DeploymentPackage, NamedStack, RecipeName, Region, Stage, withResource}
 import magenta.artifact.S3Path
+import magenta.input.NoFilter
 import magenta.input.resolver.Resolver
 import play.api.libs.ws.WSClient
 import resources.PrismLookup
@@ -179,7 +180,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     maybeConfiguration.fold{
       BadRequest("No configuration provided to validate")
     }{ config =>
-      Resolver.resolveDeploymentGraph(config, deploymentTypes) match {
+      Resolver.resolveDeploymentGraph(config, deploymentTypes, NoFilter) match {
         case Valid(deployments) =>
           Ok(views.html.validation.validationPassed(request, deployments))
         case Invalid(errors) =>

@@ -68,7 +68,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
         form.action match {
           case "preview" =>
-            Redirect(routes.PreviewController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name)).flashing(
+            Redirect(routes.PreviewController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, None)).flashing(
               "previewRecipe" -> parameters.recipe.name,
               "previewHosts" -> parameters.hostList.mkString(","),
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")

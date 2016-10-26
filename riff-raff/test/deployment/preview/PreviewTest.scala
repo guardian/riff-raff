@@ -5,14 +5,13 @@ import java.util.UUID
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
 import com.amazonaws.services.s3.AmazonS3Client
-import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage, fixtures}
 import magenta.artifact.S3YamlArtifact
-import magenta.fixtures.ValidatedValues
+import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
+import magenta.input.DeploymentId
+import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import magenta.fixtures._
-import magenta.input.Deployment
 
 class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
@@ -54,8 +53,7 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
     val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))
 
     val deploymentTuple = (
-      Deployment("testDeployment", "stub-package-type", NEL.of("testStack"), NEL.of("testRegion"),
-        Some(List("testAction")), "testDeployment", "testDeployment", Nil, Map.empty),
+      DeploymentId("testDeployment", "testAction", "testStack", "testRegion"),
       DeploymentTasks(List(
         StubTask("testAction per app task number one", Region("testRegion"), None, None),
         StubTask("testAction per app task number two", Region("testRegion"), None, None)

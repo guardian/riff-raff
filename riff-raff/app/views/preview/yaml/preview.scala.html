@@ -1,3 +1,5 @@
+@import magenta.input.NoFilter
+@import magenta.input.DeploymentIdsFilter
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
         parameters: magenta.DeployParameters,
         previewId: String)
@@ -11,6 +13,12 @@
             <dt>Project</dt><dd>@parameters.build.projectName</dd>
             <dt>Build</dt><dd>@parameters.build.id</dd>
             <dt>Stage</dt><dd>@parameters.stage.name</dd>
+            @parameters.filter match {
+                case NoFilter => {}
+                case DeploymentIdsFilter(ids) => {
+                    <dt>Deployments</dt><dd>@ids.map{ id => <div>@snippets.deploymentInstance(id)</div> }</dd>
+                }
+            }
         </dl>
     </div>
 

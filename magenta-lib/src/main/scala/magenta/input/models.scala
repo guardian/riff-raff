@@ -14,6 +14,21 @@ object ConfigErrors {
   }
 }
 
+/** Represents a deployment shown to a user. These are flattened when the graph is built so we only display a
+  * deployment that has one each of name, action, region and stack.
+  */
+case class DeploymentId(name: String, action: String, stack: String, region: String)
+object DeploymentId {
+  /** Turn a deployment into a deployment ID - this doesn't make any checks about the number of elements */
+  def apply(deployment: Deployment): DeploymentId = {
+    DeploymentId(deployment.name, deployment.actions.get.head, deployment.stacks.head, deployment.regions.head)
+  }
+}
+
+sealed trait UserDeploymentFilter
+case object NoFilter extends UserDeploymentFilter
+case class DeploymentIdsFilter(ids: List[DeploymentId]) extends UserDeploymentFilter
+
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],
   regions: Option[List[String]],

@@ -1,43 +1,75 @@
 @import views.html.helper.magenta.PreviewHelper
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
-        taskGraph: magenta.graph.Graph[(magenta.input.Deployment, magenta.graph.DeploymentTasks)])
+@import deployment.preview.Preview
+@import b3.inline.fieldConstructor
+@(taskGraph: magenta.graph.Graph[(magenta.input.DeploymentId, magenta.graph.DeploymentTasks)], previewForm: Form[PreviewForm],
+        deploymentIds: List[String])(
+ implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 
-@for((deployment, deploymentTasks) <- taskGraph.toList) {
-    <div class="deployment-target" id="@PreviewHelper.safeId(deploymentTasks.name)">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h4>
-                Tasks for @snippets.deploymentInstance(deployment)
+@b3.formCSRF(routes.PreviewController.filter) {
+    @b3.hiddens(
+        "project" -> previewForm("project").value.get,
+        "build" -> previewForm("build").value.get,
+        "stage" -> previewForm("stage").value.get
+    )
+    @for((id, deploymentTasks) <- taskGraph.toList) {
+        <div class="deployment-target" id="@Preview.safeId(id)">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="pull-left">
+                Tasks for @snippets.deploymentInstance(id)
             </h4>
-        </div>
-        <div class="panel-body">
-            <ul class="magenta-list task-list">
-            @deploymentTasks.tasks.map { task =>
-                <li><span class="preview-task"><strong>@task.name</strong> @task.description</span></li>
-            }
-            </ul>
-        </div>
-        @defining(PreviewHelper.dependencies(taskGraph, (deployment, deploymentTasks))) { dependencies =>
-            <div class="panel-footer">
-                @if(dependencies.nonEmpty) {
-                    @if(dependencies.size == 1) {
-                        @for((depDeployment, depTasks) <- dependencies) {
-                            These tasks will start after the tasks in <a href="#@PreviewHelper.safeId(depTasks.name)">@snippets.deploymentInstance(depDeployment)</a> have completed.
-                        }
-                    } else {
-                        These tasks will start after all tasks for these actions have completed:
-                        <ul>
-                        @for((depDeployment, depTasks) <- dependencies) {
-                            <li><a href="#@PreviewHelper.safeId(depTasks.name)">@snippets.deploymentInstance(depDeployment)</a></li>
-                        }
-                        </ul>
+                    <div class="pull-right preview-header-checkbox">
+                        <span>
+                            @b3.checkbox(
+                                previewForm("deployments[]"),
+                                'value -> Preview.safeId(id),
+                                'checked -> deploymentIds.contains(Preview.safeId(id)),
+                                '_label -> Html("Run tasks")
+                            )
+                        </span>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="panel-body">
+                    <ul class="magenta-list task-list">
+                    @deploymentTasks.tasks.map { task =>
+                        <li><span class="preview-task"><strong>@task.name</strong> @task.description</span></li>
                     }
-                } else {
-                    These tasks will start immediately as they do not depend on any other tasks completing.
+                    </ul>
+                </div>
+                @defining(PreviewHelper.dependencies(taskGraph, (id, deploymentTasks))) { dependencies =>
+                    <div class="panel-footer">
+                        @if(dependencies.nonEmpty) {
+                            @if(dependencies.size == 1) {
+                                @for((depDeployment, depTasks) <- dependencies) {
+                                    These tasks will start after the tasks in <a href="#@Preview.safeId(depDeployment)">@snippets.deploymentInstance(depDeployment)</a>
+                                    have completed.
+                                }
+                            } else {
+                                These tasks will start after all tasks for these actions have completed:
+                                <ul>
+                                @for((depDeployment, depTasks) <- dependencies) {
+                                    <li><a href="#@Preview.safeId(depDeployment)">@snippets.deploymentInstance(depDeployment)</a></li>
+                                }
+                                </ul>
+                            }
+                        } else {
+                            These tasks will start immediately as they do not depend on any other tasks completing.
+                        }
+                    </div>
                 }
             </div>
-        }
+        </div>
+
+        <div class="ajax-refresh-disabled pull-left"></div>
+    }
+    <div class="actions">
+        @b3.submit('class -> "btn btn-primary"){Filter}
+        <a class="btn btn-danger" href="@routes.PreviewController.preview(
+            previewForm("project").value.get,
+            previewForm("build").value.get,
+            previewForm("stage").value.get,
+            None
+        )">Reset</a>
     </div>
-    </div>
-    <div class="ajax-refresh-disabled pull-left"></div>
 }
