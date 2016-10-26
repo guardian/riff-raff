@@ -1,0 +1,43 @@
+@import views.html.helper.magenta.PreviewHelper
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
+        taskGraph: magenta.graph.Graph[(magenta.input.Deployment, magenta.graph.DeploymentTasks)])
+
+@for((deployment, deploymentTasks) <- taskGraph.toList) {
+    <div class="deployment-target" id="@PreviewHelper.safeId(deploymentTasks.name)">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h4>
+                Tasks for @snippets.deploymentInstance(deployment)
+            </h4>
+        </div>
+        <div class="panel-body">
+            <ul class="magenta-list task-list">
+            @deploymentTasks.tasks.map { task =>
+                <li><span class="preview-task"><strong>@task.name</strong> @task.description</span></li>
+            }
+            </ul>
+        </div>
+        @defining(PreviewHelper.dependencies(taskGraph, (deployment, deploymentTasks))) { dependencies =>
+            <div class="panel-footer">
+                @if(dependencies.nonEmpty) {
+                    @if(dependencies.size == 1) {
+                        @for((depDeployment, depTasks) <- dependencies) {
+                            These tasks will start after the tasks in <a href="#@PreviewHelper.safeId(depTasks.name)">@snippets.deploymentInstance(depDeployment)</a> have completed.
+                        }
+                    } else {
+                        These tasks will start after all tasks for these actions have completed:
+                        <ul>
+                        @for((depDeployment, depTasks) <- dependencies) {
+                            <li><a href="#@PreviewHelper.safeId(depTasks.name)">@snippets.deploymentInstance(depDeployment)</a></li>
+                        }
+                        </ul>
+                    }
+                } else {
+                    These tasks will start immediately as they do not depend on any other tasks completing.
+                }
+            </div>
+        }
+    </div>
+    </div>
+    <div class="ajax-refresh-disabled pull-left"></div>
+}

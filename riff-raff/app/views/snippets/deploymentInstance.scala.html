@@ -1,0 +1,8 @@
+@(deployment: magenta.input.Deployment)
+
+@deployment.app <span class="label label-primary"><span class="glyphicon glyphicon-wrench"></span> @deployment.actions.map(_.mkString(", ")).getOrElse("")</span>
+    &rarr;
+@for(region <- deployment.regions.toList; stack <- deployment.stacks.toList) {
+    <span class="label label-info"><span class="glyphicon glyphicon-globe"></span> @region
+        <span class="glyphicon glyphicon-tasks"></span> @stack</span>
+}

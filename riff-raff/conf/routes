@@ -13,8 +13,16 @@ GET         /deployinfo/hosts                               controllers.Applicat
 GET         /docs/                                          controllers.Application.documentation(resource="")
 GET         /docs/*resource                                 controllers.Application.documentation(resource)
 
-GET         /configuration/validation                                controllers.Application.validationForm
-POST        /configuration/validation                                controllers.Application.validateConfiguration
+GET         /configuration/validation                       controllers.Application.validationForm
+POST        /configuration/validation                       controllers.Application.validateConfiguration
+
+# Preview endpoints
+GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String)
+GET         /preview/yaml/showTasks                         controllers.PreviewController.showTasks(previewId:String)
+
+GET         /preview/json                                   controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
+GET         /preview/json/content                           controllers.DeployController.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
+
 
 # Deployment pages
 GET         /deployment/request                             controllers.DeployController.deploy
@@ -37,8 +45,6 @@ GET         /deployment/request/autoComplete/build          controllers.DeployCo
 GET         /deployment/request/history                     controllers.DeployController.projectHistory(project:String)
 GET         /deployment/request/buildInfo                   controllers.DeployController.buildInfo(project: String, build: String)
 
-GET         /deployment/preview                             controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
-GET         /deployment/preview/content                     controllers.DeployController.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
 
 GET         /deployment/dashboard                           controllers.DeployController.dashboard(projects:String, search:Boolean?=false)
 GET         /deployment/dashboard/content                   controllers.DeployController.dashboardContent(projects:String, search:Boolean?=false)
