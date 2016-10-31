@@ -1,10 +1,12 @@
 package test
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import magenta._
 import persistence._
 import controllers.Logging
 import java.util.UUID
+
+import magenta.input.{DeploymentId, DeploymentIdsFilter, NoFilter}
 
 class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
@@ -13,7 +15,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master")),
+        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), NoFilterDocument),
         RunState.Completed
       )
     )
@@ -40,6 +42,18 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
     logDocuments.foreach{ doc =>
       doc.deploy should be(testRecord.uuid)
     }
+  }
+
+  it should "translate a deploy ids filter" in {
+    val deployIdsFilter = DeploymentIdsFilter(List(
+      DeploymentId("testName", "actionOne", "stackOne", "testRegion"),
+      DeploymentId("testName", "actionTwo", "stackTwo", "testRegion")
+    ))
+    val convertedFilter = RecordConverter(testRecord.copy(parameters = parameters.copy(filter = deployIdsFilter))).deployDocument.parameters.filter
+    convertedFilter shouldBe DeploymentIdsFilterDocument(List(
+      DeploymentIdDocument("testName", "actionOne", "stackOne", "testRegion"),
+      DeploymentIdDocument("testName", "actionTwo", "stackTwo", "testRegion")
+    ))
   }
 
   "LogDocumentTree" should "identify the root" in {
@@ -76,7 +90,8 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "default",
         Nil,
         Nil,
-        Map.empty
+        Map.empty,
+        NoFilterDocument
       ),
       RunState.Completed
     )
@@ -101,7 +116,8 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "default",
         Nil,
         Nil,
-        Map.empty
+        Map.empty,
+        NoFilterDocument
       ),
       RunState.Completed
     )

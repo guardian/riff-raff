@@ -5,6 +5,7 @@ import java.util.UUID
 import deployment.DeployRecord
 import gnieh.diffson.playJson._
 import magenta._
+import magenta.input.NoFilter
 import org.joda.time.DateTime
 import persistence.{LogDocument, RecordConverter}
 import play.api.libs.json.Json
@@ -16,7 +17,7 @@ trait Utilities {
 trait PersistenceTestInstances {
   val testTime = new DateTime()
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
-  lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"))
+  lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), RecipeName("test-recipe"), filter = NoFilter)
   lazy val testParamsWithHosts = parameters.copy(hostList=List("host1", "host2"))
   lazy val testRecord = DeployRecord(testTime, testUUID, parameters, Map("branch"->"master"), messageWrappers)
   lazy val testDocument = RecordConverter(testRecord).deployDocument

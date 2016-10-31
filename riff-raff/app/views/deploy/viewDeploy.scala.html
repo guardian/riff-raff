@@ -1,5 +1,7 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import helper.CSRF
+@import magenta.input.NoFilter
+@import magenta.input.DeploymentIdsFilter
 
 <script language="JavaScript">
         window.riffraff = {
@@ -19,7 +21,7 @@
 
     <div class="row">
         <div class="col-md-8">
-            <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage @if(record.stacks.nonEmpty) {
+            <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage.name @if(record.stacks.nonEmpty) {
                 to stacks (@{record.stacks.map { stack => stack.name }.mkString(", ")})
             }</h2>
 
@@ -68,10 +70,22 @@
     </div>
 
     <hr/>
-    @if(record.parameters.hostList.nonEmpty || record.parameters.recipe.name != "default") {
+    @if(record.parameters.hostList.nonEmpty || record.parameters.recipe.name != "default" || record.parameters.filter != NoFilter) {
         <div class="alert alert-info">
             @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
             @if(record.parameters.hostList.nonEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
+            @record.parameters.filter match {
+                case DeploymentIdsFilter(ids) => {
+                    <div>Deploy is filtered to the following deployments:
+                        <ul>
+                        @ids.map { id =>
+                            <li>@snippets.deploymentInstance(id)</li>
+                        }
+                        </ul>
+                    </div>
+                }
+                case NoFilter => {}
+            }
         </div>
     }
 

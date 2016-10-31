@@ -6,7 +6,7 @@ import play.api.data.Forms._
 import utils.Forms._
 
 case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String,
-  hosts: List[String], stacks: List[String], filter: List[DeploymentId])
+  hosts: List[String], stacks: List[String], filter: List[DeploymentId], noFilterCount: Option[Int])
 
 object DeployParameterForm {
   val form = Form[DeployParameterForm](
@@ -18,7 +18,8 @@ object DeployParameterForm {
       "action" -> nonEmptyText,
       "hosts" -> list(text),
       "stacks" -> list(text),
-      "filter" -> list(deploymentId)
+      "filter" -> list(deploymentId),
+      "noFilterCount" -> optional(number)
     )(DeployParameterForm.apply)(DeployParameterForm.unapply)
   )
 }

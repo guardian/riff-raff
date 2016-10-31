@@ -1,6 +1,10 @@
 @import views.html.helper.magenta.PreviewHelper
 @import deployment.preview.Preview
 @import b3.inline.fieldConstructor
+@*
+We use checkedIds here separately from the form as Play! forms do not deal well with repeated checkboxes. We could try
+to make it fit in the Play idea of forms but it's far from trivial. Be warned!
+*@
 @(taskGraph: magenta.graph.Graph[(magenta.input.DeploymentId, magenta.graph.DeploymentTasks)],
         form: Form[forms.DeployParameterForm], checkedIds: List[magenta.input.DeploymentId])(
  implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
@@ -11,6 +15,9 @@
         "build" -> form("build").value.get,
         "stage" -> form("stage").value.get
     )
+    @form("noFilterCount").value.map { count =>
+        @b3.hidden("noFilterCount", count)
+    }
     @for((id, deploymentTasks) <- taskGraph.toList) {
         <div class="deployment-target" id="@Preview.safeId(id)">
             <div class="panel panel-default">

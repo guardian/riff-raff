@@ -47,6 +47,10 @@ class PreviewController(coordinator: PreviewCoordinator)(
           preview.graph match {
             case Valid(taskGraph) =>
               val deploymentIds = taskGraph.toList.map(_._1)
+              val noFilterCount = preview.parameters.filter match {
+                case NoFilter => Some(deploymentIds.size)
+                case _ => None
+              }
               logger.info(s"Deployment IDs: $deploymentIds")
               val form = DeployParameterForm.form.fill(
                 DeployParameterForm(
@@ -57,7 +61,8 @@ class PreviewController(coordinator: PreviewCoordinator)(
                   "n/a",
                   Nil,
                   Nil,
-                  deploymentIds
+                  deploymentIds,
+                  noFilterCount
                 ))
               Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentIds))
             case Invalid(errors) => Ok(views.html.validation.validationErrors(request, errors))

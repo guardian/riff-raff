@@ -40,22 +40,28 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
         val defaultRecipe = prismLookup.data
           .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
           .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
+        val filterList =
+          if (form.filter.isEmpty || form.noFilterCount.contains(form.filter.size)) {
+            None
+          } else {
+            Some(form.filter)
+          }
         val parameters = new DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
           recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
           stacks = form.stacks.map(NamedStack(_)),
           hostList = form.hosts,
-          filter = form.filter match {
-            case head :: tail => DeploymentIdsFilter(head :: tail)
-            case _ => NoFilter
+          filter = filterList match {
+            case Some(list) => DeploymentIdsFilter(list)
+            case None => NoFilter
           }
         )
 
         form.action match {
           case "preview" =>
             Redirect(routes.PreviewController.preview(parameters.build.projectName, parameters.build.id,
-              parameters.stage.name, Some(Forms.idToString(form.filter)))).flashing(
+              parameters.stage.name, filterList.map(Forms.idToString))).flashing(
               "previewRecipe" -> parameters.recipe.name,
               "previewHosts" -> parameters.hostList.mkString(","),
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")

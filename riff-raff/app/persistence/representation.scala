@@ -60,7 +60,8 @@ case class ParametersDocument(
   recipe: String,
   stacks: List[String],
   hostList: List[String],
-  tags: Map[String,String]
+  tags: Map[String,String],
+  filter: UserDeploymentFilterDocument
 )
 
 object ParametersDocument extends MongoSerialisable[ParametersDocument] {
@@ -76,7 +77,8 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
           "recipe" -> a.recipe,
           "stacks" -> a.stacks,
           "hostList" -> a.hostList,
-          "tags" -> a.tags
+          "tags" -> a.tags,
+          "filter" -> a.filter.asDBObject
         )
       fields.toMap
     }
@@ -88,7 +90,8 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       recipe = dbo.as[String]("recipe"),
       stacks = dbo.getAsOrElse[MongoDBList]("stacks", MongoDBList()).map(_.asInstanceOf[String]).toList,
       hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
-      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
+      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap,
+      filter = dbo.getAs[DBObject]("filter").map(UserDeploymentFilterDocument.from).getOrElse(NoFilterDocument)
     ))
   }
 }
@@ -303,6 +306,59 @@ object MessageDocument {
       case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
       case hint =>
         throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+    }
+  }
+}
+
+case class DeploymentIdDocument(name: String, action: String, stack: String, region: String)
+
+object DeploymentIdDocument extends MongoSerialisable[DeploymentIdDocument] {
+  implicit val deploymentIdFormat: MongoFormat[DeploymentIdDocument] = new DeploymentIdFormat
+  private class DeploymentIdFormat extends MongoFormat[DeploymentIdDocument] {
+    def toDBO(a: DeploymentIdDocument) = {
+      val fields: List[(String, Any)] =
+        List(
+          "name" -> a.name,
+          "action" -> a.action,
+          "stack" -> a.stack,
+          "region" -> a.region
+        )
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = {
+      Some(DeploymentIdDocument(
+        name = dbo.as[String]("name"),
+        action = dbo.as[String]("action"),
+        stack = dbo.as[String]("stack"),
+        region = dbo.as[String]("region")
+      ))
+    }
+  }
+}
+
+sealed trait UserDeploymentFilterDocument {
+  def asDBObject:DBObject = {
+    val fields:List[(String,Any)] =
+      List("_typeHint" -> getClass.getName) ++ dboFields
+    fields.toMap
+  }
+  def dboFields:List[(String,Any)]
+}
+case object NoFilterDocument extends UserDeploymentFilterDocument {
+  def dboFields = Nil
+}
+case class DeploymentIdsFilterDocument(ids: List[DeploymentIdDocument]) extends UserDeploymentFilterDocument {
+  def dboFields = List("ids" -> ids.map(_.toDBO))
+}
+
+object UserDeploymentFilterDocument {
+  def from(dbo:DBObject): UserDeploymentFilterDocument = {
+    dbo.as[String]("_typeHint") match {
+      case "persistence.NoFilterDocument$" => NoFilterDocument
+      case "persistence.DeploymentIdsFilterDocument" => DeploymentIdsFilterDocument(
+        dbo.as[List[DBObject]]("ids").flatMap(dbo => DeploymentIdDocument.fromDBO(dbo))
+      )
     }
   }
 }

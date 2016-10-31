@@ -8,7 +8,7 @@ import magenta._
 import org.asynchttpclient.DefaultAsyncHttpClientConfig
 import org.joda.time.DateTime
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import persistence.{DeployRecordDocument, ParametersDocument}
+import persistence.{DeployRecordDocument, NoFilterDocument, ParametersDocument}
 import play.api.libs.ws.WSAuthScheme
 import play.api.libs.ws.ahc.AhcWSClient
 
@@ -65,7 +65,8 @@ class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
       "default",
       Nil,
       List("host1.dom", "host2.dom"),
-      Map("vcsRevision" -> "9110598b83a908d7882ac4e3cd4b643d7d8bc54e", "riffraff-domain" -> "10-252-94-200")
+      Map("vcsRevision" -> "9110598b83a908d7882ac4e3cd4b643d7d8bc54e", "riffraff-domain" -> "10-252-94-200"),
+      NoFilterDocument
     ),
     RunState.Completed
   )
