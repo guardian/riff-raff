@@ -2,6 +2,7 @@
 @import helper.CSRF
 @import magenta.input.NoFilter
 @import magenta.input.DeploymentIdsFilter
+@import deployment.preview.Preview
 
 <script language="JavaScript">
         window.riffraff = {
@@ -58,6 +59,14 @@
 
                 @record.stacks.zipWithIndex.map { case (stack, index) =>
                 <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
+                }
+                @record.parameters.filter match {
+                    case DeploymentIdsFilter(ids) => {
+                        @ids.map{ id =>
+                            <input type="hidden" name="filter[]" value="@Preview.safeId(id)">
+                        }
+                    }
+                    case NoFilter => {}
                 }
                 <div class="actions pull-right"><p>
                     <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
