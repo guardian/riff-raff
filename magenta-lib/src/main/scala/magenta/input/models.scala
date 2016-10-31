@@ -15,7 +15,9 @@ object ConfigErrors {
 }
 
 /** Represents a deployment shown to a user. These are flattened when the graph is built so we only display a
-  * deployment that has one each of name, action, region and stack.
+  * deployment that has one each of name, action, region and stack. This also limits the complexity of the filtering
+  * that needs to be done when deploying. A deployment ID can be represented as a string and there are some methods
+  * for doing that at the package level.
   */
 case class DeploymentId(name: String, action: String, stack: String, region: String)
 object DeploymentId {

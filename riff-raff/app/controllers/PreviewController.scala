@@ -3,26 +3,25 @@ package controllers
 import java.util.UUID
 
 import cats.data.Validated.{Invalid, Valid}
-import deployment.preview.{Preview, PreviewCoordinator}
-import magenta.input._
+import com.gu.management.Loggable
+import controllers.forms.DeployParameterForm
+import deployment.preview.PreviewCoordinator
+import magenta.input.{DeploymentIdsFilter, NoFilter}
 import magenta.{Build, DeployParameters, Deployer, Stage}
-import play.api.data.Form
-import play.api.data.Forms._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
+import utils.Forms
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class PreviewForm(projectName: String, buildId: String, stage: String, deployments: List[String])
-
 class PreviewController(coordinator: PreviewCoordinator)(
   implicit val wsClient: WSClient, val messagesApi: MessagesApi
-) extends Controller with LoginActions with I18nSupport {
+) extends Controller with LoginActions with I18nSupport with Loggable {
   def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
     val build = Build(projectName, buildId)
-    val filter = deployments.map(stringRepresentationToId) match {
+    val filter = deployments.map(Forms.stringToIdList) match {
       case Some(head :: tail) => DeploymentIdsFilter(head :: tail)
       case _ => NoFilter
     }
@@ -47,15 +46,20 @@ class PreviewController(coordinator: PreviewCoordinator)(
         result.future.map { preview =>
           preview.graph match {
             case Valid(taskGraph) =>
-              val deploymentIds = taskGraph.toList.map(_._1).map(Preview.safeId)
-              val allSelected = previewForm.fill(
-                PreviewForm(
+              val deploymentIds = taskGraph.toList.map(_._1)
+              logger.info(s"Deployment IDs: $deploymentIds")
+              val form = DeployParameterForm.form.fill(
+                DeployParameterForm(
                   preview.parameters.build.projectName,
                   preview.parameters.build.id,
                   preview.parameters.stage.name,
+                  None,
+                  "n/a",
+                  Nil,
+                  Nil,
                   deploymentIds
                 ))
-              Ok(views.html.preview.yaml.showTasks(taskGraph, allSelected, deploymentIds))
+              Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentIds))
             case Invalid(errors) => Ok(views.html.validation.validationErrors(request, errors))
           }
         }
@@ -64,28 +68,5 @@ class PreviewController(coordinator: PreviewCoordinator)(
       case None =>
         Future.successful(NotFound(s"Preview with ID $previewId doesn't exist."))
     }
-  }
-
-  val previewForm = Form[PreviewForm](
-    mapping(
-      "project" -> nonEmptyText,
-      "build" -> nonEmptyText,
-      "stage" -> nonEmptyText,
-      "deployments" -> list(text)
-    )(PreviewForm.apply)(PreviewForm.unapply)
-  )
-
-  def filter = AuthAction { implicit request =>
-    previewForm.bindFromRequest().fold(
-      hasErrors => Ok(s"${hasErrors.errors}"),
-      previewForm => {
-        Redirect(routes.PreviewController.preview(
-          previewForm.projectName,
-          previewForm.buildId,
-          previewForm.stage,
-          Some(previewForm.deployments.mkString(DEPLOYMENT_DELIMITER.toString))
-        ))
-      }
-    )
   }
 }

@@ -12,7 +12,6 @@ import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
-import utils.Forms.uuid
 
 import scala.util.Try
 

@@ -14,6 +14,7 @@ import magenta.graph.{DeploymentTasks, Graph}
 import magenta.input.resolver._
 import magenta.input._
 import magenta.{DeployParameters, DeploymentResources}
+import utils.Forms
 
 object Preview extends Loggable {
   def apply(artifact: S3YamlArtifact, yamlConfig: String, parameters: DeployParameters,
@@ -45,7 +46,7 @@ object Preview extends Loggable {
   }
 
   def safeId(deploymentId: DeploymentId): String = {
-    URLEncoder.encode(idToStringRepresentation(deploymentId), "UTF-8")
+    URLEncoder.encode(Forms.idToString(deploymentId), "UTF-8")
   }
 }
 

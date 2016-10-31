@@ -1,15 +1,15 @@
 @import views.html.helper.magenta.PreviewHelper
 @import deployment.preview.Preview
 @import b3.inline.fieldConstructor
-@(taskGraph: magenta.graph.Graph[(magenta.input.DeploymentId, magenta.graph.DeploymentTasks)], previewForm: Form[PreviewForm],
-        deploymentIds: List[String])(
+@(taskGraph: magenta.graph.Graph[(magenta.input.DeploymentId, magenta.graph.DeploymentTasks)],
+        form: Form[forms.DeployParameterForm], checkedIds: List[magenta.input.DeploymentId])(
  implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 
-@b3.formCSRF(routes.PreviewController.filter) {
+@b3.formCSRF(routes.DeployController.processForm) {
     @b3.hiddens(
-        "project" -> previewForm("project").value.get,
-        "build" -> previewForm("build").value.get,
-        "stage" -> previewForm("stage").value.get
+        "project" -> form("project").value.get,
+        "build" -> form("build").value.get,
+        "stage" -> form("stage").value.get
     )
     @for((id, deploymentTasks) <- taskGraph.toList) {
         <div class="deployment-target" id="@Preview.safeId(id)">
@@ -21,9 +21,9 @@
                     <div class="pull-right preview-header-checkbox">
                         <span>
                             @b3.checkbox(
-                                previewForm("deployments[]"),
+                                form("filter[]"),
                                 'value -> Preview.safeId(id),
-                                'checked -> deploymentIds.contains(Preview.safeId(id)),
+                                'checked -> checkedIds.contains(id),
                                 '_label -> Html("Run tasks")
                             )
                         </span>
@@ -64,12 +64,21 @@
         <div class="ajax-refresh-disabled pull-left"></div>
     }
     <div class="actions">
-        @b3.submit('class -> "btn btn-primary"){Filter}
+        @b3.submit(
+            'name -> "action",
+            'value -> "preview",
+            'class -> "btn btn-default"
+        ){Preview with filters}
+        @b3.submit(
+            'name -> "action",
+            'value -> "deploy",
+            'class -> "btn btn-primary"
+        ){Deploy}
         <a class="btn btn-danger" href="@routes.PreviewController.preview(
-            previewForm("project").value.get,
-            previewForm("build").value.get,
-            previewForm("stage").value.get,
+            form("project").value.get,
+            form("build").value.get,
+            form("stage").value.get,
             None
-        )">Reset</a>
+        )">Reset filters</a>
     </div>
 }
