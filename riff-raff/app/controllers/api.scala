@@ -313,7 +313,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
             Json.obj(
               "response" -> Json.obj(
                 "status" -> "error",
-                "errors" -> Json.arr(error)
+                "errors" -> Json.arr(error.message)
               )
             )
         }

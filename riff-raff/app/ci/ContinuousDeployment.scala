@@ -48,9 +48,8 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
         try {
-          deployments.deploy(params, requestSource = ContinuousDeploymentRequestSource) match {
-            case Left(error) => log.error(s"Couldn't continuously deploy $params: $error")
-            case Right(_) => // happy case
+          deployments.deploy(params, requestSource = ContinuousDeploymentRequestSource).left.foreach { error =>
+            log.error(s"Couldn't continuously deploy $params: ${error.message}")
           }
         } catch {
           case NonFatal(e) => log.error(s"Could not deploy $params", e)

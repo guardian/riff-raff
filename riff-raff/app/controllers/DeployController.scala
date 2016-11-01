@@ -7,6 +7,7 @@ import conf.Configuration
 import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult, UserRequestSource}
 import magenta._
 import magenta.artifact._
+import cats.syntax.either._
 import magenta.deployment_type.DeploymentType
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
@@ -73,9 +74,8 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
             )
           case "deploy" =>
-            val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)) match {
-              case Right(uuid) => uuid
-              case Left(error) => throw new IllegalStateException(error)
+            val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)).valueOr{ error =>
+              throw new IllegalStateException(error.message)
             }
             Redirect(routes.DeployController.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")

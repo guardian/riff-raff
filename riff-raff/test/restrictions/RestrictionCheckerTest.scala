@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
-import deployment.{ApiRequestSource, ContinuousDeploymentRequestSource, UserRequestSource}
+import deployment.{ApiRequestSource, ContinuousDeploymentRequestSource, Error, UserRequestSource}
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -23,34 +23,44 @@ class RestrictionCheckerTest extends FlatSpec with Matchers {
   }
 
   "editable" should "run the editable path when there is no existing config" in {
-    val result = RestrictionChecker.editable(
-      None, makeUser("test.user@example.com")
-    )("editable")(identity)
-    result shouldBe "editable"
+    RestrictionChecker.isEditable(
+      None, makeUser("test.user@example.com"), Nil
+    ) shouldBe Right(true)
   }
 
   it should "run the editable path when the config is not locked even if the user is different" in {
     val someConfig = Some(makeConfig("testProject", "PROD", creator = "test.creator@example.com", editingLocked = false))
-    val result = RestrictionChecker.editable(
-      someConfig, makeUser("test.user@example.com")
-    )("editable")(identity)
-    result shouldBe "editable"
+    RestrictionChecker.isEditable(
+      someConfig, makeUser("test.user@example.com"), Nil
+    ) shouldBe Right(true)
   }
 
   it should "run the not editable path when the config is locked when the user is different" in {
     val someConfig = Some(makeConfig("testProject", "PROD", creator = "test.creator@example.com", editingLocked = true))
-    val result = RestrictionChecker.editable(
-      someConfig, makeUser("test.user@example.com")
-    )("editable")(identity)
-    result shouldBe "Locked by Test User"
+    RestrictionChecker.isEditable(
+      someConfig, makeUser("test.user@example.com"), Nil
+    ) shouldBe Left(Error("Locked by test.creator@example.com"))
   }
 
   it should "run the editable path when the config is locked and the user is the creator" in {
     val someConfig = Some(makeConfig("testProject", "PROD", creator = "test.creator@example.com", editingLocked = true))
-    val result = RestrictionChecker.editable(
-      someConfig, makeUser("test.creator@example.com")
-    )("editable")(identity)
-    result shouldBe "editable"
+    RestrictionChecker.isEditable(
+      someConfig, makeUser("test.creator@example.com"), Nil
+    ) shouldBe Right(true)
+  }
+
+  it should "allow modifications by super users" in {
+    val someConfig = Some(makeConfig("testProject", "PROD", creator = "test.creator@example.com", editingLocked = true))
+    RestrictionChecker.isEditable(
+      someConfig, makeUser("superuser@example.com"), List("superuser@example.com")
+    ) shouldBe Right(true)
+  }
+
+  it should "report superusers when locked" in {
+    val someConfig = Some(makeConfig("testProject", "PROD", creator = "test.creator@example.com", editingLocked = true))
+    RestrictionChecker.isEditable(
+      someConfig, makeUser("test.user@example.com"), List("superuser@example.com")
+    ) shouldBe Left(Error("Locked by test.creator@example.com - can also be modified by superuser@example.com"))
   }
 
   "configsThatPreventDeploy" should "return no configs when deploying to a project with no restrictions" in {

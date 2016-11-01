@@ -22,15 +22,15 @@ import scala.util.control.NonFatal
 class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
   import Deployments._
 
-  def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[String, UUID] = {
+  def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[Error, UUID] = {
     log.info(s"Started deploying $requestedParams")
     val restrictionsPreventingDeploy = RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository,
       requestedParams.build.projectName, requestedParams.stage.name, requestSource)
     if (restrictionsPreventingDeploy.nonEmpty) {
-      Left(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}")
-    } else if (enableQueueingSwitch.isSwitchedOff)
-      Left(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableQueueingSwitch.name} switch")
-    else {
+      Left(Error(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}"))
+    } else if (enableQueueingSwitch.isSwitchedOff) {
+      Left(Error(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableQueueingSwitch.name} switch"))
+    } else {
       val params = if (requestedParams.build.id != "lastSuccessful")
         requestedParams
       else {
@@ -43,7 +43,7 @@ class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
         deploymentEngine.interruptibleDeploy(record)
         Right(record.uuid)
       } getOrElse {
-        Left(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableDeploysSwitch.name} switch")
+        Left(Error(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableDeploysSwitch.name} switch"))
       }
     }
   }

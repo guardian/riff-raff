@@ -1,19 +1,20 @@
 package controllers
 
 import java.util.UUID
-import java.util.regex.PatternSyntaxException
 
-import com.gu.googleauth.UserIdentity
-import deployment.{RequestSource, UserRequestSource}
+import conf.Configuration.auth
+import deployment.Error
 import org.joda.time.DateTime
 import persistence.RestrictionConfigDynamoRepository
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.api.mvc.{Controller, Result}
+import play.api.mvc.Controller
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 import utils.Forms.uuid
+
+import scala.util.Try
 
 class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with LoginActions
   with I18nSupport {
@@ -35,13 +36,13 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
         f.continuousDeployment,  f.note))
     ).verifying(
       "Stage is invalid - should be a valid regular expression or contain no special values",
-      form => try { form.stage.r; true } catch { case e:PatternSyntaxException => false }
+      form => Try(form.stage.r).isSuccess
     )
   )
 
   def list = AuthAction { implicit request =>
     val configs = RestrictionConfigDynamoRepository.getRestrictionList.toList.sortBy(r => r.projectName + r.stage)
-    Ok(views.html.restrictions.list(configs))
+    Ok(views.html.restrictions.list(configs, auth.superusers))
   }
 
   def form = AuthAction { implicit request =>
@@ -50,37 +51,44 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
     Ok(views.html.restrictions.form(newForm, saveDisabled = false))
   }
 
-  val editableOrForbidden: (Option[RestrictionConfig], UserIdentity) => (=> Result) => Result =
-    (maybeConfig, identity) => (ifEditable) =>
-    RestrictionChecker.editable[Result](maybeConfig, identity)(ifEditable){ reason =>
-      Forbidden(s"Not possible to edit this restriction: $reason")
-    }
-
   def save = AuthAction { implicit request =>
     restrictionsForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.restrictions.form(formWithErrors, saveDisabled = false)),
       f => {
-        editableOrForbidden(RestrictionConfigDynamoRepository.getRestriction(f.id), request.user) {
-          val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
-            request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
-          RestrictionConfigDynamoRepository.setRestriction(newConfig)
-          Redirect(routes.Restrictions.list())
+        RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(f.id), request.user, auth.superusers) match {
+          case Right(_) =>
+            val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
+              request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
+            RestrictionConfigDynamoRepository.setRestriction(newConfig)
+            Redirect(routes.Restrictions.list())
+          case Left(Error(reason)) =>
+            Forbidden(s"Not possible to update this restriction: $reason")
         }
       }
     )
   }
+
   def edit(id: String) = AuthAction { implicit request =>
     RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)).map{ rc =>
-      val canSave = RestrictionChecker.editable(Some(rc), request.user)(true){_=>false}
-      Ok(views.html.restrictions.form(restrictionsForm.fill(
+      val form = restrictionsForm.fill(
         RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.whitelist, rc.continuousDeployment, rc.note)
-      ), saveDisabled = !canSave))
+      )
+      val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, auth.superusers).isLeft
+
+      Ok(views.html.restrictions.form(
+        restrictionForm = form,
+        saveDisabled = cannotSave
+      ))
     }.getOrElse(Redirect(routes.Restrictions.list()))
   }
+
   def delete(id: String) = AuthAction { request =>
-    editableOrForbidden(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user) {
-      RestrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
-      Redirect(routes.Restrictions.list())
+    RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, auth.superusers) match {
+      case Right(_) =>
+        RestrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
+        Redirect(routes.Restrictions.list())
+      case Left(Error(reason)) =>
+        Forbidden(s"Not possible to delete this restriction: $reason")
     }
   }
 }

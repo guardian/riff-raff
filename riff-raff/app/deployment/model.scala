@@ -10,11 +10,12 @@ import org.joda.time.{DateTime, Duration, Interval}
 import org.joda.time.format.PeriodFormatterBuilder
 import utils.VCSInfo
 
-trait RequestSource
-
+sealed trait RequestSource
 case class UserRequestSource(user: UserIdentity) extends RequestSource
 case object ContinuousDeploymentRequestSource extends RequestSource
 case class ApiRequestSource(key: ApiKey) extends RequestSource
+
+case class Error(message: String) extends AnyVal
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"

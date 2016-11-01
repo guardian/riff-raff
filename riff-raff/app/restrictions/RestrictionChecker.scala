@@ -1,27 +1,23 @@
 package restrictions
 
 import com.gu.googleauth.UserIdentity
-import deployment.{ContinuousDeploymentRequestSource, RequestSource, UserRequestSource}
+import deployment.{ContinuousDeploymentRequestSource, Error, RequestSource, UserRequestSource}
 
 object RestrictionChecker {
-  /** Method that runs one function if the supplied config is editable by the supplied source and another if it is not
+  /** Method that checks whether the supplied config is editable by the supplied source and reports and error reason if
+    * not.
     * @param currentConfig The config to check - note that when a config is being checked this must be the original
     *                      config not the updated config
     * @param identity The identity of the user trying to make the edit
-    * @param ifEditable The function whose result will be returned if we consider the config to be editable
-    * @param ifNotEditable The function whose result will be returned if the config cannot be edited
-    * @tparam T The function return type
-    * @return The result of either ifEditable or ifNotEditable
+    * @return Either true or a string containing the reason it is not editable
     */
-  def editable[T](currentConfig: Option[RestrictionConfig], identity: UserIdentity)
-    (ifEditable: => T)(ifNotEditable: String => T): T = {
+  def isEditable(currentConfig: Option[RestrictionConfig], identity: UserIdentity, superusers: List[String]): Either[Error, Boolean] = {
     currentConfig match {
-      case None =>
-        ifEditable
-      case Some(config) if !config.editingLocked || config.email == identity.email =>
-        ifEditable
+      case None => Right(true)
+      case Some(config) if !config.editingLocked || config.email == identity.email || superusers.contains(identity.email) => Right(true)
       case Some(config) =>
-        ifNotEditable(s"Locked by ${identity.fullName}")
+        val superuserInfo = if (superusers.nonEmpty) s" - can also be modified by ${superusers.mkString(", ")}" else ""
+        Left(Error(s"Locked by ${config.email}$superuserInfo"))
     }
   }
 
