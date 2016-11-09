@@ -1,0 +1,62 @@
+@import _root_.restrictions.RestrictionConfig
+@import _root_.restrictions.RestrictionChecker
+@import helper.CSRF
+@(configs: Seq[RestrictionConfig], superusers: List[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+
+@main("Restrictions", request){
+    <h2>Restrictions</h2>
+    <hr/>
+    <div class="alert alert-info">
+        <p><strong>Disable or limit deploys of projects</strong></p>
+        <p>Restrictions are principally designed to be used when there is a temporary issue with a project or environment such
+        that deploying would be dangerous or potentially degrade the product. In addition they can be used when
+        infrastructure security could be compromised by allowing any user to rollback or deploy a branch of their
+        choice.</p>
+    </div>
+    <p><a class="btn btn-primary" href="@routes.Restrictions.form()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new restriction</a></p>
+    <div class="content">
+    @if(configs.isEmpty) {
+        <div class="alert alert-warning"><strong>No restrictions.</strong></div>
+    } else {
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    <th>Last edited</th>
+                    <th>Project Name</th>
+                    <th>Stage</th>
+                    <th>Locked</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @for(config <- configs) {
+                @defining(RestrictionChecker.isEditable(Some(config), request.user, superusers).isLeft) { deleteDisabled =>
+                    <tr>
+                        <td>@utils.DateFormats.Short.print(config.lastEdited)
+                            by <span class="label label-default">@config.fullName</span></td>
+                        <td>@config.projectName</td>
+                        <td>@config.stage</td>
+                        <td>@if(config.editingLocked) {
+                            <span class="glyphicon glyphicon-lock" aria-hidden="true"></span>
+                        }</td>
+                        <td>
+                            <a class="btn btn-default btn-xs" href="@routes.Restrictions.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i>
+                                Edit</a>
+                        </td>
+                        <td>
+                        @helper.form(action = routes.Restrictions.delete(config.id.toString), 'class -> "form-make-inline") {
+                            @CSRF.formField
+                            <button class="btn btn-xs btn-danger" name="action" value="delete"@if(deleteDisabled){ disabled="disabled"}><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i>
+                                Delete</button>
+                        }
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    }
+    </div>
+
+}

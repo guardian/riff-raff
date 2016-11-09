@@ -78,6 +78,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
     lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
+    lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
   }
 
   object concurrency {

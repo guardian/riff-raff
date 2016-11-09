@@ -1,25 +1,23 @@
 package controllers
 
-import play.api.mvc.Security.AuthenticatedRequest
-import play.api.mvc._
-import play.api.mvc.Results._
-import play.api.mvc.BodyParsers._
-import conf._
-import conf.Configuration.auth
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
-import org.joda.time.DateTime
-import com.mongodb.casbah.commons.MongoDBObject
-import com.mongodb.casbah.Imports._
-import play.api.data._
-import play.api.data.Forms._
-import deployment.{DeployFilter, Deployments}
-import play.api.libs.concurrent.Execution.Implicits._
 import com.gu.googleauth._
+import com.mongodb.casbah.commons.MongoDBObject
+import conf.Configuration.auth
+import conf._
+import deployment.{DeployFilter, Deployments}
+import org.joda.time.DateTime
+import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import play.api.data.Forms._
+import play.api.data._
 import play.api.i18n.{I18nSupport, MessagesApi}
-
-import scala.concurrent.Future
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
+import play.api.mvc.BodyParsers._
+import play.api.mvc.Results._
+import play.api.mvc._
+
+import scala.concurrent.Future
 
 class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
