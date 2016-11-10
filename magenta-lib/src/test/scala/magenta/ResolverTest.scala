@@ -6,7 +6,7 @@ import com.amazonaws.regions.RegionUtils
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3JsonArtifact, S3Path}
-import magenta.deployment_type.{DeploymentType, S3}
+import magenta.deployment_type.{Action, DeploymentType, S3}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
 import magenta.graph.{DeploymentGraph, DeploymentTasks, StartNode, ValueNode}
 import magenta.json._
@@ -83,7 +83,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val basePackageType = stubDeploymentType(Seq("main_init_action"))
 
     val mainRecipe = Recipe("main",
-      actions = basePackageType.mkAction("main_init_action")(stubPackage(basePackageType)) :: Nil,
+      actions = basePackageType.mkActionResolver("main_init_action")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -101,10 +101,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val basePackageType = stubDeploymentType(Seq("main_init_action", "init_action_two"))
 
     val indirectDependencyRecipe = Recipe("two",
-      actions = basePackageType.mkAction("init_action_two")(stubPackage(basePackageType)) :: Nil,
+      actions = basePackageType.mkActionResolver("init_action_two")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("one"))
     val mainRecipe = Recipe("main",
-      actions = basePackageType.mkAction("main_init_action")(stubPackage(basePackageType)) :: Nil,
+      actions = basePackageType.mkActionResolver("main_init_action")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("two", "one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -121,7 +121,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "not throw an exception if no hosts found and only whole app recipes" in {
     val nonHostRecipe = Recipe("nonHostRecipe",
-      actions =  basePackageType.mkAction("init_action_one")(stubPackage(basePackageType)) :: Nil,
+      actions =  basePackageType.mkActionResolver("init_action_one")(stubPackage(basePackageType)) :: Nil,
       dependsOn = Nil)
 
     val resources = DeploymentResources(reporter, stubLookup(List()), artifactClient)
@@ -130,13 +130,11 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "resolve tasks from multiple stacks" in {
     val pkgType = StubDeploymentType(
-      actions = {
-        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack)))
-      },
+      actionsMap = Map("deploy" -> Action("deploy")((pkg, resources, target) => List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack))))(StubActionRegister)),
       List("deploy")
     )
     val recipe = Recipe("stacked",
-      actions = List(pkgType.mkAction("deploy")(stubPackage(pkgType))))
+      actions = List(pkgType.mkActionResolver("deploy")(stubPackage(pkgType))))
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
@@ -151,13 +149,13 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "resolve tasks from multiple stacks into a parallel task graph" in {
     val pkgType = StubDeploymentType(
-      actions = {
-        case "deploy" => pkg => (resources, target) => List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack)))
-      },
+      actionsMap = Map("deploy" -> Action("deploy"){ (pkg, resources, target) =>
+        List(StubTask("stacked", Region("eu-west-1"), stack = Some(target.stack)))
+      }(StubActionRegister)),
       List("deploy")
     )
     val recipe = Recipe("stacked",
-      actions = List(pkgType.mkAction("deploy")(stubPackage(pkgType))))
+      actions = List(pkgType.mkActionResolver("deploy")(stubPackage(pkgType))))
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)

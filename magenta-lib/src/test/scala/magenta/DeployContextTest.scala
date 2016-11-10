@@ -109,7 +109,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   val CODE = Stage("CODE")
 
-  case class MockStubPerHostAction(description: String, apps: Seq[App]) extends Action {
+  case class MockStubPerHostActionResolver(description: String, apps: Seq[App]) extends ActionResolver {
     def resolve(resources: DeploymentResources, target: DeployTarget) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(Some(resources.lookup.hosts.all.head))
@@ -117,7 +117,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     }
   }
 
-  case class MockStubPerAppAction(description: String, apps: Seq[App]) extends Action {
+  case class MockStubPerAppActionResolver(description: String, apps: Seq[App]) extends ActionResolver {
     def resolve(resources: DeploymentResources, target: DeployTarget) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(None)
@@ -133,11 +133,11 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
   val baseRecipe = Recipe("one",
-    actions = basePackageType.mkAction("init_action_one")(stubPackage(basePackageType)) :: Nil,
+    actions = basePackageType.mkActionResolver("init_action_one")(stubPackage(basePackageType)) :: Nil,
     dependsOn = Nil)
 
   val baseMockRecipe = Recipe("one",
-    actions = MockStubPerAppAction("init_action_one", Seq(app1)) :: Nil,
+    actions = MockStubPerAppActionResolver("init_action_one", Seq(app1)) :: Nil,
     dependsOn = Nil)
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)

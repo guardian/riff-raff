@@ -1,29 +1,53 @@
-@(typeDescription: String, paramsDescriptions: Seq[(String,String,Option[String],Option[String])])
+@(deployTypeDocs: docs.DeployTypeDocs)
 
-@docs.MarkDown.toHtml(typeDescription)
+@docs.MarkDown.toHtml(deployTypeDocs.documentation)
 
-@if(paramsDescriptions.nonEmpty) {
+
+<h3>Actions</h3>
 <table class="table table-condensed">
     <thead>
         <tr>
-            <th>Parameter</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Default action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @deployTypeDocs.actions.map { action =>
+            <tr>
+                <td>@action.name</td>
+                <td>@docs.MarkDown.toHtml(action.documentation)</td>
+                <td>@if(action.isDefault){<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>}</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if(deployTypeDocs.params.nonEmpty) {
+<h3>Parameters</h3>
+<table class="table table-condensed">
+    <thead>
+        <tr>
+            <th>Name</th>
             <th>Description</th>
             <th>Default (riff-raff.yaml)</th>
             <th>Default (legacy deploy.json)</th>
         </tr>
     </thead>
-    @paramsDescriptions.map { case (name, desc, defaultJson, defaultYaml) =>
-    <tr>
-      <td>@name</td>
-      <td>@docs.MarkDown.toHtml(desc)</td>
-        @if(defaultJson != defaultYaml) {
-            <td nowrap="nowrap"><em><strong>@defaultYaml.getOrElse{&lt;no default&gt;}</strong></em></td>
-            <td nowrap="nowrap"><em><strong>@defaultJson.getOrElse{&lt;no default&gt;}</strong></em></td>
-        } else {
-            <td nowrap="nowrap"><em>@defaultYaml.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
-            <td nowrap="nowrap"><em>@defaultJson.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+    <tbody>
+        @deployTypeDocs.params.map { param =>
+        <tr>
+          <td>@param.name</td>
+          <td>@docs.MarkDown.toHtml(param.documentation)</td>
+            @if(param.defaultLegacy != param.default) {
+                <td nowrap="nowrap"><em><strong>@param.default.getOrElse{&lt;no default&gt;}</strong></em></td>
+                <td nowrap="nowrap"><em><strong>@param.defaultLegacy.getOrElse{&lt;no default&gt;}</strong></em></td>
+            } else {
+                <td nowrap="nowrap"><em>@param.default.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+                <td nowrap="nowrap"><em>@param.defaultLegacy.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
+            }
+        </tr>
         }
-    </tr>
-    }
+    </tbody>
 </table>
 }

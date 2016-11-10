@@ -12,16 +12,11 @@ object Lambda extends DeploymentType  {
   val documentation =
     """
       |Provides deploy actions to upload and update Lambda functions. This deployment type can with with or without S3.
-      |When using S3 you should use both the `uploadLambda` and `updateLambda`. When not using S3 `uploadLambda` is
-      |no-op.
+      |When using S3 you should use both the `uploadLambda` and `updateLambda`.
       |
-      |It is recommended that you only use the `functionName` and `fileName` parameters. In this case the `functionName`
-      |will be appended with the stage you are deploying to and the file uploaded will be the same for all stages.
-      |
-      |Due to the current limitations in AWS (particularly the lack of configuration mechanisms) there is a more
-      |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
-      |As a result you can bundle stage specific configuration into the respective files.
-    """.stripMargin
+      |It is recommended to use the `bucket` parameter as storing the function code in S3 works much better when using
+      |cloudformation.
+      """.stripMargin
 
   val regionsParam = Param[List[String]]("regions",
     documentation = 
@@ -47,7 +42,7 @@ object Lambda extends DeploymentType  {
   )
 
   val prefixStackParam = Param[Boolean]("prefixStack",
-    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(false)
+    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
 
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function")
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
@@ -75,8 +70,6 @@ object Lambda extends DeploymentType  {
       """.stripMargin,
     optionalInYaml = true
   )
-
-  def defaultActions = List("uploadLambda", "updateLambda")
 
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[LambdaFunction] = {
     val bucketOption = bucketParam.get(pkg)
@@ -125,41 +118,60 @@ object Lambda extends DeploymentType  {
     List(stack.nameOption, Some(params.stage.name), Some(pkg.name), Some(fileName)).flatten.mkString("/")
   }
 
-  def actions = {
-    case "uploadLambda" => (pkg) => (resources, target) => {
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target, resources.reporter).flatMap {
-        case LambdaFunctionFromZip(_,_, _) => None
+  val uploadLambda = Action("uploadLambda",
+    """
+      |Uploads the lambda code to S3. This is a no-op when the `bucket` parameter is not provided.
+    """.stripMargin){ (pkg, resources, target) =>
+    implicit val keyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient = resources.artifactClient
+    lambdaToProcess(pkg, target, resources.reporter).flatMap {
+      case LambdaFunctionFromZip(_,_, _) => None
 
-        case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
-          val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
-          Some(S3Upload(
-            target.region,
-            s3Bucket,
-            Seq(S3Path(pkg.s3Package, fileName) -> s3Key)
-          ))
-      }.distinct
-    }
-    case "updateLambda" => (pkg) => (resources, target) => {
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      implicit val artifactClient = resources.artifactClient
-      lambdaToProcess(pkg, target, resources.reporter).flatMap {
-        case LambdaFunctionFromZip(functionName, fileName, region) =>
-          Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
-
-        case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
-          val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
-          Some(
-          UpdateS3Lambda(
-            functionName,
-            s3Bucket,
-            s3Key,
-            region
-          ))
-      }.distinct
-    }
+      case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
+        val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
+        Some(S3Upload(
+          target.region,
+          s3Bucket,
+          Seq(S3Path(pkg.s3Package, fileName) -> s3Key)
+        ))
+    }.distinct
   }
+  val updateLambda = Action("updateLambda",
+    """
+      |Updates the lambda to use new code using the UpdateFunctionCode API.
+      |
+      |Typically this copies the new function code form S3, but when `bucket` is not provided this directly uploads the
+      |file directly into the function.
+      |
+      |The fucntion name to update is determined by the `functionName` or `functions` parameters.
+      |
+      |It is recommended that you only use the `functionName` parameter (in combination with `fileName`). In this case
+      |the `functionName` will be prefixed with the stack (default in YAML) and suffixed with the stage you are
+      |deploying to and the file uploaded will be the same for all stack and stage combinations.
+      |
+      |Due to the current limitations in AWS (particularly the lack of configuration mechanisms) there is a more
+      |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
+      |As a result you can bundle stage specific configuration into the respective files.
+    """.stripMargin){ (pkg, resources, target) =>
+    implicit val keyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient = resources.artifactClient
+    lambdaToProcess(pkg, target, resources.reporter).flatMap {
+      case LambdaFunctionFromZip(functionName, fileName, region) =>
+        Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
+
+      case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
+        val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
+        Some(
+        UpdateS3Lambda(
+          functionName,
+          s3Bucket,
+          s3Key,
+          region
+        ))
+    }.distinct
+  }
+
+  def defaultActions = List(uploadLambda, updateLambda)
 }
 
 sealed trait LambdaFunction {

@@ -19,7 +19,7 @@ object TaskResolver {
         region <- deployment.regions.toList
         stack <- deployment.stacks.toList
         actionName <- deployment.actions.toList.flatten
-        action = deploymentType.mkAction(actionName)(deploymentPackage)
+        action = deploymentType.mkActionResolver(actionName)(deploymentPackage)
         target = DeployTarget(parameters, NamedStack(stack), Region(region))
         task <- action.resolve(deploymentResources, target)
       } yield task

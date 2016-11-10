@@ -78,7 +78,7 @@ case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Regi
  An action represents a step within a recipe. It isn't executable
  until it's resolved against a particular host.
  */
-trait Action {
+trait ActionResolver {
   def apps: Seq[App]
   def description: String
   def resolve(resources: DeploymentResources, target: DeployTarget): List[Task]
@@ -88,7 +88,7 @@ case class App (name: String)
 
 case class Recipe(
   name: String,
-  actions: Iterable[Action] = Nil, //executed once per app (before the host actions are executed)
+  actions: Iterable[ActionResolver] = Nil, //executed once per app (before the host actions are executed)
   dependsOn: List[String] = Nil
 )
 

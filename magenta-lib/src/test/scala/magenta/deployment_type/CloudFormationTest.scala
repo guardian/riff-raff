@@ -27,7 +27,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val p = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"), true,
       deploymentTypes)
 
-    inside(CloudFormation.actions("updateStack")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>

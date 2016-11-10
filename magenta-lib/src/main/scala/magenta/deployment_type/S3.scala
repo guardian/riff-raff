@@ -6,18 +6,7 @@ import magenta.tasks.S3Upload
 
 object S3 extends DeploymentType {
   val name = "aws-s3"
-  val documentation =
-    """
-      |Provides one deploy action, `uploadStaticFiles`, that uploads the package files to an S3 bucket. In order for this to work, magenta
-      |must have credentials that are valid to write to the bucket in the specified location.
-      |
-      |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
-      |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
-      |
-      |Alternatively, you can specify a pathPrefixResource (eg `s3-path-prefix`) to lookup the path prefix, giving you
-      |greater control. The generated key looks like: `/<pathPrefix>/<filePathAndName>`.
-      |
-    """.stripMargin
+  val documentation = "For uploading files into an S3 bucket."
 
   val prefixStage = Param("prefixStage",
     "Prefix the S3 bucket key with the target stage").default(true)
@@ -99,10 +88,20 @@ object S3 extends DeploymentType {
     """.stripMargin
   ).default(Map.empty)
 
-  def defaultActions = List("uploadStaticFiles")
-
-  def actions = {
-    case "uploadStaticFiles" => (pkg) => (resources, target) => {
+  val uploadStaticFiles = Action(
+    name = "uploadStaticFiles",
+    documentation =
+      """
+        |Uploads the deployment files to an S3 bucket. In order for this to work, magenta must have credentials that are
+        |valid to write to the bucket in the specified location.
+        |
+        |Each file path and name is used to generate the key, optionally prefixing the target stage and the package name
+        |to the key. The generated key looks like: `/<bucketName>/<targetStage>/<packageName>/<filePathAndName>`.
+        |
+        |Alternatively, you can specify a pathPrefixResource (eg `s3-path-prefix`) to lookup the path prefix, giving you
+        |greater control. The generated key looks like: `/<pathPrefix>/<filePathAndName>`.
+        """.stripMargin
+  ){ (pkg, resources, target) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
         resource.get(pkg).flatMap { resourceName =>
           assert(pkg.apps.size == 1, s"The $name package type, in conjunction with ${resource.name}, only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
@@ -145,4 +144,6 @@ object S3 extends DeploymentType {
       )
     }
   }
+
+  def defaultActions = List(uploadStaticFiles)
 }
