@@ -143,7 +143,7 @@ object Lambda extends DeploymentType  {
       |Typically this copies the new function code form S3, but when `bucket` is not provided this directly uploads the
       |file directly into the function.
       |
-      |The fucntion name to update is determined by the `functionName` or `functions` parameters.
+      |The function name to update is determined by the `functionName` or `functions` parameters.
       |
       |It is recommended that you only use the `functionName` parameter (in combination with `fileName`). In this case
       |the `functionName` will be prefixed with the stack (default in YAML) and suffixed with the stage you are

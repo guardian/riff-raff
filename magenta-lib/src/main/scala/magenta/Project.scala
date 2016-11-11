@@ -74,10 +74,7 @@ case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifac
 
 case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Region)
 
-/*
- An action represents a step within a recipe. It isn't executable
- until it's resolved against a particular host.
- */
+/* An ActionResolver represents a step within a deployment. */
 trait ActionResolver {
   def apps: Seq[App]
   def description: String

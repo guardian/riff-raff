@@ -12,7 +12,7 @@ object AutoScaling  extends DeploymentType {
       |The approach of this deploy type is to:
       |
       | - upload a new application artifact to an S3 bucket (from which new instances download their application)
-      | - scale up, wait for the new instances to become healthy and ten scale back down
+      | - scale up, wait for the new instances to become healthy and then scale back down
       |
       |The set of AWS permissions needed to let RiffRaff do an autoscaling deploy are:
       |
