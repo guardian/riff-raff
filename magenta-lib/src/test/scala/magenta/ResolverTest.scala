@@ -83,7 +83,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val basePackageType = stubDeploymentType(Seq("main_init_action"))
 
     val mainRecipe = Recipe("main",
-      actions = basePackageType.mkActionResolver("main_init_action")(stubPackage(basePackageType)) :: Nil,
+      deploymentSteps = basePackageType.mkDeploymentStep("main_init_action")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -101,10 +101,10 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val basePackageType = stubDeploymentType(Seq("main_init_action", "init_action_two"))
 
     val indirectDependencyRecipe = Recipe("two",
-      actions = basePackageType.mkActionResolver("init_action_two")(stubPackage(basePackageType)) :: Nil,
+      deploymentSteps = basePackageType.mkDeploymentStep("init_action_two")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("one"))
     val mainRecipe = Recipe("main",
-      actions = basePackageType.mkActionResolver("main_init_action")(stubPackage(basePackageType)) :: Nil,
+      deploymentSteps = basePackageType.mkDeploymentStep("main_init_action")(stubPackage(basePackageType)) :: Nil,
       dependsOn = List("two", "one"))
 
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -121,7 +121,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "not throw an exception if no hosts found and only whole app recipes" in {
     val nonHostRecipe = Recipe("nonHostRecipe",
-      actions =  basePackageType.mkActionResolver("init_action_one")(stubPackage(basePackageType)) :: Nil,
+      deploymentSteps =  basePackageType.mkDeploymentStep("init_action_one")(stubPackage(basePackageType)) :: Nil,
       dependsOn = Nil)
 
     val resources = DeploymentResources(reporter, stubLookup(List()), artifactClient)
@@ -134,7 +134,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       List("deploy")
     )
     val recipe = Recipe("stacked",
-      actions = List(pkgType.mkActionResolver("deploy")(stubPackage(pkgType))))
+      deploymentSteps = List(pkgType.mkDeploymentStep("deploy")(stubPackage(pkgType))))
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
@@ -155,7 +155,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
       List("deploy")
     )
     val recipe = Recipe("stacked",
-      actions = List(pkgType.mkActionResolver("deploy")(stubPackage(pkgType))))
+      deploymentSteps = List(pkgType.mkDeploymentStep("deploy")(stubPackage(pkgType))))
 
     val proj = project(recipe, NamedStack("foo"), NamedStack("bar"), NamedStack("monkey"), NamedStack("litre"))
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient)

@@ -19,9 +19,9 @@ object TaskResolver {
         region <- deployment.regions.toList
         stack <- deployment.stacks.toList
         actionName <- deployment.actions.toList.flatten
-        action = deploymentType.mkActionResolver(actionName)(deploymentPackage)
+        deploymentStep = deploymentType.mkDeploymentStep(actionName)(deploymentPackage)
         target = DeployTarget(parameters, NamedStack(stack), Region(region))
-        task <- action.resolve(deploymentResources, target)
+        task <- deploymentStep.resolve(deploymentResources, target)
       } yield task
       DeploymentTasks(tasks,
         mkLabel(deploymentPackage.name, deployment.actions.toList.flatten, deployment.regions, deployment.stacks))

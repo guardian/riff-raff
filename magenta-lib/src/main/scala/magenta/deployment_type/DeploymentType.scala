@@ -27,16 +27,16 @@ trait DeploymentType {
   def defaultActions: List[Action]
   def defaultActionNames = defaultActions.map(_.name)
 
-  def mkActionResolver(actionName: String)(pkg: DeploymentPackage): ActionResolver = {
+  def mkDeploymentStep(actionName: String)(pkg: DeploymentPackage): DeploymentStep = {
     actionsMap.lift(actionName).map { action =>
-      new PackageAction(pkg, actionName) {
+      new PackageDeploymentStep(pkg, actionName) {
         def resolve(resources: DeploymentResources, target: DeployTarget) =
           action.taskGenerator(pkg, resources, target)
       }
     } getOrElse sys.error(s"Action $actionName is not supported on package ${pkg.name} of type $name")
   }
 
-  abstract case class PackageAction(pkg: DeploymentPackage, actionName: String) extends ActionResolver {
+  abstract case class PackageDeploymentStep(pkg: DeploymentPackage, actionName: String) extends DeploymentStep {
     def apps = pkg.apps
     def description = pkg.name + "." + actionName
   }
