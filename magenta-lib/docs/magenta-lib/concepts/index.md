@@ -7,7 +7,7 @@ actually works under the hood and give some details on how it understands the fi
 
 The following concepts are discussed:
 
- - [How Magenta works](how-magenta-works)
- - [The terminology of Magenta](terminology)
- - [The anatomy of the artifacts.zip file](artifacts.zip)
- - [The anatomy of a deploy.json file](deploy.json)
+ - [How Magenta works](how-magenta-works.md)
+ - [The terminology of Magenta](terminology.md)
+ - [The anatomy of the artifacts.zip file](artifacts.zip.md)
+ - [The anatomy of a deploy.json file](deploy.json.md)

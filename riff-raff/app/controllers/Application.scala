@@ -220,10 +220,11 @@ object Application extends Logging {
   }
 
   def getMarkdownLines(resource: String)(implicit environment: Environment): List[String] = {
-    val realResource = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    val res = if (resource.isEmpty || resource.last == '/') s"${resource}index" else resource
+    val realResource = if(res.endsWith(".md")) res else res + ".md"
     log.info(s"Getting page for $realResource")
     try {
-      withResource(environment.resourceAsStream(s"public/docs/$realResource.md").orElse(environment.resourceAsStream(s"$realResource.md")).get) { url =>
+      withResource(environment.resourceAsStream(s"public/docs/$realResource").orElse(environment.resourceAsStream(s"$realResource")).get) { url =>
         log.info(s"Resolved URL $url")
         Source.fromInputStream(url).getLines().toList
       }
