@@ -16,13 +16,13 @@ object Resolver {
     deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     for {
-      deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.filter)
+      deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.selector)
       taskGraph <- buildTaskGraph(deploymentResources, parameters, deploymentTypes, artifact, deploymentGraph)
     } yield taskGraph
   }
 
   def resolveDeploymentGraph(yamlConfig: String, deploymentTypes: Seq[DeploymentType],
-    filter: UserDeploymentFilter): Validated[ConfigErrors, Graph[Deployment]] = {
+    selector: DeploymentSelector): Validated[ConfigErrors, Graph[Deployment]] = {
 
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
@@ -30,8 +30,8 @@ object Resolver {
       validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
         DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes)
       }
-      userFilteredDeployments = DeploymentFilter.filter(validatedDeployments, DeploymentFilter.create(filter))
-      graph = buildParallelisedGraph(userFilteredDeployments)
+      prunedDeployments = DeploymentPruner.prune(validatedDeployments, DeploymentPruner.create(selector))
+      graph = buildParallelisedGraph(prunedDeployments)
     } yield graph
   }
 
@@ -58,8 +58,8 @@ object Resolver {
     val stackRegionGraphs: List[Graph[Deployment]] = for {
       stack <- stacks
       region <- regions
-      deploymentsForStackAndRegion = DeploymentFilter.filter(userSelectedDeployments,
-        DeploymentFilter.StackAndRegion(stack, region))
+      deploymentsForStackAndRegion = DeploymentPruner.prune(userSelectedDeployments,
+        DeploymentPruner.StackAndRegion(stack, region))
       graphForStackAndRegion = DeploymentGraphBuilder.buildGraph(deploymentsForStackAndRegion)
     } yield graphForStackAndRegion
 

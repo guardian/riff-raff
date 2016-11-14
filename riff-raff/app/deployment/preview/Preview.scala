@@ -14,19 +14,18 @@ import magenta.graph.{DeploymentTasks, Graph}
 import magenta.input.resolver._
 import magenta.input._
 import magenta.{DeployParameters, DeploymentResources}
-import utils.Forms
 
 object Preview extends Loggable {
   def apply(artifact: S3YamlArtifact, yamlConfig: String, parameters: DeployParameters,
     resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Preview = {
 
     val validatedGraph = for {
-      deploymentGraph <- Resolver.resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.filter)
+      deploymentGraph <- Resolver.resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.selector)
       flattenedGraph = DeploymentGraphActionFlattening.flattenActions(deploymentGraph)
       previewGraph <- sequenceGraph {
         flattenedGraph.map { deployment =>
-          val id = DeploymentId(deployment)
-          TaskResolver.resolve(deployment, resources, parameters, deploymentTypes, artifact).map(id -> _)
+          val key = DeploymentKey(deployment)
+          TaskResolver.resolve(deployment, resources, parameters, deploymentTypes, artifact).map(key -> _)
         }
       }
     } yield previewGraph
@@ -44,10 +43,6 @@ object Preview extends Loggable {
       })
     }
   }
-
-  def safeId(deploymentId: DeploymentId): String = {
-    URLEncoder.encode(Forms.idToString(deploymentId), "UTF-8")
-  }
 }
 
-case class Preview(graph: Validated[ConfigErrors, Graph[(DeploymentId, DeploymentTasks)]], parameters: DeployParameters)
+case class Preview(graph: Validated[ConfigErrors, Graph[(DeploymentKey, DeploymentTasks)]], parameters: DeployParameters)

@@ -6,7 +6,7 @@ import persistence._
 import controllers.Logging
 import java.util.UUID
 
-import magenta.input.{DeploymentId, DeploymentIdsFilter, NoFilter}
+import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
 
 class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
@@ -15,7 +15,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), NoFilterDocument),
+        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
         RunState.Completed
       )
     )
@@ -44,15 +44,15 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
     }
   }
 
-  it should "translate a deploy ids filter" in {
-    val deployIdsFilter = DeploymentIdsFilter(List(
-      DeploymentId("testName", "actionOne", "stackOne", "testRegion"),
-      DeploymentId("testName", "actionTwo", "stackTwo", "testRegion")
+  it should "translate a deploy keys selector" in {
+    val deployKeysSelector = DeploymentKeysSelector(List(
+      DeploymentKey("testName", "actionOne", "stackOne", "testRegion"),
+      DeploymentKey("testName", "actionTwo", "stackTwo", "testRegion")
     ))
-    val convertedFilter = RecordConverter(testRecord.copy(parameters = parameters.copy(filter = deployIdsFilter))).deployDocument.parameters.filter
-    convertedFilter shouldBe DeploymentIdsFilterDocument(List(
-      DeploymentIdDocument("testName", "actionOne", "stackOne", "testRegion"),
-      DeploymentIdDocument("testName", "actionTwo", "stackTwo", "testRegion")
+    val convertedSelector = RecordConverter(testRecord.copy(parameters = parameters.copy(selector = deployKeysSelector))).deployDocument.parameters.selector
+    convertedSelector shouldBe DeploymentKeysSelectorDocument(List(
+      DeploymentKeyDocument("testName", "actionOne", "stackOne", "testRegion"),
+      DeploymentKeyDocument("testName", "actionTwo", "stackTwo", "testRegion")
     ))
   }
 
@@ -91,7 +91,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         Nil,
         Nil,
         Map.empty,
-        NoFilterDocument
+        AllDocument
       ),
       RunState.Completed
     )
@@ -117,7 +117,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         Nil,
         Nil,
         Map.empty,
-        NoFilterDocument
+        AllDocument
       ),
       RunState.Completed
     )

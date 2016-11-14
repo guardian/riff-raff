@@ -8,7 +8,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import magenta.artifact.S3YamlArtifact
 import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
-import magenta.input.DeploymentId
+import magenta.input.DeploymentKey
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
@@ -53,7 +53,7 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
     val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))
 
     val deploymentTuple = (
-      DeploymentId("testDeployment", "testAction", "testStack", "testRegion"),
+      DeploymentKey("testDeployment", "testAction", "testStack", "testRegion"),
       DeploymentTasks(List(
         StubTask("testAction per app task number one", Region("testRegion"), None, None),
         StubTask("testAction per app task number two", Region("testRegion"), None, None)

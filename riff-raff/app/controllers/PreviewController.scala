@@ -6,7 +6,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.gu.management.Loggable
 import controllers.forms.DeployParameterForm
 import deployment.preview.PreviewCoordinator
-import magenta.input.{DeploymentIdsFilter, NoFilter}
+import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import magenta.{Build, DeployParameters, Deployer, Stage}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
@@ -21,11 +21,11 @@ class PreviewController(coordinator: PreviewCoordinator)(
 ) extends Controller with LoginActions with I18nSupport with Loggable {
   def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
     val build = Build(projectName, buildId)
-    val filter = deployments.map(Forms.stringToIdList) match {
-      case Some(head :: tail) => DeploymentIdsFilter(head :: tail)
-      case _ => NoFilter
+    val selector = deployments.map(DeploymentKey.fromStringToList) match {
+      case Some(head :: tail) => DeploymentKeysSelector(head :: tail)
+      case _ => All
     }
-    val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), filter = filter)
+    val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), selector = selector)
     coordinator.startPreview(parameters) match {
       case Right(id) => Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
       case Left(error) =>
@@ -46,12 +46,12 @@ class PreviewController(coordinator: PreviewCoordinator)(
         result.future.map { preview =>
           preview.graph match {
             case Valid(taskGraph) =>
-              val deploymentIds = taskGraph.toList.map(_._1)
-              val noFilterCount = preview.parameters.filter match {
-                case NoFilter => Some(deploymentIds.size)
+              val deploymentKeys = taskGraph.toList.map(_._1)
+              val totalKeyCount = preview.parameters.selector match {
+                case All => Some(deploymentKeys.size)
                 case _ => None
               }
-              logger.info(s"Deployment IDs: $deploymentIds")
+              logger.info(s"Deployment keys: $deploymentKeys")
               val form = DeployParameterForm.form.fill(
                 DeployParameterForm(
                   preview.parameters.build.projectName,
@@ -61,10 +61,10 @@ class PreviewController(coordinator: PreviewCoordinator)(
                   "n/a",
                   Nil,
                   Nil,
-                  deploymentIds,
-                  noFilterCount
+                  deploymentKeys,
+                  totalKeyCount
                 ))
-              Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentIds))
+              Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentKeys))
             case Invalid(errors) => Ok(views.html.validation.validationErrors(request, errors))
           }
         }

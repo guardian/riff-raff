@@ -1,51 +1,28 @@
 package utils
 
 import com.gu.management.Loggable
-import magenta.input.DeploymentId
+import magenta.input.DeploymentKey
 import play.api.data.FormError
 import play.api.data.Forms._
 import play.api.data.format.Formats._
 import play.api.data.format.Formatter
 
 object Forms extends Loggable {
-  val deploymentId = of[DeploymentId](new Formatter[DeploymentId] {
+  val deploymentKey = of[DeploymentKey](new Formatter[DeploymentKey] {
     def bind(key: String, data: Map[String, String]) = {
       stringFormat.bind(key, data).right.flatMap{ s =>
-        stringToId(s).toRight(Seq(FormError("form.deployment-id", "Couldn't parse as deployment ID")))
+        DeploymentKey.fromString(s).toRight(Seq(FormError("form.deployment-key", "Couldn't parse as deployment key")))
       }
     }
-    def unbind(key: String, value: DeploymentId) = {
-      val output = Map(key -> idToString(value))
-      logger.info(s"deploymentId/unbind: $output")
-      output
-    }
+    def unbind(key: String, value: DeploymentKey) = Map(key -> DeploymentKey.asString(value))
   })
 
-  val deploymentIdList = of[List[DeploymentId]](new Formatter[List[DeploymentId]] {
+  val deploymentKeyList = of[List[DeploymentKey]](new Formatter[List[DeploymentKey]] {
     def bind(key: String, data: Map[String, String]) = {
       stringFormat.bind(key, data).right.flatMap{ s =>
-        Right(stringToIdList(s))
+        Right(DeploymentKey.fromStringToList(s))
       }
     }
-    def unbind(key: String, value: List[DeploymentId]) = {
-      val output = Map(key -> idToString(value))
-      logger.info(s"deploymentIdList/unbind: $output")
-      output
-    }
+    def unbind(key: String, value: List[DeploymentKey]) = Map(key -> DeploymentKey.asString(value))
   })
-
-  // serialisation and de-serialisation code for deployment IDs
-  val DEPLOYMENT_DELIMITER = '!'
-  val FIELD_DELIMITER = '*'
-  def idToString(d: List[DeploymentId]): String = {
-    d.map(idToString).mkString(DEPLOYMENT_DELIMITER.toString)
-  }
-  def idToString(d: DeploymentId): String = {
-    List(d.name, d.action, d.region, d.stack).mkString(FIELD_DELIMITER.toString)
-  }
-  def stringToId(s: String) = s.split(FIELD_DELIMITER).toList match {
-    case name :: action :: region :: stack :: Nil => Some(DeploymentId(name, action, stack, region))
-    case _ => None
-  }
-  def stringToIdList(s: String): List[DeploymentId] = s.split(DEPLOYMENT_DELIMITER).toList.flatMap(stringToId)
 }

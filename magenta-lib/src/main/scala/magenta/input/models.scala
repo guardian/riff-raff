@@ -15,21 +15,38 @@ object ConfigErrors {
 }
 
 /** Represents a deployment shown to a user. These are flattened when the graph is built so we only display a
-  * deployment that has one each of name, action, region and stack. This also limits the complexity of the filtering
-  * that needs to be done when deploying. A deployment ID can be represented as a string and there are some methods
+  * deployment that has one each of name, action, region and stack. This also limits the complexity of the selection
+  * that needs to be done when deploying. A deployment key can be represented as a string and there are some methods
   * for doing that at the package level.
   */
-case class DeploymentId(name: String, action: String, stack: String, region: String)
-object DeploymentId {
-  /** Turn a deployment into a deployment ID - this doesn't make any checks about the number of elements */
-  def apply(deployment: Deployment): DeploymentId = {
-    DeploymentId(deployment.name, deployment.actions.get.head, deployment.stacks.head, deployment.regions.head)
+case class DeploymentKey(name: String, action: String, stack: String, region: String)
+object DeploymentKey {
+  /** Turn a deployment into a deployment key - WARNING: this doesn't make any checks about the number of elements
+    * but will only work predictably with one element in each of actions, stacks and regions */
+  def apply(deployment: Deployment): DeploymentKey = {
+    DeploymentKey(deployment.name, deployment.actions.get.head, deployment.stacks.head, deployment.regions.head)
   }
+
+  // serialisation and de-serialisation code for deployment keys
+  val DEPLOYMENT_DELIMITER = '!'
+  val FIELD_DELIMITER = '*'
+  def asString(d: List[DeploymentKey]): String = {
+    d.map(asString).mkString(DEPLOYMENT_DELIMITER.toString)
+  }
+  def asString(d: DeploymentKey): String = {
+    List(d.name, d.action, d.stack, d.region).mkString(FIELD_DELIMITER.toString)
+  }
+  def fromString(s: String) = s.split(FIELD_DELIMITER).toList match {
+    case name :: action :: stack :: region :: Nil => Some(DeploymentKey(name, action, stack, region))
+    case _ => None
+  }
+  def fromStringToList(s: String): List[DeploymentKey] = s.split(DEPLOYMENT_DELIMITER).toList.flatMap(fromString)
+
 }
 
-sealed trait UserDeploymentFilter
-case object NoFilter extends UserDeploymentFilter
-case class DeploymentIdsFilter(ids: List[DeploymentId]) extends UserDeploymentFilter
+sealed trait DeploymentSelector
+case object All extends DeploymentSelector
+case class DeploymentKeysSelector(keys: List[DeploymentKey]) extends DeploymentSelector
 
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],

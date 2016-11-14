@@ -1,8 +1,8 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import helper.CSRF
-@import magenta.input.NoFilter
-@import magenta.input.DeploymentIdsFilter
-@import deployment.preview.Preview
+@import magenta.input.All
+@import magenta.input.DeploymentKeysSelector
+@import magenta.input.DeploymentKey
 
 <script language="JavaScript">
         window.riffraff = {
@@ -60,13 +60,13 @@
                 @record.stacks.zipWithIndex.map { case (stack, index) =>
                 <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
                 }
-                @record.parameters.filter match {
-                    case DeploymentIdsFilter(ids) => {
-                        @ids.map{ id =>
-                            <input type="hidden" name="filter[]" value="@Preview.safeId(id)">
+                @record.parameters.selector match {
+                    case DeploymentKeysSelector(keys) => {
+                        @keys.map{ key =>
+                            <input type="hidden" name="selectedKeys[]" value="@DeploymentKey.asString(key)">
                         }
                     }
-                    case NoFilter => {}
+                    case All => {}
                 }
                 <div class="actions pull-right"><p>
                     <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
@@ -79,13 +79,13 @@
     </div>
 
     <hr/>
-    @if(record.parameters.hostList.nonEmpty || record.parameters.recipe.name != "default" || record.parameters.filter != NoFilter) {
+    @if(record.parameters.hostList.nonEmpty || record.parameters.recipe.name != "default" || record.parameters.selector != All) {
         <div class="alert alert-info">
             @if(record.parameters.recipe.name != "default"){<div>Deploying using <code>@record.parameters.recipe.name</code> recipe</div>}
             @if(record.parameters.hostList.nonEmpty){<div>Deploy restricted to the following hosts: @record.parameters.hostList.mkString(", ")</div>}
-            @record.parameters.filter match {
-                case DeploymentIdsFilter(ids) => {
-                    <div>Deploy is filtered to the following deployments:
+            @record.parameters.selector match {
+                case DeploymentKeysSelector(ids) => {
+                    <div>Deploy is constrained to the following deployments:
                         <ul>
                         @ids.map { id =>
                             <li>@snippets.deploymentInstance(id)</li>
@@ -93,7 +93,7 @@
                         </ul>
                     </div>
                 }
-                case NoFilter => {}
+                case All => {}
             }
         </div>
     }

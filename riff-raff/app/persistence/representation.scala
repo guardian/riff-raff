@@ -61,7 +61,7 @@ case class ParametersDocument(
   stacks: List[String],
   hostList: List[String],
   tags: Map[String,String],
-  filter: UserDeploymentFilterDocument
+  selector: DeploymentSelectorDocument
 )
 
 object ParametersDocument extends MongoSerialisable[ParametersDocument] {
@@ -78,7 +78,7 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
           "stacks" -> a.stacks,
           "hostList" -> a.hostList,
           "tags" -> a.tags,
-          "filter" -> a.filter.asDBObject
+          "selector" -> a.selector.asDBObject
         )
       fields.toMap
     }
@@ -91,7 +91,7 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       stacks = dbo.getAsOrElse[MongoDBList]("stacks", MongoDBList()).map(_.asInstanceOf[String]).toList,
       hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
       tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap,
-      filter = dbo.getAs[DBObject]("filter").map(UserDeploymentFilterDocument.from).getOrElse(NoFilterDocument)
+      selector = dbo.getAs[DBObject]("selector").map(DeploymentSelectorDocument.from).getOrElse(AllDocument)
     ))
   }
 }
@@ -310,12 +310,12 @@ object MessageDocument {
   }
 }
 
-case class DeploymentIdDocument(name: String, action: String, stack: String, region: String)
+case class DeploymentKeyDocument(name: String, action: String, stack: String, region: String)
 
-object DeploymentIdDocument extends MongoSerialisable[DeploymentIdDocument] {
-  implicit val deploymentIdFormat: MongoFormat[DeploymentIdDocument] = new DeploymentIdFormat
-  private class DeploymentIdFormat extends MongoFormat[DeploymentIdDocument] {
-    def toDBO(a: DeploymentIdDocument) = {
+object DeploymentKeyDocument extends MongoSerialisable[DeploymentKeyDocument] {
+  implicit val deploymentKeyFormat: MongoFormat[DeploymentKeyDocument] = new DeploymentKeyFormat
+  private class DeploymentKeyFormat extends MongoFormat[DeploymentKeyDocument] {
+    def toDBO(a: DeploymentKeyDocument) = {
       val fields: List[(String, Any)] =
         List(
           "name" -> a.name,
@@ -327,7 +327,7 @@ object DeploymentIdDocument extends MongoSerialisable[DeploymentIdDocument] {
     }
 
     def fromDBO(dbo: MongoDBObject) = {
-      Some(DeploymentIdDocument(
+      Some(DeploymentKeyDocument(
         name = dbo.as[String]("name"),
         action = dbo.as[String]("action"),
         stack = dbo.as[String]("stack"),
@@ -337,7 +337,7 @@ object DeploymentIdDocument extends MongoSerialisable[DeploymentIdDocument] {
   }
 }
 
-sealed trait UserDeploymentFilterDocument {
+sealed trait DeploymentSelectorDocument {
   def asDBObject:DBObject = {
     val fields:List[(String,Any)] =
       List("_typeHint" -> getClass.getName) ++ dboFields
@@ -345,19 +345,19 @@ sealed trait UserDeploymentFilterDocument {
   }
   def dboFields:List[(String,Any)]
 }
-case object NoFilterDocument extends UserDeploymentFilterDocument {
+case object AllDocument extends DeploymentSelectorDocument {
   def dboFields = Nil
 }
-case class DeploymentIdsFilterDocument(ids: List[DeploymentIdDocument]) extends UserDeploymentFilterDocument {
-  def dboFields = List("ids" -> ids.map(_.toDBO))
+case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument {
+  def dboFields = List("keys" -> ids.map(_.toDBO))
 }
 
-object UserDeploymentFilterDocument {
-  def from(dbo:DBObject): UserDeploymentFilterDocument = {
+object DeploymentSelectorDocument {
+  def from(dbo:DBObject): DeploymentSelectorDocument = {
     dbo.as[String]("_typeHint") match {
-      case "persistence.NoFilterDocument$" => NoFilterDocument
-      case "persistence.DeploymentIdsFilterDocument" => DeploymentIdsFilterDocument(
-        dbo.as[List[DBObject]]("ids").flatMap(dbo => DeploymentIdDocument.fromDBO(dbo))
+      case "persistence.AllDocument$" => AllDocument
+      case "persistence.DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
+        dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
       )
     }
   }

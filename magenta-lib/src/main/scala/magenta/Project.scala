@@ -122,5 +122,5 @@ case class DeployParameters(
                              recipe: RecipeName = DefaultRecipe(),
                              stacks: Seq[NamedStack] = Seq(),
                              hostList: List[String] = Nil,
-                             filter: UserDeploymentFilter = NoFilter
+                             selector: DeploymentSelector = All
                              )

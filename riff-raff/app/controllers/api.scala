@@ -8,7 +8,7 @@ import com.mongodb.casbah.Imports._
 import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
 import magenta._
 import magenta.deployment_type.DeploymentType
-import magenta.input.NoFilter
+import magenta.input.All
 import magenta.input.resolver.{Resolver => YamlResolver}
 import org.joda.time.{DateTime, LocalDate}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -367,7 +367,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
         )
       )
     }{ body =>
-      val validatedGraph = YamlResolver.resolveDeploymentGraph(body, deploymentTypes, NoFilter)
+      val validatedGraph = YamlResolver.resolveDeploymentGraph(body, deploymentTypes, All)
       validatedGraph match {
         case Valid(graph) =>
           Json.obj(
