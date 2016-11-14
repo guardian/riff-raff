@@ -5,7 +5,7 @@
     @CSRF.formField
     <table class="table table-hover">
         <tbody>
-        @preview.recipeTasks.filterNot(rt => rt.recipe.actions.isEmpty).map { recipeTasks =>
+        @preview.recipeTasks.filterNot(rt => rt.recipe.deploymentSteps.isEmpty).map { recipeTasks =>
             <tr>
                 <td><span class="no-hyphenation">@recipeTasks.recipeName</span></td>
                 <td>

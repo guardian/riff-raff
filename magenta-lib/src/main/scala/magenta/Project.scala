@@ -7,7 +7,6 @@ import magenta.tasks.Task
 
 import scala.math.Ordering.OptionOrdering
 
-
 case class Host(
     name: String,
     apps: Set[App] = Set.empty,
@@ -74,11 +73,7 @@ case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifac
 
 case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Region)
 
-/*
- An action represents a step within a recipe. It isn't executable
- until it's resolved against a particular host.
- */
-trait Action {
+trait DeploymentStep {
   def apps: Seq[App]
   def description: String
   def resolve(resources: DeploymentResources, target: DeployTarget): List[Task]
@@ -88,7 +83,7 @@ case class App (name: String)
 
 case class Recipe(
   name: String,
-  actions: Iterable[Action] = Nil, //executed once per app (before the host actions are executed)
+  deploymentSteps: Iterable[DeploymentStep] = Nil,
   dependsOn: List[String] = Nil
 )
 

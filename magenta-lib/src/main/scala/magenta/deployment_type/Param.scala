@@ -4,7 +4,7 @@ import magenta.{DeployReporter, DeployTarget, DeploymentPackage}
 import play.api.libs.json.{Json, Reads}
 
 trait ParamRegister {
-  def add(param: Param[_])
+  def add(param: Param[_]): Unit
 }
 
 /**

@@ -32,7 +32,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.actions("uploadLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
+    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
     tasks should be (List(
       S3Upload(
         Region("eu-west-1"),
@@ -43,7 +43,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "MyFunction-PROD",
@@ -65,7 +65,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
 
-    val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "some-stackMyFunction-PROD",
@@ -88,7 +88,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
 
-    val tasks = Lambda.actions("updateLambda")(pkg)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         functionName = "some-stackMyFunction-PROD",

@@ -17,8 +17,8 @@ object DeploymentTypeResolver {
   }
 
   private[input] def resolveDeploymentActions(deployment: Deployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {
-    val actions = deployment.actions.getOrElse(deploymentType.defaultActions)
-    val invalidActions = actions.filterNot(deploymentType.actions.isDefinedAt)
+    val actions = deployment.actions.getOrElse(deploymentType.defaultActionNames)
+    val invalidActions = actions.filterNot(deploymentType.actionsMap.isDefinedAt)
 
     if (actions.isEmpty)
       Invalid(ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))

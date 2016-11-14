@@ -28,7 +28,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), true,
       deploymentTypes)
 
-    AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
       CheckGroupSize(p, PROD, UnnamedStack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),
@@ -53,7 +53,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), false,
       deploymentTypes)
 
-    AutoScaling.actions("uploadArtifacts")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should matchPattern {
+    AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should matchPattern {
       case List(S3Upload(_,_,_,_,_,false,_)) =>
     }
   }
@@ -71,7 +71,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), true,
       deploymentTypes)
 
-    AutoScaling.actions("deploy")(p)(DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
       CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
       CheckGroupSize(p, PROD, UnnamedStack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),

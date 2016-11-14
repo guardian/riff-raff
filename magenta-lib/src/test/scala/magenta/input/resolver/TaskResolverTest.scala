@@ -5,7 +5,7 @@ import java.util.UUID
 import cats.data.{NonEmptyList => NEL}
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.artifact.S3YamlArtifact
-import magenta.deployment_type.AutoScaling
+import magenta.deployment_type.{Action, AutoScaling}
 import magenta.fixtures._
 import magenta.input.Deployment
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, NamedStack, Region, Stage, fixtures}
@@ -18,10 +18,14 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
   implicit val artifactClient = mock[AmazonS3Client]
 
   val deploymentTypes = List(StubDeploymentType(
-    actions = {
-      case "uploadArtifact" => pkg => (resources, target) => List(StubTask("upload", target.region, stack = Some(target.stack)))
-      case "deploy" => pkg => (resources, target) => List(StubTask("deploy", target.region, stack = Some(target.stack)))
-    },
+    actionsMap = Map(
+      "uploadArtifact" -> Action("uploadArtifact"){
+        (pkg, resources, target) => List(StubTask("upload", target.region, stack = Some(target.stack)))
+      }(StubActionRegister),
+      "deploy" -> Action("deploy"){
+        (pkg, resources, target) => List(StubTask("deploy", target.region, stack = Some(target.stack)))
+      }(StubActionRegister)
+    ),
     List("uploadArtifact", "deploy"))
   )
 

@@ -153,8 +153,8 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
             resource match {
               case "magenta-lib/types" =>
-                val sections = DeployTypeDocs.generateParamDocs(deploymentTypes).map { case (dt, paramDocs) =>
-                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
+                val sections = DeployTypeDocs.generateDocs(deploymentTypes).map { case (dt, docs) =>
+                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(docs)
                   (dt.name, typeDocumentation)
                 }
                 Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))

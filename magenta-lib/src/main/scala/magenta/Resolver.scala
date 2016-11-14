@@ -50,8 +50,8 @@ object Resolver {
 
     def resolveRecipe(recipe: Recipe, resources: DeploymentResources, target: DeployTarget): RecipeTasks = {
       val tasks = for {
-        action <- recipe.actions
-        tasks <- action.resolve(resources, target)
+        deploymentStep <- recipe.deploymentSteps
+        tasks <- deploymentStep.resolve(resources, target)
       } yield {
         tasks
       }

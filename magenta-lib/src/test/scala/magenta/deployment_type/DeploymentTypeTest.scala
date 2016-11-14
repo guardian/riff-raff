@@ -38,7 +38,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true, deploymentTypes)
 
     val thrown = the[NoSuchElementException] thrownBy {
-      S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
+      S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
         List(S3Upload(
           Region("eu-west-1"),
           "bucket-1234",
@@ -62,7 +62,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, false, deploymentTypes)
 
-    S3.actions("uploadStaticFiles")(p)(DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
+    S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
 
     verify(mockReporter).warning("Parameter prefixStage is unnecessarily explicitly set to the default value of true")
   }
@@ -78,7 +78,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true, deploymentTypes)
 
-    S3.actions("uploadStaticFiles")(p)(DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
+    S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(mockReporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region))
 
     verify(mockReporter, never).warning(any())
   }
@@ -92,7 +92,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true, deploymentTypes)
 
-    S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
+    S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
       List(S3Upload(
         Region("eu-west-1"),
         "bucket-1234",
@@ -114,7 +114,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-s3", sourceS3Package, true, deploymentTypes)
 
-    inside(S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)).head) {
+    inside(S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)).head) {
       case upload: S3Upload => upload.cacheControlPatterns should be(List(PatternValue("^sub", "no-cache"), PatternValue(".*", "public; max-age:3600")))
     }
   }
@@ -132,7 +132,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val lookup = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)), Map("s3-path-prefix" -> Seq(Datum(None, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
 
-    inside(S3.actions("uploadStaticFiles")(p)(DeploymentResources(reporter, lookup, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)).head) {
+    inside(S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(reporter, lookup, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)).head) {
       case upload: S3Upload => upload.paths should be(Seq(sourceS3Package -> "testing/2016/05/brexit-companion"))
     }
   }
@@ -150,7 +150,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
     val p = DeploymentPackage("myapp", Seq.empty, data, "aws-lambda", S3Path("artifact-bucket", "test/123"), true,
       deploymentTypes)
 
-    Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
+    Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
       List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
       ))
   }
@@ -168,7 +168,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
       deploymentTypes)
 
     val thrown = the[FailException] thrownBy {
-      Lambda.actions("updateLambda")(p)(DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
+      Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), UnnamedStack, region)) should be (
         List(UpdateLambda(S3Path("artifact-bucket","test/123/lambda.zip"), "myLambda", defaultRegion)
         ))
     }
