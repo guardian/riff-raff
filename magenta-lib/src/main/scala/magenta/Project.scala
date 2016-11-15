@@ -1,8 +1,7 @@
 package magenta
 
-import java.util.UUID
-
 import com.amazonaws.services.s3.AmazonS3
+import magenta.input._
 import magenta.tasks.Task
 
 import scala.math.Ordering.OptionOrdering
@@ -122,5 +121,6 @@ case class DeployParameters(
                              stage: Stage,
                              recipe: RecipeName = DefaultRecipe(),
                              stacks: Seq[NamedStack] = Seq(),
-                             hostList: List[String] = Nil
+                             hostList: List[String] = Nil,
+                             selector: DeploymentSelector = All
                              )

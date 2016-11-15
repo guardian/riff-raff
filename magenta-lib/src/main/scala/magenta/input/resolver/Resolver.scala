@@ -16,24 +16,26 @@ object Resolver {
     deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     for {
-      deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes)
+      deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.selector)
       taskGraph <- buildTaskGraph(deploymentResources, parameters, deploymentTypes, artifact, deploymentGraph)
     } yield taskGraph
   }
 
-  def resolveDeploymentGraph(yamlConfig: String, deploymentTypes: Seq[DeploymentType]): Validated[ConfigErrors, Graph[Deployment]] = {
+  def resolveDeploymentGraph(yamlConfig: String, deploymentTypes: Seq[DeploymentType],
+    selector: DeploymentSelector): Validated[ConfigErrors, Graph[Deployment]] = {
+
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
       deployments <- DeploymentResolver.resolve(config)
       validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
         DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes)
       }
-      userSelectedDeployments = validatedDeployments
-      graph = buildParallelisedGraph(userSelectedDeployments)
+      prunedDeployments = DeploymentPruner.prune(validatedDeployments, DeploymentPruner.create(selector))
+      graph = buildParallelisedGraph(prunedDeployments)
     } yield graph
   }
 
-  private def buildTaskGraph(deploymentResources: DeploymentResources, parameters: DeployParameters,
+  private[resolver] def buildTaskGraph(deploymentResources: DeploymentResources, parameters: DeployParameters,
     deploymentTypes: Seq[DeploymentType], artifact: S3Artifact, graph: Graph[Deployment]): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(graph)
@@ -49,26 +51,19 @@ object Resolver {
     }
   }
 
-
-  private def buildParallelisedGraph(userSelectedDeployments: List[Deployment]) = {
+  private[resolver] def buildParallelisedGraph(userSelectedDeployments: List[Deployment]) = {
     val stacks = userSelectedDeployments.flatMap(_.stacks.toList).distinct
     val regions = userSelectedDeployments.flatMap(_.regions.toList).distinct
 
     val stackRegionGraphs: List[Graph[Deployment]] = for {
       stack <- stacks
       region <- regions
-      deploymentsForStackAndRegion = filterDeployments(userSelectedDeployments, stack, region)
+      deploymentsForStackAndRegion = DeploymentPruner.prune(userSelectedDeployments,
+        DeploymentPruner.StackAndRegion(stack, region))
       graphForStackAndRegion = DeploymentGraphBuilder.buildGraph(deploymentsForStackAndRegion)
     } yield graphForStackAndRegion
 
     stackRegionGraphs.reduceLeft(_ joinParallel _)
   }
 
-  private[resolver] def filterDeployments(deployments: List[Deployment], stack: String, region: String): List[Deployment] = {
-    deployments.flatMap { deployment =>
-      if (deployment.stacks.exists(stack ==) && deployment.regions.exists(region ==))
-        Some(deployment.copy(stacks = NEL.of(stack), regions = NEL.of(region)))
-      else None
-    }
-  }
 }

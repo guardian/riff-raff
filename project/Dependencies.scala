@@ -56,6 +56,7 @@ object Dependencies {
     "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",
     "com.gu" %% "scanamo" % "0.7.0",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
+    "com.github.cb372" %% "automagic" % "0.1",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
