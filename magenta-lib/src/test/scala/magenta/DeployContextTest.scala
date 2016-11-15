@@ -29,7 +29,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     ))
   }
 
-  it should "send a Info and TaskList message when resolving tasks" in {
+  it should "send a Info message when resolving tasks" in {
     val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
 
@@ -40,7 +40,6 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseRecipe), resources, region)
 
     messages.filter(_.getClass == classOf[Info]) should have size (1)
-    messages.filter(_.getClass == classOf[TaskList]) should have size (1)
   }
 
   it should "execute the task" in {

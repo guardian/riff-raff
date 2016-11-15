@@ -10,9 +10,7 @@ object DeployContext {
 
     val tasks = {
       resources.reporter.info("Resolving tasks...")
-      val tasks = Resolver.resolve(project, parameters, resources, region)
-      resources.reporter.taskList(DeploymentGraph.toTaskList(tasks))
-      tasks
+      Resolver.resolve(project, parameters, resources, region)
     }
     DeployContext(deployId, parameters, tasks)
   }
