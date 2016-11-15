@@ -2,23 +2,24 @@ intervalId = null
 
 callbackList = $.Callbacks()
 
+visibleHeight = ->
+  window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight
+
 bottomInView = (element) ->
   currentScroll = if (document.documentElement.scrollTop) then document.documentElement.scrollTop else document.body.scrollTop
 
   elementHeight = element.offsetHeight
   elementOffset = element.offsetTop
   totalHeight = elementOffset + elementHeight
-  visibleHeight = document.documentElement.clientHeight
 
-  totalHeight - 60 <= currentScroll + visibleHeight
+  totalHeight - 60 <= currentScroll + visibleHeight()
 
 scrollToBottom = (element) ->
   elementHeight = element.offsetHeight
   elementOffset = element.offsetTop
   totalHeight = elementOffset + elementHeight
-  visibleHeight = document.documentElement.clientHeight
 
-  scrollTop = totalHeight - visibleHeight + 60
+  scrollTop = totalHeight - visibleHeight() + 60
 
   $('html, body').animate(
     { scrollTop: scrollTop },
