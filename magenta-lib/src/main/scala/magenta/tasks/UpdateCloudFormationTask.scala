@@ -8,6 +8,7 @@ import magenta.{DeployReporter, KeyRing, Stack, Stage}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.cloudformation.AmazonCloudFormationAsyncClient
 import com.amazonaws.services.cloudformation.model._
+import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import magenta.artifact.{S3Location, S3Path}
 import org.joda.time.{DateTime, Duration}
@@ -15,6 +16,7 @@ import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 
 import scalax.file.Path
 import collection.convert.wrapAsScala._
+import scala.annotation.tailrec
 
 object UpdateCloudFormationTask {
   sealed trait ParameterValue
@@ -266,13 +268,28 @@ trait CloudFormation extends AWS {
       new DescribeStackEventsRequest().withStackName(name)
     )
 
-  def findStackByTags(tags: Map[String, List[String]], reporter: DeployReporter)(implicit keyRing:KeyRing) = {
-    val cfnStacks = client.describeStacks(
-      new DescribeStacksRequest()
-    ).getStacks.filter { stack =>
-      tags.forall { case (key, values) => stack.getTags.exists(t => t.getKey == key && values.contains(t.getValue)) }
+  def findStackByTags(tags: Map[String, String], reporter: DeployReporter)(implicit keyRing:KeyRing) = {
+
+    def tagsFilter(stack: AmazonStack): Boolean =
+      tags.forall { case (key, value) => stack.getTags.exists(t => t.getKey == key && t.getValue == value) }
+
+    @tailrec
+    def recur(nextToken: String = null, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
+      val request = new DescribeStacksRequest().withNextToken(nextToken)
+      val response = client.describeStacks(request)
+
+      val stacks = response.getStacks.foldLeft(existingStacks) {
+        case (agg, stack) if tagsFilter(stack) => stack :: agg
+        case (agg, _) => agg
+      }
+
+      if (response.getNextToken == null)
+        stacks
+      else
+        recur(response.getNextToken, stacks)
     }
-    cfnStacks.toList match {
+
+    recur() match {
       case cfnStack :: Nil => Some(cfnStack)
       case Nil => reporter.fail(s"No matching cloudformation stack match for $tags.")
       case _ =>
