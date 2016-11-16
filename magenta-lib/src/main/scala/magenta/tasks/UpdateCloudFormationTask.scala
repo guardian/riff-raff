@@ -28,7 +28,7 @@ object UpdateCloudFormationTask {
   case class LookupByName(cloudFormationStackName: String) extends CloudFormationStackLookupStrategy {
     override def toString = s"called $cloudFormationStackName"
   }
-  case class LookupByTags(tags: Map[String, List[String]]) extends CloudFormationStackLookupStrategy {
+  case class LookupByTags(tags: Map[String, String]) extends CloudFormationStackLookupStrategy {
     override def toString = s"with tags $tags"
   }
 
