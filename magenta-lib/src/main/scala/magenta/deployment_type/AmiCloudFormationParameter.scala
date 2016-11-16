@@ -14,7 +14,7 @@ object AmiCloudFormationParameter extends DeploymentType {
 
   val cloudformationStackByTags = Param[Boolean]("cloudFormationStackByTags",
     documentation = "Whether to find the cloudFormationStack by name or by tags"
-  ).default(false)
+  ).defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
   ).defaultFromContext((pkg, _) => Right(pkg.name))
