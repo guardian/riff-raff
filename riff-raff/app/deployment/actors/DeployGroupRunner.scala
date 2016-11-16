@@ -129,14 +129,15 @@ class DeployGroupRunner(
       deployContext = Some(preparedContext)
 
     case StartDeployment =>
+      reportTasks()
       runTasks(first)
 
     case DeploymentCompleted(tasks) =>
       log.debug("Deployment completed")
       markComplete(tasks)
       next(tasks) match {
-        case NextTasks(tasks) =>
-          runTasks(tasks)
+        case NextTasks(pendingTasks) =>
+          runTasks(pendingTasks)
         case DeployUnfinished =>
         case DeployFinished =>
           cleanup()
@@ -190,6 +191,10 @@ class DeployGroupRunner(
         safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
       context
     }
+  }
+
+  private def reportTasks() = {
+    deployContext.foreach(c => rootReporter.taskList(c.tasks.toList.flatMap(_.tasks)))
   }
 
   private def runTasks(tasksList: List[ValueNode[DeploymentTasks]]) = {
