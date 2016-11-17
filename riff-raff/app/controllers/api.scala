@@ -380,7 +380,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
                   "type" -> deployment.`type`,
                   "stacks" -> deployment.stacks.toList,
                   "regions" -> deployment.regions.toList,
-                  "actions" -> deployment.actions,
+                  "actions" -> deployment.actions.toList,
                   "app" -> deployment.app,
                   "contentDirectory" -> deployment.contentDirectory,
                   "dependencies" -> deployment.dependencies,
