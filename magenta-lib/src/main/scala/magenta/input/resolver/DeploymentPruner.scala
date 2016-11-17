@@ -1,6 +1,9 @@
 package magenta.input.resolver
 
+import cats.Eq
 import cats.data.{NonEmptyList => NEL}
+import cats.syntax.eq._
+import cats.instances.string._
 import magenta.input._
 
 object DeploymentPruner {
@@ -37,17 +40,22 @@ object DeploymentPruner {
     * regions and stacks.
     * */
   def Keys(keys: List[DeploymentKey]): Pruner = { deployment =>
-    def matchKey(key: DeploymentKey): Boolean = {
-      deployment.name == key.name && deployment.actions.toList.flatten.contains(key.action) &&
-        deployment.regions.toList.contains(key.region) && deployment.stacks.toList.contains(key.stack)
+    implicit class NELIntersect[A: Eq](main: NEL[A]) {
+      def intersect(other: NEL[A]): Option[NEL[A]] = NEL.fromList(main.filter(r => other.exists(_ === r)))
+      def contains(item: A): Boolean = main.exists(_ === item)
     }
-    val matchingKeys = keys filter matchKey
-    if (matchingKeys.nonEmpty) {
-      Some(deployment.copy(
-        actions = deployment.actions.map(_.filter(a => matchingKeys.exists(_.action == a))),
-        regions = NEL.fromListUnsafe(deployment.regions.filter(r => matchingKeys.exists(_.region == r))),
-        stacks = NEL.fromListUnsafe(deployment.stacks.filter(s => matchingKeys.exists(_.stack == s)))
-      ))
-    } else None
+
+    def matchKey(key: DeploymentKey): Boolean =
+      deployment.name == key.name &&
+      deployment.actions.contains(key.action) &&
+      deployment.regions.contains(key.region) &&
+      deployment.stacks.contains(key.stack)
+
+    for {
+      matchingKeys <- NEL.fromList(keys.filter(matchKey))
+      actions <- deployment.actions intersect matchingKeys.map(_.action)
+      regions <- deployment.regions intersect matchingKeys.map(_.region)
+      stacks <- deployment.stacks intersect matchingKeys.map(_.stack)
+    } yield deployment.copy(actions = actions, regions = regions, stacks = stacks)
   }
 }
