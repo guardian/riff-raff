@@ -16,6 +16,7 @@ object Dependencies {
     "io.reactivex" %% "rxscala" % "0.26.2",
     "org.parboiled" %% "parboiled" % "2.0.1",
     "org.typelevel" %% "cats" % "0.7.2",
+    "com.github.cb372" %% "automagic" % "0.1",
     "org.scalatest" %% "scalatest" % "2.2.6" % Test,
     "org.mockito" % "mockito-core" % "1.10.19" % Test
   )
@@ -56,7 +57,6 @@ object Dependencies {
     "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",
     "com.gu" %% "scanamo" % "0.7.0",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
-    "com.github.cb372" %% "automagic" % "0.1",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,

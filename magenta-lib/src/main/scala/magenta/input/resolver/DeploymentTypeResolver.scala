@@ -22,21 +22,12 @@ object DeploymentTypeResolver {
 
     invalidActions.map(invalids => Invalid(
       ConfigErrors(deployment.name, s"Invalid action ${invalids.toList.mkString(", ")} for type ${deployment.`type`}"))
-    ).getOrElse(
+    ).getOrElse {
+      import automagic._
       Validated.fromOption(actions.map(as =>
-        Deployment(
-          name = deployment.name,
-          `type` = deployment.`type`,
-          stacks = deployment.stacks,
-          regions = deployment.regions,
-          actions = as,
-          app = deployment.app,
-          contentDirectory = deployment.contentDirectory,
-          dependencies = deployment.dependencies,
-          parameters = deployment.parameters
-        )
+        transform[PartiallyResolvedDeployment, Deployment](deployment, "actions" -> as)
       ), ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))
-    )
+    }
   }
 
   private[input] def verifyDeploymentParameters(deployment: Deployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {
