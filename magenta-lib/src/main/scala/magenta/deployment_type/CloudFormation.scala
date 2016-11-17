@@ -2,6 +2,7 @@ package magenta.deployment_type
 
 import magenta.artifact.S3Path
 import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
+import magenta.tasks.UpdateCloudFormationTask.LookupByName
 
 object CloudFormation extends DeploymentType {
   val name = "cloud-formation"
@@ -89,7 +90,7 @@ object CloudFormation extends DeploymentType {
           target.stack,
           createStackIfAbsent(pkg, target, reporter)
         ),
-        CheckUpdateEventsTask(fullCloudFormationStackName)
+        CheckUpdateEventsTask(LookupByName(fullCloudFormationStackName))
       )
     }
   }
