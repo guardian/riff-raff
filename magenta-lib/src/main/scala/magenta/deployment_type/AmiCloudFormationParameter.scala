@@ -43,7 +43,7 @@ object AmiCloudFormationParameter extends DeploymentType {
           // todo: this can be simplified once the legacy json format is removed
           val lookupByTags = for {
             stack <- target.stack.nameOption
-            app <- pkg.pkgApps.map(_.name).headOption
+            app <- pkg.pkgApps.map(_.name).headOption if pkg.pkgApps.size == 1
             stage = target.parameters.stage.name
           } yield LookupByTags(Map(
             "Stage" -> stage,
