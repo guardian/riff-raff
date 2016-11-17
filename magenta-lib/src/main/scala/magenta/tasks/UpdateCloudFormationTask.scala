@@ -274,8 +274,8 @@ trait CloudFormation extends AWS {
       tags.forall { case (key, value) => stack.getTags.exists(t => t.getKey == key && t.getValue == value) }
 
     @tailrec
-    def recur(nextToken: String = null, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
-      val request = new DescribeStacksRequest().withNextToken(nextToken)
+    def recur(nextToken: Option[String] = None, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
+      val request = new DescribeStacksRequest().withNextToken(nextToken.orNull)
       val response = client.describeStacks(request)
 
       val stacks = response.getStacks.foldLeft(existingStacks) {
@@ -283,10 +283,10 @@ trait CloudFormation extends AWS {
         case (agg, _) => agg
       }
 
-      if (response.getNextToken == null)
-        stacks
-      else
-        recur(response.getNextToken, stacks)
+      Option(response.getNextToken) match {
+        case None => stacks
+        case token => recur(token, stacks)
+      }
     }
 
     recur() match {
