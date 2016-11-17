@@ -18,13 +18,6 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
     configErrors.errors.head.message should include(s"Unknown type invalidType")
   }
 
-//  it should "fail if explicitly given empty actions" in {
-//    val deploymentWithNoActions = deployment.copy(actions = Some(Nil))
-//    val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithNoActions, deploymentTypes).invalid
-//    configErrors.errors.head.context shouldBe "bob"
-//    configErrors.errors.head.message should include(s"Either specify at least one action or omit the actions parameter")
-//  }
-
   it should "fail if given an invalid action" in {
     val deploymentWithInvalidAction = deployment.copy(actions = Some(NEL.of("invalidAction")))
     val configErrors = DeploymentTypeResolver.validateDeploymentType(deploymentWithInvalidAction, deploymentTypes).invalid
