@@ -62,7 +62,7 @@ object JsonReader {
       actionString.split("\\.") match {
         case Array(pkgName, actionName) =>
           val pkg = availablePackages.get(pkgName).getOrElse(sys.error(s"Package '$pkgName' does not exist; cannot resolve action '$actionString'"))
-          pkg.mkAction(actionName)
+          pkg.mkDeploymentStep(actionName)
 
         case _ => sys.error(s"Badly formed action name: '$actionString' - should be in <packageName>.<actionName> format")
       }
@@ -70,7 +70,7 @@ object JsonReader {
 
     Recipe(
       name = name,
-      actions = (
+      deploymentSteps = (
         jsonRecipe.actionsBeforeApp.getOrElse(Nil)
           ++ jsonRecipe.actionsPerHost.getOrElse(Nil)
           ++ jsonRecipe.actions.getOrElse(Nil)

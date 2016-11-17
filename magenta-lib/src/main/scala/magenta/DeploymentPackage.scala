@@ -28,6 +28,6 @@ case class DeploymentPackage(
   s3Package: S3Path,
   legacyConfig: Boolean) {
 
-  def mkAction(name: String): Action = deploymentType.mkAction(name)(this)
+  def mkDeploymentStep(action: String): DeploymentStep = deploymentType.mkDeploymentStep(action)(this)
   val apps = pkgApps
 }

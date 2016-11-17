@@ -31,10 +31,12 @@ object AmiCloudFormationParameter extends DeploymentType {
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
-  def defaultActions = List("update")
-
-  override def actions = {
-    case "update" => pkg => (resources, target) => {
+  val update = Action("update",
+    """
+      |Given AMI tags, this will resolve the latest matching AMI and update the AMI parameter
+      | on the provided CloudFormation stack.
+    """.stripMargin
+  ){ (pkg, resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
 
@@ -76,4 +78,6 @@ object AmiCloudFormationParameter extends DeploymentType {
       )
     }
   }
+
+  def defaultActions = List(update)
 }

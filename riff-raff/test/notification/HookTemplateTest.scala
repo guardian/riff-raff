@@ -5,7 +5,7 @@ import java.util.UUID
 import magenta.RunState
 import org.joda.time.DateTime
 import org.scalatest.{FunSuite, Matchers}
-import persistence.{DeployRecordDocument, ParametersDocument}
+import persistence.{DeployRecordDocument, AllDocument, ParametersDocument}
 
 import scala.util.{Success, Try}
 
@@ -67,7 +67,8 @@ class HookTemplateTest extends FunSuite with Matchers {
     recipe = "default",
     stacks = Nil,
     hostList = Nil,
-    tags = Map("foo" -> "bar")
+    tags = Map("foo" -> "bar"),
+    AllDocument
   )
   val uuid = UUID.randomUUID()
   val record = DeployRecordDocument(uuid, Some(uuid.toString), DateTime.now(), paramsDoc, RunState.Completed)

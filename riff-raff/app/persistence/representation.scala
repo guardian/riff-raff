@@ -60,7 +60,8 @@ case class ParametersDocument(
   recipe: String,
   stacks: List[String],
   hostList: List[String],
-  tags: Map[String,String]
+  tags: Map[String,String],
+  selector: DeploymentSelectorDocument
 )
 
 object ParametersDocument extends MongoSerialisable[ParametersDocument] {
@@ -76,7 +77,8 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
           "recipe" -> a.recipe,
           "stacks" -> a.stacks,
           "hostList" -> a.hostList,
-          "tags" -> a.tags
+          "tags" -> a.tags,
+          "selector" -> a.selector.asDBObject
         )
       fields.toMap
     }
@@ -88,7 +90,8 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       recipe = dbo.as[String]("recipe"),
       stacks = dbo.getAsOrElse[MongoDBList]("stacks", MongoDBList()).map(_.asInstanceOf[String]).toList,
       hostList = dbo.as[MongoDBList]("hostList").map(_.asInstanceOf[String]).toList,
-      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap
+      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap,
+      selector = dbo.getAs[DBObject]("selector").map(DeploymentSelectorDocument.from).getOrElse(AllDocument)
     ))
   }
 }
@@ -303,6 +306,59 @@ object MessageDocument {
       case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
       case hint =>
         throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+    }
+  }
+}
+
+case class DeploymentKeyDocument(name: String, action: String, stack: String, region: String)
+
+object DeploymentKeyDocument extends MongoSerialisable[DeploymentKeyDocument] {
+  implicit val deploymentKeyFormat: MongoFormat[DeploymentKeyDocument] = new DeploymentKeyFormat
+  private class DeploymentKeyFormat extends MongoFormat[DeploymentKeyDocument] {
+    def toDBO(a: DeploymentKeyDocument) = {
+      val fields: List[(String, Any)] =
+        List(
+          "name" -> a.name,
+          "action" -> a.action,
+          "stack" -> a.stack,
+          "region" -> a.region
+        )
+      fields.toMap
+    }
+
+    def fromDBO(dbo: MongoDBObject) = {
+      Some(DeploymentKeyDocument(
+        name = dbo.as[String]("name"),
+        action = dbo.as[String]("action"),
+        stack = dbo.as[String]("stack"),
+        region = dbo.as[String]("region")
+      ))
+    }
+  }
+}
+
+sealed trait DeploymentSelectorDocument {
+  def asDBObject:DBObject = {
+    val fields:List[(String,Any)] =
+      List("_typeHint" -> getClass.getName) ++ dboFields
+    fields.toMap
+  }
+  def dboFields:List[(String,Any)]
+}
+case object AllDocument extends DeploymentSelectorDocument {
+  def dboFields = Nil
+}
+case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument {
+  def dboFields = List("keys" -> ids.map(_.toDBO))
+}
+
+object DeploymentSelectorDocument {
+  def from(dbo:DBObject): DeploymentSelectorDocument = {
+    dbo.as[String]("_typeHint") match {
+      case "persistence.AllDocument$" => AllDocument
+      case "persistence.DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
+        dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
+      )
     }
   }
 }

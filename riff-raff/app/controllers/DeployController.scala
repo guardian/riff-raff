@@ -4,55 +4,37 @@ import java.util.UUID
 
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
-import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult}
+import controllers.forms.{DeployParameterForm, UuidForm}
+import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult, UserRequestSource}
 import magenta._
 import magenta.artifact._
+import cats.syntax.either._
 import magenta.deployment_type.DeploymentType
-import org.joda.time.{DateTime, DateTimeZone}
+import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.format.DateTimeFormat
-import play.api.data.Form
-import play.api.data.Forms._
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import resources.PrismLookup
+import utils.Forms
 
 import scala.util.{Failure, Success}
-
-case class DeployParameterForm(project:String, build:String, stage:String, recipe: Option[String], action: String, hosts: List[String], stacks: List[String])
-case class UuidForm(uuid:String, action:String)
 
 class DeployController(deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType])
                       (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
 
-  lazy val uuidForm = Form[UuidForm](
-    mapping(
-      "uuid" -> text(36, 36),
-      "action" -> nonEmptyText
-    )(UuidForm.apply)
-      (UuidForm.unapply)
-  )
-
-  lazy val deployForm = Form[DeployParameterForm](
-    mapping(
-      "project" -> nonEmptyText,
-      "build" -> nonEmptyText,
-      "stage" -> text,
-      "recipe" -> optional(text),
-      "action" -> nonEmptyText,
-      "hosts" -> list(text),
-      "stacks" -> list(text)
-    )(DeployParameterForm)(DeployParameterForm.unapply)
-  )
-
   def deploy = AuthAction { implicit request =>
-    Ok(views.html.deploy.form(deployForm, prismLookup))
+    Ok(views.html.deploy.form(DeployParameterForm.form, prismLookup))
   }
 
   def processForm = AuthAction { implicit request =>
-    deployForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.deploy.form(errors, prismLookup)),
+    DeployParameterForm.form.bindFromRequest().fold(
+      errors => {
+        logger.info(s"Errors: ${errors.errors}")
+        BadRequest(views.html.deploy.form(errors, prismLookup))
+      },
       form => {
         log.info(s"Host list: ${form.hosts}")
         val defaultRecipe = prismLookup.data
@@ -63,17 +45,27 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
           Stage(form.stage),
           recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
           stacks = form.stacks.map(NamedStack(_)),
-          hostList = form.hosts)
+          hostList = form.hosts,
+          selector = form.makeSelector
+        )
 
         form.action match {
           case "preview" =>
-            Redirect(routes.PreviewController.preview(parameters.build.projectName, parameters.build.id, parameters.stage.name)).flashing(
+            val maybeKeys = parameters.selector match {
+              case All => None
+              case DeploymentKeysSelector(keys) => Some(DeploymentKey.asString(keys))
+            }
+            Redirect(routes.PreviewController.preview(
+              parameters.build.projectName, parameters.build.id, parameters.stage.name, maybeKeys)
+            ).flashing(
               "previewRecipe" -> parameters.recipe.name,
               "previewHosts" -> parameters.hostList.mkString(","),
               "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
             )
           case "deploy" =>
-            val uuid = deployments.deploy(parameters)
+            val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)).valueOr{ error =>
+              throw new IllegalStateException(error.message)
+            }
             Redirect(routes.DeployController.viewUUID(uuid.toString))
           case _ => throw new RuntimeException("Unknown action")
         }
@@ -204,21 +196,21 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
   def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
     val parametersJson = Json.parse(deployFormJson)
-    Ok(views.html.deploy.deployConfirmation(deployForm.bind(parametersJson), isExternal = true))
+    Ok(views.html.deploy.deployConfirmation(DeployParameterForm.form.bind(parametersJson), isExternal = true))
   }
 
   def deployConfirmationExternal = AuthAction { implicit request =>
-    val form = deployForm.bindFromRequest()
+    val form = DeployParameterForm.form.bindFromRequest()
     Ok(views.html.deploy.deployConfirmation(form, isExternal = true))
   }
 
   def deployAgain = AuthAction { implicit request =>
-    val form = deployForm.bindFromRequest()
+    val form = DeployParameterForm.form.bindFromRequest()
     Ok(views.html.deploy.deployConfirmation(form, isExternal = false))
   }
 
   def markAsFailed = AuthAction { implicit request =>
-    uuidForm.bindFromRequest().fold(
+    UuidForm.form.bindFromRequest().fold(
       errors => Redirect(routes.DeployController.history),
       form => {
         form.action match {

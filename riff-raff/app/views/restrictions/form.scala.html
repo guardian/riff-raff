@@ -1,0 +1,80 @@
+@import b3.vertical.fieldConstructor
+@import helper.CSRF
+@import _root_.restrictions.RestrictionForm
+@(restrictionForm: Form[RestrictionForm], saveDisabled: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+
+@main("Create Restriction", request) {
+
+    <h2>Create Restriction</h2>
+    <hr/>
+
+    <div class="row">
+        <div class="col-md-7">
+            @b3.formCSRF(action=routes.Restrictions.save) {
+
+            @snippets.inputHidden(restrictionForm("id"))
+
+            @b3.text(
+                restrictionForm("projectName"),
+                'id -> "projectInput",
+                Symbol("data-url") -> "/deployment/request/autoComplete/project",
+                '_label -> "Project Name"
+            )
+
+            @b3.text(
+                restrictionForm("stage"),
+                '_label -> "Stage",
+                '_error -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage")),
+                '_help -> "Hint: this value will be interpreted as a regex if it has a special character in it - any of $^.+*?()[{|"
+            )
+
+            @b3.textarea(
+                restrictionForm("whitelist"),
+                '_label -> "Deploy whitelist",
+                '_help -> "List of e-mail addresses (one per line) of users who should still be able to deploy whilst the restriction is in place",
+                'cols -> 100, 'rows -> 6
+            )
+
+            @b3.checkbox(
+                restrictionForm("continuousDeployment"),
+                '_text -> "Permit continuous deployment",
+                '_help -> "If this is checked then deploys triggered by continuous deployment will be allowed to run"
+            )
+
+            @b3.textarea(
+                restrictionForm("note"),
+                '_label -> "Why does this restriction exist?",
+                '_help -> "This note will be displayed to users attempting to deploy this project",
+                'cols -> 100, 'rows -> 6
+            )
+
+            @b3.checkbox(
+                restrictionForm("editingLocked"),
+                '_text -> "Lock editing",
+                '_help -> s"When checked, users other than you (${request.user.fullName}) will not be able to edit or delete this restriction - use sparingly!"
+            )
+
+            <div class="actions">
+                <button name="action" type="submit" value="save" class="btn btn-primary" @if(saveDisabled){disabled="disabled"}>Save</button> or
+                <a href="@routes.Restrictions.list()" class="btn btn-danger">Cancel</a>
+            </div>
+        </div>
+    </div>
+}
+<script type="text/javascript">
+    var selectedProject = '';
+    var input = $('#projectInput');
+    input.each( function() {
+        var $input = $(this);
+        var serverUrl = $input.data('url');
+        $input.autocomplete({
+            source:serverUrl,
+            minLength:0
+        });
+    });
+    input.blur( function(e) {
+        selectedProject = encodeURIComponent($(e.target).val())
+    })
+</script>
+
+}

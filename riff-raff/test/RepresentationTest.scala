@@ -94,7 +94,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master")),
+        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
         RunState.Completed
       )
     )
@@ -109,7 +109,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   it should "never change without careful thought and testing of migration" in {
-    val dataModelDump = """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "stacks" : [ ] , "tags" : { "branch" : "test"}} , "status" : "Completed"}"""
+    val dataModelDump = """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "stacks" : [ ] , "tags" : { "branch" : "test"} , "selector" : { "_typeHint" : "persistence.AllDocument$"}} , "status" : "Completed"}"""
 
     val deployDocument = RecordConverter(comprehensiveDeployRecord).deployDocument
     val gratedDeployDocument = deployDocument.toDBO
@@ -192,6 +192,35 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
     val ungratedV2Config = ContinuousDeploymentConfig.fromDBO(new MongoDBObject(ungratedV2DBObject))
     ungratedV2Config should be(Some(config))
 
+  }
+
+  "DeploymentSelectorDocument" should "not change AllDocument without careful thought and testing of migration" in {
+    val allDump =
+      """{ "_typeHint" : "persistence.AllDocument$"}"""
+    val allDbo = AllDocument.asDBObject
+    val allJson = JSON.serialize(allDbo)
+    val allDiff = compareJson(allDump, allJson)
+    allDiff.toString shouldBe "[ ]"
+    val ungratedDBOject = JSON.parse(allJson).asInstanceOf[DBObject]
+    ungratedDBOject.toString shouldBe allDump
+
+    val ungratedAll = DeploymentSelectorDocument.from(ungratedDBOject)
+    ungratedAll shouldBe AllDocument
+  }
+
+  it should "not change DeployIdsFilterDocument without careful thought and testing of migration" in {
+    // deploy IDs filter
+    val deployKeysDump = """{ "_typeHint" : "persistence.DeploymentKeysSelectorDocument" , "keys" : [ { "name" : "testName" , "action" : "testAction" , "stack" : "testStack" , "region" : "testRegion"}]}"""
+    val keysSelectorDocument = DeploymentKeysSelectorDocument(List(DeploymentKeyDocument("testName", "testAction", "testStack", "testRegion")))
+    val keysSelectorDbo = keysSelectorDocument.asDBObject
+    val keySelectorJson = JSON.serialize(keysSelectorDbo)
+    val keysSelectorDiff = compareJson(deployKeysDump, keySelectorJson)
+    keysSelectorDiff.toString shouldBe "[ ]"
+    val ungratedDeployIdsDBOject = JSON.parse(keySelectorJson).asInstanceOf[DBObject]
+    ungratedDeployIdsDBOject.toString shouldBe deployKeysDump
+
+    val ungratedDeployKeys = DeploymentSelectorDocument.from(ungratedDeployIdsDBOject)
+    ungratedDeployKeys shouldBe keysSelectorDocument
   }
 
 }

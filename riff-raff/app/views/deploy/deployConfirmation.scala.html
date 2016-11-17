@@ -1,4 +1,4 @@
-@(deployForm: Form[controllers.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@(deployForm: Form[controllers.forms.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import helper.CSRF
 @main("Deploy confirmation", request) {
 

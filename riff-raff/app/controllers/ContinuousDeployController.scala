@@ -13,7 +13,6 @@ import org.joda.time.DateTime
 import ci.{ContinuousDeploymentConfig, Trigger}
 import persistence.ContinuousDeploymentConfigRepository
 import resources.PrismLookup
-import utils.Forms.uuid
 
 class ContinuousDeployController(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
   import ContinuousDeployController._

@@ -1,5 +1,7 @@
 package deployment.preview
 
+import java.net.URLEncoder
+
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.kernel.Semigroup
@@ -10,7 +12,7 @@ import magenta.artifact.S3YamlArtifact
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph}
 import magenta.input.resolver._
-import magenta.input.{ConfigErrors, Deployment}
+import magenta.input._
 import magenta.{DeployParameters, DeploymentResources}
 
 object Preview extends Loggable {
@@ -18,15 +20,16 @@ object Preview extends Loggable {
     resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Preview = {
 
     val validatedGraph = for {
-      deploymentGraph <- Resolver.resolveDeploymentGraph(yamlConfig, deploymentTypes)
+      deploymentGraph <- Resolver.resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.selector)
       flattenedGraph = DeploymentGraphActionFlattening.flattenActions(deploymentGraph)
       previewGraph <- sequenceGraph {
         flattenedGraph.map { deployment =>
-          TaskResolver.resolve(deployment, resources, parameters, deploymentTypes, artifact).map(deployment -> _)
+          val key = DeploymentKey(deployment)
+          TaskResolver.resolve(deployment, resources, parameters, deploymentTypes, artifact).map(key -> _)
         }
       }
     } yield previewGraph
-    Preview(validatedGraph)
+    Preview(validatedGraph, parameters)
   }
 
   private[preview] def sequenceGraph[A, E](graph: Graph[Validated[E, A]])(implicit E: Semigroup[E]): Validated[E, Graph[A]] = {
@@ -42,4 +45,4 @@ object Preview extends Loggable {
   }
 }
 
-case class Preview(graph: Validated[ConfigErrors, Graph[(Deployment, DeploymentTasks)]])
+case class Preview(graph: Validated[ConfigErrors, Graph[(DeploymentKey, DeploymentTasks)]], parameters: DeployParameters)

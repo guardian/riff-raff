@@ -9,17 +9,14 @@ object CloudFormation extends DeploymentType {
   def documentation =
     """Update an AWS CloudFormation template.
       |
-      |It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
+      |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
       |mean-time.
       |
       |This deployment type is not currently recommended for continuous deployment, as CloudFormation
       |will fail if you try to update a CloudFormation stack with a configuration that matches its
-      | current state.
-      |
-      |If your CloudFormation template is in YAML format, it will be automatically converted to JSON
-      |before it is used.
+      |current state.
     """.stripMargin
 
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
@@ -61,10 +58,13 @@ object CloudFormation extends DeploymentType {
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
 
-  def defaultActions = List("updateStack")
-
-  override def actions = {
-    case "updateStack" => pkg => (resources, target) => {
+  val updateStack = Action("updateStack",
+    """
+      |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
+      |runs another task that _tails_ the stack update events (as well as possible).
+      |
+    """.stripMargin
+  ){ (pkg, resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
@@ -94,4 +94,6 @@ object CloudFormation extends DeploymentType {
       )
     }
   }
+
+  def defaultActions = List(updateStack)
 }

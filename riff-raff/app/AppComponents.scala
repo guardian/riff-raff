@@ -50,6 +50,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployController = new ContinuousDeployController(prismLookup)
   val previewController = new PreviewController(previewCoordinator)
   val hooksController = new Hooks(prismLookup)
+  val restrictionsController = new Restrictions()
   val loginController = new Login
   val testingController = new Testing(prismLookup)
   val assets = new Assets(httpErrorHandler)
@@ -70,6 +71,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     apiController,
     continuousDeployController,
     hooksController,
+    restrictionsController,
     loginController,
     testingController,
     assets

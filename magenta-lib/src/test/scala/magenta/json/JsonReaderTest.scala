@@ -81,7 +81,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
 
     val apiCounterRecipe = recipes("api-counter-only")
 
-    apiCounterRecipe.actions.toSeq.length should be (4)
+    apiCounterRecipe.deploymentSteps.toSeq.length should be (4)
   }
 
   val minimalExample = """
@@ -112,7 +112,7 @@ class JsonReaderTest extends FlatSpec with Matchers {
 
     val recipes = parsed.recipes
     recipes.size should be(1)
-    recipes("default") should be (Recipe("default", actions   = parsed.packages.values.map(_.mkAction("deploy"))))
+    recipes("default") should be (Recipe("default", deploymentSteps   = parsed.packages.values.map(_.mkDeploymentStep("deploy"))))
   }
 
   "json parser" should "default to using the package name for the file name" in {

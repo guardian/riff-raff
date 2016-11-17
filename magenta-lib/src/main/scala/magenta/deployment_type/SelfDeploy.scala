@@ -37,35 +37,44 @@ object SelfDeploy extends DeploymentType {
     "For deferred deployment only: The URL path on the host to the switchboard management page"
   ).default("/management/switchboard")
 
-  def defaultActions = List("uploadArtifacts", "selfDeploy")
-
-  def actions = {
-    case "uploadArtifacts" => (pkg) => (resources, target) =>
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      val reporter = resources.reporter
-      implicit val artifactClient = resources.artifactClient
-      val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
-      List(
-        S3Upload(
-          target.region,
-          bucket(pkg, target, reporter),
-          paths = Seq(pkg.s3Package -> prefix)
-        )
+  val uploadArtifacts = Action("uploadArtifacts",
+    """
+      |Uploads the files in the deployment's directory to the specified bucket.
+    """.stripMargin) { (pkg, resources, target) =>
+    implicit val keyRing = resources.assembleKeyring(target, pkg)
+    val reporter = resources.reporter
+    implicit val artifactClient = resources.artifactClient
+    val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
+    List(
+      S3Upload(
+        target.region,
+        bucket(pkg, target, reporter),
+        paths = Seq(pkg.s3Package -> prefix)
       )
-    case "selfDeploy" => (pkg) => (resources, target) =>
-      implicit val keyRing = resources.assembleKeyring(target, pkg)
-      val reporter = resources.reporter
-      val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
-      hosts.map{ host =>
-        ChangeSwitch(
-          host,
-          managementProtocol(pkg, target, reporter),
-          managementPort(pkg, target, reporter),
-          switchboardPath(pkg, target, reporter),
-          "shutdown-when-inactive",
-          desiredState=true
-        )
-      }
+    )
   }
+  val selfDeploy = Action("selfDeploy",
+    """
+      |Switches the `shutdown-when-inactive` switch to true on the target hosts (discovered using Prism to lookup
+      |hosts according to the stack, app and stage of the deployment).
+      |
+      |The switch is expected to be a [guardian management](https://github.com/guardian/guardian-management) switch.
+    """.stripMargin){ (pkg, resources, target) =>
+    implicit val keyRing = resources.assembleKeyring(target, pkg)
+    val reporter = resources.reporter
+    val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
+    hosts.map{ host =>
+      ChangeSwitch(
+        host,
+        managementProtocol(pkg, target, reporter),
+        managementPort(pkg, target, reporter),
+        switchboardPath(pkg, target, reporter),
+        "shutdown-when-inactive",
+        desiredState=true
+      )
+    }
+  }
+
+  def defaultActions = List(uploadArtifacts, selfDeploy)
 }
 

@@ -1,11 +1,14 @@
 package persistence
 
 import java.util.UUID
+
 import org.joda.time.DateTime
 import controllers.Logging
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
+import automagic.transform
+import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
@@ -39,7 +42,12 @@ object RecordConverter {
       recipe = sourceParams.recipe.name,
       stacks = sourceParams.stacks.map(_.name).toList,
       hostList = sourceParams.hostList,
-      tags = record.metaData
+      tags = record.metaData,
+      selector = sourceParams.selector match {
+        case All => AllDocument
+        case DeploymentKeysSelector(ids) =>
+          DeploymentKeysSelectorDocument(ids.map(did => transform[DeploymentKey, DeploymentKeyDocument](did)))
+      }
     )
     RecordConverter(record.uuid, record.time, params, record.state, record.messages)
   }
@@ -53,7 +61,12 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     Stage(deploy.parameters.stage),
     RecipeName(deploy.parameters.recipe),
     deploy.parameters.stacks.map(NamedStack(_)),
-    deploy.parameters.hostList
+    deploy.parameters.hostList,
+    deploy.parameters.selector match {
+      case AllDocument => All
+      case DeploymentKeysSelectorDocument(keys) =>
+        DeploymentKeysSelector(keys.map(didd => transform[DeploymentKeyDocument, DeploymentKey](didd)))
+    }
   )
 
   lazy val deployRecord =

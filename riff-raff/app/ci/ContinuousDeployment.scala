@@ -1,14 +1,14 @@
 package ci
 
 import controllers.Logging
-import deployment.Deployments
+import deployment.{ContinuousDeploymentRequestSource, Deployments}
 import lifecycle.Lifecycle
 import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
 
-import scala.util.{Failure, Try}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logging {
@@ -48,7 +48,9 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
         try {
-          deployments.deploy(params)
+          deployments.deploy(params, requestSource = ContinuousDeploymentRequestSource).left.foreach { error =>
+            log.error(s"Couldn't continuously deploy $params: ${error.message}")
+          }
         } catch {
           case NonFatal(e) => log.error(s"Could not deploy $params", e)
         }

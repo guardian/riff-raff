@@ -11,13 +11,13 @@ GET         /deployinfo/hosts                               controllers.Applicat
 
 # Docs
 GET         /docs/                                          controllers.Application.documentation(resource="")
-GET         /docs/*resource                                 controllers.Application.documentation(resource)
+GET         /docs/*resource                                 controllers.Application.documentation(resource:String)
 
 GET         /configuration/validation                       controllers.Application.validationForm
 POST        /configuration/validation                       controllers.Application.validateConfiguration
 
 # Preview endpoints
-GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String)
+GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String,deployments:Option[String])
 GET         /preview/yaml/showTasks                         controllers.PreviewController.showTasks(previewId:String)
 
 GET         /preview/json                                   controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
@@ -64,6 +64,13 @@ GET         /deployment/hooks/new                           controllers.Hooks.fo
 POST        /deployment/hooks/save                          controllers.Hooks.save
 GET         /deployment/hooks/edit                          controllers.Hooks.edit(id)
 POST        /deployment/hooks/delete                        controllers.Hooks.delete(id)
+
+# Restrictions
+GET         /deployment/restrictions                        controllers.Restrictions.list
+GET         /deployment/restrictions/new                    controllers.Restrictions.form
+POST        /deployment/restrictions/save                   controllers.Restrictions.save
+GET         /deployment/restrictions/edit                   controllers.Restrictions.edit(id)
+POST        /deployment/restrictions/delete                 controllers.Restrictions.delete(id)
 
 # authentication endpoints
 GET         /profile                                        controllers.Login.profile

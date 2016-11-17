@@ -8,6 +8,7 @@ import play.api.{Environment, Logger}
 import magenta.deployment_type.{DeploymentType, Param}
 import magenta.{App, Build, DeployParameters, DeployTarget, Deployer, DeploymentPackage, NamedStack, RecipeName, Region, Stage, withResource}
 import magenta.artifact.S3Path
+import magenta.input.All
 import magenta.input.resolver.Resolver
 import play.api.libs.ws.WSClient
 import resources.PrismLookup
@@ -48,7 +49,8 @@ object Menu {
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.Hooks.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
-      SingleMenuItem("API keys", routes.Api.listKeys())
+      SingleMenuItem("API keys", routes.Api.listKeys()),
+      SingleMenuItem("Restrictions", routes.Restrictions.list())
     )),
     DropDownMenuItem("Documentation", Seq(
       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),
@@ -152,8 +154,8 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
             resource match {
               case "magenta-lib/types" =>
-                val sections = DeployTypeDocs.generateParamDocs(deploymentTypes).map { case (dt, paramDocs) =>
-                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(dt.documentation, paramDocs)
+                val sections = DeployTypeDocs.generateDocs(deploymentTypes).map { case (dt, docs) =>
+                  val typeDocumentation = views.html.documentation.deploymentTypeSnippet(docs)
                   (dt.name, typeDocumentation)
                 }
                 Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))
@@ -178,7 +180,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     maybeConfiguration.fold{
       BadRequest("No configuration provided to validate")
     }{ config =>
-      Resolver.resolveDeploymentGraph(config, deploymentTypes) match {
+      Resolver.resolveDeploymentGraph(config, deploymentTypes, All) match {
         case Valid(deployments) =>
           Ok(views.html.validation.validationPassed(request, deployments))
         case Invalid(errors) =>

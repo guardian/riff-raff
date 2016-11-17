@@ -3,14 +3,13 @@ package controllers
 import java.net.{MalformedURLException, URL}
 
 import notification.{GET, HookConfig, HttpMethod}
-import persistence.{HookConfigRepository}
+import persistence.HookConfigRepository
 import play.api.data.{Form, FormError}
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import play.api.mvc.Controller
 import java.util.UUID
 
-import utils.Forms.uuid
 import org.joda.time.DateTime
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
