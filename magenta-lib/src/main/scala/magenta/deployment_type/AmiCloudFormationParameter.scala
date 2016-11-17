@@ -40,12 +40,19 @@ object AmiCloudFormationParameter extends DeploymentType {
 
       val cloudFormationStackLookupStrategy = {
         if (cloudformationStackByTags(pkg, target, reporter)) {
-          assert(pkg.apps.size == 1, s"The $name package type can only be used when exactly one app is specified - you have [${pkg.apps.map(_.name).mkString(",")}]")
-          assert(target.stack.nameOption.isDefined, s"The $name package type can only be used when a stack is specified")
-          LookupByTags(Map(
-            "Stage" -> target.parameters.stage.name,
-            "Stack" -> target.stack.nameOption.get,
-            "App" -> pkg.pkgApps.map(_.name).head
+          // todo: this can be simplified once the legacy json format is removed
+          val lookupByTags = for {
+            stack <- target.stack.nameOption
+            app <- pkg.pkgApps.map(_.name).headOption
+            stage = target.parameters.stage.name
+          } yield LookupByTags(Map(
+            "Stage" -> stage,
+            "Stack" -> stack,
+            "App" -> app
+          ))
+
+          lookupByTags.getOrElse(reporter.fail(
+            s"The $name package type can only be used when the stack and exactly one app is specified - you have stage=${target.stack.nameOption} and apps=${pkg.apps.map(_.name).mkString(",")}"
           ))
         } else {
           val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, target, reporter))
