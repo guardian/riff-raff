@@ -2,6 +2,6 @@
 How-To
 ======
 
- - [How do I make my project deployable?](make-deployable)
- - [How do I make my scala project deployable?](scala-deployable)
- - [How to deploy to the cloud](cloud-deployable)
+ - [How do I make my project deployable?](make-deployable.md)
+ - [How do I make my scala project deployable?](scala-deployable.md)
+ - [How to deploy to the cloud](cloud-deployable.md)
