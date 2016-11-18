@@ -18,13 +18,13 @@ object TaskResolver {
       val tasks = for {
         region <- deployment.regions.toList
         stack <- deployment.stacks.toList
-        actionName <- deployment.actions.toList.flatten
+        actionName <- deployment.actions.toList
         deploymentStep = deploymentType.mkDeploymentStep(actionName)(deploymentPackage)
         target = DeployTarget(parameters, NamedStack(stack), Region(region))
         task <- deploymentStep.resolve(deploymentResources, target)
       } yield task
       DeploymentTasks(tasks,
-        mkLabel(deploymentPackage.name, deployment.actions.toList.flatten, deployment.regions, deployment.stacks))
+        mkLabel(deploymentPackage.name, deployment.actions, deployment.regions, deployment.stacks))
     }
   }
 
@@ -42,8 +42,8 @@ object TaskResolver {
     )
   }
 
-  private def mkLabel(name: String, actions: List[String], regions: NEL[String], stacks: NEL[String]): String = {
+  private def mkLabel(name: String, actions: NEL[String], regions: NEL[String], stacks: NEL[String]): String = {
     val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{",",","}")
-    s"$name [${actions.mkString(", ")}] => ${bracketList(regions.toList)}/${bracketList(stacks.toList)}"
+    s"$name [${actions.toList.mkString(", ")}] => ${bracketList(regions.toList)}/${bracketList(stacks.toList)}"
   }
 }

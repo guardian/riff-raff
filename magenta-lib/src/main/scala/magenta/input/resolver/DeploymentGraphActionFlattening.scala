@@ -1,5 +1,6 @@
 package magenta.input.resolver
 
+import cats.data.NonEmptyList
 import magenta.graph.{Graph, ValueNode}
 import magenta.input.Deployment
 
@@ -8,10 +9,9 @@ object DeploymentGraphActionFlattening {
     deploymentGraph.flatMap{
       case ValueNode(deployment) =>
         val deploymentPerAction = for {
-          actionsList <- deployment.actions.toList
-          action <- actionsList
-        } yield deployment.copy(actions = Some(List(action)))
-        Graph.from(deploymentPerAction)
+          action <- deployment.actions
+        } yield deployment.copy(actions = NonEmptyList.of(action))
+        Graph.from(deploymentPerAction.toList)
       case _ => Graph.empty
     }
   }

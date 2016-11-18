@@ -1,13 +1,13 @@
 package magenta.input.resolver
 
-import cats.data.Validated
+import cats.data.{NonEmptyList, Validated}
 import cats.data.Validated.{Invalid, Valid}
 import magenta.deployment_type.DeploymentType
 import magenta.input.{ConfigErrors, Deployment}
 
 object DeploymentTypeResolver {
 
-  def validateDeploymentType(deployment: Deployment, availableTypes: Seq[DeploymentType]): Validated[ConfigErrors, Deployment] = {
+  def validateDeploymentType(deployment: PartiallyResolvedDeployment, availableTypes: Seq[DeploymentType]): Validated[ConfigErrors, Deployment] = {
     for {
       deploymentType <- Validated.fromOption(availableTypes.find(_.name == deployment.`type`),
         ConfigErrors(deployment.name, s"Unknown type ${deployment.`type`}"))
@@ -16,16 +16,18 @@ object DeploymentTypeResolver {
     } yield deployment
   }
 
-  private[input] def resolveDeploymentActions(deployment: Deployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {
-    val actions = deployment.actions.getOrElse(deploymentType.defaultActionNames)
-    val invalidActions = actions.filterNot(deploymentType.actionsMap.isDefinedAt)
+  private[input] def resolveDeploymentActions(deployment: PartiallyResolvedDeployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {
+    val actions = deployment.actions.orElse(NonEmptyList.fromList(deploymentType.defaultActionNames))
+    val invalidActions = actions.flatMap(as => NonEmptyList.fromList(as.filter(!deploymentType.actionsMap.isDefinedAt(_))))
 
-    if (actions.isEmpty)
-      Invalid(ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))
-    else if (invalidActions.nonEmpty)
-      Invalid(ConfigErrors(deployment.name, s"Invalid action ${invalidActions.mkString(", ")} for type ${deployment.`type`}"))
-    else
-      Valid(deployment.copy(actions=Some(actions)))
+    invalidActions.map(invalids => Invalid(
+      ConfigErrors(deployment.name, s"Invalid action ${invalids.toList.mkString(", ")} for type ${deployment.`type`}"))
+    ).getOrElse {
+      import automagic._
+      Validated.fromOption(actions.map(as =>
+        transform[PartiallyResolvedDeployment, Deployment](deployment, "actions" -> as)
+      ), ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))
+    }
   }
 
   private[input] def verifyDeploymentParameters(deployment: Deployment, deploymentType: DeploymentType): Validated[ConfigErrors, Deployment] = {

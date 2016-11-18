@@ -32,7 +32,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
   "resolve" should "produce a deployment task" in {
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region"),
-        Some(List("uploadArtifact", "deploy")), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
+        NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
       deploymentTypes = deploymentTypes,
@@ -49,7 +49,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
   "resolve" should "produce a deployment task with multiple regions" in {
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region-one", "region-two"),
-        Some(List("uploadArtifact", "deploy")), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
+        NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
       deploymentTypes = deploymentTypes,
@@ -67,7 +67,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
 
   "resolve" should "produce an error when the deployment type isn't found" in {
     val deploymentTask = TaskResolver.resolve(
-      deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), Some(List("uploadArtifact", "deploy")), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
+      deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
       deploymentTypes = Nil,

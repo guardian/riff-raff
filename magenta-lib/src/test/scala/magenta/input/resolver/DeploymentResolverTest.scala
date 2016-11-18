@@ -82,7 +82,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
       'regions (NEL.of("eurasia-north-1")),
       'app ("test"),
       'contentDirectory ("test"),
-      'actions (Some(List("deploymentAction"))),
+      'actions (Some(NEL.of("deploymentAction"))),
       'dependencies (Nil),
       'parameters (Map("testParam" -> JsString("testValue")))
     )
@@ -273,7 +273,7 @@ class DeploymentResolverTest extends FlatSpec with ShouldMatchers with Validated
     deployments.size should be (1)
     deployments.head should have(
       'app ("templateApp"),
-      'actions (Some(List("templateAction"))),
+      'actions (Some(NEL.of("templateAction"))),
       'contentDirectory ("templateContentDirectory")
     )
   }
