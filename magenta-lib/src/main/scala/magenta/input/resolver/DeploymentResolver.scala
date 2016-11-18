@@ -6,10 +6,11 @@ import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.instances.list._
 import magenta.input._
+import play.api.libs.json.JsValue
 
 object DeploymentResolver {
-  def resolve(config: RiffRaffDeployConfig): Validated[ConfigErrors, List[Deployment]] = {
-    config.deployments.traverseU[Validated[ConfigErrors, Deployment]] { case (label, rawDeployment) =>
+  def resolve(config: RiffRaffDeployConfig): Validated[ConfigErrors, List[PartiallyResolvedDeployment]] = {
+    config.deployments.traverseU[Validated[ConfigErrors, PartiallyResolvedDeployment]] { case (label, rawDeployment) =>
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates)
         deployment <- resolveDeployment(label, templated, config.stacks, config.regions)
@@ -22,16 +23,16 @@ object DeploymentResolver {
     * Validates and resolves a templated deployment by merging its
     * deployment attributes with any globally defined properties.
     */
-  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Validated[ConfigErrors, Deployment] = {
+  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Validated[ConfigErrors, PartiallyResolvedDeployment] = {
     (Validated.fromOption(templated.`type`, ConfigErrors(label, "No type field provided")) |@|
       Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), ConfigErrors(label, "No stacks provided")) |@|
       Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), ConfigErrors(label, "No regions provided"))) map { (deploymentType, stacks, regions) =>
-      Deployment(
+      PartiallyResolvedDeployment(
         name = label,
         `type` = deploymentType,
         stacks = stacks,
         regions = regions,
-        actions = templated.actions,
+        actions = templated.actions.flatMap(NEL.fromList),
         app = templated.app.getOrElse(label),
         contentDirectory = templated.contentDirectory.getOrElse(label),
         dependencies = templated.dependencies.getOrElse(Nil),
@@ -76,7 +77,7 @@ object DeploymentResolver {
   /**
     * Ensures that when deployments have named dependencies, deployments with those names exists.
     */
-  private[input] def validateDependencies(label: String, deployment: Deployment, allDeployments: List[(String, DeploymentOrTemplate)]): Validated[ConfigErrors, Deployment] = {
+  private[input] def validateDependencies(label: String, deployment: PartiallyResolvedDeployment, allDeployments: List[(String, DeploymentOrTemplate)]): Validated[ConfigErrors, PartiallyResolvedDeployment] = {
     val allDeploymentNames = allDeployments.map { case (name, _) => name }
     deployment.dependencies.filterNot(allDeploymentNames.contains) match {
       case Nil =>
@@ -86,3 +87,15 @@ object DeploymentResolver {
     }
   }
 }
+
+private [resolver] case class PartiallyResolvedDeployment(
+  name: String,
+  `type`: String,
+  stacks: NEL[String],
+  regions: NEL[String],
+  actions: Option[NEL[String]],
+  app: String,
+  contentDirectory: String,
+  dependencies: List[String],
+  parameters: Map[String, JsValue]
+)

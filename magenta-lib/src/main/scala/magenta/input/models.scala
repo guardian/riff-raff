@@ -24,7 +24,7 @@ object DeploymentKey {
   /** Turn a deployment into a deployment key - WARNING: this doesn't make any checks about the number of elements
     * but will only work predictably with one element in each of actions, stacks and regions */
   def apply(deployment: Deployment): DeploymentKey = {
-    DeploymentKey(deployment.name, deployment.actions.get.head, deployment.stacks.head, deployment.regions.head)
+    DeploymentKey(deployment.name, deployment.actions.head, deployment.stacks.head, deployment.regions.head)
   }
 
   // serialisation and de-serialisation code for deployment keys
@@ -96,7 +96,7 @@ case class Deployment(
   `type`: String,
   stacks: NEL[String],
   regions: NEL[String],
-  actions: Option[List[String]],
+  actions: NEL[String],
   app: String,
   contentDirectory: String,
   dependencies: List[String],

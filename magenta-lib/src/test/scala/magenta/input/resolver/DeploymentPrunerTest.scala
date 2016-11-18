@@ -7,7 +7,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class DeploymentPrunerTest extends FlatSpec with Matchers {
   import DeploymentPruner._
   val testDeployment = Deployment("testName", "testType", NEL.of("testStack"), NEL.of("testRegion"),
-    Some(List("testAction")), "testName", "testName", Nil, Map.empty)
+    NEL.of("testAction"), "testName", "testName", Nil, Map.empty)
   val testStackAndRegionPruner = StackAndRegion("testStack", "testRegion")
 
   "StackAndRegion pruner" should "return None when either the region or stack isn't specified" in {
@@ -31,7 +31,7 @@ class DeploymentPrunerTest extends FlatSpec with Matchers {
 
   "Keys pruner" should "return None when the name, action, region or stack doesn't match" in {
     testKeysPruner(testDeployment.copy(name="differentName")) shouldBe None
-    testKeysPruner(testDeployment.copy(actions=Some(List("differentAction")))) shouldBe None
+    testKeysPruner(testDeployment.copy(actions=NEL.of("differentAction"))) shouldBe None
     testKeysPruner(testDeployment.copy(stacks=NEL.of("differentStack"))) shouldBe None
     testKeysPruner(testDeployment.copy(regions=NEL.of("differentRegion"))) shouldBe None
   }
@@ -42,7 +42,7 @@ class DeploymentPrunerTest extends FlatSpec with Matchers {
 
   it should "return a subset of actions, regions and stacks when multiple are specified" in {
     testKeysPruner(testDeployment.copy(
-      actions = Some(List("testAction1", "testAction")),
+      actions = NEL.of("testAction1", "testAction"),
       stacks = NEL.of("testStack1", "testStack", "testStack2"),
       regions = NEL.of("testRegion1", "testRegion", "testRegion2")
     )) shouldBe Some(testDeployment)
@@ -57,12 +57,12 @@ class DeploymentPrunerTest extends FlatSpec with Matchers {
 
   it should "return a subset of actions, regions and stacks that match multiple deployment keys" in {
     val testComplexDeployment = testDeployment.copy(
-      actions = Some(List("testAction1", "testAction")),
+      actions = NEL.of("testAction1", "testAction"),
       stacks = NEL.of("testStack1", "testStack", "testStack2"),
       regions = NEL.of("testRegion1", "testRegion", "testRegion2")
     )
     testMultipleKeysPruner(testComplexDeployment) shouldBe Some(testDeployment.copy(
-      actions = Some(List("testAction1", "testAction")),
+      actions = NEL.of("testAction1", "testAction"),
       stacks = NEL.of("testStack1", "testStack"),
       regions = NEL.of("testRegion1", "testRegion")
     ))
