@@ -10,6 +10,7 @@ import scala.collection.JavaConversions._
 case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     val doubleCapacity = asg.getDesiredCapacity * 2
+    reporter.verbose(s"ASG desired = ${asg.getDesiredCapacity}; ASG max = ${asg.getMaxSize}; Target = $doubleCapacity")
     if (asg.getMaxSize < doubleCapacity || doubleCapacity == 0) {
       reporter.fail(
         s"Autoscaling group does not have the capacity to deploy current max = ${asg.getMaxSize} - desired max = $doubleCapacity"
@@ -23,6 +24,7 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
 case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
+    reporter.verbose(s"Tagging ${asg.getInstances.toList.map(_.getInstanceId).mkString(", ")}")
     EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate", ec2Client)
   }
 
@@ -32,7 +34,9 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
 case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
-    ASG.desiredCapacity(asg.getAutoScalingGroupName, asg.getDesiredCapacity * 2, asgClient)
+    val targetCapacity = asg.getDesiredCapacity * 2
+    reporter.verbose(s"Doubling capacity to $targetCapacity")
+    ASG.desiredCapacity(asg.getAutoScalingGroupName, targetCapacity, asgClient)
   }
 
   lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for apps ${pkg.apps.mkString(", ")}"
@@ -58,7 +62,10 @@ case class WarmupGrace(durationMillis: Long)(implicit keyRing: KeyRing) extends 
 case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val elbClient = ELB.makeElbClient(keyRing, region)
-    ASG.isStabilized(asg, asgClient, elbClient)
+    ASG.isStabilized(asg, asgClient, elbClient) match {
+      case Left(reason) => reporter.fail(s"ASG not stable: $reason")
+      case Right(true) =>
+    }
   }
   lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
 }
@@ -70,7 +77,12 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
     implicit val elbClient = ELB.makeElbClient(keyRing, region)
     check(reporter, stopFlag) {
       try {
-        ASG.isStabilized(ASG.refresh(asg, asgClient), asgClient, elbClient)
+        ASG.isStabilized(ASG.refresh(asg, asgClient), asgClient, elbClient) match {
+          case Left(reason) =>
+            reporter.verbose(reason)
+            false
+          case Right(result) => result
+        }
       } catch {
         case e: AmazonServiceException if isRateExceeded(e) => {
           reporter.info(e.getMessage)
@@ -92,6 +104,7 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
     implicit val elbClient = ELB.makeElbClient(keyRing, region)
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
+    reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")
     orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
   }
 
