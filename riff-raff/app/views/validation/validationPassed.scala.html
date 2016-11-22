@@ -15,7 +15,7 @@
             </div>
             <div class="panel-body">
                 <div><strong>Deployment type:</strong> @{deployment.`type`}</div>
-                <div><strong>Actions:</strong> @deployment.actions.toList.flatten.mkString(", ")</div>
+                <div><strong>Actions:</strong> @deployment.actions.toList.mkString(", ")</div>
                 <div><strong>Stacks:</strong> @deployment.stacks.toList.mkString(", ")</div>
                 <div><strong>Regions:</strong> @deployment.regions.toList.mkString(", ")</div>
                 <div><strong>App:</strong> @deployment.app</div>
