@@ -8,6 +8,8 @@ import com.amazonaws.regions.{RegionUtils, Region => AwsRegion}
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, Tag => _, _}
+import com.amazonaws.services.cloudformation.AmazonCloudFormationClient
+import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack, _}
 import com.amazonaws.services.ec2.AmazonEC2Client
 import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
@@ -17,6 +19,7 @@ import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
+import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 
 object S3 extends AWS {
@@ -192,6 +195,101 @@ object EC2 extends AWS {
     new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
 
   def apply(instance: ASGInstance, client: AmazonEC2Client) = describe(instance, client)
+}
+
+object CloudFormation extends AWS {
+  sealed trait ParameterValue
+  case class SpecifiedValue(value: String) extends ParameterValue
+  case object UseExistingValue extends ParameterValue
+
+  val CAPABILITY_IAM = "CAPABILITY_IAM"
+
+  def makeCfnClient(keyRing: KeyRing, region: Region): AmazonCloudFormationClient = {
+    new AmazonCloudFormationClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
+  }
+
+  def validateTemplate(templateBody: String, client: AmazonCloudFormationClient) =
+    client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
+
+  def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue],
+    client: AmazonCloudFormationClient) =
+
+    client.updateStack(
+      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+        } toSeq: _*
+      )
+    )
+
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: AmazonCloudFormationClient) =
+    client.updateStack(
+      new UpdateStackRequest()
+        .withStackName(name)
+        .withCapabilities(CAPABILITY_IAM)
+        .withUsePreviousTemplate(true)
+        .withParameters(
+          parameters map {
+            case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+            case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+          } toSeq: _*
+        )
+    )
+
+  def createStack(reporter: DeployReporter, name: String, templateBody: String, parameters: Map[String, ParameterValue],
+    client: AmazonCloudFormationClient) =
+
+    client.createStack(
+      new CreateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+        } toSeq: _*
+      )
+    )
+
+  def describeStack(name: String, client: AmazonCloudFormationClient) =
+    client.describeStacks(
+      new DescribeStacksRequest()
+    ).getStacks.find(_.getStackName == name)
+
+  def describeStackEvents(name: String, client: AmazonCloudFormationClient) =
+    client.describeStackEvents(
+      new DescribeStackEventsRequest().withStackName(name)
+    )
+
+  def findStackByTags(tags: Map[String, String], reporter: DeployReporter, client: AmazonCloudFormationClient): Option[AmazonStack] = {
+
+    def tagsMatch(stack: AmazonStack): Boolean =
+      tags.forall { case (key, value) => stack.getTags.exists(t => t.getKey == key && t.getValue == value) }
+
+    @tailrec
+    def recur(nextToken: Option[String] = None, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
+      val request = new DescribeStacksRequest().withNextToken(nextToken.orNull)
+      val response = client.describeStacks(request)
+
+      val stacks = response.getStacks.foldLeft(existingStacks) {
+        case (agg, stack) if tagsMatch(stack) => stack :: agg
+        case (agg, _) => agg
+      }
+
+      Option(response.getNextToken) match {
+        case None => stacks
+        case token => recur(token, stacks)
+      }
+    }
+
+    recur() match {
+      case cfnStack :: Nil =>
+        reporter.verbose(s"Found stack ${cfnStack.getStackName} (${cfnStack.getStackId})")
+        Some(cfnStack)
+      case Nil =>
+        None
+      case multipleStacks =>
+        reporter.fail(s"More than one cloudformation stack match for $tags (matched ${multipleStacks.map(_.getStackName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+    }
+  }
 }
 
 trait AWS {

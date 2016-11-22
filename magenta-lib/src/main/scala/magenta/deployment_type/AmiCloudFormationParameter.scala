@@ -13,7 +13,10 @@ object AmiCloudFormationParameter extends DeploymentType {
     """.stripMargin
 
   val cloudformationStackByTags = Param[Boolean]("cloudFormationStackByTags",
-    documentation = "Whether to find the cloudFormationStack by name or by tags"
+    documentation =
+      """When false we derive the stack using the `cloudFormationStackName`, `prependStackToCloudFormationStackName` and
+        |`appendStageToCloudFormationStackName` parameters. When true we find the stack by looking for one with matching
+        |stack, app and stage tags in the same way that autoscaling groups are discovered.""".stripMargin
   ).defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
@@ -42,31 +45,21 @@ object AmiCloudFormationParameter extends DeploymentType {
 
       val cloudFormationStackLookupStrategy = {
         if (cloudformationStackByTags(pkg, target, reporter)) {
-          // todo: this can be simplified once the legacy json format is removed
-          val lookupByTags = for {
-            stack <- target.stack.nameOption
-            app <- pkg.pkgApps.map(_.name).headOption if pkg.pkgApps.size == 1
-            stage = target.parameters.stage.name
-          } yield LookupByTags(Map(
-            "Stage" -> stage,
-            "Stack" -> stack,
-            "App" -> app
-          ))
-
-          lookupByTags.getOrElse(reporter.fail(
-            s"The $name package type can only be used when the stack and exactly one app is specified - you have stage=${target.stack.nameOption} and apps=${pkg.apps.map(_.name).mkString(",")}"
-          ))
+          LookupByTags(pkg, target, reporter)
         } else {
-          val stackName = target.stack.nameOption.filter(_ => prependStackToCloudFormationStackName(pkg, target, reporter))
-          val stageName = Some(target.parameters.stage.name).filter(_ => appendStageToCloudFormationStackName(pkg, target, reporter))
-          val cloudFormationStackNameParts = Seq(stackName, Some(cloudFormationStackName(pkg, target, reporter)), stageName).flatten
-          val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
-          LookupByName(fullCloudFormationStackName)
+          LookupByName(
+            target.stack,
+            target.parameters.stage,
+            cloudFormationStackName(pkg, target, reporter),
+            prependStack = prependStackToCloudFormationStackName(pkg, target, reporter),
+            appendStage = appendStageToCloudFormationStackName(pkg, target, reporter)
+          )
         }
       }
 
       List(
         UpdateAmiCloudFormationParameterTask(
+          target.region,
           cloudFormationStackLookupStrategy,
           amiParameter(pkg, target, reporter),
           amiTags(pkg, target, reporter),
@@ -74,7 +67,10 @@ object AmiCloudFormationParameter extends DeploymentType {
           target.parameters.stage,
           target.stack
         ),
-        CheckUpdateEventsTask(cloudFormationStackLookupStrategy)
+        CheckUpdateEventsTask(
+          target.region,
+          cloudFormationStackLookupStrategy
+        )
       )
     }
   }

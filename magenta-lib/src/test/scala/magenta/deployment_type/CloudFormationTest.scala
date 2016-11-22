@@ -7,6 +7,7 @@ import com.amazonaws.services.s3.AmazonS3
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
+import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}
@@ -30,8 +31,9 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     inside(CloudFormation.actionsMap("updateStack").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
-          case UpdateCloudFormationTask(stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>
-            stackName should be(cfnStackName)
+          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>
+            taskRegion should be(region)
+            stackName should be(LookupByName(cfnStackName))
             path should be(S3Path("artifact-bucket", "test/123/cloud-formation/cfn.json"))
             userParams should be(Map.empty)
             amiParam should be("AMI")
@@ -41,7 +43,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
             ifAbsent should be(true)
         }
         inside(checkTask) {
-          case CheckUpdateEventsTask(updateStackName) =>
+          case CheckUpdateEventsTask(taskRegion, updateStackName) =>
+            taskRegion should be(region)
             updateStackName should be(LookupByName(cfnStackName))
         }
     }
@@ -69,5 +72,34 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       "param3" -> UseExistingValue,
       "Stage" -> SpecifiedValue(PROD.name)
     ))
+  }
+
+  it should "create new CFN stack names" in {
+    import UpdateCloudFormationTask.nameToCallNewStack
+    nameToCallNewStack(LookupByName("name-of-stack")) shouldBe "name-of-stack"
+    nameToCallNewStack(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE"))) shouldBe
+      "stackName-STAGE-appName"
+    nameToCallNewStack(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE", "Extra" -> "extraBit"))) shouldBe
+      "stackName-STAGE-appName-extraBit"
+  }
+
+  "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {
+    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = true, appendStage = true) shouldBe
+      LookupByName("cfn-stackname-STAGE")
+    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = true) shouldBe
+      LookupByName("stackname-STAGE")
+    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = false) shouldBe
+      LookupByName("stackname")
+  }
+
+  it should "correctly create a LookupByTags from deploy parameters" in {
+    val data: Map[String, JsValue] = Map()
+    val app = Seq(App("app"))
+    val stack = NamedStack("cfn")
+    val cfnStackName = s"cfn-app-PROD"
+    val pkg = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"), true,
+      deploymentTypes)
+    val target = DeployTarget(parameters(), stack, region)
+    LookupByTags(pkg, target, reporter) shouldBe LookupByTags(Map("Stack" -> "cfn", "Stage" -> "PROD", "App" -> "app"))
   }
 }
