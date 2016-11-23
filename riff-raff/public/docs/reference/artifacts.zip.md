@@ -2,6 +2,8 @@
 Anatomy of artifacts.zip
 ========================
 
+**NOTE:** This is deprecated and should no longer be used.
+
 The `artifacts.zip` file must have the layout described
 here in order for magenta to understand it.
 

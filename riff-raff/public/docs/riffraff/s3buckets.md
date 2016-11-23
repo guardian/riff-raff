@@ -1,4 +1,4 @@
-<!--- prev:externalRequest next:dashboards -->
+<!--- prev:externalRequest -->
 Riff-Raff, AWS credentials and S3 uploads
 =========================================
 

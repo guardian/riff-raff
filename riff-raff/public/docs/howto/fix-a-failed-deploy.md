@@ -1,6 +1,6 @@
 # Fixing a failed deploy
 
-Normally your Auto-Scaling Group will be  configured with a maximum capacity that is _twice_ the 'desired'
+Normally your Auto-Scaling Group will be configured with a maximum capacity that is _twice_ the 'desired'
 capacity - this is to allow deploys to work by _doubling_ the desired capacity, bringing up new boxes,
 before killing the old ones off.
 

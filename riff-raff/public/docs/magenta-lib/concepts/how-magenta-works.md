@@ -2,6 +2,9 @@
 How magenta works
 =================
 
+**NOTE:** This is out of date and does not accurately reflect the current state of Riff-Raff. In particular 
+`artifacts.zip` and `deploy.json` have been deprecated and the user input for `riff-raff.yaml` is different.
+
 Magenta needs three to five bits of user input in order to start a deploy:
 
  - project name
