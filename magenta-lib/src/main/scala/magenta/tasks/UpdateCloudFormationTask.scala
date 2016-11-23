@@ -132,8 +132,9 @@ case class UpdateCloudFormationTask(
       case None =>
         if (createStackIfAbsent) {
           val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
+          val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
           reporter.info(s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
-          CloudFormation.createStack(reporter, nameToCallStack, templateString, parameters, cfnClient)
+          CloudFormation.createStack(reporter, nameToCallStack, stackTags, templateString, parameters, cfnClient)
         } else {
           reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
         }
