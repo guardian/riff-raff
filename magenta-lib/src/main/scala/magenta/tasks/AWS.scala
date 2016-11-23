@@ -56,7 +56,7 @@ object ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient): Either[String, Boolean] = {
+  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient): Either[String, Unit] = {
     elbName(asg) match {
       case Some(name) => {
         val elbHealth = ELB.instanceHealth(name, elbClient)
@@ -65,7 +65,7 @@ object ASG extends AWS {
         else if (!elbHealth.forall( instance => instance.getState == "InService"))
           Left(s"Only ${elbHealth.count(_.getState == "InService")} of ${elbHealth.size} ELB instances InService")
         else
-          Right(true)
+          Right(())
       }
       case None => {
         val instances = asg.getInstances
@@ -74,7 +74,7 @@ object ASG extends AWS {
         else if (!instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString))
           Left(s"Only ${instances.count(_.getLifecycleState == LifecycleState.InService.toString)} of ${instances.size} instances are InService")
         else
-          Right(true)
+          Right(())
       }
     }
   }

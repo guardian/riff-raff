@@ -135,7 +135,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("InService")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Right(true)
+    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Right(())
   }
 
   it should "just check ASG health for stability if there is no ELB" in {
@@ -154,7 +154,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
     val updatedGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withLifecycleState(LifecycleState.InService))
 
-    ASG.isStabilized(updatedGroup, asgClientMock, elbClientMock) shouldBe Right(true)
+    ASG.isStabilized(updatedGroup, asgClientMock, elbClientMock) shouldBe Right(())
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {

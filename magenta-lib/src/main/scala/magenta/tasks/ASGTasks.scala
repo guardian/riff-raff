@@ -64,7 +64,7 @@ case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: St
     implicit val elbClient = ELB.makeElbClient(keyRing, region)
     ASG.isStabilized(asg, asgClient, elbClient) match {
       case Left(reason) => reporter.fail(s"ASG not stable: $reason")
-      case Right(true) =>
+      case Right(()) =>
     }
   }
   lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
@@ -81,7 +81,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
           case Left(reason) =>
             reporter.verbose(reason)
             false
-          case Right(result) => result
+          case Right(()) => true
         }
       } catch {
         case e: AmazonServiceException if isRateExceeded(e) => {
