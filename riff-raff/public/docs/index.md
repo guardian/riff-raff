@@ -1,7 +1,7 @@
-Deploy system documentation
-===========================
+Riff-Raff
+=========
 
-This is the documentation for magenta and riff-raff.
+This is the documentation for riff-raff.
 
 It is split into two parts: Magenta (the deploy library that actually deals with the mechanics of how an artifact
 is fetched and deployed) and Riff Raff (the web application that makes it easy to deploy software).
