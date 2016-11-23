@@ -7,7 +7,9 @@ import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, 
 import com.amazonaws.regions.{RegionUtils, Region => AwsRegion}
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, Tag => _, _}
+import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, Tag => AsgTag, _}
+import com.amazonaws.services.cloudformation.AmazonCloudFormationClient
+import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack, Tag => CfnTag, _}
 import com.amazonaws.services.ec2.AmazonEC2Client
 import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
 import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
@@ -17,7 +19,9 @@ import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
-import scala.collection.JavaConversions._
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 object S3 extends AWS {
   def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3Client =
@@ -68,7 +72,7 @@ object ASG extends AWS {
           Right(())
       }
       case None => {
-        val instances = asg.getInstances
+        val instances = asg.getInstances.asScala
         if (instances.size != asg.getDesiredCapacity)
           Left(s"Number of instances (${instances.size} and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
         else if (!instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString))
@@ -79,7 +83,7 @@ object ASG extends AWS {
     }
   }
 
-  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.headOption
+  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.asScala.headOption
 
   def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
     elbName(asg) foreach (ELB.deregister(_, instance, elbClient))
@@ -93,7 +97,7 @@ object ASG extends AWS {
   def refresh(asg: AutoScalingGroup, client: AmazonAutoScalingClient) =
     client.describeAutoScalingGroups(
       new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
-    ).getAutoScalingGroups.head
+    ).getAutoScalingGroups.asScala.head
 
   def suspendAlarmNotifications(name: String, client: AmazonAutoScalingClient) = client.suspendProcesses(
     new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
@@ -108,7 +112,7 @@ object ASG extends AWS {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
-      def hasTag(key: String, value: String) = asg.getTags exists { tag =>
+      def hasTag(key: String, value: String) = asg.getTags.asScala exists { tag =>
         tag.getKey == key && tag.getValue == value
       }
       def matchApp(app: App, stack: Stack): Boolean = {
@@ -123,7 +127,7 @@ object ASG extends AWS {
       val request = new DescribeAutoScalingGroupsRequest()
       nextToken.foreach(request.setNextToken)
       val result = client.describeAutoScalingGroups(request)
-      val autoScalingGroups = result.getAutoScalingGroups.toList
+      val autoScalingGroups = result.getAutoScalingGroups.asScala.toList
       Option(result.getNextToken) match {
         case None => autoScalingGroups
         case token: Some[String] => autoScalingGroups ++ listAutoScalingGroups(token)
@@ -160,8 +164,8 @@ object ELB extends AWS {
   def makeElbClient(keyRing: KeyRing, region: Region): AmazonElasticLoadBalancingClient =
     new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def instanceHealth(elbName: String, client: AmazonElasticLoadBalancingClient) =
-    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates
+  def instanceHealth(elbName: String, client: AmazonElasticLoadBalancingClient): List[InstanceState] =
+    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates.asScala.toList
 
   def deregister(elbName: String, instance: ASGInstance, client: AmazonElasticLoadBalancingClient) =
     client.deregisterInstancesFromLoadBalancer(
@@ -176,22 +180,128 @@ object EC2 extends AWS {
 
   def setTag(instances: List[ASGInstance], key: String, value: String, client: AmazonEC2Client) {
     val request = new CreateTagsRequest().
-      withResources(instances map { _.getInstanceId }).
+      withResources(instances map { _.getInstanceId } asJavaCollection).
       withTags(new EC2Tag(key, value))
 
     client.createTags(request)
   }
 
   def hasTag(instance: ASGInstance, key: String, value: String, client: AmazonEC2Client): Boolean = {
-    describe(instance, client).getTags exists { tag =>
+    describe(instance, client).getTags.asScala exists { tag =>
       tag.getKey == key && tag.getValue == value
     }
   }
 
   def describe(instance: ASGInstance, client: AmazonEC2Client) = client.describeInstances(
-    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)).getReservations.flatMap(_.getInstances).head
+    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)
+  ).getReservations.asScala.flatMap(_.getInstances.asScala).head
 
   def apply(instance: ASGInstance, client: AmazonEC2Client) = describe(instance, client)
+}
+
+object CloudFormation extends AWS {
+  sealed trait ParameterValue
+  case class SpecifiedValue(value: String) extends ParameterValue
+  case object UseExistingValue extends ParameterValue
+
+  val CAPABILITY_IAM = "CAPABILITY_IAM"
+
+  def makeCfnClient(keyRing: KeyRing, region: Region): AmazonCloudFormationClient = {
+    new AmazonCloudFormationClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
+  }
+
+  def validateTemplate(templateBody: String, client: AmazonCloudFormationClient) =
+    client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
+
+  def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue],
+    client: AmazonCloudFormationClient) =
+
+    client.updateStack(
+      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+        } toSeq: _*
+      )
+    )
+
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: AmazonCloudFormationClient) =
+    client.updateStack(
+      new UpdateStackRequest()
+        .withStackName(name)
+        .withCapabilities(CAPABILITY_IAM)
+        .withUsePreviousTemplate(true)
+        .withParameters(
+          parameters map {
+            case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+            case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+          } toSeq: _*
+        )
+    )
+
+  def createStack(reporter: DeployReporter, name: String, maybeTags: Option[Map[String, String]], templateBody: String, parameters: Map[String, ParameterValue],
+    client: AmazonCloudFormationClient) = {
+
+    val request = new CreateStackRequest()
+      .withStackName(name)
+      .withTemplateBody(templateBody)
+      .withCapabilities(CAPABILITY_IAM)
+      .withParameters(
+        parameters map {
+          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+          case (k, UseExistingValue) => reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+        } toSeq: _*
+      )
+
+    maybeTags.foreach { tags =>
+      val sdkTags = tags.map{ case (key, value) => new CfnTag().withKey(key).withValue(value) }
+      request.setTags(sdkTags.asJavaCollection)
+    }
+
+    client.createStack(request)
+  }
+
+  def describeStack(name: String, client: AmazonCloudFormationClient) =
+    client.describeStacks(
+      new DescribeStacksRequest()
+    ).getStacks.asScala.find(_.getStackName == name)
+
+  def describeStackEvents(name: String, client: AmazonCloudFormationClient) =
+    client.describeStackEvents(
+      new DescribeStackEventsRequest().withStackName(name)
+    )
+
+  def findStackByTags(tags: Map[String, String], reporter: DeployReporter, client: AmazonCloudFormationClient): Option[AmazonStack] = {
+
+    def tagsMatch(stack: AmazonStack): Boolean =
+      tags.forall { case (key, value) => stack.getTags.asScala.exists(t => t.getKey == key && t.getValue == value) }
+
+    @tailrec
+    def recur(nextToken: Option[String] = None, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
+      val request = new DescribeStacksRequest().withNextToken(nextToken.orNull)
+      val response = client.describeStacks(request)
+
+      val stacks = response.getStacks.asScala.foldLeft(existingStacks) {
+        case (agg, stack) if tagsMatch(stack) => stack :: agg
+        case (agg, _) => agg
+      }
+
+      Option(response.getNextToken) match {
+        case None => stacks
+        case token => recur(token, stacks)
+      }
+    }
+
+    recur() match {
+      case cfnStack :: Nil =>
+        reporter.verbose(s"Found stack ${cfnStack.getStackName} (${cfnStack.getStackId})")
+        Some(cfnStack)
+      case Nil =>
+        None
+      case multipleStacks =>
+        reporter.fail(s"More than one cloudformation stack match for $tags (matched ${multipleStacks.map(_.getStackName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+    }
+  }
 }
 
 trait AWS {
