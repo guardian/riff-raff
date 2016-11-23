@@ -129,13 +129,13 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) should be (false)
+    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Left("Only 0 of 1 ELB instances InService")
 
     when (elbClientMock.describeInstanceHealth(
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("InService")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) should be (true)
+    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Right(())
   }
 
   it should "just check ASG health for stability if there is no ELB" in {
@@ -149,12 +149,12 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) should be (false)
+    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Left("Only 0 of 1 instances are InService")
 
     val updatedGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withLifecycleState(LifecycleState.InService))
 
-    ASG.isStabilized(updatedGroup, asgClientMock, elbClientMock) should be (true)
+    ASG.isStabilized(updatedGroup, asgClientMock, elbClientMock) shouldBe Right(())
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {

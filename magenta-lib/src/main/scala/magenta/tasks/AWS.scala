@@ -56,16 +56,25 @@ object ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
+  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient): Either[String, Unit] = {
     elbName(asg) match {
       case Some(name) => {
         val elbHealth = ELB.instanceHealth(name, elbClient)
-        elbHealth.size == asg.getDesiredCapacity && elbHealth.forall( instance => instance.getState == "InService")
+        if (elbHealth.size != asg.getDesiredCapacity)
+          Left(s"Number of ELB instances (${elbHealth.size}) and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
+        else if (!elbHealth.forall( instance => instance.getState == "InService"))
+          Left(s"Only ${elbHealth.count(_.getState == "InService")} of ${elbHealth.size} ELB instances InService")
+        else
+          Right(())
       }
       case None => {
         val instances = asg.getInstances
-        instances.size == asg.getDesiredCapacity &&
-          instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString)
+        if (instances.size != asg.getDesiredCapacity)
+          Left(s"Number of instances (${instances.size} and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
+        else if (!instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString))
+          Left(s"Only ${instances.count(_.getLifecycleState == LifecycleState.InService.toString)} of ${instances.size} instances are InService")
+        else
+          Right(())
       }
     }
   }
@@ -139,10 +148,10 @@ object ASG extends AWS {
 
     appMatch match {
       case ASGMatch(_, List(singleGroup)) =>
-        reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName}")
+        reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName} (${singleGroup.getAutoScalingGroupARN})")
         singleGroup
       case ASGMatch(app, groupList) =>
-        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }
