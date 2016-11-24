@@ -1,4 +1,4 @@
-<!--- prev:how-magenta-works next:artifacts.zip -->
+<!--- prev:how-magenta-works -->
 Terminology
 ===========
 

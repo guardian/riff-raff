@@ -1,6 +1,9 @@
-<!--- next:scala-deployable prev:index -->
+<!--- next:cloud-deployable -->
 How do I make my project deployable?
 ================
+
+**NOTE:** This is out of date and does not accurately reflect the current state of Riff-Raff. In particular 
+`artifacts.zip` and `deploy.json` have been deprecated and the user input for `riff-raff.yaml` is different.
 
 Magenta works out how to deploy an application via convention and a little bit
 of configuration.  It expects to be able to download an `artifact.zip` from the

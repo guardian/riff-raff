@@ -31,3 +31,14 @@ Using Riff-Raff
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy
  - [AWS S3 bucket configuration for uploads](riffraff/s3buckets.md)
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
+ 
+Legacy documentation
+--------------------
+
+Some docs that have not been reviewed or updated recently but might (at a stretch) still have some useful 
+information (or more likely history) in them:
+
+ - [How magenta works](magenta-lib/concepts/how-magenta-works.md)
+ - [Terminology](magenta-lib/concepts/terminology.md)
+ - [How to deploy to the cloud](magenta-lib/howto/cloud-deployable.md)
+ - [How do I make my project deployable?](magenta-lib/howto/make-deployable.md)
