@@ -20,8 +20,6 @@ lazy val lib = project.in(file("magenta-lib"))
   .settings(Seq(
     libraryDependencies ++= magentaLibDeps,
 
-    resourceDirectory in Compile := baseDirectory.value / "docs",
-
     testOptions in Test += Tests.Argument("-oF")
   ))
 

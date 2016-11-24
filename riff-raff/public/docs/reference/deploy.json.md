@@ -2,6 +2,8 @@
 Anatomy of deploy.json
 ======================
 
+**NOTE:** This is deprecated and should no longer be used.
+
 The `deploy.json` configuration file is used to describe the ways in which a
 set of artifacts may be deployed onto the infrastructure. It has two sections:
 _packages_ and _recipes_.
@@ -14,7 +16,7 @@ order to infer defaults. As a result of this, it is possible to have a very
 minimal deployment file.
 
     {
-      "stack": "deployment",
+      "defaultStacks": ["deployment"],
       "packages": {
         "riff-raff": {
           "type": "executable-jar-webapp"
@@ -36,7 +38,7 @@ A longer example
 A larger example is below, this time with two packages and three recipes.
 
     {
-      "stack": "frontend",
+      "defaultStacks": ["frontend"],
       "packages": {
         "frontend-article": {
           "type": "executable-jar-webapp",
@@ -81,7 +83,7 @@ should correlate to swim-lanes. It is not possible to deploy to two different st
  by design.
 
 Stack is used to look up resources such as AWS keys and hosts in addition to the app name and the stage being deployed
-to.
+to. You can specify the stacks to deploy to using teh `defaultStacks` key.
 
 ### Looking at the recipes
 

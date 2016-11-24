@@ -6,31 +6,26 @@ Riff-Raff
 About
 -----
 
-The Guardian's scala-based deployment system is designed to help automate
-deploys by providing:
-
- - a library (Magenta) that localises knowledge about how to orchestrate deploys within a
- single system, but having defined interfaces with the applications and the
- system on to which the deploys will happen.
- - a web application (Riff-Raff) that initiates and audits deploys as well as providing
- various integration points for automating deployment pipelines.
+The Guardian's scala-based deployment system is designed to automate deploys by providing a web application that 
+performs and records deploys, as well as providing various integration points for automating deployment pipelines.
 
 Requirements
 -----
 
 Riff-Raff and Magenta have been built with the tools we use at the Guardian
-and you will find it easiest if you use a similar set of tools. Riff-Raff has
+and you will find it easiest if you use a similar set of tools. Riff-Raff:
 
  - relies on artifacts and `build.json` files describing builds being in S3 buckets with the artifacts having paths of 
-  the form `project-name/build-number/artifacts.zip`
- - uses [Prism](http://github.com/guardian/prism) to do service discovery
- - stores all configuration, history and logs in a MongoDB instance
+  the form `project-name/build-number`
+ - uses the AWS SDK and [Prism](http://github.com/guardian/prism) to do resource discovery
+ - stores configuration, history and logs in a MongoDB instance and a handful of DynamoDB tables (the eventual aim is
+   to ditch Mongo altogether)
 
 Documentation
 -----
 
-Most of the documentation is under [magenta-lib/docs](magenta-lib/docs) (for the main deployment library)
-and [riff-raff/app/docs](riff-raff/app/docs) (for the web frontend).
+The documentation is available in the application (under the Documentation menu) but can also be viewed under 
+[riff-raff/app/docs](riff-raff/app/docs) in github.
 
 In action
 -----

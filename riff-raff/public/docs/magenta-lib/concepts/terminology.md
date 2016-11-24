@@ -1,6 +1,9 @@
-<!--- prev:how-magenta-works next:artifacts.zip -->
+<!--- prev:how-magenta-works -->
 Terminology
 ===========
+
+**NOTE:** This relates to the legacy `deploy.json` configuration file and does not reflect the current state of 
+Riff-Raff.
 
 Before we dive into more detail, it is worth understanding a small number of terms
 that are used by magenta to describe how a deploy should work.

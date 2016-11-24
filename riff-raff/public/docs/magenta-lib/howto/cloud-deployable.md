@@ -1,6 +1,9 @@
-<!--- prev:scala-deployable -->
+<!--- prev:make-deployable -->
 How to deploy to the cloud
 --------------------------
+
+**NOTE:** This is out of date and does not accurately reflect the current state of Riff-Raff. In particular 
+`artifacts.zip` and `deploy.json` have been deprecated and the user input for `riff-raff.yaml` is different.
 
 To deploy to the cloud, follow the above steps, but declare your deployment type as autoscaling.
 You'll need to provide a `bucket` data to say where to put the artifact in S3.

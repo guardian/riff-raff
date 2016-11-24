@@ -5,9 +5,8 @@ Authentication and Authorisation
 Authentication
 --------------
 
-Authentication is handled by an Open ID provider.  This defaults to google, but can be overridden in the riff-raff
- properties file.  This obtains the users full name and e-mail address and both of these are used to provide an audit
- trail of deployments and other actions in the app.
+Authentication is handled by Google. This obtains the users full name and e-mail address and both of these are used to 
+provide an audit trail of deployments and other actions in the app.
 
 Authorisation
 -------------
