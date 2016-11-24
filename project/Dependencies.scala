@@ -53,7 +53,7 @@ object Dependencies {
     "com.gu" %% "play-googleauth" % "0.5.1",
     "org.mongodb" %% "casbah" % "3.1.0",
     "com.typesafe.akka" %% "akka-agent" % "2.4.10",
-    "org.clapper" %% "markwrap" % "1.0.2",
+    "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",
     "com.gu" %% "scanamo" % "0.7.0",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,

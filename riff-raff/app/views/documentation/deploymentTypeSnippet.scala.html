@@ -1,6 +1,6 @@
 @(deployTypeDocs: docs.DeployTypeDocs)
 
-@docs.MarkDown.toHtml(deployTypeDocs.documentation)
+@docs.MarkDownParser.toHtml(deployTypeDocs.documentation)
 
 
 <h3>Actions</h3>
@@ -16,7 +16,7 @@
         @deployTypeDocs.actions.map { action =>
             <tr>
                 <td>@action.name</td>
-                <td>@docs.MarkDown.toHtml(action.documentation)</td>
+                <td>@docs.MarkDownParser.toHtml(action.documentation)</td>
                 <td>@if(action.isDefault){<span class="glyphicon glyphicon-ok" aria-hidden="true"></span>}</td>
             </tr>
         }
@@ -38,7 +38,7 @@
         @deployTypeDocs.params.map { param =>
         <tr>
           <td>@param.name</td>
-          <td>@docs.MarkDown.toHtml(param.documentation)</td>
+          <td>@docs.MarkDownParser.toHtml(param.documentation)</td>
             @if(param.defaultLegacy != param.default) {
                 <td nowrap="nowrap"><em><strong>@param.default.getOrElse{&lt;no default&gt;}</strong></em></td>
                 <td nowrap="nowrap"><em><strong>@param.defaultLegacy.getOrElse{&lt;no default&gt;}</strong></em></td>

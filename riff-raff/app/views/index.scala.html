@@ -1,17 +1,15 @@
-@(request: Request[AnyContent], releaseNotes: String)
-@import com.gu.googleauth.UserIdentity
-@import conf.Configuration._
+@(request: Request[AnyContent], documentation: Html)
 
 @mainNoAuth("Welcome", request) {
     
-    <h2>Welcome to the Guardian deployment tool.</h2>
+    <h2>Welcome to Riff-Raff, the Guardian's deployment tool</h2>
 
-    <div class="panel panel-success">
+    <div class="panel panel-info">
         <div class="panel-heading">
-            <h3 class="panel-title">Release notes</h3>
+            <h3 class="panel-title">Explore Riff-Raff's documentation...</h3>
         </div>
         <div class="panel-body">
-            @docs.MarkDown.toHtml(releaseNotes)
+            @documentation
         </div>
     </div>
 }

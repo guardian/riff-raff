@@ -2,7 +2,7 @@ package controllers
 
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.UserIdentity
-import docs.DeployTypeDocs
+import docs.{DeployTypeDocs, MarkDownParser}
 import play.api.mvc._
 import play.api.{Environment, Logger}
 import magenta.deployment_type.{DeploymentType, Param}
@@ -74,10 +74,14 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
   import Application._
 
   def index = Action { implicit request =>
-    val markDown = withResource(environment.resourceAsStream("public/docs/releases.md").get) { stream =>
+    val documentationIndexContents = withResource(environment.resourceAsStream("public/docs/index.md").get) { stream =>
       Source.fromInputStream(stream).mkString
     }
-    Ok(views.html.index(request, markDown))
+    val documentation = MarkDownParser.toHtml(
+      markDown = documentationIndexContents,
+      linkRenderer = Some(new docs.MarkDownParser.CallLinkRenderer(link => routes.Application.documentation(link)))
+    )
+    Ok(views.html.index(request, documentation))
   }
 
   def deployInfoData = AuthAction { implicit request =>
