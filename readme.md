@@ -6,8 +6,8 @@ Riff-Raff
 About
 -----
 
-The Guardian's scala-based deployment system is designed automate deploys by providing a web application that initiates 
-and audits deploys as well as providing various integration points for automating deployment pipelines.
+The Guardian's scala-based deployment system is designed to automate deploys by providing a web application that 
+performs and records deploys, as well as providing various integration points for automating deployment pipelines.
 
 Requirements
 -----

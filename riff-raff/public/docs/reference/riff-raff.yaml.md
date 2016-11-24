@@ -1,8 +1,8 @@
 The riff-raff.yaml configuration file
 =====================================
 
-Whilst writing riff-raff.yaml files you are strongly advised to use the Validate Template feature in Riff-Raff to get
-fast feedback.
+Whilst writing riff-raff.yaml files you are strongly advised to use the 
+[Validate Template feature](/configuration/validation) in Riff-Raff to get fast feedback.
 
 ```yaml
 stacks: 
