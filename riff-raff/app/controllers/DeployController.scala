@@ -1,5 +1,6 @@
 package controllers
 
+import java.net.URLEncoder
 import java.util.UUID
 
 import ci.{Builds, S3Tag, TagClassification}
@@ -18,7 +19,6 @@ import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import resources.PrismLookup
-import utils.Forms
 
 import scala.util.{Failure, Success}
 
@@ -207,6 +207,28 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
   def deployAgain = AuthAction { implicit request =>
     val form = DeployParameterForm.form.bindFromRequest()
     Ok(views.html.deploy.deployConfirmation(form, isExternal = false))
+  }
+
+  def deployAgainUuid(uuidString: String) = AuthAction { implicit request =>
+    val uuid = UUID.fromString(uuidString)
+    val record = Deployments.get(uuid)
+
+    val keys = record.parameters.selector match {
+      case DeploymentKeysSelector(keyList) => keyList
+      case All => Nil
+    }
+
+    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name,
+      Some(record.recipe.name), "deploy", Nil, record.stacks.toList.flatMap(_.nameOption), keys, None)
+
+    val fields = DeployParameterForm.form.fill(params).data
+
+    def queryString = fields.map {
+      case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
+    }.mkString("&")
+
+    val url = s"${routes.DeployController.deployAgain().url}?$queryString"
+    Redirect(url)
   }
 
   def markAsFailed = AuthAction { implicit request =>

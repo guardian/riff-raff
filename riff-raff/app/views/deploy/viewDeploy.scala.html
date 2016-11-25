@@ -60,30 +60,10 @@
                     </label>
                 </div>
             }
-            @helper.form(action=routes.DeployController.deployAgain) {
-                <input type="hidden" name="project" value="@record.buildName"/>
-                <input type="hidden" name="build" value="@record.buildId"/>
-                <input type="hidden" name="stage" value="@record.stage.name"/>
-                <input type="hidden" name="recipe" value="@record.recipe.name"/>
-
-                @record.stacks.zipWithIndex.map { case (stack, index) =>
-                <input type="hidden" name="stacks[@index]" value="@{stack.name}"/>
-                }
-                @record.parameters.selector match {
-                    case DeploymentKeysSelector(keys) => {
-                        @keys.map{ key =>
-                            <input type="hidden" name="selectedKeys[]" value="@DeploymentKey.asString(key)">
-                        }
-                    }
-                    case All => {}
-                }
-                <div class="actions pull-right"><p>
-                    <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-default">
-                        Deploy Again
-                    </button>
-                    <a class="btn btn-default" href="@routes.DeployController.deployConfig(record.buildName, record.buildId)" role="button">See configuration</a>
-                </p></div>
-            }
+            <div class="actions pull-right"><p>
+                <a class="btn btn-default" href="@routes.DeployController.deployAgainUuid(record.uuid.toString)" role="button">Deploy Again</a>
+                <a class="btn btn-default" href="@routes.DeployController.deployConfig(record.buildName, record.buildId)" role="button">See configuration</a>
+            </p></div>
         </div>
     </div>
 

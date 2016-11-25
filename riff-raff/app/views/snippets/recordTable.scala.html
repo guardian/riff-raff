@@ -5,7 +5,7 @@
 @if(records.isEmpty) {
 <div class="alert alert-warning"><strong>No deploys found.</strong></div>
 } else {
-<table class="table table-condensed">
+<table id="history" class="table table-condensed">
     <thead>
     <tr>
         <th>Time</th>
@@ -22,42 +22,46 @@
     </thead>
     <tbody class="rowlink" data-provides="rowlink">
     @records.map{ record =>
-    <tr class="rowlink">
-        <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
-        <td><span class="label label-default">@record.deployerName</span></td>
-        <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
-        <td>@record.stage.name</td>
-        <td>@record.buildId</td>
         @defining(record.vcsInfo) { vcsInfo =>
-        <td>@htmlTooltip(placement="left"){
-          @vcsInfo.map { info =>
-            <strong>@info.name</strong> @info.repo<br/>
-            @info.revision
-          }
-        }{
-            @record.metaData.get("branch").getOrElse("unknown")
-        }</td>
-        }
-        <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
-        <td>@if(record.parameters.stacks.nonEmpty){ @record.parameters.stacks.map(_.name).mkString(", ") }</td>
-        <td>
-            @htmlTooltip(placement="left"){
-                @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
+        <tr class="rowlink history-context-menu" data-uuid="@record.uuid.toString"
+            @vcsInfo.map{ vi => data-vcs-name="@vi.name" data-vcs-url="@vi.commitUrl" }
+            data-project-name="@record.buildName" data-build-id="@record.buildId" data-stage="@record.stage.name">
+            <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
+            <td><span class="label label-default">@record.deployerName</span></td>
+            <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
+            <td>@record.stage.name</td>
+            <td>@record.buildId</td>
+
+            <td>@htmlTooltip(placement="left"){
+              @vcsInfo.map { info =>
+                <strong>@info.name</strong> @info.repo<br/>
+                @info.revision
+              }
             }{
-            @defining(record.state) { state =>
-            @state match {
-            case RunState.Completed => { <span class="label label-success">Completed</span> }
-            case RunState.Failed => { <span class="label label-danger">Failed</span> }
-            case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
-            case _ => {
-                <span class="label label-info">Running (@record.completedPercentage%)</span>
-            }
-            }
-            }
-            }
-        </td>
-        <td>@Record.prettyPrintDuration(record.timeTaken)</td>
-    </tr>
+                @record.metaData.get("branch").getOrElse("unknown")
+            }</td>
+
+            <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
+            <td>@if(record.parameters.stacks.nonEmpty){ @record.parameters.stacks.map(_.name).mkString(", ") }</td>
+            <td>
+                @htmlTooltip(placement="left"){
+                    @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
+                }{
+                @defining(record.state) { state =>
+                @state match {
+                case RunState.Completed => { <span class="label label-success">Completed</span> }
+                case RunState.Failed => { <span class="label label-danger">Failed</span> }
+                case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
+                case _ => {
+                    <span class="label label-info">Running (@record.completedPercentage%)</span>
+                }
+                }
+                }
+                }
+            </td>
+            <td>@Record.prettyPrintDuration(record.timeTaken)</td>
+        </tr>
+        }
     }
     </tbody>
 </table>

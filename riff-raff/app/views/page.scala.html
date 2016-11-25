@@ -16,20 +16,15 @@
             padding: 9px 0;
         }
     </style>
-    <link href='@routes.Assets.at("stylesheets/bootstrap.css")' rel="stylesheet">
-    <link href='@routes.Assets.at("stylesheets/jasny-bootstrap.min.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("lib/bootstrap/css/bootstrap.css")' rel="stylesheet">
+    <link href='@routes.Assets.at("lib/jasny-bootstrap/css/jasny-bootstrap.min.css")' rel="stylesheet">
     <link href='@routes.Assets.at("stylesheets/magenta.css")' rel="stylesheet">
-    <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/base/jquery-ui.css" rel="stylesheet">
-
-    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
-    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <link href='@routes.Assets.at("lib/jquery-ui/jquery-ui.min.css")' rel="stylesheet">
 
     <link rel="shortcut icon" type="image/png" href='@routes.Assets.at("images/favicon.png")'>
-    <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js'></script>
-    <script src='https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js'></script>
-    <script src='/assets/javascripts/moment.min.js'></script>
+    <script src='@routes.Assets.at("lib/jquery/jquery.min.js")'></script>
+    <script src='@routes.Assets.at("lib/jquery-ui/jquery-ui.min.js")'></script>
+    <script src='@routes.Assets.at("lib/momentjs/min/moment.min.js")'></script>
     <!-- routes used in AJAX functions -->
     <script src='@routes.Application.javascriptRoutes'></script>
     <script src='@routes.Assets.at("javascripts/tooltips.js")'></script>
@@ -62,8 +57,9 @@
 <!-- Le javascript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script src='@routes.Assets.at("javascripts/bootstrap.js")'></script>
-<script src='@routes.Assets.at("javascripts/jasny-bootstrap.min.js")'></script>
+<script src='@routes.Assets.at("lib/bootstrap/js/bootstrap.min.js")'></script>
+<script src='@routes.Assets.at("lib/jasny-bootstrap/js/jasny-bootstrap.min.js")'></script>
+<script src='@routes.Assets.at("lib/bootstrap-menu/dist/BootstrapMenu.min.js")'></script>
 
 </body>
 </html>
