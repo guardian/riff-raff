@@ -16,16 +16,49 @@ import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingCli
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.model.BucketLifecycleConfiguration
+import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
+import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 object S3 extends AWS {
   def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3Client =
     new AmazonS3Client(provider(keyRing), config).withRegion(awsRegion(region))
+
+  /**
+    * Check (and if necessary create) that an S3 bucket exists for the account and region. Note that it is assumed that
+    * the clients and region provided all match up - i.e. they are all configured to the same region and use the same
+    * credentials.
+    * @param prefix The prefix for the bucket. The resulting bucket will be <prefix>-<accountNumber>-<region>.
+    * @param s3Client S3 client used to check and create the bucket and set a lifecycle policy if deleteAfterDays is set
+    * @param stsClient The STS client that is used to retrieve the account number
+    * @param region The region in which the bucket should be created
+    * @param deleteAfterDays If set then if this bucket is created then a lifecycle policy rule is created to delete
+    *                        objects uploaded to this bucket after the number of days specified
+    *
+    * @return
+    */
+  def accountSpecificBucket(prefix: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient,
+    region: Region, deleteAfterDays: Option[Int] = None): String = {
+    val callerIdentityResponse = stsClient.getCallerIdentity(new GetCallerIdentityRequest())
+    val accountNumber = callerIdentityResponse.getAccount
+    val bucketName = s"$prefix-$accountNumber-${region.name}"
+    if (!s3Client.doesBucketExist(bucketName)) {
+      s3Client.createBucket(bucketName, region.name)
+      deleteAfterDays.foreach { days =>
+        s3Client.setBucketLifecycleConfiguration(
+          bucketName,
+          new BucketLifecycleConfiguration(List(new Rule().withExpirationInDays(days)).asJava)
+        )
+      }
+    }
+    bucketName
+  }
 }
 
 object Lambda extends AWS {
@@ -204,6 +237,10 @@ object CloudFormation extends AWS {
   case class SpecifiedValue(value: String) extends ParameterValue
   case object UseExistingValue extends ParameterValue
 
+  sealed trait Template
+  case class TemplateBody(body: String) extends Template
+  case class TemplateUrl(url: String) extends Template
+
   val CAPABILITY_IAM = "CAPABILITY_IAM"
 
   def makeCfnClient(keyRing: KeyRing, region: Region): AmazonCloudFormationClient = {
@@ -213,17 +250,21 @@ object CloudFormation extends AWS {
   def validateTemplate(templateBody: String, client: AmazonCloudFormationClient) =
     client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
 
-  def updateStack(name: String, templateBody: String, parameters: Map[String, ParameterValue],
-    client: AmazonCloudFormationClient) =
+  def updateStack(name: String, template: Template, parameters: Map[String, ParameterValue],
+    client: AmazonCloudFormationClient) = {
 
-    client.updateStack(
-      new UpdateStackRequest().withStackName(name).withTemplateBody(templateBody).withCapabilities(CAPABILITY_IAM).withParameters(
-        parameters map {
-          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
-        } toSeq: _*
-      )
+    val request = new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_IAM).withParameters(
+      parameters map {
+        case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+        case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+      } toSeq: _*
     )
+    val requestWithTemplate = template match {
+      case TemplateBody(body) => request.withTemplateBody(body)
+      case TemplateUrl(url) => request.withTemplateURL(url)
+    }
+    client.updateStack(requestWithTemplate)
+  }
 
   def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: AmazonCloudFormationClient) =
     client.updateStack(
@@ -239,12 +280,11 @@ object CloudFormation extends AWS {
         )
     )
 
-  def createStack(reporter: DeployReporter, name: String, maybeTags: Option[Map[String, String]], templateBody: String, parameters: Map[String, ParameterValue],
+  def createStack(reporter: DeployReporter, name: String, maybeTags: Option[Map[String, String]], template: Template, parameters: Map[String, ParameterValue],
     client: AmazonCloudFormationClient) = {
 
     val request = new CreateStackRequest()
       .withStackName(name)
-      .withTemplateBody(templateBody)
       .withCapabilities(CAPABILITY_IAM)
       .withParameters(
         parameters map {
@@ -253,12 +293,17 @@ object CloudFormation extends AWS {
         } toSeq: _*
       )
 
+    val requestWithTemplate = template match {
+      case TemplateBody(body) => request.withTemplateBody(body)
+      case TemplateUrl(url) => request.withTemplateURL(url)
+    }
+
     maybeTags.foreach { tags =>
       val sdkTags = tags.map{ case (key, value) => new CfnTag().withKey(key).withValue(value) }
       request.setTags(sdkTags.asJavaCollection)
     }
 
-    client.createStack(request)
+    client.createStack(requestWithTemplate)
   }
 
   def describeStack(name: String, client: AmazonCloudFormationClient) =
@@ -301,6 +346,12 @@ object CloudFormation extends AWS {
       case multipleStacks =>
         reporter.fail(s"More than one cloudformation stack match for $tags (matched ${multipleStacks.map(_.getStackName).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
+  }
+}
+
+object STS extends AWS {
+  def makeSTSclient(keyRing: KeyRing, region: Region): AWSSecurityTokenServiceClient = {
+    new AWSSecurityTokenServiceClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
   }
 }
 
