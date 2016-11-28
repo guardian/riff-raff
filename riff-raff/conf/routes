@@ -31,6 +31,7 @@ POST        /deployment/:uuid/stop                          controllers.DeployCo
 GET         /deployment/confirm                             controllers.DeployController.deployConfirmation(parametersJson:String)
 GET         /deployment/externalRequest                     controllers.DeployController.deployConfirmationExternal
 GET         /deployment/deployAgain                         controllers.DeployController.deployAgain
+GET         /deployment/deployAgain/:uuid                   controllers.DeployController.deployAgainUuid(uuid:String)
 
 GET         /deployment/history                             controllers.DeployController.history
 GET         /deployment/history/update                      controllers.DeployController.historyContent

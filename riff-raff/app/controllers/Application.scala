@@ -200,7 +200,10 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
         routes.javascript.DeployController.stop,
         routes.javascript.DeployController.projectHistory,
         routes.javascript.DeployController.dashboardContent,
-        routes.javascript.DeployController.buildInfo
+        routes.javascript.DeployController.buildInfo,
+        routes.javascript.DeployController.viewUUID,
+        routes.javascript.DeployController.deployAgainUuid,
+        routes.javascript.DeployController.deployConfig
       )
     }.as("text/javascript")
   }
