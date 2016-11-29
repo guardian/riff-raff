@@ -80,10 +80,10 @@ object UpdateCloudFormationTask {
     }
   }
 
-  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient, region: Region): Template = {
+  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient, region: Region, alwaysUploadToS3: Boolean): Template = {
     val templateTooBigForSdkUpload = templateBody.length > 51200
 
-    if (templateTooBigForSdkUpload) {
+    if (alwaysUploadToS3 || templateTooBigForSdkUpload) {
       val bucketName = S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, Some(1))
       val keyName = s"$stackName-${new DateTime().getMillis}"
       s3Client.putObject(bucketName, keyName, templateBody)
@@ -104,7 +104,8 @@ case class UpdateCloudFormationTask(
   latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
-  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+  createStackIfAbsent:Boolean,
+  alwaysUploadToS3:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   import UpdateCloudFormationTask._
 
@@ -137,7 +138,7 @@ case class UpdateCloudFormationTask(
     maybeCfStack match {
       case Some(cloudFormationStackName) =>
         try {
-          val template = processTemplate(cloudFormationStackName.getStackName, templateString, s3Client, stsClient, region)
+          val template = processTemplate(cloudFormationStackName.getStackName, templateString, s3Client, stsClient, region, alwaysUploadToS3)
           CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
         } catch {
           case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
@@ -151,7 +152,7 @@ case class UpdateCloudFormationTask(
           val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
           val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
           reporter.info(s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
-          val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region)
+          val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3)
           CloudFormation.createStack(reporter, nameToCallStack, stackTags, template, parameters, cfnClient)
         } else {
           reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")

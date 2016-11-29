@@ -31,7 +31,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     inside(CloudFormation.actionsMap("updateStack").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
-          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent) =>
+          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent, alwaysUpload) =>
             taskRegion should be(region)
             stackName should be(LookupByName(cfnStackName))
             path should be(S3Path("artifact-bucket", "test/123/cloud-formation/cfn.json"))
@@ -41,6 +41,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
             stage should be(PROD)
             stack should be(NamedStack("cfn"))
             ifAbsent should be(true)
+            alwaysUpload shouldBe false
         }
         inside(checkTask) {
           case CheckUpdateEventsTask(taskRegion, updateStackName) =>
