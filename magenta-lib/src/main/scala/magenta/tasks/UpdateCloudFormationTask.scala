@@ -71,7 +71,7 @@ object UpdateCloudFormationTask {
       case LookupByName(name) => name
       case LookupByTags(tags) =>
         val orderedTags = tags.toList.sortBy{ case (key, value) =>
-          // order by the intrisic ordering and then alphabetically for keys we don't know
+          // order by the intrinsic ordering and then alphabetically for keys we don't know
           val order = intrinsicKeyOrder.indexOf(key)
           val intrinsicOrdering = if (order == -1) Int.MaxValue else order
           (intrinsicOrdering, key)
@@ -97,7 +97,7 @@ object UpdateCloudFormationTask {
 case class UpdateCloudFormationTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  template: S3Path,
+  templatePath: S3Path,
   userParameters: Map[String, String],
   amiParamName: String,
   amiTags: Map[String, String],
@@ -119,12 +119,16 @@ case class UpdateCloudFormationTask(
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
-    val templateString = template.fetchContentAsString match {
+    val templateString = templatePath.fetchContentAsString match {
       case Some(string) => string
-      case None => reporter.fail(s"Unable to locate cloudformation template s3://${template.bucket}/${template.key}")
+      case None => reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
     }
 
-    val templateParameters = CloudFormation.validateTemplate(templateString, cfnClient).getParameters
+    val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
+
+    val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3)
+
+    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
@@ -138,7 +142,6 @@ case class UpdateCloudFormationTask(
     maybeCfStack match {
       case Some(cloudFormationStackName) =>
         try {
-          val template = processTemplate(cloudFormationStackName.getStackName, templateString, s3Client, stsClient, region, alwaysUploadToS3)
           CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
         } catch {
           case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
@@ -149,10 +152,8 @@ case class UpdateCloudFormationTask(
         }
       case None =>
         if (createStackIfAbsent) {
-          val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
           val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
           reporter.info(s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
-          val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3)
           CloudFormation.createStack(reporter, nameToCallStack, stackTags, template, parameters, cfnClient)
         } else {
           reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
@@ -160,7 +161,7 @@ case class UpdateCloudFormationTask(
     }
   }
 
-  def description = s"Updating CloudFormation stack $cloudFormationStackLookupStrategy with ${template.fileName}"
+  def description = s"Updating CloudFormation stack $cloudFormationStackLookupStrategy with ${templatePath.fileName}"
   def verbose = description
 }
 

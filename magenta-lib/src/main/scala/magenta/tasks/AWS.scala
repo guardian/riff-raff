@@ -247,8 +247,13 @@ object CloudFormation extends AWS {
     new AmazonCloudFormationClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
   }
 
-  def validateTemplate(templateBody: String, client: AmazonCloudFormationClient) =
-    client.validateTemplate(new ValidateTemplateRequest().withTemplateBody(templateBody))
+  def validateTemplate(template: Template, client: AmazonCloudFormationClient) = {
+    val request = template match {
+      case TemplateBody(body) => new ValidateTemplateRequest().withTemplateBody(body)
+      case TemplateUrl(url) => new ValidateTemplateRequest().withTemplateURL(url)
+    }
+    client.validateTemplate(request)
+  }
 
   def updateStack(name: String, template: Template, parameters: Map[String, ParameterValue],
     client: AmazonCloudFormationClient) = {
