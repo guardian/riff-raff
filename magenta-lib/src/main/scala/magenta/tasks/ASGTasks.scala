@@ -11,7 +11,7 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     val doubleCapacity = asg.getDesiredCapacity * 2
     reporter.verbose(s"ASG desired = ${asg.getDesiredCapacity}; ASG max = ${asg.getMaxSize}; Target = $doubleCapacity")
-    if (asg.getMaxSize < doubleCapacity || doubleCapacity == 0) {
+    if (asg.getMaxSize < doubleCapacity) {
       reporter.fail(
         s"Autoscaling group does not have the capacity to deploy current max = ${asg.getMaxSize} - desired max = $doubleCapacity"
       )
@@ -23,9 +23,13 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
 
 case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
-    implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-    reporter.verbose(s"Tagging ${asg.getInstances.toList.map(_.getInstanceId).mkString(", ")}")
-    EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate", ec2Client)
+    if (asg.getInstances.nonEmpty) {
+      implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
+      reporter.verbose(s"Tagging ${asg.getInstances.toList.map(_.getInstanceId).mkString(", ")}")
+      EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate", ec2Client)
+    } else {
+      reporter.verbose(s"No instances to tag")
+    }
   }
 
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
@@ -42,21 +46,21 @@ case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region
   lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for apps ${pkg.apps.mkString(", ")}"
 }
 
-sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends Task {
-
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    Thread.sleep(durationMillis)
+sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends ASGTask {
+  def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient): Unit = {
+    if (asg.getDesiredCapacity == 0 && asg.getInstances.isEmpty)
+      reporter.verbose("Skipping pause as there are no instances and desired capacity is zero")
+    else
+      Thread.sleep(durationMillis)
   }
-
-  def description = verbose
 }
 
-case class HealthcheckGrace(durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
-  def verbose: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
+case class HealthcheckGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+  def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class WarmupGrace(durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
-  def verbose: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
+case class WarmupGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+  def description: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
 }
 
 case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {

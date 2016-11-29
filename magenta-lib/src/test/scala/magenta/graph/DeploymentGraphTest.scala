@@ -2,7 +2,7 @@ package magenta.graph
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{Host, KeyRing, Region}
-import magenta.tasks.{HealthcheckGrace, S3Upload, SayHello}
+import magenta.tasks.{ChangeSwitch, HealthcheckGrace, S3Upload, SayHello}
 import org.scalatest.{FlatSpec, ShouldMatchers}
 import org.scalatest.mock.MockitoSugar
 
@@ -21,7 +21,7 @@ class DeploymentGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar
   val threeSimpleTasks = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(Host("testHost")),
-    HealthcheckGrace(1000)
+    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
 }

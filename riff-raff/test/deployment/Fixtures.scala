@@ -15,12 +15,12 @@ object Fixtures extends MockitoSugar {
   val threeSimpleTasks: List[Task] = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(Host("testHost")),
-    HealthcheckGrace(1000)
+    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
   val twoTasks = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
-    HealthcheckGrace(1000)
+    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
   val simpleGraph: Graph[DeploymentTasks] = {

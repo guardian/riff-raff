@@ -34,9 +34,9 @@ class AutoScalingTest extends FlatSpec with Matchers {
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),
       TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
       DoubleSize(p, PROD, UnnamedStack, Region("eu-west-1")),
-      HealthcheckGrace(20000),
+      HealthcheckGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 20000),
       WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000, Region("eu-west-1")),
-      WarmupGrace(1000),
+      WarmupGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 1000),
       WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000, Region("eu-west-1")),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
       ResumeAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1"))
@@ -77,9 +77,9 @@ class AutoScalingTest extends FlatSpec with Matchers {
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),
       TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
       DoubleSize(p, PROD, UnnamedStack, Region("eu-west-1")),
-      HealthcheckGrace(30000),
+      HealthcheckGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 30000),
       WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000, Region("eu-west-1")),
-      WarmupGrace(20000),
+      WarmupGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 20000),
       WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000, Region("eu-west-1")),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
       ResumeAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1"))
