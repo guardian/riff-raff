@@ -80,14 +80,17 @@ object UpdateCloudFormationTask {
     }
   }
 
-  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient, region: Region, alwaysUploadToS3: Boolean): Template = {
+  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient,
+    region: Region, alwaysUploadToS3: Boolean, reporter: DeployReporter): Template = {
     val templateTooBigForSdkUpload = templateBody.length > 51200
 
     if (alwaysUploadToS3 || templateTooBigForSdkUpload) {
-      val bucketName = S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, Some(1))
+      val bucketName = S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, reporter, Some(1))
       val keyName = s"$stackName-${new DateTime().getMillis}"
+      reporter.verbose(s"Uploading template as $keyName to S3 bucket $bucketName")
       s3Client.putObject(bucketName, keyName, templateBody)
-      TemplateUrl(s"s3://$bucketName/$keyName")
+      val url = s3Client.getUrl(bucketName, keyName)
+      TemplateUrl(url.toString)
     } else {
       TemplateBody(templateBody)
     }
@@ -126,7 +129,7 @@ case class UpdateCloudFormationTask(
 
     val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
 
-    val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3)
+    val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3, reporter)
 
     val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))

@@ -44,16 +44,24 @@ object S3 extends AWS {
     * @return
     */
   def accountSpecificBucket(prefix: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient,
-    region: Region, deleteAfterDays: Option[Int] = None): String = {
+    region: Region, reporter: DeployReporter, deleteAfterDays: Option[Int] = None): String = {
     val callerIdentityResponse = stsClient.getCallerIdentity(new GetCallerIdentityRequest())
     val accountNumber = callerIdentityResponse.getAccount
     val bucketName = s"$prefix-$accountNumber-${region.name}"
     if (!s3Client.doesBucketExist(bucketName)) {
+      reporter.info(s"Creating bucket for this account and region: $bucketName")
       s3Client.createBucket(bucketName, region.name)
       deleteAfterDays.foreach { days =>
+        val daysString = s"$days day${if(days==1) "" else "s"}"
+        reporter.info(s"Creating lifecycle rule on bucket that deletes objects after $daysString")
         s3Client.setBucketLifecycleConfiguration(
           bucketName,
-          new BucketLifecycleConfiguration(List(new Rule().withExpirationInDays(days)).asJava)
+          new BucketLifecycleConfiguration().withRules(
+            new Rule()
+              .withId(s"Rule to delete objects after $daysString")
+              .withStatus(BucketLifecycleConfiguration.ENABLED)
+              .withExpirationInDays(days)
+          )
         )
       }
     }
