@@ -3,8 +3,9 @@ package magenta.tasks
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.cloudformation.model.StackEvent
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
 import magenta.artifact.S3Path
-import magenta.tasks.CloudFormation.{ParameterValue, SpecifiedValue, UseExistingValue}
+import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
@@ -78,6 +79,19 @@ object UpdateCloudFormationTask {
         orderedTags.map{ case (key, value) => value }.mkString("-")
     }
   }
+
+  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient, region: Region, alwaysUploadToS3: Boolean): Template = {
+    val templateTooBigForSdkUpload = templateBody.length > 51200
+
+    if (alwaysUploadToS3 || templateTooBigForSdkUpload) {
+      val bucketName = S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, Some(1))
+      val keyName = s"$stackName-${new DateTime().getMillis}"
+      s3Client.putObject(bucketName, keyName, templateBody)
+      TemplateUrl(s"s3://$bucketName/$keyName")
+    } else {
+      TemplateBody(templateBody)
+    }
+  }
 }
 
 case class UpdateCloudFormationTask(
@@ -90,12 +104,15 @@ case class UpdateCloudFormationTask(
   latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
-  createStackIfAbsent:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+  createStackIfAbsent:Boolean,
+  alwaysUploadToS3:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+    val s3Client = S3.makeS3client(keyRing, region)
+    val stsClient = STS.makeSTSclient(keyRing, region)
 
     val maybeCfStack = cloudFormationStackLookupStrategy match {
       case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName, cfnClient)
@@ -121,7 +138,8 @@ case class UpdateCloudFormationTask(
     maybeCfStack match {
       case Some(cloudFormationStackName) =>
         try {
-          CloudFormation.updateStack(cloudFormationStackName.getStackName, templateString, parameters, cfnClient)
+          val template = processTemplate(cloudFormationStackName.getStackName, templateString, s3Client, stsClient, region, alwaysUploadToS3)
+          CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
         } catch {
           case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
             reporter.info("Cloudformation update has no changes to template or parameters")
@@ -134,7 +152,8 @@ case class UpdateCloudFormationTask(
           val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
           val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
           reporter.info(s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
-          CloudFormation.createStack(reporter, nameToCallStack, stackTags, templateString, parameters, cfnClient)
+          val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3)
+          CloudFormation.createStack(reporter, nameToCallStack, stackTags, template, parameters, cfnClient)
         } else {
           reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
         }

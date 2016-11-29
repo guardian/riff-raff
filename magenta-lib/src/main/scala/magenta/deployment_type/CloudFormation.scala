@@ -17,6 +17,13 @@ object CloudFormation extends DeploymentType {
       |This deployment type is not currently recommended for continuous deployment, as CloudFormation
       |will fail if you try to update a CloudFormation stack with a configuration that matches its
       |current state.
+      |
+      |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
+      |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
+      |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
+      |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
+      |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
+      |to this bucket and sent to CloudFormation using the template URL parameter.
     """.stripMargin
 
   val cloudformationStackByTags = Param[Boolean]("cloudFormationStackByTags",
@@ -92,6 +99,7 @@ object CloudFormation extends DeploymentType {
       val globalParams = templateParameters(pkg, target, reporter)
       val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
+      val alwaysUploadToS3 = !pkg.legacyConfig
 
       List(
         UpdateCloudFormationTask(
@@ -104,7 +112,8 @@ object CloudFormation extends DeploymentType {
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack,
-          createStackIfAbsent(pkg, target, reporter)
+          createStackIfAbsent(pkg, target, reporter),
+          alwaysUploadToS3
         ),
         CheckUpdateEventsTask(target.region, cloudFormationStackLookupStrategy)
       )
