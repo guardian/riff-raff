@@ -61,8 +61,18 @@
                 </div>
             }
             <div class="actions pull-right"><p>
-                <a class="btn btn-default" href="@routes.DeployController.deployAgainUuid(record.uuid.toString)" role="button">Deploy Again</a>
-                <a class="btn btn-default" href="@routes.DeployController.deployConfig(record.buildName, record.buildId)" role="button">See configuration</a>
+                <div class="btn-group" role="group">
+                    <a class="btn btn-default" href="@routes.DeployController.deployAgainUuid(record.uuid.toString)" role="button">Deploy Again</a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Show <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a href="@routes.DeployController.deployConfig(record.buildName, record.buildId)">Configuration</a></li>
+                            <li><a href="@routes.DeployController.deployFiles(record.buildName, record.buildId)">Artifact files</a></li>
+                        </ul>
+                    </div>
+                </div>
             </p></div>
         </div>
     </div>

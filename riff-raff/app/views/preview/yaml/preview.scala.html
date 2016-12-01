@@ -9,18 +9,34 @@
     <h3>Preview of deployments for @parameters.build.projectName</h3>
 
     <div>
-        <dl class="dl-horizontal">
-            <dt>Project</dt><dd>@parameters.build.projectName</dd>
-            <dt>Build</dt><dd>@parameters.build.id</dd>
-            <dt>Stage</dt><dd>@parameters.stage.name</dd>
-            @parameters.selector match {
-                case All => {}
-                case DeploymentKeysSelector(keys) => {
-                    <dt>Deployment selections</dt><dd>@keys.map{ key => <div>@snippets.deploymentInstance(key)</div> }</dd>
+        <div class="pull-left">
+            <dl class="dl-horizontal">
+                <dt>Project</dt><dd>@parameters.build.projectName</dd>
+                <dt>Build</dt><dd>@parameters.build.id</dd>
+                <dt>Stage</dt><dd>@parameters.stage.name</dd>
+                @parameters.selector match {
+                    case All => {}
+                    case DeploymentKeysSelector(keys) => {
+                        <dt>Deployment selections</dt><dd>@keys.map{ key => <div>@snippets.deploymentInstance(key)</div> }</dd>
+                    }
                 }
-            }
-        </dl>
+            </dl>
+        </div>
+
+        <div class="actions pull-right"><p>
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Show <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="@routes.DeployController.deployConfig(parameters.build.projectName, parameters.build.id)">Configuration</a></li>
+                    <li><a href="@routes.DeployController.deployFiles(parameters.build.projectName, parameters.build.id)">Files</a></li>
+                </ul>
+            </div>
+        </p></div>
     </div>
+
+    <div class="clearfix"></div>
 
     <div class="content"
       data-ajax-refresh="@routes.PreviewController.showTasks(previewId: String)">

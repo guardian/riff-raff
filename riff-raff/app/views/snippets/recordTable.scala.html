@@ -67,6 +67,7 @@
                         @vcsInfo.map { info => <li><a href="@info.commitUrl">View commit on <strong>@info.name</strong></a></li> }
                         <li><a href="@routes.DeployController.deployAgainUuid(record.uuid.toString)">Deploy again</a></li>
                         <li><a href="@routes.DeployController.deployConfig(record.parameters.build.projectName, record.parameters.build.id)">See configuration</a></li>
+                        <li><a href="@routes.DeployController.deployFiles(record.parameters.build.projectName, record.parameters.build.id)">See files</a></li>
                         @maybeFilter.map { filter =>
                             <li role="separator" class="divider"></li>
                             <li><a href="@{

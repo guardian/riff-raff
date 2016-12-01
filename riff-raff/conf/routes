@@ -51,6 +51,8 @@ GET         /deployment/dashboard                           controllers.DeployCo
 GET         /deployment/dashboard/content                   controllers.DeployController.dashboardContent(projects:String, search:Boolean?=false)
 
 GET         /deployment/request/deployConfig                controllers.DeployController.deployConfig(projectName:String, id:String)
+GET         /deployment/request/deployFiles                 controllers.DeployController.deployFiles(projectName:String, id:String)
+GET         /deployment/request/artifactFile/*key           controllers.DeployController.getArtifactFile(key:String)
 
 # Continuous deployment
 GET         /deployment/continuous                          controllers.ContinuousDeployController.list
