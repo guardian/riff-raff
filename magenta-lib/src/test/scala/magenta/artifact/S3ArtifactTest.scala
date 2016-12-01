@@ -8,6 +8,6 @@ class S3ArtifactTest extends FlatSpec with Matchers {
     val build = Build("testProject", "123")
     val artifact = S3JsonArtifact(build, "myBucket")
     artifact.bucket should be("myBucket")
-    artifact.key should be("testProject/123")
+    artifact.key should be("testProject/123/")
   }
 }
