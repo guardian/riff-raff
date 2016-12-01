@@ -71,19 +71,22 @@ object S3Location extends Loggable {
 case class S3Path(bucket: String, key: String) extends S3Location
 
 object S3Path {
-  def apply(location: S3Location, key: String): S3Path = S3Path(location.bucket, s"${location.key}/$key")
+  def apply(location: S3Location, key: String): S3Path = {
+    val delimiter = if (location.key.endsWith("/")) "" else "/"
+    S3Path(location.bucket, s"${location.key}$delimiter$key")
+  }
 }
 
 case class S3Object(bucket: String, key: String, size: Long) extends S3Location
 
 trait S3Artifact extends S3Location {
   def deployObjectName: String
-  def deployObject = S3Path(bucket, s"$key/$deployObjectName")
+  def deployObject = S3Path(this, deployObjectName)
 }
 
 object S3Artifact {
   def buildPrefix(build: Build): String = {
-    s"${build.projectName}/${build.id}"
+    s"${build.projectName}/${build.id}/"
   }
 }
 

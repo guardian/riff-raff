@@ -88,7 +88,7 @@ object JsonReader {
       },
       jsonPackage.safeData,
       jsonPackage.`type`,
-      S3Path(artifact, s"packages/${jsonPackage.fileName.getOrElse(name)}"),
+      S3Path(artifact, s"packages/${jsonPackage.fileName.getOrElse(name)}/"),
       legacyConfig = true,
       deploymentTypes
     )

@@ -36,7 +36,7 @@ object TaskResolver {
       pkgApps = Seq(App(deployment.app)),
       pkgSpecificData = deployment.parameters,
       deploymentTypeName = deployment.`type`,
-      s3Package = S3Path(artifact, deployment.contentDirectory),
+      s3Package = S3Path(artifact, s"${deployment.contentDirectory}/"),
       legacyConfig = false,
       deploymentTypes = deploymentTypes
     )

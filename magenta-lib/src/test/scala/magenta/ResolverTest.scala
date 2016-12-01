@@ -57,7 +57,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
     val taskList: List[Task] = DeploymentGraph.toTaskList(tasks)
     taskList.size should be (1)
     taskList should be (List(
-      S3Upload(Region("eu-west-1"), "test", Seq((new S3Path("artifact-bucket","tmp/123/packages/htmlapp"), "CODE/htmlapp")), publicReadAcl = true)
+      S3Upload(Region("eu-west-1"), "test", Seq((new S3Path("artifact-bucket","tmp/123/packages/htmlapp/"), "CODE/htmlapp")), publicReadAcl = true)
     ))
   }
 

@@ -147,7 +147,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
     when(artifactClient.getObject(any[String], any[String])).thenReturn(mockObject("Some content for this S3 object"))
 
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package")
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
     val s3Client = mock[AmazonS3Client]
     val putObjectResult = {
       val por = new PutObjectResult
@@ -182,7 +182,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
     when(artifactClient.getObject(any[String], any[String])).thenReturn(mockObject("Some content for this S3 object"))
 
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package")
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
     val s3Client = mock[AmazonS3Client]
     val putObjectResult = {
       val por = new PutObjectResult
@@ -217,7 +217,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package")
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
 
     task.requests.find(_.source == fileOne).get.cacheControl should be(Some("no-cache"))
@@ -233,7 +233,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package")
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""), extensionToMimeType = mimeTypes)(fakeKeyRing, artifactClient)
 
     task.requests.find(_.source == fileOne).get.contentType should be(None)
