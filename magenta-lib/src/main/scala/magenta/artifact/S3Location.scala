@@ -129,7 +129,14 @@ object S3JsonArtifact extends Loggable {
     reporter.verbose("Zip artifact deleted")
   }
 
-  private def subDirectoryPrefix(key: String, file:File): String = if (key.isEmpty) file.getName else s"$key/${file.getName}"
+  private def subDirectoryPrefix(key: String, file:File): String = {
+    if (key.isEmpty) {
+      file.getName
+    } else {
+      val delimiter = if (key.endsWith("/")) "" else "/"
+      s"$key$delimiter${file.getName}"
+    }
+  }
   private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
     if (!file.isDirectory) Seq((file, key))
     else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
