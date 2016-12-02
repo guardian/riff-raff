@@ -3,6 +3,8 @@ package controllers
 import java.net.URLEncoder
 import java.util.UUID
 
+import akka.stream.scaladsl.{Source, StreamConverters}
+import akka.util.ByteString
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
 import controllers.forms.{DeployParameterForm, UuidForm}
@@ -10,10 +12,12 @@ import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult, Us
 import magenta._
 import magenta.artifact._
 import cats.syntax.either._
+import com.amazonaws.services.s3.model.GetObjectRequest
 import magenta.deployment_type.DeploymentType
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.http.HttpEntity
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
@@ -279,6 +283,33 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
       case Some((path, yaml)) if path.extension.contains("yaml") => Ok(yaml).as("text/vnd-yaml")
       case None => NotFound(s"Deploy file not found for $projectName $id")
     }
+  }
+
+  def deployFiles(projectName: String, id: String) = AuthAction { implicit request =>
+    def pathAndContent(artifact: S3Artifact): Option[(S3Artifact, S3Path, String)] = {
+      val deployObjectPath = artifact.deployObject
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+      deployObjectContent.map(content => (artifact, deployObjectPath, content))
+    }
+
+    val build = Build(projectName, id)
+    val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
+      .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
+
+    deployObject.map { case (artifact, path, configFile) =>
+      val objects = artifact.listAll()(Configuration.artifact.aws.client)
+      val relativeObjects = objects.map{ obj => obj.relativeTo(artifact) -> obj}
+      Ok(views.html.artifact.listFiles(request, projectName, id, relativeObjects))
+    } getOrElse {
+      NotFound("Project not found")
+    }
+  }
+
+  def getArtifactFile(key: String) = AuthAction { implicit request =>
+    val s3doc = Configuration.artifact.aws.client.getObject(new GetObjectRequest(Configuration.artifact.aws.bucketName, key))
+    val stream = s3doc.getObjectContent
+    val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
+    Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(s3doc.getObjectMetadata.getContentType)
   }
 
 }
