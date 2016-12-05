@@ -63,6 +63,10 @@ case class WarmupGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, regio
   def description: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
 }
 
+case class TerminationGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+  def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
+}
+
 case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val elbClient = ELB.makeElbClient(keyRing, region)

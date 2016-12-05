@@ -64,6 +64,7 @@ object AutoScaling  extends DeploymentType {
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
+  val terminationGrace = Param("terminationGrace", "Number of seconds to wait for the AWS api to stabilise after instance termination").default(10)
 
   val prefixStage = Param[Boolean]("prefixStage",
     documentation = "Whether to prefix `stage` to the S3 location"
@@ -108,6 +109,8 @@ object AutoScaling  extends DeploymentType {
       WarmupGrace(pkg, parameters.stage, stack, target.region, warmupGrace(pkg, target, reporter) * 1000),
       WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       CullInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
+      TerminationGrace(pkg, parameters.stage, stack, target.region, terminationGrace(pkg, target, reporter) * 1000),
+      WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
     )
   }
