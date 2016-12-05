@@ -197,11 +197,17 @@ class DeployGroupRunner(
     deployContext.foreach(c => rootReporter.taskList(c.tasks.toList.flatMap(_.tasks)))
   }
 
+  private var actorIndex = 0
+  private def nextActorName() = {
+    actorIndex += 1
+    s"${record.uuid}-$actorIndex"
+  }
+
   private def runTasks(tasksList: List[ValueNode[DeploymentTasks]]) = {
     try {
       honourStopFlag(rootReporter) {
         tasksList.zipWithIndex.foreach { case (ValueNode(tasks), index) =>
-          val actorName = s"${record.uuid}-${context.children.size}"
+          val actorName = nextActorName()
           log.debug(s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
