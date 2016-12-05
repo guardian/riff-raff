@@ -16,7 +16,7 @@ import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingCli
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
-import com.amazonaws.services.s3.model.BucketLifecycleConfiguration
+import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
@@ -49,8 +49,12 @@ object S3 extends AWS {
     val accountNumber = callerIdentityResponse.getAccount
     val bucketName = s"$prefix-$accountNumber-${region.name}"
     if (!s3Client.doesBucketExist(bucketName)) {
-      reporter.info(s"Creating bucket for this account and region: $bucketName")
-      s3Client.createBucket(bucketName, region.name)
+      reporter.info(s"Creating bucket for this account and region: $bucketName ${region.name}")
+      val createBucketRequest = region.name match {
+        case "us-east-1" => new CreateBucketRequest(bucketName) // this needs to be special cased as setting this explicitly blows up
+        case otherRegion => new CreateBucketRequest(bucketName, otherRegion)
+      }
+      s3Client.createBucket(createBucketRequest)
       deleteAfterDays.foreach { days =>
         val daysString = s"$days day${if(days==1) "" else "s"}"
         reporter.info(s"Creating lifecycle rule on bucket that deletes objects after $daysString")
