@@ -39,6 +39,8 @@ class AutoScalingTest extends FlatSpec with Matchers {
       WarmupGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 1000),
       WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000, Region("eu-west-1")),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
+      TerminationGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 10000),
+      WaitForStabilization(p, PROD, UnnamedStack, 15 * 60 * 1000, Region("eu-west-1")),
       ResumeAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1"))
     ))
   }
@@ -63,7 +65,8 @@ class AutoScalingTest extends FlatSpec with Matchers {
       "bucket" -> JsString("asg-bucket"),
       "secondsToWait" -> JsNumber(3 * 60),
       "healthcheckGrace" -> JsNumber(30),
-      "warmupGrace" -> JsNumber(20)
+      "warmupGrace" -> JsNumber(20),
+      "terminationGrace" -> JsNumber(11)
     )
 
     val app = Seq(App("app"))
@@ -82,6 +85,8 @@ class AutoScalingTest extends FlatSpec with Matchers {
       WarmupGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 20000),
       WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000, Region("eu-west-1")),
       CullInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
+      TerminationGrace(p, PROD, UnnamedStack, Region("eu-west-1"), 11000),
+      WaitForStabilization(p, PROD, UnnamedStack, 3 * 60 * 1000, Region("eu-west-1")),
       ResumeAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1"))
     ))
   }
