@@ -8,7 +8,7 @@ import akka.util.ByteString
 import ci.{Builds, S3Tag, TagClassification}
 import conf.Configuration
 import controllers.forms.{DeployParameterForm, UuidForm}
-import deployment.{Deployments, LegacyPreviewController, LegacyPreviewResult, UserRequestSource}
+import deployment._
 import magenta._
 import magenta.artifact._
 import cats.syntax.either._
@@ -168,12 +168,13 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     Ok(Json.toJson(possibleProjects))
   }
 
-  def projectHistory(project: String) = AuthAction {
+  def deployHistory(project: String, maybeStage: Option[String]) = AuthAction { request =>
     if (project.trim.isEmpty) {
       Ok("")
     } else {
-      val buildMap = Deployments.getLastCompletedDeploys(project)
-      Ok(views.html.deploy.projectHistory(project, buildMap))
+      val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
+      val records = Deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).reverse
+      Ok(views.html.deploy.deployHistory(project, maybeStage, records))
     }
   }
 

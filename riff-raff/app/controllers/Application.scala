@@ -198,7 +198,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     Ok{
       JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.DeployController.stop,
-        routes.javascript.DeployController.projectHistory,
+        routes.javascript.DeployController.deployHistory,
         routes.javascript.DeployController.dashboardContent,
         routes.javascript.DeployController.buildInfo,
         routes.javascript.DeployController.viewUUID,

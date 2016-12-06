@@ -1,4 +1,4 @@
-@(records: List[deployment.Record], maybeFilter: Option[deployment.DeployFilterPagination] = None)
+@(records: List[deployment.Record], maybeFilter: Option[deployment.DeployFilterPagination] = None, allColumns: Boolean = true)
 @import deployment._
 @import html.helper.magenta.htmlTooltip
 
@@ -9,15 +9,21 @@
     <thead>
     <tr>
         <th>Time</th>
+        @if(allColumns) {
         <th>Deployer</th>
+        }
         <th>Project</th>
         <th>Stage</th>
         <th>Build</th>
-        <th>Branch</th>
-        <th>Recipe</th>
-        <th>Stacks</th>
+        @if(allColumns) {
+            <th>Branch</th>
+            <th>Recipe</th>
+            <th>Stacks</th>
+        }
         <th>Status</th>
+        @if(allColumns) {
         <th></th>
+        }
     </tr>
     </thead>
     <tbody class="rowlink" data-provides="rowlink">
@@ -25,22 +31,28 @@
         @defining(record.vcsInfo) { vcsInfo =>
         <tr class="rowlink">
             <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
+            @if(allColumns) {
             <td><span class="label label-default">@record.deployerName</span></td>
+            }
             <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
             <td>@record.stage.name</td>
             <td>@record.buildId</td>
 
-            <td>@htmlTooltip(placement="left"){
-              @vcsInfo.map { info =>
-                <strong>@info.name</strong> @info.repo<br/>
-                @info.revision
-              }
-            }{
-                @record.metaData.get("branch").getOrElse("unknown")
-            }</td>
+            @if(allColumns) {
+                <td>@htmlTooltip(placement = "left") {
+                    @vcsInfo.map { info =>
+                        <strong>@info.name</strong> @info.repo <br/>
+                    @info.revision
+                    }
+                } {
+                    @record.metaData.get("branch").getOrElse("unknown")
+                }</td>
 
-            <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
-            <td>@if(record.parameters.stacks.nonEmpty){ @record.parameters.stacks.map(_.name).mkString(", ") }</td>
+                <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
+                <td>@if(record.parameters.stacks.nonEmpty) {
+                    @record.parameters.stacks.map(_.name).mkString(", ")
+                }</td>
+            }
             <td>
                 @htmlTooltip(placement="left"){
                     @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
@@ -57,43 +69,50 @@
                 }
                 }
             </td>
-            <td class="rowlink-skip">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true"></span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-right">
-                        <li><a href="@routes.DeployController.viewUUID(record.uuid.toString)">View log</a></li>
-                        @vcsInfo.map { info => <li><a href="@info.commitUrl">View commit on <strong>@info.name</strong></a></li> }
-                        <li><a href="@routes.DeployController.deployAgainUuid(record.uuid.toString)">Deploy again</a></li>
-                        <li><a href="@routes.DeployController.deployConfig(record.parameters.build.projectName, record.parameters.build.id)">See configuration</a></li>
-                        <li><a href="@routes.DeployController.deployFiles(record.parameters.build.projectName, record.parameters.build.id)">See files</a></li>
-                        @maybeFilter.map { filter =>
-                            <li role="separator" class="divider"></li>
-                            <li><a href="@{
-                                routes.DeployController.history()
-                            }?@{
-                                filter.replaceFilter(_.withStage(Some(record.parameters.stage.name))).q
-                            }">Filter Stage=<strong>@record.parameters.stage.name</strong></a></li>
-                            <li><a href="@{
-                                routes.DeployController.history()
-                            }?@{
-                                filter.replaceFilter(_.withProjectName(Some(record.parameters.build.projectName))).q
-                            }">Filter Project=<strong>@record.parameters.build.projectName</strong></a></li>
-                            <li><a href="@{
-                                routes.DeployController.history()
-                            }?@{
-                                filter.replaceFilter(_.withStatus(Some(record.state))).q
-                            }">Filter Status=<strong>@record.state.toString</strong></a></li>
-                            <li><a href="@{
-                                routes.DeployController.history()
-                            }?@{
-                                filter.replaceFilter(_.withDeployer(Some(record.parameters.deployer.name))).q
-                            }">Filter Deployer=<strong>@record.parameters.deployer.name</strong></a></li>
-                        }
-                    </ul>
-                </div>
-            </td>
+            @if(allColumns) {
+                <td class="rowlink-skip">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true"></span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-right">
+                            <li><a href="@routes.DeployController.viewUUID(record.uuid.toString)">View log</a></li>
+                            @vcsInfo.map { info => <li><a href="@info.commitUrl">
+                                View commit on <strong>@info.name</strong></a></li>
+                            }
+                            <li><a href="@routes.DeployController.deployAgainUuid(record.uuid.toString)">
+                                Deploy again</a></li>
+                            <li><a href="@routes.DeployController.deployConfig(record.parameters.build.projectName, record.parameters.build.id)">
+                                See configuration</a></li>
+                            <li><a href="@routes.DeployController.deployFiles(record.parameters.build.projectName, record.parameters.build.id)">
+                                See files</a></li>
+                            @maybeFilter.map { filter =>
+                                <li role="separator" class="divider"></li>
+                                <li><a href="@{
+                                    routes.DeployController.history()
+                                }?@{
+                                    filter.replaceFilter(_.withStage(Some(record.parameters.stage.name))).q
+                                }">Filter Stage=<strong>@record.parameters.stage.name</strong></a></li>
+                                <li><a href="@{
+                                    routes.DeployController.history()
+                                }?@{
+                                    filter.replaceFilter(_.withProjectName(Some(record.parameters.build.projectName))).q
+                                }">Filter Project=<strong>@record.parameters.build.projectName</strong></a></li>
+                                <li><a href="@{
+                                    routes.DeployController.history()
+                                }?@{
+                                    filter.replaceFilter(_.withStatus(Some(record.state))).q
+                                }">Filter Status=<strong>@record.state.toString</strong></a></li>
+                                <li><a href="@{
+                                    routes.DeployController.history()
+                                }?@{
+                                    filter.replaceFilter(_.withDeployer(Some(record.parameters.deployer.name))).q
+                                }">Filter Deployer=<strong>@record.parameters.deployer.name</strong></a></li>
+                            }
+                        </ul>
+                    </div>
+                </td>
+            }
         </tr>
         }
     }
