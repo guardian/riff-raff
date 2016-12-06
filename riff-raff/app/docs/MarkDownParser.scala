@@ -27,9 +27,7 @@ object MarkDownParser extends Loggable {
     Html(Try {
       val pegDown = new PegDownProcessor(Extensions.ALL - Extensions.HARDWRAPS - Extensions.ANCHORLINKS)
       linkRenderer match {
-        case Some(renderer) =>
-          logger.info(s"rendering some markdown... with custom renderer $renderer")
-          pegDown.markdownToHtml(markDown, renderer)
+        case Some(renderer) => pegDown.markdownToHtml(markDown, renderer)
         case None => pegDown.markdownToHtml(markDown)
       }
     }.getOrElse("Unable to parse markdown"))
