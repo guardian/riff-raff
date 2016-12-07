@@ -1,4 +1,4 @@
 @(title: String, request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
         scripts: List[String] = Nil, subNav: Html = Html(""))(content: Html)
 
-@page(title, scripts)(menu.appmenubar(request), subNav)(content)
+@page(title, scripts)(menu.appmenubar(request), subNav, snippets.analytics(conf.Configuration.mixpanel.token, Some(request.user)))(content)

@@ -19,8 +19,11 @@ $ ->
       ->
         $(".promoteDeploy").click (e) ->
           (e).preventDefault()
-          $('#buildInput').val($(this).data("build-id"))
-          $('#stage').val($(this).data("stage"))
+          buildId = $(this).data("build-id")
+          stage = $(this).data("stage")
+          $('#buildInput').val(buildId)
+          $('#stage').val(stage)
+          mixpanel? && mixpanel.track "Deploy promoted", { projectInput: selectedProject, promotedStage: stage, promotedBuildId: buildId}
         $("[rel='tooltip']").tooltip()
     )
 

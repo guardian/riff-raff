@@ -50,6 +50,7 @@ updateAndPush = ->
   verboseParam = if newState then '1' else '0'
   newURL = updateOrAddParam(document.URL, 'verbose', verboseParam)
   window.history.pushState(null,null,newURL)
+  mixpanel? && mixpanel.track "Verbose toggled", {"verbose": newState}
 
 popstate = (event) ->
   verbose = getParamOrElse(document.URL, 'verbose', '0')=='1'
