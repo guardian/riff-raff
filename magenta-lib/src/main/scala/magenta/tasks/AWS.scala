@@ -2,9 +2,10 @@ package magenta.tasks
 
 import java.nio.ByteBuffer
 
-import com.amazonaws.ClientConfiguration
+import com.amazonaws.{AmazonClientException, AmazonWebServiceRequest, ClientConfiguration}
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
 import com.amazonaws.regions.{RegionUtils, Region => AwsRegion}
+import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, Tag => AsgTag, _}
@@ -21,6 +22,7 @@ import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
+import com.gu.management.Loggable
 import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
 import scala.annotation.tailrec
@@ -372,7 +374,7 @@ object STS extends AWS {
   }
 }
 
-trait AWS {
+trait AWS extends Loggable {
   lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
@@ -397,9 +399,20 @@ trait AWS {
 
   def awsRegion(region: Region): AwsRegion = RegionUtils.getRegion(region.name)
 
+  /* A retry condition that logs errors */
+  class LoggingRetryCondition extends SDKDefaultRetryCondition {
+    def exceptionInfo(e: Throwable): String = {
+      s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
+    }
+    override def shouldRetry(originalRequest: AmazonWebServiceRequest, exception: AmazonClientException, retriesAttempted: Int): Boolean = {
+      val willRetry = super.shouldRetry(originalRequest, exception, retriesAttempted)
+      if (willRetry) logger.warn(s"AWS SDK retry $retriesAttempted: ${originalRequest.getClass.getName} threw ${exceptionInfo(exception)}")
+      willRetry
+    }
+  }
   val clientConfiguration = new ClientConfiguration().
     withRetryPolicy(new RetryPolicy(
-      PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
+      new LoggingRetryCondition(),
       PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
       20,
       false
