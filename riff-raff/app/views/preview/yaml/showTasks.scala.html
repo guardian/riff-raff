@@ -41,6 +41,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
                         <span>
                             @b3.checkbox(
                                 form("selectedKeys[]"),
+                                'class -> "task-selection",
                                 'value -> DeploymentKey.asString(key),
                                 'checked -> checkedKeys.contains(key),
                                 '_label -> Html("Run tasks")
