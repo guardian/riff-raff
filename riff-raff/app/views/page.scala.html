@@ -1,4 +1,4 @@
-@(title: String, scripts: List[String] = Nil)(menuBar: Html, subNav: Html)(content: Html)
+@(title: String, scripts: List[String] = Nil)(menuBar: Html, subNav: Html, analytics: Html)(content: Html)
 
 <!DOCTYPE html>
 
@@ -32,6 +32,7 @@
     @for(script <- scripts) {
         <script src='@routes.Assets.at(s"javascripts/$script.js")'></script>
     }
+    @analytics
 </head>
 <body>
 

@@ -177,6 +177,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
+  object mixpanel {
+    val token = configuration.getStringProperty("mixpanel.token")
+  }
+
   def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
     new AWSCredentialsProviderChain(
       new AWSCredentialsProvider {
