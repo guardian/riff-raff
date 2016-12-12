@@ -4,7 +4,7 @@
         parameters: magenta.DeployParameters,
         previewId: String)
 
-@main("Preview", request, List("auto-refresh")) {
+@main("Preview", request, List("auto-refresh", "checkbox-selection")) {
 
     <h3>Preview of deployments for @parameters.build.projectName</h3>
 
@@ -24,14 +24,22 @@
         </div>
 
         <div class="actions pull-right"><p>
-            <div class="btn-group">
-                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Show <span class="caret"></span>
+            <div class="btn-group" role="group" aria-label="...">
+                <button type="button" class="btn btn-default" data-checkbox-target=".task-selection" data-checkbox-state="true">
+                    <span class="glyphicon glyphicon-check" aria-hidden="true"></span> Select all
                 </button>
-                <ul class="dropdown-menu">
-                    <li><a href="@routes.DeployController.deployConfig(parameters.build.projectName, parameters.build.id)">Configuration</a></li>
-                    <li><a href="@routes.DeployController.deployFiles(parameters.build.projectName, parameters.build.id)">Files</a></li>
-                </ul>
+                <button type="button" class="btn btn-default" data-checkbox-target=".task-selection" data-checkbox-state="false">
+                    <span class="glyphicon glyphicon-unchecked" aria-hidden="true"></span> Deselect all
+                </button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Show <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="@routes.DeployController.deployConfig(parameters.build.projectName, parameters.build.id)">Configuration</a></li>
+                        <li><a href="@routes.DeployController.deployFiles(parameters.build.projectName, parameters.build.id)">Files</a></li>
+                    </ul>
+                </div>
             </div>
         </p></div>
     </div>
