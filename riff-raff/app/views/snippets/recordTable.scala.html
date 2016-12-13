@@ -9,17 +9,16 @@
     <thead>
     <tr>
         <th>Time</th>
-        @if(allColumns) {
         <th>Deployer</th>
+        @if(allColumns) {
+            <th>Project</th>
         }
-        <th>Project</th>
         <th>Stage</th>
         <th>Build</th>
         @if(allColumns) {
             <th>Branch</th>
-            <th>Recipe</th>
-            <th>Stacks</th>
         }
+        <th>Params</th>
         <th>Status</th>
         @if(allColumns) {
         <th></th>
@@ -31,10 +30,10 @@
         @defining(record.vcsInfo) { vcsInfo =>
         <tr class="rowlink">
             <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
-            @if(allColumns) {
             <td><span class="label label-default">@record.deployerName</span></td>
+            @if(allColumns) {
+                <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
             }
-            <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
             <td>@record.stage.name</td>
             <td>@record.buildId</td>
 
@@ -47,12 +46,33 @@
                 } {
                     @record.metaData.get("branch").getOrElse("unknown")
                 }</td>
-
-                <td>@Some(record.recipe.name).filter(_ != "default").getOrElse(Html(""))</td>
-                <td>@if(record.parameters.stacks.nonEmpty) {
-                    @record.parameters.stacks.map(_.name).mkString(", ")
-                }</td>
             }
+
+            <td>
+                @defining(Some(record.recipe.name).filter(_ != "default")) { recipe =>
+                    @if(record.parameters.stacks.nonEmpty || recipe.nonEmpty || record.parameters.selector != magenta.input.All) {
+                        @htmlTooltip(placement = "left") {
+                            @Some(record.recipe.name).filter(_ != "default").map{ recipe => <strong>Recipe:</strong> @recipe <br/>}
+                            @if(record.parameters.stacks.nonEmpty) {
+                                <strong>Stacks:</strong> @record.parameters.stacks.map(_.name).mkString(", ") <br/>
+                            }
+                            @record.parameters.selector match {
+                                case magenta.input.DeploymentKeysSelector(ids) => {
+                                    <strong>Restricted to deployments:</strong><br/>
+                                        @ids.map { id =>
+                                            @snippets.deploymentInstance(id)<br/>
+                                        }
+
+                                }
+                                case magenta.input.All => {}
+                            }
+                        } {
+                            <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+                        }
+                    }
+                }
+            </td>
+
             <td>
                 @htmlTooltip(placement="left"){
                     @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))

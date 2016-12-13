@@ -14,13 +14,7 @@ updateDeployInfo = () ->
   $('#deploy-info').load(
     url,
     ->
-      $(".promoteDeploy").click (e) ->
-        (e).preventDefault()
-        buildId =$(this).data("build-id")
-        stage=$(this).data("stage")
-        $('#buildInput').val(buildId)
-        $('#stage').val(stage)
-        mixpanel? && mixpanel.track "Deploy promoted", { projectInput: selectedProject, promotedStage: stage, promotedBuildId: buildId}
+      $('tbody.rowlink').rowlink()
       $("[rel='tooltip']").tooltip()
   )
 
