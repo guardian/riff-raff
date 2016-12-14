@@ -1,7 +1,0 @@
-@(record: deployment.Record, otherStages: List[String])
-
-@otherStages.map { promotionStage =>
-    <button type="button" class="btn btn-default btn-xs promoteDeploy" data-build-id="@record.buildId" data-stage="@promotionStage">
-        @record.buildId to @promotionStage
-    </button>
-}

@@ -4,6 +4,20 @@ menuOpen = false
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
 
+updateDeployInfo = () ->
+  selectedProject =$('#projectInput').val()
+  selectedStage = $('#stage').val()
+  url = if selectedStage == ''
+          jsRoutes.controllers.DeployController.deployHistory(selectedProject).url
+        else
+          jsRoutes.controllers.DeployController.deployHistory(selectedProject, selectedStage).url
+  $('#deploy-info').load(
+    url,
+    ->
+      $('tbody.rowlink').rowlink()
+      $("[rel='tooltip']").tooltip()
+  )
+
 $ ->
   $('#projectInput').each ->
     input = $(this)
@@ -12,20 +26,7 @@ $ ->
       source:serverUrl
       minLength:0
 
-  $('#projectInput').blur (e) ->
-    selectedProject = $(e.target).val()
-    $('#deploy-info').load(
-      jsRoutes.controllers.DeployController.projectHistory(selectedProject).url,
-      ->
-        $(".promoteDeploy").click (e) ->
-          (e).preventDefault()
-          buildId = $(this).data("build-id")
-          stage = $(this).data("stage")
-          $('#buildInput').val(buildId)
-          $('#stage').val(stage)
-          mixpanel? && mixpanel.track "Deploy promoted", { projectInput: selectedProject, promotedStage: stage, promotedBuildId: buildId}
-        $("[rel='tooltip']").tooltip()
-    )
+  $('#projectInput').blur updateDeployInfo
 
   $('#buildInput').each ->
     input = $(this)
@@ -54,3 +55,11 @@ $ ->
   $('#buildInput').focus (e) ->
     if (!menuOpen)
       $(e.target).autocomplete("search")
+
+  $('#stage').change ->
+    console.log('selected a stage')
+    updateDeployInfo()
+
+  updateDeployInfo()
+
+  console.log('initialised')
