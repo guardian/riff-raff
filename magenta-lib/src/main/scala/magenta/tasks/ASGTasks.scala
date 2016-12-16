@@ -109,7 +109,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-    implicit val elbClient = ELB.classicClient(keyRing, region)
+    implicit val elbClient = ELB.client(keyRing, region)
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
     reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")

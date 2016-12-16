@@ -16,7 +16,7 @@ import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesReq
 import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancingClient => ClassicELBClient}
 import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancingClient => ApplicationELBClient}
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
-import com.amazonaws.services.elasticloadbalancingv2.model.{DescribeTargetHealthRequest, TargetHealth, TargetHealthDescription, TargetHealthStateEnum}
+import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
@@ -144,8 +144,8 @@ object ASG extends AWS {
 
   def elbTargetArn(asg: AutoScalingGroup) = asg.getTargetGroupARNs.asScala.headOption
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: ClassicELBClient) = {
-    elbName(asg) foreach (ELB.deregister(_, instance, elbClient))
+  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: ELB.Client) = {
+    ELB.deregister(elbName(asg), elbTargetArn(asg), instance, elbClient)
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
@@ -220,6 +220,7 @@ object ASG extends AWS {
 }
 
 object ELB extends AWS {
+
   case class Client(classic: ClassicELBClient, application: ApplicationELBClient)
 
   def client(keyRing: KeyRing, region: Region): Client =
@@ -239,10 +240,16 @@ object ELB extends AWS {
     client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName))
       .getInstanceStates.asScala.toList.map(_.getState)
 
-  def deregister(elbName: String, instance: ASGInstance, client: ClassicELBClient) =
-    client.deregisterInstancesFromLoadBalancer(
-      new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
-        .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
+  def deregister(elbName: Option[String], elbTargetARN: Option[String], instance: ASGInstance, client: Client) = {
+    elbName.foreach(name =>
+      client.classic.deregisterInstancesFromLoadBalancer(
+        new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(name)
+          .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId))))
+    elbTargetARN.foreach(arn =>
+      client.application.deregisterTargets(
+        new DeregisterTargetsRequest().withTargetGroupArn(arn)
+          .withTargets(new TargetDescription().withId(instance.getInstanceId))))
+  }
 }
 
 object EC2 extends AWS {
