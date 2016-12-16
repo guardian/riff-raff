@@ -4,8 +4,10 @@ import java.util.UUID
 
 import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
-import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
+import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancingClient => ClassicELBClient}
+import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancingClient => ApplicationELBClient}
 import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResult, InstanceState, Instance => ELBInstance}
+import com.amazonaws.services.elasticloadbalancingv2.model.{TagDescription => _, _}
 import magenta.artifact.S3Path
 import magenta.deployment_type.DeploymentType
 import magenta.{App, KeyRing, Stage, _}
@@ -121,40 +123,69 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "wait for instances in ELB to stabilise if there is one" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
-    val elbClientMock = mock[AmazonElasticLoadBalancingClient]
+    val appELBClient = mock[ApplicationELBClient]
+    val classicELBClient = mock[ClassicELBClient]
 
     val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD").withDesiredCapacity(1)
 
-    when (elbClientMock.describeInstanceHealth(
+    when (classicELBClient.describeInstanceHealth(
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Left("Only 0 of 1 ELB instances InService")
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+      Left("Only 0 of 1 ELB instances InService")
 
-    when (elbClientMock.describeInstanceHealth(
+    when (classicELBClient.describeInstanceHealth(
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("InService")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Right(())
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+  }
+
+  it should "wait for instances in an ELB target group to be bealthy" in {
+    val asgClientMock = mock[AmazonAutoScalingClient]
+    val appELBClient = mock[ApplicationELBClient]
+    val classicELBClient = mock[ClassicELBClient]
+
+    val group = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
+      .withTargetGroupARNs("elbTargetARN")
+      .withDesiredCapacity(1)
+
+    when (appELBClient.describeTargetHealth(
+      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
+    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
+      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(TargetHealthStateEnum.Unhealthy))))
+
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+      Left("Only 0 of 1 Application ELB instances healthy")
+
+    when (appELBClient.describeTargetHealth(
+      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
+    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
+      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(TargetHealthStateEnum.Healthy))))
+
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "just check ASG health for stability if there is no ELB" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
-    val elbClientMock = mock[AmazonElasticLoadBalancingClient]
+    val appELBClient = mock[ApplicationELBClient]
+    val classicELBClient = mock[ClassicELBClient]
 
     val group = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withHealthStatus("Foobar"))
 
-    when (elbClientMock.describeInstanceHealth(
+    when (classicELBClient.describeInstanceHealth(
       new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
     )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
 
-    ASG.isStabilized(group, asgClientMock, elbClientMock) shouldBe Left("Only 0 of 1 instances are InService")
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+      Left("Only 0 of 1 instances InService")
 
     val updatedGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
       .withDesiredCapacity(1).withInstances(new ASGInstance().withLifecycleState(LifecycleState.InService))
 
-    ASG.isStabilized(updatedGroup, asgClientMock, elbClientMock) shouldBe Right(())
+    ASG.isStabilized(updatedGroup, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {

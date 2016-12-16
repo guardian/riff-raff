@@ -41,7 +41,7 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-    implicit val elbClient = ELB.makeElbClient(keyRing, region)
+    implicit val elbClient = ELB.classicClient(keyRing, region)
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
     val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).getPublicDnsName)
 
