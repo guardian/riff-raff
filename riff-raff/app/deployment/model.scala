@@ -5,7 +5,7 @@ import java.util.UUID
 import ci.{Builds, S3Build}
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
-import magenta.{DeployParameters, ReportTree, _}
+import magenta._
 import org.joda.time.{DateTime, Duration, Interval}
 import org.joda.time.format.PeriodFormatterBuilder
 import utils.VCSInfo
@@ -44,7 +44,7 @@ trait Record {
   def uuid: UUID
   def parameters: DeployParameters
   def metaData: Map[String, String]
-  def report: ReportTree
+  def report: DeployReport
   def recordState: Option[RunState.Value]
   def recordTotalTasks: Option[Int]
   def recordCompletedTasks: Option[Int]
@@ -147,7 +147,7 @@ case class DeployRecord(time: DateTime,
                            recordTotalTasks: Option[Int] = None,
                            recordCompletedTasks: Option[Int] = None,
                            recordLastActivityTime: Option[DateTime] = None) extends Record {
-  lazy val report = DeployReport(messages, "Deployment Report")
+  lazy val report = DeployReport(messages)
 
   def +(message: MessageWrapper): DeployRecord = {
     this.copy(messages = messages ++ List(message))

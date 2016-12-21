@@ -30,10 +30,10 @@ getParamOrElse = (url, param, defaultValue) ->
   if match==null then defaultValue else match[1]
 
 enableVerbose = ->
-  updateCSS("span.message-verbose",{'display':'list-item'})
+  updateCSS(".visibility-verbose",{'display':'inline'})
 
 disableVerbose = ->
-  updateCSS("span.message-verbose",{'display':'none'})
+  updateCSS(".visibility-verbose",{'display':'none'})
 
 setVerbose = (visible) ->
   if (visible)
@@ -51,6 +51,7 @@ updateAndPush = ->
   newURL = updateOrAddParam(document.URL, 'verbose', verboseParam)
   window.history.pushState(null,null,newURL)
   mixpanel? && mixpanel.track "Verbose toggled", {"verbose": newState}
+  true
 
 popstate = (event) ->
   verbose = getParamOrElse(document.URL, 'verbose', '0')=='1'

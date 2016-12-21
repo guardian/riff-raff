@@ -8,77 +8,97 @@ import org.scalatest.{FlatSpec, Matchers}
 class ReportingTest extends FlatSpec with Matchers {
 
   "Deploy Report" should "build an empty report from an empty list" in {
-    val report = DeployReport(Nil, titleTime = Some(testTime))
-    report.isRunning should be (false)
-    report should be (tree(""))
+    val time = new DateTime()
+    val id = UUID.randomUUID()
+    val report = DeployReport(Nil)
+    report.isRunning shouldBe false
+    report shouldBe EmptyDeployReport
   }
 
   it should "build a no-op deploy report" in {
     val stacks = startDeployWrapper :: finishDeployWrapper :: Nil
-    val report = DeployReport(stacks, titleTime = Some(testTime))
+    val report = DeployReport(stacks)
     report.isRunning should be (false)
-    report should be (tree("", tree(startDeploy, finishDep)))
+    report shouldBe tree(deployMessageId, startDeploy, finishDep)
   }
 
 
   it should "build a one-op deploy report" in {
-    val stacks = startDeployWrapper :: wrapper(Some(deployMessageId), stack(infoMsg, deploy)) :: finishDeployWrapper :: Nil
-    val report = DeployReport(stacks, titleTime = Some(testTime))
+    val stacks = startDeployWrapper :: wrapper(infoMessageId, Some(deployMessageId), stack(infoMsg, deploy)) :: finishDeployWrapper :: Nil
+    val report = DeployReport(stacks)
 
     report.isRunning should be (false)
-    report.size should be (3)
-    report should be (tree("", tree(startDeploy, finishDep, tree(infoMsg))))
+    report.size should be (2)
+    report shouldBe tree(deployMessageId, startDeploy, finishDep, tree(infoMessageId, infoMsg))
   }
 
   it should "build a complex report" in {
-    val report = DeployReport(messageWrappers, titleTime = Some(testTime))
+    val report = DeployReport(messageWrappers)
 
-    report.size should be (5)
+    report.size should be (4)
 
     report.isRunning should be (false)
-    report should be (tree("",
-      tree(startDeploy, finishDep, tree(startInfo, finishInfo, tree(cmdOut), tree(verbose)))
-    ))
+    report shouldBe
+      tree(deployMessageId, startDeploy, finishDep,
+        tree(infoMessageId, startInfo, finishInfo,
+          tree(cmdOutId, cmdOut),
+          tree(verboseId, verbose)
+        )
+      )
   }
 
   it should "build a partial report" in {
     val partialStacks = messageWrappers.take(5)
-    val report = DeployReport(partialStacks, titleTime = Some(testTime))
-    report.size should be (5)
+    val report = DeployReport(partialStacks)
+    report.size should be (4)
 
     report.isRunning should be (true)
-    report should be (tree("",
-      tree(startDeploy, tree(startInfo, finishInfo, tree(cmdOut), tree(verbose)))
-    ))
+    report shouldBe
+      tree(deployMessageId, startDeploy,
+        tree(infoMessageId, startInfo, finishInfo,
+          tree(cmdOutId, cmdOut),
+          tree(verboseId, verbose)
+        )
+      )
   }
 
   it should "build a nested partial report" in {
     val partialStacks = messageWrappers.take(4)
-    val report = DeployReport(partialStacks, titleTime = Some(testTime))
-    report.size should be (5)
+    val report = DeployReport(partialStacks)
+    report.size should be (4)
 
     report.isRunning should be (true)
-    report should be (tree("",
-      tree(startDeploy, tree(startInfo, tree(cmdOut), tree(verbose)))
-    ))
+    report shouldBe
+      tree(deployMessageId, startDeploy,
+        tree(infoMessageId, startInfo,
+          tree(cmdOutId, cmdOut),
+          tree(verboseId, verbose)
+        )
+      )
   }
 
   it should "render a report as text" in {
     val report = DeployReport(messageWrappers)
+    report should matchPattern { case drt:DeployReportTree => }
+    val tree = report.asInstanceOf[DeployReportTree]
 
-    report.size should be (5)
+    tree.size should be (4)
 
-    report.render.mkString(", ") should be (""":Info() [Completed], 1:Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),RecipeName(default),List(),List(),All)) [Completed], 1.1:Info($ echo hello) [Completed], 1.1.1:CommandOutput(hello) [Not running], 1.1.2:Verbose(return value 0) [Not running]""")
+    tree.render.mkString(", ") should be (""":Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),RecipeName(default),List(),List(),All)) [Completed], 1:Info($ echo hello) [Completed], 1.1:CommandOutput(hello) [Not running], 1.2:Verbose(return value 0) [Not running]""")
   }
 
   it should "know it has failed" in {
-    val failStacks = messageWrappers.take(4) ::: List(wrapper(Some(infoMessageId), stack(failInfo, infoMsg, deploy)), wrapper(Some(deployMessageId), stack(failDep, deploy)))
-    val report = DeployReport(failStacks, titleTime = Some(testTime))
-    report.size should be (5)
+    val failStacks = messageWrappers.take(4) ::: List(wrapper(UUID.randomUUID(), Some(infoMessageId), stack(failInfo, infoMsg, deploy)), wrapper(UUID.randomUUID(), Some(deployMessageId), stack(failDep, deploy)))
+    val report = DeployReport(failStacks)
+    report.size should be (4)
 
-    report should be (tree("",
-      tree(startDeploy, failDep, tree(startInfo, failInfo, tree(cmdOut), tree(verbose)))
-    ))
+    report shouldBe
+      tree(deployMessageId, startDeploy, failDep,
+        tree(infoMessageId, startInfo, failInfo,
+          tree(cmdOutId, cmdOut),
+          tree(verboseId, verbose)
+        )
+      )
     report.isRunning should be (false)
     report.cascadeState should be(RunState.Failed)
   }
@@ -97,22 +117,14 @@ class ReportingTest extends FlatSpec with Matchers {
     MessageWrapper(MessageContext(deployId, parameters, parentId), id, stack)
   }
 
-  def wrapper( parentId: Option[UUID], stack: MessageStack ): MessageWrapper = {
-    MessageWrapper(MessageContext(deployId, parameters, parentId), UUID.randomUUID(), stack)
+  def tree( id: UUID, message: Message, trees: DeployReportTree * ): DeployReportTree = {
+    DeployReportTree( MessageState(message, testTime, id), trees.toList )
   }
-
-  def tree( title: String, trees: ReportTree * ): ReportTree = {
-    ReportTree( Report(title, testTime), trees.toList )
+  def tree( id: UUID, startMessage: StartContext, finishMessage: FinishContext, trees: DeployReportTree * ): DeployReportTree = {
+    DeployReportTree( MessageState(startMessage, finishMessage, testTime, id), trees.toList )
   }
-
-  def tree( message: Message, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(message, testTime), trees.toList )
-  }
-  def tree( startMessage: StartContext, finishMessage: FinishContext, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(startMessage, finishMessage, testTime), trees.toList )
-  }
-  def tree( startMessage: StartContext, failMessage: FailContext, trees: ReportTree * ): ReportTree = {
-    ReportTree( MessageState(startMessage, failMessage, testTime), trees.toList )
+  def tree( id: UUID, startMessage: StartContext, failMessage: FailContext, trees: DeployReportTree * ): DeployReportTree = {
+    DeployReportTree( MessageState(startMessage, failMessage, testTime, id), trees.toList )
   }
 
   val parameters = DeployParameters(Deployer("Test reports"),Build("test-project","1"),Stage("CODE"))
@@ -140,16 +152,20 @@ class ReportingTest extends FlatSpec with Matchers {
   val deployId = UUID.randomUUID()
   val deployMessageId = UUID.randomUUID()
   val infoMessageId = UUID.randomUUID()
+  val cmdOutId = UUID.randomUUID()
+  val verboseId = UUID.randomUUID()
+  val finishInfoId = UUID.randomUUID()
+  val finishDeployId = UUID.randomUUID()
 
   val startDeployWrapper = wrapper(deployMessageId, None, stack(startDeploy))
-  val finishDeployWrapper = wrapper(UUID.randomUUID(), Some(deployMessageId), stack(finishDep, deploy))
+  val finishDeployWrapper = wrapper(finishDeployId, Some(deployMessageId), stack(finishDep, deploy))
 
   val messageWrappers: List[MessageWrapper] =
     startDeployWrapper ::
     wrapper(infoMessageId, Some(deployMessageId), stack(startInfo, deploy)) ::
-    wrapper(Some(infoMessageId), stack(cmdOut, infoMsg, deploy)) ::
-    wrapper(Some(infoMessageId), stack(verbose, infoMsg, deploy)) ::
-    wrapper(Some(infoMessageId), stack(finishInfo, infoMsg, deploy)) ::
+    wrapper(cmdOutId, Some(infoMessageId), stack(cmdOut, infoMsg, deploy)) ::
+    wrapper(verboseId, Some(infoMessageId), stack(verbose, infoMsg, deploy)) ::
+    wrapper(finishInfoId, Some(infoMessageId), stack(finishInfo, infoMsg, deploy)) ::
     finishDeployWrapper ::
     Nil
 

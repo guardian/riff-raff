@@ -13,9 +13,9 @@
         }
 </script>
 
-@main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy", "notifications")) {
+@main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy", "notifications", "report-tree-collapsing")) {
     <style>
-    span.message-verbose {
+    .visibility-verbose {
       display:@if(!verbose) {none} else {list-item};
     }
     </style>

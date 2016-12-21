@@ -1,14 +1,26 @@
-@(reportTree: magenta.ReportTree)
+@(reportTree: magenta.DeployReportTree, depth: Int)
+@import magenta.RunState
 
 <li>
-<span class="@MessageHelper.classNames(reportTree)"><span class="magenta-timestamp">[@reportTree.messageState.timeOfDay] </span>@MessageHelper.trim{@reportTree.message.text}</span>
-@if(reportTree.children.nonEmpty) {
-  <ul class="magenta-reporttree">
-}
-@reportTree.children.map{ child =>
-    @snippets.reportTree(child)
-}
-@if(reportTree.children.nonEmpty) {
-  </ul>
-}
+    @defining((MessageHelper.messageType(reportTree), MessageHelper.state(reportTree), reportTree.messageState.messageId.toString)){ case (messageType, state, id) =>
+        @defining(reportTree.cascadeState != RunState.Completed || depth < 1) { open =>
+            <span class="visibility-@messageType">
+                <span class="display-inline" role="button" data-toggle="collapse" href="#@id" aria-expanded="false" aria-controls="@id">
+                @if(reportTree.hasChildren) {
+                    <span id="@id-icon" class="glyphicon glyphicon-chevron-@if(open){down}else{right}"></span>
+                } else {
+                    <span class="glyphicon">&nbsp;</span>
+                }
+                </span>
+                <span class="message-@messageType @state">@reportTree.timeString.map{time => <span class="magenta-timestamp">[@time] </span>}@MessageHelper.trim{@reportTree.message.text}</span>
+            </span>
+            @if(reportTree.children.nonEmpty) {
+                <ul id="@id" class="collapsing-node magenta-reporttree collapse@if(open){ in}">
+                    @reportTree.children.map{ child =>
+                        @snippets.reportTree(child, depth + 1)
+                    }
+                </ul>
+            }
+        }
+    }
 </li>

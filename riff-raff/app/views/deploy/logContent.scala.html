@@ -1,13 +1,23 @@
 @(record: deployment.Record)
+@import magenta.DeployReportTree
+@import magenta.EmptyDeployReport
 
 @logSummary(record)
 
 @if(!record.isSummarised) {
-    <ul class="magenta-reporttree">
-        @snippets.reportTree(record.report)
-    </ul>
+    @record.report match {
+        case report : DeployReportTree => {
+            <ul class="magenta-reporttree">
+                @snippets.reportTree(report, 0)
+            </ul>
+            @logSummary(record)
+        }
+        case EmptyDeployReport => {
+            <p>Deployment log has not yet been written to.</p>
+        }
+    }
 
-    @logSummary(record)
+
 }
 
 @if(record.isDone){
