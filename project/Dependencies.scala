@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "1.11.32"
+    val aws = "1.11.67"
     val guardianManagement = "5.35"
     val guardianManagementPlay = "8.0"
     val jackson = "2.8.2"
@@ -32,6 +32,7 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-s3" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-ec2" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-elasticloadbalancing" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-elasticloadbalancingv2" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-lambda" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-cloudformation" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-sts" % Versions.aws,

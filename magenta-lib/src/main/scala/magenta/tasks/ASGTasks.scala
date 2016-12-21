@@ -69,7 +69,7 @@ case class TerminationGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, 
 
 case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
-    implicit val elbClient = ELB.makeElbClient(keyRing, region)
+    val elbClient = ELB.client(keyRing, region)
     ASG.isStabilized(asg, asgClient, elbClient) match {
       case Left(reason) => reporter.fail(s"ASG not stable: $reason")
       case Right(()) =>
@@ -82,7 +82,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
     with SlowRepeatedPollingCheck {
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
-    implicit val elbClient = ELB.makeElbClient(keyRing, region)
+    val elbClient = ELB.client(keyRing, region)
     check(reporter, stopFlag) {
       try {
         ASG.isStabilized(ASG.refresh(asg, asgClient), asgClient, elbClient) match {
@@ -109,7 +109,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-    implicit val elbClient = ELB.makeElbClient(keyRing, region)
+    implicit val elbClient = ELB.client(keyRing, region)
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
     reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")

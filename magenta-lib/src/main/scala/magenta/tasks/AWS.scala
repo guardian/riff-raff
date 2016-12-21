@@ -13,8 +13,10 @@ import com.amazonaws.services.cloudformation.AmazonCloudFormationClient
 import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack, Tag => CfnTag, _}
 import com.amazonaws.services.ec2.AmazonEC2Client
 import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
-import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
+import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancingClient => ClassicELBClient}
+import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancingClient => ApplicationELBClient}
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
+import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
 import com.amazonaws.services.lambda.AWSLambdaClient
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
 import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
@@ -107,33 +109,43 @@ object ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
-  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient): Either[String, Unit] = {
-    elbName(asg) match {
-      case Some(name) => {
-        val elbHealth = ELB.instanceHealth(name, elbClient)
-        if (elbHealth.size != asg.getDesiredCapacity)
-          Left(s"Number of ELB instances (${elbHealth.size}) and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
-        else if (!elbHealth.forall( instance => instance.getState == "InService"))
-          Left(s"Only ${elbHealth.count(_.getState == "InService")} of ${elbHealth.size} ELB instances InService")
-        else
-          Right(())
+  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScalingClient,
+    elbClient: ELB.Client): Either[String, Unit] = {
+
+    def matchCapacityAndState(states: List[String], desiredState: String, checkDescription: Option[String]): Either[String, Unit] = {
+      val descriptionWithPrecedingSpace = checkDescription.map(d => s" $d").getOrElse("")
+      if (states.size != asg.getDesiredCapacity)
+        Left(s"Number of$descriptionWithPrecedingSpace instances (${states.size}) and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
+      else if (!states.forall(_ == desiredState))
+        Left(s"Only ${states.count(_ == desiredState)} of ${states.size}$descriptionWithPrecedingSpace instances $desiredState")
+      else
+        Right(())
+    }
+
+    (elbName(asg), elbTargetArn(asg)) match {
+      case (Some(name), None) => {
+        val elbHealth = ELB.instanceHealth(name, elbClient.classic)
+        matchCapacityAndState(elbHealth, "InService", Some("ELB"))
       }
-      case None => {
-        val instances = asg.getInstances.asScala
-        if (instances.size != asg.getDesiredCapacity)
-          Left(s"Number of instances (${instances.size} and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
-        else if (!instances.forall(instance => instance.getLifecycleState == LifecycleState.InService.toString))
-          Left(s"Only ${instances.count(_.getLifecycleState == LifecycleState.InService.toString)} of ${instances.size} instances are InService")
-        else
-          Right(())
+      case (None, Some(arn)) => {
+        val elbHealth = ELB.targetInstancesHealth(arn, elbClient.application)
+        matchCapacityAndState(elbHealth, TargetHealthStateEnum.Healthy.toString, Some("Application ELB"))
       }
+      case (None, None) => {
+        val instanceStates = asg.getInstances.asScala.toList.map(_.getLifecycleState)
+        matchCapacityAndState(instanceStates, LifecycleState.InService.toString, None)
+      }
+      case (Some(_), Some(_)) => Left(
+        "Don't know how to check for stability of an ASG associated with a classic and application load balancer")
     }
   }
 
   def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.asScala.headOption
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: AmazonElasticLoadBalancingClient) = {
-    elbName(asg) foreach (ELB.deregister(_, instance, elbClient))
+  def elbTargetArn(asg: AutoScalingGroup) = asg.getTargetGroupARNs.asScala.headOption
+
+  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScalingClient, elbClient: ELB.Client) = {
+    ELB.deregister(elbName(asg), elbTargetArn(asg), instance, elbClient)
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
@@ -208,16 +220,36 @@ object ASG extends AWS {
 }
 
 object ELB extends AWS {
-  def makeElbClient(keyRing: KeyRing, region: Region): AmazonElasticLoadBalancingClient =
-    new AmazonElasticLoadBalancingClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
 
-  def instanceHealth(elbName: String, client: AmazonElasticLoadBalancingClient): List[InstanceState] =
-    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName)).getInstanceStates.asScala.toList
+  case class Client(classic: ClassicELBClient, application: ApplicationELBClient)
 
-  def deregister(elbName: String, instance: ASGInstance, client: AmazonElasticLoadBalancingClient) =
-    client.deregisterInstancesFromLoadBalancer(
-      new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(elbName)
-        .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId)))
+  def client(keyRing: KeyRing, region: Region): Client =
+    Client(classicClient(keyRing, region), applicationClient(keyRing, region))
+
+  def classicClient(keyRing: KeyRing, region: Region): ClassicELBClient =
+    new ClassicELBClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
+
+  def applicationClient(keyRing: KeyRing, region: Region): ApplicationELBClient =
+    new ApplicationELBClient(provider(keyRing), clientConfiguration).withRegion(awsRegion(region))
+
+  def targetInstancesHealth(targetARN: String, client: ApplicationELBClient): List[String] =
+    client.describeTargetHealth(new DescribeTargetHealthRequest().withTargetGroupArn(targetARN))
+      .getTargetHealthDescriptions.asScala.toList.map(_.getTargetHealth.getState)
+
+  def instanceHealth(elbName: String, client: ClassicELBClient): List[String] =
+    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName))
+      .getInstanceStates.asScala.toList.map(_.getState)
+
+  def deregister(elbName: Option[String], elbTargetARN: Option[String], instance: ASGInstance, client: Client) = {
+    elbName.foreach(name =>
+      client.classic.deregisterInstancesFromLoadBalancer(
+        new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(name)
+          .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId))))
+    elbTargetARN.foreach(arn =>
+      client.application.deregisterTargets(
+        new DeregisterTargetsRequest().withTargetGroupArn(arn)
+          .withTargets(new TargetDescription().withId(instance.getInstanceId))))
+  }
 }
 
 object EC2 extends AWS {
