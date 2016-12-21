@@ -80,9 +80,7 @@ trait DeployReport {
   def hasChildren: Boolean = children.nonEmpty
   def size: Int = allMessages.size
 
-  def failureMessage: Option[Fail] = {
-    allMessages.filter(_.message.getClass == classOf[Fail]).map(_.message).headOption.asInstanceOf[Option[Fail]]
-  }
+  def failureMessage: Option[Fail] = allMessages.map(_.message).collect{ case fail: Fail => fail }.headOption
 
   def cascadeState: RunState.Value = {
     children.foldLeft(state){ (acc:RunState.Value, child:DeployReport) =>
@@ -140,9 +138,7 @@ case class DeployReportTree(messageState: MessageState, children: List[DeployRep
   private val childRunning: Boolean = children.foldLeft(false){_ || _.isRunning}
   val isRunning: Boolean = messageState.isRunning || childRunning
 
-  val allMessages: Seq[MessageState] = (messageState :: children.flatMap(_.allMessages)).sortWith{ (left, right) =>
-    left.time.getMillis < right.time.getMillis
-  }
+  val allMessages: Seq[MessageState] = (messageState :: children.flatMap(_.allMessages)).sortBy(_.time.getMillis)
 
   private def map(block: MessageState => MessageState): DeployReportTree = {
     DeployReportTree(block(messageState), children.map(_.map(block)))
