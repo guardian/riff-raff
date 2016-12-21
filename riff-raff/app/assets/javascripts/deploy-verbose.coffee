@@ -30,10 +30,10 @@ getParamOrElse = (url, param, defaultValue) ->
   if match==null then defaultValue else match[1]
 
 enableVerbose = ->
-  updateCSS("span.message-verbose",{'display':'list-item'})
+  updateCSS(".visibility-verbose",{'display':'inline'})
 
 disableVerbose = ->
-  updateCSS("span.message-verbose",{'display':'none'})
+  updateCSS(".visibility-verbose",{'display':'none'})
 
 setVerbose = (visible) ->
   if (visible)
