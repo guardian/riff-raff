@@ -17,12 +17,14 @@ import magenta.deployment_type.DeploymentType
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
+import persistence.RestrictionConfigDynamoRepository
 import play.api.http.HttpEntity
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.Controller
 import resources.PrismLookup
+import restrictions.RestrictionChecker
 
 import scala.util.{Failure, Success}
 
@@ -172,9 +174,12 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     if (project.trim.isEmpty) {
       Ok("")
     } else {
+      val restrictions = maybeStage.toSeq.flatMap { stage =>
+        RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
+      }
       val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
       val records = Deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).reverse
-      Ok(views.html.deploy.deployHistory(project, maybeStage, records))
+      Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }
   }
 

@@ -1,5 +1,17 @@
-@(projectName: String, maybeStage: Option[String], records: List[deployment.Record])
+@import _root_.restrictions.RestrictionConfig
+@(projectName: String, maybeStage: Option[String], records: List[deployment.Record], restrictions: Seq[RestrictionConfig])
 
+@if(restrictions.nonEmpty) {
+    <div class="alert alert-warning" role="alert">
+        <p><strong>Deployment restricted</strong></p> <p>There are currently <a href="@routes.Restrictions.list()">restrictions</a>
+            that prevent you from deploying <strong>@projectName</strong>@maybeStage.map{ stage => to <strong>@stage</strong>}:</p>
+        @restrictions.map { restriction =>
+            <p>
+                @restriction.fullName: @restriction.note <a class="alert-link" href="@routes.Restrictions.edit(restriction.id.toString)">View details</a>
+            </p>
+        }
+    </div>
+}
 @if(records.nonEmpty) {
     <h4>Last deploys of <em>@projectName</em> @maybeStage.map{ stage => to @stage }</h4>
     @snippets.recordTable(records, None, allColumns = false)
@@ -9,5 +21,4 @@
         <span class="sr-only">Error:</span>
         Riff Raff has not been used to deploy @projectName @maybeStage.map{ stage => to @stage }
     </div>
-
 }
