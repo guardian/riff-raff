@@ -9,6 +9,8 @@ import magenta.{DeployReporter, DeployStoppedException}
 import magenta.graph.DeploymentTasks
 import org.joda.time.DateTime
 
+import scala.util.control.NonFatal
+
 class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
   import DeployMetricsActor._
   import TasksRunner._
@@ -22,33 +24,38 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
         stopFlagAgent().contains(uuid)
       }
 
-      rootReporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
-        try {
-          tasks.tasks.zipWithIndex.foreach { case (task, index) =>
-            val taskId = s"${tasks.name}/$index"
-            if (stopFlagAsker) {
-              val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
-              deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
-            } else {
-              try {
-                log.debug(s"Running task $taskId")
-                deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
-                deployReporter.taskContext(task) { taskReporter =>
-                  task.execute(taskReporter, stopFlagAsker)
+      try{
+        rootReporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
+          try {
+            tasks.tasks.zipWithIndex.foreach { case (task, index) =>
+              val taskId = s"${tasks.name}/$index"
+              if (stopFlagAsker) {
+                val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
+                deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
+              } else {
+                try {
+                  log.debug(s"Running task $taskId")
+                  deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
+                  deployReporter.taskContext(task) { taskReporter =>
+                    task.execute(taskReporter, stopFlagAsker)
+                  }
+                } finally {
+                  deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
                 }
-              } finally {
-                deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
               }
             }
+            log.debug("Sending completed message")
+            sender ! DeployGroupRunner.DeploymentCompleted(tasks)
+          } catch {
+            case t:Throwable =>
+              log.debug("Sending failed message")
+              sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
+              throw t
           }
-          log.debug("Sending completed message")
-          sender ! DeployGroupRunner.DeploymentCompleted(tasks)
-        } catch {
-          case t:Throwable =>
-            log.debug("Sending failed message")
-            sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
-            throw t
         }
+      } catch {
+        // catch non fatal exceptions and swallow them to avoid the actor being terminated at this point
+        case NonFatal(t) =>
       }
 
   }
