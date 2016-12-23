@@ -29,7 +29,7 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
       "note" -> nonEmptyText
     )((id, projectName, stage, editingLocked, whitelist, cdPermitted, note) =>
       RestrictionForm(id, projectName, stage, editingLocked,
-        whitelist.map(_.split('\n').toSeq.filter(_.nonEmpty)).getOrElse(Seq.empty), cdPermitted, note)
+        whitelist.map(_.split('\n').map(_.trim).toSeq.filter(_.nonEmpty)).getOrElse(Seq.empty), cdPermitted, note)
     )(f =>
       Some((f.id, f.projectName, f.stage, f.editingLocked, Some(f.whitelist.mkString("\n")),
         f.continuousDeployment,  f.note))
