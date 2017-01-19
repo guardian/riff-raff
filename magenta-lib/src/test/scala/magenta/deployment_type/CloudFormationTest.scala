@@ -31,13 +31,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     inside(CloudFormation.actionsMap("updateStack").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
-          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParam, amiTags, _, stage, stack, ifAbsent, alwaysUpload) =>
+          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParamTags, _, stage, stack, ifAbsent, alwaysUpload) =>
             taskRegion should be(region)
             stackName should be(LookupByName(cfnStackName))
             path should be(S3Path("artifact-bucket", "test/123/cloud-formation/cfn.json"))
             userParams should be(Map.empty)
-            amiParam should be("AMI")
-            amiTags should be(Map.empty)
+            amiParamTags should be(Map.empty)
             stage should be(PROD)
             stack should be(NamedStack("cfn"))
             ifAbsent should be(true)
@@ -54,7 +53,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -66,7 +65,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"), None)
+    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
