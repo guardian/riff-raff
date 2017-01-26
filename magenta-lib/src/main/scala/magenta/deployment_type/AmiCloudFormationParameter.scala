@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import magenta.deployment_type.CloudFormation.{CfnParam, TagCriteria}
 import magenta.tasks.UpdateCloudFormationTask.{LookupByName, LookupByTags}
 import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
 
@@ -33,7 +34,7 @@ object AmiCloudFormationParameter extends DeploymentType {
   val amiParameter = Param[String]("amiParameter",
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
-  val amiParametersToTags = Param[Map[String, Map[String, String]]]("amiParametersToTags",
+  val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
     documentation =
       """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
       """.stripMargin
@@ -48,7 +49,7 @@ object AmiCloudFormationParameter extends DeploymentType {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
 
-      val amiParameterMap: Map[String, Map[String, String]] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
+      val amiParameterMap: Map[CfnParam, TagCriteria] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
         case (Some(parametersToTags), Some(tags)) =>
           reporter.warning("Both amiParametersToTags and amiTags supplied. Ignoring amiTags.")
           parametersToTags

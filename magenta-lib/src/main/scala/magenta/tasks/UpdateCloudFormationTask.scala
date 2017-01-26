@@ -5,6 +5,7 @@ import com.amazonaws.services.cloudformation.model.StackEvent
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
 import magenta.artifact.S3Path
+import magenta.deployment_type.CloudFormation.{CfnParam, TagCriteria}
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
@@ -61,7 +62,7 @@ object UpdateCloudFormationTask {
     val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map("Stack" -> _)
     )
   }
 
@@ -102,7 +103,7 @@ case class UpdateCloudFormationTask(
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
   templatePath: S3Path,
   userParameters: Map[String, String],
-  amiParameterMap: Map[String, Map[String, String]],
+  amiParameterMap: Map[CfnParam, TagCriteria],
   latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
@@ -172,7 +173,7 @@ case class UpdateCloudFormationTask(
 case class UpdateAmiCloudFormationParameterTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  amiParameterMap: Map[String, Map[String, String]],
+  amiParameterMap: Map[CfnParam, TagCriteria],
   latestImage: String => Map[String, String] => Option[String],
   stage: Stage,
   stack: Stack)(implicit val keyRing: KeyRing) extends Task {

@@ -126,19 +126,6 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       ))
   }
 
-  it should "handle more than one AMI parameter" in {
-    val templateParameters =
-      Seq(TemplateParameter("AMI", false), TemplateParameter("routerAMI", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("AMI" -> "value1", "routerAMI" -> "value2"))
-
-    combined should be(Map(
-      "AMI" -> SpecifiedValue("value1"),
-      "routerAMI" -> SpecifiedValue("value2"),
-      "Stack" -> SpecifiedValue("cfn"),
-      "Stage" -> SpecifiedValue("PROD")
-    ))
-  }
-
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
