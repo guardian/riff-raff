@@ -5,6 +5,10 @@ import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 import magenta.tasks.UpdateCloudFormationTask.{LookupByName, LookupByTags}
 
 object CloudFormation extends DeploymentType {
+
+  type TagCriteria = Map[String, String]
+  type CfnParam = String
+
   val name = "cloud-formation"
   def documentation =
     """Update an AWS CloudFormation template.
@@ -72,7 +76,8 @@ object CloudFormation extends DeploymentType {
   val amiParameter = Param[String]("amiParameter",
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
-  val amiParametersToTags = Param[Map[String, Map[String, String]]]("amiParametersToTags",
+
+  val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
     documentation =
       """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
       """.stripMargin
@@ -89,7 +94,7 @@ object CloudFormation extends DeploymentType {
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
 
-      val amiParameterMap: Map[String, Map[String, String]] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
+      val amiParameterMap: Map[CfnParam, TagCriteria] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
         case (Some(parametersToTags), Some(tags)) =>
           reporter.warning("Both amiParametersToTags and amiTags supplied. Ignoring amiTags.")
           parametersToTags
