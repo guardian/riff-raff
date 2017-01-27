@@ -5,7 +5,6 @@ import com.amazonaws.services.cloudformation.model.StackEvent
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
 import magenta.artifact.S3Path
-import magenta.deployment_type.CloudFormation.{CfnParam, TagCriteria}
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
@@ -50,7 +49,7 @@ object UpdateCloudFormationTask {
     }
   }
 
-  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
+  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String], amiParam: Option[(String, String)]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -59,10 +58,10 @@ object UpdateCloudFormationTask {
     }
 
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-    val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
+    val userAndDefaultParams = requiredParams ++ (parameters ++ amiParam).mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map("Stack" -> _)
+      Seq("Stage" -> stage.name) ++ stack.nameOption.map(name => "Stack" -> name)
     )
   }
 
@@ -103,7 +102,8 @@ case class UpdateCloudFormationTask(
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
   templatePath: S3Path,
   userParameters: Map[String, String],
-  amiParameterMap: Map[CfnParam, TagCriteria],
+  amiParamName: String,
+  amiTags: Map[String, String],
   latestImage: String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
@@ -134,13 +134,11 @@ case class UpdateCloudFormationTask(
     val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      val ami = latestImage(region.name)(tags)
-      ami.map(name ->)
-    }
+    val amiParam: Option[(String, String)] = if (amiTags.nonEmpty) {
+      latestImage(region.name)(amiTags).map(amiParamName -> _)
+    } else None
 
-    val parameters: Map[String, ParameterValue] =
-        combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    val parameters: Map[String, ParameterValue] = combineParameters(stack, stage, templateParameters, userParameters, amiParam)
 
     reporter.info(s"Parameters: $parameters")
 
@@ -173,7 +171,8 @@ case class UpdateCloudFormationTask(
 case class UpdateAmiCloudFormationParameterTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  amiParameterMap: Map[CfnParam, TagCriteria],
+  amiParameter: String,
+  amiTags: Map[String, String],
   latestImage: String => Map[String, String] => Option[String],
   stage: Stage,
   stack: Stack)(implicit val keyRing: KeyRing) extends Task {
@@ -188,45 +187,30 @@ case class UpdateAmiCloudFormationParameterTask(
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
-    val cfStack = maybeCfStack.getOrElse{
-      reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
+    val (cfStackName, existingParameters, currentAmi) = maybeCfStack match {
+      case Some(cfStack) if cfStack.getParameters.exists(_.getParameterKey == amiParameter) =>
+        (cfStack.getStackName, cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap, cfStack.getParameters.find(_.getParameterKey == amiParameter).get.getParameterValue)
+      case Some(cfStack) =>
+        reporter.fail(s"stack ${cfStack.getStackName} does not have an $amiParameter parameter to update")
+      case None =>
+        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
     }
 
-    val existingParameters: Map[String, ParameterValue] = cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
-
-    val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
-      if (!cfStack.getParameters.exists(_.getParameterKey == parameterName)) {
-        reporter.fail(s"stack ${cfStack.getStackName} does not have an $parameterName parameter to update")
-      }
-
-      val currentAmi = cfStack.getParameters.find(_.getParameterKey == parameterName).get.getParameterValue
-      val maybeNewAmi = latestImage(region.name)(amiTags)
-      maybeNewAmi match {
-        case Some(sameAmi) if currentAmi == sameAmi =>
-          reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
-          None
-        case Some(newAmi) =>
-          reporter.info(s"Resolved AMI for $parameterName: $newAmi")
-          Some(parameterName -> SpecifiedValue(newAmi))
-        case None =>
-          val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-          reporter.fail(s"Failed to resolve AMI for ${cfStack.getStackName} parameter $parameterName with tags: $tagsStr")
-      }
-    }
-
-    if (resolvedAmiParameters.nonEmpty) {
-      val newParameters = existingParameters ++ resolvedAmiParameters
-      reporter.info(s"Updating cloudformation stack params: $newParameters")
-      CloudFormation.updateStackParams(cfStack.getStackName, newParameters, cfnClient)
-    } else {
-      reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
+    latestImage(region.name)(amiTags) match {
+      case Some(sameAmi) if currentAmi == sameAmi =>
+        reporter.info(s"Current AMI is the same as the resolved AMI ($sameAmi). No update to perform.")
+      case Some(ami) =>
+        reporter.info(s"Resolved AMI: $ami")
+        val parameters = existingParameters + (amiParameter -> SpecifiedValue(ami))
+        reporter.info(s"Updating cloudformation stack params: $parameters")
+        CloudFormation.updateStackParams(cfStackName, parameters, cfnClient)
+      case None =>
+        val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
+        reporter.fail(s"Failed to resolve AMI for $cfStackName with tags: $tagsStr")
     }
   }
 
-  def description = {
-    val components = amiParameterMap.map { case(name, tags) => s"$name to latest AMI with tags $tags"}.mkString(", ")
-    s"Update $components in CloudFormation stack: $cloudFormationStackLookupStrategy"
-  }
+  def description = s"Update $amiParameter to latest AMI with tags $amiTags in CloudFormation stack: $cloudFormationStackLookupStrategy"
   def verbose = description
 }
 
