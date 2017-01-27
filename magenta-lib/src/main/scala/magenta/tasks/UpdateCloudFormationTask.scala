@@ -5,7 +5,7 @@ import com.amazonaws.services.cloudformation.model.StackEvent
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
 import magenta.artifact.S3Path
-import magenta.deployment_type.CloudFormation.{CfnParam, TagCriteria}
+import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
