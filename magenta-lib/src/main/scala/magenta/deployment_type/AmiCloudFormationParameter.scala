@@ -1,6 +1,5 @@
 package magenta.deployment_type
 
-import magenta.deployment_type.CloudFormation.{CfnParam, TagCriteria}
 import magenta.tasks.UpdateCloudFormationTask.{LookupByName, LookupByTags}
 import magenta.tasks.{CheckUpdateEventsTask, UpdateAmiCloudFormationParameterTask}
 
@@ -34,11 +33,6 @@ object AmiCloudFormationParameter extends DeploymentType {
   val amiParameter = Param[String]("amiParameter",
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
-  val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
-    documentation =
-      """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
-      """.stripMargin
-  )
 
   val update = Action("update",
     """
@@ -48,15 +42,6 @@ object AmiCloudFormationParameter extends DeploymentType {
   ){ (pkg, resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
-
-      val amiParameterMap: Map[CfnParam, TagCriteria] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
-        case (Some(parametersToTags), Some(tags)) =>
-          reporter.warning("Both amiParametersToTags and amiTags supplied. Ignoring amiTags.")
-          parametersToTags
-        case (Some(parametersToTags), _) => parametersToTags
-        case (None, Some(tags)) => Map(amiParameter(pkg, target, reporter) -> tags)
-        case _ => Map.empty
-      }
 
       val cloudFormationStackLookupStrategy = {
         if (cloudformationStackByTags(pkg, target, reporter)) {
@@ -76,7 +61,8 @@ object AmiCloudFormationParameter extends DeploymentType {
         UpdateAmiCloudFormationParameterTask(
           target.region,
           cloudFormationStackLookupStrategy,
-          amiParameterMap,
+          amiParameter(pkg, target, reporter),
+          amiTags(pkg, target, reporter),
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack
