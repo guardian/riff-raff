@@ -30,15 +30,17 @@ object AmiCloudFormationParameter extends DeploymentType {
   ).default(true)
   val amiTags = Param[Map[String,String]]("amiTags",
     documentation = "Specify the set of tags to use to find the latest AMI"
-  )
+  ).default(Map.empty)
+
   val amiParameter = Param[String]("amiParameter",
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
+
   val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
     documentation =
       """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
       """.stripMargin
-  )
+  ).default(Map.empty)
 
   val update = Action("update",
     """
