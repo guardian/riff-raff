@@ -5,6 +5,10 @@ import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
 import magenta.tasks.UpdateCloudFormationTask.{LookupByName, LookupByTags}
 
 object CloudFormation extends DeploymentType {
+
+  type TagCriteria = Map[String, String]
+  type CfnParam = String
+
   val name = "cloud-formation"
   def documentation =
     """Update an AWS CloudFormation template.
@@ -64,12 +68,20 @@ object CloudFormation extends DeploymentType {
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
-  val amiTags = Param[Map[String,String]]("amiTags",
+
+
+  val amiTags = Param[Map[String, String]]("amiTags",
     documentation = "Specify the set of tags to use to find the latest AMI"
-  ).default(Map.empty)
+  )
   val amiParameter = Param[String]("amiParameter",
     documentation = "The CloudFormation parameter name for the AMI"
   ).default("AMI")
+
+  val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
+    documentation =
+      """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
+      """.stripMargin
+  )
 
   val updateStack = Action("updateStack",
     """
@@ -81,6 +93,15 @@ object CloudFormation extends DeploymentType {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
+
+      val amiParameterMap: Map[CfnParam, TagCriteria] = (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
+        case (Some(parametersToTags), Some(tags)) =>
+          reporter.warning("Both amiParametersToTags and amiTags supplied. Ignoring amiTags.")
+          parametersToTags
+        case (Some(parametersToTags), _) => parametersToTags
+        case (None, Some(tags)) => Map(amiParameter(pkg, target, reporter) -> tags)
+        case _ => Map.empty
+      }
 
       val cloudFormationStackLookupStrategy = {
         if (cloudformationStackByTags(pkg, target, reporter)) {
@@ -107,8 +128,7 @@ object CloudFormation extends DeploymentType {
           cloudFormationStackLookupStrategy,
           S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
           params,
-          amiParameter(pkg, target, reporter),
-          amiTags(pkg, target, reporter),
+          amiParameterMap,
           resources.lookup.getLatestAmi,
           target.parameters.stage,
           target.stack,
