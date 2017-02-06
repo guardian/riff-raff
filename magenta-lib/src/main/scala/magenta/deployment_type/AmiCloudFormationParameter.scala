@@ -10,6 +10,33 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
       |
       |Given AMI tags, this will resolve the latest matching AMI and update the AMI parameter
       |on the provided CloudFormation stack.
+      |
+      |The set of AWS permissions needed to let RiffRaff do an AMI updates are:
+      |
+      |    {
+      |      "Statement": [
+      |        {
+      |          "Action": [
+      |             "cloudformation:DescribeStacks",
+      |             "cloudformation:UpdateStack",
+      |             "cloudformation:DescribeStackEvents",
+      |             "ec2:DescribeSecurityGroups",
+      |             "iam:PassRole",
+      |             "autoscaling:CreateLaunchConfiguration",
+      |             "autoscaling:UpdateAutoScalingGroup",
+      |             "autoscaling:DescribeLaunchConfigurations",
+      |             "autoscaling:DescribeScalingActivities",
+      |             "autoscaling:DeleteLaunchConfiguration"
+      |          ],
+      |          "Effect": "Allow",
+      |          "Resource": [
+      |            "*"
+      |          ]
+      |        }
+      |      ]
+      |    }
+      |
+      |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
   val update = Action("update",
