@@ -449,7 +449,12 @@ trait AWS extends Loggable {
     }
     override def shouldRetry(originalRequest: AmazonWebServiceRequest, exception: AmazonClientException, retriesAttempted: Int): Boolean = {
       val willRetry = super.shouldRetry(originalRequest, exception, retriesAttempted) || isParseException(exception)
-      if (willRetry) logger.warn(s"AWS SDK retry $retriesAttempted: ${originalRequest.getClass.getName} threw ${exceptionInfo(exception)}")
+      if (willRetry) {
+        logger.warn(s"AWS SDK retry $retriesAttempted: ${originalRequest.getClass.getName} threw ${exceptionInfo(exception)}")
+      } else {
+        logger.warn(s"Encounted fatal exception during AWS API call", exception)
+        Option(exception.getCause).foreach(t => logger.warn(s"Cause of fatal exception", t))
+      }
       willRetry
     }
   }
