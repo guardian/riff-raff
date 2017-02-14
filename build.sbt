@@ -51,6 +51,11 @@ lazy val riffraff = project.in(file("riff-raff"))
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
     riffRaffPackageType := (packageZipTarball in Universal).value,
+    riffRaffArtifactResources  := Seq(
+      riffRaffPackageType.value -> s"${name.value}/${name.value}.tgz",
+      baseDirectory.value / "bootstrap.sh" -> s"${name.value}/bootstrap.sh",
+      baseDirectory.value / "riff-raff.yaml" -> "riff-raff.yaml"
+    ),
 
     ivyXML := {
       <dependencies>
