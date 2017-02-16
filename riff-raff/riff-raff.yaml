@@ -5,3 +5,13 @@ deployments:
     type: self-deploy
     parameters:
       bucket: deploy-tools-dist
+    dependencies:
+      - update-ami
+  update-ami:
+    type: ami-cloudformation-parameter
+    app: riff-raff
+    parameters:
+      amiTags:
+        Recipe: xenial-java8-deploy-infrastructure
+        AmigoStage: PROD
+        BuiltBy: amigo
