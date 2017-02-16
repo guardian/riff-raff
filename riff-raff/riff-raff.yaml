@@ -1,0 +1,17 @@
+regions: [eu-west-1]
+stacks: [deploy]
+deployments:
+  riff-raff:
+    type: self-deploy
+    parameters:
+      bucket: deploy-tools-dist
+    dependencies:
+      - update-ami
+  update-ami:
+    type: ami-cloudformation-parameter
+    app: riff-raff
+    parameters:
+      amiTags:
+        Recipe: xenial-java8-deploy-infrastructure
+        AmigoStage: PROD
+        BuiltBy: amigo
