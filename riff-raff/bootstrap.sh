@@ -73,7 +73,7 @@ ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 SuccessExitStatus=143
 User=${USER}
-ExecStartPre=/etc/bootstrap.sh -s ${STAGE}
+ExecStartPre=/opt/${APP}/bootstrap.sh -s ${STAGE}
 PermissionsStartOnly=true
 RestartForceExitStatus=217
 
