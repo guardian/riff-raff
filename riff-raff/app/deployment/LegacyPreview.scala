@@ -18,7 +18,8 @@ import resources.PrismLookup
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.util.Try
+
+import cats.syntax.either._
 
 case class LegacyPreviewResult(future: Future[LegacyPreview], startTime: DateTime = new DateTime()) {
   def completed = future.isCompleted
@@ -58,13 +59,12 @@ object LegacyPreview {
    */
   def getProject(build: Build, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Project = {
     val yamlArtifact = S3YamlArtifact(build, artifact.aws.bucketName)
-    if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isDefined)
-      throw new IllegalArgumentException("Preview does not currently support riff-raff.yaml configuration files")
+    if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isRight)
+      throw new IllegalArgumentException("Tried to preview 'riff-raff.yaml' with old preview tool")
     val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
-    val json = S3JsonArtifact.withZipFallback(s3Artifact){ artifact =>
-      Try(artifact.deployObject.fetchContentAsString()(resources.artifactClient).get)
-    }(resources.artifactClient, resources.reporter)
-    JsonReader.parse(json, s3Artifact, deploymentTypes)
+    val json = S3JsonArtifact.fetchInputFile(s3Artifact)(resources.artifactClient, resources.reporter)
+    json.fold[Project](e => resources.reporter.fail(s"Unable to build preview, $e"),
+      JsonReader.parse(_, s3Artifact, deploymentTypes))
   }
 
   /**

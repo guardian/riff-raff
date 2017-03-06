@@ -34,22 +34,20 @@ case class JsonInputFile(
 )
 object JsonInputFile {
   implicit val reads = Json.reads[JsonInputFile]
+
+  def parse(s: String): JsonInputFile = Json.fromJson[JsonInputFile](Json.parse(s)) match {
+    case JsSuccess(result, _) => result
+    case JsError(errors) => throw new IllegalArgumentException(s"Failed to parse JSON: $errors")
+  }
 }
 
 
 object JsonReader {
-  def parse(s: String, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]): Project = {
-    val inputFile: JsonInputFile = Json.fromJson[JsonInputFile](Json.parse(s)) match {
-      case JsSuccess(result, _) => result
-      case JsError(errors) => throw new IllegalArgumentException(s"Failed to parse JSON: $errors")
-    }
-    parse(inputFile, artifact, deploymentTypes)
-  }
   
   def defaultRecipes(packages: Map[String, DeploymentPackage]) =
     Map("default" -> JsonRecipe(actions = Some(packages.values.map(_.name + ".deploy").toList)))
 
-  private def parse(input: JsonInputFile, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]): Project = {
+  def parse(input: JsonInputFile, artifact: S3JsonArtifact, deploymentTypes: Seq[DeploymentType]): Project = {
     val packages = input.packages map { case (name, pkg) => name -> parsePackage(name, pkg, artifact, deploymentTypes) }
     val recipes = input.recipes.getOrElse(defaultRecipes(packages))  map { case (name, r) => name -> parseRecipe(name, r, packages) }
 
