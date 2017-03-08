@@ -64,7 +64,7 @@ object LegacyPreview {
     val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
     val json = S3JsonArtifact.fetchInputFile(s3Artifact)(resources.artifactClient, resources.reporter)
     json.fold[Project](e => resources.reporter.fail(s"Unable to build preview, $e"),
-      JsonReader.parse(_, s3Artifact, deploymentTypes))
+      JsonReader.buildProject(_, s3Artifact, deploymentTypes))
   }
 
   /**

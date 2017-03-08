@@ -5,13 +5,13 @@ import java.io.File
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
-import magenta.json.{JsonInputFile, JsonReader}
-import magenta.{Build, DeployReporter, Project}
+import magenta.json.JsonInputFile
+import magenta.{Build, DeployReporter}
+import play.api.data.validation.ValidationError
+import play.api.libs.json.JsPath
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.util.Try
-import scala.util.control.NonFatal
 
 trait S3Location {
   def bucket: String
@@ -105,13 +105,17 @@ object S3JsonArtifact extends Loggable {
     S3JsonArtifact(bucket, prefix)
   }
 
-  def fetchInputFile(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Either[S3Error, JsonInputFile] = {
+  def fetchInputFile(artifact: S3JsonArtifact)(
+    implicit client: AmazonS3, reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
+
     import cats.syntax.either._
     val possibleJson = (artifact.deployObject.fetchContentAsString()(client)).orElse {
       convertFromZipBundle(artifact)
       artifact.deployObject.fetchContentAsString()(client)
     }
-    possibleJson.map(JsonInputFile.parse)
+    possibleJson.leftMap[ArtifactResolutionError](S3ArtifactError(_)).flatMap(s =>
+      JsonInputFile.parse(s).leftMap(JsonArtifactError(_))
+    )
   }
 
   def convertFromZipBundle(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
@@ -147,6 +151,10 @@ object S3JsonArtifact extends Loggable {
     else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
   }
 }
+
+sealed abstract class ArtifactResolutionError
+case class S3ArtifactError(underlying: S3Error) extends ArtifactResolutionError
+case class JsonArtifactError(underlying: Seq[(JsPath, Seq[ValidationError])]) extends ArtifactResolutionError
 
 case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
   val deployObjectName: String = "riff-raff.yaml"

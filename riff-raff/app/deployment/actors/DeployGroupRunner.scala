@@ -12,12 +12,11 @@ import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
 import magenta.input.resolver.Resolver
-import magenta.json.{JsonInputFile, JsonReader}
+import magenta.json.JsonReader
 import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources, Region}
 import org.joda.time.DateTime
 import resources.PrismLookup
 
-import scala.util.Try
 import scala.util.control.NonFatal
 
 class DeployGroupRunner(
@@ -159,8 +158,8 @@ class DeployGroupRunner(
 
   private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
-      import conf.Configuration._
       import cats.syntax.either._
+      import conf.Configuration._
 
       implicit val client = artifact.aws.client
       val bucketName = artifact.aws.bucketName
@@ -171,7 +170,7 @@ class DeployGroupRunner(
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
 
-      val context: Either[S3Error, DeployContext] = riffRaffYamlString.map { yaml =>
+      val context: Either[ArtifactResolutionError, DeployContext] = riffRaffYamlString.map { yaml =>
         val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
         graph.map(DeployContext(record.uuid, record.parameters, _)) match {
           case Invalid(errors) =>
@@ -183,13 +182,14 @@ class DeployGroupRunner(
         safeReporter.info("Falling back to deploy.json")
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
         val json = S3JsonArtifact.fetchInputFile(s3Artifact)
-        val project = json.map(JsonReader.parse(_, s3Artifact, deploymentTypes))
+        val project = json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
         project.map(DeployContext(record.uuid, record.parameters, _, resources, Region(target.aws.deployJsonRegionName)))
       }
 
       val c = context.recover {
-        case EmptyS3Location(location) => safeReporter.fail(s"No file found at $location")
-        case UnknownS3Error(e) => safeReporter.fail("Error while resolving deploy context", e)
+        case S3ArtifactError(EmptyS3Location(location)) => safeReporter.fail(s"No file found at $location")
+        case S3ArtifactError(UnknownS3Error(e)) => safeReporter.fail("Error while resolving deploy context", e)
+        case JsonArtifactError(parseErrors) => safeReporter.fail(s"Couldn't parse `deploy.json`: $parseErrors")
       }.getOrElse(safeReporter.fail("Unexpected error while resolving deploy context"))
 
       if (DeploymentGraph.toTaskList(c.tasks).isEmpty)
