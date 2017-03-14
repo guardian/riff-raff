@@ -35,8 +35,6 @@ object S3ZipArtifact {
 
       reporter.verbose("Extracted files")
     } catch {
-      case e: AmazonS3Exception if e.getStatusCode == 404 =>
-        reporter.fail(s"404 downloading $path\n - have you got the project name and build number correct?")
       case e: ScalaIOException => e.getCause match {
         case e: AmazonS3Exception if e.getStatusCode == 404 =>
           reporter.fail(s"404 downloading $path\n - have you got the project name and build number correct?")

@@ -2,10 +2,11 @@ package magenta
 
 import java.util.UUID
 
+import com.amazonaws.regions.RegionUtils
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result}
 import magenta.artifact.{S3JsonArtifact, S3Path}
-import magenta.deployment_type.{Action, S3}
+import magenta.deployment_type.{Action, DeploymentType, S3}
 import magenta.fixtures.{StubDeploymentType, StubTask, _}
 import magenta.graph.{DeploymentGraph, DeploymentTasks, StartNode, ValueNode}
 import magenta.json._
@@ -44,8 +45,7 @@ class ResolverTest extends FlatSpec with Matchers with MockitoSugar {
                       """
 
   "resolver" should "parse json into actions that can be executed" in {
-    val parsed = JsonReader.buildProject(JsonInputFile.parse(simpleExample).right.get,
-      new S3JsonArtifact("artifact-bucket","tmp/123"), deploymentTypes)
+    val parsed = JsonReader.parse(simpleExample, new S3JsonArtifact("artifact-bucket","tmp/123"), deploymentTypes)
     val deployRecipe = parsed.recipes("htmlapp-only")
 
     val host = Host("host1", stage = CODE.name, tags=Map("group" -> "")).app(App("apache"))
