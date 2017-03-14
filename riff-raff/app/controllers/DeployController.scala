@@ -274,7 +274,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
   }
 
   def deployConfig(projectName: String, id: String) = AuthAction { implicit request =>
-    def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Path, String)] = {
+    def pathAndContent(artifact: S3Artifact): Option[(S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
       val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
       deployObjectContent.map(deployObjectPath -> _)
@@ -284,16 +284,15 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
       .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
 
-    deployObject.map {
-      case (path, contents) => Ok(contents).as(path.extension.map {
-        case "json" => "application/json"
-        case "yaml" => "text/vnd-yaml"
-      }.getOrElse("text/plain"))
-    }.getOrElse(NotFound(s"Deploy file not found for $projectName $id"))
+    deployObject match {
+      case Some((path, json)) if path.extension.contains("json") => Ok(json).as("application/json")
+      case Some((path, yaml)) if path.extension.contains("yaml") => Ok(yaml).as("text/vnd-yaml")
+      case None => NotFound(s"Deploy file not found for $projectName $id")
+    }
   }
 
   def deployFiles(projectName: String, id: String) = AuthAction { implicit request =>
-    def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Artifact, S3Path, String)] = {
+    def pathAndContent(artifact: S3Artifact): Option[(S3Artifact, S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
       val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
       deployObjectContent.map(content => (artifact, deployObjectPath, content))

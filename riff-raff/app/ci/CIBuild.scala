@@ -37,7 +37,7 @@ object CIBuild extends Logging {
   lazy val newBuilds: Observable[CIBuild] = {
     val observable = (for {
       location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
-      build <- Observable.from(S3Build.buildAt(location).right.toOption)
+      build <- Observable.from(S3Build.buildAt(location))
     } yield build).publish
     observable.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
     observable
@@ -54,7 +54,7 @@ object CIBuild extends Logging {
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     log.logger.info(s"Found ${initialFiles.length} builds to parse")
     (Future.traverse(initialFiles) { location =>
-      Future(S3Build.buildAt(location).right.toOption)
+      Future(S3Build.buildAt(location))
     }).map(_.flatten)
   }
 

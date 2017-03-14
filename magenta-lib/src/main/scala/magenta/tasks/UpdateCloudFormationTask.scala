@@ -122,9 +122,10 @@ case class UpdateCloudFormationTask(
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
-    val templateString = templatePath.fetchContentAsString.right.getOrElse(
-      reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
-    )
+    val templateString = templatePath.fetchContentAsString match {
+      case Some(string) => string
+      case None => reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
+    }
 
     val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
 
