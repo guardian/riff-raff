@@ -5,7 +5,7 @@ import controllers.Logging
 import magenta.artifact.{S3Error, S3Location, S3Object}
 import org.joda.time.DateTime
 import play.api.data.validation.ValidationError
-import play.api.libs.json.{JsPath, Json, Reads}
+import play.api.libs.json._
 
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -44,8 +44,14 @@ object S3Build extends Logging {
   def parse(json: String): Either[Seq[(JsPath, Seq[ValidationError])], S3Build] = {
     import play.api.libs.functional.syntax._
     import utils.Json.DefaultJodaDateReads
+    import cats.syntax.either._
     implicit val reads: Reads[S3Build] = (
-      (JsPath \ "buildNumber").read[Long] and
+      (JsPath \ "buildNumber").read[String].flatMap(s => Reads(_ =>
+        Either.catchOnly[NumberFormatException](s.toLong) match {
+          case Left(e) => JsError(s"'$s' is not a number")
+          case Right(l) => JsSuccess(l)
+        }
+      )) and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "branch").read[String] and
