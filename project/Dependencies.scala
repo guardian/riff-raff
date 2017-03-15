@@ -68,7 +68,8 @@ object Dependencies {
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
-    "org.gnieh" %% "diffson" % "2.0.2" % Test
+    "org.gnieh" %% "diffson" % "2.0.2" % Test,
+    "de.leanovate.play-mockws" %% "play-mockws" % "2.5.1" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))

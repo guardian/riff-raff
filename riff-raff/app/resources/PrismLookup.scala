@@ -18,6 +18,11 @@ import utils.Json._
 
 import scala.util.{Failure, Success, Try}
 
+case class Image(imageId: String, creationDate: DateTime)
+object Image {
+  implicit val formats = Json.format[Image]
+}
+
 class PrismLookup(wsClient: WSClient) extends Lookup with Logging {
 
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
@@ -178,11 +183,9 @@ class PrismLookup(wsClient: WSClient) extends Lookup with Logging {
       conf.Configuration.credentials.lookupSecret(service, account)
   }
 
-  case class Image(imageId: String, creationDate: DateTime)
-  implicit val imageReads = Json.reads[Image]
   private def get(region: String, tags: Map[String, String]): Seq[Image] = {
     val params = tags.map{ case (key, value) => s"tags.${key.urlEncode}=${value.urlEncode}" }.mkString("&")
-    prism.get(s"/images?$params"){ json =>
+    prism.get(s"/images?region=${region.urlEncode}&$params"){ json =>
       (json \ "data" \ "images").as[Seq[Image]]
     }
   }
