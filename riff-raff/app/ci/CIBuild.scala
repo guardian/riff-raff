@@ -37,7 +37,7 @@ object CIBuild extends Logging {
   lazy val newBuilds: Observable[CIBuild] = {
     val observable = (for {
       location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
-      build <- Observable.from(S3Build.buildAt(location))
+      build <- Observable.from(retrieveBuild(location))
     } yield build).publish
     observable.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
     observable
@@ -53,9 +53,14 @@ object CIBuild extends Logging {
   lazy val initialBuilds: Future[Seq[CIBuild]] = {
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     log.logger.info(s"Found ${initialFiles.length} builds to parse")
-    (Future.traverse(initialFiles) { location =>
-      Future(S3Build.buildAt(location))
-    }).map(_.flatten)
+    (Future.traverse(initialFiles)(l => Future(retrieveBuild(l)))).map(_.flatten)
+  }
+
+  private def retrieveBuild(location: S3Object): Option[CIBuild] = {
+    import cats.syntax.either._
+    S3Build.buildAt(location)
+      .leftMap(e => log.error(s"Problem getting build definition from $location: $e"))
+      .toOption
   }
 
   lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)

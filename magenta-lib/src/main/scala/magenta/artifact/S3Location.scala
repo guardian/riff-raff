@@ -5,12 +5,13 @@ import java.io.File
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
+import magenta.json.JsonInputFile
 import magenta.{Build, DeployReporter}
+import play.api.data.validation.ValidationError
+import play.api.libs.json.JsPath
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.util.Try
-import scala.util.control.NonFatal
 
 trait S3Location {
   def bucket: String
@@ -59,14 +60,18 @@ object S3Location extends Loggable {
     } yield S3Object(summary.getBucketName, summary.getKey, summary.getSize)
   }
 
-  def fetchContentAsString(location: S3Location)(implicit client:AmazonS3):Option[String] = {
-    Try {
-      Some(client.getObjectAsString(location.bucket, location.key))
-    }.recover {
-      case e: AmazonS3Exception if e.getStatusCode == 404 => None
-    }.get
+  def fetchContentAsString(location: S3Location)(implicit client:AmazonS3): Either[S3Error, String] = {
+    import cats.syntax.either._
+    Either.catchNonFatal(client.getObjectAsString(location.bucket, location.key)).leftMap {
+      case e: AmazonS3Exception if e.getStatusCode == 404 => EmptyS3Location(location)
+      case e => UnknownS3Error(e)
+    }
   }
 }
+
+sealed trait S3Error
+case class EmptyS3Location(location: S3Location) extends S3Error
+case class UnknownS3Error(exception: Throwable) extends S3Error
 
 case class S3Path(bucket: String, key: String) extends S3Location
 
@@ -100,13 +105,17 @@ object S3JsonArtifact extends Loggable {
     S3JsonArtifact(bucket, prefix)
   }
 
-  def withZipFallback[T](artifact: S3JsonArtifact)(f: S3JsonArtifact => Try[T])(implicit client: AmazonS3, reporter: DeployReporter): T = {
-    val attempt = f(artifact) recoverWith {
-      case NonFatal(e) =>
-        convertFromZipBundle(artifact)
-        f(artifact)
+  def fetchInputFile(artifact: S3JsonArtifact)(
+    implicit client: AmazonS3, reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
+
+    import cats.syntax.either._
+    val possibleJson = (artifact.deployObject.fetchContentAsString()(client)).orElse {
+      convertFromZipBundle(artifact)
+      artifact.deployObject.fetchContentAsString()(client)
     }
-    attempt.get
+    possibleJson.leftMap[ArtifactResolutionError](S3ArtifactError(_)).flatMap(s =>
+      JsonInputFile.parse(s).leftMap(JsonArtifactError(_))
+    )
   }
 
   def convertFromZipBundle(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
@@ -142,6 +151,10 @@ object S3JsonArtifact extends Loggable {
     else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
   }
 }
+
+sealed abstract class ArtifactResolutionError
+case class S3ArtifactError(underlying: S3Error) extends ArtifactResolutionError
+case class JsonArtifactError(underlying: Seq[(JsPath, Seq[ValidationError])]) extends ArtifactResolutionError
 
 case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
   val deployObjectName: String = "riff-raff.yaml"
