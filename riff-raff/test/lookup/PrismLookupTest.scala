@@ -10,6 +10,7 @@ import play.api.test.Helpers._
 import resources.{Image, PrismLookup}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration._
 
 class PrismLookupTest extends FlatSpec with Matchers {
   "PrismLookup" should "return latest image" in {
@@ -28,7 +29,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
         ))
       }
     }
-    val lookup = new PrismLookup(mockClient)
+    val lookup = new PrismLookup(mockClient, "", 10 seconds)
     val result = lookup.getLatestAmi("bob")(Map.empty)
     result shouldBe Some("test-later-still-ami")
   }
@@ -45,7 +46,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
         ))
       }
     }
-    val lookup = new PrismLookup(mockClient)
+    val lookup = new PrismLookup(mockClient, "", 10 seconds)
     val result = lookup.getLatestAmi("bob")(Map.empty)
     result shouldBe None
     mockRequest.flatMap(_.getQueryString("region")) shouldBe Some("bob")
@@ -63,7 +64,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
         ))
       }
     }
-    val lookup = new PrismLookup(mockClient)
+    val lookup = new PrismLookup(mockClient, "", 10 seconds)
     lookup.getLatestAmi("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
     mockRequest.map(_.queryString) shouldBe Some(Map(
       "region" -> ArrayBuffer("bob"),

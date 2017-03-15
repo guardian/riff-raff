@@ -17,6 +17,7 @@ import resources.PrismLookup
 import utils.HstsFilter
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 import router.Routes
 
@@ -32,7 +33,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
-  val prismLookup = new PrismLookup(wsClient)
+  val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
   val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine)
   val continuousDeployment = new ContinuousDeployment(deployments)

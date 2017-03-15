@@ -23,7 +23,7 @@ object Image {
   implicit val formats = Json.format[Image]
 }
 
-class PrismLookup(wsClient: WSClient) extends Lookup with Logging {
+class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lookup with Logging {
 
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
     apiCredentials = apps.toSeq.flatMap {
@@ -44,9 +44,6 @@ class PrismLookup(wsClient: WSClient) extends Lookup with Logging {
   )
 
   object prism extends Logging {
-    val url = conf.Configuration.lookup.prismUrl
-    val timeout = conf.Configuration.lookup.timeoutSeconds.seconds
-
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
       val result = wsClient.url(s"$url$path").get().map(_.json).map { json =>
         block(json)
