@@ -2,12 +2,14 @@ package ci
 
 import conf.Configuration
 import controllers.Logging
-import magenta.artifact.{S3Location, S3Object}
+import magenta.artifact.{S3Error, S3Location, S3Object}
 import org.joda.time.DateTime
+import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsPath, Json, Reads}
 
 import scala.util.Try
 import scala.util.control.NonFatal
+import cats.syntax.either._
 
 case class S3Build(
   id: Long,
@@ -35,20 +37,15 @@ object S3Build extends Logging {
       Nil
   } get
 
-  def buildAt(location: S3Object): Option[S3Build] = Try {
-    log.debug(s"Parsing ${location.key}")
-    location.fetchContentAsString().map(parse)
-  } recover {
-    case NonFatal(e) =>
-      log.error(s"Error parsing $location", e)
-      None
-  } get
+  def buildAt(location: S3Object): Either[S3BuildError, S3Build] =
+    location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError(_))
+      .flatMap(s => parse(s).leftMap[S3BuildError](S3BuildParseError(_)))
 
-  def parse(json: String): S3Build = {
+  def parse(json: String): Either[Seq[(JsPath, Seq[ValidationError])], S3Build] = {
     import play.api.libs.functional.syntax._
     import utils.Json.DefaultJodaDateReads
     implicit val reads: Reads[S3Build] = (
-      (JsPath \ "buildNumber").read[String].map(_.toLong) and
+      (JsPath \ "buildNumber").read[Long] and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "branch").read[String] and
@@ -58,6 +55,10 @@ object S3Build extends Logging {
         (JsPath \ "vcsURL").read[String]
       )(S3Build.apply _)
 
-    Json.parse(json).as[S3Build]
+    Json.parse(json).validate[S3Build].asEither
   }
 }
+
+sealed trait S3BuildError
+final case class S3BuildRetrievalError(s3Error: S3Error) extends S3BuildError
+final case class S3BuildParseError(parseErrors: Seq[(JsPath, Seq[ValidationError])]) extends S3BuildError

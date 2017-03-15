@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 import cats.syntax.either._
 import com.gu.management.Loggable
 import conf.Configuration
-import magenta.artifact.S3YamlArtifact
+import magenta.artifact.{S3Error, S3YamlArtifact}
 import magenta.deployment_type.DeploymentType
 import magenta.{DeployParameters, DeployReporter, DeploymentResources}
 import resources.PrismLookup
@@ -25,7 +25,7 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
     }
   }
 
-  def startPreview(parameters: DeployParameters): Either[String, UUID] = {
+  def startPreview(parameters: DeployParameters): Either[S3Error, UUID] = {
     cleanupPreviews()
 
     val previewId = UUID.randomUUID()
@@ -35,15 +35,12 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
     val artifact = S3YamlArtifact.apply(parameters.build, conf.Configuration.artifact.aws.bucketName)
     val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 
-    Either.fromOption(
-      maybeConfig.map{ config =>
-        logger.info(s"Got configuration for $previewId - resolving")
-        val eventualPreview = Future(Preview(artifact, config, parameters, resources, deploymentTypes))
-        previews += previewId -> PreviewResult(eventualPreview)
-        previewId
-      },
-      s"YAML configuration file for ${parameters.build.projectName} ${parameters.build.id} not found"
-    )
+    maybeConfig.map(config => {
+      logger.info(s"Got configuration for $previewId - resolving")
+      val eventualPreview = Future(Preview(artifact, config, parameters, resources, deploymentTypes))
+      previews += previewId -> PreviewResult(eventualPreview)
+      previewId
+    })
   }
 
   def getPreviewResult(id: UUID): Option[PreviewResult] = previews.get(id)
