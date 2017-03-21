@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "1.11.67"
+    val aws = "1.11.106"
     val guardianManagement = "5.35"
     val guardianManagementPlay = "8.0"
     val jackson = "2.8.2"
