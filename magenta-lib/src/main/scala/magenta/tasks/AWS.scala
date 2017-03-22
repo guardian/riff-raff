@@ -1,7 +1,6 @@
 package magenta.tasks
 
 import java.nio.ByteBuffer
-import javax.xml.stream.XMLStreamException
 
 import com.amazonaws.{AmazonClientException, AmazonWebServiceRequest, ClientConfiguration}
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
@@ -462,23 +461,14 @@ trait AWS extends Loggable {
     }
   )
 
-  /* A retry condition that logs errors and retries on ParseExceptions.
-   * The parse conditions result under heavy load by all accounts and are not in the default retry policy due to
-   * not knowing whether the query is idempotent or not. There is more discussion about this at
-   * https://github.com/aws/aws-sdk-java/issues/892
-   * */
-  class RiffRaffRetryCondition extends SDKDefaultRetryCondition {
+  /* A retry condition that logs errors */
+  class LoggingRetryCondition extends SDKDefaultRetryCondition {
     private def exceptionInfo(e: Throwable): String = {
       s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
     }
-    private def isParseException(exception: AmazonClientException): Boolean = {
-      exception.getCause match {
-        case xse:XMLStreamException if xse.getMessage.startsWith("ParseError at") => true
-        case _ => false
-      }
-    }
+
     override def shouldRetry(originalRequest: AmazonWebServiceRequest, exception: AmazonClientException, retriesAttempted: Int): Boolean = {
-      val willRetry = super.shouldRetry(originalRequest, exception, retriesAttempted) || isParseException(exception)
+      val willRetry = super.shouldRetry(originalRequest, exception, retriesAttempted)
       if (willRetry) {
         logger.warn(s"AWS SDK retry $retriesAttempted: ${originalRequest.getClass.getName} threw ${exceptionInfo(exception)}")
       } else {
@@ -490,7 +480,7 @@ trait AWS extends Loggable {
   }
   val clientConfiguration = new ClientConfiguration().
     withRetryPolicy(new RetryPolicy(
-      new RiffRaffRetryCondition(),
+      new LoggingRetryCondition(),
       PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
       20,
       false
