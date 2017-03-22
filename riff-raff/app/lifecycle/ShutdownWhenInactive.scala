@@ -2,7 +2,7 @@ package lifecycle
 
 import com.gu.management.DefaultSwitch
 import controllers.Logging
-import deployment.Deployments
+import deployment.{Deployments, Record}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -28,7 +28,9 @@ object ShutdownWhenInactive extends Lifecycle with Logging {
         blocking(Thread.sleep(2000L))
         System.exit(EXITCODE)
       } else {
-        log.info("RiffRaff not yet inactive, deferring shutdown request")
+        val activeBuilds: Iterable[Record] = Deployments.getControllerDeploys.filterNot(_.isDone)
+        val activeBuildsString = activeBuilds.map(b => s"'${b.buildName} ${b.buildId}'").mkString(", ")
+        log.info(s"RiffRaff not yet inactive ($activeBuildsString ${if(activeBuilds.size > 1) "are" else "is"} still running), deferring shutdown request")
       }
     }
   }
