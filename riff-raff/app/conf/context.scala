@@ -2,7 +2,7 @@ package conf
 
 import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.gu.management._
 import logback.LogbackLevelPage
 import com.gu.management.play.{Management => PlayManagement}
@@ -14,8 +14,8 @@ import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.regions.{Region, RegionUtils, Regions}
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient
-import com.amazonaws.services.ec2.AmazonEC2Client
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
 import com.amazonaws.util.EC2MetadataUtils
 
@@ -52,7 +52,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
           new Filter("resource-type").withValues("instance"),
           new Filter("resource-id").withValues(instanceId)
         )
-        val ec2Client = Regions.getCurrentRegion.createClient(classOf[AmazonEC2Client], credentialsProviderChain(None, None), null)
+        val ec2Client = AmazonEC2ClientBuilder.standard()
+          .withCredentials(credentialsProviderChain(None, None))
+          .withRegion(Regions.getCurrentRegion.getName)
+          .build()
         try {
           val describeTagsResult = ec2Client.describeTags(request)
           describeTagsResult.getTags.asScala
@@ -87,11 +90,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
-    val dynamoClient = Region.getRegion(Regions.EU_WEST_1).createClient(
-      classOf[AmazonDynamoDBAsyncClient],
-      credentialsProviderChain(None, None),
-      new ClientConfiguration()
-    )
+    val dynamoClient = AmazonDynamoDBAsyncClientBuilder.standard()
+      .withCredentials(credentialsProviderChain(None, None))
+      .withRegion(Regions.getCurrentRegion.getName)
+      .withClientConfiguration(new ClientConfiguration())
+      .build()
   }
 
   object credentials {
@@ -141,8 +144,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
-      lazy val region = awsRegion(regionName)
-      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+        .withCredentials(credentialsProvider)
+        .withRegion(regionName)
+        .build()
     }
   }
 
@@ -154,8 +159,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("build.aws.region", "eu-west-1")
-      lazy val region = awsRegion(regionName)
-      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+        .withCredentials(credentialsProvider)
+        .withRegion(regionName)
+        .build()
     }
   }
 
@@ -166,8 +173,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("tag.aws.region", "eu-west-1")
-      lazy val region = awsRegion(regionName)
-      implicit lazy val client: AmazonS3Client = new AmazonS3Client(credentialsProvider).withRegion(region)
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+        .withCredentials(credentialsProvider)
+        .withRegion(regionName)
+        .build()
     }
   }
 
@@ -194,7 +203,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       new EnvironmentVariableCredentialsProvider,
       new SystemPropertiesCredentialsProvider,
       new ProfileCredentialsProvider("deployTools"),
-      new InstanceProfileCredentialsProvider
+      InstanceProfileCredentialsProvider.getInstance()
     )
 
   def awsRegion(name: String): Region = RegionUtils.getRegion(name)

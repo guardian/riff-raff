@@ -4,7 +4,10 @@ import Helpers._
 val commonSettings = Seq(
   organization := "com.gu",
   scalaVersion := "2.11.8",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"),
+  scalacOptions ++= Seq("-deprecation", "-feature","-language:postfixOps,reflectiveCalls,implicitConversions", "-Xfatal-warnings"),
+  scalacOptions in(Compile, doc) ++= Seq(
+    "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
+  ),
   version := "1.0",
   resolvers ++= Seq(
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
