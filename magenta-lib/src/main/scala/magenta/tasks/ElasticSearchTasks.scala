@@ -2,10 +2,8 @@ package magenta.tasks
 
 import java.net.ConnectException
 
-import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
+import com.amazonaws.services.autoscaling.AmazonAutoScaling
 import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
-import com.amazonaws.services.ec2.AmazonEC2Client
-import com.amazonaws.services.elasticloadbalancing.AmazonElasticLoadBalancingClient
 import dispatch.classic._
 import magenta.{DeploymentPackage, KeyRing, Stage, _}
 import org.json4s._
@@ -23,7 +21,7 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     val instance = EC2(asg.getInstances.headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
@@ -39,7 +37,7 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
                                                        (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     implicit val elbClient = ELB.client(keyRing, region)
     val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head

@@ -3,7 +3,7 @@ package magenta.tasks
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.cloudformation.model.StackEvent
 import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
@@ -81,7 +81,7 @@ object UpdateCloudFormationTask {
     }
   }
 
-  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenServiceClient,
+  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenService,
     region: Region, alwaysUploadToS3: Boolean, reporter: DeployReporter): Template = {
     val templateTooBigForSdkUpload = templateBody.length > 51200
 
