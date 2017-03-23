@@ -29,8 +29,7 @@ object ShutdownWhenInactive extends Lifecycle with Logging {
         System.exit(EXITCODE)
       } else {
         val activeBuilds: Iterable[Record] = Deployments.getControllerDeploys.filterNot(_.isDone)
-        val activeBuildsString = activeBuilds.map(b => s"'${b.buildName} ${b.buildId}'").mkString(", ")
-        log.info(s"RiffRaff not yet inactive ($activeBuildsString ${if(activeBuilds.size > 1) "are" else "is"} still running), deferring shutdown request")
+        log.info(s"RiffRaff not yet inactive (Still running: ${activeBuilds.map(_.uuid).mkString(", ")}), deferring shutdown request")
       }
     }
   }
