@@ -32,19 +32,22 @@ object LegacyPreviewController {
 
   def cleanupPreviews() {
     agent.send { resultMap =>
-      resultMap.filter { case (uuid, result) =>
-        !result.completed || result.duration.toStandardMinutes.getMinutes < 60
+      resultMap.filter {
+        case (uuid, result) =>
+          !result.completed || result.duration.toStandardMinutes.getMinutes < 60
       }
     }
   }
 
-  def startPreview(parameters: DeployParameters, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]): UUID = {
+  def startPreview(parameters: DeployParameters,
+                   prismLookup: PrismLookup,
+                   deploymentTypes: Seq[DeploymentType]): UUID = {
     cleanupPreviews()
     val previewId = UUID.randomUUID()
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
     val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
     val previewFuture = Future { LegacyPreview(parameters, resources, deploymentTypes) }
-    Await.ready(agent.alter{ _ + (previewId -> LegacyPreviewResult(previewFuture)) }, 30.second)
+    Await.ready(agent.alter { _ + (previewId -> LegacyPreviewResult(previewFuture)) }, 30.second)
     previewId
   }
 
@@ -55,8 +58,8 @@ object LegacyPreview {
   import Configuration._
 
   /**
-   * Get the project for the build for preview purposes.
-   */
+    * Get the project for the build for preview purposes.
+    */
   def getProject(build: Build, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): Project = {
     val yamlArtifact = S3YamlArtifact(build, artifact.aws.bucketName)
     if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isRight)
@@ -64,19 +67,24 @@ object LegacyPreview {
     val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
     val json = S3JsonArtifact.fetchInputFile(s3Artifact)(resources.artifactClient, resources.reporter)
     json.fold[Project](e => resources.reporter.fail(s"Unable to build preview, $e"),
-      JsonReader.buildProject(_, s3Artifact, deploymentTypes))
+                       JsonReader.buildProject(_, s3Artifact, deploymentTypes))
   }
 
   /**
-   * Get the preview, extracting the artifact if necessary - this may take a long time to run
-   */
-  def apply(parameters: DeployParameters, resources: DeploymentResources, deploymentTypes: Seq[DeploymentType]): LegacyPreview = {
+    * Get the preview, extracting the artifact if necessary - this may take a long time to run
+    */
+  def apply(parameters: DeployParameters,
+            resources: DeploymentResources,
+            deploymentTypes: Seq[DeploymentType]): LegacyPreview = {
     val project = LegacyPreview.getProject(parameters.build, resources, deploymentTypes)
     LegacyPreview(project, parameters, resources, Region(target.aws.deployJsonRegionName))
   }
 }
 
-case class LegacyPreview(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region) {
+case class LegacyPreview(project: Project,
+                         parameters: DeployParameters,
+                         resources: DeploymentResources,
+                         region: Region) {
   lazy val stacks = Resolver.resolveStacks(project, parameters, resources.reporter) collect {
     case NamedStack(s) => s
   }
@@ -89,17 +97,20 @@ case class LegacyPreview(project: Project, parameters: DeployParameters, resourc
   lazy val recipeTasks = Resolver.resolveDetail(project, parameters, resources, region)
   lazy val tasks = recipeTasks.flatMap(_.tasks)
 
-  def taskHosts(taskList:List[MagentaTask]) = taskList.flatMap(_.taskHost).filter(resources.lookup.hosts.all.contains).distinct
+  def taskHosts(taskList: List[MagentaTask]) =
+    taskList.flatMap(_.taskHost).filter(resources.lookup.hosts.all.contains).distinct
 
   lazy val hosts = taskHosts(tasks)
   lazy val allHosts = {
-    val tasks = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources, region)
+    val tasks =
+      Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList = Nil), resources, region)
     val allTasks = DeploymentGraph.toTaskList(tasks)
     taskHosts(allTasks)
   }
   lazy val allPossibleHosts = {
     val allTasks = allRecipes.flatMap { recipe =>
-      val graph = Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList=Nil), resources, region)
+      val graph =
+        Resolver.resolve(project, parameters.copy(recipe = RecipeName(recipe), hostList = Nil), resources, region)
       DeploymentGraph.toTaskList(graph)
     }.distinct
     taskHosts(allTasks)

@@ -19,8 +19,17 @@ class S3BuildTest extends FunSuite with Matchers with EitherValues {
       """.stripMargin
 
     S3Build.parse(json).right.value shouldBe (
-      S3Build(42, "foo", "foo", "master", "42", new DateTime(2017,3,14, 17, 57, 8),
-        "f29427661d227eaf3e6b89c75e76b99484d551c4", "git@github.com:guardian/riff-raff.git"))
+      S3Build(
+        42,
+        "foo",
+        "foo",
+        "master",
+        "42",
+        new DateTime(2017, 3, 14, 17, 57, 8),
+        "f29427661d227eaf3e6b89c75e76b99484d551c4",
+        "git@github.com:guardian/riff-raff.git"
+      )
+    )
   }
 
   test("parsing should not barf if buildNumber is not a number") {

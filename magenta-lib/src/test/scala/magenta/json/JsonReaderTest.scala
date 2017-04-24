@@ -63,25 +63,46 @@ class JsonReaderTest extends FlatSpec with Matchers {
   """)
 
   "json parser" should "parse json and resolve links" in {
-    val parsedProject = JsonReader.buildProject(deployJsonExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
+    val parsedProject =
+      JsonReader.buildProject(deployJsonExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
 
-    parsedProject.applications should be (Set(App("index-builder"), App("api"), App("solr")))
+    parsedProject.applications should be(Set(App("index-builder"), App("api"), App("solr")))
 
-    parsedProject.packages.size should be (3)
+    parsedProject.packages.size should be(3)
     parsedProject.packages("index-builder") shouldBe
-      DeploymentPackage("index-builder", Seq(App("index-builder")), Map.empty, "autoscaling", S3Path("artifact-bucket", "test/123/packages/index-builder/"), true, deploymentTypes)
+      DeploymentPackage("index-builder",
+                        Seq(App("index-builder")),
+                        Map.empty,
+                        "autoscaling",
+                        S3Path("artifact-bucket", "test/123/packages/index-builder/"),
+                        true,
+                        deploymentTypes)
     parsedProject.packages("api") shouldBe
-      DeploymentPackage("api", Seq(App("api")), Map("healthcheck_paths" -> Json.arr("/api/index.json","/api/search.json")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/api/"), true, deploymentTypes)
+      DeploymentPackage(
+        "api",
+        Seq(App("api")),
+        Map("healthcheck_paths" -> Json.arr("/api/index.json", "/api/search.json")),
+        "autoscaling",
+        S3Path("artifact-bucket", "test/123/packages/api/"),
+        true,
+        deploymentTypes
+      )
     parsedProject.packages("solr") shouldBe
-      DeploymentPackage("solr", Seq(App("solr")), Map("port" -> JsString("8400")), "autoscaling", S3Path("artifact-bucket", "test/123/packages/solr/"), true, deploymentTypes)
+      DeploymentPackage("solr",
+                        Seq(App("solr")),
+                        Map("port" -> JsString("8400")),
+                        "autoscaling",
+                        S3Path("artifact-bucket", "test/123/packages/solr/"),
+                        true,
+                        deploymentTypes)
 
     val recipes = parsedProject.recipes
-    recipes.size should be (4)
-    recipes("all") should be (Recipe("all", Nil, List("index-build-only", "api-only")))
+    recipes.size should be(4)
+    recipes("all") should be(Recipe("all", Nil, List("index-build-only", "api-only")))
 
     val apiCounterRecipe = recipes("api-counter-only")
 
-    apiCounterRecipe.deploymentSteps.toSeq.length should be (4)
+    apiCounterRecipe.deploymentSteps.toSeq.length should be(4)
   }
 
   val minimalExample = parseOrDie("""
@@ -93,9 +114,10 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """)
 
   "json parser" should "infer a single app if none specified" in {
-    val parsedProject = JsonReader.buildProject(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
+    val parsedProject =
+      JsonReader.buildProject(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
 
-    parsedProject.applications should be (Set(App("dinky")))
+    parsedProject.applications should be(Set(App("dinky")))
   }
 
   val twoPackageExample = parseOrDie("""
@@ -108,15 +130,18 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """)
 
   "json parser" should "infer a default recipe that deploys all packages" in {
-    val parsedProject = JsonReader.buildProject(twoPackageExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
+    val parsedProject =
+      JsonReader.buildProject(twoPackageExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
 
     val recipes = parsedProject.recipes
     recipes.size should be(1)
-    recipes("default") should be (Recipe("default", deploymentSteps   = parsedProject.packages.values.map(_.mkDeploymentStep("deploy"))))
+    recipes("default") should be(
+      Recipe("default", deploymentSteps = parsedProject.packages.values.map(_.mkDeploymentStep("deploy"))))
   }
 
   "json parser" should "default to using the package name for the file name" in {
-    val parsedProject = JsonReader.buildProject(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
+    val parsedProject =
+      JsonReader.buildProject(minimalExample, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
 
     parsedProject.packages("dinky").s3Package should be(S3Path("artifact-bucket", "test/123/packages/dinky/"))
   }
@@ -133,7 +158,8 @@ class JsonReaderTest extends FlatSpec with Matchers {
 """)
 
   "json parser" should "use override file name if specified" in {
-    val parsedProject = JsonReader.buildProject(withExplicitFileName, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
+    val parsedProject =
+      JsonReader.buildProject(withExplicitFileName, S3JsonArtifact("artifact-bucket", "test/123"), deploymentTypes)
 
     parsedProject.packages("dinky").s3Package should be(S3Path("artifact-bucket", "test/123/packages/awkward/"))
   }

@@ -7,7 +7,8 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
   "generateDocs" should "generate documentation for our fake deployment type" in {
     val testDeploymentType = new DeploymentType {
       val action = Action("myAction", "some docs for my action")((_, _, _) => Nil)
-      val action2 = Action("myNonDefaultAction", "some docs for my action that doesn't run by default")((_, _, _) => Nil)
+      val action2 =
+        Action("myNonDefaultAction", "some docs for my action that doesn't run by default")((_, _, _) => Nil)
       override def defaultActions = List(action)
 
       override def name = "testDeploymentType"
@@ -15,12 +16,12 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
 
       val param1 = Param[String]("param1", "first parameter which has no default")
       val simianType = Param[String]("simianType", "simianType param which has a default").default("monkey")
-      val foodType = Param[String]("foodType", "another param with a contextual default").
-        defaultFromContext((pkg, target) => Right(s"banana${target.stack.nameOption.getOrElse("")}"))
-      val foodCount = Param[Int]("foodCount", "param with different default for legacy and new").
-        defaultFromContext((pkg, target) =>
-          Right(if (pkg.legacyConfig) 1 else 100)
-        )
+      val foodType =
+        Param[String]("foodType", "another param with a contextual default").defaultFromContext((pkg, target) =>
+          Right(s"banana${target.stack.nameOption.getOrElse("")}"))
+      val foodCount =
+        Param[Int]("foodCount", "param with different default for legacy and new").defaultFromContext((pkg, target) =>
+          Right(if (pkg.legacyConfig) 1 else 100))
     }
     val result = DeployTypeDocs.generateDocs(Seq(testDeploymentType))
     result.size shouldBe 1
@@ -30,20 +31,31 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
     docs shouldBe testDeploymentType.documentation
 
     actionDocs.size shouldBe 2
-    actionDocs should contain (ActionDoc("myAction", "some docs for my action", true))
-    actionDocs should contain (ActionDoc("myNonDefaultAction", "some docs for my action that doesn't run by default", false))
+    actionDocs should contain(ActionDoc("myAction", "some docs for my action", true))
+    actionDocs should contain(
+      ActionDoc("myNonDefaultAction", "some docs for my action that doesn't run by default", false))
 
     paramDocs.size shouldBe 4
-    paramDocs should contain (ParamDoc("param1", "first parameter which has no default", None, None))
-    paramDocs should contain (ParamDoc("simianType", "simianType param which has a default", Some("monkey"), Some("monkey")))
-    paramDocs should contain (ParamDoc("foodType", "another param with a contextual default", Some("banana<stack>"), Some("banana<stack>")))
-    paramDocs should contain (ParamDoc("foodCount", "param with different default for legacy and new", Some("1"), Some("100")))
+    paramDocs should contain(ParamDoc("param1", "first parameter which has no default", None, None))
+    paramDocs should contain(
+      ParamDoc("simianType", "simianType param which has a default", Some("monkey"), Some("monkey")))
+    paramDocs should contain(
+      ParamDoc("foodType", "another param with a contextual default", Some("banana<stack>"), Some("banana<stack>")))
+    paramDocs should contain(
+      ParamDoc("foodCount", "param with different default for legacy and new", Some("1"), Some("100")))
   }
 
   it should "successfully generate documentation for the standard set of deployment types" in {
     // we can't easily check correctness, but we can check exceptions are not thrown
     val availableDeploymentTypes = Seq(
-      ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
+      ElasticSearch,
+      S3,
+      AutoScaling,
+      Fastly,
+      CloudFormation,
+      Lambda,
+      AmiCloudFormationParameter,
+      SelfDeploy
     )
     val result = DeployTypeDocs.generateDocs(availableDeploymentTypes)
     result.size shouldBe availableDeploymentTypes.size

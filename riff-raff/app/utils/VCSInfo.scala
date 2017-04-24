@@ -15,7 +15,7 @@ trait VCSInfo {
   def headUrl: URI
 
   import VCSInfo._
-  def map: Map[String,String] = Map(
+  def map: Map[String, String] = Map(
     REVISION -> revision,
     CIURL -> ciVcsUrl,
     NAME -> name,
@@ -50,7 +50,7 @@ object VCSInfo extends Logging {
   val GitHubWeb = """https://github\.com/(.*)""".r
 
   def apply(ciVcsUrl: String, revision: String): Option[VCSInfo] = {
-    log.debug("url:%s revision:%s" format(ciVcsUrl, revision))
+    log.debug("url:%s revision:%s" format (ciVcsUrl, revision))
     ciVcsUrl match {
       case GitHubProtocol(repo) => Some(GitHub(ciVcsUrl, revision, repo))
       case GitHubUser(repo) => Some(GitHub(ciVcsUrl, revision, repo))
@@ -60,7 +60,7 @@ object VCSInfo extends Logging {
   }
 
   def apply(metaData: Map[String, String]): Option[VCSInfo] = {
-    metaData.get(REVISION).flatMap{ revision =>
+    metaData.get(REVISION).flatMap { revision =>
       metaData.get(CIURL).flatMap { url =>
         VCSInfo(url, revision)
       }

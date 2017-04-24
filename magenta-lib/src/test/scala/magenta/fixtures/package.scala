@@ -11,11 +11,12 @@ package object fixtures {
 
   val lookupEmpty = stubLookup()
 
-  val lookupSingleHost = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)))
+  val lookupSingleHost = stubLookup(List(Host("the_host", stage = CODE.name).app(app1)))
 
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
-  val baseRecipe = Recipe("one",
+  val baseRecipe = Recipe(
+    "one",
     deploymentSteps = basePackageType.mkDeploymentStep("init_action_one")(stubPackage(basePackageType)) :: Nil,
     dependsOn = Nil)
 
@@ -26,8 +27,9 @@ package object fixtures {
   def stubPackage(deploymentType: DeploymentType) =
     DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false, Seq(deploymentType))
 
-  def stubDeploymentType(actionNames: Seq[String], params: ParamRegister => List[Param[_]] = _ => Nil,
-    name: String = "stub-package-type") = {
+  def stubDeploymentType(actionNames: Seq[String],
+                         params: ParamRegister => List[Param[_]] = _ => Nil,
+                         name: String = "stub-package-type") = {
     StubDeploymentType(
       actionsMap = actionNames.map { name =>
         name -> Action(name) { (_, _, target) =>
@@ -35,14 +37,13 @@ package object fixtures {
             StubTask(name + " per app task number one", target.region),
             StubTask(name + " per app task number two", target.region)
           )
-        } (StubActionRegister)
+        }(StubActionRegister)
       }.toMap,
       actionNames.toList,
       params,
       name
     )
   }
-
 
   def testParams() = DeployParameters(
     Deployer("default deployer"),
@@ -62,12 +63,12 @@ package object fixtures {
           val matchingList = resourceData.getOrElse(key, List.empty)
           stack match {
             case UnnamedStack =>
-              matchingList.filter(_.stack.isEmpty).find{data =>
+              matchingList.filter(_.stack.isEmpty).find { data =>
                 data.appRegex.findFirstMatchIn(app.name).isDefined &&
                 data.stageRegex.findFirstMatchIn(stage.name).isDefined
               }
             case NamedStack(stackName) =>
-              matchingList.filter(_.stack.isDefined).find{data =>
+              matchingList.filter(_.stack.isDefined).find { data =>
                 data.stackRegex.exists(_.findFirstMatchIn(stackName).isDefined) &&
                 data.appRegex.findFirstMatchIn(app.name).isDefined &&
                 data.stageRegex.findFirstMatchIn(stage.name).isDefined
@@ -84,7 +85,7 @@ package object fixtures {
 
       def hosts: HostLookup = new HostLookup {
         def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
-          hostsSeq.filter{ host =>
+          hostsSeq.filter { host =>
             host.stage == params.stage.name &&
             host.apps.contains(app) &&
             host.isValidForStack(stack)

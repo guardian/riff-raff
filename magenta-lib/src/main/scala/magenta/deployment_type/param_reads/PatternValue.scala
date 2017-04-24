@@ -14,14 +14,17 @@ object PatternValue {
       json match {
         case JsString(default) => JsSuccess(List(PatternValue(".*", default)))
         case JsArray(patternValues) =>
-          patternValues.zipWithIndex.foldLeft(Valid(Nil): Validated[List[(JsPath, Seq[ValidationError])], List[PatternValue]]) {
-            case (acc, (value, index)) =>
-              val validated = Json.fromJson[PatternValue](value) match {
-                case JsSuccess(v, _) => Valid(List(v))
-                case JsError(e) => Invalid(e.toList.map { case (p, valerr) => (JsPath \ index.toString) ++ p -> valerr } )
-              }
-              acc combine validated
-          }.fold(JsError.apply, res => JsSuccess(res))
+          patternValues.zipWithIndex
+            .foldLeft(Valid(Nil): Validated[List[(JsPath, Seq[ValidationError])], List[PatternValue]]) {
+              case (acc, (value, index)) =>
+                val validated = Json.fromJson[PatternValue](value) match {
+                  case JsSuccess(v, _) => Valid(List(v))
+                  case JsError(e) =>
+                    Invalid(e.toList.map { case (p, valerr) => (JsPath \ index.toString) ++ p -> valerr })
+                }
+                acc combine validated
+            }
+            .fold(JsError.apply, res => JsSuccess(res))
         case other => JsError("Need a string or an array of objects with pattern and value fields")
       }
     }

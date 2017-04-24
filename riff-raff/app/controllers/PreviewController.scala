@@ -17,26 +17,31 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class PreviewController(coordinator: PreviewCoordinator)(
-  implicit val wsClient: WSClient, val messagesApi: MessagesApi
-) extends Controller with LoginActions with I18nSupport with Loggable {
-  def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
-    val build = Build(projectName, buildId)
-    val selector = deployments.map(DeploymentKey.fromStringToList) match {
-      case Some(head :: tail) => DeploymentKeysSelector(head :: tail)
-      case _ => All
-    }
-    val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), selector = selector)
-    coordinator.startPreview(parameters) match {
-      case Right(id) => Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
-      case Left(error) =>
-        // assume that this is not a YAML deployable and redirect to the legacy preview
-        // if we came from the original process form then we'll have these extra params that we can use
-        val recipe = request.flash.data.getOrElse("previewRecipe", parameters.recipe.name)
-        val hosts = request.flash.data.getOrElse("previewHosts", parameters.hostList.mkString(","))
-        val stacks = request.flash.data.getOrElse("previewStacks", "")
-        Redirect(routes.DeployController.preview(parameters.build.projectName, parameters.build.id,
-          parameters.stage.name, recipe, hosts, stacks))
-    }
+    implicit val wsClient: WSClient,
+    val messagesApi: MessagesApi
+) extends Controller
+    with LoginActions
+    with I18nSupport
+    with Loggable {
+  def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction {
+    request =>
+      val build = Build(projectName, buildId)
+      val selector = deployments.map(DeploymentKey.fromStringToList) match {
+        case Some(head :: tail) => DeploymentKeysSelector(head :: tail)
+        case _ => All
+      }
+      val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), selector = selector)
+      coordinator.startPreview(parameters) match {
+        case Right(id) => Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
+        case Left(error) =>
+          // assume that this is not a YAML deployable and redirect to the legacy preview
+          // if we came from the original process form then we'll have these extra params that we can use
+          val recipe = request.flash.data.getOrElse("previewRecipe", parameters.recipe.name)
+          val hosts = request.flash.data.getOrElse("previewHosts", parameters.hostList.mkString(","))
+          val stacks = request.flash.data.getOrElse("previewStacks", "")
+          Redirect(routes.DeployController
+            .preview(parameters.build.projectName, parameters.build.id, parameters.stage.name, recipe, hosts, stacks))
+      }
   }
 
   def showTasks(previewId: String) = AuthAction.async { implicit request =>

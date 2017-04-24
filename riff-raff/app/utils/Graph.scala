@@ -4,7 +4,7 @@ import org.joda.time.LocalDate
 
 object Graph {
   implicit def series2prefixDate(series: List[(LocalDate, Int)]) = new {
-    def prefixDate(prefixDate: Option[LocalDate]):List[(LocalDate, Int)] = series match {
+    def prefixDate(prefixDate: Option[LocalDate]): List[(LocalDate, Int)] = series match {
       case Nil => Nil
       case (date, count) :: tail if prefixDate.isDefined && date != prefixDate.get =>
         (prefixDate.get, 0) :: (date, count) :: tail

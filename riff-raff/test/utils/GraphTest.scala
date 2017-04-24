@@ -10,11 +10,12 @@ class GraphTest extends FunSuite with Matchers {
       new LocalDate(2013, 5, 3) -> 2
     )
 
-    Graph.zeroFillDays(statsWithMissingDays) should be (List(
-      new LocalDate(2013, 5, 1) -> 4,
-      new LocalDate(2013, 5, 2) -> 0,
-      new LocalDate(2013, 5, 3) -> 2
-    ))
+    Graph.zeroFillDays(statsWithMissingDays) should be(
+      List(
+        new LocalDate(2013, 5, 1) -> 4,
+        new LocalDate(2013, 5, 2) -> 0,
+        new LocalDate(2013, 5, 3) -> 2
+      ))
   }
 
 }

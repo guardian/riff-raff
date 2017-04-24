@@ -17,8 +17,8 @@ trait S3Location {
   def bucket: String
   def key: String
   def prefixElements: List[String] = key.split("/").toList
-  def fileName:String = prefixElements.last
-  def extension:Option[String] = if (fileName.contains(".")) Some(fileName.split('.').last) else None
+  def fileName: String = prefixElements.last
+  def extension: Option[String] = if (fileName.contains(".")) Some(fileName.split('.').last) else None
   def relativeTo(path: S3Location): String = {
     key.stripPrefix(path.key).stripPrefix("/")
   }
@@ -35,11 +35,12 @@ object S3Location extends Loggable {
   val maxKeysInBucketListing = 1000 // AWS won't return more than this, even if you set the parameter to a larger value
 
   private def listObjects(bucket: String, prefix: Option[String])(implicit s3Client: AmazonS3): Seq[S3Object] = {
-    def request(continuationToken: Option[String]) = new ListObjectsV2Request()
-      .withBucketName(bucket)
-      .withPrefix(prefix.orNull)
-      .withMaxKeys(maxKeysInBucketListing)
-      .withContinuationToken(continuationToken.orNull)
+    def request(continuationToken: Option[String]) =
+      new ListObjectsV2Request()
+        .withBucketName(bucket)
+        .withPrefix(prefix.orNull)
+        .withMaxKeys(maxKeysInBucketListing)
+        .withContinuationToken(continuationToken.orNull)
 
     @tailrec
     def pageListings(acc: Seq[ListObjectsV2Result], previousListing: ListObjectsV2Result): Seq[ListObjectsV2Result] = {
@@ -60,7 +61,7 @@ object S3Location extends Loggable {
     } yield S3Object(summary.getBucketName, summary.getKey, summary.getSize)
   }
 
-  def fetchContentAsString(location: S3Location)(implicit client:AmazonS3): Either[S3Error, String] = {
+  def fetchContentAsString(location: S3Location)(implicit client: AmazonS3): Either[S3Error, String] = {
     import cats.syntax.either._
     Either.catchNonFatal(client.getObjectAsString(location.bucket, location.key)).leftMap {
       case e: AmazonS3Exception if e.getStatusCode == 404 => EmptyS3Location(location)
@@ -106,30 +107,33 @@ object S3JsonArtifact extends Loggable {
   }
 
   def fetchInputFile(artifact: S3JsonArtifact)(
-    implicit client: AmazonS3, reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
+      implicit client: AmazonS3,
+      reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
 
     import cats.syntax.either._
     val possibleJson = (artifact.deployObject.fetchContentAsString()(client)).orElse {
       convertFromZipBundle(artifact)
       artifact.deployObject.fetchContentAsString()(client)
     }
-    possibleJson.leftMap[ArtifactResolutionError](S3ArtifactError(_)).flatMap(s =>
-      JsonInputFile.parse(s).leftMap(JsonArtifactError(_))
-    )
+    possibleJson
+      .leftMap[ArtifactResolutionError](S3ArtifactError(_))
+      .flatMap(s => JsonInputFile.parse(s).leftMap(JsonArtifactError(_)))
   }
 
   def convertFromZipBundle(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
-    reporter.warning("DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task)")
+    reporter.warning(
+      "DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task)")
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
-    S3ZipArtifact.withDownload(artifact){ dir =>
+    S3ZipArtifact.withDownload(artifact) { dir =>
       val filesToUpload = resolveFiles(dir, artifact.key)
       reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
-      filesToUpload.foreach{ case (file, key) =>
-        val metadata = new ObjectMetadata()
-        metadata.setContentLength(file.length)
-        val req = new PutObjectRequest(artifact.bucket, key, file).withMetadata(metadata)
-        client.putObject(req)
+      filesToUpload.foreach {
+        case (file, key) =>
+          val metadata = new ObjectMetadata()
+          metadata.setContentLength(file.length)
+          val req = new PutObjectRequest(artifact.bucket, key, file).withMetadata(metadata)
+          client.putObject(req)
       }
       reporter.info(s"Zip artifact converted")
     }(client, reporter)
@@ -138,7 +142,7 @@ object S3JsonArtifact extends Loggable {
     reporter.verbose("Zip artifact deleted")
   }
 
-  private def subDirectoryPrefix(key: String, file:File): String = {
+  private def subDirectoryPrefix(key: String, file: File): String = {
     if (key.isEmpty) {
       file.getName
     } else {

@@ -15,7 +15,15 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester",
+                           "test-project",
+                           "1",
+                           "CODE",
+                           "test-recipe",
+                           Nil,
+                           Nil,
+                           Map("branch" -> "master"),
+                           AllDocument),
         RunState.Completed
       )
     )
@@ -39,28 +47,31 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
 
   it should "transfer the deploy UUID into the log documents" in {
     val logDocuments = RecordConverter(testRecord).logDocuments
-    logDocuments.foreach{ doc =>
+    logDocuments.foreach { doc =>
       doc.deploy should be(testRecord.uuid)
     }
   }
 
   it should "translate a deploy keys selector" in {
-    val deployKeysSelector = DeploymentKeysSelector(List(
-      DeploymentKey("testName", "actionOne", "stackOne", "testRegion"),
-      DeploymentKey("testName", "actionTwo", "stackTwo", "testRegion")
-    ))
-    val convertedSelector = RecordConverter(testRecord.copy(parameters = parameters.copy(selector = deployKeysSelector))).deployDocument.parameters.selector
-    convertedSelector shouldBe DeploymentKeysSelectorDocument(List(
-      DeploymentKeyDocument("testName", "actionOne", "stackOne", "testRegion"),
-      DeploymentKeyDocument("testName", "actionTwo", "stackTwo", "testRegion")
-    ))
+    val deployKeysSelector = DeploymentKeysSelector(
+      List(
+        DeploymentKey("testName", "actionOne", "stackOne", "testRegion"),
+        DeploymentKey("testName", "actionTwo", "stackTwo", "testRegion")
+      ))
+    val convertedSelector = RecordConverter(
+      testRecord.copy(parameters = parameters.copy(selector = deployKeysSelector))).deployDocument.parameters.selector
+    convertedSelector shouldBe DeploymentKeysSelectorDocument(
+      List(
+        DeploymentKeyDocument("testName", "actionOne", "stackOne", "testRegion"),
+        DeploymentKeyDocument("testName", "actionTwo", "stackTwo", "testRegion")
+      ))
   }
 
   "LogDocumentTree" should "identify the root" in {
     val tree = LogDocumentTree(logDocuments)
     tree.roots.size should be(1)
     tree.roots.head match {
-      case LogDocument(_, _, None, DeployDocument(),_) =>
+      case LogDocument(_, _, None, DeployDocument(), _) =>
       case _ => fail("Didn't get the expected document when trying to locate the root")
     }
   }

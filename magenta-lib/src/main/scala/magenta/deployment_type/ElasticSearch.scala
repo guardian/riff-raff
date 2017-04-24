@@ -13,16 +13,19 @@ object ElasticSearch extends DeploymentType {
 
   val bucket = Param[String]("bucket", "S3 bucket that the artifact should be uploaded into")
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
+  val publicReadAcl =
+    Param[Boolean]("publicReadAcl",
+                   "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)")
+      .defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
-  val secondsToWait = Param("secondsToWait",
+  val secondsToWait = Param(
+    "secondsToWait",
     """Number of seconds to wait for the ElasticSearch cluster to become green
       | (also used as the wait time for the instance termination)"""
   ).default(15 * 60)
 
-  val deploy = Action("deploy",
+  val deploy = Action(
+    "deploy",
     """
       |Carries out the update of instances in an autoscaling group. We carry out the following tasks:
       | - tag existing instances in the ASG with a termination tag
@@ -41,21 +44,32 @@ object ElasticSearch extends DeploymentType {
     val stack = target.stack
     List(
       CheckGroupSize(pkg, parameters.stage, stack, target.region),
-      WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      WaitForElasticSearchClusterGreen(pkg,
+                                       parameters.stage,
+                                       stack,
+                                       secondsToWait(pkg, target, reporter) * 1000,
+                                       target.region),
       SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
       TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
       DoubleSize(pkg, parameters.stage, stack, target.region),
-      WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      WaitForElasticSearchClusterGreen(pkg,
+                                       parameters.stage,
+                                       stack,
+                                       secondsToWait(pkg, target, reporter) * 1000,
+                                       target.region),
+      CullElasticSearchInstancesWithTerminationTag(pkg,
+                                                   parameters.stage,
+                                                   stack,
+                                                   secondsToWait(pkg, target, reporter) * 1000,
+                                                   target.region),
       ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
     )
   }
 
   val uploadArtifacts = Action("uploadArtifacts",
-    """
+                               """
       |Uploads the files in the deployment's directory to the specified bucket.
-    """.stripMargin
-  ){ (pkg, resources, target) =>
+    """.stripMargin) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     val reporter = resources.reporter

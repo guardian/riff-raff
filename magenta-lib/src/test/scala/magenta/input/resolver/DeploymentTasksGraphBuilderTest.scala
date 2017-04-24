@@ -6,7 +6,15 @@ import magenta.input.Deployment
 import org.scalatest.{FlatSpec, ShouldMatchers}
 
 class DeploymentTasksGraphBuilderTest extends FlatSpec with ShouldMatchers {
-  val deployment = Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), NEL.of("deploy"), "bob", "bob", Nil, Map.empty)
+  val deployment = Deployment("bob",
+                              "autoscaling",
+                              NEL.of("stackName"),
+                              NEL.of("eu-west-1"),
+                              NEL.of("deploy"),
+                              "bob",
+                              "bob",
+                              Nil,
+                              Map.empty)
 
   "buildGraph" should "build a simple graph for a single deployment" in {
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment))
@@ -14,30 +22,36 @@ class DeploymentTasksGraphBuilderTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "build a parallel graph for two deployments with no dependencies" in {
-    val deployment2 = deployment.copy(name="bob2")
+    val deployment2 = deployment.copy(name = "bob2")
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment, deployment2))
     graph shouldBe Graph(
-      StartNode ~> ValueNode(deployment), ValueNode(deployment) ~> EndNode,
-      StartNode ~2~> ValueNode(deployment2), ValueNode(deployment2) ~> EndNode
+      StartNode ~> ValueNode(deployment),
+      ValueNode(deployment) ~> EndNode,
+      StartNode ~ 2 ~> ValueNode(deployment2),
+      ValueNode(deployment2) ~> EndNode
     )
   }
 
   it should "build a series graph for two deployments where one is dependent on the other" in {
-    val deployment2 = deployment.copy(name="bob2", dependencies = List("bob"))
+    val deployment2 = deployment.copy(name = "bob2", dependencies = List("bob"))
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment, deployment2))
     graph shouldBe Graph(
-      StartNode ~> ValueNode(deployment), ValueNode(deployment) ~> ValueNode(deployment2), ValueNode(deployment2) ~> EndNode
+      StartNode ~> ValueNode(deployment),
+      ValueNode(deployment) ~> ValueNode(deployment2),
+      ValueNode(deployment2) ~> EndNode
     )
   }
 
   it should "build a graph with three deployments, one of which is a common dependency" in {
-    val deployment2 = deployment.copy(name="bob2", dependencies = List("bob"))
-    val deployment3 = deployment.copy(name="bob3", dependencies = List("bob"))
+    val deployment2 = deployment.copy(name = "bob2", dependencies = List("bob"))
+    val deployment3 = deployment.copy(name = "bob3", dependencies = List("bob"))
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment, deployment2, deployment3))
     graph shouldBe Graph(
       StartNode ~> ValueNode(deployment),
-      ValueNode(deployment) ~> ValueNode(deployment2), ValueNode(deployment2) ~> EndNode,
-      ValueNode(deployment) ~2~> ValueNode(deployment3), ValueNode(deployment3) ~> EndNode
+      ValueNode(deployment) ~> ValueNode(deployment2),
+      ValueNode(deployment2) ~> EndNode,
+      ValueNode(deployment) ~ 2 ~> ValueNode(deployment3),
+      ValueNode(deployment3) ~> EndNode
     )
   }
 
@@ -51,13 +65,15 @@ class DeploymentTasksGraphBuilderTest extends FlatSpec with ShouldMatchers {
   }
 
   it should "build a graph with three deployments when there are missing dependencies" in {
-    val deployment2 = deployment.copy(name="bob2", dependencies = List("bob", "missingDep1"))
-    val deployment3 = deployment.copy(name="bob3", dependencies = List("bob", "missingDep2"))
+    val deployment2 = deployment.copy(name = "bob2", dependencies = List("bob", "missingDep1"))
+    val deployment3 = deployment.copy(name = "bob3", dependencies = List("bob", "missingDep2"))
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment, deployment2, deployment3))
     graph shouldBe Graph(
       StartNode ~> ValueNode(deployment),
-      ValueNode(deployment) ~> ValueNode(deployment2), ValueNode(deployment2) ~> EndNode,
-      ValueNode(deployment) ~2~> ValueNode(deployment3), ValueNode(deployment3) ~> EndNode
+      ValueNode(deployment) ~> ValueNode(deployment2),
+      ValueNode(deployment2) ~> EndNode,
+      ValueNode(deployment) ~ 2 ~> ValueNode(deployment3),
+      ValueNode(deployment3) ~> EndNode
     )
   }
 
@@ -80,11 +96,15 @@ class DeploymentTasksGraphBuilderTest extends FlatSpec with ShouldMatchers {
     val bob5bNode = ValueNode(bob5b)
     graph shouldBe Graph(
       StartNode ~> bobNode,
-      bobNode ~> bob2aNode, bobNode ~2~> bob2bNode,
-      bob2aNode ~> bob3Node, bob2bNode ~> bob3Node,
+      bobNode ~> bob2aNode,
+      bobNode ~ 2 ~> bob2bNode,
+      bob2aNode ~> bob3Node,
+      bob2bNode ~> bob3Node,
       bob3Node ~> bob4Node,
-      bob4Node ~> bob5aNode, bob4Node ~2~> bob5bNode,
-      bob5aNode ~> EndNode, bob5bNode ~> EndNode
+      bob4Node ~> bob5aNode,
+      bob4Node ~ 2 ~> bob5bNode,
+      bob5aNode ~> EndNode,
+      bob5bNode ~> EndNode
     )
   }
 }

@@ -16,17 +16,19 @@ import scala.concurrent.duration._
 
 class PrismLookupTest extends FlatSpec with Matchers {
 
-  def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
+  def withPrismClient[T](images: List[Image])(block: WSClient => T): (T, Option[Request[AnyContent]]) = {
     var mockRequest: Option[Request[AnyContent]] = None
     val result = Server.withRouter() {
-      case GET(p"/images") => Action { request =>
-        mockRequest = Some(request)
-        Ok(Json.obj(
-          "data" -> Json.obj(
-            "images" -> Json.toJson(images)
-          )
-        ))
-      }
+      case GET(p"/images") =>
+        Action { request =>
+          mockRequest = Some(request)
+          Ok(
+            Json.obj(
+              "data" -> Json.obj(
+                "images" -> Json.toJson(images)
+              )
+            ))
+        }
     } { implicit port =>
       WsTestClient.withClient { client =>
         block(client)
@@ -37,10 +39,10 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   "PrismLookup" should "return latest image" in {
     val images = List(
-      Image("test-ami", new DateTime(2017,3,2,13,32,0)),
-      Image("test-later-ami", new DateTime(2017,4,2,13,32,0)),
-      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0)),
-      Image("test-early-ami", new DateTime(2017,1,2,13,32,0))
+      Image("test-ami", new DateTime(2017, 3, 2, 13, 32, 0)),
+      Image("test-later-ami", new DateTime(2017, 4, 2, 13, 32, 0)),
+      Image("test-later-still-ami", new DateTime(2017, 5, 2, 13, 32, 0)),
+      Image("test-early-ami", new DateTime(2017, 1, 2, 13, 32, 0))
     )
     withPrismClient(images) { client =>
       val lookup = new PrismLookup(client, "", 10 seconds)
@@ -63,10 +65,11 @@ class PrismLookupTest extends FlatSpec with Matchers {
       val lookup = new PrismLookup(client, "", 10 seconds)
       lookup.getLatestAmi("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
     }
-    request.map(_.queryString) shouldBe Some(Map(
-      "region" -> ArrayBuffer("bob"),
-      "tags.tagName" -> ArrayBuffer("tagValue?"),
-      "tags.tagName*" -> ArrayBuffer("tagValue2")
-    ))
+    request.map(_.queryString) shouldBe Some(
+      Map(
+        "region" -> ArrayBuffer("bob"),
+        "tags.tagName" -> ArrayBuffer("tagValue?"),
+        "tags.tagName*" -> ArrayBuffer("tagValue2")
+      ))
   }
 }

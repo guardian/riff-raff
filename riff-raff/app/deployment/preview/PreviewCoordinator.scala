@@ -20,7 +20,7 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
   private val previews: ConcurrentMap[UUID, PreviewResult] = new ConcurrentHashMap[UUID, PreviewResult]().asScala
 
   def cleanupPreviews() {
-    previews.retain{(uuid, result) =>
+    previews.retain { (uuid, result) =>
       !result.future.isCompleted || result.duration.toStandardMinutes.getMinutes < 60
     }
   }

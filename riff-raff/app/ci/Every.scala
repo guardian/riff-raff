@@ -8,9 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object Every extends Logging {
 
-  def apply[T](frequency: Duration)
-              (buildRetriever: => Observable[T])
-              (implicit ec: ExecutionContext): Observable[T] = {
+  def apply[T](frequency: Duration)(buildRetriever: => Observable[T])(implicit ec: ExecutionContext): Observable[T] = {
     (for {
       _ <- Observable.interval(1.second, frequency)
       _ = log.debug("Ping!")

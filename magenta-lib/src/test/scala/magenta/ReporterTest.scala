@@ -38,7 +38,8 @@ class ReporterTest extends FlatSpec with Matchers {
     wrappers.size should be(3)
     wrappers(0).context should be(reporter.messageContext)
     wrappers(0).stack.messages should be(List(StartContext(Deploy(parameters))))
-    wrappers(1).context should be(MessageContext(reporter.messageContext.deployId, parameters, Some(wrappers(0).messageId)))
+    wrappers(1).context should be(
+      MessageContext(reporter.messageContext.deployId, parameters, Some(wrappers(0).messageId)))
     wrappers(1).stack.messages should be(List(Info("this should work"), Deploy(parameters)))
     wrappers(2).stack.messages should be(List(FinishContext(Deploy(parameters)), Deploy(parameters)))
   }

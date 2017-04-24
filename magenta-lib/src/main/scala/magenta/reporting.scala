@@ -18,30 +18,31 @@ object RunState extends Enumeration {
 }
 
 object MessageState {
-  def apply(message: Message, time:DateTime, id: UUID): MessageState = {
+  def apply(message: Message, time: DateTime, id: UUID): MessageState = {
     message match {
-      case start:StartContext => StartMessageState(start, time, id)
+      case start: StartContext => StartMessageState(start, time, id)
       case _ => SimpleMessageState(message, time, id)
     }
   }
-  def apply(message: StartContext, end: ContextMessage, time:DateTime, id: UUID): MessageState = {
+  def apply(message: StartContext, end: ContextMessage, time: DateTime, id: UUID): MessageState = {
     end match {
-      case finish:FinishContext => FinishMessageState(message, finish, time, id)
-      case fail:FailContext => FailMessageState(message, fail, time, id)
+      case finish: FinishContext => FinishMessageState(message, finish, time, id)
+      case fail: FailContext => FailMessageState(message, fail, time, id)
       case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
     }
   }
 }
 
 trait MessageState {
-  val timeOfDayFormatter = DateTimeFormat.mediumTime.withLocale(Locale.UK).withZone(DateTimeZone.forID("Europe/London"))
-  def time:DateTime
+  val timeOfDayFormatter =
+    DateTimeFormat.mediumTime.withLocale(Locale.UK).withZone(DateTimeZone.forID("Europe/London"))
+  def time: DateTime
   def timeOfDay = timeOfDayFormatter.print(time)
-  def message:Message
-  def startContext:StartContext
-  def finished:Option[Message]
+  def message: Message
+  def startContext: StartContext
+  def finished: Option[Message]
   def state: RunState.State
-  def isRunning:Boolean = state == RunState.Running
+  def isRunning: Boolean = state == RunState.Running
   def messageId: UUID
 }
 
@@ -57,13 +58,15 @@ case class StartMessageState(startContext: StartContext, time: DateTime, message
   lazy val state = RunState.Running
 }
 
-case class FinishMessageState(startContext: StartContext, finish: FinishContext, time: DateTime, messageId: UUID) extends MessageState {
+case class FinishMessageState(startContext: StartContext, finish: FinishContext, time: DateTime, messageId: UUID)
+    extends MessageState {
   lazy val message = startContext.originalMessage
   lazy val finished = Some(finish)
   lazy val state = RunState.Completed
 }
 
-case class FailMessageState(startContext: StartContext, fail: FailContext, time: DateTime, messageId: UUID) extends MessageState {
+case class FailMessageState(startContext: StartContext, fail: FailContext, time: DateTime, messageId: UUID)
+    extends MessageState {
   lazy val message = startContext.originalMessage
   lazy val finished = Some(fail)
   lazy val state = RunState.Failed
@@ -80,15 +83,15 @@ trait DeployReport {
   def hasChildren: Boolean = children.nonEmpty
   def size: Int = allMessages.size
 
-  def failureMessage: Option[Fail] = allMessages.map(_.message).collect{ case fail: Fail => fail }.headOption
+  def failureMessage: Option[Fail] = allMessages.map(_.message).collect { case fail: Fail => fail }.headOption
 
   def cascadeState: RunState.Value = {
-    children.foldLeft(state){ (acc:RunState.Value, child:DeployReport) =>
+    children.foldLeft(state) { (acc: RunState.Value, child: DeployReport) =>
       val childState = child.cascadeState match {
         case RunState.Running => RunState.ChildRunning
         case _ => child.cascadeState
       }
-      RunState.mostSignificant(acc,childState)
+      RunState.mostSignificant(acc, childState)
     }
   }
 }
@@ -97,8 +100,9 @@ object DeployReport {
   private def wrapperToTree(node: MessageWrapper, all: List[MessageWrapper]): DeployReportTree = {
     val allChildren = all.filter(_.context.parentId.exists(_ == node.messageId))
 
-    val isEndContextMessage = (wrapper:MessageWrapper) => wrapper.stack.top.isInstanceOf[FinishContext] ||
-                                                          wrapper.stack.top.isInstanceOf[FailContext]
+    val isEndContextMessage = (wrapper: MessageWrapper) =>
+      wrapper.stack.top.isInstanceOf[FinishContext] ||
+        wrapper.stack.top.isInstanceOf[FailContext]
 
     val endOption = allChildren.filter(isEndContextMessage).map(_.stack.top.asInstanceOf[ContextMessage]).headOption
     val children = allChildren.filterNot(isEndContextMessage)
@@ -108,13 +112,13 @@ object DeployReport {
       case None => MessageState(node.stack.top, node.stack.time, node.messageId)
     }
 
-    DeployReportTree(messageState, children.map(wrapperToTree(_,all)))
+    DeployReportTree(messageState, children.map(wrapperToTree(_, all)))
   }
 
   def apply(list: List[MessageWrapper]): DeployReport = {
     val maybeRoot = list.find(_.context.parentId.isEmpty)
     maybeRoot match {
-      case Some(root) => wrapperToTree(root,list)
+      case Some(root) => wrapperToTree(root, list)
       case None => EmptyDeployReport
     }
   }
@@ -135,7 +139,7 @@ case class DeployReportTree(messageState: MessageState, children: List[DeployRep
   val timeString = Some(messageState.timeOfDay)
   val state = messageState.state
 
-  private val childRunning: Boolean = children.foldLeft(false){_ || _.isRunning}
+  private val childRunning: Boolean = children.foldLeft(false) { _ || _.isRunning }
   val isRunning: Boolean = messageState.isRunning || childRunning
 
   val allMessages: Seq[MessageState] = (messageState :: children.flatMap(_.allMessages)).sortBy(_.time.getMillis)
@@ -149,7 +153,9 @@ case class DeployReportTree(messageState: MessageState, children: List[DeployRep
   }
   def render(position: List[Int]): Seq[String] = {
     val messageRender = s"${position.reverse.mkString(".")}:$message [${cascadeState.toString}]"
-    val childrenRender = children.zipWithIndex.flatMap{ case (tree: DeployReport, index: Int) => tree.render(index+1 :: position) }
+    val childrenRender = children.zipWithIndex.flatMap {
+      case (tree: DeployReport, index: Int) => tree.render(index + 1 :: position)
+    }
     messageRender :: childrenRender
   }
 }

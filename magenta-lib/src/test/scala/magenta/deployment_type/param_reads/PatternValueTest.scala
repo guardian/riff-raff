@@ -49,7 +49,7 @@ class PatternValueTest extends FlatSpec with Matchers with Inside {
       )
     )
     val jsResult = Json.fromJson[List[PatternValue]](json)
-    jsResult should matchPattern{
+    jsResult should matchPattern {
       case JsError(_) =>
     }
   }

@@ -19,14 +19,14 @@ import org.joda.time.DateTime
   * @param note Note explaining why thie restriction is in place
   */
 case class RestrictionConfig(
-  id: UUID,
-  projectName: String,
-  stage: String,
-  lastEdited: DateTime,
-  fullName: String,
-  email: String,
-  editingLocked: Boolean,
-  whitelist: Seq[String],
-  continuousDeployment: Boolean,
-  note: String
+    id: UUID,
+    projectName: String,
+    stage: String,
+    lastEdited: DateTime,
+    fullName: String,
+    email: String,
+    editingLocked: Boolean,
+    whitelist: Seq[String],
+    continuousDeployment: Boolean,
+    note: String
 )

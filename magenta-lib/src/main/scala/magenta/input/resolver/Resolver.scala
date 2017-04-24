@@ -12,8 +12,11 @@ import magenta.input._
 import magenta.{DeployParameters, DeploymentResources}
 
 object Resolver {
-  def resolve(yamlConfig: String, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
+  def resolve(yamlConfig: String,
+              deploymentResources: DeploymentResources,
+              parameters: DeployParameters,
+              deploymentTypes: Seq[DeploymentType],
+              artifact: S3Artifact): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     for {
       deploymentGraph <- resolveDeploymentGraph(yamlConfig, deploymentTypes, parameters.selector)
@@ -21,13 +24,14 @@ object Resolver {
     } yield taskGraph
   }
 
-  def resolveDeploymentGraph(yamlConfig: String, deploymentTypes: Seq[DeploymentType],
-    selector: DeploymentSelector): Validated[ConfigErrors, Graph[Deployment]] = {
+  def resolveDeploymentGraph(yamlConfig: String,
+                             deploymentTypes: Seq[DeploymentType],
+                             selector: DeploymentSelector): Validated[ConfigErrors, Graph[Deployment]] = {
 
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
       deployments <- DeploymentResolver.resolve(config)
-      validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
+      validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]] { deployment =>
         DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes)
       }
       prunedDeployments = DeploymentPruner.prune(validatedDeployments, DeploymentPruner.create(selector))
@@ -35,8 +39,11 @@ object Resolver {
     } yield graph
   }
 
-  private[resolver] def buildTaskGraph(deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact, graph: Graph[Deployment]): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
+  private[resolver] def buildTaskGraph(deploymentResources: DeploymentResources,
+                                       parameters: DeployParameters,
+                                       deploymentTypes: Seq[DeploymentType],
+                                       artifact: S3Artifact,
+                                       graph: Graph[Deployment]): Validated[ConfigErrors, Graph[DeploymentTasks]] = {
 
     val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(graph)
     val deploymentTaskGraph = flattenedGraph.map { deployment =>
@@ -59,7 +66,7 @@ object Resolver {
       stack <- stacks
       region <- regions
       deploymentsForStackAndRegion = DeploymentPruner.prune(userSelectedDeployments,
-        DeploymentPruner.StackAndRegion(stack, region))
+                                                            DeploymentPruner.StackAndRegion(stack, region))
       graphForStackAndRegion = DeploymentGraphBuilder.buildGraph(deploymentsForStackAndRegion)
     } yield graphForStackAndRegion
 

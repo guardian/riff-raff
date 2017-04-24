@@ -18,24 +18,28 @@ import magenta.deployment_type.param_reads.PatternValue
 import scala.collection.JavaConverters._
 
 case class S3Upload(
-  region: Region,
-  bucket: String,
-  paths: Seq[(S3Location, String)],
-  cacheControlPatterns: List[PatternValue] = Nil,
-  extensionToMimeType: Map[String,String] = Map.empty,
-  publicReadAcl: Boolean = false,
-  detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing, artifactClient: AmazonS3,
-  clientFactory: (KeyRing, Region, ClientConfiguration) => AmazonS3 = S3.makeS3client) extends Task with Loggable {
+    region: Region,
+    bucket: String,
+    paths: Seq[(S3Location, String)],
+    cacheControlPatterns: List[PatternValue] = Nil,
+    extensionToMimeType: Map[String, String] = Map.empty,
+    publicReadAcl: Boolean = false,
+    detailedLoggingThreshold: Int = 10
+)(implicit val keyRing: KeyRing,
+  artifactClient: AmazonS3,
+  clientFactory: (KeyRing, Region, ClientConfiguration) => AmazonS3 = S3.makeS3client)
+    extends Task
+    with Loggable {
 
   lazy val objectMappings = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
   }
 
-  lazy val totalSize = objectMappings.map{ case (source, target) => source.size}.sum
+  lazy val totalSize = objectMappings.map { case (source, target) => source.size }.sum
 
-  lazy val requests = objectMappings.map { case (source, target) =>
-    PutReq(source, target, cacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
+  lazy val requests = objectMappings.map {
+    case (source, target) =>
+      PutReq(source, target, cacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
   }
 
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
@@ -47,7 +51,7 @@ case class S3Upload(
   def description: String = s"Upload ${fileString(objectMappings.size)} to S3 bucket $bucket"
 
   def requestToString(source: S3Object, request: PutReq): String =
-    s"s3://${source.bucket}/${source.key} to s3://${request.target.bucket}/${request.target.key} with "+
+    s"s3://${source.bucket}/${source.key} to s3://${request.target.bucket}/${request.target.key} with " +
       s"CacheControl:${request.cacheControl} ContentType:${request.contentType} PublicRead:${request.publicReadAcl}"
 
   // execute this task (should throw on failure)
@@ -55,24 +59,26 @@ case class S3Upload(
     val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
-    requests.zipWithIndex.par foreach { case (req, index) =>
-      logger.debug(s"Transferring ${requestToString(req.source, req)}")
-      index match {
-        case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
-        case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
-        case _ =>
-      }
-      retryOnException(S3.clientConfiguration) {
-        val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
-        val putRequest = req.toAwsRequest(inputStream)
-        try {
-          val result = client.putObject(putRequest)
-          logger.debug(s"Put object ${putRequest.getKey}: MD5: ${result.getContentMd5} Metadata: ${result.getMetadata.getRawMetadata.asScala}")
-          result
-        } finally {
-          inputStream.close()
+    requests.zipWithIndex.par foreach {
+      case (req, index) =>
+        logger.debug(s"Transferring ${requestToString(req.source, req)}")
+        index match {
+          case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
+          case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
+          case _ =>
         }
-      }
+        retryOnException(S3.clientConfiguration) {
+          val inputStream = artifactClient.getObject(req.source.bucket, req.source.key).getObjectContent
+          val putRequest = req.toAwsRequest(inputStream)
+          try {
+            val result = client.putObject(putRequest)
+            logger.debug(
+              s"Put object ${putRequest.getKey}: MD5: ${result.getContentMd5} Metadata: ${result.getMetadata.getRawMetadata.asScala}")
+            result
+          } finally {
+            inputStream.close()
+          }
+        }
     }
     reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
   }
@@ -91,7 +97,8 @@ case class S3Upload(
   }
 
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
-  private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
+  private def cacheControlLookup(fileName: String) =
+    cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
 }
 
@@ -100,14 +107,20 @@ object S3Upload {
 
   def awsMimeTypeLookup(fileName: String): String = mimeTypes.getMimetype(fileName)
 
-  def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
+  def prefixGenerator(stack: Option[Stack] = None,
+                      stage: Option[Stage] = None,
+                      packageName: Option[String] = None): String = {
     (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }
   def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
-case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], contentType: Option[String], publicReadAcl: Boolean) {
+case class PutReq(source: S3Object,
+                  target: S3Path,
+                  cacheControl: Option[String],
+                  contentType: Option[String],
+                  publicReadAcl: Boolean) {
   def toAwsRequest(inputStream: InputStream): PutObjectRequest = {
     val metaData = new ObjectMetadata
     cacheControl foreach metaData.setCacheControl
@@ -132,11 +145,13 @@ trait PollingCheck {
           val remainingTime = expiry - System.currentTimeMillis()
           if (remainingTime > 0) {
             val sleepyTime = calculateSleepTime(currentAttempt)
-            reporter.verbose("Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat/1000), (sleepyTime.toFloat/1000)))
+            reporter.verbose(
+              "Check failed on attempt #%d (Will wait for a further %.1f seconds, retrying again after %.1fs)" format (currentAttempt, (remainingTime.toFloat / 1000), (sleepyTime.toFloat / 1000)))
             Thread.sleep(sleepyTime)
             checkAttempt(currentAttempt + 1)
           } else {
-            reporter.fail("Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration,currentAttempt))
+            reporter.fail(
+              "Check failed to pass within %d milliseconds (tried %d times) - aborting" format (duration, currentAttempt))
           }
         }
       }
@@ -151,7 +166,7 @@ trait RepeatedPollingCheck extends PollingCheck {
 
   def calculateSleepTime(currentAttempt: Int): Long = {
     val exponent = math.min(currentAttempt, 8)
-    math.min(math.pow(2,exponent).toLong*100, 25000)
+    math.min(math.pow(2, exponent).toLong * 100, 25000)
   }
 }
 
@@ -159,7 +174,6 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 
   def calculateSleepTime(currentAttempt: Int): Long = 30000
 }
-
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   override def taskHost = Some(host)
@@ -171,7 +185,13 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   def verbose = fullDescription
 }
 
-case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
+case class ChangeSwitch(host: Host,
+                        protocol: String,
+                        port: Int,
+                        path: String,
+                        switchName: String,
+                        desiredState: Boolean)(implicit val keyRing: KeyRing)
+    extends Task {
   val desiredStateName = if (desiredState) "ON" else "OFF"
   val switchboardUrl = s"$protocol://${host.name}:$port$path"
 
@@ -185,10 +205,9 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
   def description: String = s"$switchName to $desiredStateName"
 }
 
-case class UpdateLambda(
-                   s3Path: S3Path,
-                   functionName: String, region: Region)
-                 (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateLambda(s3Path: S3Path, functionName: String, region: Region)(implicit val keyRing: KeyRing,
+                                                                              artifactClient: AmazonS3)
+    extends Task {
   def description = s"Updating $functionName Lambda"
   def verbose = description
 
@@ -207,7 +226,9 @@ case class UpdateLambda(
 
 }
 
-case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
+case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(
+    implicit val keyRing: KeyRing)
+    extends Task {
   def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
   def verbose = description
 
@@ -219,4 +240,3 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
   }
 
 }
-

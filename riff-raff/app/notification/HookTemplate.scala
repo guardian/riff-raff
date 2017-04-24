@@ -7,9 +7,9 @@ import org.parboiled2.CharPredicate._
 import persistence.{DeployRecordDocument}
 
 class HookTemplate(val input: ParserInput, record: DeployRecordDocument, urlEncode: Boolean = false) extends Parser {
-  def Template = rule{ NonToken ~ (zeroOrMore(SubstitutionToken ~ NonToken ~> (_ + _)) ~> (_.mkString)) ~> (_ + _) }
+  def Template = rule { NonToken ~ (zeroOrMore(SubstitutionToken ~ NonToken ~> (_ + _)) ~> (_.mkString)) ~> (_ + _) }
 
-  def NonToken = rule { capture(zeroOrMore(!SubstitutionToken ~ ANY))  }
+  def NonToken = rule { capture(zeroOrMore(!SubstitutionToken ~ ANY)) }
 
   def SubstitutionToken = rule { "%deploy." ~ Param ~ '%' }
 
@@ -17,9 +17,10 @@ class HookTemplate(val input: ParserInput, record: DeployRecordDocument, urlEnco
 
   def SimpleParam = rule { HookTemplate.paramSubstitutions.mapValues(f => encode(f(record))) }
 
-  def Tag = rule { "tag." ~ capture( oneOrMore(Alpha | '-' | '_')) ~> (tagName =>
-    encode(record.parameters.tags.getOrElse(tagName, ""))
-  )}
+  def Tag = rule {
+    "tag." ~ capture(oneOrMore(Alpha | '-' | '_')) ~> (tagName =>
+      encode(record.parameters.tags.getOrElse(tagName, "")))
+  }
 
   def encode(p: String) = if (urlEncode) URLEncoder.encode(p, "utf-8") else p
 }
@@ -31,7 +32,7 @@ object HookTemplate {
     ("project", _.parameters.projectName),
     ("stage", _.parameters.stage),
     ("recipe", _.parameters.recipe),
-    ("hostList",  _.parameters.hostList.mkString(",")),
+    ("hostList", _.parameters.hostList.mkString(",")),
     ("deployer", _.parameters.deployer),
     ("uuid", _.uuid.toString)
   )

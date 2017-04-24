@@ -39,12 +39,14 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
       |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
-  val update = Action("update",
+  val update = Action(
+    "update",
     """
       |Given AMI tags, this will resolve the latest matching AMI and update the AMI parameter
       | on the provided CloudFormation stack.
     """.stripMargin
-  ){ (pkg, resources, target) => {
+  ) { (pkg, resources, target) =>
+    {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
 

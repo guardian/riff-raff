@@ -23,21 +23,22 @@ trait ParamRegister {
   * @tparam T The type of the parameter to extract
   */
 case class Param[T](
-  name: String,
-  documentation: String = "_undocumented_",
-  optionalInYaml: Boolean = false,
-  defaultValue: Option[T] = None,
-  defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String,T]] = None
-)(implicit register:ParamRegister) {
+    name: String,
+    documentation: String = "_undocumented_",
+    optionalInYaml: Boolean = false,
+    defaultValue: Option[T] = None,
+    defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String, T]] = None
+)(implicit register: ParamRegister) {
   register.add(this)
 
   val requiredInYaml = !optionalInYaml && defaultValue.isEmpty && defaultValueFromContext.isEmpty
 
   def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
-  def apply(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter)(implicit reads: Reads[T], manifest: Manifest[T]): T = {
+  def apply(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter)(implicit reads: Reads[T],
+                                                                                    manifest: Manifest[T]): T = {
     val maybeValue = get(pkg)
-    val defaultFromContext = defaultValueFromContext.map(_ (pkg, target))
+    val defaultFromContext = defaultValueFromContext.map(_(pkg, target))
 
     val maybeDefault = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
     (pkg.legacyConfig, maybeDefault, maybeValue) match {
@@ -64,7 +65,7 @@ case class Param[T](
   def default(default: T) = {
     this.copy(defaultValue = Some(default))
   }
-  def defaultFromContext(defaultFromContext: (DeploymentPackage, DeployTarget) => Either[String,T]) = {
+  def defaultFromContext(defaultFromContext: (DeploymentPackage, DeployTarget) => Either[String, T]) = {
     this.copy(defaultValueFromContext = Some(defaultFromContext))
   }
 }

@@ -17,7 +17,7 @@ import play.api.libs.ws._
 import scala.util.Try
 import scala.util.control.NonFatal
 
-case class Auth(user:String, password:String, scheme:WSAuthScheme=WSAuthScheme.BASIC)
+case class Auth(user: String, password: String, scheme: WSAuthScheme = WSAuthScheme.BASIC)
 
 case class HookConfig(id: UUID,
                       projectName: String,
@@ -27,11 +27,13 @@ case class HookConfig(id: UUID,
                       lastEdited: DateTime,
                       user: String,
                       method: HttpMethod = GET,
-                      postBody: Option[String] = None) extends Logging {
+                      postBody: Option[String] = None)
+    extends Logging {
 
   def request(record: DeployRecordDocument)(implicit wsClient: WSClient) = {
     val templatedUrl = new HookTemplate(url, record, urlEncode = true).Template.run().get
-    authFor(templatedUrl).map(ui => wsClient.url(templatedUrl).withAuth(ui.user, ui.password, ui.scheme))
+    authFor(templatedUrl)
+      .map(ui => wsClient.url(templatedUrl).withAuth(ui.user, ui.password, ui.scheme))
       .getOrElse(wsClient.url(templatedUrl))
   }
 
@@ -50,38 +52,41 @@ case class HookConfig(id: UUID,
         case GET =>
           urlRequest.get()
         case POST =>
-          postBody.map { t =>
-            val body = new HookTemplate(t, record, urlEncode = false).Template.run().get
-            val json = Try {
-              Json.parse(body)
-            }.toOption
-            json.map(urlRequest.post(_)).getOrElse(urlRequest.post(body))
-          }.getOrElse (
-            urlRequest.post(Map[String, Seq[String]](
-              "build" -> Seq(record.parameters.buildId),
-              "project" -> Seq(record.parameters.projectName),
-              "stage" -> Seq(record.parameters.stage),
-              "recipe" -> Seq(record.parameters.recipe),
-              "hosts" -> record.parameters.hostList,
-              "stacks" -> record.parameters.stacks,
-              "deployer" -> Seq(record.parameters.deployer),
-              "uuid" -> Seq(record.uuid.toString),
-              "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
-            ))
-          )
+          postBody
+            .map { t =>
+              val body = new HookTemplate(t, record, urlEncode = false).Template.run().get
+              val json = Try {
+                Json.parse(body)
+              }.toOption
+              json.map(urlRequest.post(_)).getOrElse(urlRequest.post(body))
+            }
+            .getOrElse(
+              urlRequest.post(Map[String, Seq[String]](
+                "build" -> Seq(record.parameters.buildId),
+                "project" -> Seq(record.parameters.projectName),
+                "stage" -> Seq(record.parameters.stage),
+                "recipe" -> Seq(record.parameters.recipe),
+                "hosts" -> record.parameters.hostList,
+                "stacks" -> record.parameters.stacks,
+                "deployer" -> Seq(record.parameters.deployer),
+                "uuid" -> Seq(record.uuid.toString),
+                "tags" -> record.parameters.tags.toSeq.map { case ((k, v)) => s"$k:$v" }
+              ))
+            )
       }).map { response =>
-        log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
-        log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
-      }.recover {
-        case NonFatal(e) => log.error(s"Problem calling ${urlRequest.url}", e)
-      }
+          log.info(s"HTTP status code ${response.status} from ${urlRequest.url}")
+          log.debug(s"HTTP response body from ${urlRequest.url}: ${response.status}")
+        }
+        .recover {
+          case NonFatal(e) => log.error(s"Problem calling ${urlRequest.url}", e)
+        }
     } else {
       log.info("Hook disabled")
     }
   }
 }
 object HookConfig {
-  def apply(projectName: String, stage: String, url: String, enabled: Boolean, updatedBy:String): HookConfig =
+  def apply(projectName: String, stage: String, url: String, enabled: Boolean, updatedBy: String): HookConfig =
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
@@ -90,7 +95,7 @@ class HooksClient(wsClient: WSClient) extends Lifecycle with Logging {
   val actor = try {
     Some(system.actorOf(Props(classOf[HooksClientActor], wsClient), "hook-client"))
   } catch {
-    case t:Throwable =>
+    case t: Throwable =>
       log.error("Failed to start HookClient", t)
       None
   }
@@ -107,7 +112,7 @@ class HooksClient(wsClient: WSClient) extends Lifecycle with Logging {
     }
   })
 
-  def init() { }
+  def init() {}
   def shutdown() {
     messageSub.unsubscribe()
     actor.foreach(system.stop)
@@ -128,7 +133,7 @@ class HooksClientActor(implicit wsClient: WSClient) extends Actor with Logging {
         try {
           config.act(Persistence.store.readDeploy(uuid).get)
         } catch {
-          case t:Throwable =>
+          case t: Throwable =>
             log.warn(s"Exception caught whilst processing post deploy hooks for $config", t)
         }
       }

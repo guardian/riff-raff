@@ -21,7 +21,8 @@ object Vcl {
   implicit val reads = Json.reads[Vcl]
 }
 
-case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: AmazonS3)
+    extends Task {
 
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
@@ -41,7 +42,6 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
       reporter.info(s"Fastly version $nextVersionNumber is now active")
     }
   }
-
 
   def stopOnFlag[T](stopFlag: => Boolean)(block: => T): T =
     if (!stopFlag) block else throw new DeployStoppedException("Deploy manually stopped during UpdateFastlyConfig")
@@ -65,7 +65,10 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def deleteAllVclFilesFrom(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def deleteAllVclFilesFrom(versionNumber: Int,
+                                    client: FastlyApiClient,
+                                    reporter: DeployReporter,
+                                    stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       val vclListResponse = block(client.vclList(versionNumber))
       val vclFilesToDelete = Json.parse(vclListResponse.getResponseBody).as[List[Vcl]]
@@ -76,7 +79,11 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def uploadNewVclFilesTo(versionNumber: Int, s3Package: S3Path, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def uploadNewVclFilesTo(versionNumber: Int,
+                                  s3Package: S3Path,
+                                  client: FastlyApiClient,
+                                  reporter: DeployReporter,
+                                  stopFlag: => Boolean): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {
@@ -92,7 +99,10 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def activateVersion(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+  private def activateVersion(versionNumber: Int,
+                              client: FastlyApiClient,
+                              reporter: DeployReporter,
+                              stopFlag: => Boolean): Unit = {
     val configIsValid = validateNewConfigFor(versionNumber, client, reporter, stopFlag)
     if (configIsValid) {
       block(client.versionActivate(versionNumber))
@@ -101,7 +111,10 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
     }
   }
 
-  private def validateNewConfigFor(versionNumber: Int, client: FastlyApiClient, reporter: DeployReporter, stopFlag: => Boolean): Boolean = {
+  private def validateNewConfigFor(versionNumber: Int,
+                                   client: FastlyApiClient,
+                                   reporter: DeployReporter,
+                                   stopFlag: => Boolean): Boolean = {
     stopOnFlag(stopFlag) {
       reporter.info("Waiting 5 seconds for the VCL to compile")
       Thread.sleep(5000)
@@ -128,13 +141,13 @@ object FastlyApiClientProvider {
   def get(keyRing: KeyRing): Option[FastlyApiClient] = {
 
     keyRing.apiCredentials.get("fastly").map { credentials =>
-        val serviceId = credentials.id
-        val apiKey = credentials.secret
+      val serviceId = credentials.id
+      val apiKey = credentials.secret
 
-        if (fastlyApiClients.get(serviceId).isEmpty) {
-          this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey, serviceId))
-        }
-        return fastlyApiClients.get(serviceId)
+      if (fastlyApiClients.get(serviceId).isEmpty) {
+        this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey, serviceId))
+      }
+      return fastlyApiClients.get(serviceId)
     }
 
     None
