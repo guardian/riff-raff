@@ -8,10 +8,14 @@ import magenta.input.{ConfigErrors, Deployment}
 import magenta.{App, DeployParameters, DeployTarget, DeploymentPackage, DeploymentResources, NamedStack, Region}
 
 object TaskResolver {
-  def resolve(deployment: Deployment, deploymentResources: DeploymentResources, parameters: DeployParameters,
-    deploymentTypes: Seq[DeploymentType], artifact: S3Artifact): Validated[ConfigErrors, DeploymentTasks] = {
-    val validatedDeploymentType = Validated.fromOption(deploymentTypes.find(_.name == deployment.`type`),
-      ConfigErrors(deployment.name, s"Deployment type ${deployment.`type`} not found"))
+  def resolve(deployment: Deployment,
+              deploymentResources: DeploymentResources,
+              parameters: DeployParameters,
+              deploymentTypes: Seq[DeploymentType],
+              artifact: S3Artifact): Validated[ConfigErrors, DeploymentTasks] = {
+    val validatedDeploymentType =
+      Validated.fromOption(deploymentTypes.find(_.name == deployment.`type`),
+                           ConfigErrors(deployment.name, s"Deployment type ${deployment.`type`} not found"))
 
     validatedDeploymentType.map { deploymentType =>
       val deploymentPackage = createDeploymentPackage(deployment, artifact, deploymentTypes)
@@ -24,12 +28,13 @@ object TaskResolver {
         task <- deploymentStep.resolve(deploymentResources, target)
       } yield task
       DeploymentTasks(tasks,
-        mkLabel(deploymentPackage.name, deployment.actions, deployment.regions, deployment.stacks))
+                      mkLabel(deploymentPackage.name, deployment.actions, deployment.regions, deployment.stacks))
     }
   }
 
-  private[resolver] def createDeploymentPackage(deployment: Deployment, artifact: S3Artifact,
-    deploymentTypes: Seq[DeploymentType]): DeploymentPackage = {
+  private[resolver] def createDeploymentPackage(deployment: Deployment,
+                                                artifact: S3Artifact,
+                                                deploymentTypes: Seq[DeploymentType]): DeploymentPackage = {
 
     DeploymentPackage(
       name = deployment.name,
@@ -43,7 +48,7 @@ object TaskResolver {
   }
 
   private def mkLabel(name: String, actions: NEL[String], regions: NEL[String], stacks: NEL[String]): String = {
-    val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{",",","}")
+    val bracketList = (list: List[String]) => if (list.size <= 1) list.mkString else list.mkString("{", ",", "}")
     s"$name [${actions.toList.mkString(", ")}] => ${bracketList(regions.toList)}/${bracketList(stacks.toList)}"
   }
 }

@@ -4,7 +4,6 @@ import rx.lang.scala.Observable
 import scala.util.Random
 import scala.concurrent.duration._
 
-
 object GreatestSoFar {
   def apply[T: Ordering](obs: Observable[T]): Observable[T] = {
     val ord = implicitly[Ordering[T]]

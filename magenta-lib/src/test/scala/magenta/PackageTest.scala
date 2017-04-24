@@ -8,8 +8,8 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
 class PackageTest extends FlatSpec with Matchers with MockitoSugar {
-  val clientConfiguration = new ClientConfiguration().
-    withRetryPolicy(new RetryPolicy(
+  val clientConfiguration = new ClientConfiguration().withRetryPolicy(
+    new RetryPolicy(
       PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
       PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
       3,
@@ -18,7 +18,7 @@ class PackageTest extends FlatSpec with Matchers with MockitoSugar {
 
   "retryOnException" should "work when no exception is thrown" in {
     var calls = 0
-    def block:String = {
+    def block: String = {
       calls += 1
       "banana"
     }
@@ -30,7 +30,7 @@ class PackageTest extends FlatSpec with Matchers with MockitoSugar {
 
   "retryOnException" should "work when an exception is thrown" in {
     var calls = 0
-    def block:String = {
+    def block: String = {
       calls += 1
       if (calls == 1)
         throw new AmazonClientException("failure message", new IOException("IO cause"))
@@ -45,24 +45,24 @@ class PackageTest extends FlatSpec with Matchers with MockitoSugar {
 
   "retryOnException" should "throw an exception if it fails consistently" in {
     var calls = 0
-    def block:String = {
+    def block: String = {
       calls += 1
       throw new AmazonClientException("failure message", new IOException("IO cause"))
     }
 
-    an [AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an[AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
 
     calls should be(4)
   }
 
   "retryOnException" should "throw an exception immediately if not retryable" in {
     var calls = 0
-    def block:String = {
+    def block: String = {
       calls += 1
       throw new AmazonClientException("failure message")
     }
 
-    an [AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an[AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
 
     calls should be(1)
   }

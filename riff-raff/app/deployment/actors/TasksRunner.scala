@@ -19,35 +19,35 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
 
   def receive = {
     case RunDeployment(uuid, tasks, rootReporter, queueTime) =>
-
       def stopFlagAsker: Boolean = {
         stopFlagAgent().contains(uuid)
       }
 
-      try{
-        rootReporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
+      try {
+        rootReporter.infoContext(s"Deploying ${tasks.name}") { deployReporter =>
           try {
-            tasks.tasks.zipWithIndex.foreach { case (task, index) =>
-              val taskId = s"${tasks.name}/$index"
-              if (stopFlagAsker) {
-                val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
-                deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
-              } else {
-                try {
-                  log.debug(s"Running task $taskId")
-                  deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
-                  deployReporter.taskContext(task) { taskReporter =>
-                    task.execute(taskReporter, stopFlagAsker)
+            tasks.tasks.zipWithIndex.foreach {
+              case (task, index) =>
+                val taskId = s"${tasks.name}/$index"
+                if (stopFlagAsker) {
+                  val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
+                  deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
+                } else {
+                  try {
+                    log.debug(s"Running task $taskId")
+                    deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
+                    deployReporter.taskContext(task) { taskReporter =>
+                      task.execute(taskReporter, stopFlagAsker)
+                    }
+                  } finally {
+                    deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
                   }
-                } finally {
-                  deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
                 }
-              }
             }
             log.debug("Sending completed message")
             sender ! DeployGroupRunner.DeploymentCompleted(tasks)
           } catch {
-            case t:Throwable =>
+            case t: Throwable =>
               log.debug("Sending failed message")
               sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
               throw t
@@ -69,5 +69,6 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
 
 object TasksRunner {
   trait Message
-  case class RunDeployment(uuid: UUID, deployment: DeploymentTasks, rootReporter: DeployReporter, queueTime: DateTime) extends Message
+  case class RunDeployment(uuid: UUID, deployment: DeploymentTasks, rootReporter: DeployReporter, queueTime: DateTime)
+      extends Message
 }

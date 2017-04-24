@@ -14,7 +14,6 @@ import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import persistence._
 
-
 class RepresentationTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances {
 
   RegisterJodaTimeConversionHelpers()
@@ -32,7 +31,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   it should "not convert StartContext log messages" in {
-    intercept[IllegalArgumentException]{
+    intercept[IllegalArgumentException] {
       startDeploy.asMessageDocument
     }
   }
@@ -40,7 +39,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   "LogDocument" should "serialise all message types to BSON" in {
     val messages = Seq(deploy, infoMsg, cmdOut, verbose, finishDep, finishInfo, failInfo, failDep)
     val documents = messages.map(LogDocument(testUUID, UUID.randomUUID(), Some(UUID.randomUUID()), _, testTime))
-    documents.foreach{ document =>
+    documents.foreach { document =>
       val dbObject = document.toDBO
       dbObject should not be null
       val encoder = new BasicBSONEncoder()
@@ -50,7 +49,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   it should "not change without careful thought and testing of migration" in {
-    val time = new DateTime(2012,11,8,17,20,0)
+    val time = new DateTime(2012, 11, 8, 17, 20, 0)
     val id = UUID.fromString("4ef18506-3b38-4235-9933-d7da831247a6")
     val parentId = UUID.fromString("4236c133-be50-4169-8e0c-096eded5bfeb")
     val messageJsonMap = Map(
@@ -64,27 +63,28 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
       failDep -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FailContextDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
       warning -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.WarningDocument" , "text" : "deprecation"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}"""
     )
-    messageJsonMap.foreach { case (message, json) =>
-      val logDocument = LogDocument(testUUID, id, Some(parentId), message, time)
+    messageJsonMap.foreach {
+      case (message, json) =>
+        val logDocument = LogDocument(testUUID, id, Some(parentId), message, time)
 
-      val gratedDocument = logDocument.toDBO
-      val jsonLogDocument = JSON.serialize(gratedDocument)
+        val gratedDocument = logDocument.toDBO
+        val jsonLogDocument = JSON.serialize(gratedDocument)
 
-      val diff = compareJson(json, jsonLogDocument)
+        val diff = compareJson(json, jsonLogDocument)
 
-      if (json.isEmpty) {
-        jsonLogDocument should be(json)
-      } else {
-        diff.toString should be("[ ]")
-        // TODO - check ordering as well?
-        //jsonLogDocument should be(json)
-      }
+        if (json.isEmpty) {
+          jsonLogDocument should be(json)
+        } else {
+          diff.toString should be("[ ]")
+          // TODO - check ordering as well?
+          //jsonLogDocument should be(json)
+        }
 
-      val ungratedDBObject = JSON.parse(json).asInstanceOf[DBObject]
-      ungratedDBObject.toString should be(json)
+        val ungratedDBObject = JSON.parse(json).asInstanceOf[DBObject]
+        ungratedDBObject.toString should be(json)
 
-      val ungratedDeployDocument = LogDocument.fromDBO(new MongoDBObject(ungratedDBObject))
-      ungratedDeployDocument should be(Some(logDocument))
+        val ungratedDeployDocument = LogDocument.fromDBO(new MongoDBObject(ungratedDBObject))
+        ungratedDeployDocument should be(Some(logDocument))
     }
   }
 
@@ -94,7 +94,15 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester",
+                           "test-project",
+                           "1",
+                           "CODE",
+                           "test-recipe",
+                           Nil,
+                           Nil,
+                           Map("branch" -> "master"),
+                           AllDocument),
         RunState.Completed
       )
     )
@@ -109,7 +117,8 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   it should "never change without careful thought and testing of migration" in {
-    val dataModelDump = """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "stacks" : [ ] , "tags" : { "branch" : "test"} , "selector" : { "_typeHint" : "persistence.AllDocument$"}} , "status" : "Completed"}"""
+    val dataModelDump =
+      """{ "_id" : { "$uuid" : "39320f5b-7837-4f47-85f7-bc2d780e19f6"} , "stringUUID" : "39320f5b-7837-4f47-85f7-bc2d780e19f6" , "startTime" : { "$date" : "2012-11-08T17:20:00.000Z"} , "parameters" : { "deployer" : "Tester" , "projectName" : "test::project" , "buildId" : "1" , "stage" : "TEST" , "recipe" : "test-recipe" , "hostList" : [ "testhost1" , "testhost2"] , "stacks" : [ ] , "tags" : { "branch" : "test"} , "selector" : { "_typeHint" : "persistence.AllDocument$"}} , "status" : "Completed"}"""
 
     val deployDocument = RecordConverter(comprehensiveDeployRecord).deployDocument
     val gratedDeployDocument = deployDocument.toDBO
@@ -128,9 +137,14 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   "ApiKey" should "serialise to and from BSON" in {
-    val time = new DateTime(2012,11,8,17,20,0)
-    val lastTime = new DateTime(2013,1,8,17,20,0)
-    val apiKey = ApiKey("test-application", "hfeklwb34uiopfnu34io2tr_-fffDS", "Test User", time, Some(lastTime), Map("counter1" -> 34L, "counter2" -> 2345L))
+    val time = new DateTime(2012, 11, 8, 17, 20, 0)
+    val lastTime = new DateTime(2013, 1, 8, 17, 20, 0)
+    val apiKey = ApiKey("test-application",
+                        "hfeklwb34uiopfnu34io2tr_-fffDS",
+                        "Test User",
+                        time,
+                        Some(lastTime),
+                        Map("counter1" -> 34L, "counter2" -> 2345L))
 
     val dbObject = apiKey.toDBO
     val encoder = new BasicBSONEncoder()
@@ -144,12 +158,18 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   it should "never change without careful thought and testing of migration" in {
-    val time = new DateTime(2012,11,8,17,20,0)
-    val lastTime = new DateTime(2013,1,8,17,20,0)
+    val time = new DateTime(2012, 11, 8, 17, 20, 0)
+    val lastTime = new DateTime(2013, 1, 8, 17, 20, 0)
 
-    val apiKeyDump = """{ "application" : "test-application" , "_id" : "hfeklwb34uiopfnu34io2tr_-fffDS" , "issuedBy" : "Test User" , "created" : { "$date" : "2012-11-08T17:20:00.000Z"} , "lastUsed" : { "$date" : "2013-01-08T17:20:00.000Z"} , "callCounters" : { "counter1" : 34 , "counter2" : 2345}}"""
+    val apiKeyDump =
+      """{ "application" : "test-application" , "_id" : "hfeklwb34uiopfnu34io2tr_-fffDS" , "issuedBy" : "Test User" , "created" : { "$date" : "2012-11-08T17:20:00.000Z"} , "lastUsed" : { "$date" : "2013-01-08T17:20:00.000Z"} , "callCounters" : { "counter1" : 34 , "counter2" : 2345}}"""
 
-    val apiKey = ApiKey("test-application", "hfeklwb34uiopfnu34io2tr_-fffDS", "Test User", time, Some(lastTime), Map("counter1" -> 34L, "counter2" -> 2345L))
+    val apiKey = ApiKey("test-application",
+                        "hfeklwb34uiopfnu34io2tr_-fffDS",
+                        "Test User",
+                        time,
+                        Some(lastTime),
+                        Map("counter1" -> 34L, "counter2" -> 2345L))
     val gratedApiKey = apiKey.toDBO
 
     val jsonApiKey = JSON.serialize(gratedApiKey)
@@ -167,11 +187,20 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
   "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
     val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
-    val lastTime = new DateTime(2013,1,8,17,20,0)
-    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
-    val configV2Dump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
+    val lastTime = new DateTime(2013, 1, 8, 17, 20, 0)
+    val configDump =
+      """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
+    val configV2Dump =
+      """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
 
-    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), Trigger.SuccessfulBuild, "Test user", lastTime)
+    val config = ContinuousDeploymentConfig(uuid,
+                                            "test::project",
+                                            "TEST",
+                                            "default",
+                                            Some("^master$"),
+                                            Trigger.SuccessfulBuild,
+                                            "Test user",
+                                            lastTime)
     val gratedConfig = config.toDBO
 
     val jsonConfig = JSON.serialize(gratedConfig)
@@ -210,8 +239,10 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
   it should "not change DeployIdsFilterDocument without careful thought and testing of migration" in {
     // deploy IDs filter
-    val deployKeysDump = """{ "_typeHint" : "persistence.DeploymentKeysSelectorDocument" , "keys" : [ { "name" : "testName" , "action" : "testAction" , "stack" : "testStack" , "region" : "testRegion"}]}"""
-    val keysSelectorDocument = DeploymentKeysSelectorDocument(List(DeploymentKeyDocument("testName", "testAction", "testStack", "testRegion")))
+    val deployKeysDump =
+      """{ "_typeHint" : "persistence.DeploymentKeysSelectorDocument" , "keys" : [ { "name" : "testName" , "action" : "testAction" , "stack" : "testStack" , "region" : "testRegion"}]}"""
+    val keysSelectorDocument =
+      DeploymentKeysSelectorDocument(List(DeploymentKeyDocument("testName", "testAction", "testStack", "testRegion")))
     val keysSelectorDbo = keysSelectorDocument.asDBObject
     val keySelectorJson = JSON.serialize(keysSelectorDbo)
     val keysSelectorDiff = compareJson(deployKeysDump, keySelectorJson)

@@ -5,19 +5,22 @@ import play.api.mvc.{Call, RequestHeader}
 import magenta.RunState
 
 trait QueryStringBuilder {
-  def queryStringParams: List[(String,String)]
-  def queryString = queryStringParams.map {
-    case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
-  }.mkString("&")
+  def queryStringParams: List[(String, String)]
+  def queryString =
+    queryStringParams
+      .map {
+        case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
+      }
+      .mkString("&")
   def q = queryString
 }
 
-case class DeployFilter(
-  projectName: Option[String] = None,
-  stage: Option[String] = None,
-  deployer: Option[String] = None,
-  status: Option[RunState.Value] = None,
-  maxDaysAgo: Option[Int] = None ) extends QueryStringBuilder {
+case class DeployFilter(projectName: Option[String] = None,
+                        stage: Option[String] = None,
+                        deployer: Option[String] = None,
+                        status: Option[RunState.Value] = None,
+                        maxDaysAgo: Option[Int] = None)
+    extends QueryStringBuilder {
 
   lazy val queryStringParams: List[(String, String)] = {
     Nil ++
@@ -28,11 +31,11 @@ case class DeployFilter(
       maxDaysAgo.map("maxDaysAgo" -> _.toString)
   }
 
-  def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)
-  def withStage(stage: Option[String]) = this.copy(stage=stage)
-  def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
-  def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
-  def withMaxDaysAgo(maxDaysAgo: Option[Int]) = this.copy(maxDaysAgo=maxDaysAgo)
+  def withProjectName(projectName: Option[String]) = this.copy(projectName = projectName)
+  def withStage(stage: Option[String]) = this.copy(stage = stage)
+  def withDeployer(deployer: Option[String]) = this.copy(deployer = deployer)
+  def withStatus(status: Option[RunState.Value]) = this.copy(status = status)
+  def withMaxDaysAgo(maxDaysAgo: Option[Int]) = this.copy(maxDaysAgo = maxDaysAgo)
 
   lazy val default = this == DeployFilter()
 
@@ -42,13 +45,13 @@ case class DeployFilter(
 }
 
 object DeployFilter {
-  def fromRequest(implicit r: RequestHeader):Option[DeployFilter] = {
+  def fromRequest(implicit r: RequestHeader): Option[DeployFilter] = {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
     val statusType = try {
       param("status").map(RunState.withName)
-    } catch { case t:Throwable => throw new IllegalArgumentException("Unknown value for status parameter")}
+    } catch { case t: Throwable => throw new IllegalArgumentException("Unknown value for status parameter") }
 
     val filter = DeployFilter(
       projectName = param("projectName"),
@@ -62,10 +65,8 @@ object DeployFilter {
   }
 }
 
-case class HostFilter(
-  stage: Option[String] = None,
-  app: Option[String] = None,
-  hostList: List[String] = Nil ) extends QueryStringBuilder {
+case class HostFilter(stage: Option[String] = None, app: Option[String] = None, hostList: List[String] = Nil)
+    extends QueryStringBuilder {
   lazy val queryStringParams: List[(String, String)] = {
     Nil ++
       stage.map("stage" -> _.toString) ++
@@ -75,7 +76,7 @@ case class HostFilter(
 }
 
 object HostFilter {
-  def fromRequest(implicit r:RequestHeader):HostFilter = {
+  def fromRequest(implicit r: RequestHeader): HostFilter = {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
@@ -103,11 +104,11 @@ trait Pagination extends QueryStringBuilder {
     }
   }
 
-  val DISABLED = Call("GET","#")
+  val DISABLED = Call("GET", "#")
 
   def pageList: List[Int] = (lowerBound to upperBound).toList
-  def lowerBound: Int = math.max(1, pageCount.map(pageCount => math.min(page-2,pageCount-4)).getOrElse(page-4))
-  def upperBound: Int = pageCount.map(pageCount => math.min(pageCount, math.max(page+2,5))).getOrElse(page)
+  def lowerBound: Int = math.max(1, pageCount.map(pageCount => math.min(page - 2, pageCount - 4)).getOrElse(page - 4))
+  def upperBound: Int = pageCount.map(pageCount => math.min(pageCount, math.max(page + 2, 5))).getOrElse(page)
 
   def pageCount: Option[Int] = itemCount.map(itemCount => math.ceil(itemCount.toDouble / pageSize).toInt)
 
@@ -125,8 +126,8 @@ trait Pagination extends QueryStringBuilder {
 }
 
 case class PaginationView(
-  pageSize: Option[Int] = PaginationView.DEFAULT_PAGESIZE,
-  page: Int = PaginationView.DEFAULT_PAGE
+    pageSize: Option[Int] = PaginationView.DEFAULT_PAGESIZE,
+    page: Int = PaginationView.DEFAULT_PAGE
 ) extends QueryStringBuilder {
   def isDefault = pageSize == PaginationView.DEFAULT_PAGESIZE && page == PaginationView.DEFAULT_PAGE
 
@@ -135,17 +136,17 @@ case class PaginationView(
       pageSize.map("pageSize" -> _.toString) ++
       Some("page" -> page.toString)
 
-  lazy val skip = pageSize.map(_*(page-1))
+  lazy val skip = pageSize.map(_ * (page - 1))
 
-  def withPageSize(pageSize: Option[Int]) = this.copy(pageSize=pageSize)
-  def withPage(page: Int): PaginationView = this.copy(page=page)
+  def withPageSize(pageSize: Option[Int]) = this.copy(pageSize = pageSize)
+  def withPage(page: Int): PaginationView = this.copy(page = page)
 }
 
 object PaginationView {
   val DEFAULT_PAGESIZE = Some(20)
   val DEFAULT_PAGE = 1
 
-  def fromRequest(implicit r: RequestHeader):PaginationView = {
+  def fromRequest(implicit r: RequestHeader): PaginationView = {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
@@ -156,18 +157,21 @@ object PaginationView {
   }
 }
 
-case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationView, itemCount:Option[Int] = None) extends QueryStringBuilder with Pagination {
+case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationView, itemCount: Option[Int] = None)
+    extends QueryStringBuilder
+    with Pagination {
   lazy val queryStringParams = filter.queryStringParams ++ pagination.queryStringParams
 
-  def replaceFilter(f: DeployFilter => DeployFilter) = this.copy(filter=f(filter), pagination=pagination.withPage(1))
-  def replacePagination(f: PaginationView => PaginationView) = this.copy(pagination=f(pagination))
+  def replaceFilter(f: DeployFilter => DeployFilter) =
+    this.copy(filter = f(filter), pagination = pagination.withPage(1))
+  def replacePagination(f: PaginationView => PaginationView) = this.copy(pagination = f(pagination))
 
-  def withProjectName(projectName: Option[String]) = this.copy(filter=filter.withProjectName(projectName))
-  def withStage(stage: Option[String]) = this.copy(filter=filter.withStage(stage))
-  def withDeployer(deployer: Option[String]) = this.copy(filter=filter.withDeployer(deployer))
-  def withStatus(status: Option[RunState.Value]) = this.copy(filter=filter.withStatus(status))
-  def withPage(page: Int): DeployFilterPagination = this.copy(pagination=pagination.withPage(page))
-  def withPageSize(size: Option[Int]) = this.copy(pagination=pagination.withPageSize(size))
+  def withProjectName(projectName: Option[String]) = this.copy(filter = filter.withProjectName(projectName))
+  def withStage(stage: Option[String]) = this.copy(filter = filter.withStage(stage))
+  def withDeployer(deployer: Option[String]) = this.copy(filter = filter.withDeployer(deployer))
+  def withStatus(status: Option[RunState.Value]) = this.copy(filter = filter.withStatus(status))
+  def withPage(page: Int): DeployFilterPagination = this.copy(pagination = pagination.withPage(page))
+  def withPageSize(size: Option[Int]) = this.copy(pagination = pagination.withPageSize(size))
 
   def withItemCount(count: Option[Int]) = this.copy(itemCount = count)
 
@@ -177,7 +181,7 @@ case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationVi
 }
 
 object DeployFilterPagination {
-  def fromRequest(implicit r: RequestHeader):DeployFilterPagination = {
+  def fromRequest(implicit r: RequestHeader): DeployFilterPagination = {
     DeployFilterPagination(DeployFilter.fromRequest.getOrElse(DeployFilter()), PaginationView.fromRequest)
   }
 }

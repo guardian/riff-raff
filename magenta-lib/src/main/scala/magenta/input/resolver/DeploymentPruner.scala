@@ -33,6 +33,7 @@ object DeploymentPruner {
     else
       None
   }
+
   /** This prunes a deployment against the list of selected keys.
     * If none of the keys match the deployment then None will be returned.
     * If there are keys that match all the actions, regions and stacks then the deployment will be returned unmodified.
@@ -47,9 +48,9 @@ object DeploymentPruner {
 
     def matchKey(key: DeploymentKey): Boolean =
       deployment.name == key.name &&
-      deployment.actions.contains(key.action) &&
-      deployment.regions.contains(key.region) &&
-      deployment.stacks.contains(key.stack)
+        deployment.actions.contains(key.action) &&
+        deployment.regions.contains(key.region) &&
+        deployment.stacks.contains(key.stack)
 
     for {
       matchingKeys <- NEL.fromList(keys.filter(matchKey))

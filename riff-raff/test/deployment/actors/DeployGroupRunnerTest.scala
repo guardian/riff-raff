@@ -13,7 +13,10 @@ import org.scalatest.{FlatSpecLike, ShouldMatchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with ShouldMatchers {
+class DeployGroupRunnerTest
+    extends TestKit(ActorSystem("DeployGroupRunnerTest"))
+    with FlatSpecLike
+    with ShouldMatchers {
   import Fixtures._
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
@@ -86,7 +89,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     prepare(dr, threeSimpleTasks)
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
     dr.ul.failed should be(Set(ValueNode(runDeployment.deployment)))
@@ -103,7 +107,12 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     def ref: ActorRef
   }
 
-  case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]]) extends DR
+  case class DRImpl(record: Record,
+                    deployCoordinatorProbe: TestProbe,
+                    deploymentRunnerProbe: TestProbe,
+                    ref: ActorRef,
+                    stopFlagAgent: Agent[Map[UUID, String]])
+      extends DR
 
   def createDeployRunner(): DRImpl = {
     val deployCoordinatorProbe = TestProbe()
@@ -112,15 +121,25 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = system.actorOf(
-      Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes)),
-      name=s"DeployGroupRunner-${record.uuid.toString}"
+      Props(
+        new DeployGroupRunner(record,
+                              deployCoordinatorProbe.ref,
+                              deploymentRunnerFactory,
+                              stopFlagAgent,
+                              prismLookup = null,
+                              deploymentTypes)),
+      name = s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
   }
 
-  case class DRwithUnderlying(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
-  }
+  case class DRwithUnderlying(record: Record,
+                              deployCoordinatorProbe: TestProbe,
+                              deploymentRunnerProbe: TestProbe,
+                              ref: ActorRef,
+                              stopFlagAgent: Agent[Map[UUID, String]],
+                              ul: DeployGroupRunner)
+      extends DR {}
 
   def createDeployRunnerWithUnderlying(): DRwithUnderlying = {
     val deployCoordinatorProbe = TestProbe()
@@ -129,9 +148,13 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = TestActorRef(
-      new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes),
-      name=s"DeployGroupRunner-${record.uuid.toString}"
+      new DeployGroupRunner(record,
+                            deployCoordinatorProbe.ref,
+                            deploymentRunnerFactory,
+                            stopFlagAgent,
+                            prismLookup = null,
+                            deploymentTypes),
+      name = s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)
   }

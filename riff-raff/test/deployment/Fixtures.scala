@@ -4,7 +4,19 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
-import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Region, Stage}
+import magenta.{
+  Build,
+  DeployContext,
+  DeployParameters,
+  DeployReporter,
+  Deployer,
+  Host,
+  KeyRing,
+  NamedStack,
+  Project,
+  Region,
+  Stage
+}
 import magenta.tasks._
 import org.scalatest.mock.MockitoSugar
 
@@ -28,19 +40,18 @@ object Fixtures extends MockitoSugar {
   }
 
   def createRecord(
-    projectName: String = "test",
-    stage: String = "TEST",
-    buildId: String = "1",
-    deployer: String = "Tester",
-    stacks: Seq[String] = Seq("test"),
-    uuid:UUID = UUID.randomUUID()
-  ) = DeployRecord(uuid,
-    DeployParameters(Deployer(deployer),
-      Build(projectName, buildId),
-      Stage(stage),
-      stacks = stacks.map(NamedStack.apply)
-    )
-  )
+      projectName: String = "test",
+      stage: String = "TEST",
+      buildId: String = "1",
+      deployer: String = "Tester",
+      stacks: Seq[String] = Seq("test"),
+      uuid: UUID = UUID.randomUUID()
+  ) =
+    DeployRecord(uuid,
+                 DeployParameters(Deployer(deployer),
+                                  Build(projectName, buildId),
+                                  Stage(stage),
+                                  stacks = stacks.map(NamedStack.apply)))
 
   def createContext(tasks: List[Task], uuid: UUID, parameters: DeployParameters): DeployContext =
     createContext(DeploymentGraph(tasks, parameters.stacks.head.name), uuid, parameters)

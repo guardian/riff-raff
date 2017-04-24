@@ -56,6 +56,7 @@ case class Edge[+T](from: Node[T], to: Node[T], priority: Int = 1) {
 }
 
 object Graph {
+
   /** Create a graph using edges provided as var args
     *
     * @param edges The edges to build the graph from
@@ -84,7 +85,12 @@ object Graph {
     */
   def from[T](values: Seq[T]): Graph[T] = {
     val nodes: Seq[Node[T]] = StartNode +: values.map(ValueNode.apply) :+ EndNode
-    val edges = nodes.sliding(2).map{ window => window.head ~> window.tail.head }.toSet
+    val edges = nodes
+      .sliding(2)
+      .map { window =>
+        window.head ~> window.tail.head
+      }
+      .toSet
     Graph(edges)
   }
 
@@ -100,11 +106,12 @@ object Graph {
   private[graph] def joiningEdges[R](from: Graph[R], to: Graph[R]): Set[Edge[R]] = {
     val fromEndEdges = from.incoming(EndNode)
     val toStartEdges = to.orderedOutgoing(StartNode)
-    fromEndEdges.foldLeft(Set.empty[Edge[R]]) { case (acc, endEdge) =>
-      val existing = from.orderedOutgoing(endEdge.from)
-      val targetEdges = toStartEdges.map(startEdge => Edge(endEdge.from, startEdge.to))
-      val replacement = existing.replace(endEdge, targetEdges).reprioritise
-      acc -- existing ++ replacement
+    fromEndEdges.foldLeft(Set.empty[Edge[R]]) {
+      case (acc, endEdge) =>
+        val existing = from.orderedOutgoing(endEdge.from)
+        val targetEdges = toStartEdges.map(startEdge => Edge(endEdge.from, startEdge.to))
+        val replacement = existing.replace(endEdge, targetEdges).reprioritise
+        acc -- existing ++ replacement
     }
   }
 }
@@ -155,7 +162,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
     * The result can either be the list of nodes or an Error if we discover that a graph is not acyclic or if there are
     * nodes that cannot reach the EndNode.
     */
-  val traverse: Either[Error,List[Node[T]]] = {
+  val traverse: Either[Error, List[Node[T]]] = {
     def traverseFrom(node: Node[T], traversed: Set[Edge[T]]): Either[Error, (List[Node[T]], Set[Edge[T]])] = {
       val incoming: Set[Edge[T]] = this.incoming(node)
       if ((incoming -- traversed).nonEmpty) {
@@ -166,9 +173,10 @@ case class Graph[T](edges: Set[Edge[T]]) {
         val outgoing = this.orderedOutgoing(node)
 
         if (outgoing.isEmpty && node != EndNode) Left(Error(s"Node $node has no outgoing edges"))
-        if (outgoing.exists(traversed.contains)) Left(Error(s"Graph not acyclic - already traversed outgoing edges from $node"))
+        if (outgoing.exists(traversed.contains))
+          Left(Error(s"Graph not acyclic - already traversed outgoing edges from $node"))
 
-        outgoing.foldLeft[Either[Error, (List[Node[T]], Set[Edge[T]])]](Right(List(node), traversed)){
+        outgoing.foldLeft[Either[Error, (List[Node[T]], Set[Edge[T]])]](Right(List(node), traversed)) {
           case (Right((nodeAcc, edgeAcc)), successor) =>
             val next = traverseFrom(successor.to, edgeAcc + successor)
             next.right.map { result =>
@@ -186,19 +194,25 @@ case class Graph[T](edges: Set[Edge[T]]) {
     * Any errors with the Graph will be returned here.
     */
   val constraintErrors: Option[Error] = {
-    def checkStartAndEndNodes = Error(!nodes.contains(StartNode), "No start node") + Error(!nodes.contains(EndNode), "No end node")
-    def checkEdgePriorties = nodes.foldLeft(Error.empty){ (error, node) =>
-        val priorities = outgoing(node).toList.map(_.priority)
-        error + Error(priorities.size != priorities.toSet.size, s"Multiple outgoing edges have same priority from node $node (${priorities.mkString(",")}")
-      }
+    def checkStartAndEndNodes =
+      Error(!nodes.contains(StartNode), "No start node") + Error(!nodes.contains(EndNode), "No end node")
+    def checkEdgePriorties = nodes.foldLeft(Error.empty) { (error, node) =>
+      val priorities = outgoing(node).toList.map(_.priority)
+      error + Error(priorities.size != priorities.toSet.size,
+                    s"Multiple outgoing edges have same priority from node $node (${priorities.mkString(",")}")
+    }
     def checkTraversable = {
-      traverse.right.flatMap{ nodeListResult =>
-        if (nodeListResult.toSet.size != nodes.size) {
-          Left(Error(s"Graph was not fully traversed by nodeList (expected to traverse ${nodes.size} nodes but actually traversed ${nodeListResult.toSet.size})"))
-        } else {
-          Right(nodeListResult)
+      traverse.right
+        .flatMap { nodeListResult =>
+          if (nodeListResult.toSet.size != nodes.size) {
+            Left(Error(
+              s"Graph was not fully traversed by nodeList (expected to traverse ${nodes.size} nodes but actually traversed ${nodeListResult.toSet.size})"))
+          } else {
+            Right(nodeListResult)
+          }
         }
-      }.left.getOrElse(Error.empty)
+        .left
+        .getOrElse(Error.empty)
     }
 
     val errors = checkStartAndEndNodes +
@@ -218,15 +232,19 @@ case class Graph[T](edges: Set[Edge[T]]) {
 
   /** returns edges going from this node to another */
   def outgoing(node: Node[T]): Set[Edge[T]] = edges.filter(_.from == node)
+
   /** returns nodes that can be directly reached from this node */
   def successors(node: Node[T]): Set[Node[T]] = outgoing(node).map(_.to)
+
   /** returns edges going from this node to another ordered by the priority of the edge */
   def orderedOutgoing(node: Node[T]): List[Edge[T]] = outgoing(node).toList.sortBy(_.priority)
+
   /** returns node that can be directly reached from this node ordered by the priority of the edges */
   def orderedSuccessors(node: Node[T]): List[Node[T]] = orderedOutgoing(node).map(_.to)
 
   /** returns edges that arrive at this node from another */
   def incoming(node: Node[T]): Set[Edge[T]] = edges.filter(_.to == node)
+
   /** returns nodes that can reach this node */
   def predecessors(node: Node[T]): Set[Node[T]] = incoming(node).map(_.from)
 
@@ -289,7 +307,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
   def flatMap[R](f: Node[T] => Graph[R]): Graph[R] = {
     val nodeToGraphMap: Map[Node[T], Graph[R]] = nodes.map(n => n -> f(n)).toMap
     // find all of the edges that we won't adjoin to another graph
-    val allInternalEdges = nodeToGraphMap.flatMap{
+    val allInternalEdges = nodeToGraphMap.flatMap {
       case (StartNode, graph) => graph.edges -- graph.incoming(EndNode)
       case (ValueNode(_), graph) =>
         assert(!graph.isEmpty, "It is not possible to flatMap a MidNode to an empty graph")
@@ -298,22 +316,24 @@ case class Graph[T](edges: Set[Edge[T]]) {
     }.toSet
 
     // sort the edges by priority - this means we can re-calculate the priorities correctly
-    val joiningEdges = edges.toList.sortBy(_.priority)
-      .foldLeft(Set.empty[Edge[R]]) { case(acc, oldEdge) =>
-
-      val fromGraph = nodeToGraphMap(oldEdge.from)
-      val toGraph = nodeToGraphMap(oldEdge.to)
-      // get the joining edges
-      val newEdges = Graph.joiningEdges(fromGraph, toGraph)
-        // deduplicate any edges that we've already generated
-        .filterNot(e1 => acc.exists(e1 ~= _))
-        // fix up the priorities
-        .map{ newEdge =>
-          val maxPriority = acc.filter(_.from == newEdge.from).map(_.priority).reduceOption(Math.max).getOrElse(0)
-          newEdge.copy(priority = newEdge.priority + maxPriority)
-        }
-      acc ++ newEdges
-    }
+    val joiningEdges = edges.toList
+      .sortBy(_.priority)
+      .foldLeft(Set.empty[Edge[R]]) {
+        case (acc, oldEdge) =>
+          val fromGraph = nodeToGraphMap(oldEdge.from)
+          val toGraph = nodeToGraphMap(oldEdge.to)
+          // get the joining edges
+          val newEdges = Graph
+            .joiningEdges(fromGraph, toGraph)
+            // deduplicate any edges that we've already generated
+            .filterNot(e1 => acc.exists(e1 ~= _))
+            // fix up the priorities
+            .map { newEdge =>
+              val maxPriority = acc.filter(_.from == newEdge.from).map(_.priority).reduceOption(Math.max).getOrElse(0)
+              newEdge.copy(priority = newEdge.priority + maxPriority)
+            }
+          acc ++ newEdges
+      }
 
     Graph(allInternalEdges ++ joiningEdges)
   }
@@ -368,7 +388,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
     * @throws IllegalStateException if the graph cannot be traversed
     */
   def nodeList = {
-    traverse fold({ error =>
+    traverse fold ({ error =>
       throw new IllegalStateException(s"Couldn't traverse graph: $error")
     }, identity)
   }
@@ -378,16 +398,16 @@ case class Graph[T](edges: Set[Edge[T]]) {
   override def toString: String = {
     val identifiers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     val nodeNumbers = (nodeList ::: (nodes -- nodeList).toList).zipWithIndex
-    val nodeNumberMap: Map[Node[T], String] = nodeNumbers.toMap.mapValues{
+    val nodeNumberMap: Map[Node[T], String] = nodeNumbers.toMap.mapValues {
       case index if index < identifiers.length => identifiers(index).toString
       case index => (index - identifiers.length).toString
     }
-    val numberedEdges = edges.toList.map { case Edge(from, to, priority) =>
-      (nodeNumberMap(from), priority, nodeNumberMap(to))
+    val numberedEdges = edges.toList.map {
+      case Edge(from, to, priority) =>
+        (nodeNumberMap(from), priority, nodeNumberMap(to))
     }.sorted
-    val edgeList = numberedEdges.map{ case (f, p, t) => s"$f ~$p~> $t"}
-    val nodeNumberList = nodeNumbers.map{case(n, i) => s"${nodeNumberMap(n)}: $n"}
+    val edgeList = numberedEdges.map { case (f, p, t) => s"$f ~$p~> $t" }
+    val nodeNumberList = nodeNumbers.map { case (n, i) => s"${nodeNumberMap(n)}: $n" }
     s"Graph(nodes: ${nodeNumberList.mkString("; ")} edges: ${edgeList.mkString(", ")}"
   }
 }
-

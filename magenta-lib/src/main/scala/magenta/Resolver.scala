@@ -24,14 +24,23 @@ case class RecipeTasksNode(recipeTasks: RecipeTasks, children: List[RecipeTasksN
 
 object Resolver {
 
-  def resolve(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region): Graph[DeploymentTasks] = {
-    resolveStacks(project, parameters, resources.reporter).map { stack =>
-      val stackTasks = resolveStack(project, parameters, resources, stack, region).flatMap(_.tasks)
-      DeploymentGraph(stackTasks, s"${parameters.build.projectName}${stack.nameOption.map(" -> " + _).getOrElse("")}")
-    }.reduce(_ joinParallel _)
+  def resolve(project: Project,
+              parameters: DeployParameters,
+              resources: DeploymentResources,
+              region: Region): Graph[DeploymentTasks] = {
+    resolveStacks(project, parameters, resources.reporter)
+      .map { stack =>
+        val stackTasks = resolveStack(project, parameters, resources, stack, region).flatMap(_.tasks)
+        DeploymentGraph(stackTasks,
+                        s"${parameters.build.projectName}${stack.nameOption.map(" -> " + _).getOrElse("")}")
+      }
+      .reduce(_ joinParallel _)
   }
 
-  def resolveDetail(project: Project, parameters: DeployParameters, resources: DeploymentResources, region: Region): List[RecipeTasks] = {
+  def resolveDetail(project: Project,
+                    parameters: DeployParameters,
+                    resources: DeploymentResources,
+                    region: Region): List[RecipeTasks] = {
     val stacks = resolveStacks(project, parameters, resources.reporter)
     for {
       stack <- stacks.toList
@@ -39,10 +48,15 @@ object Resolver {
     } yield tasks
   }
 
-  def resolveStack(project: Project, parameters: DeployParameters, resources: DeploymentResources, stack: Stack, region: Region): List[RecipeTasks] = {
+  def resolveStack(project: Project,
+                   parameters: DeployParameters,
+                   resources: DeploymentResources,
+                   stack: Stack,
+                   region: Region): List[RecipeTasks] = {
 
     def resolveTree(recipeName: String, resources: DeploymentResources, target: DeployTarget): RecipeTasksNode = {
-      val recipe = project.recipes.getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
+      val recipe = project.recipes
+        .getOrElse(recipeName, sys.error(s"Recipe '$recipeName' doesn't exist in your deploy.json file"))
       val recipeTasks = resolveRecipe(recipe, resources, target)
       val children = recipe.dependsOn.map(resolveTree(_, resources, target))
       RecipeTasksNode(recipeTasks, children)
@@ -72,7 +86,8 @@ object Resolver {
     parameters.stacks match {
       case Nil if project.defaultStacks.nonEmpty => project.defaultStacks
       case Nil =>
-        reporter.warning("DEPRECATED: Your deploy.json should always specify stacks using the top level defaultStacks parameter. Not doing so means that stacks are not taken into account when determining which AWS credentials to use and therefore which AWS account to deploy to.")
+        reporter.warning(
+          "DEPRECATED: Your deploy.json should always specify stacks using the top level defaultStacks parameter. Not doing so means that stacks are not taken into account when determining which AWS credentials to use and therefore which AWS account to deploy to.")
         Seq(UnnamedStack)
       case s => s
     }

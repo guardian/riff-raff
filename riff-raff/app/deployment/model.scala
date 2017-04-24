@@ -21,8 +21,7 @@ object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"
   val RIFFRAFF_DOMAIN = "riffraff-domain"
 
-  private val formatter = new PeriodFormatterBuilder()
-    .appendDays
+  private val formatter = new PeriodFormatterBuilder().appendDays
     .appendSuffix("d")
     .appendSeparator(" ")
     .appendHours
@@ -35,7 +34,7 @@ object Record {
     .appendSuffix("s")
     .toFormatter
 
-  def prettyPrintDuration(duration: Duration): String = 
+  def prettyPrintDuration(duration: Duration): String =
     formatter.print(duration.toPeriod)
 }
 
@@ -98,7 +97,7 @@ trait Record {
       recordTotalTasks
     else {
       val taskListMessages: Seq[TaskList] = report.allMessages.flatMap {
-        case SimpleMessageState(list@TaskList(tasks), _, _) => Some(list)
+        case SimpleMessageState(list @ TaskList(tasks), _, _) => Some(list)
         case _ => None
       }
       assert(taskListMessages.size <= 1, "More than one TaskList in report")
@@ -117,21 +116,23 @@ trait Record {
   }
 
   lazy val completedPercentage: Int =
-    totalTasks.map{total =>
-      (completedTasks * 100) / total
-    }.getOrElse(0)
+    totalTasks
+      .map { total =>
+        (completedTasks * 100) / total
+      }
+      .getOrElse(0)
 }
 
 object DeployRecord {
-  def apply(uuid: UUID,
-            parameters: DeployParameters ): DeployRecord = {
+  def apply(uuid: UUID, parameters: DeployParameters): DeployRecord = {
     val build = Builds.all.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
-    val metaData = build.map { case b: S3Build =>
-      Map(
-        "branch" -> b.branchName,
-        VCSInfo.REVISION -> b.revision,
-        VCSInfo.CIURL -> b.vcsURL
-      )
+    val metaData = build.map {
+      case b: S3Build =>
+        Map(
+          "branch" -> b.branchName,
+          VCSInfo.REVISION -> b.revision,
+          VCSInfo.CIURL -> b.vcsURL
+        )
     }
 
     DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
@@ -139,14 +140,15 @@ object DeployRecord {
 }
 
 case class DeployRecord(time: DateTime,
-                           uuid: UUID,
-                           parameters: DeployParameters,
-                           metaData: Map[String, String] = Map.empty,
-                           messages: List[MessageWrapper] = Nil,
-                           recordState: Option[RunState.Value] = None,
-                           recordTotalTasks: Option[Int] = None,
-                           recordCompletedTasks: Option[Int] = None,
-                           recordLastActivityTime: Option[DateTime] = None) extends Record {
+                        uuid: UUID,
+                        parameters: DeployParameters,
+                        metaData: Map[String, String] = Map.empty,
+                        messages: List[MessageWrapper] = Nil,
+                        recordState: Option[RunState.Value] = None,
+                        recordTotalTasks: Option[Int] = None,
+                        recordCompletedTasks: Option[Int] = None,
+                        recordLastActivityTime: Option[DateTime] = None)
+    extends Record {
   lazy val report = DeployReport(messages)
 
   def +(message: MessageWrapper): DeployRecord = {

@@ -21,6 +21,7 @@ object ConfigErrors {
   */
 case class DeploymentKey(name: String, action: String, stack: String, region: String)
 object DeploymentKey {
+
   /** Turn a deployment into a deployment key - WARNING: this doesn't make any checks about the number of elements
     * but will only work predictably with one element in each of actions, stacks and regions */
   def apply(deployment: Deployment): DeploymentKey = {
@@ -49,10 +50,10 @@ case object All extends DeploymentSelector
 case class DeploymentKeysSelector(keys: List[DeploymentKey]) extends DeploymentSelector
 
 case class RiffRaffDeployConfig(
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  templates: Option[Map[String, DeploymentOrTemplate]],
-  deployments: List[(String, DeploymentOrTemplate)]
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    templates: Option[Map[String, DeploymentOrTemplate]],
+    deployments: List[(String, DeploymentOrTemplate)]
 )
 object RiffRaffDeployConfig {
   import RiffRaffYamlReader.readObjectAsList
@@ -74,15 +75,15 @@ object RiffRaffDeployConfig {
   * @param parameters       Provides additional parameters to the deployment type. Refer to the deployment types to see what is required.
   */
 case class DeploymentOrTemplate(
-  `type`: Option[String],
-  template: Option[String],
-  stacks: Option[List[String]],
-  regions: Option[List[String]],
-  actions: Option[List[String]],
-  app: Option[String],
-  contentDirectory: Option[String],
-  dependencies: Option[List[String]],
-  parameters: Option[Map[String, JsValue]]
+    `type`: Option[String],
+    template: Option[String],
+    stacks: Option[List[String]],
+    regions: Option[List[String]],
+    actions: Option[List[String]],
+    app: Option[String],
+    contentDirectory: Option[String],
+    dependencies: Option[List[String]],
+    parameters: Option[Map[String, JsValue]]
 )
 object DeploymentOrTemplate {
   implicit val reads: Reads[DeploymentOrTemplate] = checkedReads(Json.reads)
@@ -92,13 +93,13 @@ object DeploymentOrTemplate {
   * A deployment that has been parsed and validated out of a riff-raff.yml file.
   */
 case class Deployment(
-  name: String,
-  `type`: String,
-  stacks: NEL[String],
-  regions: NEL[String],
-  actions: NEL[String],
-  app: String,
-  contentDirectory: String,
-  dependencies: List[String],
-  parameters: Map[String, JsValue]
+    name: String,
+    `type`: String,
+    stacks: NEL[String],
+    regions: NEL[String],
+    actions: NEL[String],
+    app: String,
+    contentDirectory: String,
+    dependencies: List[String],
+    parameters: Map[String, JsValue]
 )

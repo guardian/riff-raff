@@ -27,15 +27,21 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |to this bucket and sent to CloudFormation using the template URL parameter.
     """.stripMargin
 
-  val templatePath = Param[String]("templatePath",
-    documentation = "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
-  ).default("""cloud-formation/cfn.json""")
-  val templateParameters = Param[Map[String, String]]("templateParameters",
-    documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
-  ).default(Map.empty)
-  val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
+  val templatePath = Param[String](
+    "templatePath",
     documentation =
-      """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
+      "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
+  ).default("""cloud-formation/cfn.json""")
+
+  val templateParameters = Param[Map[String, String]](
+    "templateParameters",
+    documentation =
+      "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
+  ).default(Map.empty)
+
+  val templateStageParameters = Param[Map[String, Map[String, String]]](
+    "templateStageParameters",
+    documentation = """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
         |support stage-specific configuration. E.g.
         |
         |    {
@@ -47,17 +53,21 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         |templateParameters parameters, with stage-specific values overriding general parameters
         |when in conflict.""".stripMargin
   ).default(Map.empty)
-  val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
-    documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
-  ).default(true)
+  val createStackIfAbsent = Param[Boolean](
+    "createStackIfAbsent",
+    documentation =
+      "If set to true then the cloudformation stack will be created if it doesn't already exist")
+  .default(true)
 
-  val updateStack = Action("updateStack",
+  val updateStack = Action(
+    "updateStack",
     """
       |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
       |runs another task that _tails_ the stack update events (as well as possible).
       |
     """.stripMargin
-  ){ (pkg, resources, target) => {
+  ) { (pkg, resources, target) =>
+    {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
@@ -67,7 +77,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
 
       val globalParams = templateParameters(pkg, target, reporter)
-      val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
+      val stageParams =
+        templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
       val alwaysUploadToS3 = !pkg.legacyConfig
 

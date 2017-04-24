@@ -10,7 +10,7 @@ import play.api.data.format.Formatter
 object Forms extends Loggable {
   val deploymentKey = of[DeploymentKey](new Formatter[DeploymentKey] {
     def bind(key: String, data: Map[String, String]) = {
-      stringFormat.bind(key, data).right.flatMap{ s =>
+      stringFormat.bind(key, data).right.flatMap { s =>
         DeploymentKey.fromString(s).toRight(Seq(FormError("form.deployment-key", "Couldn't parse as deployment key")))
       }
     }
@@ -19,7 +19,7 @@ object Forms extends Loggable {
 
   val deploymentKeyList = of[List[DeploymentKey]](new Formatter[List[DeploymentKey]] {
     def bind(key: String, data: Map[String, String]) = {
-      stringFormat.bind(key, data).right.flatMap{ s =>
+      stringFormat.bind(key, data).right.flatMap { s =>
         Right(DeploymentKey.fromStringToList(s))
       }
     }

@@ -14,7 +14,7 @@ import scalax.io.{Resource, ScalaIOException}
 
 object S3ZipArtifact {
   def download(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): File = {
-    val dir = Path.createTempDirectory(prefix="riffraff-", suffix="")
+    val dir = Path.createTempDirectory(prefix = "riffraff-", suffix = "")
     download(artifact, dir)(client, reporter)
     dir
   }
@@ -37,10 +37,11 @@ object S3ZipArtifact {
     } catch {
       case e: AmazonS3Exception if e.getStatusCode == 404 =>
         reporter.fail(s"404 downloading $path\n - have you got the project name and build number correct?")
-      case e: ScalaIOException => e.getCause match {
-        case e: AmazonS3Exception if e.getStatusCode == 404 =>
-          reporter.fail(s"404 downloading $path\n - have you got the project name and build number correct?")
-      }
+      case e: ScalaIOException =>
+        e.getCause match {
+          case e: AmazonS3Exception if e.getStatusCode == 404 =>
+            reporter.fail(s"404 downloading $path\n - have you got the project name and build number correct?")
+        }
     } finally {
       artifactPath.delete()
     }
@@ -51,8 +52,7 @@ object S3ZipArtifact {
     client.deleteObject(path.bucket, path.key)
   }
 
-  def withDownload[T](artifact: S3JsonArtifact)(block: File => T)
-    (client: AmazonS3, reporter: DeployReporter): T = {
+  def withDownload[T](artifact: S3JsonArtifact)(block: File => T)(client: AmazonS3, reporter: DeployReporter): T = {
     val tempDir = Try { download(artifact)(client, reporter) }
     val result = tempDir.map(block)
     tempDir.map(dir => Path(dir).deleteRecursively(continueOnFailure = true))

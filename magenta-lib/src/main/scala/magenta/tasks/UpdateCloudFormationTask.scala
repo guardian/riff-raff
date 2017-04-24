@@ -14,14 +14,18 @@ import org.joda.time.{DateTime, Duration}
 import scala.collection.convert.wrapAsScala._
 
 object UpdateCloudFormationTask {
-  case class TemplateParameter(key:String, default:Boolean)
+  case class TemplateParameter(key: String, default: Boolean)
 
   sealed trait CloudFormationStackLookupStrategy
   case class LookupByName(cloudFormationStackName: String) extends CloudFormationStackLookupStrategy {
     override def toString = s"called $cloudFormationStackName"
   }
   object LookupByName {
-    def apply(stack: Stack, stage: Stage, cfnStackName: String, prependStack: Boolean, appendStage: Boolean): LookupByName = {
+    def apply(stack: Stack,
+              stage: Stage,
+              cfnStackName: String,
+              prependStack: Boolean,
+              appendStage: Boolean): LookupByName = {
       val stackName = stack.nameOption.filter(_ => prependStack)
       val stageName = Some(stage.name).filter(_ => appendStage)
       val cloudFormationStackNameParts = Seq(stackName, Some(cfnStackName), stageName).flatten
@@ -38,11 +42,13 @@ object UpdateCloudFormationTask {
         stack <- target.stack.nameOption
         app <- pkg.pkgApps.map(_.name).headOption if pkg.pkgApps.size == 1
         stage = target.parameters.stage.name
-      } yield LookupByTags(Map(
-        "Stage" -> stage,
-        "Stack" -> stack,
-        "App" -> app
-      ))
+      } yield
+        LookupByTags(
+          Map(
+            "Stage" -> stage,
+            "Stack" -> stack,
+            "App" -> app
+          ))
 
       lookupByTags.getOrElse(reporter.fail(
         s"Tag lookup of cloudformation stacks can only be used when the configuration specifies a stack and exactly one app - you have stack=${target.stack.nameOption} and apps=${pkg.apps.map(_.name).mkString(",")}"
@@ -50,15 +56,21 @@ object UpdateCloudFormationTask {
     }
   }
 
-  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
-    def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
+  def combineParameters(stack: Stack,
+                        stage: Stage,
+                        templateParameters: Seq[TemplateParameter],
+                        parameters: Map[String, String]): Map[String, ParameterValue] = {
+    def addParametersIfInTemplate(params: Map[String, ParameterValue])(
+        nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
+        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) =>
+          completeParams + (name -> SpecifiedValue(value))
         case (completeParams, _) => completeParams
       }
     }
 
-    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
+    val requiredParams: Map[String, ParameterValue] =
+      templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
     val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(
@@ -71,22 +83,29 @@ object UpdateCloudFormationTask {
     strategy match {
       case LookupByName(name) => name
       case LookupByTags(tags) =>
-        val orderedTags = tags.toList.sortBy{ case (key, value) =>
-          // order by the intrinsic ordering and then alphabetically for keys we don't know
-          val order = intrinsicKeyOrder.indexOf(key)
-          val intrinsicOrdering = if (order == -1) Int.MaxValue else order
-          (intrinsicOrdering, key)
+        val orderedTags = tags.toList.sortBy {
+          case (key, value) =>
+            // order by the intrinsic ordering and then alphabetically for keys we don't know
+            val order = intrinsicKeyOrder.indexOf(key)
+            val intrinsicOrdering = if (order == -1) Int.MaxValue else order
+            (intrinsicOrdering, key)
         }
-        orderedTags.map{ case (key, value) => value }.mkString("-")
+        orderedTags.map { case (key, value) => value }.mkString("-")
     }
   }
 
-  def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenService,
-    region: Region, alwaysUploadToS3: Boolean, reporter: DeployReporter): Template = {
+  def processTemplate(stackName: String,
+                      templateBody: String,
+                      s3Client: AmazonS3,
+                      stsClient: AWSSecurityTokenService,
+                      region: Region,
+                      alwaysUploadToS3: Boolean,
+                      reporter: DeployReporter): Template = {
     val templateTooBigForSdkUpload = templateBody.length > 51200
 
     if (alwaysUploadToS3 || templateTooBigForSdkUpload) {
-      val bucketName = S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, reporter, Some(1))
+      val bucketName =
+        S3.accountSpecificBucket("riff-raff-cfn-templates", s3Client, stsClient, region, reporter, Some(1))
       val keyName = s"$stackName-${new DateTime().getMillis}"
       reporter.verbose(s"Uploading template as $keyName to S3 bucket $bucketName")
       s3Client.putObject(bucketName, keyName, templateBody)
@@ -98,17 +117,17 @@ object UpdateCloudFormationTask {
   }
 }
 
-case class UpdateCloudFormationTask(
-  region: Region,
-  cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  templatePath: S3Path,
-  userParameters: Map[String, String],
-  amiParameterMap: Map[CfnParam, TagCriteria],
-  latestImage: String => Map[String,String] => Option[String],
-  stage: Stage,
-  stack: Stack,
-  createStackIfAbsent:Boolean,
-  alwaysUploadToS3:Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateCloudFormationTask(region: Region,
+                                    cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
+                                    templatePath: S3Path,
+                                    userParameters: Map[String, String],
+                                    amiParameterMap: Map[CfnParam, TagCriteria],
+                                    latestImage: String => Map[String, String] => Option[String],
+                                    stage: Stage,
+                                    stack: Stack,
+                                    createStackIfAbsent: Boolean,
+                                    alwaysUploadToS3: Boolean)(implicit val keyRing: KeyRing, artifactClient: AmazonS3)
+    extends Task {
 
   import UpdateCloudFormationTask._
 
@@ -128,18 +147,22 @@ case class UpdateCloudFormationTask(
 
     val nameToCallStack = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
 
-    val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3, reporter)
+    val template =
+      processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3, reporter)
 
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters
+    val templateParameters = CloudFormation
+      .validateTemplate(template, cfnClient)
+      .getParameters
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      val ami = latestImage(region.name)(tags)
-      ami.map(name ->)
+    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap {
+      case (name, tags) =>
+        val ami = latestImage(region.name)(tags)
+        ami.map(name ->)
     }
 
     val parameters: Map[String, ParameterValue] =
-        combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+      combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
 
     reporter.info(s"Parameters: $parameters")
 
@@ -148,16 +171,19 @@ case class UpdateCloudFormationTask(
         try {
           CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
         } catch {
-          case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
+          case ase: AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
             reporter.info("Cloudformation update has no changes to template or parameters")
-          case ase:AmazonServiceException if ase.getMessage contains "Template format error: JSON not well-formed" =>
+          case ase: AmazonServiceException if ase.getMessage contains "Template format error: JSON not well-formed" =>
             reporter.info(s"Cloudformation update failed with the following template content:\n$templateString")
             throw ase
         }
       case None =>
         if (createStackIfAbsent) {
-          val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
-          reporter.info(s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
+          val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy) {
+            case LookupByTags(tags) => tags
+          }
+          reporter.info(
+            s"Stack $cloudFormationStackLookupStrategy doesn't exist. Creating stack using name $nameToCallStack.")
           CloudFormation.createStack(reporter, nameToCallStack, stackTags, template, parameters, cfnClient)
         } else {
           reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
@@ -169,13 +195,13 @@ case class UpdateCloudFormationTask(
   def verbose = description
 }
 
-case class UpdateAmiCloudFormationParameterTask(
-  region: Region,
-  cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  amiParameterMap: Map[CfnParam, TagCriteria],
-  latestImage: String => Map[String, String] => Option[String],
-  stage: Stage,
-  stack: Stack)(implicit val keyRing: KeyRing) extends Task {
+case class UpdateAmiCloudFormationParameterTask(region: Region,
+                                                cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
+                                                amiParameterMap: Map[CfnParam, TagCriteria],
+                                                latestImage: String => Map[String, String] => Option[String],
+                                                stage: Stage,
+                                                stack: Stack)(implicit val keyRing: KeyRing)
+    extends Task {
 
   import UpdateCloudFormationTask._
 
@@ -187,30 +213,33 @@ case class UpdateAmiCloudFormationParameterTask(
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
-    val cfStack = maybeCfStack.getOrElse{
+    val cfStack = maybeCfStack.getOrElse {
       reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
     }
 
-    val existingParameters: Map[String, ParameterValue] = cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
+    val existingParameters: Map[String, ParameterValue] =
+      cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
 
-    val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
-      if (!cfStack.getParameters.exists(_.getParameterKey == parameterName)) {
-        reporter.fail(s"stack ${cfStack.getStackName} does not have an $parameterName parameter to update")
-      }
+    val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap {
+      case (parameterName, amiTags) =>
+        if (!cfStack.getParameters.exists(_.getParameterKey == parameterName)) {
+          reporter.fail(s"stack ${cfStack.getStackName} does not have an $parameterName parameter to update")
+        }
 
-      val currentAmi = cfStack.getParameters.find(_.getParameterKey == parameterName).get.getParameterValue
-      val maybeNewAmi = latestImage(region.name)(amiTags)
-      maybeNewAmi match {
-        case Some(sameAmi) if currentAmi == sameAmi =>
-          reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
-          None
-        case Some(newAmi) =>
-          reporter.info(s"Resolved AMI for $parameterName: $newAmi")
-          Some(parameterName -> SpecifiedValue(newAmi))
-        case None =>
-          val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-          reporter.fail(s"Failed to resolve AMI for ${cfStack.getStackName} parameter $parameterName with tags: $tagsStr")
-      }
+        val currentAmi = cfStack.getParameters.find(_.getParameterKey == parameterName).get.getParameterValue
+        val maybeNewAmi = latestImage(region.name)(amiTags)
+        maybeNewAmi match {
+          case Some(sameAmi) if currentAmi == sameAmi =>
+            reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
+            None
+          case Some(newAmi) =>
+            reporter.info(s"Resolved AMI for $parameterName: $newAmi")
+            Some(parameterName -> SpecifiedValue(newAmi))
+          case None =>
+            val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
+            reporter.fail(
+              s"Failed to resolve AMI for ${cfStack.getStackName} parameter $parameterName with tags: $tagsStr")
+        }
     }
 
     if (resolvedAmiParameters.nonEmpty) {
@@ -223,16 +252,17 @@ case class UpdateAmiCloudFormationParameterTask(
   }
 
   def description = {
-    val components = amiParameterMap.map { case(name, tags) => s"$name to latest AMI with tags $tags"}.mkString(", ")
+    val components = amiParameterMap.map { case (name, tags) => s"$name to latest AMI with tags $tags" }.mkString(", ")
     s"Update $components in CloudFormation stack: $cloudFormationStackLookupStrategy"
   }
   def verbose = description
 }
 
 case class CheckUpdateEventsTask(
-  region: Region,
-  stackLookupStrategy: CloudFormationStackLookupStrategy
-)(implicit val keyRing: KeyRing) extends Task {
+    region: Region,
+    stackLookupStrategy: CloudFormationStackLookupStrategy
+)(implicit val keyRing: KeyRing)
+    extends Task {
 
   import UpdateCloudFormationTask._
 
@@ -244,7 +274,8 @@ case class CheckUpdateEventsTask(
     val stackName = stackLookupStrategy match {
       case LookupByName(name) => name
       case strategy @ LookupByTags(tags) =>
-        val stack = CloudFormation.findStackByTags(tags, reporter, cfnClient)
+        val stack = CloudFormation
+          .findStackByTags(tags, reporter, cfnClient)
           .getOrElse(reporter.fail(s"Could not find CloudFormation stack $strategy"))
         stack.getStackName
     }
@@ -292,8 +323,8 @@ case class CheckUpdateEventsTask(
 
     def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED")
 
-    def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
-      s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
+    def fail(reporter: DeployReporter, e: StackEvent): Unit =
+      reporter.fail(s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
             |${e.getResourceStatusReason}""".stripMargin)
   }
 

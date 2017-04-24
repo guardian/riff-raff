@@ -20,17 +20,18 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   it should "resolve a set of tasks" in {
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-    val parameters = DeployParameters(Deployer("tester"), Build("project","1"), CODE, oneRecipeName)
+    val parameters = DeployParameters(Deployer("tester"), Build("project", "1"), CODE, oneRecipeName)
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
     val context = DeployContext(UUID.randomUUID(), parameters, project(baseRecipe), resources, region)
-    DeploymentGraph.toTaskList(context.tasks) should be(List(
-      StubTask("init_action_one per app task number one", Region("eu-west-1")),
-      StubTask("init_action_one per app task number two", Region("eu-west-1"))
-    ))
+    DeploymentGraph.toTaskList(context.tasks) should be(
+      List(
+        StubTask("init_action_one per app task number one", Region("eu-west-1")),
+        StubTask("init_action_one per app task number two", Region("eu-west-1"))
+      ))
   }
 
   it should "send a Info message when resolving tasks" in {
-    val parameters = DeployParameters(Deployer("tester1"), Build("project","1"), CODE, oneRecipeName)
+    val parameters = DeployParameters(Deployer("tester1"), Build("project", "1"), CODE, oneRecipeName)
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
 
     val messages = Buffer[Message]()
@@ -43,10 +44,11 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "execute the task" in {
-    val parameters = DeployParameters(Deployer("tester"), Build("prooecjt","1"), CODE, oneRecipeName)
+    val parameters = DeployParameters(Deployer("tester"), Build("prooecjt", "1"), CODE, oneRecipeName)
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
-    val context = DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), resources, region)
+    val context =
+      DeployContext(reporter.messageContext.deployId, parameters, project(baseMockRecipe), resources, region)
     context.execute(reporter)
     val task = DeploymentGraph.toTaskList(context.tasks).head
 
@@ -54,17 +56,18 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "send taskStart and taskFinish messages for each task" in {
-    val parameters = DeployParameters(Deployer("tester2"), Build("project","1"), CODE, oneRecipeName)
+    val parameters = DeployParameters(Deployer("tester2"), Build("project", "1"), CODE, oneRecipeName)
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
-    DeployReporter.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
-      wrapper.stack.top match {
-        case FinishContext(finishMessage) => finished += finishMessage
-        case StartContext(startMessage) => start += startMessage
-        case _ =>
-      }
-    )
+    DeployReporter.messages
+      .filter(_.stack.deployParameters == Some(parameters))
+      .subscribe(wrapper =>
+        wrapper.stack.top match {
+          case FinishContext(finishMessage) => finished += finishMessage
+          case StartContext(startMessage) => start += startMessage
+          case _ =>
+      })
 
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -81,17 +84,18 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "bookend the messages with startdeploy and finishdeploy messages" in {
-    val parameters = DeployParameters(Deployer("tester3"), Build("Project","1"), CODE, oneRecipeName)
+    val parameters = DeployParameters(Deployer("tester3"), Build("Project", "1"), CODE, oneRecipeName)
 
     val start = Buffer[Message]()
     val finished = Buffer[Message]()
-    DeployReporter.messages.filter(_.stack.deployParameters == Some(parameters)).subscribe(wrapper =>
-      wrapper.stack.top match {
-        case FinishContext(finishMessage) => finished += finishMessage
-        case StartContext(startMessage) => start += startMessage
-        case _ =>
-      }
-    )
+    DeployReporter.messages
+      .filter(_.stack.deployParameters == Some(parameters))
+      .subscribe(wrapper =>
+        wrapper.stack.top match {
+          case FinishContext(finishMessage) => finished += finishMessage
+          case StartContext(startMessage) => start += startMessage
+          case _ =>
+      })
 
     val reporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(UUID.randomUUID(), parameters))
     val resources = DeploymentResources(reporter, lookupSingleHost, artifactClient)
@@ -104,7 +108,6 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     start.head.getClass should be(classOf[Deploy])
     finished.last.getClass should be(classOf[Deploy])
   }
-
 
   val CODE = Stage("CODE")
 
@@ -131,13 +134,13 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
-  val baseRecipe = Recipe("one",
+  val baseRecipe = Recipe(
+    "one",
     deploymentSteps = basePackageType.mkDeploymentStep("init_action_one")(stubPackage(basePackageType)) :: Nil,
     dependsOn = Nil)
 
-  val baseMockRecipe = Recipe("one",
-    deploymentSteps = MockStubPerAppDeploymentStep("init_action_one", Seq(app1)) :: Nil,
-    dependsOn = Nil)
+  val baseMockRecipe =
+    Recipe("one", deploymentSteps = MockStubPerAppDeploymentStep("init_action_one", Seq(app1)) :: Nil, dependsOn = Nil)
 
   def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
 

@@ -3,7 +3,7 @@ package magenta.deployment_type
 import magenta.tasks._
 import java.io.File
 
-object AutoScaling  extends DeploymentType {
+object AutoScaling extends DeploymentType {
   val name = "autoscaling"
   val documentation =
     """
@@ -53,34 +53,42 @@ object AutoScaling  extends DeploymentType {
       |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
-  val bucket = Param[String]("bucket",
+  val bucket = Param[String](
+    "bucket",
     """
       |S3 bucket name to upload artifact into.
       |
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
     """.stripMargin,
     optionalInYaml = true
-  ).defaultFromContext((_, target) => target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks"))
-  val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
-  val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
-  val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
-  val terminationGrace = Param("terminationGrace", "Number of seconds to wait for the AWS api to stabilise after instance termination").default(10)
+  ).defaultFromContext(
+    (_, target) =>
+      target.stack.nameOption
+        .map(stackName => s"$stackName-dist")
+        .toRight("You must specify bucket explicitly when not using stacks"))
+  val secondsToWait =
+    Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
+  val healthcheckGrace =
+    Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
+  val warmupGrace =
+    Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
+  val terminationGrace =
+    Param("terminationGrace", "Number of seconds to wait for the AWS api to stabilise after instance termination")
+      .default(10)
 
-  val prefixStage = Param[Boolean]("prefixStage",
-    documentation = "Whether to prefix `stage` to the S3 location"
-  ).default(true)
-  val prefixPackage = Param[Boolean]("prefixPackage",
-    documentation = "Whether to prefix `package` to the S3 location"
-  ).default(true)
-  val prefixStack = Param[Boolean]("prefixStack",
-    documentation = "Whether to prefix `stack` to the S3 location"
-  ).default(true)
+  val prefixStage =
+    Param[Boolean]("prefixStage", documentation = "Whether to prefix `stage` to the S3 location").default(true)
+  val prefixPackage =
+    Param[Boolean]("prefixPackage", documentation = "Whether to prefix `package` to the S3 location").default(true)
+  val prefixStack =
+    Param[Boolean]("prefixStack", documentation = "Whether to prefix `stack` to the S3 location").default(true)
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
-  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
+  val publicReadAcl =
+    Param[Boolean]("publicReadAcl", "Whether the uploaded artifacts should be given the PublicRead Canned ACL")
+      .defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
-  val deploy = Action("deploy",
+  val deploy = Action(
+    "deploy",
     """
       |Carries out the update of instances in an autoscaling group. We carry out the following tasks:
       | - tag existing instances in the ASG with a termination tag
@@ -116,10 +124,9 @@ object AutoScaling  extends DeploymentType {
   }
 
   val uploadArtifacts = Action("uploadArtifacts",
-    """
+                               """
       |Uploads the files in the deployment's directory to the specified bucket.
-    """.stripMargin
-  ){ (pkg, resources, target) =>
+    """.stripMargin) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     val reporter = resources.reporter

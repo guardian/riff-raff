@@ -6,7 +6,17 @@ import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
-import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, NamedStack, Region, fixtures}
+import magenta.{
+  App,
+  DeployReporter,
+  DeployTarget,
+  DeploymentPackage,
+  DeploymentResources,
+  KeyRing,
+  NamedStack,
+  Region,
+  fixtures
+}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
@@ -27,31 +37,46 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   )
 
   val app = Seq(App("lambda"))
-  val pkg = DeploymentPackage("lambda", app, data, "aws-lambda", S3Path("artifact-bucket", "test/123/lambda"), true,
-    deploymentTypes)
+  val pkg = DeploymentPackage("lambda",
+                              app,
+                              data,
+                              "aws-lambda",
+                              S3Path("artifact-bucket", "test/123/lambda"),
+                              true,
+                              deploymentTypes)
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
-    tasks should be (List(
-      S3Upload(
-        Region("eu-west-1"),
-        bucket = "lambda-bucket",
-        paths = Seq(S3Path("artifact-bucket", "test/123/lambda/test-file.zip") -> s"test/PROD/lambda/test-file.zip")
-      )
-    ))
+    val tasks = Lambda
+      .actionsMap("uploadLambda")
+      .taskGenerator(pkg,
+                     DeploymentResources(reporter, lookupEmpty, artifactClient),
+                     DeployTarget(parameters(PROD), NamedStack("test"), region))
+    tasks should be(
+      List(
+        S3Upload(
+          Region("eu-west-1"),
+          bucket = "lambda-bucket",
+          paths = Seq(S3Path("artifact-bucket", "test/123/lambda/test-file.zip") -> s"test/PROD/lambda/test-file.zip")
+        )
+      ))
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("test"), region))
-    tasks should be (List(
-      UpdateS3Lambda(
-        functionName = "MyFunction-PROD",
-        s3Bucket = "lambda-bucket",
-        s3Key = "test/PROD/lambda/test-file.zip",
-        region = defaultRegion
-      )
-    ))
+    val tasks = Lambda
+      .actionsMap("updateLambda")
+      .taskGenerator(pkg,
+                     DeploymentResources(reporter, lookupEmpty, artifactClient),
+                     DeployTarget(parameters(PROD), NamedStack("test"), region))
+    tasks should be(
+      List(
+        UpdateS3Lambda(
+          functionName = "MyFunction-PROD",
+          s3Bucket = "lambda-bucket",
+          s3Key = "test/PROD/lambda/test-file.zip",
+          region = defaultRegion
+        )
+      ))
   }
 
   it should "prefix stack name to function name" in {
@@ -62,18 +87,28 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "functionNames" -> Json.arr("MyFunction-")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
-      S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
+    val pkg = DeploymentPackage("lambda",
+                                app,
+                                dataWithStack,
+                                "aws-lambda",
+                                S3Path("artifact-bucket", "test/123/lambda"),
+                                true,
+                                deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
-    tasks should be (List(
-      UpdateS3Lambda(
-        functionName = "some-stackMyFunction-PROD",
-        s3Bucket = "lambda-bucket",
-        s3Key = "some-stack/PROD/lambda/test-file.zip",
-        region = defaultRegion
-      )
-    ))
+    val tasks = Lambda
+      .actionsMap("updateLambda")
+      .taskGenerator(pkg,
+                     DeploymentResources(reporter, lookupEmpty, artifactClient),
+                     DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
+    tasks should be(
+      List(
+        UpdateS3Lambda(
+          functionName = "some-stackMyFunction-PROD",
+          s3Bucket = "lambda-bucket",
+          s3Key = "some-stack/PROD/lambda/test-file.zip",
+          region = defaultRegion
+        )
+      ))
   }
 
   it should "create an update lambda for each region" in {
@@ -85,23 +120,33 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       "regions" -> Json.arr("us-east-1", "ap-southeast-2")
     )
     val app = Seq(App("lambda"))
-    val pkg = DeploymentPackage("lambda", app, dataWithStack, "aws-lambda",
-      S3Path("artifact-bucket", "test/123/lambda"), true, deploymentTypes)
+    val pkg = DeploymentPackage("lambda",
+                                app,
+                                dataWithStack,
+                                "aws-lambda",
+                                S3Path("artifact-bucket", "test/123/lambda"),
+                                true,
+                                deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
-    tasks should be (List(
-      UpdateS3Lambda(
-        functionName = "some-stackMyFunction-PROD",
-        s3Bucket = "lambda-bucket",
-        s3Key = "some-stack/PROD/lambda/test-file.zip",
-        region = Region("us-east-1")
-      ),
-      UpdateS3Lambda(
-        functionName = "some-stackMyFunction-PROD",
-        s3Bucket = "lambda-bucket",
-        s3Key = "some-stack/PROD/lambda/test-file.zip",
-        region = Region("ap-southeast-2")
-      )
-    ))
+    val tasks = Lambda
+      .actionsMap("updateLambda")
+      .taskGenerator(pkg,
+                     DeploymentResources(reporter, lookupEmpty, artifactClient),
+                     DeployTarget(parameters(PROD), NamedStack("some-stack"), region))
+    tasks should be(
+      List(
+        UpdateS3Lambda(
+          functionName = "some-stackMyFunction-PROD",
+          s3Bucket = "lambda-bucket",
+          s3Key = "some-stack/PROD/lambda/test-file.zip",
+          region = Region("us-east-1")
+        ),
+        UpdateS3Lambda(
+          functionName = "some-stackMyFunction-PROD",
+          s3Bucket = "lambda-bucket",
+          s3Key = "some-stack/PROD/lambda/test-file.zip",
+          region = Region("ap-southeast-2")
+        )
+      ))
   }
 }

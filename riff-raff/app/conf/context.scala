@@ -52,14 +52,15 @@ class Configuration(val application: String, val webappConfDirectory: String = "
           new Filter("resource-type").withValues("instance"),
           new Filter("resource-id").withValues(instanceId)
         )
-        val ec2Client = AmazonEC2ClientBuilder.standard()
+        val ec2Client = AmazonEC2ClientBuilder
+          .standard()
           .withCredentials(credentialsProviderChain(None, None))
           .withRegion(Regions.getCurrentRegion.getName)
           .build()
         try {
           val describeTagsResult = ec2Client.describeTags(request)
           describeTagsResult.getTags.asScala
-            .collectFirst{ case t if t.getKey == "Stage" => t.getValue }
+            .collectFirst { case t if t.getKey == "Stage" => t.getValue }
             .getOrException("Couldn't find a Stage tag on the Riff Raff instance")
         } finally {
           ec2Client.shutdown()
@@ -76,9 +77,13 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val useDatabase: Boolean = configuration.getStringProperty("auth.whitelist.useDatabase", "false") == "true"
       lazy val addresses: List[String] = configuration.getStringPropertiesSplitByComma("auth.whitelist.addresses")
     }
-    lazy val clientId: String = configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
-    lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
-    lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
+    lazy val clientId: String =
+      configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
+    lazy val clientSecret: String =
+      configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
+    lazy val redirectUrl: String = configuration
+      .getStringProperty("auth.redirectUrl")
+      .getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
     lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
@@ -90,7 +95,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
-    val dynamoClient = AmazonDynamoDBAsyncClientBuilder.standard()
+    val dynamoClient = AmazonDynamoDBAsyncClientBuilder
+      .standard()
       .withCredentials(credentialsProviderChain(None, None))
       .withRegion(Regions.getCurrentRegion.getName)
       .withClientConfiguration(new ClientConfiguration())
@@ -98,7 +104,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object credentials {
-    def lookupSecret(service: String, id:String): Option[String] = {
+    def lookupSecret(service: String, id: String): Option[String] = {
       configuration.getStringProperty("credentials.%s.%s" format (service, id))
     }
   }
@@ -107,7 +113,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     private val formatter = ISODateTimeFormat.dateTime()
     lazy val startDate = configuration.getStringProperty("freeze.startDate").map(formatter.parseDateTime)
     lazy val endDate = configuration.getStringProperty("freeze.endDate").map(formatter.parseDateTime)
-    lazy val message = configuration.getStringProperty("freeze.message", "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
+    lazy val message = configuration.getStringProperty(
+      "freeze.message",
+      "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
     lazy val stages = configuration.getStringPropertiesSplitByComma("freeze.stages")
   }
 
@@ -129,22 +137,25 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object mongo {
     lazy val isConfigured = uri.isDefined
     lazy val uri = configuration.getStringProperty("mongo.uri")
-    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
+    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix", "")
   }
 
   object stages {
-    lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
+    lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot("" ==)
     lazy val ordering = UnnaturalOrdering(order, aliensAtEnd = false)
   }
 
   object artifact {
     object aws {
-      implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
+      implicit lazy val bucketName = configuration
+        .getStringProperty("artifact.aws.bucketName")
+        .getOrException("Artifact bucket name not configured")
       lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
       lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder
+        .standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
         .build()
@@ -159,7 +170,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("build.aws.region", "eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder
+        .standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
         .build()
@@ -173,7 +185,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = configuration.getStringProperty("tag.aws.region", "eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder
+        .standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
         .build()
@@ -193,10 +206,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
     new AWSCredentialsProviderChain(
       new AWSCredentialsProvider {
-        override def getCredentials: AWSCredentials = (for {
-          key <- accessKey
-          secret <- secretKey
-        } yield new BasicAWSCredentials(key, secret)).orNull
+        override def getCredentials: AWSCredentials =
+          (for {
+            key <- accessKey
+            secret <- secretKey
+          } yield new BasicAWSCredentials(key, secret)).orNull
 
         override def refresh(): Unit = {}
       },
@@ -212,7 +226,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
   }
 
-  val version:String = BuildInfo.buildNumber
+  val version: String = BuildInfo.buildNumber
 
   override def toString: String = configuration.toString
 }
@@ -247,11 +261,23 @@ object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 object DeployMetrics extends Lifecycle {
   val runningDeploys = mutable.Buffer[UUID]()
 
-  object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
-  object DeployComplete extends CountMetric("riffraff", "complete_deploy", "Complete deploy", "Number of deploys that completed", Some(DeployStart))
-  object DeployFail extends CountMetric("riffraff", "fail_deploy", "Fail deploy", "Number of deploys that failed", Some(DeployStart))
+  object DeployStart
+      extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
+  object DeployComplete
+      extends CountMetric("riffraff",
+                          "complete_deploy",
+                          "Complete deploy",
+                          "Number of deploys that completed",
+                          Some(DeployStart))
+  object DeployFail
+      extends CountMetric("riffraff", "fail_deploy", "Fail deploy", "Number of deploys that failed", Some(DeployStart))
 
-  object DeployRunning extends GaugeMetric("riffraff", "running_deploys", "Running deploys", "Number of currently running deploys", () => runningDeploys.length)
+  object DeployRunning
+      extends GaugeMetric("riffraff",
+                          "running_deploys",
+                          "Running deploys",
+                          "Number of currently running deploys",
+                          () => runningDeploys.length)
 
   val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
 
@@ -270,56 +296,78 @@ object DeployMetrics extends Lifecycle {
     }
   })
 
-  def init() { }
+  def init() {}
   def shutdown() { messageSub.unsubscribe() }
 }
 
 object TaskMetrics {
   object TaskTimer extends TimingMetric("riffraff", "task_run", "Tasks running", "Timing of deployment tasks")
-  object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
-  object TasksRunning extends GaugeMetric("riffraff", "running_tasks", "Running tasks", "Number of currently running tasks", () => DeployMetricsActor.runningTaskCount)
+  object TaskStartLatency
+      extends TimingMetric("riffraff",
+                           "task_start_latency",
+                           "Task start latency",
+                           "Timing of deployment task start latency",
+                           Some(TaskTimer))
+  object TasksRunning
+      extends GaugeMetric("riffraff",
+                          "running_tasks",
+                          "Running tasks",
+                          "Number of currently running tasks",
+                          () => DeployMetricsActor.runningTaskCount)
   val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
 }
 
 object DatastoreMetrics {
-  object DatastoreRequest extends TimingMetric(
-    "performance",
-    "database_requests",
-    "Database requests",
-    "outgoing requests to the database"
-  )
-  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>  Persistence.store.collectionStats }
+  object DatastoreRequest
+      extends TimingMetric(
+        "performance",
+        "database_requests",
+        "Database requests",
+        "outgoing requests to the database"
+      )
+  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>
+    Persistence.store.collectionStats
+  }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
-  def deployCollectionCount: Long = collectionStats().get("%sdeployV2" format Configuration.mongo.collectionPrefix).map(_.documentCount).getOrElse(0L)
-  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
-  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
-  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
+  def deployCollectionCount: Long =
+    collectionStats().get("%sdeployV2" format Configuration.mongo.collectionPrefix).map(_.documentCount).getOrElse(0L)
+  object MongoDataSize
+      extends GaugeMetric("mongo",
+                          "data_size",
+                          "MongoDB data size",
+                          "The size of the data held in mongo collections",
+                          () => dataSize)
+  object MongoStorageSize
+      extends GaugeMetric("mongo",
+                          "storage_size",
+                          "MongoDB storage size",
+                          "The size of the storage used by the MongoDB collections",
+                          () => storageSize)
+  object MongoDeployCollectionCount
+      extends GaugeMetric("mongo",
+                          "deploys_collection_count",
+                          "Deploys collection count",
+                          "The number of documents in the deploys collection",
+                          () => deployCollectionCount)
   val all = Seq(DatastoreRequest, MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
 }
 
-object LoginCounter extends CountMetric("webapp",
-  "login_attempts",
-  "Login attempts",
-  "Number of attempted logins")
+object LoginCounter extends CountMetric("webapp", "login_attempts", "Login attempts", "Number of attempted logins")
 
-object FailedLoginCounter extends CountMetric("webapp",
-  "failed_logins",
-  "Failed logins",
-  "Number of failed logins")
+object FailedLoginCounter extends CountMetric("webapp", "failed_logins", "Failed logins", "Number of failed logins")
 
 object Metrics {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
-    Seq(LoginCounter, FailedLoginCounter) ++
-    //PlayRequestMetrics.asMetrics ++
-    DeployMetrics.all ++
-    DatastoreMetrics.all ++
-    TaskMetrics.all
+      Seq(LoginCounter, FailedLoginCounter) ++
+      //PlayRequestMetrics.asMetrics ++
+      DeployMetrics.all ++
+      DatastoreMetrics.all ++
+      TaskMetrics.all
 }
 
 object Switches {
   //  val switch = new DefaultSwitch("name", "Description Text")
   val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: Deployments.enableSwitches
 }
-

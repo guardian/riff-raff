@@ -36,7 +36,8 @@ object CIBuild extends Logging {
 
   lazy val newBuilds: Observable[CIBuild] = {
     val observable = (for {
-      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
+      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct
+      if !initialFiles.contains(location)
       build <- Observable.from(retrieveBuild(location))
     } yield build).publish
     observable.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
@@ -58,7 +59,8 @@ object CIBuild extends Logging {
 
   private def retrieveBuild(location: S3Object): Option[CIBuild] = {
     import cats.syntax.either._
-    S3Build.buildAt(location)
+    S3Build
+      .buildAt(location)
       .leftMap(e => log.error(s"Problem getting build definition from $location: $e"))
       .toOption
   }
