@@ -21,8 +21,12 @@ object S3 extends DeploymentType {
   )
 
   //required configuration, you cannot upload without setting these
-  val bucket =
-    Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)", optionalInYaml = true)
+  val bucket = Param[String](
+    "bucket",
+    "S3 bucket to upload package files to (see also `bucketResource`)",
+    optionalInYaml = true
+  )
+
   val bucketResource = Param[String](
     "bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
@@ -33,10 +37,10 @@ object S3 extends DeploymentType {
     optionalInYaml = true
   )
 
-  val publicReadAcl =
-    Param[Boolean](
-      "publicReadAcl",
-      "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)").default(true)
+  val publicReadAcl = Param[Boolean](
+    "publicReadAcl",
+    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+  ).default(true)
 
   val cacheControl = Param[List[PatternValue]](
     "cacheControl",

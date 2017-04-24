@@ -13,10 +13,10 @@ object ElasticSearch extends DeploymentType {
 
   val bucket = Param[String]("bucket", "S3 bucket that the artifact should be uploaded into")
 
-  val publicReadAcl =
-    Param[Boolean]("publicReadAcl",
-                   "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)")
-      .defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
+  val publicReadAcl = Param[Boolean](
+    "publicReadAcl",
+     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
 
   val secondsToWait = Param(
     "secondsToWait",

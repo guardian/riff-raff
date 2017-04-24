@@ -18,26 +18,34 @@ trait CloudFormationDeploymentTypeParameters { this: DeploymentType =>
         |`appendStageToCloudFormationStackName` parameters. When true we find the stack by looking for one with matching
         |stack, app and stage tags in the same way that autoscaling groups are discovered.""".stripMargin
   ).defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
-  val cloudFormationStackName =
-    Param[String]("cloudFormationStackName", documentation = "The name of the CloudFormation stack to update")
-      .defaultFromContext((pkg, _) => Right(pkg.name))
+
+  val cloudFormationStackName = Param[String](
+    "cloudFormationStackName",
+    documentation = "The name of the CloudFormation stack to update"
+  ).defaultFromContext((pkg, _) => Right(pkg.name))
+
   val prependStackToCloudFormationStackName = Param[Boolean](
     "prependStackToCloudFormationStackName",
     documentation =
       "Whether to prepend '`stack`-' to the `cloudFormationStackName`, e.g. MyApp => service-preview-MyApp"
   ).default(true)
-  val appendStageToCloudFormationStackName =
-    Param[Boolean]("appendStageToCloudFormationStackName",
-                   documentation =
-                     "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD")
-      .default(true)
 
-  val amiTags = Param[TagCriteria]("amiTags",
-                                   optionalInYaml = true,
-                                   documentation = "Specify the set of tags to use to find the latest AMI")
+  val appendStageToCloudFormationStackName = Param[Boolean](
+    "appendStageToCloudFormationStackName",
+    documentation =
+      "Whether to add '-`stage`' to the `cloudFormationStackName`, e.g. MyApp => MyApp-PROD"
+  ).default(true)
 
-  val amiParameter =
-    Param[CfnParam]("amiParameter", documentation = "The CloudFormation parameter name for the AMI").default("AMI")
+  val amiTags = Param[TagCriteria](
+    "amiTags",
+     optionalInYaml = true,
+     documentation = "Specify the set of tags to use to find the latest AMI"
+  )
+
+  val amiParameter = Param[CfnParam](
+    "amiParameter",
+    documentation = "The CloudFormation parameter name for the AMI"
+  ).default("AMI")
 
   val amiParametersToTags = Param[Map[CfnParam, TagCriteria]](
     "amiParametersToTags",

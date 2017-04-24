@@ -32,11 +32,13 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     documentation =
       "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
   ).default("""cloud-formation/cfn.json""")
+
   val templateParameters = Param[Map[String, String]](
     "templateParameters",
     documentation =
       "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
   ).default(Map.empty)
+
   val templateStageParameters = Param[Map[String, Map[String, String]]](
     "templateStageParameters",
     documentation = """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
@@ -51,11 +53,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         |templateParameters parameters, with stage-specific values overriding general parameters
         |when in conflict.""".stripMargin
   ).default(Map.empty)
-  val createStackIfAbsent =
-    Param[Boolean]("createStackIfAbsent",
-                   documentation =
-                     "If set to true then the cloudformation stack will be created if it doesn't already exist")
-      .default(true)
+  val createStackIfAbsent = Param[Boolean](
+    "createStackIfAbsent",
+    documentation =
+      "If set to true then the cloudformation stack will be created if it doesn't already exist")
+  .default(true)
 
   val updateStack = Action(
     "updateStack",
