@@ -90,17 +90,22 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
-    val dynamoClient = AmazonDynamoDBAsyncClientBuilder.standard()
-      .withCredentials(credentialsProviderChain(None, None))
-      .withRegion(Regions.getCurrentRegion.getName)
-      .withClientConfiguration(new ClientConfiguration())
-      .build()
+
   }
 
   object credentials {
     def lookupSecret(service: String, id:String): Option[String] = {
       configuration.getStringProperty("credentials.%s.%s" format (service, id))
     }
+  }
+
+  object dynamoDb {
+    lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
+    val client = AmazonDynamoDBAsyncClientBuilder.standard()
+      .withCredentials(credentialsProviderChain(None, None))
+      .withRegion(regionName)
+      .withClientConfiguration(new ClientConfiguration())
+      .build()
   }
 
   object freeze {
