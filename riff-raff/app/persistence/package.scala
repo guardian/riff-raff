@@ -15,7 +15,8 @@ object `package` {
         filter.projectName.map(p => ("parameters.projectName", s"(?i)$p".r)) ++
         filter.stage.map(("parameters.stage", _)) ++
         filter.deployer.map(("parameters.deployer", _)) ++
-        filter.status.map(s => ("status", s.toString))
+        filter.status.map(s => ("status", s.toString)) ++
+        filter.hasWarnings.map(hw => ("hasWarnings", hw))
       filter.maxDaysAgo match {
         case None => MongoDBObject(criteriaList)
 

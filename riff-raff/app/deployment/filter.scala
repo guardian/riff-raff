@@ -17,7 +17,8 @@ case class DeployFilter(
   stage: Option[String] = None,
   deployer: Option[String] = None,
   status: Option[RunState.Value] = None,
-  maxDaysAgo: Option[Int] = None ) extends QueryStringBuilder {
+  maxDaysAgo: Option[Int] = None,
+  hasWarnings: Option[Boolean] = None) extends QueryStringBuilder {
 
   lazy val queryStringParams: List[(String, String)] = {
     Nil ++
@@ -25,7 +26,8 @@ case class DeployFilter(
       stage.map("stage" -> _.toString) ++
       deployer.map("deployer" -> _.toString) ++
       status.map("status" -> _.toString) ++
-      maxDaysAgo.map("maxDaysAgo" -> _.toString)
+      maxDaysAgo.map("maxDaysAgo" -> _.toString) ++
+      hasWarnings.map("hasWarnings" -> _.toString)
   }
 
   def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)
@@ -33,6 +35,7 @@ case class DeployFilter(
   def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
   def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
   def withMaxDaysAgo(maxDaysAgo: Option[Int]) = this.copy(maxDaysAgo=maxDaysAgo)
+  def withHasWarnings(hasWarnings: Option[Boolean]) = this.copy(hasWarnings=hasWarnings)
 
   lazy val default = this == DeployFilter()
 
@@ -55,7 +58,8 @@ object DeployFilter {
       stage = param("stage"),
       deployer = param("deployer"),
       status = statusType,
-      maxDaysAgo = param("maxDaysAgo").map(_.toInt)
+      maxDaysAgo = param("maxDaysAgo").map(_.toInt),
+      hasWarnings = param("hasWarnings").map(_.toBoolean)
     )
 
     if (filter == DeployFilter()) None else Some(filter)

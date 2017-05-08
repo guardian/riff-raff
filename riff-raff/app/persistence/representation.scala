@@ -15,7 +15,8 @@ case class DeployRecordDocument(uuid:UUID,
                                 summarised: Option[Boolean] = None,
                                 totalTasks: Option[Int] = None,
                                 completedTasks: Option[Int] = None,
-                                lastActivityTime: Option[DateTime] = None)
+                                lastActivityTime: Option[DateTime] = None,
+                                hasWarnings: Option[Boolean] = None)
 
 object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
@@ -32,7 +33,7 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
           "status" -> a.status.toString
         ) ++ a.stringUUID.map("stringUUID" ->) ++ a.summarised.map("summarised" -> _) ++
              a.totalTasks.map("totalTasks" ->) ++ a.completedTasks.map("completedTasks" ->) ++
-             a.lastActivityTime.map("lastActivityTime" ->)
+             a.lastActivityTime.map("lastActivityTime" ->) ++ a.hasWarnings.map("hasWarnings" ->)
       fields.toMap
     }
     def fromDBO(dbo: MongoDBObject) =
@@ -46,7 +47,8 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
         summarised = dbo.getAs[Boolean]("summarised"),
         totalTasks = dbo.getAs[Int]("totalTasks"),
         completedTasks = dbo.getAs[Int]("completedTasks"),
-        lastActivityTime = dbo.getAs[DateTime]("lastActivityTime")
+        lastActivityTime = dbo.getAs[DateTime]("lastActivityTime"),
+        hasWarnings = dbo.getAs[Boolean]("hasWarnings")
       )
     )
   }
