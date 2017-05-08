@@ -34,7 +34,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
   val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
-  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes)
+  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, conf.Configuration.deprecation.pauseSeconds)
   val deployments = new Deployments(deploymentEngine)
   val continuousDeployment = new ContinuousDeployment(deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)

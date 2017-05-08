@@ -190,6 +190,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     val token = configuration.getStringProperty("mixpanel.token")
   }
 
+  object deprecation {
+    val pauseSeconds = configuration.getIntegerProperty("deprecation.pauseSeconds")
+  }
+
   def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
     new AWSCredentialsProviderChain(
       new AWSCredentialsProvider {

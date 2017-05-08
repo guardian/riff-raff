@@ -5,6 +5,7 @@ import java.io.File
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
+import dispatch.classic./
 import magenta.json.JsonInputFile
 import magenta.{Build, DeployReporter}
 import play.api.data.validation.ValidationError
@@ -105,12 +106,12 @@ object S3JsonArtifact extends Loggable {
     S3JsonArtifact(bucket, prefix)
   }
 
-  def fetchInputFile(artifact: S3JsonArtifact)(
+  def fetchInputFile(artifact: S3JsonArtifact, deprecatedPause: Option[Int])(
     implicit client: AmazonS3, reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
 
     import cats.syntax.either._
     val possibleJson = (artifact.deployObject.fetchContentAsString()(client)).orElse {
-      convertFromZipBundle(artifact)
+      convertFromZipBundle(artifact, deprecatedPause)
       artifact.deployObject.fetchContentAsString()(client)
     }
     possibleJson.leftMap[ArtifactResolutionError](S3ArtifactError(_)).flatMap(s =>
@@ -118,8 +119,17 @@ object S3JsonArtifact extends Loggable {
     )
   }
 
-  def convertFromZipBundle(artifact: S3JsonArtifact)(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
-    reporter.warning("DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task)")
+  def convertFromZipBundle(artifact: S3JsonArtifact, deprecatedPause: Option[Int])(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
+    reporter.warning(
+      """DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you
+        |are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin
+        |you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task).""".stripMargin)
+    deprecatedPause.foreach { pause =>
+      reporter.warning(
+        s"""Support will be removed at the end of September 2017. To persuade you to migrate we will now
+          |pause this deploy for $pause seconds whilst you reflect on your ways.""".stripMargin)
+      Thread.sleep(pause * 1000)
+    }
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
     S3ZipArtifact.withDownload(artifact){ dir =>
