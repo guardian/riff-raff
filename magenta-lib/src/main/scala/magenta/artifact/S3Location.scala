@@ -123,11 +123,11 @@ object S3JsonArtifact extends Loggable {
     reporter.warning(
       """DEPRECATED: The artifact.zip is now a legacy format - please switch to the new format (if you
         |are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin
-        |you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task).""".stripMargin)
+        |you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task). NOTE: Support will
+        |be removed at the end of September 2017.""".stripMargin)
     deprecatedPause.foreach { pause =>
       reporter.warning(
-        s"""Support will be removed at the end of September 2017. To persuade you to migrate we will now
-          |pause this deploy for $pause seconds whilst you reflect on your ways.""".stripMargin)
+        s"To persuade you to migrate we will now\npause this deploy for $pause seconds whilst you reflect on your ways.")
       Thread.sleep(pause * 1000)
     }
     reporter.info("Converting artifact.zip to S3 layout")
