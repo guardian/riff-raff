@@ -62,7 +62,7 @@ object LegacyPreview {
     if (yamlArtifact.deployObject.fetchContentAsString()(resources.artifactClient).isRight)
       throw new IllegalArgumentException("Tried to preview 'riff-raff.yaml' with old preview tool")
     val s3Artifact = S3JsonArtifact(build, artifact.aws.bucketName)
-    val json = S3JsonArtifact.fetchInputFile(s3Artifact)(resources.artifactClient, resources.reporter)
+    val json = S3JsonArtifact.fetchInputFile(s3Artifact, None)(resources.artifactClient, resources.reporter)
     json.fold[Project](e => resources.reporter.fail(s"Unable to build preview, $e"),
       JsonReader.buildProject(_, s3Artifact, deploymentTypes))
   }

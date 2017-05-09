@@ -9,7 +9,7 @@ import org.joda.time.DateTime
 
 trait DynamoRepository {
 
-  val client = Configuration.continuousDeployment.dynamoClient
+  val client = Configuration.dynamoDb.client
   def exec[A](ops: ScanamoOps[A]): A = Scanamo.exec(client)(ops)
   def tablePrefix: String
 

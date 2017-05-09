@@ -12,7 +12,7 @@ import resources.PrismLookup
 
 import scala.collection.JavaConverters._
 
-class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Logging {
+class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: Option[Int]) extends Logging {
   import DeploymentEngine._
 
   private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
@@ -23,7 +23,7 @@ class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[Deployment
   private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
       props = Props(
-        new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes)
+        new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, deprecatedPause)
       ).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )

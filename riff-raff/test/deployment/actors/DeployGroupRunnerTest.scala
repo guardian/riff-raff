@@ -113,7 +113,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val record = createRecord()
     val ref = system.actorOf(
       Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes)),
+        prismLookup = null, deploymentTypes, None)),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
@@ -130,7 +130,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val record = createRecord()
     val ref = TestActorRef(
       new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes),
+        prismLookup = null, deploymentTypes, None),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)

@@ -170,10 +170,10 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {
-    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivivty:$lastActivityTime"), ()) {
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
+    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings"), ()) {
       val fields =
-        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime) ++
+        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
         totalTasks.map("totalTasks" ->)
       deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
     }

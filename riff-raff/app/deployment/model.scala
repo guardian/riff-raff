@@ -48,6 +48,7 @@ trait Record {
   def recordState: Option[RunState.Value]
   def recordTotalTasks: Option[Int]
   def recordCompletedTasks: Option[Int]
+  def recordHasWarnings: Option[Boolean]
 
   lazy val buildName = parameters.build.projectName
   lazy val buildId = parameters.build.id
@@ -120,6 +121,17 @@ trait Record {
     totalTasks.map{total =>
       (completedTasks * 100) / total
     }.getOrElse(0)
+
+  lazy val hasWarnings: Boolean = if (isSummarised) {
+    recordHasWarnings.getOrElse(false)
+  } else {
+    report.allMessages.exists { message =>
+      message.message match {
+        case Warning(_) => true
+        case _ => false
+      }
+    }
+  }
 }
 
 object DeployRecord {
@@ -139,14 +151,15 @@ object DeployRecord {
 }
 
 case class DeployRecord(time: DateTime,
-                           uuid: UUID,
-                           parameters: DeployParameters,
-                           metaData: Map[String, String] = Map.empty,
-                           messages: List[MessageWrapper] = Nil,
-                           recordState: Option[RunState.Value] = None,
-                           recordTotalTasks: Option[Int] = None,
-                           recordCompletedTasks: Option[Int] = None,
-                           recordLastActivityTime: Option[DateTime] = None) extends Record {
+                        uuid: UUID,
+                        parameters: DeployParameters,
+                        metaData: Map[String, String] = Map.empty,
+                        messages: List[MessageWrapper] = Nil,
+                        recordState: Option[RunState.Value] = None,
+                        recordTotalTasks: Option[Int] = None,
+                        recordCompletedTasks: Option[Int] = None,
+                        recordLastActivityTime: Option[DateTime] = None,
+                        recordHasWarnings: Option[Boolean] = None) extends Record {
   lazy val report = DeployReport(messages)
 
   def +(message: MessageWrapper): DeployRecord = {

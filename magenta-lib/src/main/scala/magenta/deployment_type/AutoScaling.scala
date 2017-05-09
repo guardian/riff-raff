@@ -58,6 +58,8 @@ object AutoScaling  extends DeploymentType {
       |S3 bucket name to upload artifact into.
       |
       |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
+      |
+      |Despite there being a default for this we are migrating to always requiring it to be specified.
     """.stripMargin,
     optionalInYaml = true
   ).defaultFromContext((_, target) => target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks"))

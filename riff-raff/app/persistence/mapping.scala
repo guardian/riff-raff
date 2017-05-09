@@ -79,7 +79,8 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
       Some(deploy.status),
       deploy.totalTasks,
       deploy.completedTasks,
-      deploy.lastActivityTime
+      deploy.lastActivityTime,
+      deploy.hasWarnings
     )
 
   lazy val messageWrappers: List[MessageWrapper] = {
@@ -110,7 +111,7 @@ trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument) {}
   def writeLog(log: LogDocument) {}
   def updateStatus(uuid: UUID, status: RunState.Value) {}
-  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {}
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {}
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
@@ -141,11 +142,11 @@ object DocumentStoreConverter extends Logging {
   }
 
   def updateDeploySummary(record: DeployRecord) {
-    updateDeploySummary(record.uuid, record.totalTasks, record.completedTasks, record.lastActivityTime)
+    updateDeploySummary(record.uuid, record.totalTasks, record.completedTasks, record.lastActivityTime, record.hasWarnings)
   }
 
-  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime) {
-    documentStore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime)
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
+    documentStore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
   }
 
   def updateDeployStatus(record: DeployRecord) {

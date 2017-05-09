@@ -25,7 +25,8 @@ class DeployGroupRunner(
   deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
   stopFlagAgent: Agent[Map[UUID, String]],
   prismLookup: PrismLookup,
-  deploymentTypes: Seq[DeploymentType]
+  deploymentTypes: Seq[DeploymentType],
+  deprecatedPause: Option[Int]
 ) extends Actor with Logging {
   import DeployGroupRunner._
 
@@ -181,8 +182,15 @@ class DeployGroupRunner(
       } orElse {
         safeReporter.info("Falling back to deploy.json")
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
-        val json = S3JsonArtifact.fetchInputFile(s3Artifact)
+        val json = S3JsonArtifact.fetchInputFile(s3Artifact, deprecatedPause)
         val project = json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
+        safeReporter.warning(
+          """DEPRECATED: deploy.json is no longer a supported format for deployment configuration. Please migrate to
+            |riff-raff.yaml. Support will be removed at the end of September 2017.""".stripMargin)
+        deprecatedPause.foreach { pause =>
+          safeReporter.warning(s"To persuade you to migrate we will now pause this deploy for $pause seconds whilst you reflect on your ways.")
+          Thread.sleep(pause * 1000)
+        }
         project.map(DeployContext(record.uuid, record.parameters, _, resources, Region(target.aws.deployJsonRegionName)))
       }
 

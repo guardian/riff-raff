@@ -128,10 +128,17 @@ object Deployments extends Logging with Lifecycle {
       recordAgent send { record =>
         val updated = record + wrapper
         DocumentStoreConverter.saveMessage(wrapper)
-        if (record.state != updated.state) DocumentStoreConverter.updateDeployStatus(updated)
-        if (record.totalTasks != updated.totalTasks || record.completedTasks != updated.completedTasks)
+        if (record.state != updated.state) {
+          DocumentStoreConverter.updateDeployStatus(updated)
+        }
+        if (record.totalTasks != updated.totalTasks ||
+            record.completedTasks != updated.completedTasks ||
+            record.hasWarnings != updated.hasWarnings) {
           DocumentStoreConverter.updateDeploySummary(updated)
-        if (updated.isDone) cleanup(record.uuid)
+        }
+        if (updated.isDone) {
+          cleanup(record.uuid)
+        }
         updated
       }
     }

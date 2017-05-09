@@ -41,8 +41,11 @@ case class Param[T](
 
     val maybeDefault = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
     (pkg.legacyConfig, maybeDefault, maybeValue) match {
-      case (false, Some(default), Some(value)) if default == value =>
+      // the bucket checks below are to aid migrating to this being a required field as we are simply guessing otherwise
+      case (false, Some(default), Some(value)) if default == value && name != "bucket" =>
         reporter.warning(s"Parameter $name is unnecessarily explicitly set to the default value of $default")
+      case (false, Some(_), None) if name == "bucket" =>
+        reporter.warning(s"Parameter bucket must always be explicitly set")
       case _ => // otherwise do nothing
     }
 
