@@ -44,7 +44,7 @@ object Lambda extends DeploymentType  {
   val prefixStackParam = Param[Boolean]("prefixStack",
     "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
 
-  val fileNameParam = Param[String]("fileName", "The name of the archive of the function")
+  val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
   val functionsParam = Param[Map[String, Map[String, String]]]("functions",
