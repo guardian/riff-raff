@@ -27,7 +27,8 @@ case class Param[T](
   documentation: String = "_undocumented_",
   optionalInYaml: Boolean = false,
   defaultValue: Option[T] = None,
-  defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String,T]] = None
+  defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String,T]] = None,
+  deprecatedDefault: Boolean = false
 )(implicit register:ParamRegister) {
   register.add(this)
 
@@ -42,10 +43,10 @@ case class Param[T](
     val maybeDefault = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
     (pkg.legacyConfig, maybeDefault, maybeValue) match {
       // the bucket checks below are to aid migrating to this being a required field as we are simply guessing otherwise
-      case (false, Some(default), Some(value)) if default == value && name != "bucket" =>
+      case (false, Some(default), Some(value)) if default == value && !deprecatedDefault =>
         reporter.warning(s"Parameter $name is unnecessarily explicitly set to the default value of $default")
-      case (false, Some(_), None) if name == "bucket" =>
-        reporter.warning(s"Parameter bucket must always be explicitly set")
+      case (false, Some(_), None) if deprecatedDefault =>
+        reporter.warning(s"Parameter $name must always be explicitly set (the default is deprecated as it is quite magical™)")
       case _ => // otherwise do nothing
     }
 
