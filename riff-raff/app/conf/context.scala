@@ -198,7 +198,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object deprecation {
     def pauseSeconds:Option[Int] = {
       val days = new Period(new DateTime(2017,5,22,0,0,0), new DateTime()).toStandardDays.getDays
-      if (days > 0) Some(days) else None
+      if (days > 0) Some(math.max(60, days)) else None
     }
   }
 
