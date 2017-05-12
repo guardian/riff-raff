@@ -25,7 +25,7 @@
 
     <logger name="deployment" level="DEBUG" />
     <logger name="magenta.tasks" level="DEBUG" />
-    <!--<logger name="deployment.actors.DeployCoordinator" level="DEBUG" />-->
+    <logger name="deployment.actors.DeployCoordinator" level="DEBUG" />
     <!--<logger name="deployment.TaskRunner" level="DEBUG" />-->
     <!--<logger name="ci" level="DEBUG" />-->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
