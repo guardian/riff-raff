@@ -87,6 +87,7 @@ class DeployGroupRunner(
     failed += node
   }
   def finishRootContext() = {
+    log.debug(s"Finishing the root context")
     rootContextClosed = true
     DeployReporter.finishContext(rootReporter)
   }
@@ -99,6 +100,7 @@ class DeployGroupRunner(
     DeployReporter.failContext(rootReporter, message, exception)
   }
   private def cleanup() = {
+    log.debug("Cleaning up")
     if (!rootContextClosed) finishRootContext()
     deployCoordinator ! DeployCoordinator.CleanupDeploy(record.uuid)
     context.stop(self)
