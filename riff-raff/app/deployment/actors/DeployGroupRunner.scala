@@ -36,6 +36,8 @@ class DeployGroupRunner(
       Stop
   }
 
+  val id = record.uuid
+
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
   var rootContextClosed = false
 
@@ -87,20 +89,22 @@ class DeployGroupRunner(
     failed += node
   }
   def finishRootContext() = {
-    log.debug(s"Finishing the root context")
+    log.debug(s"$id:Finishing the root context")
     rootContextClosed = true
     DeployReporter.finishContext(rootReporter)
   }
   def failRootContext() = {
+    log.debug(s"$id:Failing the root context")
     rootContextClosed = true
     DeployReporter.failContext(rootReporter)
   }
   def failRootContext(message: String, exception: Throwable) = {
+    log.debug(s"$id:Failing the root context with message: $message")
     rootContextClosed = true
     DeployReporter.failContext(rootReporter, message, exception)
   }
   private def cleanup() = {
-    log.debug("Cleaning up")
+    log.debug(s"$id:Cleaning up")
     if (!rootContextClosed) finishRootContext()
     deployCoordinator ! DeployCoordinator.CleanupDeploy(record.uuid)
     context.stop(self)
@@ -108,7 +112,7 @@ class DeployGroupRunner(
 
   override def toString: String = {
     s"""
-       |UUID: ${record.uuid.toString}
+       |UUID: $id
        |#Tasks: ${allDeployments.size}
        |#Executing: ${executing.mkString("; ")}
        |#Completed: ${completed.size} Failed: ${failed.size}
@@ -135,21 +139,22 @@ class DeployGroupRunner(
       runTasks(first)
 
     case DeploymentCompleted(tasks) =>
-      log.debug("Deployment completed")
+      log.debug(s"$id:Deployment completed")
       markComplete(tasks)
       next(tasks) match {
         case NextTasks(pendingTasks) =>
           runTasks(pendingTasks)
         case DeployUnfinished =>
+          log.debug(s"$id:next(task) is DeployUnfinished - the DGR looks like:\n$this")
         case DeployFinished =>
           cleanup()
       }
 
     case DeploymentFailed(tasks, exception) =>
-      log.debug("Deployment failed")
+      log.debug(s"$id:Deployment failed")
       markFailed(tasks)
       if (isExecuting) {
-        log.debug("Failed during deployment but others still running - deferring clean up")
+        log.debug(s"$id:Failed during deployment but others still running - deferring clean up")
       } else {
         cleanup()
       }
@@ -216,7 +221,7 @@ class DeployGroupRunner(
   private var actorIndex = 0
   private def nextActorName() = {
     actorIndex += 1
-    s"${record.uuid}-$actorIndex"
+    s"$id-$actorIndex"
   }
 
   private def runTasks(tasksList: List[ValueNode[DeploymentTasks]]) = {
@@ -224,7 +229,7 @@ class DeployGroupRunner(
       honourStopFlag(rootReporter) {
         tasksList.zipWithIndex.foreach { case (ValueNode(tasks), index) =>
           val actorName = nextActorName()
-          log.debug(s"Running next set of tasks (${tasks.name}/$index) on actor $actorName")
+          log.debug(s"$id:Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
           deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
           markExecuting(tasks)
@@ -238,11 +243,11 @@ class DeployGroupRunner(
   private def honourStopFlag(reporter: DeployReporter)(elseBlock: => Unit) {
     stopFlagAgent().get(record.uuid) match {
       case Some(userName) =>
-        log.debug("Stop flag set")
+        log.debug(s"$id:Stop flag set")
         val stopMessage = s"Deploy has been stopped by $userName"
         if (!isExecuting) {
           DeployReporter.failContext(rootReporter, stopMessage, DeployStoppedException(stopMessage))
-          log.debug("Cleaning up")
+          log.debug(s"$id:Cleaning up")
           cleanup()
         }
 
@@ -253,7 +258,7 @@ class DeployGroupRunner(
 
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
-    log.debug(s"Deployment group runner ${self.path} stopped")
+    log.debug(s"$id:Deployment group runner ${self.path} stopped")
     if (!rootContextClosed) failRootContext()
     super.postStop()
   }
