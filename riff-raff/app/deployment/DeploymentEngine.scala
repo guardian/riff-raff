@@ -12,7 +12,7 @@ import resources.PrismLookup
 
 import scala.collection.JavaConverters._
 
-class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: Option[Int]) extends Logging {
+class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: => Option[Int]) extends Logging {
   import DeploymentEngine._
 
   private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
