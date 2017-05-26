@@ -29,10 +29,10 @@ object Lambda extends DeploymentType  {
   val bucketParam = Param[String]("bucket",
     documentation =
       """
-        |Name of the S3 bucket where the lambda archive should be uploaded - if this is not specified then the zip file
+        |Name of the S3 bucket where the lambda archive should be uploaded - If this is not specified then the zip file
         |will be uploaded in the Lambda Update Function Code request
       """.stripMargin,
-    optionalInYaml = false
+    optionalInYaml = true
   )
 
   val functionNamesParam = Param[List[String]]("functionNames",
