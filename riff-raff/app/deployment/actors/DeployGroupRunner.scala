@@ -47,7 +47,9 @@ class DeployGroupRunner(
   var completed: Set[ValueNode[DeploymentTasks]] = Set.empty
   var failed: Set[ValueNode[DeploymentTasks]] = Set.empty
 
-  def deploymentGraph: Graph[DeploymentTasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
+  def deploymentGraph: Graph[DeploymentTasks] = failed.foldLeft(deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])) {
+    (graph, failedNode) => graph.removeSuccessorValueNodes(failedNode)
+  }
   def allDeployments = deploymentGraph.nodes.filterValueNodes
 
   def isFinished: Boolean = allDeployments == completed ++ failed

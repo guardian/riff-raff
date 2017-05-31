@@ -27,6 +27,10 @@ object Fixtures extends MockitoSugar {
     DeploymentGraph(twoTasks, "branch one") joinParallel DeploymentGraph(twoTasks, "branch two")
   }
 
+  val dependentGraph: Graph[DeploymentTasks] = {
+    (DeploymentGraph(twoTasks, "one") joinSeries DeploymentGraph(twoTasks, "two")) joinParallel DeploymentGraph(twoTasks, "branch two")
+  }
+
   def createRecord(
     projectName: String = "test",
     stage: String = "TEST",
