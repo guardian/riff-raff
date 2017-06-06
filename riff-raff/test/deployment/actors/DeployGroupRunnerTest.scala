@@ -18,7 +18,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ul.allDeployments.size should be(1)
+    dr.ul.reachableDeployments.size should be(1)
     dr.ul.isExecuting should be(false)
   }
 

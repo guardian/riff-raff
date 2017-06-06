@@ -47,15 +47,17 @@ class DeployGroupRunner(
   var completed: Set[ValueNode[DeploymentTasks]] = Set.empty
   var failed: Set[ValueNode[DeploymentTasks]] = Set.empty
 
-  def deploymentGraph: Graph[DeploymentTasks] = failed.foldLeft(deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])) {
+  def deploymentGraph: Graph[DeploymentTasks] = deployContext.map(_.tasks).getOrElse(Graph.empty[DeploymentTasks])
+
+  def reachableDeploymentGraph: Graph[DeploymentTasks] = failed.foldLeft(deploymentGraph) {
     (graph, failedNode) => graph.removeSuccessorValueNodes(failedNode)
   }
-  def allDeployments = deploymentGraph.nodes.filterValueNodes
+  def reachableDeployments = reachableDeploymentGraph.nodes.filterValueNodes
 
-  def isFinished: Boolean = allDeployments == completed ++ failed
+  def isFinished: Boolean = reachableDeployments == completed ++ failed
   def isExecuting: Boolean = executing.nonEmpty
 
-  def first: List[ValueNode[DeploymentTasks]] = deploymentGraph.orderedSuccessors(StartNode).filterValueNodes
+  def first: List[ValueNode[DeploymentTasks]] = reachableDeploymentGraph.orderedSuccessors(StartNode).filterValueNodes
   /* these two functions can return a number of things
       - Deployments: list of deployments
       - FinishPath: indicator there are no more tasks on this path
@@ -67,9 +69,9 @@ class DeployGroupRunner(
     // otherwise let's see what children are valid to return
     else {
       // candidates are all successors not already executing or completing
-      val nextDeploymentCandidates = deploymentGraph.orderedSuccessors(deploymentGraph.get(deployment)).filterValueNodes
+      val nextDeploymentCandidates = reachableDeploymentGraph.orderedSuccessors(reachableDeploymentGraph.get(deployment)).filterValueNodes
       // now filter for only tasks whose predecessors are all completed
-      val nextDeployments = nextDeploymentCandidates.filter { deployment => (deploymentGraph.predecessors(deployment) -- completed).isEmpty }
+      val nextDeployments = nextDeploymentCandidates.filter { deployment => (reachableDeploymentGraph.predecessors(deployment) -- completed).isEmpty }
       if (nextDeployments.nonEmpty) {
         NextTasks(nextDeployments)
       } else {
@@ -115,7 +117,7 @@ class DeployGroupRunner(
   override def toString: String = {
     s"""
        |UUID: $id
-       |#Tasks: ${allDeployments.size}
+       |#Tasks: ${reachableDeployments.size}
        |#Executing: ${executing.mkString("; ")}
        |#Completed: ${completed.size} Failed: ${failed.size}
        |#Done: ${completed.size+failed.size}
