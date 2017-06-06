@@ -259,4 +259,9 @@ class GraphTest extends FlatSpec with ShouldMatchers {
       one ~> three, one ~2~> four, two ~> three, two ~2~> four
     )
   }
+
+  "removeSuccesors" should "provide a copy of the graph with successors to a given node removed" in {
+    val graph: Graph[Int] = Graph.from(Seq(1, 2, 3)).joinParallel(Graph.from(Seq(4, 5)))
+    graph.removeSuccessorValueNodes(ValueNode(1)) shouldBe Graph.from(Seq(1)).joinParallel(Graph.from(Seq(4, 5)))
+  }
 }

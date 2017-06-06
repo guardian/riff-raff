@@ -18,7 +18,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasks)
-    dr.ul.allDeployments.size should be(1)
+    dr.ul.reachableDeployments.size should be(1)
     dr.ul.isExecuting should be(false)
   }
 
@@ -90,6 +90,23 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
     dr.ul.failed should be(Set(ValueNode(runDeployment.deployment)))
+    dr.deploymentRunnerProbe.expectNoMsg()
+    dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
+  }
+
+  it should "be finished if all tasks that could potentially be run (given failures) have completed" in {
+    val dr = createDeployRunnerWithUnderlying()
+    prepare(dr, dependentGraph)
+    dr.ref ! DeployGroupRunner.StartDeployment
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
+    val secondTaskSet = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
+    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
+    dr.ul.isExecuting should be(true)
+    dr.ul.failed should be(Set(ValueNode(runDeployment.deployment)))
+    dr.ul.isFinished should be(false)
+    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(secondTaskSet.deployment))
+    dr.ul.isExecuting should be (false)
+    dr.ul.isFinished should be(true)
     dr.deploymentRunnerProbe.expectNoMsg()
     dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
   }

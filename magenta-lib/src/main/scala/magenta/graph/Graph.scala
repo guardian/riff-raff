@@ -373,6 +373,20 @@ case class Graph[T](edges: Set[Edge[T]]) {
     }, identity)
   }
 
+  def allSuccesors(node: Node[T]): Set[Node[T]] = {
+    successors(node) match {
+      case s if s.isEmpty => Set.empty
+      case nodesSuccessors => nodesSuccessors ++ nodesSuccessors.flatMap(allSuccesors)
+    }
+  }
+
+  /** Returns a copy of the graph with all successor of the given node removed
+    */
+  def removeSuccessorValueNodes(node: ValueNode[T]): Graph[T] = {
+    val toBeRemoved = allSuccesors(node).filter(_ != EndNode)
+    Graph(edges.filter(edge => !(toBeRemoved.contains(edge.from) || toBeRemoved.contains(edge.to))) + Edge(node, EndNode))
+  }
+
   lazy val toList: List[T] = nodeList.flatMap(_.maybeValue)
 
   override def toString: String = {
