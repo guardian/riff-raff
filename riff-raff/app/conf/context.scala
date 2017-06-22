@@ -8,12 +8,12 @@ import logback.LogbackLevelPage
 import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import magenta._
-import controllers.{routes, Logging}
+import controllers.{Logging, routes}
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
-import com.amazonaws.regions.{Region, Regions, RegionUtils}
+import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
@@ -29,7 +29,7 @@ import scala.collection.JavaConverters._
 import org.joda.time.format.ISODateTimeFormat
 import com.gu.googleauth.GoogleAuthConfig
 import deployment.actors.DeployMetricsActor
-import org.joda.time.{DateTime, Period}
+import org.joda.time.{DateTime, Days, Period}
 import riffraff.BuildInfo
 
 import scala.util.{Success, Try}
@@ -197,9 +197,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object deprecation {
     def pauseSeconds: Option[Int] = {
-//      val days = new Period(new DateTime(2017,5,22,0,0,0), new DateTime()).toStandardDays.getDays
-//      if (days > 0) Some(math.min(60, days)) else None
-      None
+      val days = Days.daysBetween(new DateTime(2017,5,22,0,0,0), new DateTime()).getDays
+      if (days > 0) Some(math.min(60, days)) else None
     }
   }
 
