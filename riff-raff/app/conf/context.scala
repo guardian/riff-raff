@@ -79,7 +79,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val clientId: String = configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
     lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
     lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
-    lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
+    lazy val domain: String = configuration.getStringProperty("auth.domain").getOrException("No auth domain configured")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
   }

@@ -4,6 +4,7 @@ import java.util.UUID
 
 import com.gu.scanamo.{DynamoFormat, Table}
 import notification.{HookConfig, HttpMethod}
+import cats.syntax.either._
 
 object HookConfigRepository extends DynamoRepository {
 

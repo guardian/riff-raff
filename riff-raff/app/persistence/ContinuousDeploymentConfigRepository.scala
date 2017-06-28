@@ -5,6 +5,7 @@ import java.util.UUID
 import ci.{ContinuousDeploymentConfig, Trigger}
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.{DynamoFormat, Table}
+import cats.syntax.either._
 
 object ContinuousDeploymentConfigRepository extends DynamoRepository {
 
