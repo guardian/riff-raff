@@ -1,7 +1,7 @@
 package controllers
 
 import org.joda.time.format.DateTimeFormat
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, BaseController, Controller, ControllerComponents}
 import magenta._
 
 import collection.mutable.ArrayBuffer
@@ -19,7 +19,7 @@ import resources.PrismLookup
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
   import Testing._
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>

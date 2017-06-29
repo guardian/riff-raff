@@ -5,31 +5,33 @@ import java.util.UUID
 
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
+import cats.syntax.either._
 import ci.{Builds, S3Tag, TagClassification}
+import com.amazonaws.services.s3.model.GetObjectRequest
 import conf.Configuration
 import controllers.forms.{DeployParameterForm, UuidForm}
 import deployment._
 import magenta._
 import magenta.artifact._
-import cats.syntax.either._
-import com.amazonaws.services.s3.model.GetObjectRequest
 import magenta.deployment_type.DeploymentType
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
 import persistence.RestrictionConfigDynamoRepository
 import play.api.http.HttpEntity
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.Controller
+import play.api.mvc.{BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 
 import scala.util.{Failure, Success}
 
-class DeployController(deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType])
-                      (implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class DeployController(
+  deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
+  buildSource: Builds, val controllerComponents: ControllerComponents)
+  (implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
 
   def deploy = AuthAction { implicit request =>
     Ok(views.html.deploy.form(DeployParameterForm.form, prismLookup))
@@ -86,13 +88,13 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
   def viewUUID(uuidString: String, verbose: Boolean) = AuthAction { implicit request =>
     val uuid = UUID.fromString(uuidString)
-    val record = Deployments.get(uuid)
+    val record = deployments.get(uuid)
     val stopFlag = if (record.isDone) false else deployments.getStopFlag(uuid)
     Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
-    val record = Deployments.get(UUID.fromString(uuid))
+    val record = deployments.get(UUID.fromString(uuid))
     Ok(views.html.deploy.logContent(record))
   }
 
@@ -139,14 +141,14 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
   def historyContent() = AuthAction { implicit request =>
     val records = try {
-      Deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
+      deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
     } catch {
       case e: Exception =>
         log.error("Exception whilst fetching records", e)
         Nil
     }
     val count = try {
-      Some(Deployments.countDeploys(deployment.DeployFilter.fromRequest(request)))
+      Some(deployments.countDeploys(deployment.DeployFilter.fromRequest(request)))
     } catch {
       case e: Exception => None
     }
@@ -154,14 +156,14 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
   }
 
   def autoCompleteProject(term: String) = AuthAction {
-    val possibleProjects = Builds.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
+    val possibleProjects = buildSource.jobs.map(_.name).filter(_.toLowerCase.contains(term.toLowerCase)).toList.sorted.take(10)
     Ok(Json.toJson(possibleProjects))
   }
 
   val shortFormat = DateTimeFormat.forPattern("HH:mm d/M/yy").withZone(DateTimeZone.forID("Europe/London"))
 
   def autoCompleteBuild(project: String, term: String) = AuthAction {
-    val possibleProjects = Builds.successfulBuilds(project).filter(
+    val possibleProjects = buildSource.successfulBuilds(project).filter(
       p => p.number.contains(term) || p.branchName.contains(term)
     ).map { build =>
       val label = "%s [%s] (%s)" format(build.number, build.branchName, shortFormat.print(build.startTime))
@@ -178,7 +180,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
         RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
       val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
-      val records = Deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).reverse
+      val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }
   }
@@ -186,7 +188,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
   def buildInfo(project: String, build: String) = AuthAction {
     log.info(s"Getting build info for $project: $build")
     val buildTagTuple = for {
-      b <- Builds.build(project, build)
+      b <- buildSource.build(project, build)
       tags <- S3Tag.of(b)
     } yield (b, tags)
 
@@ -198,7 +200,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
   def builds = AuthAction {
     val header = Seq("Build Type Name", "Build Number", "Build Branch", "Build Type ID", "Build ID")
     val data =
-      for (build <- Builds.all.sortBy(_.jobName))
+      for (build <- buildSource.all.sortBy(_.jobName))
       yield Seq(build.jobName, build.number, build.branchName, build.jobId, build.id)
 
     Ok((header :: data.toList).map(_.mkString(",")).mkString("\n")).as("text/csv")
@@ -221,7 +223,7 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
 
   def deployAgainUuid(uuidString: String) = AuthAction { implicit request =>
     val uuid = UUID.fromString(uuidString)
-    val record = Deployments.get(uuid)
+    val record = deployments.get(uuid)
 
     val keys = record.parameters.selector match {
       case DeploymentKeysSelector(keyList) => keyList
@@ -247,9 +249,9 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
       form => {
         form.action match {
           case "markAsFailed" =>
-            val record = Deployments.get(UUID.fromString(form.uuid))
+            val record = deployments.get(UUID.fromString(form.uuid))
             if (record.isStalled)
-              Deployments.markAsFailed(record)
+              deployments.markAsFailed(record)
             Redirect(routes.DeployController.viewUUID(form.uuid))
         }
       }
@@ -264,11 +266,11 @@ class DeployController(deployments: Deployments, prismLookup: PrismLookup, deplo
     val projectTerms = projects.split(",").toList.filterNot("" ==)
     val projectNames = if (search) {
       projectTerms.flatMap(term => {
-        Deployments.findProjects().filter(_.contains(term))
+        deployments.findProjects().filter(_.contains(term))
       })
     } else projectTerms
     val deploys = projectNames.map { project =>
-      project -> Deployments.getLastCompletedDeploys(project)
+      project -> deployments.getLastCompletedDeploys(project)
     }.filterNot(_._2.isEmpty)
     Ok(views.html.deploy.dashboardContent(deploys))
   }

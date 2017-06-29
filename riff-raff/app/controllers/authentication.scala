@@ -9,15 +9,14 @@ import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
-import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.libs.concurrent.Execution.Implicits._
+import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.BodyParsers._
 import play.api.mvc.Results._
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
@@ -48,34 +47,6 @@ trait AuthorisationValidator {
   }
 }
 
-object ApiAuthAction {
-
-  def apply[A](counter: Option[String], p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
-    Action(p) { implicit request =>
-      request.queryString.get("key").flatMap(_.headOption) match {
-        case Some(urlParam) =>
-          Persistence.store.getAndUpdateApiKey(urlParam, counter) match {
-            case Some(apiKey) => f(new ApiRequest(apiKey, request))
-            case None => Unauthorized("The API key provided is not valid. Please check and try again.")
-          }
-        case None =>
-          Unauthorized("An API key must be provided for this endpoint. Please include a 'key' URL parameter.")
-      }
-    }
-  }
-
-  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  =
-    this.apply(Some(counter), p)(f)
-  def apply[A](p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A] =
-    this.apply(None, p)(f)
-  def apply(counter: Option[String])(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(counter, parse.anyContent)(f)
-  def apply(counter: String)(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(Some(counter))(f)
-  def apply(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(None)(f)
-}
-
 trait LoginActions extends Actions {
   override def loginTarget: Call = routes.Login.loginAction()
   override val defaultRedirectTarget = routes.Application.index()
@@ -84,7 +55,9 @@ trait LoginActions extends Actions {
   def authConfig: GoogleAuthConfig = auth.googleAuthConfig
 }
 
-class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Login(deployments: Deployments, val controllerComponents: ControllerComponents)
+  (implicit val wsClient: WSClient, executionContext: ExecutionContext)
+  extends BaseController with Logging with LoginActions with I18nSupport {
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
@@ -139,7 +112,7 @@ class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
   }
 
   def profile = AuthAction { request =>
-    val records = Deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
+    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
 

@@ -236,13 +236,13 @@ object DeployInfoMode extends Enumeration {
   val Execute = Value("Execute")
 }
 
-object Management extends PlayManagement {
+class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) extends PlayManagement {
   val applicationName = "riff-raff"
 
   val pages = List(
     new BuildInfoPage,
     new HealthcheckManagementPage,
-    new Switchboard(applicationName, Switches.all),
+    new Switchboard(applicationName, shutdownWhenInactive.switch :: Healthcheck.switch :: deployments.enableSwitches),
     StatusPage(applicationName, Metrics.all),
     new LogbackLevelPage(applicationName)
   )
@@ -329,9 +329,3 @@ object Metrics {
     DatastoreMetrics.all ++
     TaskMetrics.all
 }
-
-object Switches {
-  //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: Deployments.enableSwitches
-}
-

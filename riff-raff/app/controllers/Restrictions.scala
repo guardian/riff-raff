@@ -10,12 +10,12 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.api.mvc.Controller
+import play.api.mvc.{BaseController, Controller, ControllerComponents}
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 
 import scala.util.Try
 
-class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with LoginActions
+class Restrictions(val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient) extends BaseController with LoginActions
   with I18nSupport {
 
   lazy val restrictionsForm = Form[RestrictionForm](

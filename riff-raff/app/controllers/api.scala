@@ -19,7 +19,8 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.mvc.{Action, AnyContent, BodyParser, Controller, Result}
+import play.api.mvc.Results.Unauthorized
+import play.api.mvc.{Action, _}
 import utils.Json.DefaultJodaDateWrites
 import utils.{ChangeFreeze, Graph}
 
@@ -95,7 +96,8 @@ object ApiKeyGenerator {
 }
 
 
-class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], val controllerComponents: ControllerComponents)(
+  implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
 
   object ApiJsonEndpoint {
     val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
@@ -134,7 +136,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
     }
 
     def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => JsValue): Action[A] =
-      ApiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
+      apiAuthAction(counter, p) { apiRequest => this.apply(apiRequest)(f) }
 
     def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
       this.apply(counter, parse.anyContent)(f)
@@ -143,6 +145,21 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
       val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
       this.apply(apiRequest)(f)
     }
+
+    def apiAuthAction[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
+      Action(p) { implicit request =>
+        request.queryString.get("key").flatMap(_.headOption) match {
+          case Some(urlParam) =>
+            Persistence.store.getAndUpdateApiKey(urlParam, Some(counter)) match {
+              case Some(apiKey) => f(new ApiRequest(apiKey, request))
+              case None => Unauthorized("The API key provided is not valid. Please check and try again.")
+            }
+          case None =>
+            Unauthorized("An API key must be provided for this endpoint. Please include a 'key' URL parameter.")
+        }
+      }
+    }
+
   }
 
   val applicationForm = Form(
@@ -185,9 +202,9 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
-    val count = Deployments.countDeploys(filter)
+    val count = deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
-    val deployList = Deployments.getDeploys(filter, pagination.pagination, fetchLogs = false)
+    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false)
 
     def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
@@ -252,9 +269,9 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
 
   def history = ApiJsonEndpoint("history") { implicit request =>
     val filter = deployment.DeployFilter.fromRequest(request)
-    val count = Deployments.countDeploys(filter)
+    val count = deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
-    val deployList = Deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
+    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
 
     val deploys = deployList.map{ record2apiResponse }
     val response = Map(
@@ -331,7 +348,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
   }
 
   def view(uuid: String) = ApiJsonEndpoint("viewDeploy") { implicit request =>
-    val record = Deployments.get(UUID.fromString(uuid), fetchLog = false)
+    val record = deployments.get(UUID.fromString(uuid), fetchLog = false)
     Json.obj(
       "response" -> Json.obj(
         "status" -> "ok",
@@ -344,7 +361,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType])(implic
     Form("uuid" -> nonEmptyText).bindFromRequest.fold(
       errors => throw new IllegalArgumentException("No UUID specified"),
       uuid => {
-        val record = Deployments.get(UUID.fromString(uuid), fetchLog = false)
+        val record = deployments.get(UUID.fromString(uuid), fetchLog = false)
         assert(!record.isDone, "Can't stop a deploy that has already completed")
         deployments.stop(UUID.fromString(uuid), request.fullName)
         Json.obj(

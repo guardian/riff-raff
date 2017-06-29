@@ -3,7 +3,6 @@ package magenta.deployment_type.param_reads
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.list._
-import play.api.data.validation.ValidationError
 import play.api.libs.json.{JsArray, JsError, JsPath, _}
 
 object PatternValue {
@@ -14,7 +13,7 @@ object PatternValue {
       json match {
         case JsString(default) => JsSuccess(List(PatternValue(".*", default)))
         case JsArray(patternValues) =>
-          patternValues.zipWithIndex.foldLeft(Valid(Nil): Validated[List[(JsPath, Seq[ValidationError])], List[PatternValue]]) {
+          patternValues.zipWithIndex.foldLeft(Valid(Nil): Validated[List[(JsPath, Seq[JsonValidationError])], List[PatternValue]]) {
             case (acc, (value, index)) =>
               val validated = Json.fromJson[PatternValue](value) match {
                 case JsSuccess(v, _) => Valid(List(v))

@@ -1,24 +1,25 @@
 package controllers
 
 import java.net.{MalformedURLException, URL}
-
-import notification.{GET, HookConfig, HttpMethod}
-import persistence.HookConfigRepository
-import play.api.data.{Form, FormError}
-import play.api.data.Forms._
-import play.api.data.format.Formatter
-import play.api.mvc.Controller
 import java.util.UUID
 
+import notification.{GET, HookConfig, HttpMethod}
 import org.joda.time.DateTime
-import play.api.i18n.{I18nSupport, MessagesApi}
+import persistence.HookConfigRepository
+import play.api.data.Forms._
+import play.api.data.format.Formatter
+import play.api.data.{Form, FormError}
+import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
+import play.api.mvc.{BaseController, ControllerComponents}
 import resources.PrismLookup
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean,
                     method: HttpMethod, postBody: Option[String])
 
-class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class HooksController(prismLookup: PrismLookup, val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+  extends BaseController with Logging with LoginActions with I18nSupport {
+
   implicit val httpMethodFormatter = new Formatter[HttpMethod] {
     override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], HttpMethod] = {
       data.get(key).map { value =>
@@ -58,7 +59,7 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
       f => {
         val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName, f.method, f.postBody)
         HookConfigRepository.setPostDeployHook(config)
-        Redirect(routes.Hooks.list())
+        Redirect(routes.HooksController.list())
       }
     )
   }
@@ -67,7 +68,7 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
     val uuid = UUID.fromString(id)
     HookConfigRepository.getPostDeployHook(uuid).map{ hc =>
       Ok(views.html.hooks.form(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
-    }.getOrElse(Redirect(routes.Hooks.list()))
+    }.getOrElse(Redirect(routes.HooksController.list()))
   }
 
   def delete(id: String) = AuthAction { implicit request =>
@@ -78,6 +79,6 @@ class Hooks(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val
           HookConfigRepository.deletePostDeployHook(UUID.fromString(id))
       }
     )
-    Redirect(routes.Hooks.list())
+    Redirect(routes.HooksController.list())
   }
 }

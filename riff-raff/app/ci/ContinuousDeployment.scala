@@ -11,7 +11,7 @@ import utils.ChangeFreeze
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logging {
+class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments) extends Lifecycle with Logging {
   import ContinuousDeployment._
 
   var sub: Option[Subscription] = None
@@ -22,11 +22,11 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
       build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
     } yield build).onErrorResumeNext(e => {
       log.error("Problem polling builds for ContinuousDeployment", e)
-      buildCandidates(CIBuild.newBuilds)
+      buildCandidates(buildPoller.newBuilds)
     })
 
   def init() {
-    val builds = buildCandidates(CIBuild.newBuilds)
+    val builds = buildCandidates(buildPoller.newBuilds)
 
     def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
       log.error("Failed to retrieve CD configs")

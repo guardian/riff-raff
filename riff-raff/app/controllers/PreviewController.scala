@@ -10,15 +10,15 @@ import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import magenta.{Build, DeployParameters, Deployer, Stage}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.api.mvc.Controller
+import play.api.mvc.{BaseController, Controller, ControllerComponents}
 import utils.Forms
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PreviewController(coordinator: PreviewCoordinator)(
-  implicit val wsClient: WSClient, val messagesApi: MessagesApi
-) extends Controller with LoginActions with I18nSupport with Loggable {
+class PreviewController(coordinator: PreviewCoordinator, val controllerComponents: ControllerComponents)(
+  implicit val wsClient: WSClient
+) extends BaseController with LoginActions with I18nSupport with Loggable {
   def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
     val build = Build(projectName, buildId)
     val selector = deployments.map(DeploymentKey.fromStringToList) match {

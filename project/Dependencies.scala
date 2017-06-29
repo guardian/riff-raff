@@ -9,7 +9,7 @@ object Dependencies {
     val guardianManagementPlay = "8.0"
     val jackson = "2.8.2"
     // keep in sync with plugin
-    val play = "2.5.6"
+    val play = "2.6.0"
   }
 
   val commonDeps = Seq(
@@ -68,7 +68,7 @@ object Dependencies {
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
-    "org.gnieh" %% "diffson" % "2.0.2" % Test
+    "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))

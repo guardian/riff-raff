@@ -6,7 +6,7 @@ import controllers.Logging
 import lifecycle.Lifecycle
 import rx.lang.scala.Subscription
 
-object Builds extends Lifecycle with Logging {
+class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
 
   private var subscriptions = Seq.empty[Subscription]
 
@@ -28,10 +28,10 @@ object Builds extends Lifecycle with Logging {
 
   def init() {
     subscriptions = Seq(
-      CIBuild.builds.subscribe ({ b =>
+      ciBuildPoller.builds.subscribe ({ b =>
         buildsAgent.send(_ + b)
       }, e => log.error("Build poller failed", e)),
-      CIBuild.jobs.subscribe { b =>
+      ciBuildPoller.jobs.subscribe { b =>
         jobsAgent.send(_ + b)
       }
     )

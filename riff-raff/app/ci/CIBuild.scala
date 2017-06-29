@@ -19,16 +19,18 @@ trait CIBuild {
   def startTime: DateTime
 }
 
+object CIBuild {
+  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+}
+
 trait Job {
   def id: String
   def name: String
 }
 
-object CIBuild extends Logging {
+class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
   import concurrent.duration._
-  import play.api.libs.concurrent.Execution.Implicits._
-
-  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+  implicit val ec = executionContext
 
   val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
 

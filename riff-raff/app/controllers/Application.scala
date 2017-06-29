@@ -3,14 +3,13 @@ package controllers
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.UserIdentity
 import docs.{DeployTypeDocs, MarkDownParser}
-import play.api.mvc._
-import play.api.{Environment, Logger}
-import magenta.deployment_type.{DeploymentType, Param}
-import magenta.{App, Build, DeployParameters, DeployTarget, Deployer, DeploymentPackage, NamedStack, RecipeName, Region, Stage, withResource}
-import magenta.artifact.S3Path
+import magenta.deployment_type.DeploymentType
 import magenta.input.All
 import magenta.input.resolver.Resolver
+import magenta.withResource
 import play.api.libs.ws.WSClient
+import play.api.mvc._
+import play.api.{Environment, Logger}
 import resources.PrismLookup
 
 import scala.io.Source
@@ -47,7 +46,7 @@ object Menu {
     DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
-      SingleMenuItem("Hooks", routes.Hooks.list()),
+      SingleMenuItem("Hooks", routes.HooksController.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys()),
       SingleMenuItem("Restrictions", routes.Restrictions.list())
@@ -68,8 +67,9 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType])(implicit environment: Environment,
-  val wsClient: WSClient) extends Controller with Logging with LoginActions {
+class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
+  val controllerComponents: ControllerComponents, assets: Assets)(
+  implicit environment: Environment, val wsClient: WSClient) extends BaseController with Logging with LoginActions {
 
   import Application._
 
@@ -134,7 +134,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
   def documentation(resource: String) = {
     if (resource.endsWith(".png")) {
-      Assets.at("/docs",resource)
+      assets.at("/docs",resource)
     } else {
       AuthAction { request =>
         if (resource.endsWith("/index")) {

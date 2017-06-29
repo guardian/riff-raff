@@ -8,8 +8,7 @@ import com.gu.management.Loggable
 import dispatch.classic./
 import magenta.json.JsonInputFile
 import magenta.{Build, DeployReporter}
-import play.api.data.validation.ValidationError
-import play.api.libs.json.JsPath
+import play.api.libs.json.{JsPath, JsonValidationError}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -164,7 +163,7 @@ object S3JsonArtifact extends Loggable {
 
 sealed abstract class ArtifactResolutionError
 case class S3ArtifactError(underlying: S3Error) extends ArtifactResolutionError
-case class JsonArtifactError(underlying: Seq[(JsPath, Seq[ValidationError])]) extends ArtifactResolutionError
+case class JsonArtifactError(underlying: Seq[(JsPath, Seq[JsonValidationError])]) extends ArtifactResolutionError
 
 case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
   val deployObjectName: String = "riff-raff.yaml"

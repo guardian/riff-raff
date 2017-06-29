@@ -1,20 +1,19 @@
 package controllers
 
-import play.api.mvc.Controller
+import play.api.mvc.{BaseController, ControllerComponents}
 import play.api.data.Forms._
 import play.api.data.Form
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-
 import java.util.UUID
 
 import org.joda.time.DateTime
-
 import ci.{ContinuousDeploymentConfig, Trigger}
 import persistence.ContinuousDeploymentConfigRepository
 import resources.PrismLookup
 
-class ContinuousDeployController(prismLookup: PrismLookup)(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class ContinuousDeployController(prismLookup: PrismLookup, val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+  extends BaseController with Logging with LoginActions with I18nSupport {
   import ContinuousDeployController._
 
   val continuousDeploymentForm = Form[ConfigForm](

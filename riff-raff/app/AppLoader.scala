@@ -21,17 +21,17 @@ class AppLoader extends ApplicationLoader {
 
     val components = new AppComponents(context)
 
-    val hooksClient = new HooksClient(components.wsClient)
+    val hooksClient = new HooksClient(components.wsClient, components.executionContext)
+    val shutdownWhenInactive = new ShutdownWhenInactive(components.deployments)
 
     val lifecycleSingletons = Seq(
       ScheduledAgent,
-      Deployments,
+      components.deployments,
       DeployMetrics,
       hooksClient,
-      Builds,
       SummariseDeploysHousekeeping,
       components.continuousDeployment,
-      ShutdownWhenInactive
+      shutdownWhenInactive
     )
 
     Logger.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -48,7 +48,8 @@ class AppLoader extends ApplicationLoader {
     }(ExecutionContext.global))
 
     // the management server takes care of shutting itself down with a lifecycle hook
-    new InternalManagementServerImpl(context.lifecycle).startServer(conf.Management.applicationName, conf.Management.pages)
+    val management = new conf.Management(shutdownWhenInactive, components.deployments)
+    new InternalManagementServerImpl(context.lifecycle).startServer(management.applicationName, management.pages)
 
     components.application
   }
