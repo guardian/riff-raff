@@ -49,7 +49,7 @@ object Dependencies {
   )
 
   val riffRaffDeps = commonDeps ++ Seq(
-    "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
+    "com.gu" %% "management-internal" % "5.35",
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",
     "com.gu" %% "play-googleauth" % "0.6.0",

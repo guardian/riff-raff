@@ -5,7 +5,6 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import magenta._
 import controllers.{Logging, routes}
@@ -236,7 +235,7 @@ object DeployInfoMode extends Enumeration {
   val Execute = Value("Execute")
 }
 
-class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) extends PlayManagement {
+class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) {
   val applicationName = "riff-raff"
 
   val pages = List(
@@ -253,8 +252,6 @@ class BuildInfoPage extends ManagementPage {
   def get(req: HttpRequest) = response
   lazy val response = PlainTextResponse(BuildInfo.toString)
 }
-
-object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends Lifecycle {
   val runningDeploys = mutable.Buffer[UUID]()

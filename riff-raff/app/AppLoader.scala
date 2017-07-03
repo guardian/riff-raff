@@ -1,12 +1,10 @@
-import ci.Builds
-import com.gu.management.play.InternalManagementServerImpl
 import conf.DeployMetrics
-import deployment.Deployments
 import lifecycle.ShutdownWhenInactive
 import notification.HooksClient
 import persistence.SummariseDeploysHousekeeping
 import play.api.ApplicationLoader.Context
 import play.api.{Application, ApplicationLoader, Logger, LoggerConfigurator}
+import riffraff.RiffRaffManagementServer
 import utils.ScheduledAgent
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -24,6 +22,10 @@ class AppLoader extends ApplicationLoader {
     val hooksClient = new HooksClient(components.wsClient, components.executionContext)
     val shutdownWhenInactive = new ShutdownWhenInactive(components.deployments)
 
+    // the management server takes care of shutting itself down with a lifecycle hook
+    val management = new conf.Management(shutdownWhenInactive, components.deployments)
+    val managementServer = new RiffRaffManagementServer(management.applicationName, management.pages, Logger("ManagementServer"))
+
     val lifecycleSingletons = Seq(
       ScheduledAgent,
       components.deployments,
@@ -31,6 +33,7 @@ class AppLoader extends ApplicationLoader {
       hooksClient,
       SummariseDeploysHousekeeping,
       components.continuousDeployment,
+      managementServer,
       shutdownWhenInactive
     )
 
@@ -46,10 +49,6 @@ class AppLoader extends ApplicationLoader {
         }
       }
     }(ExecutionContext.global))
-
-    // the management server takes care of shutting itself down with a lifecycle hook
-    val management = new conf.Management(shutdownWhenInactive, components.deployments)
-    new InternalManagementServerImpl(context.lifecycle).startServer(management.applicationName, management.pages)
 
     components.application
   }
