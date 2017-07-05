@@ -3,6 +3,7 @@ package controllers
 import java.net.{MalformedURLException, URL}
 import java.util.UUID
 
+import com.gu.googleauth.AuthAction
 import notification.{GET, HookConfig, HttpMethod}
 import org.joda.time.DateTime
 import persistence.HookConfigRepository
@@ -11,14 +12,14 @@ import play.api.data.format.Formatter
 import play.api.data.{Form, FormError}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 
 case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean,
                     method: HttpMethod, postBody: Option[String])
 
-class HooksController(prismLookup: PrismLookup, val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
-  extends BaseController with Logging with LoginActions with I18nSupport {
+class HooksController(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+  extends BaseController with Logging with I18nSupport {
 
   implicit val httpMethodFormatter = new Formatter[HttpMethod] {
     override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], HttpMethod] = {
@@ -44,16 +45,16 @@ class HooksController(prismLookup: PrismLookup, val controllerComponents: Contro
     )
   )
 
-  def list = AuthAction { implicit request =>
+  def list = authAction { implicit request =>
     val hooks = HookConfigRepository.getPostDeployHookList.toSeq.sortBy(q => (q.projectName, q.stage))
     Ok(views.html.hooks.list(request, hooks))
   }
 
-  def form = AuthAction { implicit request =>
+  def form = authAction { implicit request =>
     Ok(views.html.hooks.form(hookForm.fill(HookForm(UUID.randomUUID(),"","","",enabled=true, GET, None)), prismLookup))
   }
 
-  def save = AuthAction { implicit request =>
+  def save = authAction { implicit request =>
     hookForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.hooks.form(formWithErrors, prismLookup)),
       f => {
@@ -64,14 +65,14 @@ class HooksController(prismLookup: PrismLookup, val controllerComponents: Contro
     )
   }
 
-  def edit(id: String) = AuthAction { implicit request =>
+  def edit(id: String) = authAction { implicit request =>
     val uuid = UUID.fromString(id)
     HookConfigRepository.getPostDeployHook(uuid).map{ hc =>
       Ok(views.html.hooks.form(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
     }.getOrElse(Redirect(routes.HooksController.list()))
   }
 
-  def delete(id: String) = AuthAction { implicit request =>
+  def delete(id: String) = authAction { implicit request =>
     Form("action" -> nonEmptyText).bindFromRequest().fold(
       errors => {},
       {

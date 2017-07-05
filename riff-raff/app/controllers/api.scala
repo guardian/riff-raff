@@ -4,6 +4,7 @@ import java.security.SecureRandom
 import java.util.UUID
 
 import cats.data.Validated.{Invalid, Valid}
+import com.gu.googleauth.AuthAction
 import com.mongodb.casbah.Imports._
 import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
 import magenta._
@@ -96,8 +97,9 @@ object ApiKeyGenerator {
 }
 
 
-class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], val controllerComponents: ControllerComponents)(
-  implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
+class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAction: AuthAction[AnyContent],
+  val controllerComponents: ControllerComponents)(
+  implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport {
 
   object ApiJsonEndpoint {
     val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
@@ -141,7 +143,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], val co
     def apply(counter: String)(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] =
       this.apply(counter, parse.anyContent)(f)
 
-    def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = AuthAction { request =>
+    def withAuthAccess(f: ApiRequest[AnyContent] => JsValue): Action[AnyContent] = authAction { request =>
       val apiRequest:ApiRequest[AnyContent] = new ApiRequest[AnyContent](INTERNAL_KEY, request)
       this.apply(apiRequest)(f)
     }
@@ -170,11 +172,11 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], val co
     "key" -> nonEmptyText
   )
 
-  def createKeyForm = AuthAction { implicit request =>
+  def createKeyForm = authAction { implicit request =>
     Ok(views.html.api.form(applicationForm))
   }
 
-  def createKey = AuthAction { implicit request =>
+  def createKey = authAction { implicit request =>
     applicationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.api.form(errors)),
       applicationName => {
@@ -186,11 +188,11 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], val co
     )
   }
 
-  def listKeys = AuthAction { implicit request =>
+  def listKeys = authAction { implicit request =>
     Ok(views.html.api.list(request, Persistence.store.getApiKeyList))
   }
 
-  def delete = AuthAction { implicit request =>
+  def delete = authAction { implicit request =>
     apiKeyForm.bindFromRequest().fold(
       errors => Redirect(routes.Api.listKeys()),
       apiKey => {

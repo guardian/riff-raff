@@ -1,4 +1,5 @@
 import ci.{Builds, CIBuildPoller, ContinuousDeployment}
+import com.gu.googleauth.AuthAction
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -8,7 +9,7 @@ import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.Results.InternalServerError
-import play.api.mvc.{RequestHeader, Result}
+import play.api.mvc.{AnyContent, RequestHeader, Result}
 import play.api.routing.Router
 import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
@@ -41,21 +42,24 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
 
+  val authAction = new AuthAction[AnyContent](conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction())(
+    controllerComponents.parsers.default, executionContext)
+
   override lazy val httpFilters = Seq(
     csrfFilter,
     gzipFilter,
     new HstsFilter()(executionContext)
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
-  val applicationController = new Application(prismLookup, availableDeploymentTypes, controllerComponents, assets)(environment, wsClient)
-  val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes, builds, controllerComponents)
-  val apiController = new Api(deployments, availableDeploymentTypes, controllerComponents)
-  val continuousDeployController = new ContinuousDeployController(prismLookup, controllerComponents)
-  val previewController = new PreviewController(previewCoordinator, controllerComponents)
-  val hooksController = new HooksController(prismLookup, controllerComponents)
-  val restrictionsController = new Restrictions(controllerComponents)
-  val loginController = new Login(deployments, controllerComponents)
-  val testingController = new Testing(prismLookup, controllerComponents)
+  val applicationController = new Application(prismLookup, availableDeploymentTypes, authAction, controllerComponents, assets)(environment, wsClient, executionContext)
+  val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes, builds, authAction, controllerComponents)
+  val apiController = new Api(deployments, availableDeploymentTypes, authAction, controllerComponents)
+  val continuousDeployController = new ContinuousDeployController(prismLookup, authAction, controllerComponents)
+  val previewController = new PreviewController(previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
+  val hooksController = new HooksController(prismLookup, authAction, controllerComponents)
+  val restrictionsController = new Restrictions(authAction, controllerComponents)
+  val loginController = new Login(deployments, controllerComponents, authAction)
+  val testingController = new Testing(prismLookup, authAction, controllerComponents)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {

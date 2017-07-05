@@ -1,7 +1,7 @@
 package controllers
 
 import cats.data.Validated.{Invalid, Valid}
-import com.gu.googleauth.UserIdentity
+import com.gu.googleauth.{AuthAction, UserIdentity}
 import docs.{DeployTypeDocs, MarkDownParser}
 import magenta.deployment_type.DeploymentType
 import magenta.input.All
@@ -12,6 +12,7 @@ import play.api.mvc._
 import play.api.{Environment, Logger}
 import resources.PrismLookup
 
+import scala.concurrent.ExecutionContext
 import scala.io.Source
 
 trait Logging {
@@ -67,9 +68,10 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
+class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], authAction: AuthAction[AnyContent],
   val controllerComponents: ControllerComponents, assets: Assets)(
-  implicit environment: Environment, val wsClient: WSClient) extends BaseController with Logging with LoginActions {
+  implicit environment: Environment, val wsClient: WSClient, val executionContext: ExecutionContext)
+  extends BaseController with Logging {
 
   import Application._
 
@@ -84,11 +86,11 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     Ok(views.html.index(request, documentation))
   }
 
-  def deployInfoData = AuthAction { implicit request =>
+  def deployInfoData = authAction { implicit request =>
     Ok(views.html.deploy.deployInfoData(prismLookup))
   }
 
-  def deployInfoHosts(appFilter: String) = AuthAction { implicit request =>
+  def deployInfoHosts(appFilter: String) = authAction { implicit request =>
     val hosts = prismLookup.hosts.all.filter { host =>
       host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
       request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
@@ -96,7 +98,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))
   }
 
-  def deployInfoAbout = AuthAction { request =>
+  def deployInfoAbout = authAction { request =>
     Ok(views.html.deploy.deployInfoAbout(request))
   }
 
@@ -136,7 +138,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     if (resource.endsWith(".png")) {
       assets.at("/docs",resource)
     } else {
-      AuthAction { request =>
+      authAction { request =>
         if (resource.endsWith("/index")) {
           Redirect(routes.Application.documentation(resource.stripSuffix("index")))
         } else {
@@ -172,12 +174,12 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     }
   }
 
-  def validationForm = AuthAction { request =>
+  def validationForm = authAction { request =>
     log.warn("Displaying form")
     Ok(views.html.validation.validationForm(request))
   }
 
-  def validateConfiguration = AuthAction { request =>
+  def validateConfiguration = authAction { request =>
     val data = request.body
     log.warn(data.toString)
     val maybeConfiguration = data.asFormUrlEncoded.flatMap(_.get("configuration")).getOrElse(Nil).headOption

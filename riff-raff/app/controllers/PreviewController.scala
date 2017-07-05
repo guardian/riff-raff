@@ -3,23 +3,22 @@ package controllers
 import java.util.UUID
 
 import cats.data.Validated.{Invalid, Valid}
+import com.gu.googleauth.AuthAction
 import com.gu.management.Loggable
 import controllers.forms.DeployParameterForm
 import deployment.preview.PreviewCoordinator
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import magenta.{Build, DeployParameters, Deployer, Stage}
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, Controller, ControllerComponents}
-import utils.Forms
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class PreviewController(coordinator: PreviewCoordinator, val controllerComponents: ControllerComponents)(
-  implicit val wsClient: WSClient
-) extends BaseController with LoginActions with I18nSupport with Loggable {
-  def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = AuthAction { request =>
+class PreviewController(coordinator: PreviewCoordinator, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(
+  implicit val wsClient: WSClient, executionContext: ExecutionContext
+) extends BaseController with I18nSupport with Loggable {
+  def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = authAction { request =>
     val build = Build(projectName, buildId)
     val selector = deployments.map(DeploymentKey.fromStringToList) match {
       case Some(head :: tail) => DeploymentKeysSelector(head :: tail)
@@ -39,7 +38,7 @@ class PreviewController(coordinator: PreviewCoordinator, val controllerComponent
     }
   }
 
-  def showTasks(previewId: String) = AuthAction.async { implicit request =>
+  def showTasks(previewId: String) = authAction.async { implicit request =>
     val maybeResult = coordinator.getPreviewResult(UUID.fromString(previewId))
     maybeResult match {
       case Some(result) if result.future.isCompleted =>

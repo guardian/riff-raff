@@ -8,6 +8,7 @@ import akka.util.ByteString
 import cats.syntax.either._
 import ci.{Builds, S3Tag, TagClassification}
 import com.amazonaws.services.s3.model.GetObjectRequest
+import com.gu.googleauth.AuthAction
 import conf.Configuration
 import controllers.forms.{DeployParameterForm, UuidForm}
 import deployment._
@@ -22,7 +23,7 @@ import play.api.http.HttpEntity
 import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.{BaseController, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 
@@ -30,8 +31,8 @@ import scala.util.{Failure, Success}
 
 class DeployController(
   deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
-  buildSource: Builds, val controllerComponents: ControllerComponents)
-  (implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
+  buildSource: Builds, AuthAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)
+  (implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport {
 
   def deploy = AuthAction { implicit request =>
     Ok(views.html.deploy.form(DeployParameterForm.form, prismLookup))

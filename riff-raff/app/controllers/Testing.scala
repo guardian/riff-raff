@@ -1,25 +1,27 @@
 package controllers
 
-import org.joda.time.format.DateTimeFormat
-import play.api.mvc.{Action, BaseController, Controller, ControllerComponents}
-import magenta._
-
-import collection.mutable.ArrayBuffer
-import deployment.{DeployFilter, DeployRecord, PaginationView}
 import java.util.UUID
 
-import tasks.Task
-import play.api.data.Form
-import play.api.data.Forms._
+import com.gu.googleauth.AuthAction
+import deployment.{DeployFilter, DeployRecord, PaginationView}
+import magenta._
+import magenta.tasks.Task
+import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, Duration}
 import persistence.{DocumentStoreConverter, Persistence}
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.data.Form
+import play.api.data.Forms._
+import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
+import play.api.mvc._
 import resources.PrismLookup
+
+import scala.collection.mutable.ArrayBuffer
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient) extends BaseController with Logging with LoginActions with I18nSupport {
+class Testing(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+  extends BaseController with Logging with I18nSupport {
   import Testing._
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
@@ -82,15 +84,15 @@ class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComp
     Ok(views.html.test.reportTest(request,report,verbose))
   }
 
-  def hosts = AuthAction { Ok(s"Deploy Info hosts:\n${prismLookup.hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
+  def hosts = authAction { Ok(s"Deploy Info hosts:\n${prismLookup.hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
   def form =
-    AuthAction { implicit request =>
+    authAction { implicit request =>
       Ok(views.html.test.form(testForm))
     }
 
   def formPost =
-    AuthAction { implicit request =>
+    authAction { implicit request =>
       testForm.bindFromRequest().fold(
         errors => BadRequest(views.html.test.form(errors)),
         form => {
@@ -100,16 +102,16 @@ class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComp
       )
     }
 
-  def testcharset = AuthAction { implicit request =>
+  def testcharset = authAction { implicit request =>
     Ok("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
   }
 
-  def uuidList(limit:Int) = AuthAction { implicit request =>
+  def uuidList(limit:Int) = authAction { implicit request =>
     val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
   }
 
-  def S3LatencyList(limit:Int, csv: Boolean) = AuthAction { implicit request =>
+  def S3LatencyList(limit:Int, csv: Boolean) = authAction { implicit request =>
     val filter = DeployFilter.fromRequest
     val pagination = PaginationView.fromRequest
     val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true)
@@ -139,12 +141,12 @@ class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComp
       Ok(views.html.test.s3Latencies(request, times))
   }
 
-  def debugLogViewer(uuid: String) = AuthAction { implicit request =>
+  def debugLogViewer(uuid: String) = authAction { implicit request =>
     val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
     deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
-  def actionUUID = AuthAction { implicit request =>
+  def actionUUID = authAction { implicit request =>
     uuidForm.bindFromRequest().fold(
       errors => Redirect(routes.Testing.uuidList()),
       form => {
@@ -169,7 +171,7 @@ class Testing(prismLookup: PrismLookup, val controllerComponents: ControllerComp
     )
   }
 
-  def transferAllUUIDs = AuthAction { implicit request =>
+  def transferAllUUIDs = authAction { implicit request =>
     val allDeploys = Persistence.store.getDeployUUIDsWithoutStringUUIDs
     allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
