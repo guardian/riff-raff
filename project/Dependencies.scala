@@ -52,7 +52,7 @@ object Dependencies {
     "com.gu" %% "management-internal" % "5.35",
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",
-    "com.gu" %% "play-googleauth" % "0.7.0-SNAPSHOT",
+    "com.gu" %% "play-googleauth" % "0.7.0",
     "org.mongodb" %% "casbah" % "3.1.0",
     "com.typesafe.akka" %% "akka-agent" % "2.4.10",
     "org.pegdown" % "pegdown" % "1.6.0",

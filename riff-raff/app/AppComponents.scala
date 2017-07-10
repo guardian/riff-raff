@@ -42,8 +42,8 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
 
-  val authAction = new AuthAction[AnyContent](conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction())(
-    controllerComponents.parsers.default, executionContext)
+  val authAction = new AuthAction[AnyContent](
+    conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
