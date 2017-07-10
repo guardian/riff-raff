@@ -56,7 +56,7 @@ object Dependencies {
     "org.mongodb" %% "casbah" % "3.1.0",
     "com.typesafe.akka" %% "akka-agent" % "2.4.10",
     "org.pegdown" % "pegdown" % "1.6.0",
-    "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",
+    "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
     "com.gu" %% "scanamo" % "0.9.5",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     "org.webjars" %% "webjars-play" % "2.5.0",
