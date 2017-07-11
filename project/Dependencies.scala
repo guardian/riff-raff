@@ -54,7 +54,7 @@ object Dependencies {
     "com.gu" %% "configuration" % "4.0",
     "com.gu" %% "play-googleauth" % "0.7.0",
     "org.mongodb" %% "casbah" % "3.1.0",
-    "com.typesafe.akka" %% "akka-agent" % "2.4.10",
+    "com.typesafe.akka" %% "akka-agent" % "2.5.3",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
     "com.gu" %% "scanamo" % "0.9.5",
@@ -67,7 +67,7 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.16.0",
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.5.3" % Test,
     "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this

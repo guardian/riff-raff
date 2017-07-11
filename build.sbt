@@ -4,7 +4,9 @@ import Helpers._
 val commonSettings = Seq(
   organization := "com.gu",
   scalaVersion := "2.11.8",
-  scalacOptions ++= Seq("-deprecation", "-feature","-language:postfixOps,reflectiveCalls,implicitConversions", "-Xfatal-warnings"),
+  scalacOptions ++= Seq("-deprecation", "-feature","-language:postfixOps,reflectiveCalls,implicitConversions"
+//    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
+  ),
   scalacOptions in(Compile, doc) ++= Seq(
     "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
   ),

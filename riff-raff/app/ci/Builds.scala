@@ -8,7 +8,14 @@ import rx.lang.scala.Subscription
 
 class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
 
-  private var subscriptions = Seq.empty[Subscription]
+  private val subscriptions = Seq(
+    ciBuildPoller.builds.subscribe ({ b =>
+      buildsAgent.send(_ + b)
+    }, e => log.error("Build poller failed", e)),
+    ciBuildPoller.jobs.subscribe { b =>
+      jobsAgent.send(_ + b)
+    }
+  )
 
   def jobs: Iterable[Job] = jobsAgent.get()
   def all: List[CIBuild] = buildsAgent.get().toList
@@ -26,16 +33,7 @@ class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
       latestBuild.number
     }
 
-  def init() {
-    subscriptions = Seq(
-      ciBuildPoller.builds.subscribe ({ b =>
-        buildsAgent.send(_ + b)
-      }, e => log.error("Build poller failed", e)),
-      ciBuildPoller.jobs.subscribe { b =>
-        jobsAgent.send(_ + b)
-      }
-    )
-  }
+  def init() {}
 
   def shutdown() {
     subscriptions.foreach(_.unsubscribe())

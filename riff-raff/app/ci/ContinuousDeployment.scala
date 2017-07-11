@@ -14,7 +14,18 @@ import scala.util.control.NonFatal
 class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments) extends Lifecycle with Logging {
   import ContinuousDeployment._
 
-  var sub: Option[Subscription] = None
+  val builds = buildCandidates(buildPoller.newBuilds)
+
+  val sub: Subscription = builds.subscribe { b =>
+    getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
+      runDeploy(getDeployParams(x))
+    }
+  }
+
+  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+    log.error("Failed to retrieve CD configs")
+    Nil
+  }
 
   def buildCandidates(builds: Observable[CIBuild]): Observable[CIBuild] =
     (for {
@@ -25,22 +36,10 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
       buildCandidates(buildPoller.newBuilds)
     })
 
-  def init() {
-    val builds = buildCandidates(buildPoller.newBuilds)
-
-    def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
-      log.error("Failed to retrieve CD configs")
-      Nil
-    }
-    sub = Some(builds.subscribe { b =>
-      getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
-        runDeploy(getDeployParams(x))
-      }
-    })
-  }
+  def init() {}
 
   def shutdown() {
-    sub.foreach(_.unsubscribe())
+    sub.unsubscribe()
   }
 
   def runDeploy(params: DeployParameters) {
