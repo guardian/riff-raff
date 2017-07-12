@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import magenta._
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 object RiffRaffYamlReader {
@@ -15,7 +14,7 @@ object RiffRaffYamlReader {
     // list instead of an unordered map
     def reads(json: JsValue): JsResult[List[(String, V)]] = json match {
       case JsObject(linkedMap) =>
-        type Errors = Seq[(JsPath, Seq[ValidationError])]
+        type Errors = Seq[(JsPath, Seq[JsonValidationError])]
         def locate(e: Errors, key: String) = e.map { case (p, valerr) => (JsPath \ key) ++ p -> valerr }
 
         linkedMap.foldLeft(Right(Nil): Either[Errors, List[(String, V)]]) {
@@ -26,7 +25,7 @@ object RiffRaffYamlReader {
             case (Left(e1), JsError(e2)) => Left(e1 ++ locate(e2, key))
           }
         }.fold(JsError.apply, res => JsSuccess(res))
-      case _ => JsError(Seq(JsPath() -> Seq(ValidationError("error.expected.jsobject"))))
+      case _ => JsError(Seq(JsPath() -> Seq(JsonValidationError("error.expected.jsobject"))))
     }
   }
 

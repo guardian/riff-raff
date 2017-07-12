@@ -9,7 +9,7 @@ object Dependencies {
     val guardianManagementPlay = "8.0"
     val jackson = "2.8.2"
     // keep in sync with plugin
-    val play = "2.5.6"
+    val play = "2.6.0"
   }
 
   val commonDeps = Seq(
@@ -49,15 +49,15 @@ object Dependencies {
   )
 
   val riffRaffDeps = commonDeps ++ Seq(
-    "com.gu" %% "management-play" % Versions.guardianManagementPlay exclude("javassist", "javassist"), // http://code.google.com/p/reflections/issues/detail?id=140
+    "com.gu" %% "management-internal" % "5.35",
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.0",
-    "com.gu" %% "play-googleauth" % "0.5.1",
+    "com.gu" %% "play-googleauth" % "0.7.0",
     "org.mongodb" %% "casbah" % "3.1.0",
-    "com.typesafe.akka" %% "akka-agent" % "2.4.10",
+    "com.typesafe.akka" %% "akka-agent" % "2.5.3",
     "org.pegdown" % "pegdown" % "1.6.0",
-    "com.adrianhurt" %% "play-bootstrap" % "1.1-P25-B3",
-    "com.gu" %% "scanamo" % "0.7.0",
+    "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
+    "com.gu" %% "scanamo" % "0.9.5",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     "org.webjars" %% "webjars-play" % "2.5.0",
     "org.webjars" % "jquery" % "3.1.1",
@@ -67,8 +67,8 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.16.0",
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.4.10" % Test,
-    "org.gnieh" %% "diffson" % "2.0.2" % Test
+    "com.typesafe.akka" %% "akka-testkit" % "2.5.3" % Test,
+    "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))

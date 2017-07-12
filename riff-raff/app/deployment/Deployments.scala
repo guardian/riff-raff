@@ -10,17 +10,18 @@ import com.gu.management.DefaultSwitch
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta._
+import org.joda.time.DateTime
 import persistence.{DocumentStoreConverter, RestrictionConfigDynamoRepository}
-import play.api.libs.concurrent.Execution.Implicits._
 import restrictions.RestrictionChecker
 import rx.lang.scala.{Observable, Subject, Subscription}
+import utils.VCSInfo
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.util.control.NonFatal
 
-class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
-  import Deployments._
+class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit val executionContext: ExecutionContext)
+  extends Lifecycle with Logging {
 
   def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[Error, UUID] = {
     log.info(s"Started deploying $requestedParams")
@@ -34,12 +35,12 @@ class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
       val params = if (requestedParams.build.id != "lastSuccessful")
         requestedParams
       else {
-        Builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
+        builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
           requestedParams.copy(build = requestedParams.build.copy(id=latestId))
         }.getOrElse(requestedParams)
       }
       deploysEnabled.whileOnYield {
-        val record = Deployments.create(params)
+        val record = create(params)
         deploymentEngine.interruptibleDeploy(record)
         Right(record.uuid)
       } getOrElse {
@@ -54,9 +55,29 @@ class Deployments(deploymentEngine: DeploymentEngine) extends Logging {
 
   def getStopFlag(uuid: UUID): Boolean = deploymentEngine.getDeployStopFlag(uuid)
 
-}
+  def create(params: DeployParameters): Record = {
+    log.info(s"Creating deploy record for $params")
+    val uuid = java.util.UUID.randomUUID()
+    val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
+    val record = deployRecordFor(uuid, params) ++ hostNameMetadata
+    library send { _ + (uuid -> Agent(record)) }
+    DocumentStoreConverter.saveDeploy(record)
+    await(uuid)
+  }
 
-object Deployments extends Logging with Lifecycle {
+  def deployRecordFor(uuid: UUID, parameters: DeployParameters): DeployRecord = {
+    val build = builds.all.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
+    val metaData = build.map { case b: S3Build =>
+      Map(
+        "branch" -> b.branchName,
+        VCSInfo.REVISION -> b.revision,
+        VCSInfo.CIURL -> b.vcsURL
+      )
+    }
+
+    DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
+  }
+
   lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
 
@@ -112,16 +133,6 @@ object Deployments extends Logging with Lifecycle {
   implicit val system = ActorSystem("deploy")
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
-
-  def create(params: DeployParameters): Record = {
-    log.info(s"Creating deploy record for $params")
-    val uuid = java.util.UUID.randomUUID()
-    val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
-    val record = DeployRecord(uuid, params) ++ hostNameMetadata
-    library send { _ + (uuid -> Agent(record)) }
-    DocumentStoreConverter.saveDeploy(record)
-    await(uuid)
-  }
 
   def update(wrapper: MessageWrapper) {
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
@@ -190,6 +201,6 @@ object Deployments extends Logging with Lifecycle {
   }
 
   def await(uuid: UUID): Record = {
-    Await.result(library.future().flatMap(_(uuid).future()),5 seconds)
+    library()(uuid)()
   }
 }

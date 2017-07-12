@@ -62,11 +62,11 @@ GET         /deployment/continuous/:id/edit                 controllers.Continuo
 POST        /deployment/continuous/:id/delete               controllers.ContinuousDeployController.delete(id)
 
 # Post deploy hooks
-GET         /deployment/hooks                               controllers.Hooks.list
-GET         /deployment/hooks/new                           controllers.Hooks.form
-POST        /deployment/hooks/save                          controllers.Hooks.save
-GET         /deployment/hooks/edit                          controllers.Hooks.edit(id)
-POST        /deployment/hooks/delete                        controllers.Hooks.delete(id)
+GET         /deployment/hooks                               controllers.HooksController.list
+GET         /deployment/hooks/new                           controllers.HooksController.form
+POST        /deployment/hooks/save                          controllers.HooksController.save
+GET         /deployment/hooks/edit                          controllers.HooksController.edit(id)
+POST        /deployment/hooks/delete                        controllers.HooksController.delete(id)
 
 # Restrictions
 GET         /deployment/restrictions                        controllers.Restrictions.list

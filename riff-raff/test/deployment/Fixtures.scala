@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.AmazonS3Client
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Region, Stage}
 import magenta.tasks._
+import org.joda.time.DateTime
 import org.scalatest.mock.MockitoSugar
 
 object Fixtures extends MockitoSugar {
@@ -38,7 +39,9 @@ object Fixtures extends MockitoSugar {
     deployer: String = "Tester",
     stacks: Seq[String] = Seq("test"),
     uuid:UUID = UUID.randomUUID()
-  ) = DeployRecord(uuid,
+  ) = DeployRecord(
+    DateTime.now(),
+    uuid,
     DeployParameters(Deployer(deployer),
       Build(projectName, buildId),
       Stage(stage),

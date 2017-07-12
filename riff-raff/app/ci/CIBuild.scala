@@ -19,22 +19,32 @@ trait CIBuild {
   def startTime: DateTime
 }
 
+object CIBuild {
+  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+}
+
 trait Job {
   def id: String
   def name: String
 }
 
-object CIBuild extends Logging {
+class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
   import concurrent.duration._
-  import play.api.libs.concurrent.Execution.Implicits._
-
-  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+  implicit val ec = executionContext
 
   val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
 
-  lazy val jobs: Observable[Job] = builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
+  val initialFiles: Seq[S3Object] = for {
+    location <- S3Build.buildJsons
+  } yield location
 
-  lazy val newBuilds: Observable[CIBuild] = {
+  val initialBuilds: Future[Seq[CIBuild]] = {
+    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
+    log.logger.info(s"Found ${initialFiles.length} builds to parse")
+    (Future.traverse(initialFiles)(l => Future(retrieveBuild(l)))).map(_.flatten)
+  }
+
+  val newBuilds: Observable[CIBuild] = {
     val observable = (for {
       location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
       build <- Observable.from(retrieveBuild(location))
@@ -46,15 +56,11 @@ object CIBuild extends Logging {
       .doOnTerminate(log.info("Terminated whilst waiting for new builds"))
   }
 
-  lazy val initialFiles: Seq[S3Object] = for {
-    location <- S3Build.buildJsons
-  } yield location
+  val builds: Observable[CIBuild] =
+    Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
 
-  lazy val initialBuilds: Future[Seq[CIBuild]] = {
-    implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
-    log.logger.info(s"Found ${initialFiles.length} builds to parse")
-    (Future.traverse(initialFiles)(l => Future(retrieveBuild(l)))).map(_.flatten)
-  }
+  val jobs: Observable[Job] =
+    builds.map(b => S3Project(b.jobId, b.jobName)).distinct.publish.refCount
 
   private def retrieveBuild(location: S3Object): Option[CIBuild] = {
     import cats.syntax.either._
@@ -62,6 +68,4 @@ object CIBuild extends Logging {
       .leftMap(e => log.error(s"Problem getting build definition from $location: $e"))
       .toOption
   }
-
-  lazy val builds: Observable[CIBuild] = Observable.from(initialBuilds).flatMap(Observable.from(_)).merge(newBuilds)
 }

@@ -1,5 +1,6 @@
 package controllers
 
+import cats.data.EitherT
 import com.gu.googleauth._
 import com.mongodb.casbah.commons.MongoDBObject
 import conf.Configuration.auth
@@ -9,15 +10,15 @@ import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
-import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.libs.concurrent.Execution.Implicits._
+import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.BodyParsers._
 import play.api.mvc.Results._
 import play.api.mvc._
+import rx.functions.Actions
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequest[A](request) {
   lazy val fullName = s"API:${apiKey.application}"
@@ -48,43 +49,9 @@ trait AuthorisationValidator {
   }
 }
 
-object ApiAuthAction {
-
-  def apply[A](counter: Option[String], p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  = {
-    Action(p) { implicit request =>
-      request.queryString.get("key").flatMap(_.headOption) match {
-        case Some(urlParam) =>
-          Persistence.store.getAndUpdateApiKey(urlParam, counter) match {
-            case Some(apiKey) => f(new ApiRequest(apiKey, request))
-            case None => Unauthorized("The API key provided is not valid. Please check and try again.")
-          }
-        case None =>
-          Unauthorized("An API key must be provided for this endpoint. Please include a 'key' URL parameter.")
-      }
-    }
-  }
-
-  def apply[A](counter: String, p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A]  =
-    this.apply(Some(counter), p)(f)
-  def apply[A](p: BodyParser[A])(f: ApiRequest[A] => Result): Action[A] =
-    this.apply(None, p)(f)
-  def apply(counter: Option[String])(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(counter, parse.anyContent)(f)
-  def apply(counter: String)(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(Some(counter))(f)
-  def apply(f: ApiRequest[AnyContent] => Result): Action[AnyContent] =
-    this.apply(None)(f)
-}
-
-trait LoginActions extends Actions {
-  override def loginTarget: Call = routes.Login.loginAction()
-  override val defaultRedirectTarget = routes.Application.index()
-  override val failureRedirectTarget = routes.Login.login()
-
-  def authConfig: GoogleAuthConfig = auth.googleAuthConfig
-}
-
-class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with Logging with LoginActions with I18nSupport {
+class Login(deployments: Deployments, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent])
+  (implicit val wsClient: WSClient, val executionContext: ExecutionContext)
+  extends BaseController with Logging with LoginSupport with I18nSupport {
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
@@ -102,58 +69,43 @@ class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
   }
 
   def loginAction = Action.async { implicit request =>
-    // redirect to google with anti forgery token (that we keen in session storage - note that flashing is not secure)
-    val antiForgeryToken = GoogleAuth.generateAntiForgeryToken()
-    GoogleAuth.redirectToGoogle(auth.googleAuthConfig, antiForgeryToken).map {
-      _.withSession { request.session + (authConfig.antiForgeryKey -> antiForgeryToken) }
-    }
+    startGoogleLogin()
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    request.session.get(authConfig.antiForgeryKey) match {
-      case None =>
-        Future.successful(Redirect(routes.Login.login()).flashing("error" -> "Anti forgery token missing in session"))
-      case Some(token) =>
-        GoogleAuth.validatedUserIdentity(auth.googleAuthConfig, token).map { identity =>
-          require(validator.isAuthorised(identity), validator.authorisationError(identity).getOrElse("Unknown error"))
-          val redirect = request.session.get(GoogleAuthFilters.LOGIN_ORIGIN_KEY) match {
-            case Some(url) => Redirect(url)
-            case None => Redirect(routes.Application.index())
-          }
-          redirect.withSession {
-            request.session + (UserIdentity.KEY -> Json.toJson(identity).toString) - authConfig.antiForgeryKey - GoogleAuthFilters.LOGIN_ORIGIN_KEY
-          }
-        } recover {
-          case t =>
-            FailedLoginCounter.recordCount(1)
-            log.warn("Login failure", t)
-            Redirect(routes.Login.login())
-              .withSession(request.session - authConfig.antiForgeryKey)
-              .flashing("error" -> s"Login failure: ${t.toString}")
-        }
-    }
+    import cats.instances.future._
+    (for {
+      identity <- checkIdentity()
+      _ <- EitherT.fromEither[Future] {
+        if (validator.isAuthorised(identity)) Right(())
+        else Left(redirectWithError(
+          failureRedirectTarget,  validator.authorisationError(identity).getOrElse("Unknown error"), authConfig.antiForgeryKey, request.session))
+      }
+    } yield {
+      setupSessionWhenSuccessful(identity)
+    }).merge
   }
 
   def logout = Action { implicit request =>
     Redirect("/").withNewSession
   }
 
-  def profile = AuthAction { request =>
-    val records = Deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
+  def profile = authAction { request =>
+    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
     Ok(views.html.auth.profile(request, records))
   }
 
   val authorisationForm = Form( "email" -> nonEmptyText )
 
-  def authList = AuthAction { request =>
+  def authList = authAction { request =>
     Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
   }
 
-  def authForm = AuthAction { implicit request =>
+  def authForm = authAction { implicit request =>
     Ok(views.html.auth.form(authorisationForm))
   }
 
-  def authSave = AuthAction { implicit request =>
+  def authSave = authAction { implicit request =>
     authorisationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.auth.form(errors)),
       email => {
@@ -164,7 +116,7 @@ class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
     )
   }
 
-  def authDelete = AuthAction { implicit request =>
+  def authDelete = authAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
       log.info(s"${request.user.fullName} deleted authorisation for $email")
       Persistence.store.deleteAuthorisation(email)
@@ -172,4 +124,8 @@ class Login(implicit val messagesApi: MessagesApi, val wsClient: WSClient) exten
     Redirect(routes.Login.authList())
   }
 
+  override def authConfig: GoogleAuthConfig = auth.googleAuthConfig
+
+  override val failureRedirectTarget: Call = routes.Application.index()
+  override val defaultRedirectTarget: Call = routes.Login.login()
 }

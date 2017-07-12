@@ -3,7 +3,6 @@ package json
 
 import magenta.artifact.{S3JsonArtifact, S3Path}
 import magenta.deployment_type.DeploymentType
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 case class JsonPackage(
@@ -36,7 +35,7 @@ case class JsonInputFile(
 object JsonInputFile {
   implicit val reads = Json.reads[JsonInputFile]
 
-  def parse(s: String): Either[Seq[(JsPath, Seq[ValidationError])], JsonInputFile] = Json.fromJson[JsonInputFile](Json.parse(s)).asEither
+  def parse(s: String): Either[Seq[(JsPath, Seq[JsonValidationError])], JsonInputFile] = Json.fromJson[JsonInputFile](Json.parse(s)).asEither
 }
 
 

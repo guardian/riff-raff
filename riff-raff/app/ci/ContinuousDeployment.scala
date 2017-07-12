@@ -11,10 +11,21 @@ import utils.ChangeFreeze
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logging {
+class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments) extends Lifecycle with Logging {
   import ContinuousDeployment._
 
-  var sub: Option[Subscription] = None
+  val builds = buildCandidates(buildPoller.newBuilds)
+
+  val sub: Subscription = builds.subscribe { b =>
+    getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
+      runDeploy(getDeployParams(x))
+    }
+  }
+
+  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+    log.error("Failed to retrieve CD configs")
+    Nil
+  }
 
   def buildCandidates(builds: Observable[CIBuild]): Observable[CIBuild] =
     (for {
@@ -22,25 +33,13 @@ class ContinuousDeployment(deployments: Deployments) extends Lifecycle with Logg
       build <- GreatestSoFar(buildsPerJobAndBranch.distinct)
     } yield build).onErrorResumeNext(e => {
       log.error("Problem polling builds for ContinuousDeployment", e)
-      buildCandidates(CIBuild.newBuilds)
+      buildCandidates(buildPoller.newBuilds)
     })
 
-  def init() {
-    val builds = buildCandidates(CIBuild.newBuilds)
-
-    def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
-      log.error("Failed to retrieve CD configs")
-      Nil
-    }
-    sub = Some(builds.subscribe { b =>
-      getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
-        runDeploy(getDeployParams(x))
-      }
-    })
-  }
+  def init() {}
 
   def shutdown() {
-    sub.foreach(_.unsubscribe())
+    sub.unsubscribe()
   }
 
   def runDeploy(params: DeployParameters) {

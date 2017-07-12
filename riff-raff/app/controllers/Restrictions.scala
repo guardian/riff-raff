@@ -2,6 +2,7 @@ package controllers
 
 import java.util.UUID
 
+import com.gu.googleauth.AuthAction
 import conf.Configuration.auth
 import deployment.Error
 import org.joda.time.DateTime
@@ -10,12 +11,12 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.ws.WSClient
-import play.api.mvc.Controller
+import play.api.mvc.{AnyContent, BaseController, Controller, ControllerComponents}
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 
 import scala.util.Try
 
-class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClient) extends Controller with LoginActions
+class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient) extends BaseController
   with I18nSupport {
 
   lazy val restrictionsForm = Form[RestrictionForm](
@@ -39,18 +40,18 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
     )
   )
 
-  def list = AuthAction { implicit request =>
+  def list = authAction { implicit request =>
     val configs = RestrictionConfigDynamoRepository.getRestrictionList.toList.sortBy(r => r.projectName + r.stage)
     Ok(views.html.restrictions.list(configs, auth.superusers))
   }
 
-  def form = AuthAction { implicit request =>
+  def form = authAction { implicit request =>
     val newForm = restrictionsForm.fill(
       RestrictionForm(UUID.randomUUID(), "", "", editingLocked = false, Seq.empty, continuousDeployment = false, ""))
     Ok(views.html.restrictions.form(newForm, saveDisabled = false))
   }
 
-  def save = AuthAction { implicit request =>
+  def save = authAction { implicit request =>
     restrictionsForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.restrictions.form(formWithErrors, saveDisabled = false)),
       f => {
@@ -67,7 +68,7 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
     )
   }
 
-  def edit(id: String) = AuthAction { implicit request =>
+  def edit(id: String) = authAction { implicit request =>
     RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)).map{ rc =>
       val form = restrictionsForm.fill(
         RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.whitelist, rc.continuousDeployment, rc.note)
@@ -81,7 +82,7 @@ class Restrictions()(implicit val messagesApi: MessagesApi, val wsClient: WSClie
     }.getOrElse(Redirect(routes.Restrictions.list()))
   }
 
-  def delete(id: String) = AuthAction { request =>
+  def delete(id: String) = authAction { request =>
     RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, auth.superusers) match {
       case Right(_) =>
         RestrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))

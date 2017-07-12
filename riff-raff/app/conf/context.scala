@@ -5,7 +5,6 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.gu.management._
 import logback.LogbackLevelPage
-import com.gu.management.play.{Management => PlayManagement}
 import com.gu.conf.ConfigurationFactory
 import magenta._
 import controllers.{Logging, routes}
@@ -79,7 +78,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val clientId: String = configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
     lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
     lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
-    lazy val domain: Option[String] = configuration.getStringProperty("auth.domain")
+    lazy val domain: String = configuration.getStringProperty("auth.domain").getOrException("No auth domain configured")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
   }
@@ -236,13 +235,13 @@ object DeployInfoMode extends Enumeration {
   val Execute = Value("Execute")
 }
 
-object Management extends PlayManagement {
+class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) {
   val applicationName = "riff-raff"
 
   val pages = List(
     new BuildInfoPage,
     new HealthcheckManagementPage,
-    new Switchboard(applicationName, Switches.all),
+    new Switchboard(applicationName, shutdownWhenInactive.switch :: Healthcheck.switch :: deployments.enableSwitches),
     StatusPage(applicationName, Metrics.all),
     new LogbackLevelPage(applicationName)
   )
@@ -253,8 +252,6 @@ class BuildInfoPage extends ManagementPage {
   def get(req: HttpRequest) = response
   lazy val response = PlainTextResponse(BuildInfo.toString)
 }
-
-object PlayRequestMetrics extends com.gu.management.play.RequestMetrics.Standard
 
 object DeployMetrics extends Lifecycle {
   val runningDeploys = mutable.Buffer[UUID]()
@@ -329,9 +326,3 @@ object Metrics {
     DatastoreMetrics.all ++
     TaskMetrics.all
 }
-
-object Switches {
-  //  val switch = new DefaultSwitch("name", "Description Text")
-  val all: Seq[Switchable] = ShutdownWhenInactive.switch :: Healthcheck.switch :: Deployments.enableSwitches
-}
-

@@ -2,9 +2,11 @@ package lookup
 
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
+import play.api
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.{Action, AnyContent, Request}
+import play.api.mvc
+import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.routing.sird._
 import play.api.test.WsTestClient
@@ -18,6 +20,10 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
     var mockRequest: Option[Request[AnyContent]] = None
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val actionBuilder = new api.mvc.ActionBuilder.IgnoringBody()
+    def Action: ActionBuilder[Request, AnyContent] = actionBuilder
+
     val result = Server.withRouter() {
       case GET(p"/images") => Action { request =>
         mockRequest = Some(request)

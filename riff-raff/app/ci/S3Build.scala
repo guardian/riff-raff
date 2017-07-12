@@ -4,7 +4,6 @@ import conf.Configuration
 import controllers.Logging
 import magenta.artifact.{S3Error, S3Location, S3Object}
 import org.joda.time.DateTime
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 
 import scala.util.Try
@@ -41,7 +40,7 @@ object S3Build extends Logging {
     location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError(_))
       .flatMap(s => parse(s).leftMap[S3BuildError](S3BuildParseError(_)))
 
-  def parse(json: String): Either[Seq[(JsPath, Seq[ValidationError])], S3Build] = {
+  def parse(json: String): Either[Seq[(JsPath, Seq[JsonValidationError])], S3Build] = {
     import play.api.libs.functional.syntax._
     import utils.Json.DefaultJodaDateReads
     import cats.syntax.either._
@@ -67,4 +66,4 @@ object S3Build extends Logging {
 
 sealed trait S3BuildError
 final case class S3BuildRetrievalError(s3Error: S3Error) extends S3BuildError
-final case class S3BuildParseError(parseErrors: Seq[(JsPath, Seq[ValidationError])]) extends S3BuildError
+final case class S3BuildParseError(parseErrors: Seq[(JsPath, Seq[JsonValidationError])]) extends S3BuildError

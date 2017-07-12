@@ -134,22 +134,6 @@ trait Record {
   }
 }
 
-object DeployRecord {
-  def apply(uuid: UUID,
-            parameters: DeployParameters ): DeployRecord = {
-    val build = Builds.all.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
-    val metaData = build.map { case b: S3Build =>
-      Map(
-        "branch" -> b.branchName,
-        VCSInfo.REVISION -> b.revision,
-        VCSInfo.CIURL -> b.vcsURL
-      )
-    }
-
-    DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
-  }
-}
-
 case class DeployRecord(time: DateTime,
                         uuid: UUID,
                         parameters: DeployParameters,

@@ -4,16 +4,15 @@ import java.net.URL
 import java.util.UUID
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.mongodb.casbah.commons.MongoDBObject
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta.{Deploy, DeployParameters, FinishContext, _}
 import org.joda.time.DateTime
-import persistence.{DeployRecordDocument, HookConfigRepository, MongoFormat, MongoSerialisable, Persistence}
-import play.api.libs.concurrent.Execution.Implicits._
+import persistence.{DeployRecordDocument, HookConfigRepository, Persistence}
 import play.api.libs.json.Json
 import play.api.libs.ws._
 
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -42,7 +41,7 @@ case class HookConfig(id: UUID,
     }
   }
 
-  def act(record: DeployRecordDocument)(implicit wSClient: WSClient) {
+  def act(record: DeployRecordDocument)(implicit wSClient: WSClient, executionContext: ExecutionContext) {
     if (enabled) {
       val urlRequest = request(record)
       log.info(s"Calling ${urlRequest.url}")
@@ -85,10 +84,10 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-class HooksClient(wsClient: WSClient) extends Lifecycle with Logging {
+class HooksClient(wsClient: WSClient, executionContext: ExecutionContext) extends Lifecycle with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
-    Some(system.actorOf(Props(classOf[HooksClientActor], wsClient), "hook-client"))
+    Some(system.actorOf(Props(classOf[HooksClientActor], wsClient, executionContext), "hook-client"))
   } catch {
     case t:Throwable =>
       log.error("Failed to start HookClient", t)
@@ -119,7 +118,7 @@ object HooksClientActor {
   case class Finished(uuid: UUID, params: DeployParameters)
 }
 
-class HooksClientActor(implicit wsClient: WSClient) extends Actor with Logging {
+class HooksClientActor(implicit wsClient: WSClient, executionContext: ExecutionContext) extends Actor with Logging {
   import notification.HooksClientActor._
 
   def receive = {
