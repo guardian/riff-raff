@@ -55,6 +55,7 @@ object Menu {
     DropDownMenuItem("Documentation", Seq(
       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),
       SingleMenuItem("Validate configuration", routes.Application.validationForm),
+      SingleMenuItem("Fixing a failed deploy", routes.Application.documentation("howto/fix-a-failed-deploy")),
       SingleMenuItem("Everything else", routes.Application.documentation(""))
     ))
   )
