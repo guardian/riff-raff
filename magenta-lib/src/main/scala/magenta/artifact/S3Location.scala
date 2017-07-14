@@ -132,7 +132,7 @@ object S3JsonArtifact extends Loggable {
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
     S3ZipArtifact.withDownload(artifact){ dir =>
-      val filesToUpload = resolveFiles(dir, artifact.key)
+      val filesToUpload = resolveFiles(dir.toFile, artifact.key)
       reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
       filesToUpload.foreach{ case (file, key) =>
         val metadata = new ObjectMetadata()
