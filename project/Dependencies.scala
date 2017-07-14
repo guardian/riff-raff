@@ -36,8 +36,6 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-lambda" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-cloudformation" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-sts" % Versions.aws,
-    "com.github.scala-incubator.io" %% "scala-io-core" % "0.4.3",
-    "com.github.scala-incubator.io" %% "scala-io-file" % "0.4.3",
     "com.gu" %% "management" % Versions.guardianManagement,
     "com.gu" %% "fastly-api-client" % "0.2.5",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
