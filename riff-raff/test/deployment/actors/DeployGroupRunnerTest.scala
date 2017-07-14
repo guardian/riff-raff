@@ -9,11 +9,11 @@ import deployment.{Fixtures, Record}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
 import magenta.tasks.Task
-import org.scalatest.{FlatSpecLike, ShouldMatchers}
+import org.scalatest.{FlatSpecLike, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with ShouldMatchers {
+class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with Matchers {
   import Fixtures._
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()

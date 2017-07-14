@@ -8,7 +8,7 @@ import magenta.fixtures.{StubTask, _}
 import magenta.graph.DeploymentGraph
 import magenta.tasks.Task
 import org.mockito.Mockito._
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import org.mockito.Matchers.any
 

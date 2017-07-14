@@ -7,7 +7,7 @@ import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
 import deployment.{Fixtures, Record}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.collection.JavaConverters._

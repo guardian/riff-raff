@@ -7,7 +7,7 @@ import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Region, Stage}
 import magenta.tasks._
 import org.joda.time.DateTime
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 
 object Fixtures extends MockitoSugar {
   implicit val fakeKeyRing = KeyRing()

@@ -2,7 +2,7 @@ package magenta.graph
 
 import org.scalatest._
 
-class GraphTest extends FlatSpec with ShouldMatchers {
+class GraphTest extends FlatSpec with Matchers {
 
   val start = StartNode
   val one = ValueNode("one")

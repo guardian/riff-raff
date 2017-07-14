@@ -7,7 +7,7 @@ import magenta._
 import magenta.fixtures._
 import org.mockito.Matchers._
 import org.mockito.Mockito._
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.JsString
 

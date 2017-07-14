@@ -2,11 +2,11 @@ package magenta.graph
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{Host, KeyRing, Region}
-import magenta.tasks.{ChangeSwitch, HealthcheckGrace, S3Upload, SayHello}
-import org.scalatest.{FlatSpec, ShouldMatchers}
-import org.scalatest.mock.MockitoSugar
+import magenta.tasks.{ChangeSwitch, S3Upload, SayHello}
+import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.mockito.MockitoSugar
 
-class DeploymentGraphTest extends FlatSpec with ShouldMatchers with MockitoSugar {
+class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val artifactClient = mock[AmazonS3Client]
 

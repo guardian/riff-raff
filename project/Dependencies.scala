@@ -13,11 +13,11 @@ object Dependencies {
   }
 
   val commonDeps = Seq(
-    "io.reactivex" %% "rxscala" % "0.26.2",
-    "org.parboiled" %% "parboiled" % "2.0.1",
-    "org.typelevel" %% "cats" % "0.7.2",
+    "io.reactivex" %% "rxscala" % "0.26.5",
+    "org.parboiled" %% "parboiled" % "2.1.4",
+    "org.typelevel" %% "cats" % "0.9.0",
     "com.github.cb372" %% "automagic" % "0.1",
-    "org.scalatest" %% "scalatest" % "2.2.6" % Test,
+    "org.scalatest" %% "scalatest" % "3.0.3" % Test,
     "org.mockito" % "mockito-core" % "1.10.19" % Test
   )
 
@@ -25,7 +25,7 @@ object Dependencies {
     "net.databinder" %% "dispatch-http" % "0.8.10",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
-    "com.decodified" %% "scala-ssh" % "0.7.0" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
+    "com.github.seratch.com.veact" %% "scala-ssh" % "0.8.0-1" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
     "ch.qos.logback" % "logback-classic" % "1.1.7",
     "com.amazonaws" % "aws-java-sdk-core" % Versions.aws,
     "com.amazonaws" % "aws-java-sdk-autoscaling" % Versions.aws,
