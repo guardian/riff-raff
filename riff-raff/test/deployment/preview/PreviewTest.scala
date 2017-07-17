@@ -10,7 +10,7 @@ import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
 import magenta.input.DeploymentKey
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
 class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {

@@ -9,7 +9,7 @@ import magenta.deployment_type.{Action, AutoScaling}
 import magenta.fixtures._
 import magenta.input.Deployment
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, NamedStack, Region, Stage, fixtures}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.JsString
 

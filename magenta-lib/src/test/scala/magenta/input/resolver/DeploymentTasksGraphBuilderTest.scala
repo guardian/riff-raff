@@ -3,9 +3,9 @@ package magenta.input.resolver
 import cats.data.{NonEmptyList => NEL}
 import magenta.graph.{EndNode, Graph, StartNode, ValueNode}
 import magenta.input.Deployment
-import org.scalatest.{FlatSpec, ShouldMatchers}
+import org.scalatest.{FlatSpec, Matchers}
 
-class DeploymentTasksGraphBuilderTest extends FlatSpec with ShouldMatchers {
+class DeploymentTasksGraphBuilderTest extends FlatSpec with Matchers {
   val deployment = Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), NEL.of("deploy"), "bob", "bob", Nil, Map.empty)
 
   "buildGraph" should "build a simple graph for a single deployment" in {

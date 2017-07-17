@@ -7,7 +7,7 @@ import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
 import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, NamedStack, Region, fixtures}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 

@@ -4,7 +4,7 @@ import java.io.IOException
 
 import com.amazonaws.{AmazonClientException, ClientConfiguration}
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
 class PackageTest extends FlatSpec with Matchers with MockitoSugar {

@@ -2,10 +2,10 @@ package utils
 
 import java.net.URI
 
-import org.scalatest.{FunSuite, ShouldMatchers}
+import org.scalatest.{FunSuite, Matchers}
 
 
-class VCSInfoTest extends FunSuite with ShouldMatchers {
+class VCSInfoTest extends FunSuite with Matchers {
   test("extracts details from Github HTTPS URL") {
     val info = VCSInfo("https://github.com/guardian/contributions-frontend", "98a1cffadbe564d570b15c2113c07a28cbe835ee")
     info.get.baseUrl shouldBe new URI("https://github.com/guardian/contributions-frontend")
