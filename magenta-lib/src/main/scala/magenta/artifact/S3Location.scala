@@ -5,7 +5,6 @@ import java.io.File
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
-import dispatch.classic./
 import magenta.json.JsonInputFile
 import magenta.{Build, DeployReporter}
 import play.api.libs.json.{JsPath, JsonValidationError}

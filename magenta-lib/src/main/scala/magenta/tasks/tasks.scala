@@ -11,9 +11,9 @@ import com.amazonaws.services.s3.model.CannedAccessControlList._
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import com.amazonaws.util.IOUtils
 import com.gu.management.Loggable
-import dispatch.classic._
 import magenta.artifact._
 import magenta.deployment_type.param_reads.PatternValue
+import okhttp3.{MultipartBody, OkHttpClient, Request}
 
 import scala.collection.JavaConverters._
 
@@ -178,11 +178,21 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = {
     reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
-    Http(url(switchboardUrl) << Map(switchName -> desiredStateName) >|)
+
+    val formData = new MultipartBody.Builder().setType(MultipartBody.FORM)
+      .addFormDataPart(switchName, desiredStateName)
+      .build()
+    val request = new Request.Builder().url(switchboardUrl).post(formData).build()
+
+    ChangeSwitch.client.newCall(request).execute()
   }
 
   def verbose: String = s"$description using switchboard at $switchboardUrl"
   def description: String = s"$switchName to $desiredStateName"
+}
+
+object ChangeSwitch {
+  val client = new OkHttpClient()
 }
 
 case class UpdateLambda(
@@ -219,4 +229,3 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
   }
 
 }
-

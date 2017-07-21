@@ -7,8 +7,8 @@ import controllers.Logging
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import magenta._
 import controllers.SimpleDeployDetail
-import automagic.transform
 import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
+import henkan.convert.Syntax._
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
@@ -46,7 +46,7 @@ object RecordConverter {
       selector = sourceParams.selector match {
         case All => AllDocument
         case DeploymentKeysSelector(ids) =>
-          DeploymentKeysSelectorDocument(ids.map(did => transform[DeploymentKey, DeploymentKeyDocument](did)))
+          DeploymentKeysSelectorDocument(ids.map(_.to[DeploymentKeyDocument]()))
       }
     )
     RecordConverter(record.uuid, record.time, params, record.state, record.messages)
@@ -65,7 +65,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     deploy.parameters.selector match {
       case AllDocument => All
       case DeploymentKeysSelectorDocument(keys) =>
-        DeploymentKeysSelector(keys.map(didd => transform[DeploymentKeyDocument, DeploymentKey](didd)))
+        DeploymentKeysSelector(keys.map(_.to[DeploymentKey]()))
     }
   )
 

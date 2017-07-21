@@ -4,8 +4,8 @@ import java.net.ConnectException
 
 import com.amazonaws.services.autoscaling.AmazonAutoScaling
 import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, Instance}
-import dispatch.classic._
 import magenta.{DeploymentPackage, KeyRing, Stage, _}
+import okhttp3._
 import org.json4s._
 import play.api.libs.json.Json
 
@@ -68,10 +68,22 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
 case class ElasticSearchNode(address: String) {
   implicit val format = DefaultFormats
 
-  val http = new Http()
-  private def clusterHealth = http(:/(address, 9200) / "_cluster" / "health" >- {json =>
-    Json.parse(json)
-  })
+  val http = new OkHttpClient()
+  private def clusterHealth = {
+    val request = new Request.Builder()
+        .url(
+          new HttpUrl.Builder()
+            .scheme("http")
+            .host(address)
+            .port(9200)
+            .addPathSegment("_cluster")
+            .addPathSegment("health")
+            .build()
+        )
+        .build()
+    val response = http.newCall(request).execute()
+    Json.parse(response.body().string())
+  }
 
   def dataNodesInCluster = (clusterHealth \ "number_of_data_nodes").as[Int]
   def clusterIsHealthy = (clusterHealth \ "status").as[String] == "green"
@@ -83,7 +95,22 @@ case class ElasticSearchNode(address: String) {
       case e: ConnectException => false
     }
 
-  def shutdown() = http((:/(address, 9200) / "_cluster" / "nodes" / "_local" / "_shutdown").POST >|)
+  def shutdown() = {
+    val request = new Request.Builder()
+        .url(new HttpUrl.Builder()
+          .scheme("http")
+          .host(address)
+          .port(9200)
+          .addPathSegment("_cluster")
+          .addPathSegment("nodes")
+          .addPathSegment("_local")
+          .addPathSegment("_shutdown")
+          .build()
+        )
+        .post(new FormBody.Builder().build())
+        .build()
+    http.newCall(request).execute()
+  }
 }
 
 
