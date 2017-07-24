@@ -109,7 +109,8 @@ case class ElasticSearchNode(address: String) {
         )
         .post(new FormBody.Builder().build())
         .build()
-    http.newCall(request).execute()
+    val result = http.newCall(request).execute()
+    result.body().close()
   }
 }
 
