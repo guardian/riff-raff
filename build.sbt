@@ -3,7 +3,7 @@ import Helpers._
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.11.9",
+  scalaVersion := "2.12.2",
   scalacOptions ++= Seq("-deprecation", "-feature","-language:postfixOps,reflectiveCalls,implicitConversions"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),

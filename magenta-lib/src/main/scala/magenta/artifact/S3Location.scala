@@ -5,7 +5,6 @@ import java.io.File
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
-import dispatch.classic./
 import magenta.json.JsonInputFile
 import magenta.{Build, DeployReporter}
 import play.api.libs.json.{JsPath, JsonValidationError}
@@ -132,7 +131,7 @@ object S3JsonArtifact extends Loggable {
     reporter.info("Converting artifact.zip to S3 layout")
     implicit val sourceBucket: Option[String] = Some(artifact.bucket)
     S3ZipArtifact.withDownload(artifact){ dir =>
-      val filesToUpload = resolveFiles(dir, artifact.key)
+      val filesToUpload = resolveFiles(dir.toFile, artifact.key)
       reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
       filesToUpload.foreach{ case (file, key) =>
         val metadata = new ObjectMetadata()

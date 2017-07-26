@@ -11,11 +11,12 @@ import com.amazonaws.services.s3.model.CannedAccessControlList._
 import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import com.amazonaws.util.IOUtils
 import com.gu.management.Loggable
-import dispatch.classic._
 import magenta.artifact._
 import magenta.deployment_type.param_reads.PatternValue
+import okhttp3._
 
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 case class S3Upload(
   region: Region,
@@ -178,11 +179,36 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = {
     reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
-    Http(url(switchboardUrl) << Map(switchName -> desiredStateName) >|)
+
+    val request = new Request.Builder()
+      .url(
+        HttpUrl.parse(switchboardUrl).newBuilder()
+          .addQueryParameter(switchName, desiredStateName).build()
+      )
+      .post(new FormBody.Builder().build())
+      .build()
+
+    try {
+      reporter.verbose(s"Changing switch with request: $request")
+      val result = ChangeSwitch.client.newCall(request).execute()
+      if (result.code() != 200) {
+        reporter.fail(
+          s"Couldn't set $switchName to $desiredState, status was ${result.code}:\n${result.body().string()}")
+      }
+      result.body().close()
+    } catch {
+      case NonFatal(t) => {
+        reporter.fail(s"Couldn't set $switchName to $desiredState", t)
+      }
+    }
   }
 
   def verbose: String = s"$description using switchboard at $switchboardUrl"
   def description: String = s"$switchName to $desiredStateName"
+}
+
+object ChangeSwitch {
+  val client = new OkHttpClient()
 }
 
 case class UpdateLambda(
@@ -219,4 +245,3 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
   }
 
 }
-

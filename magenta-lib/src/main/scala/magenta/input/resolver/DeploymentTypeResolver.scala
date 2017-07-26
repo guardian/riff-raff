@@ -23,9 +23,9 @@ object DeploymentTypeResolver {
     invalidActions.map(invalids => Invalid(
       ConfigErrors(deployment.name, s"Invalid action ${invalids.toList.mkString(", ")} for type ${deployment.`type`}"))
     ).getOrElse {
-      import automagic._
+      import henkan.convert.Syntax._
       Validated.fromOption(actions.map(as =>
-        transform[PartiallyResolvedDeployment, Deployment](deployment, "actions" -> as)
+        deployment.to[Deployment].set(actions = as)
       ), ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))
     }
   }
