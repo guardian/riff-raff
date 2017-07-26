@@ -72,7 +72,9 @@ sealed trait S3Error
 case class EmptyS3Location(location: S3Location) extends S3Error
 case class UnknownS3Error(exception: Throwable) extends S3Error
 
-case class S3Path(bucket: String, key: String) extends S3Location
+case class S3Path(bucket: String, key: String) extends S3Location {
+  def show(): String = s"Bucket: '$bucket', Key: '$key'"
+}
 
 object S3Path {
   def apply(location: S3Location, key: String): S3Path = {
