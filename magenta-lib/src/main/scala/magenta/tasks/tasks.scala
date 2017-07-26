@@ -53,6 +53,14 @@ case class S3Upload(
 
   // execute this task (should throw on failure)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    if (totalSize == 0) {
+      val locationDescription = (paths.map {
+        case (path: S3Path, _) => path.show()
+        case (location, _) => location.toString()
+      }).mkString("\n")
+      reporter.warning(s"No files found to upload in $locationDescription")
+    }
+
     val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
