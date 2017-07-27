@@ -1,7 +1,7 @@
 package magenta.artifact
 
 import collection.JavaConverters._
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, StandardCopyOption}
 
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.AmazonS3Exception
@@ -26,7 +26,7 @@ object S3ZipArtifact {
 
     val artifactPath = Files.createTempFile("riffraff-artifact-", ".zip")
     try {
-      Files.copy(client.getObject(path.bucket, path.key).getObjectContent, artifactPath)
+      Files.copy(client.getObject(path.bucket, path.key).getObjectContent, artifactPath, StandardCopyOption.REPLACE_EXISTING)
 
       CommandLine("unzip" :: "-q" :: "-d" :: dir.toAbsolutePath.toString :: artifactPath.toAbsolutePath.toString :: Nil).run(reporter)
 
