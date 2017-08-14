@@ -4,7 +4,7 @@ import java.util.UUID
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
-import akka.agent.Agent
+import com.gu.Box
 import controllers.Logging
 import deployment.Record
 
@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 
 class DeployCoordinator(
   val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef) => ActorRef,
-  maxDeploys: Int, stopFlagAgent: Agent[Map[UUID, String]]
+  maxDeploys: Int, stopFlagAgent: Box[Map[UUID, String]]
 ) extends Actor with Logging {
 
   override def supervisorStrategy() = OneForOneStrategy() {

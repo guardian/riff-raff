@@ -3,7 +3,7 @@ package deployment.actors
 import java.util.UUID
 
 import akka.actor.Actor
-import akka.agent.Agent
+import com.gu.Box
 import controllers.Logging
 import magenta.{DeployReporter, DeployStoppedException}
 import magenta.graph.DeploymentTasks
@@ -11,7 +11,7 @@ import org.joda.time.DateTime
 
 import scala.util.control.NonFatal
 
-class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
+class TasksRunner(stopFlagAgent: Box[Map[UUID, String]]) extends Actor with Logging {
   import DeployMetricsActor._
   import TasksRunner._
 
