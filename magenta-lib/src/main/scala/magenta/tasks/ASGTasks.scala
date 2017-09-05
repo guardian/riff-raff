@@ -35,13 +35,33 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
 }
 
-case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask with SlowRepeatedPollingCheck {
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
-    val targetCapacity = asg.getDesiredCapacity * 2
+
+    val targetCapacity: Int = asg.getDesiredCapacity * 2
     reporter.verbose(s"Doubling capacity to $targetCapacity")
     ASG.desiredCapacity(asg.getAutoScalingGroupName, targetCapacity, asgClient)
+
+      check(reporter, stopFlag) {
+          try {
+            val same = asg.getDesiredCapacity == targetCapacity
+            if (!same) {
+              reporter.verbose("Failed to double ASG capacity. Will attempt again.")
+              ASG.desiredCapacity(asg.getAutoScalingGroupName, targetCapacity, asgClient)
+            }
+            same
+          } catch {
+            case e: AmazonServiceException if isRateExceeded(e) => {
+              reporter.info(e.getMessage)
+              false
+            }
+          }
+      }
+
   }
+
+  def isRateExceeded(e: AmazonServiceException) = e.getStatusCode == 400 && e.getErrorCode == "Throttling"
 
   lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for apps ${pkg.apps.mkString(", ")}"
 }
@@ -145,7 +165,7 @@ trait ASGTask extends Task {
 
   def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling)
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = {
     val asgClient = ASG.makeAsgClient(keyRing, region)
     val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, reporter)
     execute(group, reporter, stopFlag, asgClient)

@@ -24,7 +24,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
       true, deploymentTypes)
 
-    val task = new DoubleSize(p, Stage("PROD"), UnnamedStack, Region("eu-west-1"))
+    val task = new DoubleSize(p, Stage("PROD"), UnnamedStack, 3 * 60 * 1000, Region("eu-west-1"))
 
     task.execute(asg, reporter, false, asgClientMock)
 
