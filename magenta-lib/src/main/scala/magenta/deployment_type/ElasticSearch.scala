@@ -44,7 +44,7 @@ object ElasticSearch extends DeploymentType {
       WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
       TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
-      DoubleSize(pkg, parameters.stage, stack, target.region),
+      DoubleSize(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)

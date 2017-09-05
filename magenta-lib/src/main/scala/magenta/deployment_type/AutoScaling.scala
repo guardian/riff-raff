@@ -106,7 +106,7 @@ object AutoScaling  extends DeploymentType {
       CheckGroupSize(pkg, parameters.stage, stack, target.region),
       SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
       TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
-      DoubleSize(pkg, parameters.stage, stack, target.region),
+      DoubleSize(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       HealthcheckGrace(pkg, parameters.stage, stack, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
       WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
       WarmupGrace(pkg, parameters.stage, stack, target.region, warmupGrace(pkg, target, reporter) * 1000),
