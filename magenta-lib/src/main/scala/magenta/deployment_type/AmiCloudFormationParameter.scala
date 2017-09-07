@@ -11,6 +11,8 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
       |Given AMI tags, this will resolve the latest matching AMI and update the AMI parameter
       |on the provided CloudFormation stack.
       |
+      |You will need to add this as a dependency to your autoscaling deploy in your riff-raff.yaml to guard against race conditions.
+      |
       |The set of AWS permissions needed to let RiffRaff do an AMI updates are:
       |
       |    {

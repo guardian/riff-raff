@@ -112,8 +112,17 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
     implicit val elbClient = ELB.client(keyRing, region)
     val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
-    reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")
-    orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
+    try {
+      reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")
+      orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
+    } catch {
+      case e: AmazonServiceException if desiredSizeReset(e) => {
+        reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
+        throw new ASGResetException(e)
+      }
+    }
+
+    def desiredSizeReset(e: AmazonServiceException) = e.getStatusCode == 400 && e.getErrorCode == "ValidationError"
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"
@@ -136,6 +145,8 @@ case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack:
 
   lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
 }
+
+class ASGResetException(val throwable: Throwable) extends Throwable("", throwable)
 
 trait ASGTask extends Task {
   def region: Region

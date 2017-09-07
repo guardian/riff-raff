@@ -13,7 +13,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
-      |mean-time.
+      |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
+      |in your riff-raff.yaml.
       |
       |This deployment type is not currently recommended for continuous deployment, as CloudFormation
       |will fail if you try to update a CloudFormation stack with a configuration that matches its
