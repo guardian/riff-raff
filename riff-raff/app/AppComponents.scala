@@ -1,4 +1,4 @@
-import ci.{Builds, CIBuildPoller, ContinuousDeployment}
+import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
 import com.gu.googleauth.AuthAction
 import controllers._
 import deployment.preview.PreviewCoordinator
@@ -38,6 +38,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, conf.Configuration.deprecation.pauseSeconds)
   val buildPoller = new CIBuildPoller(executionContext)
   val builds = new Builds(buildPoller)
+  val targetResolver = new TargetResolver(buildPoller, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine, builds)
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
@@ -58,6 +59,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val previewController = new PreviewController(previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
   val hooksController = new HooksController(prismLookup, authAction, controllerComponents)
   val restrictionsController = new Restrictions(authAction, controllerComponents)
+  val targetController = new TargetController(authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
   val testingController = new Testing(prismLookup, authAction, controllerComponents)
 
@@ -78,6 +80,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     continuousDeployController,
     hooksController,
     restrictionsController,
+    targetController,
     loginController,
     testingController,
     assets
