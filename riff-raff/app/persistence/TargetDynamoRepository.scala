@@ -1,12 +1,17 @@
 package persistence
 
 import ci.Target
+import com.amazonaws.services.dynamodbv2.model.PutItemResult
 import com.gu.scanamo.Table
+import org.joda.time.DateTime
 
-case class TargetId(key: String, region: String, stack: String, app: String, id: String)
+case class TargetId(id: String, targetKey: String, region: String, stack: String, app: String, projectName: String, lastSeen: DateTime)
 object TargetId {
-  def apply(tgt: Target, id: String): TargetId = TargetId(key(tgt), tgt.region, tgt.stack, tgt.app, id)
-  def key(tgt: Target) = s"${tgt.region}|${tgt.stack}|${tgt.app}"
+  def apply(tgt: Target, projectName: String, lastSeen: DateTime): TargetId =
+    TargetId(id(tgt, projectName), targetKey(tgt), tgt.region, tgt.stack, tgt.app, projectName, lastSeen)
+  /* Concatenating to make a composite key is pretty 💩, so using 💩 as a separator. #UTF8FTW */
+  def targetKey(tgt: Target) = Seq(tgt.region,tgt.stack,tgt.app).mkString("💩")
+  def id(tgt: Target, projectName: String) = Seq(tgt.region,tgt.stack,tgt.app,projectName).mkString("💩")
 }
 
 object TargetDynamoRepository extends DynamoRepository {
@@ -15,15 +20,12 @@ object TargetDynamoRepository extends DynamoRepository {
 
   import com.gu.scanamo.syntax._
 
-  /* not sure this is ideal, we only store one result and not that 'safely'... */
-  def set(target: Target, id: String): Unit = exec(table.put(TargetId(target, id)))
-  def getId(target: Target): Option[String] = {
-    val key = TargetId.key(target)
-    exec(table.get('id -> key)).flatMap(_.toOption).map(_.id)
+  def set(target: Target, projectName: String, lastSeen: DateTime): PutItemResult = exec(table.put(TargetId(target, projectName, lastSeen)))
+
+  def getProjectName(target: Target): List[TargetId] = {
+    val key = TargetId.targetKey(target)
+    exec(table.index("riffraff-targets-targetKey").query('targetKey -> key)).flatMap(_.toOption)
   }
 
-  def getAll: Seq[(Target, String)] =
-    exec(table.scan()).flatMap(_.toOption).map{ targetId =>
-      Target(targetId.region, targetId.stack, targetId.app) -> targetId.id
-    }
+  def getAll: Seq[TargetId] = exec(table.scan()).flatMap(_.toOption)
 }

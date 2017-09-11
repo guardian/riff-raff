@@ -75,7 +75,7 @@ object ContinuousDeployment extends Logging {
     val (config,build) = configBuildTuple
     DeployParameters(
       Deployer("Continuous Deployment"),
-      MagentaBuild(build.jobName,build.number),
+      build.toMagentaBuild,
       Stage(config.stage),
       RecipeName(config.recipe)
     )

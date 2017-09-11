@@ -11,7 +11,14 @@ class TargetController(authAction: AuthAction[AnyContent], val controllerCompone
   extends BaseController with Logging with I18nSupport {
 
   def findDeployFor(region: String, stack: String, app: String) = authAction {
-    val targetProject = TargetDynamoRepository.getId(Target(region, stack, app))
-    targetProject.fold(NotFound(s"No project for $region, $stack, $app"))(Ok(_))
+    val targetIds = TargetDynamoRepository.getProjectName(Target(region, stack, app))
+    targetIds match {
+      case Nil => NotFound(s"No project for $region, $stack, $app")
+      case nonEmpty => Ok(nonEmpty.mkString("; "))
+    }
+  }
+
+  def deployFor(region: String, stack: String, app: String, stage: String) = authAction {
+    Ok("")
   }
 }
