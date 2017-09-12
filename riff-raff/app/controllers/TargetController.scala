@@ -24,8 +24,8 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
     val targetIds = TargetDynamoRepository.get(target)
     targetIds match {
       case singleton :: Nil => Redirect(routes.TargetController.selectRecentVersion(singleton.id, stage))
-      case Nil => NotFound(views.html.target.noMatchForTarget(target, request))
-      case multiple => Ok(views.html.target.selectTarget(target, multiple.sortBy(-_.lastSeen.getMillis), stage, request))
+      case Nil => NotFound(views.html.deployTarget.noMatchForTarget(target, request))
+      case multiple => Ok(views.html.deployTarget.selectTarget(target, multiple.sortBy(-_.lastSeen.getMillis), stage, request))
     }
   }
 
@@ -35,7 +35,7 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
       // find recent deploys of this project / stage
       val filter = DeployFilter(projectName = Some(s"^${targetId.projectName}$$"), stage = Some(stage))
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(20))).reverse
-      Ok(views.html.target.selectVersion(targetId, stage, records, request))
+      Ok(views.html.deployTarget.selectVersion(targetId, stage, records, request))
     }.getOrElse(NotFound(s"No target found for $targetId"))
   }
 }

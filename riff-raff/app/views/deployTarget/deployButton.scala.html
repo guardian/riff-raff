@@ -1,0 +1,5 @@
+@import deployment.Record
+@(record: Record)
+
+<a class="btn btn-primary btn-xs" href="@routes.DeployController.deployAgainUuid(record.uuid.toString)">
+    Redeploy…</a>

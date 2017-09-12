@@ -1,0 +1,34 @@
+@import persistence.TargetId
+@import ci.Target
+@(target: Target, targetIds: List[TargetId], stage: String, request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+
+@main("Select appropriate deploy project", request) {
+    <h3>Select appropriate deploy project</h3>
+    <p>Multiple matches found for <span class='label label-primary'><span class='glyphicon glyphicon-book'></span> @target.app</span>
+        in <span class='label label-info'>
+            <span class='glyphicon glyphicon-globe'></span> @target.region
+            <span class='glyphicon glyphicon-tasks'></span> @target.stack
+        </span>
+    </p>
+    <h4>Select from:</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Project Name</th>
+                    <th>Last seen</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+    @targetIds.map { targetId =>
+                <tr>
+                    <td>@targetId.projectName</td>
+                    <td><time class="makeRelativeDate" withinhours="24" datetime="@targetId.lastSeen">@utils.DateFormats.Medium.print(targetId.lastSeen)</time></td>
+                    <td>
+                        <a class="btn btn-primary btn-xs" href="@routes.TargetController.selectRecentVersion(targetId.id, stage)">Deploy…</a>
+                    </td>
+                </tr>
+    }
+            </tbody>
+        </table>
+}
