@@ -3,7 +3,7 @@ package deployment
 import java.util.UUID
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
+import com.gu.Box
 import com.typesafe.config.ConfigFactory
 import controllers.Logging
 import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
@@ -64,5 +64,5 @@ object DeploymentEngine {
 
   private lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
 
-  private lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
+  private lazy val stopFlagAgent = Box(Map.empty[UUID, String])
 }

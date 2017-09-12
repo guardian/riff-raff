@@ -1,7 +1,7 @@
 package utils
 
 import akka.actor.{Cancellable, ActorSystem}
-import akka.agent.Agent
+import com.gu.Box
 import controllers.Logging
 import lifecycle.Lifecycle
 import scala.concurrent.duration._
@@ -71,10 +71,10 @@ object DailyScheduledAgentUpdate {
 
 class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: ScheduledAgentUpdate[T]*) extends Logging {
 
-  val agent = Agent[T](initialValue)(system.dispatcher)
+  val agent = Box[T](initialValue)
   implicit val executionContext = system.dispatcher
 
-  val cancellablesAgent = Agent[Map[ScheduledAgentUpdate[T],Cancellable]]{
+  val cancellablesAgent = Box[Map[ScheduledAgentUpdate[T],Cancellable]]{
     updates.map { update =>
       val cancellable = update match {
         case periodic:PeriodicScheduledAgentUpdate[_] =>
@@ -86,7 +86,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
       }
       update -> cancellable
     }.toMap
-  }(system.dispatcher)
+  }
 
   def scheduleNext(update: DailyScheduledAgentUpdate[T]): Cancellable = {
     val delay = update.timeToNextExecution
@@ -99,7 +99,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
   }
 
   def queueUpdate(update: ScheduledAgentUpdate[T]) {
-    agent sendOff{ lastValue =>
+    agent send { lastValue =>
       try {
         update.block(lastValue)
       } catch {

@@ -3,7 +3,7 @@ package deployment.actors
 import java.util.UUID
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
+import com.gu.Box
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
 import deployment.{Fixtures, Record}
@@ -101,7 +101,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
   def createDeployCoordinator(maxDeploys: Int = 5) = {
     val deployGroupProbe = TestProbe()
     val deployGroupRunnerFactory = (_: ActorRefFactory, record: Record, _: ActorRef) => deployGroupProbe.ref
-    val stopFlagAgent = Agent(Map.empty[UUID, String])
+    val stopFlagAgent = Box(Map.empty[UUID, String])
     val ref = system.actorOf(Props(classOf[DeployCoordinator], deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
     DC(deployGroupProbe, ref)
   }
@@ -115,7 +115,7 @@ class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest",
       deployRunnerRecords.add(record)
       deployProbe.ref
     }
-    val stopFlagAgent = Agent(Map.empty[UUID, String])
+    val stopFlagAgent = Box(Map.empty[UUID, String])
     val ref = TestActorRef(new DeployCoordinator(deployGroupRunnerFactory, maxDeploys, stopFlagAgent))
     DCwithUnderlying(deployProbe, ref, ref.underlyingActor, deployRunnerRecords)
   }
