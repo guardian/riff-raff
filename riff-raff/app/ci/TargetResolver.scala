@@ -17,7 +17,7 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
   val poller = ciBuildPoller.newBuilds.subscribe { build =>
     val result = for {
       yaml <- fetchYaml(build)
-      deployGraph <- Resolver.resolveDeploymentGraph(yaml._2, deploymentTypes, All).toEither
+      deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, All).toEither
       targets = extractTargets(deployGraph)
     } yield {
       targets.map{ t =>
@@ -44,11 +44,10 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
     }
   }
 
-  def fetchYaml(build: CIBuild): Either[S3Error, (S3Path, String)] = {
+  def fetchYaml(build: CIBuild): Either[S3Error, String] = {
     val artifact = S3YamlArtifact(build.toMagentaBuild, Configuration.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
-    val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
-    deployObjectContent.map(deployObjectPath -> _)
+    S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
   }
 
   def extractTargets(graph: Graph[Deployment]): Set[Target] = {
