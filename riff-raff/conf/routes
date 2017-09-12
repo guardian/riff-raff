@@ -76,7 +76,9 @@ GET         /deployment/restrictions/edit                   controllers.Restrict
 POST        /deployment/restrictions/delete                 controllers.Restrictions.delete(id)
 
 # Target
-GET         /deployment/target                              controllers.TargetController.findDeployFor(region: String, stack: String, app: String)
+GET         /deployment/target/find                         controllers.TargetController.findMatch(region: String, stack: String, app: String)
+GET         /deployment/target/deploy                       controllers.TargetController.findAppropriateDeploy(region: String, stack: String, app: String, stage: String)
+GET         /deployment/target/select                       controllers.TargetController.selectRecentVersion(targetId: String, stage: String)
 
 # authentication endpoints
 GET         /profile                                        controllers.Login.profile

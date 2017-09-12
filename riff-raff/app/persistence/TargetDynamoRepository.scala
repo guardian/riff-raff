@@ -22,7 +22,11 @@ object TargetDynamoRepository extends DynamoRepository {
 
   def set(target: Target, projectName: String, lastSeen: DateTime): PutItemResult = exec(table.put(TargetId(target, projectName, lastSeen)))
 
-  def getProjectName(target: Target): List[TargetId] = {
+  def get(id: String): Option[TargetId] = {
+    exec(table.get('id -> id)).flatMap(_.toOption)
+  }
+
+  def get(target: Target): List[TargetId] = {
     val key = TargetId.targetKey(target)
     exec(table.index("riffraff-targets-targetKey").query('targetKey -> key)).flatMap(_.toOption)
   }
