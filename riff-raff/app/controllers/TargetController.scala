@@ -23,19 +23,19 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
     val target = Target(region, stack, app)
     val targetIds = TargetDynamoRepository.get(target)
     targetIds match {
-      case singleton :: Nil => Redirect(routes.TargetController.selectRecentVersion(singleton.id, stage))
+      case singleton :: Nil => Redirect(routes.TargetController.selectRecentVersion(singleton.targetKey, singleton.projectName, stage))
       case Nil => NotFound(views.html.deployTarget.noMatchForTarget(target, request))
       case multiple => Ok(views.html.deployTarget.selectTarget(target, multiple.sortBy(-_.lastSeen.getMillis), stage, request))
     }
   }
 
-  def selectRecentVersion(targetId: String, stage: String) = authAction { request =>
-    val maybeTargetId = TargetDynamoRepository.get(targetId)
+  def selectRecentVersion(targetKey: String, projectName: String, stage: String) = authAction { request =>
+    val maybeTargetId = TargetDynamoRepository.get(targetKey, projectName)
     maybeTargetId.map { targetId =>
       // find recent deploys of this project / stage
       val filter = DeployFilter(projectName = Some(s"^${targetId.projectName}$$"), stage = Some(stage))
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(20))).reverse
       Ok(views.html.deployTarget.selectVersion(targetId, stage, records, request))
-    }.getOrElse(NotFound(s"No target found for $targetId"))
+    }.getOrElse(NotFound(s"No target found for $targetKey and $projectName"))
   }
 }

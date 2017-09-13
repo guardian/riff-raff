@@ -29,7 +29,7 @@
                     <td>@targetId.projectName</td>
                     <td><time class="makeRelativeDate" withinhours="24" datetime="@targetId.lastSeen">@utils.DateFormats.Medium.print(targetId.lastSeen)</time></td>
                     <td>
-                        <a class="btn btn-primary btn-xs" href="@routes.TargetController.selectRecentVersion(targetId.id, stage)">Deploy…</a>
+                        <a class="btn btn-primary btn-xs" href="@routes.TargetController.selectRecentVersion(targetId.targetKey, targetId.projectName, stage)">Deploy…</a>
                     </td>
                 </tr>
     }
