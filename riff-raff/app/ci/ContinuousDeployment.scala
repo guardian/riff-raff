@@ -22,7 +22,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
     }
   }
 
-  def cdConfigs = retryUpTo(5)((() => getContinuousDeploymentList())).getOrElse{
+  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
     log.error("Failed to retrieve CD configs")
     Nil
   }

@@ -3,7 +3,7 @@ package deployment
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import com.gu.Box
+import akka.agent.Agent
 import akka.util.Switch
 import ci._
 import com.gu.management.DefaultSwitch
@@ -60,7 +60,7 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
-    library send { _ + (uuid -> Box(record)) }
+    library send { _ + (uuid -> Agent(record)) }
     DocumentStoreConverter.saveDeploy(record)
     await(uuid)
   }
@@ -132,7 +132,7 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
 
   implicit val system = ActorSystem("deploy")
 
-  val library = Box(Map.empty[UUID,Box[DeployRecord]])
+  val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
   def update(wrapper: MessageWrapper) {
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
@@ -157,8 +157,8 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
 
   def cleanup(uuid: UUID) {
     log.debug(s"Queuing removal of deploy record $uuid from internal caches")
-    library send { allDeploys =>
-      val record = allDeploys(uuid).get()
+    library sendOff { allDeploys =>
+      val record = Await.result(allDeploys(uuid).future(), 10 seconds)
       log.debug(s"Done removing deploy record $uuid from internal caches")
       allDeploys - record.uuid
     }
@@ -166,7 +166,9 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
   }
 
   def firePostCleanup(uuid: UUID) {
-    deployCompleteSubject.onNext(uuid)
+    library.future().onComplete{ _ =>
+      deployCompleteSubject.onNext(uuid)
+    }
   }
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =

@@ -3,7 +3,7 @@ package deployment.actors
 import java.util.UUID
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import com.gu.Box
+import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import deployment.{Fixtures, Record}
 import magenta.deployment_type.DeploymentType
@@ -120,13 +120,13 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     def ref: ActorRef
   }
 
-  case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Box[Map[UUID, String]]) extends DR
+  case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]]) extends DR
 
   def createDeployRunner(): DRImpl = {
     val deployCoordinatorProbe = TestProbe()
     val deploymentRunnerProbe = TestProbe()
     val deploymentRunnerFactory = (context: ActorRefFactory, name: String) => deploymentRunnerProbe.ref
-    val stopFlagAgent = Box(Map.empty[UUID, String])
+    val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = system.actorOf(
       Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
@@ -136,14 +136,14 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
   }
 
-  case class DRwithUnderlying(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Box[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
+  case class DRwithUnderlying(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
   }
 
   def createDeployRunnerWithUnderlying(): DRwithUnderlying = {
     val deployCoordinatorProbe = TestProbe()
     val deploymentRunnerProbe = TestProbe()
     val deploymentRunnerFactory = (context: ActorRefFactory, name: String) => deploymentRunnerProbe.ref
-    val stopFlagAgent = Box(Map.empty[UUID, String])
+    val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = TestActorRef(
       new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,

@@ -3,7 +3,7 @@ package deployment
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import com.gu.Box
+import akka.agent.Agent
 import conf.Configuration
 import controllers.routes
 import magenta.artifact.{S3JsonArtifact, S3YamlArtifact}
@@ -28,7 +28,7 @@ case class LegacyPreviewResult(future: Future[LegacyPreview], startTime: DateTim
 
 object LegacyPreviewController {
   implicit lazy val system = ActorSystem("preview")
-  val agent = Box[Map[UUID, LegacyPreviewResult]](Map.empty)
+  val agent = Agent[Map[UUID, LegacyPreviewResult]](Map.empty)
 
   def cleanupPreviews() {
     agent.send { resultMap =>
