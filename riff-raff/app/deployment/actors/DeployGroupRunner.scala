@@ -4,7 +4,7 @@ import java.util.UUID
 
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
-import com.gu.Box
+import akka.agent.Agent
 import cats.data.Validated.{Invalid, Valid}
 import controllers.Logging
 import deployment.Record
@@ -23,7 +23,7 @@ class DeployGroupRunner(
   record: Record,
   deployCoordinator: ActorRef,
   deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
-  stopFlagAgent: Box[Map[UUID, String]],
+  stopFlagAgent: Agent[Map[UUID, String]],
   prismLookup: PrismLookup,
   deploymentTypes: Seq[DeploymentType],
   deprecatedPause: Option[Int]
