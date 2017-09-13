@@ -53,6 +53,16 @@ lazy val riffraff = project.in(file("riff-raff"))
     resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
     libraryDependencies ++= riffRaffDeps,
 
+    javaOptions in Universal ++= Seq(
+      s"-Dpidfile.path=/dev/null",
+      "-J-XX:MaxRAMFraction=2",
+      "-J-XX:InitialRAMFraction=2",
+      "-J-XX:MaxMetaspaceSize=300m",
+      "-J-XX:+PrintGCDetails",
+      "-J-XX:+PrintGCDateStamps",
+      s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
+    ),
+
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
     riffRaffPackageType := (packageZipTarball in Universal).value,
