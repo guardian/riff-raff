@@ -12,7 +12,7 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
   extends BaseController with Logging with I18nSupport {
 
   def findMatch(region: String, stack: String, app: String) = authAction {
-    val targetIds = TargetDynamoRepository.get(Target(region, stack, app))
+    val targetIds = TargetDynamoRepository.find(Target(region, stack, app))
     targetIds match {
       case Nil => NotFound(s"No project for $region, $stack, $app")
       case nonEmpty => Ok(nonEmpty.mkString("; "))
@@ -21,7 +21,7 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
 
   def findAppropriateDeploy(region: String, stack: String, app: String, stage: String) = authAction { request =>
     val target = Target(region, stack, app)
-    val targetIds = TargetDynamoRepository.get(target)
+    val targetIds = TargetDynamoRepository.find(target)
     targetIds match {
       case singleton :: Nil => Redirect(routes.TargetController.selectRecentVersion(singleton.targetKey, singleton.projectName, stage))
       case Nil => NotFound(views.html.deployTarget.noMatchForTarget(target, request))

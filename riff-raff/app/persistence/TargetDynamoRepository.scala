@@ -27,7 +27,7 @@ object TargetDynamoRepository extends DynamoRepository {
     exec(table.get('targetKey -> targetKey and 'projectName -> projectName)).flatMap(_.toOption)
   }
 
-  def get(target: Target): List[TargetId] = {
+  def find(target: Target): List[TargetId] = {
     val key = TargetId.targetKey(target)
     exec(table.query('targetKey -> key))
       .flatMap(_.toOption)
