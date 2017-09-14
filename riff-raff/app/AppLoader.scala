@@ -29,6 +29,8 @@ class AppLoader extends ApplicationLoader {
     val lifecycleSingletons = Seq(
       ScheduledAgent,
       components.deployments,
+      components.builds,
+      components.targetResolver,
       DeployMetrics,
       hooksClient,
       SummariseDeploysHousekeeping,

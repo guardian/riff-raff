@@ -6,6 +6,7 @@ import conf.Configuration
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import controllers.Logging
+import magenta.Build
 import magenta.artifact.S3Object
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,6 +18,7 @@ trait CIBuild {
   def number: String
   def id: Long
   def startTime: DateTime
+  def toMagentaBuild: Build = Build(jobName, number)
 }
 
 object CIBuild {
