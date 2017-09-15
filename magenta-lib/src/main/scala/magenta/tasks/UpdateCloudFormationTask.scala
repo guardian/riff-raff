@@ -290,7 +290,7 @@ case class CheckUpdateEventsTask(
     def updateComplete(stackName: String)(e: StackEvent): Boolean =
       isStackEvent(stackName)(e) && (e.getResourceStatus == "UPDATE_COMPLETE" || e.getResourceStatus == "CREATE_COMPLETE")
 
-    def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED")
+    def failed(e: StackEvent): Boolean = e.getResourceStatus.contains("FAILED") || e.getResourceStatus.contains("ROLLBACK")
 
     def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
       s"""${e.getLogicalResourceId}(${e.getResourceType}}: ${e.getResourceStatus}
