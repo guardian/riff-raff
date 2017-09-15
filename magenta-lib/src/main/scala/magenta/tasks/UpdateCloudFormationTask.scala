@@ -27,7 +27,8 @@ trait RetryCloudFormationUpdate {
       try {
         Some(theUpdate)
       } catch {
-        case e:AmazonCloudFormationException if e.getMessage.contains("is in UPDATE_IN_PROGRESS state and can not be updated") =>
+        // this isn't great, but it seems to be the best that we can realistically do
+        case e:AmazonCloudFormationException if e.getErrorMessage.matches("^Stack:.* is in [A-Z_]* state and can not be updated.") =>
           if (stopFlag) {
             reporter.info("Abandoning remaining checks as stop flag has been set")
             None
@@ -35,13 +36,17 @@ trait RetryCloudFormationUpdate {
             val remainingTime = expiry - System.currentTimeMillis()
             if (remainingTime > 0) {
               val sleepyTime = calculateSleepTime(currentAttempt)
-              reporter.verbose(f"Another update is running against this cloudformation stack, waiting for it to finish (tried $currentAttempt%s, will try again in ${sleepyTime.toFloat/1000}%.1f, will give up in ${remainingTime.toFloat/1000}%.1f")
+              reporter.verbose(f"Another update is running against this cloudformation stack, waiting for it to finish (tried $currentAttempt%s, will try again in ${sleepyTime.toFloat/1000}%.1f, will give up in ${remainingTime.toFloat/1000}%.1f)")
               Thread.sleep(sleepyTime)
               updateAttempt(currentAttempt + 1)
             } else {
               reporter.fail(s"Update is still running after $duration milliseconds (tried $currentAttempt times) - aborting")
             }
           }
+        case e:AmazonCloudFormationException =>
+          // this might be useful for debugging in the future if a message is seen that we don't catch
+          reporter.verbose(e.getErrorMessage)
+          throw e
       }
     }
     updateAttempt(1)
