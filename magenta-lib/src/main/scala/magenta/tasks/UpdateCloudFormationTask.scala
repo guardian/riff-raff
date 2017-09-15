@@ -1,17 +1,52 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.cloudformation.model.StackEvent
+import com.amazonaws.services.cloudformation.model.{AmazonCloudFormationException, StackEvent}
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{DeploymentPackage, DeployReporter, DeployTarget, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 
 import scala.collection.convert.wrapAsScala._
+
+/**
+  * A simple trait to aid with attempting an update multiple times in the case that an update is already running.
+  */
+trait RetryCloudFormationUpdate {
+  def duration: Long = 15 * 60 * 1000 // wait fifteen minutes
+  def calculateSleepTime(currentAttempt: Int): Long = 30 * 1000 // sleep 30 seconds
+
+  def updateWithRetry[T](reporter: DeployReporter, stopFlag: => Boolean)(theUpdate: => T): Option[T] = {
+    val expiry = System.currentTimeMillis() + duration
+
+    def updateAttempt(currentAttempt: Int): Option[T] = {
+      try {
+        Some(theUpdate)
+      } catch {
+        case e:AmazonCloudFormationException if e.getMessage.contains("is in UPDATE_IN_PROGRESS state and can not be updated") =>
+          if (stopFlag) {
+            reporter.info("Abandoning remaining checks as stop flag has been set")
+            None
+          } else {
+            val remainingTime = expiry - System.currentTimeMillis()
+            if (remainingTime > 0) {
+              val sleepyTime = calculateSleepTime(currentAttempt)
+              reporter.verbose(f"Another update is running against this cloudformation stack, waiting for it to finish (tried $currentAttempt%s, will try again in ${sleepyTime.toFloat/1000}%.1f, will give up in ${remainingTime.toFloat/1000}%.1f")
+              Thread.sleep(sleepyTime)
+              updateAttempt(currentAttempt + 1)
+            } else {
+              reporter.fail(s"Update is still running after $duration milliseconds (tried $currentAttempt times) - aborting")
+            }
+          }
+      }
+    }
+    updateAttempt(1)
+  }
+}
 
 object UpdateCloudFormationTask {
   case class TemplateParameter(key:String, default:Boolean)
@@ -146,7 +181,7 @@ case class UpdateCloudFormationTask(
     maybeCfStack match {
       case Some(cloudFormationStackName) =>
         try {
-          CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
+            CloudFormation.updateStack(cloudFormationStackName.getStackName, template, parameters, cfnClient)
         } catch {
           case ase:AmazonServiceException if ase.getMessage contains "No updates are to be performed." =>
             reporter.info("Cloudformation update has no changes to template or parameters")
@@ -175,7 +210,7 @@ case class UpdateAmiCloudFormationParameterTask(
   amiParameterMap: Map[CfnParam, TagCriteria],
   latestImage: String => Map[String, String] => Option[String],
   stage: Stage,
-  stack: Stack)(implicit val keyRing: KeyRing) extends Task {
+  stack: Stack)(implicit val keyRing: KeyRing) extends Task with RetryCloudFormationUpdate {
 
   import UpdateCloudFormationTask._
 
@@ -216,7 +251,9 @@ case class UpdateAmiCloudFormationParameterTask(
     if (resolvedAmiParameters.nonEmpty) {
       val newParameters = existingParameters ++ resolvedAmiParameters
       reporter.info(s"Updating cloudformation stack params: $newParameters")
-      CloudFormation.updateStackParams(cfStack.getStackName, newParameters, cfnClient)
+      updateWithRetry(reporter, stopFlag) {
+        CloudFormation.updateStackParams(cfStack.getStackName, newParameters, cfnClient)
+      }
     } else {
       reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
     }
