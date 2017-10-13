@@ -195,9 +195,9 @@ class DeployGroupRunner(
         val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
         val json = S3JsonArtifact.fetchInputFile(s3Artifact, deprecatedPause)
         val project = json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
-        safeReporter.warning(
-          """DEPRECATED: deploy.json is no longer a supported format for deployment configuration. Please migrate to
-            |riff-raff.yaml. Support will be removed at the end of September 2017.""".stripMargin)
+        safeReporter.fail(
+          """NO LONGER SUPPORTED: deploy.json is no longer a supported format for deployment configuration. Please
+            |migrate to riff-raff.yaml.""".stripMargin)
         deprecatedPause.foreach { pause =>
           safeReporter.warning(s"To persuade you to migrate we will now pause this deploy for $pause seconds whilst you reflect on your ways.")
           Thread.sleep(pause * 1000)
