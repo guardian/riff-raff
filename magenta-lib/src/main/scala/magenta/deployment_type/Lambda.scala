@@ -115,7 +115,7 @@ object Lambda extends DeploymentType  {
   }
 
   def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
-    List(stack.nameOption, Some(params.stage.name), Some(pkg.name), Some(fileName)).flatten.mkString("/")
+    List(stack.nameOption, Some(params.stage.name), pkg.apps.headOption.map(_.name), Some(fileName)).flatten.mkString("/")
   }
 
   val uploadLambda = Action("uploadLambda",
