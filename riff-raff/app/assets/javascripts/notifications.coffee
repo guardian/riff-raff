@@ -8,8 +8,8 @@ checkStatus = () ->
     stage = window.riffraff.stage
     buildId = window.riffraff.buildId
     switch $('[data-run-state]').data('run-state')
-      when 'Failed' then notify('Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has failed!')
-      when 'Completed' then notify('Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has finished')
+      when 'Failed' then notify('❌ Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has failed!')
+      when 'Completed' then notify('👍 Deployment of ' + buildName + ' (' + buildId + ')' + ' in ' + stage + ' has succeeded')
 
 if !window.riffraff.isDone && window.autoRefresh
   Notification.requestPermission()

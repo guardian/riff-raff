@@ -16,10 +16,6 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
       |in your riff-raff.yaml.
       |
-      |This deployment type is not currently recommended for continuous deployment, as CloudFormation
-      |will fail if you try to update a CloudFormation stack with a configuration that matches its
-      |current state.
-      |
       |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
       |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
       |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
