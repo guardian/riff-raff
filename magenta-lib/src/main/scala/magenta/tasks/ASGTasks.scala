@@ -118,7 +118,7 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
     } catch {
       case e: AmazonServiceException if desiredSizeReset(e) => {
         reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
-        throw new ASGResetException(e)
+        throw new ASGResetException(s"Your ASG desired size may have been reset ${e.getErrorMessage}", e)
       }
     }
 
@@ -146,7 +146,7 @@ case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack:
   lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
 }
 
-class ASGResetException(val throwable: Throwable) extends Throwable("", throwable)
+class ASGResetException(message: String, throwable: Throwable) extends Throwable(message, throwable)
 
 trait ASGTask extends Task {
   def region: Region
