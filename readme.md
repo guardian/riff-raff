@@ -60,7 +60,7 @@ Assuming you have a reasonably recent version of Java installed,
 
  * Create a basic configuration file at ~/.gu/riff-raff.properties (S3 and mongo config is probably the minimum)
  * Run the sbt script
- * enter `project riff-raff` at the SBT prompt
+ * enter `project riffraff` at the SBT prompt
  * enter `run` at the SBT prompt
  * visit http://localhost:9000/
  * Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/properties 

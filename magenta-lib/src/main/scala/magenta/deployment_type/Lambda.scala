@@ -16,6 +16,11 @@ object Lambda extends DeploymentType  {
       |
       |It is recommended to use the `bucket` parameter as storing the function code in S3 works much better when using
       |cloudformation.
+      |
+      |Ensure to add any relevant dependencies to your deploy in your riff-raff.yaml to guard against race conditions,
+      |such as a Riff-Raff Cloudformation update modifying your lambda at the same time this deployment type is running.
+      |
+      |
       """.stripMargin
 
   val regionsParam = Param[List[String]]("regions",

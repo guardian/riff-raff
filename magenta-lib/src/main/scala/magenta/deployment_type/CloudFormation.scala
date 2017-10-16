@@ -13,7 +13,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
-      |mean-time.
+      |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
+      |in your riff-raff.yaml.
       |
       |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
       |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
