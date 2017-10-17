@@ -17,7 +17,7 @@ import rx.lang.scala.{Observable, Subject, Subscription}
 import utils.VCSInfo
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit val executionContext: ExecutionContext)
@@ -158,9 +158,26 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
   def cleanup(uuid: UUID) {
     log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
-      val record = Await.result(allDeploys(uuid).future(), 10 seconds)
-      log.debug(s"Done removing deploy record $uuid from internal caches")
-      allDeploys - record.uuid
+      import cats.syntax.traverse._
+      import cats.instances.future._
+      import cats.instances.option._
+
+      val record: Option[DeployRecord] =
+        Await.result(
+          allDeploys.get(uuid).traverse(_.future()),
+          10 seconds
+        )
+
+      record match {
+        case None => {
+          log.warn(s"$uuid not found in internal caches")
+          allDeploys
+        }
+        case Some(rec) => {
+          log.debug(s"About to  remove deploy record $uuid from internal caches")
+          allDeploys - rec.uuid
+        }
+      }
     }
     firePostCleanup(uuid)
   }
