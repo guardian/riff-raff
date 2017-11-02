@@ -99,43 +99,6 @@ class DeployController(
     Ok(views.html.deploy.logContent(record))
   }
 
-  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks: String) = AuthAction { implicit request =>
-    val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
-    val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = LegacyPreviewController.startPreview(parameters, prismLookup, deploymentTypes)
-    Ok(views.html.preview.json.preview(request, parameters, previewId.toString))
-  }
-
-  def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) =
-    AuthAction { implicit request =>
-      val previewUUID = UUID.fromString(previewId)
-      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-      val parameters = DeployParameters(
-        Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
-      )
-      val result = LegacyPreviewController.getPreview(previewUUID, parameters)
-      result match {
-        case Some(LegacyPreviewResult(future, startTime)) =>
-          future.value match {
-            case Some(Success(preview)) =>
-              try {
-                Ok(views.html.preview.json.content(request, preview))
-              } catch {
-                case exception: Exception =>
-                  Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-              }
-            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
-            case None =>
-              val duration = new org.joda.time.Duration(startTime, new DateTime())
-              Ok(views.html.preview.json.loading(request, duration.getStandardSeconds))
-          }
-        case _ =>
-          val exception = new IllegalStateException("Future for preview wasn't found")
-          Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-      }
-    }
-
   def history() = AuthAction { implicit request =>
     Ok(views.html.deploy.history(prismLookup))
   }
@@ -285,7 +248,6 @@ class DeployController(
 
     val build = Build(projectName, id)
     val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
-      .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
 
     deployObject.map {
       case (path, contents) => Ok(contents).as(path.extension.map {
@@ -304,7 +266,6 @@ class DeployController(
 
     val build = Build(projectName, id)
     val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
-      .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
 
     deployObject.map { case (artifact, path, configFile) =>
       val objects = artifact.listAll()(Configuration.artifact.aws.client)
