@@ -6,28 +6,26 @@ import play.api.libs.json.JsValue
 
 object DeploymentPackage {
   def apply(name: String,
-    pkgApps: Seq[App],
-    pkgSpecificData: Map[String, JsValue],
-    deploymentTypeName: String,
-    s3Package: S3Path,
-    legacyConfig: Boolean,
-    deploymentTypes: Seq[DeploymentType]
+            pkgApp: App,
+            pkgSpecificData: Map[String, JsValue],
+            deploymentTypeName: String,
+            s3Package: S3Path,
+            deploymentTypes: Seq[DeploymentType]
   ): DeploymentPackage = {
     val deploymentType = deploymentTypes find (_.name == deploymentTypeName) getOrElse (
       throw new IllegalArgumentException(s"Package type $deploymentTypeName of package $name is unknown")
     )
-    apply(name, pkgApps, pkgSpecificData, deploymentType, s3Package, legacyConfig)
+    apply(name, pkgApp, pkgSpecificData, deploymentType, s3Package)
   }
 }
 
 case class DeploymentPackage(
-  name: String,
-  pkgApps: Seq[App],
-  pkgSpecificData: Map[String, JsValue],
-  deploymentType: DeploymentType,
-  s3Package: S3Path,
-  legacyConfig: Boolean) {
+                              name: String,
+                              pkgApp: App,
+                              pkgSpecificData: Map[String, JsValue],
+                              deploymentType: DeploymentType,
+                              s3Package: S3Path) {
 
   def mkDeploymentStep(action: String): DeploymentStep = deploymentType.mkDeploymentStep(action)(this)
-  val apps = pkgApps
+  val app = pkgApp
 }

@@ -25,7 +25,7 @@ trait CloudFormationDeploymentTypeParameters {
       """When false we derive the stack using the `cloudFormationStackName`, `prependStackToCloudFormationStackName` and
         |`appendStageToCloudFormationStackName` parameters. When true we find the stack by looking for one with matching
         |stack, app and stage tags in the same way that autoscaling groups are discovered.""".stripMargin
-  ).defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
+  ).default(true)
   val cloudFormationStackName = Param[String]("cloudFormationStackName",
     documentation = "The name of the CloudFormation stack to update"
   ).defaultFromContext((pkg, _) => Right(pkg.name))
@@ -37,7 +37,7 @@ trait CloudFormationDeploymentTypeParameters {
   ).default(true)
 
   val amiTags = Param[TagCriteria]("amiTags",
-    optionalInYaml = true,
+    optional = true,
     documentation = "Specify the set of tags to use to find the latest AMI"
   )
 
@@ -46,7 +46,7 @@ trait CloudFormationDeploymentTypeParameters {
   ).default("AMI")
 
   val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
-    optionalInYaml = true,
+    optional = true,
     documentation =
       """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
       """.stripMargin

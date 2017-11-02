@@ -66,8 +66,6 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       val globalParams = templateParameters(pkg, target, reporter)
       val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
-      val alwaysUploadToS3 = !pkg.legacyConfig
-
       List(
         UpdateCloudFormationTask(
           target.region,
@@ -79,7 +77,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
           target.parameters.stage,
           target.stack,
           createStackIfAbsent(pkg, target, reporter),
-          alwaysUploadToS3
+          true
         ),
         CheckUpdateEventsTask(target.region, cloudFormationStackLookupStrategy)
       )

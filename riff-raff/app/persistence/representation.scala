@@ -161,7 +161,7 @@ object DetailConversions {
       val fields:List[(String,Any)] =
         List(
           "name" -> a.name,
-          "apps" -> a.apps.map(a => MongoDBObject("name" -> a.name)).toList,
+          "apps" -> a.app.map(a => MongoDBObject("name" -> a.name)).toList,
           "stage" -> a.stage
         ) ++ a.connectAs.map("connectAs" ->)
       fields.toMap
@@ -169,7 +169,7 @@ object DetailConversions {
 
     def fromDBO(dbo: MongoDBObject) = Some(Host(
       name = dbo.as[String]("name"),
-      apps = dbo.as[List[DBObject]]("apps").map{dbo =>
+      app = dbo.as[List[DBObject]]("apps").map{ dbo =>
         (dbo.getAs[String]("name"),dbo.getAs[String]("stack"),dbo.getAs[String]("app")) match {
           case (Some(name), None, None) => App(name)
           case (None, Some(stack), Some(app)) => App(app)

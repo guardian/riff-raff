@@ -71,7 +71,7 @@ class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedVa
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register => List(Param[String]("param1", optionalInYaml = true)(register))
+        register => List(Param[String]("param1", optional = true)(register))
       )
     )
     DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypesWithParams).valid

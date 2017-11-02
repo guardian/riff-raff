@@ -12,7 +12,7 @@ case class StubTask(description: String, region: Region, stack: Option[Stack] = 
   def keyRing = KeyRing()
 }
 
-case class StubPerAppDeploymentStep(description: String, apps: Seq[App]) extends DeploymentStep {
+case class StubPerAppDeploymentStep(description: String, app: Seq[App]) extends DeploymentStep {
   def resolve(resources: DeploymentResources, target: DeployTarget) = ???
 }
 

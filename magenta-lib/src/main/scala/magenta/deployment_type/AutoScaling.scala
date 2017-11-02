@@ -62,9 +62,9 @@ object AutoScaling  extends DeploymentType {
       |
       |Despite there being a default for this we are migrating to always requiring it to be specified.
     """.stripMargin,
-    optionalInYaml = true,
+    optional = true,
     deprecatedDefault = true
-  ).defaultFromContext((_, target) => target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks"))
+  ).defaultFromContext((_, target) => Right(s"${target.stack.name}-dist"))
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
@@ -82,7 +82,7 @@ object AutoScaling  extends DeploymentType {
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
-  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
+  ).default(false)
 
   val deploy = Action("deploy",
     """
@@ -132,14 +132,6 @@ object AutoScaling  extends DeploymentType {
       stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
       packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
     )
-    if (pkg.legacyConfig && publicReadAcl.get(pkg).isEmpty)
-      resources.reporter.warning(
-        "DEPRECATED: publicReadAcl should be specified for an autoscaling deploy. Not setting this means that it " +
-          "defaults to true which is insecure and probably not what you want. It is not a good idea for artifacts " +
-          "to be publically available on the internet - it is much better to ensure this is set to false and your " +
-          "instances download the artifact from S3 using IAM instance credentials. If you are CERTAIN that this is" +
-          "what you want you can also get rid of this message by explicitly setting publicReadAcl to true."
-      )
     List(
       S3Upload(
         target.region,

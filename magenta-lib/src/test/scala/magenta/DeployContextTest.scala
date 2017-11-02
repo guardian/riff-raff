@@ -108,7 +108,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
 
   val CODE = Stage("CODE")
 
-  case class MockStubPerHostDeploymentStep(description: String, apps: Seq[App]) extends DeploymentStep {
+  case class MockStubPerHostDeploymentStep(description: String, app: Seq[App]) extends DeploymentStep {
     def resolve(resources: DeploymentResources, target: DeployTarget) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(Some(resources.lookup.hosts.all.head))
@@ -116,7 +116,7 @@ class DeployContextTest extends FlatSpec with Matchers with MockitoSugar {
     }
   }
 
-  case class MockStubPerAppDeploymentStep(description: String, apps: Seq[App]) extends DeploymentStep {
+  case class MockStubPerAppDeploymentStep(description: String, app: Seq[App]) extends DeploymentStep {
     def resolve(resources: DeploymentResources, target: DeployTarget) = {
       val task = mock[Task]
       when(task.taskHost).thenReturn(None)

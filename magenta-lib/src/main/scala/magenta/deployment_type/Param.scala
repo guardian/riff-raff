@@ -13,7 +13,7 @@ trait ParamRegister {
   * @param name The name of the parameter that should be extracted from the parameter map (riff-raff.yaml) or data map
   *             (deploy.json)
   * @param documentation A documentation string (in markdown) that describes this parameter
-  * @param optionalInYaml This can be set to true to make the parameter optional even when there are no defaults. This
+  * @param optional This can be set to true to make the parameter optional even when there are no defaults. This
   *                       might be needed if the value is not required to have a default or when only one of two
   *                       different parameters are specified.
   * @param defaultValue The default value for this parameter - used when a value is not found in the map
@@ -23,16 +23,16 @@ trait ParamRegister {
   * @tparam T The type of the parameter to extract
   */
 case class Param[T](
-  name: String,
-  documentation: String = "_undocumented_",
-  optionalInYaml: Boolean = false,
-  defaultValue: Option[T] = None,
-  defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String,T]] = None,
-  deprecatedDefault: Boolean = false
+                     name: String,
+                     documentation: String = "_undocumented_",
+                     optional: Boolean = false,
+                     defaultValue: Option[T] = None,
+                     defaultValueFromContext: Option[(DeploymentPackage, DeployTarget) => Either[String,T]] = None,
+                     deprecatedDefault: Boolean = false
 )(implicit register:ParamRegister) {
   register.add(this)
 
-  val requiredInYaml = !optionalInYaml && defaultValue.isEmpty && defaultValueFromContext.isEmpty
+  val required = !optional && defaultValue.isEmpty && defaultValueFromContext.isEmpty
 
   def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
     pkg.pkgSpecificData.get(name).flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
@@ -41,11 +41,11 @@ case class Param[T](
     val defaultFromContext = defaultValueFromContext.map(_ (pkg, target))
 
     val maybeDefault = defaultValue.orElse(defaultFromContext.flatMap(_.right.toOption))
-    (pkg.legacyConfig, maybeDefault, maybeValue) match {
+    (maybeDefault, maybeValue) match {
       // the bucket checks below are to aid migrating to this being a required field as we are simply guessing otherwise
-      case (false, Some(default), Some(value)) if default == value && !deprecatedDefault =>
+      case (Some(default), Some(value)) if default == value && !deprecatedDefault =>
         reporter.warning(s"Parameter $name is unnecessarily explicitly set to the default value of $default")
-      case (false, Some(_), None) if deprecatedDefault =>
+      case (Some(_), None) if deprecatedDefault =>
         reporter.warning(s"Parameter $name must always be explicitly set (the default is deprecated as it is quite magical™)")
       case _ => // otherwise do nothing
     }

@@ -62,7 +62,7 @@ object UpdateCloudFormationTask {
   }
   object LookupByName {
     def apply(stack: Stack, stage: Stage, cfnStackName: String, prependStack: Boolean, appendStage: Boolean): LookupByName = {
-      val stackName = stack.nameOption.filter(_ => prependStack)
+      val stackName = Some(stack.name).filter(_ => prependStack)
       val stageName = Some(stage.name).filter(_ => appendStage)
       val cloudFormationStackNameParts = Seq(stackName, Some(cfnStackName), stageName).flatten
       val fullCloudFormationStackName = cloudFormationStackNameParts.mkString("-")
@@ -74,18 +74,10 @@ object UpdateCloudFormationTask {
   }
   object LookupByTags {
     def apply(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): LookupByTags = {
-      val lookupByTags = for {
-        stack <- target.stack.nameOption
-        app <- pkg.pkgApps.map(_.name).headOption if pkg.pkgApps.size == 1
-        stage = target.parameters.stage.name
-      } yield LookupByTags(Map(
-        "Stage" -> stage,
-        "Stack" -> stack,
-        "App" -> app
-      ))
-
-      lookupByTags.getOrElse(reporter.fail(
-        s"Tag lookup of cloudformation stacks can only be used when the configuration specifies a stack and exactly one app - you have stack=${target.stack.nameOption} and apps=${pkg.apps.map(_.name).mkString(",")}"
+      LookupByTags(Map(
+        "Stage" -> target.parameters.stage.name,
+        "Stack" -> target.stack.name,
+        "App" -> pkg.pkgApp.name
       ))
     }
   }
@@ -101,9 +93,7 @@ object UpdateCloudFormationTask {
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
     val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
-    addParametersIfInTemplate(userAndDefaultParams)(
-      Seq("Stage" -> stage.name) ++ stack.nameOption.map("Stack" -> _)
-    )
+    addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name))
   }
 
   def nameToCallNewStack(strategy: CloudFormationStackLookupStrategy): String = {

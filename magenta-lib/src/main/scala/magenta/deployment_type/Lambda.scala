@@ -23,31 +23,22 @@ object Lambda extends DeploymentType  {
       |
       """.stripMargin
 
-  val regionsParam = Param[List[String]]("regions",
-    documentation = 
-      """
-      |One or more AWS region name where the lambda should be deployed - If this is not specified then the default region will be used (typically set to eu-west-1).
-      """.stripMargin,
-    optionalInYaml = true
-  )
-
   val bucketParam = Param[String]("bucket",
     documentation =
       """
         |Name of the S3 bucket where the lambda archive should be uploaded - if this is not specified then the zip file
         |will be uploaded in the Lambda Update Function Code request
-      """.stripMargin,
-    optionalInYaml = false
+      """.stripMargin
   )
 
   val functionNamesParam = Param[List[String]]("functionNames",
     """One or more function names to update with the code from fileNameParam.
       |Each function name will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE""".stripMargin,
-    optionalInYaml = true
+    optional = true
   )
 
   val prefixStackParam = Param[Boolean]("prefixStack",
-    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").defaultFromContext((pkg, _) => Right(!pkg.legacyConfig))
+    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(true)
 
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
@@ -73,54 +64,33 @@ object Lambda extends DeploymentType  {
         |          }
         |        }
       """.stripMargin,
-    optionalInYaml = true
+    optional = true
   )
 
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[LambdaFunction] = {
-    val bucketOption = bucketParam.get(pkg)
-    if (bucketOption.isEmpty) {
-      if (pkg.legacyConfig)
-        reporter.warning(s"DEPRECATED: Uploading directly to lambda is deprecated (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
-      else
-        reporter.fail("Uploading directly to lambda is not supported in a riff-raff.yaml file (it is dangerous for CloudFormed lambdas). Specify the bucket parameter and call both uploadLambda and updateLambda to upload via S3.")
-    }
+    val bucket = bucketParam(pkg, target, reporter)
 
-    val regionsOption = regionsParam.get(pkg)
-    if (!pkg.legacyConfig && regionsOption.isDefined) reporter.fail(s"The regions parameter for the aws-lambda deployment type should not be used in the riff-raff.yaml format. Use the global, template or deployment regions fields of the riff-raff.yaml format instead.")
-    val regions: List[Region] = regionsOption.map(_.filter(regionExists(_)(reporter)).map(Region)).getOrElse(List(target.region))
     val stage = target.parameters.stage.name
 
     (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg, target, reporter)) match {
       case (Some(functionNames), None, prefixStack) =>
-        val stackNamePrefix = target.stack.nameOption.filter(_ => prefixStack).getOrElse("")
+        val stackNamePrefix = if (prefixStack) target.stack.name else ""
         for {
           name <- functionNames
-          region <- regions
-        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg, target, reporter), region, bucketOption)
+        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg, target, reporter), target.region, bucket)
         
       case (None, Some(functionsMap), _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        for {
-          region <- regions
-        } yield LambdaFunction(functionName, fileName, region, bucketOption)
+        List(LambdaFunction(functionName, fileName, target.region, bucket))
 
       case _ => reporter.fail("Must specify one of 'functions' or 'functionNames' parameters")
     }
   }
 
-  private def regionExists(name: String)(reporter: DeployReporter): Boolean = {
-    /* sdk can throw IllegalArgumentException if region name is unknown */
-    val exists = Try(AwsRegion.getRegion(AwsRegions.fromName(name))).toOption.isDefined
-    if (!exists) {
-      reporter.warning(s"$name is not a recognised AWS region and has been ignored.")
-    }
-    exists
-  }
-
   def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
-    List(stack.nameOption, Some(params.stage.name), pkg.apps.headOption.map(_.name), Some(fileName)).flatten.mkString("/")
+    List(stack, params.stage.name, pkg.app.name, fileName).mkString("/")
   }
 
   val uploadLambda = Action("uploadLambda",
@@ -130,8 +100,6 @@ object Lambda extends DeploymentType  {
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).flatMap {
-      case LambdaFunctionFromZip(_,_, _) => None
-
       case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
         val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
         Some(S3Upload(
@@ -161,9 +129,6 @@ object Lambda extends DeploymentType  {
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).flatMap {
-      case LambdaFunctionFromZip(functionName, fileName, region) =>
-        Some(UpdateLambda(S3Path(pkg.s3Package,fileName), functionName, region))
-
       case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
         val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
         Some(
@@ -186,14 +151,9 @@ sealed trait LambdaFunction {
 }
 
 case class LambdaFunctionFromS3(functionName: String, fileName: String, region: Region, s3Bucket: String) extends LambdaFunction
-case class LambdaFunctionFromZip(functionName: String, fileName: String, region: Region) extends LambdaFunction
 
 object LambdaFunction {
-  def apply(functionName: String, fileName: String, region: Region, s3Bucket: Option[String] = None): LambdaFunction = {
-    s3Bucket.fold[LambdaFunction]{
-      LambdaFunctionFromZip(functionName, fileName, region)
-    }{ bucket =>
-      LambdaFunctionFromS3(functionName, fileName, region, bucket)
-    }
+  def apply(functionName: String, fileName: String, region: Region, s3Bucket: String): LambdaFunction = {
+    LambdaFunctionFromS3(functionName, fileName, region, s3Bucket)
   }
 }

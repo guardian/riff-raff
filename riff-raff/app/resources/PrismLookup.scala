@@ -91,7 +91,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
     }
     Host(
       name = name,
-      apps = appSet,
+      app = appSet,
       stage = stage,
       stack = stack,
       tags = tags
@@ -134,11 +134,11 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
         Try {
           val host = jsHost.as[Host]
-          host.apps match {
+          host.app match {
             case singleApp if singleApp.size == 1 => Seq(host)
             case noApps if noApps.isEmpty => Nil
             case multipleApps =>
-              multipleApps.toSeq.map( app => host.copy(apps = Set(app)))
+              multipleApps.toSeq.map( app => host.copy(app = Set(app)))
           }
         }
       }

@@ -37,7 +37,7 @@ trait DeploymentType {
   }
 
   abstract case class PackageDeploymentStep(pkg: DeploymentPackage, actionName: String) extends DeploymentStep {
-    def apps = pkg.apps
+    def app = pkg.app
     def description = pkg.name + "." + actionName
   }
 }

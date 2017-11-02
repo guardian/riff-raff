@@ -110,7 +110,7 @@ object S3Upload {
   def awsMimeTypeLookup(fileName: String): String = mimeTypes.getMimetype(fileName)
 
   def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
-    (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
+    (stack.map(_.name) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }
   def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
     prefixGenerator(Some(stack), Some(stage), Some(packageName))

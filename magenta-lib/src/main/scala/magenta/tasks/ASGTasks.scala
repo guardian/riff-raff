@@ -43,7 +43,7 @@ case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region
     ASG.desiredCapacity(asg.getAutoScalingGroupName, targetCapacity, asgClient)
   }
 
-  lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for apps ${pkg.apps.mkString(", ")}"
+  lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for app ${pkg.app}"
 }
 
 sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends ASGTask {
