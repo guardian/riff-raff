@@ -122,6 +122,8 @@ case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String]
     cacheControl foreach metaData.setCacheControl
     metaData.setContentType(contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key)))
     metaData.setContentLength(source.size)
+    metaData.setSSEAlgorithm("aws:kms")
+
     val req = new PutObjectRequest(target.bucket, target.key, inputStream, metaData)
     if (publicReadAcl) req.withCannedAcl(PublicRead) else req
   }
