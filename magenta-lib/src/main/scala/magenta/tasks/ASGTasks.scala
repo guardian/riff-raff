@@ -5,7 +5,7 @@ import com.amazonaws.services.autoscaling.{AmazonAutoScaling}
 import com.amazonaws.services.autoscaling.model.AutoScalingGroup
 import magenta.{KeyRing, Stage, _}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
@@ -23,10 +23,10 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
 
 case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
-    if (asg.getInstances.nonEmpty) {
+    if (asg.getInstances.asScala.nonEmpty) {
       implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-      reporter.verbose(s"Tagging ${asg.getInstances.toList.map(_.getInstanceId).mkString(", ")}")
-      EC2.setTag(asg.getInstances.toList, "Magenta", "Terminate", ec2Client)
+      reporter.verbose(s"Tagging ${asg.getInstances.asScala.toList.map(_.getInstanceId).mkString(", ")}")
+      EC2.setTag(asg.getInstances.asScala.toList, "Magenta", "Terminate", ec2Client)
     } else {
       reporter.verbose(s"No instances to tag")
     }
@@ -99,7 +99,7 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     implicit val elbClient = ELB.client(keyRing, region)
-    val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
+    val instancesToKill = asg.getInstances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
     try {
       reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.getInstanceId).mkString(", ")}")

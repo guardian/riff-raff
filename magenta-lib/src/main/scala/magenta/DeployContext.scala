@@ -4,18 +4,6 @@ import java.util.UUID
 
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 
-object DeployContext {
-  def apply(deployId: UUID, parameters: DeployParameters, project: Project,
-    resources: DeploymentResources, region: Region): DeployContext = {
-
-    val tasks = {
-      resources.reporter.info("Resolving tasks...")
-      Resolver.resolve(project, parameters, resources, region)
-    }
-    DeployContext(deployId, parameters, tasks)
-  }
-}
-
 case class DeployContext(uuid: UUID, parameters: DeployParameters, tasks: Graph[DeploymentTasks]) {
   val deployer = parameters.deployer
   val buildName = parameters.build.projectName

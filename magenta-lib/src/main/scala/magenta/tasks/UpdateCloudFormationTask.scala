@@ -11,7 +11,7 @@ import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
 import magenta.{DeploymentPackage, DeployReporter, DeployTarget, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 
-import scala.collection.convert.wrapAsScala._
+import scala.collection.JavaConverters._
 
 /**
   * A simple trait to aid with attempting an update multiple times in the case that an update is already running.
@@ -171,7 +171,7 @@ case class UpdateCloudFormationTask(
 
     val template = processTemplate(nameToCallStack, templateString, s3Client, stsClient, region, alwaysUploadToS3, reporter)
 
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters
+    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters.asScala
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
@@ -232,14 +232,14 @@ case class UpdateAmiCloudFormationParameterTask(
       reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
     }
 
-    val existingParameters: Map[String, ParameterValue] = cfStack.getParameters.map(_.getParameterKey -> UseExistingValue).toMap
+    val existingParameters: Map[String, ParameterValue] = cfStack.getParameters.asScala.map(_.getParameterKey -> UseExistingValue).toMap
 
     val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
-      if (!cfStack.getParameters.exists(_.getParameterKey == parameterName)) {
+      if (!cfStack.getParameters.asScala.exists(_.getParameterKey == parameterName)) {
         reporter.fail(s"stack ${cfStack.getStackName} does not have an $parameterName parameter to update")
       }
 
-      val currentAmi = cfStack.getParameters.find(_.getParameterKey == parameterName).get.getParameterValue
+      val currentAmi = cfStack.getParameters.asScala.find(_.getParameterKey == parameterName).get.getParameterValue
       val accountNumber = STS.getAccountNumber(STS.makeSTSclient(keyRing, region))
       val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
       maybeNewAmi match {
@@ -295,7 +295,7 @@ case class CheckUpdateEventsTask(
 
     def check(lastSeenEvent: Option[StackEvent]): Unit = {
       val result = CloudFormation.describeStackEvents(stackName, cfnClient)
-      val events = result.getStackEvents
+      val events = result.getStackEvents.asScala
 
       lastSeenEvent match {
         case None =>
