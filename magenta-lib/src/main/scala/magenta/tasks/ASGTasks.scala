@@ -67,17 +67,6 @@ case class TerminationGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, 
   def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class CheckForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
-    val elbClient = ELB.client(keyRing, region)
-    ASG.isStabilized(asg, asgClient, elbClient) match {
-      case Left(reason) => reporter.fail(s"ASG not stable: $reason")
-      case Right(()) =>
-    }
-  }
-  lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
-}
-
 case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
