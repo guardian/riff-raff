@@ -102,7 +102,7 @@ object AutoScaling  extends DeploymentType {
     val parameters = target.parameters
     val stack = target.stack
     List(
-      CheckForStabilization(pkg, parameters.stage, stack, target.region),
+      WaitForStabilization(pkg, parameters.stage, stack, 5 * 60 * 1000, target.region),
       CheckGroupSize(pkg, parameters.stage, stack, target.region),
       SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
       TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),

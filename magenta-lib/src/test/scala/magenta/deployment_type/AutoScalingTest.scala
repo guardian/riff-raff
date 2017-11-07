@@ -29,7 +29,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
       deploymentTypes)
 
     AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
-      CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
+      WaitForStabilization(p, PROD, UnnamedStack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, UnnamedStack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),
       TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
@@ -75,7 +75,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
       deploymentTypes)
 
     AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), UnnamedStack, region)) should be (List(
-      CheckForStabilization(p, PROD, UnnamedStack, Region("eu-west-1")),
+      WaitForStabilization(p, PROD, UnnamedStack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, UnnamedStack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, UnnamedStack, Region("eu-west-1")),
       TagCurrentInstancesWithTerminationTag(p, PROD, UnnamedStack, Region("eu-west-1")),
