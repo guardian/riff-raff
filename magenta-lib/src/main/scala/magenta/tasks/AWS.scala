@@ -25,10 +25,11 @@ import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.securitytoken.{AWSSecurityTokenService, AWSSecurityTokenServiceClientBuilder}
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
+import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object S3 extends AWS {
   def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3 =
@@ -386,9 +387,14 @@ object CloudFormation extends AWS {
   }
 
   def describeStack(name: String, client: AmazonCloudFormation) =
-    client.describeStacks(
-      new DescribeStacksRequest()
-    ).getStacks.asScala.find(_.getStackName == name)
+    try {
+      client.describeStacks(
+        new DescribeStacksRequest().withStackName(name)
+      ).getStacks.asScala.headOption
+    } catch {
+      case acfe:AmazonCloudFormationException
+        if acfe.getErrorCode == "ValidationError" && acfe.getErrorMessage.contains("does not exist") => None
+    }
 
   def describeStackEvents(name: String, client: AmazonCloudFormation) =
     client.describeStackEvents(
