@@ -29,9 +29,10 @@ object AutoScaling  extends DeploymentType {
       |            "autoscaling:TerminateInstanceInAutoScalingGroup",
       |            "ec2:CreateTags",
       |            "ec2:DescribeInstances",
-      |            "elb:DescribeInstanceHealth",
       |            "elasticloadbalancing:DescribeInstanceHealth",
-      |            "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+      |            "elasticloadbalancing:DescribeTargetHealth",
+      |            "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+      |            "elasticloadbalancing:DeregisterTargets"
       |          ],
       |          "Effect": "Allow",
       |          "Resource": [
