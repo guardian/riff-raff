@@ -3,7 +3,7 @@ package schedule
 import conf.Configuration
 import controllers.Logging
 import deployment._
-import magenta.{Build, Deployer, DeployParameters, Stage}
+import magenta.{Deployer, DeployParameters, RunState}
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
 import schedule.DeployScheduler.JobDataKeys
 
@@ -19,26 +19,41 @@ class DeployJob extends Job with Logging {
     val projectName = getAs[String](JobDataKeys.ProjectName)
     val stage = getAs[String](JobDataKeys.Stage)
 
-    getLastDeploy(deployments, projectName, stage) match {
-      case Left(error) => log.warn(error)
-      case Right(record) =>
+    val result = for {
+      record <- DeployJob.getLastDeploy(deployments, projectName, stage)
+      params <- DeployJob.createDeployParameters(record, Configuration.scheduledDeployment.enabled)
+      uuid <- deployments.deploy(params, ScheduleRequestSource)
+    } yield uuid
+    result match {
+      case Left(error) => log.warn(error.message)
+      case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
+    }
+  }
+}
+
+object DeployJob {
+  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
+    lastDeploy.state match {
+      case RunState.Completed =>
         val params = DeployParameters(
           Deployer("Scheduled Deployment"),
-          Build(projectName, record.parameters.build.id),
-          Stage(stage)
+          lastDeploy.parameters.build,
+          lastDeploy.stage
         )
-        if (Configuration.scheduledDeployment.enabled) {
-          deployments.deploy(params, ScheduleRequestSource)
+        if (scheduledDeploysEnabled) {
+          Right(params)
         } else {
-          log.info(s"Scheduled deployments disabled. Would have deployed $params")
+          Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
         }
+      case otherState =>
+        Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
     }
   }
 
   @tailrec
-  private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[String, Record] = {
+  private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[Error, Record] = {
     if (attempts == 0) {
-      Left(s"Didn't find any deploys for $projectName / $stage")
+      Left(Error(s"Didn't find any deploys for $projectName / $stage"))
     } else {
       val filter = DeployFilter(
         projectName = Some(projectName),
