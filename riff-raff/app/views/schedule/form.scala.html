@@ -33,7 +33,8 @@
         @b3.text(configForm("schedule"), '_label -> "Schedule expression")
         <p>This should be a weird Quartz cron expression
             (<a href="http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/crontrigger.html">docs</a>)
-            (<a href="http://www.freeformatter.com/cron-expression-generator-quartz.html">online evaluator</a>)</p>
+            (<a href="http://www.freeformatter.com/cron-expression-generator-quartz.html">online evaluator</a>).
+            For example <code>0 30 11 ? * TUE *</code> is 11:30 every Tuesday.</p>
         @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
 
         <div class="actions">
