@@ -1,0 +1,41 @@
+@(configForm: Form[controllers.ScheduleController.ScheduleForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import b3.vertical.fieldConstructor
+@import helper.CSRF
+
+@main("Schedule", request, List("form-autocomplete")) {
+
+    <h2>Schedule Configuration</h2>
+    <hr/>
+
+    @b3.form(action=routes.ScheduleController.save) {
+        @CSRF.formField
+        @snippets.inputHidden(configForm("id"))
+
+        @if(configForm.hasGlobalErrors) {
+            <div class="alert alert-danger">
+                <h4>Error</h4>
+                <ul>
+                @configForm.globalErrors.map { error =>
+                    <li>@error.message</li>
+                }
+                </ul>
+            </div>
+        }
+
+        @b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+        @b3.select(
+            configForm("stage"),
+            options = helper.options(prismLookup.stages.toList),
+            '_default -> "--- Choose a stage ---",
+            '_label -> "Stage",
+            '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+        )
+        @b3.text(configForm("schedule"), '_label -> "Schedule expression")
+        @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
+
+        <div class="actions">
+            <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+            <a href="@routes.ScheduleController.list()" class="btn btn-danger">Cancel</a>
+        </div>
+    }
+}

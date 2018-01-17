@@ -59,6 +59,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val previewController = new PreviewController(previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
   val hooksController = new HooksController(prismLookup, authAction, controllerComponents)
   val restrictionsController = new Restrictions(authAction, controllerComponents)
+  val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
   val testingController = new Testing(prismLookup, authAction, controllerComponents)
@@ -80,6 +81,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     continuousDeployController,
     hooksController,
     restrictionsController,
+    scheduleController,
     targetController,
     loginController,
     testingController,
