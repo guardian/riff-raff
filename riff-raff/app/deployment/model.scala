@@ -14,6 +14,7 @@ sealed trait RequestSource
 case class UserRequestSource(user: UserIdentity) extends RequestSource
 case object ContinuousDeploymentRequestSource extends RequestSource
 case class ApiRequestSource(key: ApiKey) extends RequestSource
+case object ScheduleRequestSource extends RequestSource
 
 case class Error(message: String) extends AnyVal
 

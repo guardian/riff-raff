@@ -1,32 +1,42 @@
 package controllers
 
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
-import play.api.data.Forms._
-import play.api.data.Form
-import play.api.i18n.I18nSupport
-import play.api.libs.ws.WSClient
+import java.text.ParseException
 import java.util.UUID
 
-import org.joda.time.DateTime
-import ci.{ContinuousDeploymentConfig, Trigger}
 import com.gu.googleauth.AuthAction
-import controllers.ContinuousDeployController.ConfigForm
-import controllers.ScheduleController.Schedule
-import persistence.{ContinuousDeploymentConfigRepository, ScheduleRepository}
+import org.joda.time.DateTime
+import org.quartz.CronExpression
+import persistence.ScheduleRepository
+import play.api.data.Form
+import play.api.data.Forms._
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.i18n.I18nSupport
+import play.api.libs.ws.WSClient
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
-import schedule.ScheduleConfig
+import schedule.{DeployScheduler, ScheduleConfig}
 
-class ScheduleController(authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents, prismLookup: PrismLookup)(implicit val wsClient: WSClient)
+import scala.util.{Failure, Success, Try}
+
+class ScheduleController(authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents,
+                         prismLookup: PrismLookup, deployScheduler: DeployScheduler)(implicit val wsClient: WSClient)
   extends BaseController with Logging with I18nSupport {
 
   import ScheduleController.ScheduleForm
+
+  val quartzExpressionConstraint: Constraint[String] = Constraint("quartz.expression"){ expression =>
+    Try(CronExpression.validateExpression(expression)) match {
+      case Success(()) => Valid
+      case Failure(pe:ParseException) => Invalid(s"Invalid Quartz expression: ${pe.getMessage}")
+    }
+  }
 
   val scheduleForm = Form[ScheduleForm](
     mapping(
       "id" -> uuid,
       "projectName" -> nonEmptyText,
       "stage" -> nonEmptyText,
-      "schedule" -> nonEmptyText.transform[Schedule](Schedule.apply, _.expression),
+      "schedule" -> nonEmptyText.verifying(quartzExpressionConstraint),
       "enabled" -> boolean
     )(ScheduleForm.apply)(ScheduleForm.unapply)
   )
@@ -38,7 +48,7 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
 
   def form = authAction { implicit request =>
     Ok(views.html.schedule.form(
-      scheduleForm.fill(ScheduleForm(UUID.randomUUID(), "", "", Schedule(""), enabled = true)), prismLookup
+      scheduleForm.fill(ScheduleForm(UUID.randomUUID(), "", "", "", enabled = true)), prismLookup
     ))
   }
 
@@ -46,7 +56,9 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
     scheduleForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.schedule.form(formWithErrors, prismLookup)),
       form => {
-        ScheduleRepository.setSchedule(form.toConfig(new DateTime(), request.user.fullName))
+        val config = form.toConfig(new DateTime(), request.user.fullName)
+        ScheduleRepository.setSchedule(config)
+        deployScheduler.reschedule(config)
         Redirect(routes.ScheduleController.list())
       }
     )
@@ -64,7 +76,9 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
       errors => {},
       {
         case "delete" =>
-          ScheduleRepository.deleteSchedule(UUID.fromString(id))
+          val uuid = UUID.fromString(id)
+          ScheduleRepository.deleteSchedule(uuid)
+          deployScheduler.unschedule(uuid)
       }
     )
     Redirect(routes.ScheduleController.list())
@@ -74,15 +88,13 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
 
 object ScheduleController {
 
-  case class Schedule(expression: String)
-
-  case class ScheduleForm(id: UUID, projectName: String, stage: String, schedule: Schedule, enabled: Boolean) {
+  case class ScheduleForm(id: UUID, projectName: String, stage: String, schedule: String, enabled: Boolean) {
     def toConfig(lastEdited: DateTime, user: String): ScheduleConfig =
       ScheduleConfig(id, projectName, stage, schedule, enabled, lastEdited, user)
   }
   object ScheduleForm {
     def apply(config: ScheduleConfig): ScheduleForm =
-      ScheduleForm(config.id, config.projectName, config.stage, config.schedule, config.enabled)
+      ScheduleForm(config.id, config.projectName, config.stage, config.scheduleExpression, config.enabled)
   }
 
 }

@@ -4,6 +4,7 @@ import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import magenta.deployment_type._
+import persistence.ScheduleRepository
 import play.api.ApplicationLoader.Context
 import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
@@ -20,13 +21,15 @@ import utils.HstsFilter
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import router.Routes
+import schedule.DeployScheduler
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
   with AhcWSComponents
   with I18nComponents
   with CSRFComponents
   with GzipFilterComponents
-  with AssetsComponents {
+  with AssetsComponents
+  with Logging {
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
@@ -52,6 +55,15 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     new HstsFilter()(executionContext)
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
+  val deployScheduler = new DeployScheduler(deployments)
+  log.info("Starting deployment scheduler")
+  deployScheduler.start()
+  applicationLifecycle.addStopHook { () =>
+    log.info("Shutting down deployment scheduler")
+    Future.successful(deployScheduler.shutdown())
+  }
+  deployScheduler.initialise(ScheduleRepository.getScheduleList())
+
   val applicationController = new Application(prismLookup, availableDeploymentTypes, authAction, controllerComponents, assets)(environment, wsClient, executionContext)
   val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes, builds, authAction, controllerComponents)
   val apiController = new Api(deployments, availableDeploymentTypes, authAction, controllerComponents)
@@ -59,7 +71,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val previewController = new PreviewController(previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
   val hooksController = new HooksController(prismLookup, authAction, controllerComponents)
   val restrictionsController = new Restrictions(authAction, controllerComponents)
-  val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup)
+  val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
   val testingController = new Testing(prismLookup, authAction, controllerComponents)

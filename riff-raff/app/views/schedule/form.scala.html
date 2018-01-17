@@ -31,6 +31,9 @@
             '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
         )
         @b3.text(configForm("schedule"), '_label -> "Schedule expression")
+        <p>This should be a weird Quartz cron expression
+            (<a href="http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/crontrigger.html">docs</a>)
+            (<a href="http://www.freeformatter.com/cron-expression-generator-quartz.html">online evaluator</a>)</p>
         @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
 
         <div class="actions">
