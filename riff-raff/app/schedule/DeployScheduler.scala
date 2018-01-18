@@ -1,6 +1,6 @@
 package schedule
 
-import java.util.UUID
+import java.util.{TimeZone, UUID}
 
 import deployment.Deployments
 import org.quartz.CronScheduleBuilder._
@@ -38,12 +38,14 @@ class DeployScheduler(deployments: Deployments) {
         .build()
       val trigger = newTrigger()
         .withIdentity(triggerKey(id))
-        .withSchedule(cronSchedule(scheduleConfig.scheduleExpression))
+        .withSchedule(
+          cronSchedule(scheduleConfig.scheduleExpression).inTimeZone(TimeZone.getTimeZone(scheduleConfig.timezone))
+        )
         .build()
       scheduler.scheduleJob(jobDetail, trigger)
-      Logger.info(s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression}]")
+      Logger.info(s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
     } else {
-      Logger.info(s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression}]")
+      Logger.info(s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
     }
   }
 

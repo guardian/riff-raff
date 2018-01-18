@@ -31,7 +31,7 @@
                         <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                         <td>@config.projectName</td>
                         <td>@config.stage</td>
-                        <td>@config.scheduleExpression</td>
+                        <td>@config.scheduleExpression (@config.timezone)</td>
                         <td>@config.enabled</td>
                         <td>
                             <a class="btn btn-default btn-xs" href="@routes.ScheduleController.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
