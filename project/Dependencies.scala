@@ -56,6 +56,7 @@ object Dependencies {
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
     "com.gu" %% "scanamo" % "0.9.5",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
+    "org.quartz-scheduler" % "quartz" % "2.3.0",
     "org.webjars" %% "webjars-play" % "2.6.0",
     "org.webjars" % "jquery" % "3.1.1",
     "org.webjars" % "jquery-ui" % "1.12.1",

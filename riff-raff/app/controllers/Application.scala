@@ -50,7 +50,8 @@ object Menu {
       SingleMenuItem("Hooks", routes.HooksController.list()),
       SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys()),
-      SingleMenuItem("Restrictions", routes.Restrictions.list())
+      SingleMenuItem("Restrictions", routes.Restrictions.list()),
+      SingleMenuItem("Schedules", routes.ScheduleController.list())
     )),
     DropDownMenuItem("Documentation", Seq(
       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),

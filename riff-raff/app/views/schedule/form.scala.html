@@ -1,0 +1,53 @@
+@(configForm: Form[controllers.ScheduleController.ScheduleForm], prismLookup: resources.PrismLookup, timeZones: List[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import b3.vertical.fieldConstructor
+@import helper.CSRF
+
+@main("Schedule", request, List("form-autocomplete", "form-timezone")) {
+
+    <h2>Schedule Configuration</h2>
+    <hr/>
+
+    @b3.form(action=routes.ScheduleController.save) {
+        @CSRF.formField
+        @snippets.inputHidden(configForm("id"))
+
+        @if(configForm.hasGlobalErrors) {
+            <div class="alert alert-danger">
+                <h4>Error</h4>
+                <ul>
+                @configForm.globalErrors.map { error =>
+                    <li>@error.message</li>
+                }
+                </ul>
+            </div>
+        }
+
+        @b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+        @b3.select(
+            configForm("stage"),
+            options = helper.options(prismLookup.stages.toList),
+            '_default -> "--- Choose a stage ---",
+            '_label -> "Stage",
+            '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+        )
+        @b3.text(configForm("schedule"), '_label -> "Schedule expression")
+        <p>This should be a weird Quartz cron expression
+            (<a href="http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/crontrigger.html">docs</a>)
+            (<a href="http://www.freeformatter.com/cron-expression-generator-quartz.html">online evaluator</a>).
+            For example <code>0 30 11 ? * TUE *</code> is 11:30 every Tuesday.</p>
+        @b3.select(
+            configForm("timezone"),
+            options = helper.options(timeZones),
+            'id -> "timezoneInput",
+            '_default -> "--- Choose a timezone ---",
+            '_label -> "Schedule timezone",
+            '_error -> configForm.globalError.map(_.withMessage("Please select a valid timezone for the schedule"))
+        )
+        @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
+
+        <div class="actions">
+            <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
+            <a href="@routes.ScheduleController.list()" class="btn btn-danger">Cancel</a>
+        </div>
+    }
+}

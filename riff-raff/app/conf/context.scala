@@ -89,7 +89,10 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object continuousDeployment {
     lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
+  }
 
+  object scheduledDeployment {
+    lazy val enabled = configuration.getStringProperty("scheduledDeployment.enabled", "false") == "true"
   }
 
   object credentials {
