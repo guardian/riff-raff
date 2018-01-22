@@ -58,7 +58,7 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
           target.region,
           cloudFormationStackLookupStrategy,
           amiParameterMap,
-          resources.lookup.getLatestAmi,
+          getLatestAmi(pkg, target, reporter, resources.lookup),
           target.parameters.stage,
           target.stack
         ),

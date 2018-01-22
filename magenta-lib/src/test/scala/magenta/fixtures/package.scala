@@ -95,7 +95,7 @@ package object fixtures {
 
       def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing()
 
-      def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] = ???
+      def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String] = ???
     }
   }
 

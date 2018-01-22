@@ -144,7 +144,7 @@ case class UpdateCloudFormationTask(
   templatePath: S3Path,
   userParameters: Map[String, String],
   amiParameterMap: Map[CfnParam, TagCriteria],
-  latestImage: String => Map[String,String] => Option[String],
+  latestImage: String => String => Map[String,String] => Option[String],
   stage: Stage,
   stack: Stack,
   createStackIfAbsent:Boolean,
@@ -156,6 +156,7 @@ case class UpdateCloudFormationTask(
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
     val s3Client = S3.makeS3client(keyRing, region)
     val stsClient = STS.makeSTSclient(keyRing, region)
+    val accountNumber = STS.getAccountNumber(stsClient)
 
     val maybeCfStack = cloudFormationStackLookupStrategy match {
       case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName, cfnClient)
@@ -174,7 +175,7 @@ case class UpdateCloudFormationTask(
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
     val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      val ami = latestImage(region.name)(tags)
+      val ami = latestImage(accountNumber)(region.name)(tags)
       ami.map(name ->)
     }
 
@@ -213,7 +214,7 @@ case class UpdateAmiCloudFormationParameterTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
   amiParameterMap: Map[CfnParam, TagCriteria],
-  latestImage: String => Map[String, String] => Option[String],
+  latestImage: String => String => Map[String, String] => Option[String],
   stage: Stage,
   stack: Stack)(implicit val keyRing: KeyRing) extends Task with RetryCloudFormationUpdate {
 
@@ -239,7 +240,8 @@ case class UpdateAmiCloudFormationParameterTask(
       }
 
       val currentAmi = cfStack.getParameters.find(_.getParameterKey == parameterName).get.getParameterValue
-      val maybeNewAmi = latestImage(region.name)(amiTags)
+      val accountNumber = STS.getAccountNumber(STS.makeSTSclient(keyRing, region))
+      val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
       maybeNewAmi match {
         case Some(sameAmi) if currentAmi == sameAmi =>
           reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")

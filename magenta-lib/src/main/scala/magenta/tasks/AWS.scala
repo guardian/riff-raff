@@ -54,8 +54,7 @@ object S3 extends AWS {
     */
   def accountSpecificBucket(prefix: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenService,
     region: Region, reporter: DeployReporter, deleteAfterDays: Option[Int] = None): String = {
-    val callerIdentityResponse = stsClient.getCallerIdentity(new GetCallerIdentityRequest())
-    val accountNumber = callerIdentityResponse.getAccount
+    val accountNumber = STS.getAccountNumber(stsClient)
     val bucketName = s"$prefix-$accountNumber-${region.name}"
     if (!s3Client.doesBucketExist(bucketName)) {
       reporter.info(s"Creating bucket for this account and region: $bucketName ${region.name}")
@@ -441,6 +440,11 @@ object STS extends AWS {
       .withClientConfiguration(clientConfiguration)
       .withRegion(region.name)
       .build()
+  }
+
+  def getAccountNumber(stsClient: AWSSecurityTokenService): String = {
+    val callerIdentityResponse = stsClient.getCallerIdentity(new GetCallerIdentityRequest())
+    callerIdentityResponse.getAccount
   }
 }
 

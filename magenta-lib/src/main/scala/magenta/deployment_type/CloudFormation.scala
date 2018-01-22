@@ -75,7 +75,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
           S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
           params,
           amiParameterMap,
-          resources.lookup.getLatestAmi,
+          getLatestAmi(pkg, target, reporter, resources.lookup),
           target.parameters.stage,
           target.stack,
           createStackIfAbsent(pkg, target, reporter),
