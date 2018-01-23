@@ -183,8 +183,8 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
   private def get(accountNumber: Option[String], region: String, tags: Map[String, String]): Seq[Image] = {
     val params: Seq[(String, String)] =
       tags.map { case (key, value) => s"tags.${key.urlEncode}" -> value }.toSeq ++
-      accountNumber.map(acc => "meta.origin.accountNumber" -> acc) :+
-      "region" -> region
+      accountNumber.map(acc => "meta.origin.accountNumber" -> acc) ++
+      Map("region" -> region, "state" -> "available")
     val paramsQueryString = params.map { case (k,v) => s"$k=${v.urlEncode}" }.mkString("&")
     prism.get(s"/images?$paramsQueryString"){ json =>
       (json \ "data" \ "images").as[Seq[Image]]

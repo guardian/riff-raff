@@ -72,6 +72,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
     }
     request.map(_.queryString) shouldBe Some(Map(
       "region" -> ArrayBuffer("bob"),
+      "state" -> ArrayBuffer("available"),
       "tags.tagName" -> ArrayBuffer("tagValue?"),
       "tags.tagName*" -> ArrayBuffer("tagValue2")
     ))
