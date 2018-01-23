@@ -2,16 +2,16 @@ package schedule
 
 import java.util.{TimeZone, UUID}
 
+import controllers.Logging
 import deployment.Deployments
 import org.quartz.CronScheduleBuilder._
 import org.quartz.JobBuilder._
 import org.quartz.TriggerBuilder._
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.{JobDataMap, JobKey, TriggerKey}
-import play.api.Logger
 import schedule.DeployScheduler.JobDataKeys
 
-class DeployScheduler(deployments: Deployments) {
+class DeployScheduler(deployments: Deployments) extends Logging {
 
   private val scheduler = StdSchedulerFactory.getDefaultScheduler
 
@@ -21,11 +21,11 @@ class DeployScheduler(deployments: Deployments) {
 
   def reschedule(schedule: ScheduleConfig): Unit = {
     // Delete any job and trigger that we may have previously created
-    unschedule(schedule.id)
+    cancel(schedule.id)
     scheduleDeploy(schedule)
   }
 
-  def unschedule(id: UUID): Unit = {
+  def cancel(id: UUID): Unit = {
     scheduler.deleteJob(jobKey(id))
   }
 
@@ -43,9 +43,9 @@ class DeployScheduler(deployments: Deployments) {
         )
         .build()
       scheduler.scheduleJob(jobDetail, trigger)
-      Logger.info(s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
+      log.info(s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
     } else {
-      Logger.info(s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
+      log.info(s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
     }
   }
 

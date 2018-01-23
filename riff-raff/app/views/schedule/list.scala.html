@@ -26,7 +26,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                @for(config <- configs) {
+                @for(config <- configs.sortBy(c => (c.projectName, c.stage))) {
                     <tr @if(!config.enabled){ class="danger" }>
                         <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                         <td>@config.projectName</td>

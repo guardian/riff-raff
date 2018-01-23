@@ -87,7 +87,7 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
         case "delete" =>
           val uuid = UUID.fromString(id)
           ScheduleRepository.deleteSchedule(uuid)
-          deployScheduler.unschedule(uuid)
+          deployScheduler.cancel(uuid)
       }
     )
     Redirect(routes.ScheduleController.list())
