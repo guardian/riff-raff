@@ -1,0 +1,51 @@
+@import _root_.schedule.ScheduleConfig
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], configs: Seq[ScheduleConfig])
+
+@import org.joda.time.format.DateTimeFormat._
+@import ci.Trigger._
+@import helper.CSRF
+
+    @main("Schedule Configurations", request) {
+        <h2>Schedule Configurations</h2>
+        <hr/>
+        <p><a class="btn btn-primary" href="@routes.ScheduleController.form()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new schedule</a></p>
+        <div class="content">
+        @if(configs.isEmpty) {
+            <div class="alert alert-warning"><strong>No configurations.</strong></div>
+        } else {
+            <table class="table table-condensed">
+                <thead>
+                    <tr>
+                        <th>Last edited</th>
+                        <th>Project Name</th>
+                        <th>Target Stage</th>
+                        <th>Schedule</th>
+                        <th>Enabled?</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @for(config <- configs.sortBy(c => (c.projectName, c.stage))) {
+                    <tr @if(!config.enabled){ class="danger" }>
+                        <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
+                        <td>@config.projectName</td>
+                        <td>@config.stage</td>
+                        <td>@config.scheduleExpression (@config.timezone)</td>
+                        <td>@config.enabled</td>
+                        <td>
+                            <a class="btn btn-default btn-xs" href="@routes.ScheduleController.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
+                        </td>
+                        <td>
+                        @helper.form(action=routes.ScheduleController.delete(config.id.toString), 'class -> "form-make-inline") {
+                            @CSRF.formField
+                            <button class="btn btn-xs btn-danger" name="action" value="delete"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
+                        }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        </div>
+    }

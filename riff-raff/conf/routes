@@ -75,6 +75,13 @@ POST        /deployment/restrictions/save                   controllers.Restrict
 GET         /deployment/restrictions/edit                   controllers.Restrictions.edit(id)
 POST        /deployment/restrictions/delete                 controllers.Restrictions.delete(id)
 
+# Schedules
+GET         /deployment/schedule                            controllers.ScheduleController.list
+GET         /deployment/schedule/new                        controllers.ScheduleController.form
+POST        /deployment/schedule/save                       controllers.ScheduleController.save
+GET         /deployment/schedule/:id/edit                   controllers.ScheduleController.edit(id)
+POST        /deployment/schedule/:id/delete                 controllers.ScheduleController.delete(id)
+
 # Target
 GET         /deployment/target/find                         controllers.TargetController.findMatch(region: String, stack: String, app: String)
 GET         /deployment/target/deploy                       controllers.TargetController.findAppropriateDeploy(region: String, stack: String, app: String, stage: String)
