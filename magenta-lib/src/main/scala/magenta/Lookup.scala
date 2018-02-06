@@ -21,7 +21,7 @@ trait Lookup {
   def stages: Seq[String]
   def data: DataLookup
   def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing
-  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String]
+  def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String]
 }
 
 trait SecretProvider {

@@ -18,7 +18,7 @@ import utils.Json._
 
 import scala.util.{Failure, Success, Try}
 
-case class Image(imageId: String, creationDate: DateTime)
+case class Image(imageId: String, creationDate: DateTime, tags: Map[String, String])
 object Image {
   implicit val formats = Json.format[Image]
 }
@@ -180,13 +180,17 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       conf.Configuration.credentials.lookupSecret(service, account)
   }
 
-  private def get(region: String, tags: Map[String, String]): Seq[Image] = {
-    val params = tags.map{ case (key, value) => s"tags.${key.urlEncode}=${value.urlEncode}" }.mkString("&")
-    prism.get(s"/images?region=${region.urlEncode}&$params"){ json =>
+  private def get(accountNumber: Option[String], region: String, tags: Map[String, String]): Seq[Image] = {
+    val params: Seq[(String, String)] =
+      tags.map { case (key, value) => s"tags.${key.urlEncode}" -> value }.toSeq ++
+      accountNumber.map(acc => "meta.origin.accountNumber" -> acc) ++
+      Map("region" -> region, "state" -> "available")
+    val paramsQueryString = params.map { case (k,v) => s"$k=${v.urlEncode}" }.mkString("&")
+    prism.get(s"/images?$paramsQueryString"){ json =>
       (json \ "data" \ "images").as[Seq[Image]]
     }
   }
-  def getLatestAmi(region: String)(tags: Map[String, String]): Option[String] =
-    get(region, tags).sortBy(-_.creationDate.getMillis).headOption.map(_.imageId)
+  def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String] =
+    get(accountNumber, region, tags).filter(image => tagFilter(image.tags)).sortBy(-_.creationDate.getMillis).headOption.map(_.imageId)
 
 }

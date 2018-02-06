@@ -1,5 +1,6 @@
 package lookup
 
+import magenta.deployment_type.CloudFormationDeploymentTypeParameters
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import play.api
@@ -43,14 +44,14 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   "PrismLookup" should "return latest image" in {
     val images = List(
-      Image("test-ami", new DateTime(2017,3,2,13,32,0)),
-      Image("test-later-ami", new DateTime(2017,4,2,13,32,0)),
-      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0)),
-      Image("test-early-ami", new DateTime(2017,1,2,13,32,0))
+      Image("test-ami", new DateTime(2017,3,2,13,32,0), Map.empty),
+      Image("test-later-ami", new DateTime(2017,4,2,13,32,0), Map.empty),
+      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0), Map.empty),
+      Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
     )
     withPrismClient(images) { client =>
       val lookup = new PrismLookup(client, "", 10 seconds)
-      val result = lookup.getLatestAmi("bob")(Map.empty)
+      val result = lookup.getLatestAmi(None, _ => true)("bob")(Map.empty)
       result shouldBe Some("test-later-still-ami")
     }
   }
@@ -58,7 +59,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
   it should "narrows ami query by region" in {
     val (result, request) = withPrismClient(Nil) { client =>
       val lookup = new PrismLookup(client, "", 10 seconds)
-      lookup.getLatestAmi("bob")(Map.empty)
+      lookup.getLatestAmi(None, _ => true)("bob")(Map.empty)
     }
     result shouldBe None
     request.flatMap(_.getQueryString("region")) shouldBe Some("bob")
@@ -67,12 +68,27 @@ class PrismLookupTest extends FlatSpec with Matchers {
   it should "correctly query using the tags" in {
     val (result, request) = withPrismClient(Nil) { client =>
       val lookup = new PrismLookup(client, "", 10 seconds)
-      lookup.getLatestAmi("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
+      lookup.getLatestAmi(None, _ => true)("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
     }
     request.map(_.queryString) shouldBe Some(Map(
       "region" -> ArrayBuffer("bob"),
+      "state" -> ArrayBuffer("available"),
       "tags.tagName" -> ArrayBuffer("tagValue?"),
       "tags.tagName*" -> ArrayBuffer("tagValue2")
     ))
+  }
+
+  it should "correctly filter out images that are encrypted" in {
+    val images = List(
+      Image("test-ami", new DateTime(2017,3,2,13,32,0), Map.empty),
+      Image("test-later-ami", new DateTime(2017,4,2,13,32,0), Map("Encrypted" -> "very")),
+      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0), Map("Encrypted" -> "true")),
+      Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
+    )
+    withPrismClient(images) { client =>
+      val lookup = new PrismLookup(client, "", 10 seconds)
+      val result = lookup.getLatestAmi(None, CloudFormationDeploymentTypeParameters.unencryptedTagFilter)("bob")(Map.empty)
+      result shouldBe Some("test-ami")
+    }
   }
 }

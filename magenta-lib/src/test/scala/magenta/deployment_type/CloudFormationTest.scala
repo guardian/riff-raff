@@ -11,7 +11,7 @@ import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}
-import play.api.libs.json.{JsString, JsValue, Json}
+import play.api.libs.json.{JsBoolean, Json, JsString, JsValue}
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing()
@@ -114,6 +114,30 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     }
   }
 
+  it should "add an implicit Encrypted tag when amiEncrypted is true" in {
+    val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")), "amiEncrypted" -> JsBoolean(true))
+
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+      case List(updateTask, _) =>
+        inside(updateTask) {
+          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
+            amiParamTags should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
+        }
+    }
+  }
+
+  it should "allow an explicit Encrypted tag when amiEncrypted is true" in {
+    val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp"), "Encrypted" -> JsString("monkey")), "amiEncrypted" -> JsBoolean(true))
+
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+      case List(updateTask, _) =>
+        inside(updateTask) {
+          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
+            amiParamTags should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
+        }
+    }
+  }
+
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
@@ -165,5 +189,18 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       deploymentTypes)
     val target = DeployTarget(parameters(), stack, region)
     LookupByTags(pkg, target, reporter) shouldBe LookupByTags(Map("Stack" -> "cfn", "Stage" -> "PROD", "App" -> "app"))
+  }
+
+  "CloudFormationDeploymentTypeParameters unencryptedTagFilter" should "include when there is no encrypted tag" in {
+    CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins")) shouldBe true
+  }
+
+  it should "include when there is an encrypted tag that is set to false" in {
+    CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "false")) shouldBe true
+  }
+
+  it should "exclude when there is an encrypted tag that is not set to false" in {
+    CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "something")) shouldBe false
+    CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "true")) shouldBe false
   }
 }
