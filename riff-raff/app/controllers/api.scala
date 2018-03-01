@@ -265,7 +265,8 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
       "recipe" -> deploy.parameters.recipe.name,
       "status" -> deploy.state.toString,
       "logURL" -> routes.DeployController.viewUUID(deploy.uuid.toString).absoluteURL(),
-      "tags" -> toJson(deploy.allMetaData)
+      "tags" -> toJson(deploy.allMetaData),
+      "durationSeconds" -> deploy.timeTaken.toStandardSeconds.getSeconds
     )
 
 
