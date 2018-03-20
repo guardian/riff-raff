@@ -20,6 +20,7 @@
                         <th>Project Name</th>
                         <th>Target Stage</th>
                         <th>Schedule</th>
+                        <th>Cool-down Days</th>
                         <th>Enabled?</th>
                         <th></th>
                         <th></th>
@@ -32,6 +33,7 @@
                         <td>@config.projectName</td>
                         <td>@config.stage</td>
                         <td>@config.scheduleExpression (@config.timezone)</td>
+                        <td>@config.cooldownDays</td>
                         <td>@config.enabled</td>
                         <td>
                             <a class="btn btn-default btn-xs" href="@routes.ScheduleController.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
