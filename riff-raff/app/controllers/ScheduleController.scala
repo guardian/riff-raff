@@ -9,7 +9,7 @@ import org.quartz.CronExpression
 import persistence.ScheduleRepository
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.data.validation.{Constraint, Constraints, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
@@ -46,7 +46,8 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
       "stage" -> nonEmptyText,
       "schedule" -> nonEmptyText.verifying(quartzExpressionConstraint),
       "timezone" -> nonEmptyText.verifying(timezoneConstraint),
-      "enabled" -> boolean
+      "enabled" -> boolean,
+      "cooldownDays" -> optional(number.verifying(Constraints.min(1)))
     )(ScheduleForm.apply)(ScheduleForm.unapply)
   )
 
@@ -56,8 +57,10 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
   }
 
   def form = authAction { implicit request =>
+    val base = ScheduleForm(UUID.randomUUID(), "", "", "", "", enabled = true, cooldownDays = None)
+
     Ok(views.html.schedule.form(
-      scheduleForm.fill(ScheduleForm(UUID.randomUUID(), "", "", "", "", enabled = true)), prismLookup, timeZones
+      scheduleForm.fill(base), prismLookup, timeZones
     ))
   }
 
@@ -97,13 +100,15 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
 
 object ScheduleController {
 
-  case class ScheduleForm(id: UUID, projectName: String, stage: String, schedule: String, timezone: String, enabled: Boolean) {
+  case class ScheduleForm(id: UUID, projectName: String, stage: String, schedule: String, timezone: String,
+                          enabled: Boolean, cooldownDays: Option[Int]) {
     def toConfig(lastEdited: DateTime, user: String): ScheduleConfig =
-      ScheduleConfig(id, projectName, stage, schedule, timezone, enabled, lastEdited, user)
+      ScheduleConfig(id, projectName, stage, schedule, timezone, enabled, lastEdited, user, cooldownDays)
   }
   object ScheduleForm {
     def apply(config: ScheduleConfig): ScheduleForm =
-      ScheduleForm(config.id, config.projectName, config.stage, config.scheduleExpression, config.timezone, config.enabled)
+      ScheduleForm(config.id, config.projectName, config.stage, config.scheduleExpression, config.timezone,
+                   config.enabled, config.cooldownDays)
   }
 
 }

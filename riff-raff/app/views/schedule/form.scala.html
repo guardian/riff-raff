@@ -43,6 +43,8 @@
             '_label -> "Schedule timezone",
             '_error -> configForm.globalError.map(_.withMessage("Please select a valid timezone for the schedule"))
         )
+        @b3.text(configForm("cooldownDays"), '_label -> "Cooldown days")
+        <p>How many days must have elapsed since the last deploy (manual or automatic) in order to do an automatic deploy.</p>
         @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
 
         <div class="actions">
