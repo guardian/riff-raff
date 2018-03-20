@@ -3,7 +3,8 @@ package schedule
 import conf.Configuration
 import controllers.Logging
 import deployment._
-import magenta.{Deployer, DeployParameters, RunState}
+import magenta.{DeployParameters, Deployer, RunState}
+import org.joda.time.DateTime
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
 import schedule.DeployScheduler.JobDataKeys
 
@@ -19,9 +20,12 @@ class DeployJob extends Job with Logging {
     val projectName = getAs[String](JobDataKeys.ProjectName)
     val stage = getAs[String](JobDataKeys.Stage)
 
+    val now = new DateTime()
+    val cooldownDays = getAs[Option[Int]](JobDataKeys.CoolDownDays)
+
     val result = for {
       record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, Configuration.scheduledDeployment.enabled)
+      params <- DeployJob.createDeployParameters(record, Configuration.scheduledDeployment.enabled, now, cooldownDays)
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
     result match {
@@ -32,22 +36,30 @@ class DeployJob extends Job with Logging {
 }
 
 object DeployJob {
-  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
-    lastDeploy.state match {
-      case RunState.Completed =>
-        val params = DeployParameters(
-          Deployer("Scheduled Deployment"),
-          lastDeploy.parameters.build,
-          lastDeploy.stage
-        )
-        if (scheduledDeploysEnabled) {
-          Right(params)
-        } else {
-          Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
-        }
-      case otherState =>
+  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean, now: DateTime, maybeCooldownDays: Option[Int]): Either[Error, DeployParameters] = {
+    val params = DeployParameters(
+      Deployer("Scheduled Deployment"),
+      lastDeploy.parameters.build,
+      lastDeploy.stage
+    )
+
+    (lastDeploy.state, maybeCooldownDays) match {
+      case (RunState.Completed, _) if !scheduledDeploysEnabled =>
+        Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
+
+      case (RunState.Completed, Some(cooldownDays)) if withinCooldown(now, lastDeploy.time, cooldownDays) =>
+        Left(Error(s"Scheduled deployment suppressed due to $cooldownDays days cooldown period. Would have deployed $params"))
+
+      case (RunState.Completed, _) =>
+        Right(params)
+
+      case (otherState, _) =>
         Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
     }
+  }
+
+  private def withinCooldown(now: DateTime, lastDeployTime: DateTime, cooldownDays: Int): Boolean = {
+    lastDeployTime.plusDays(cooldownDays).isAfter(now)
   }
 
   @tailrec

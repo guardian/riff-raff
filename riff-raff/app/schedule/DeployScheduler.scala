@@ -61,6 +61,7 @@ class DeployScheduler(deployments: Deployments) extends Logging {
     map.put(JobDataKeys.Deployments, deployments)
     map.put(JobDataKeys.ProjectName, scheduleConfig.projectName)
     map.put(JobDataKeys.Stage, scheduleConfig.stage)
+    map.put(JobDataKeys.CoolDownDays, scheduleConfig.cooldownDays)
     map
   }
 
@@ -72,6 +73,7 @@ object DeployScheduler {
     val Deployments = "deployments"
     val ProjectName = "projectName"
     val Stage = "stage"
+    val CoolDownDays = "cooldownDays"
   }
 
 }
