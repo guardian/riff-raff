@@ -1,4 +1,4 @@
 @(title: String, request: Request[AnyContent],
         scripts: List[String] = Nil, subNav: Html = Html(""))(content: Html)
 
-@page(title, scripts)(menu.appmenubar(request), subNav, snippets.analytics(conf.Configuration.mixpanel.token, None))(content)
+@page(title, scripts)(menu.appmenubar(request), subNav)(content)
