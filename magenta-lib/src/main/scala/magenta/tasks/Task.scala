@@ -21,6 +21,4 @@ trait Task {
   // A verbose description of this task. For command line tasks,
   //  this should be the full command line to be executed
   def verbose: String
-
-  def taskHost: Option[Host] = None
 }

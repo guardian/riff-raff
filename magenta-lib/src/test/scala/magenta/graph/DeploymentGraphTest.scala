@@ -5,6 +5,7 @@ import magenta.{Host, KeyRing, Region}
 import magenta.tasks.{ChangeSwitch, S3Upload, SayHello}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.mockito.MockitoSugar
+import magenta.fixtures._
 
 class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
@@ -20,8 +21,8 @@ class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
 
   val threeSimpleTasks = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
-    SayHello(Host("testHost")),
-    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
+    SayHello(Host("testHost", app1, CODE.name, stack.name)),
+    ChangeSwitch(Host("testHost", app1, CODE.name, stack.name), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
 }

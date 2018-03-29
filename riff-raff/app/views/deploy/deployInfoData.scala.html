@@ -20,7 +20,7 @@
                 <tbody>
                     @data(key).map { value =>
                         <tr>
-                            <td>@value.stack.getOrElse{ <span class='label label-warning'>none</span> }</td>
+                            <td>@value.stack</td>
                             <td>@value.app.toString</td>
                             <td>@value.stage.toString</td>
                             <td>@value.value</td>

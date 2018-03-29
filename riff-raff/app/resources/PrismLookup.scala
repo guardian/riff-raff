@@ -1,8 +1,8 @@
 package resources
 
+import cats.syntax.group
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
-
 import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
@@ -11,7 +11,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
-
 import magenta._
 import controllers.Logging
 import utils.Json._
@@ -25,23 +24,19 @@ object Image {
 
 class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lookup with Logging {
 
-  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing = KeyRing(
-    apiCredentials = apps.toSeq.flatMap {
-      app => {
-        val KeyPattern = """credentials:(.*)""".r
-        val apiCredentials = data.keys flatMap {
-          case key@KeyPattern(service) =>
-            data.datum(key, app, stage, stack).flatMap { data =>
-              secretProvider.lookup(service, data.value).map { secret =>
-                service -> ApiCredentials(service, data.value, secret, data.comment)
-              }
-            }
-          case _ => None
+  def keyRing(stage: Stage, app: App, stack: Stack): KeyRing = {
+    val KeyPattern = """credentials:(.*)""".r
+    val apiCredentials = data.keys flatMap {
+      case key@KeyPattern(service) =>
+        data.datum(key, app, stage, stack).flatMap { data =>
+          secretProvider.lookup(service, data.value).map { secret =>
+            service -> ApiCredentials(service, data.value, secret, data.comment)
+          }
         }
-        apiCredentials
-      }
-    }.distinct.toMap
-  )
+      case _ => None
+    }
+    KeyRing(apiCredentials.distinct.toMap)
+  }
 
   object prism extends Logging {
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
@@ -63,23 +58,18 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
   implicit val datumReads = Json.reads[Datum]
   implicit val hostReads = (
       (__ \ "dnsName").read[String] and
-      (__ \ "mainclasses").readNullable[Set[String]] and
-      (__ \ "stack").readNullable[String] and
-      (__ \ "app").readNullable[Seq[String]] and
+      (__ \ "stack").read[String] and
+      (__ \ "app").read[Seq[String]] and
       (__ \ "stage").read[String] and
       (__ \ "group").read[String] and
       (__ \ "createdAt").read[DateTime] and
       (__ \ "instanceName").readNullable[String] and
       (__ \ "internalName").readNullable[String] and
       (__ \ "dnsName").read[String]
-    ){ (name:String, mainclasses:Option[Set[String]], stack:Option[String], app:Option[Seq[String]],
+    ){ (name:String, stack:String, appList:Seq[String],
         stage: String, group: String, createdAt: DateTime,
         instanceName: Option[String], internalName: Option[String], dnsName: String) =>
-    val appSet:Set[App] = if (stack.isDefined && app.isDefined) {
-      app.get.map(appName => App(appName)).toSet
-    } else {
-      mainclasses.map(_.map(App)).getOrElse(Set.empty)
-    }
+    val app:App = App(appList.head)
     val tags = {
       Map(
         "group" -> group,
@@ -91,7 +81,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
     }
     Host(
       name = name,
-      app = appSet,
+      app = app,
       stage = stage,
       stack = stack,
       tags = tags
@@ -118,29 +108,15 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       (json \ "data" \ "data").as[Seq[(String,Seq[Datum])]].toMap
     }
     def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
-      val query = stack match {
-        case UnnamedStack =>
-          s"/data/lookup/${key.urlEncode}?app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
-        case NamedStack(stackName) =>
-          s"/data/lookup/${key.urlEncode}?stack=${stackName.urlEncode}&app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
-      }
+      val query = s"/data/lookup/${key.urlEncode}?stack=${stack.name.urlEncode}&app=${app.name.urlEncode}&stage=${stage.name.urlEncode}"
       prism.get(query){ json => (json \ "data").asOpt[Datum] }
     }
-
   }
 
   def hosts = new HostLookup {
     def parseHosts(json: JsValue, entity: String = "instances"):Seq[Host] = {
       val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
-        Try {
-          val host = jsHost.as[Host]
-          host.app match {
-            case singleApp if singleApp.size == 1 => Seq(host)
-            case noApps if noApps.isEmpty => Nil
-            case multipleApps =>
-              multipleApps.toSeq.map( app => host.copy(app = Set(app)))
-          }
-        }
+        Try(jsHost.as[Host])
       }
 
       val errors = tryHosts.flatMap {
@@ -151,18 +127,13 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
       if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
 
       tryHosts.flatMap {
-        case Success(hosts) => hosts
-        case _ => Nil
+        case Success(hosts) => Some(hosts)
+        case _ => None
       }
     }
 
     def get(pkg: DeploymentPackage, app: App, parameters: DeployParameters, stack: Stack, entity: String): Seq[Host] = {
-      val query = stack match {
-        case UnnamedStack =>
-          s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&mainclasses=${app.name.urlEncode}"
-        case NamedStack(stackName) =>
-          s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&stack=${stackName.urlEncode}&app=${app.name.urlEncode}"
-      }
+      val query = s"/$entity?_expand&stage=${parameters.stage.name.urlEncode}&stack=${stack.name.urlEncode}&app=${app.name.urlEncode}"
       prism.get(query)(js => parseHosts(js, entity))
     }
 

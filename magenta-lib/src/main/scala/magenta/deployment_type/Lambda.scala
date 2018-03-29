@@ -1,11 +1,10 @@
 package magenta.deployment_type
 
 import com.amazonaws.regions.{Region => AwsRegion, Regions => AwsRegions}
+import com.amazonaws.services.s3.AmazonS3
+import magenta.{DeploymentPackage, DeployParameters, DeployReporter, DeployTarget, KeyRing, Region, Stack}
 import magenta.artifact.S3Path
-import magenta.tasks.{S3Upload, UpdateLambda, UpdateS3Lambda}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, Region, Stack}
-
-import scala.util.Try
+import magenta.tasks.{S3Upload, UpdateS3Lambda}
 
 object Lambda extends DeploymentType  {
   val name = "aws-lambda"
@@ -90,31 +89,29 @@ object Lambda extends DeploymentType  {
   }
 
   def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
-    List(stack, params.stage.name, pkg.app.name, fileName).mkString("/")
+    List(stack.name, params.stage.name, pkg.app.name, fileName).mkString("/")
   }
 
   val uploadLambda = Action("uploadLambda",
     """
-      |Uploads the lambda code to S3. This is a no-op when the `bucket` parameter is not provided.
+      |Uploads the lambda code to S3.
     """.stripMargin){ (pkg, resources, target) =>
-    implicit val keyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient = resources.artifactClient
-    lambdaToProcess(pkg, target, resources.reporter).flatMap {
-      case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
-        val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
-        Some(S3Upload(
-          target.region,
-          s3Bucket,
-          Seq(S3Path(pkg.s3Package, fileName) -> s3Key)
-        ))
+    implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient: AmazonS3 = resources.artifactClient
+    lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+      val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
+      S3Upload(
+        lambda.region,
+        lambda.s3Bucket,
+        Seq(S3Path(pkg.s3Package, lambda.fileName) -> s3Key)
+      )
     }.distinct
   }
   val updateLambda = Action("updateLambda",
     """
       |Updates the lambda to use new code using the UpdateFunctionCode API.
       |
-      |Typically this copies the new function code form S3, but when `bucket` is not provided this directly uploads the
-      |file directly into the function.
+      |This copies the new function code from S3 (where it is stored by the `uploadLambda` action).
       |
       |The function name to update is determined by the `functionName` or `functions` parameters.
       |
@@ -126,34 +123,20 @@ object Lambda extends DeploymentType  {
       |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
       |As a result you can bundle stage specific configuration into the respective files.
     """.stripMargin){ (pkg, resources, target) =>
-    implicit val keyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient = resources.artifactClient
-    lambdaToProcess(pkg, target, resources.reporter).flatMap {
-      case LambdaFunctionFromS3(functionName, fileName, region, s3Bucket) =>
-        val s3Key = makeS3Key(target.stack, target.parameters, pkg, fileName)
-        Some(
+    implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient: AmazonS3 = resources.artifactClient
+    lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+        val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
         UpdateS3Lambda(
-          functionName,
-          s3Bucket,
+          lambda.functionName,
+          lambda.s3Bucket,
           s3Key,
-          region
-        ))
+          lambda.region
+        )
     }.distinct
   }
 
   def defaultActions = List(uploadLambda, updateLambda)
 }
 
-sealed trait LambdaFunction {
-  def functionName: String
-  def fileName: String
-  def region: Region
-}
-
-case class LambdaFunctionFromS3(functionName: String, fileName: String, region: Region, s3Bucket: String) extends LambdaFunction
-
-object LambdaFunction {
-  def apply(functionName: String, fileName: String, region: Region, s3Bucket: String): LambdaFunction = {
-    LambdaFunctionFromS3(functionName, fileName, region, s3Bucket)
-  }
-}
+case class LambdaFunction(functionName: String, fileName: String, region: Region, s3Bucket: String)

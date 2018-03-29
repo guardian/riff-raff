@@ -53,7 +53,7 @@ trait CloudFormationDeploymentTypeParameters {
   )
 
   val amiEncrypted = Param[Boolean]("amiEncrypted",
-    optionalInYaml = true,
+    optional = true,
     documentation =
       """
         |Specify that you want to use an AMI with an encrypted root EBS volume.

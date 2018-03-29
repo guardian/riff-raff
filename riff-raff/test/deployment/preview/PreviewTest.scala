@@ -55,8 +55,8 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
     val deploymentTuple = (
       DeploymentKey("testDeployment", "testAction", "testStack", "testRegion"),
       DeploymentTasks(List(
-        StubTask("testAction per app task number one", Region("testRegion"), None, None),
-        StubTask("testAction per app task number two", Region("testRegion"), None, None)
+        StubTask("testAction per app task number one", Region("testRegion"), None),
+        StubTask("testAction per app task number two", Region("testRegion"), None)
       ), "testDeployment [testAction] => testRegion/testStack")
     )
 

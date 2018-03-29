@@ -15,7 +15,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", "test-recipe", Nil, Nil, Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument),
         RunState.Completed
       )
     )
@@ -87,9 +87,6 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "testProject",
         "test",
         "TEST",
-        "default",
-        Nil,
-        Nil,
         Map.empty,
         AllDocument
       ),
@@ -113,9 +110,6 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "testProject",
         "test",
         "TEST",
-        "default",
-        Nil,
-        Nil,
         Map.empty,
         AllDocument
       ),

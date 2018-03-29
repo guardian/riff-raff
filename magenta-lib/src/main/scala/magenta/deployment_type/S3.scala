@@ -103,7 +103,8 @@ object S3 extends DeploymentType {
         """.stripMargin
   ){ (pkg, resources, target) => {
       def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-        resource.get(pkg).flatMap { resourceName =>
+        val maybeResource = resource.get(pkg)
+        maybeResource.flatMap { resourceName =>
           val dataLookup = resources.lookup.data
           val datumOpt = dataLookup.datum(resourceName, pkg.app, target.parameters.stage, target.stack)
           if (datumOpt.isEmpty) {
@@ -125,7 +126,9 @@ object S3 extends DeploymentType {
         data.get.value
       }
 
-      val prefix:String = resourceLookupFor(pathPrefixResource).map(_.value).getOrElse(S3Upload.prefixGenerator(
+    val maybeDatum = resourceLookupFor(pathPrefixResource)
+    val maybeString = maybeDatum.map(_.value)
+    val prefix:String = maybeString.getOrElse(S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
         stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None

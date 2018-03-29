@@ -1,5 +1,5 @@
 @(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hosts: Map[String,Seq[magenta.Host]], lookup: resources.PrismLookup)
-@import magenta.HostList._
+@import magenta.SeqHost
 
     @main("Deployment Hosts", request, List("deployinfo-app-tabs", "relative-time")) {
 
@@ -22,10 +22,10 @@
                         <th>Hosts</th>
                     </tr></thead>
                     <tbody>
-                        @hosts(stage).byStackAndApp.map { case ((stackOption, appSet), hosts) =>
+                        @hosts(stage).byStackAndApp.map { case ((stack, app), hosts) =>
                         <tr>
-                            <td><strong>@stackOption.getOrElse{ <span class='label label-warning'>none</span> }</strong></td>
-                            <td><strong>@appSet.map(_.name).mkString(", ")</strong></td>
+                            <td><strong>@stack</strong></td>
+                            <td><strong>@app.name</strong></td>
                             <td>(@hosts.size)</td>
                             <td>
                             @hosts.transposeBy(_.tags.getOrElse("group","")).map{ host =>

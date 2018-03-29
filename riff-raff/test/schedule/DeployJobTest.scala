@@ -39,6 +39,6 @@ class DeployJobTest extends FlatSpec with Matchers with EitherValues {
       recordState = Some(RunState.Completed)
     )
     DeployJob.createDeployParameters(record, false) shouldBe
-      Left(Error("Scheduled deployments disabled. Would have deployed DeployParameters(Deployer(Scheduled Deployment),Build(testProject,1),Stage(TEST),RecipeName(default),List(),List(),All)"))
+      Left(Error("Scheduled deployments disabled. Would have deployed DeployParameters(Deployer(Scheduled Deployment),Build(testProject,1),Stage(TEST),All)"))
   }
 }

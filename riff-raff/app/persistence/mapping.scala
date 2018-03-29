@@ -39,9 +39,6 @@ object RecordConverter {
       projectName = sourceParams.build.projectName,
       buildId = sourceParams.build.id,
       stage = sourceParams.stage.name,
-      recipe = sourceParams.recipe.name,
-      stacks = sourceParams.stacks.map(_.name).toList,
-      hostList = sourceParams.hostList,
       tags = record.metaData,
       selector = sourceParams.selector match {
         case All => AllDocument
@@ -59,9 +56,6 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     Deployer(deploy.parameters.deployer),
     Build(deploy.parameters.projectName, deploy.parameters.buildId),
     Stage(deploy.parameters.stage),
-    RecipeName(deploy.parameters.recipe),
-    deploy.parameters.stacks.map(NamedStack(_)),
-    deploy.parameters.hostList,
     deploy.parameters.selector match {
       case AllDocument => All
       case DeploymentKeysSelectorDocument(keys) =>

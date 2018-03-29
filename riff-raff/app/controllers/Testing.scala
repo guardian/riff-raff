@@ -5,6 +5,7 @@ import java.util.UUID
 import com.gu.googleauth.AuthAction
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import magenta._
+import magenta.input.All
 import magenta.tasks.Task
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, Duration}
@@ -26,7 +27,7 @@ class Testing(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val 
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
-    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), DefaultRecipe())
+    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), All)
 
     val testTask1 = new Task {
       override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}

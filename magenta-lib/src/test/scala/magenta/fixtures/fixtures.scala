@@ -4,15 +4,14 @@ package fixtures
 import magenta.deployment_type._
 import magenta.tasks.Task
 
-case class StubTask(description: String, region: Region, stack: Option[Stack] = None,
-  override val taskHost: Option[Host] = None) extends Task {
+case class StubTask(description: String, region: Region, stack: Option[Stack] = None) extends Task {
 
   def execute(reporter: DeployReporter, stopFlag: => Boolean) { }
   def verbose = "stub(%s)" format description
   def keyRing = KeyRing()
 }
 
-case class StubPerAppDeploymentStep(description: String, app: Seq[App]) extends DeploymentStep {
+case class StubPerAppDeploymentStep(description: String, app: App) extends DeploymentStep {
   def resolve(resources: DeploymentResources, target: DeployTarget) = ???
 }
 

@@ -30,8 +30,6 @@ object HookTemplate {
     ("projectName", _.parameters.projectName),
     ("project", _.parameters.projectName),
     ("stage", _.parameters.stage),
-    ("recipe", _.parameters.recipe),
-    ("hostList",  _.parameters.hostList.mkString(",")),
     ("deployer", _.parameters.deployer),
     ("uuid", _.uuid.toString)
   )

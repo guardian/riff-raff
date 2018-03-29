@@ -16,10 +16,10 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
       val param1 = Param[String]("param1", "first parameter which has no default")
       val simianType = Param[String]("simianType", "simianType param which has a default").default("monkey")
       val foodType = Param[String]("foodType", "another param with a contextual default").
-        defaultFromContext((pkg, target) => Right(s"banana${target.stack.nameOption.getOrElse("")}"))
+        defaultFromContext((pkg, target) => Right(s"banana${target.stack.name}"))
       val foodCount = Param[Int]("foodCount", "param with different default for legacy and new").
         defaultFromContext((pkg, target) =>
-          Right(if (pkg.legacyConfig) 1 else 100)
+          Right(100)
         )
     }
     val result = DeployTypeDocs.generateDocs(Seq(testDeploymentType))
@@ -34,10 +34,10 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
     actionDocs should contain (ActionDoc("myNonDefaultAction", "some docs for my action that doesn't run by default", false))
 
     paramDocs.size shouldBe 4
-    paramDocs should contain (ParamDoc("param1", "first parameter which has no default", None, None))
-    paramDocs should contain (ParamDoc("simianType", "simianType param which has a default", Some("monkey"), Some("monkey")))
-    paramDocs should contain (ParamDoc("foodType", "another param with a contextual default", Some("banana<stack>"), Some("banana<stack>")))
-    paramDocs should contain (ParamDoc("foodCount", "param with different default for legacy and new", Some("1"), Some("100")))
+    paramDocs should contain (ParamDoc("param1", "first parameter which has no default", None))
+    paramDocs should contain (ParamDoc("simianType", "simianType param which has a default", Some("monkey")))
+    paramDocs should contain (ParamDoc("foodType", "another param with a contextual default", Some("banana<stack>")))
+    paramDocs should contain (ParamDoc("foodCount", "param with different default for legacy and new", Some("100")))
   }
 
   it should "successfully generate documentation for the standard set of deployment types" in {

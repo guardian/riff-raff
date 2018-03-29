@@ -45,16 +45,9 @@ class DeployController(
         BadRequest(views.html.deploy.form(errors, prismLookup))
       },
       form => {
-        log.info(s"Host list: ${form.hosts}")
-        val defaultRecipe = prismLookup.data
-          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
-          .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
-          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
-          stacks = form.stacks.map(NamedStack(_)),
-          hostList = form.hosts,
           selector = form.makeSelector
         )
 
@@ -66,10 +59,6 @@ class DeployController(
             }
             Redirect(routes.PreviewController.preview(
               parameters.build.projectName, parameters.build.id, parameters.stage.name, maybeKeys)
-            ).flashing(
-              "previewRecipe" -> parameters.recipe.name,
-              "previewHosts" -> parameters.hostList.mkString(","),
-              "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
             )
           case "deploy" =>
             val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)).valueOr{ error =>
@@ -194,8 +183,7 @@ class DeployController(
       case All => Nil
     }
 
-    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name,
-      Some(record.recipe.name), "deploy", Nil, record.stacks.toList.flatMap(_.nameOption), keys, None)
+    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name, "deploy", keys, None)
 
     val fields = DeployParameterForm.form.fill(params).data
 

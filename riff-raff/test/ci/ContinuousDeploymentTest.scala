@@ -16,7 +16,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
     params.size should be(1)
     params should be(Set(
-      DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy", "71"), Stage("PROD"), RecipeName("default"))
+      DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy", "71"), Stage("PROD"))
     ))
   }
 
@@ -27,7 +27,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
 
   it should "take account of branch" in {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(td2B392, contDeployBranchConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
-    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy2", "392"), Stage("QA"), RecipeName("default"))))
+    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy2", "392"), Stage("QA"))))
   }
 
   /* Test types */
@@ -55,11 +55,11 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
       else i
     }
 
-    val success = ContinuousDeployment.retryUpTo(4)(failingFun)
+    val success = ContinuousDeployment.retryUpTo(4)(() => failingFun())
     success should be (Success(3))
 
     i = 0
-    val failure = ContinuousDeployment.retryUpTo(2)(failingFun)
+    val failure = ContinuousDeployment.retryUpTo(2)(() => failingFun())
     failure.isFailure should be (true)
   }
 }

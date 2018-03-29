@@ -8,7 +8,7 @@ import magenta.artifact.S3YamlArtifact
 import magenta.deployment_type.{Action, AutoScaling}
 import magenta.fixtures._
 import magenta.input.Deployment
-import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, NamedStack, Region, Stage, fixtures}
+import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Stack, Region, Stage, fixtures}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.JsString
@@ -41,8 +41,8 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
 
     deploymentTask.valid.name shouldBe "test [uploadArtifact, deploy] => region/stack"
     deploymentTask.valid.tasks shouldBe List(
-      StubTask("upload", Region("region"), stack = Some(NamedStack("stack"))),
-      StubTask("deploy", Region("region"), stack = Some(NamedStack("stack")))
+      StubTask("upload", Region("region"), stack = Some(Stack("stack"))),
+      StubTask("deploy", Region("region"), stack = Some(Stack("stack")))
     )
   }
 
@@ -58,10 +58,10 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
 
     deploymentTask.valid.name shouldBe "test [uploadArtifact, deploy] => {region-one,region-two}/stack"
     deploymentTask.valid.tasks shouldBe List(
-      StubTask("upload", Region("region-one"), stack = Some(NamedStack("stack"))),
-      StubTask("deploy", Region("region-one"), stack = Some(NamedStack("stack"))),
-      StubTask("upload", Region("region-two"), stack = Some(NamedStack("stack"))),
-      StubTask("deploy", Region("region-two"), stack = Some(NamedStack("stack")))
+      StubTask("upload", Region("region-one"), stack = Some(Stack("stack"))),
+      StubTask("deploy", Region("region-one"), stack = Some(Stack("stack"))),
+      StubTask("upload", Region("region-two"), stack = Some(Stack("stack"))),
+      StubTask("deploy", Region("region-two"), stack = Some(Stack("stack")))
     )
   }
 

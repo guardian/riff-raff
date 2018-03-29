@@ -17,14 +17,14 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
   import Fixtures._
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ul.reachableDeployments.size should be(1)
     dr.ul.isExecuting should be(false)
   }
 
   it should "request the first task from a simple list is run" in {
     val dr = createDeployRunnerWithUnderlying()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
@@ -34,7 +34,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   it should "process a list of tasks and clean up" in {
     val dr = createDeployRunner()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     val firstDeployment = runDeployment.deployment
@@ -61,7 +61,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   it should "mark a state and task as executing" in {
     val dr = createDeployRunnerWithUnderlying()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
     val firstDeployments = dr.ul.first
     firstDeployments.size should be(1)
@@ -72,7 +72,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   it should "mark a task as completed" in {
     val dr = createDeployRunnerWithUnderlying()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(runDeployment.deployment))
@@ -83,7 +83,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   it should "mark a task as failed" in {
     val dr = createDeployRunnerWithUnderlying()
-    prepare(dr, threeSimpleTasks)
+    prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
     val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
     dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
@@ -151,11 +151,6 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)
-  }
-
-  def prepare(dr: DR, tasks: List[Task]): Unit = {
-    val context = createContext(tasks, dr.record.uuid, dr.record.parameters)
-    dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
 
   def prepare(dr: DR, deployments: Graph[DeploymentTasks]): Unit = {

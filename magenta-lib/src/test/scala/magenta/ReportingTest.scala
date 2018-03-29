@@ -84,7 +84,7 @@ class ReportingTest extends FlatSpec with Matchers {
 
     tree.size should be (4)
 
-    tree.render.mkString(", ") should be (""":Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),RecipeName(default),List(),List(),All)) [Completed], 1:Info($ echo hello) [Completed], 1.1:CommandOutput(hello) [Not running], 1.2:Verbose(return value 0) [Not running]""")
+    tree.render.mkString(", ") should be (""":Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),All)) [Completed], 1:Info($ echo hello) [Completed], 1.1:CommandOutput(hello) [Not running], 1.2:Verbose(return value 0) [Not running]""")
   }
 
   it should "know it has failed" in {

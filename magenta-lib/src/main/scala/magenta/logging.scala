@@ -16,14 +16,14 @@ object ThrowableDetail {
   }
 }
 
-case class TaskDetail(name: String, description:String, verbose:String, taskHosts: List[Host]) {
+case class TaskDetail(name: String, description:String, verbose:String) {
   def fullDescription = name + " " + description
 }
 object TaskDetail {
   implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
   implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
   def apply(t:Task): TaskDetail = {
-    TaskDetail(t.name, t.description, t.verbose, t.taskHost.toList)
+    TaskDetail(t.name, t.description, t.verbose)
   }
 }
 

@@ -49,10 +49,7 @@ class PreviewController(coordinator: PreviewCoordinator, authAction: AuthAction[
                   preview.parameters.build.projectName,
                   preview.parameters.build.id,
                   preview.parameters.stage.name,
-                  None,
                   "n/a",
-                  Nil,
-                  Nil,
                   deploymentKeys,
                   totalKeyCount
                 ))
