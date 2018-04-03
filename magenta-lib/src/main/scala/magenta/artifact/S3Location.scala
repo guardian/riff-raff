@@ -93,10 +93,6 @@ object S3Artifact {
   }
 }
 
-sealed abstract class ArtifactResolutionError
-case class S3ArtifactError(underlying: S3Error) extends ArtifactResolutionError
-case class JsonArtifactError(underlying: Seq[(JsPath, Seq[JsonValidationError])]) extends ArtifactResolutionError
-
 case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
   val deployObjectName: String = "riff-raff.yaml"
 }
