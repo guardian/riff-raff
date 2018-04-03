@@ -22,7 +22,6 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
       "id" -> uuid,
       "projectName" -> nonEmptyText,
       "stage" -> nonEmptyText,
-      "recipe" -> nonEmptyText,
       "branchMatcher" -> optional(text),
       "trigger" -> number
     )(ConfigForm.apply)(ConfigForm.unapply)
@@ -34,7 +33,7 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
   }
 
   def form = authAction { implicit request =>
-    Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","","default",None,Trigger.SuccessfulBuild.id)), prismLookup))
+    Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","",None,Trigger.SuccessfulBuild.id)), prismLookup))
   }
 
   def save = authAction { implicit request =>
@@ -42,7 +41,7 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
       formWithErrors => Ok(views.html.continuousDeployment.form(formWithErrors, prismLookup)),
       form => {
         val config = ContinuousDeploymentConfig(
-          form.id, form.projectName, form.stage, form.recipe, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
+          form.id, form.projectName, form.stage, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
         ContinuousDeploymentConfigRepository.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
@@ -71,10 +70,10 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
 
 object ContinuousDeployController {
 
-  case class ConfigForm(id: UUID, projectName: String, stage: String, recipe: String, branchMatcher:Option[String], trigger: Int)
+  case class ConfigForm(id: UUID, projectName: String, stage: String, branchMatcher:Option[String], trigger: Int)
   object ConfigForm {
     def apply(cd: ContinuousDeploymentConfig): ConfigForm =
-      ConfigForm(cd.id, cd.projectName, cd.stage, cd.recipe, cd.branchMatcher, cd.trigger.id)
+      ConfigForm(cd.id, cd.projectName, cd.stage, cd.branchMatcher, cd.trigger.id)
   }
 
 }

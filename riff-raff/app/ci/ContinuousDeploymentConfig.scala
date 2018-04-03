@@ -16,7 +16,6 @@ case class ContinuousDeploymentConfig(
                                        id: UUID,
                                        projectName: String,
                                        stage: String,
-                                       recipe: String,
                                        branchMatcher:Option[String],
                                        trigger: Trigger.Mode,
                                        user: String,
@@ -41,7 +40,6 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
         "_id" -> a.id,
         "projectName" -> a.projectName,
         "stage" -> a.stage,
-        "recipe" -> a.recipe,
         "triggerMode" -> a.trigger.id,
         "user" -> a.user,
         "lastEdited" -> a.lastEdited
@@ -64,7 +62,6 @@ object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeployment
         id = dbo.as[UUID]("_id"),
         projectName = dbo.as[String]("projectName"),
         stage = dbo.as[String]("stage"),
-        recipe = dbo.as[String]("recipe"),
         trigger = triggerMode,
         user = dbo.as[String]("user"),
         lastEdited = dbo.as[DateTime]("lastEdited"),

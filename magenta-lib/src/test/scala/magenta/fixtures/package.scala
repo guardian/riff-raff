@@ -17,14 +17,6 @@ package object fixtures {
 
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
-  val baseRecipe = Recipe("one",
-    deploymentSteps = basePackageType.mkDeploymentStep("init_action_one")(stubPackage(basePackageType)) :: Nil,
-    dependsOn = Nil)
-
-  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
-
-  def project(recipe: Recipe, stacks: Stack*) = Project(Map.empty, Map(recipe.name -> recipe), defaultStacks = stacks)
-
   def stubPackage(deploymentType: DeploymentType): DeploymentPackage =
     DeploymentPackage("stub project", app1, Map(), "stub-package-type", null, Seq(deploymentType))
 

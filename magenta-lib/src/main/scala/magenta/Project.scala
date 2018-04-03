@@ -67,26 +67,9 @@ trait DeploymentStep {
 
 case class App (name: String)
 
-case class Recipe(
-  name: String,
-  deploymentSteps: Iterable[DeploymentStep] = Nil,
-  dependsOn: List[String] = Nil
-)
-
-case class Project(
-  packages: Map[String, DeploymentPackage] = Map.empty,
-  recipes: Map[String, Recipe] = Map.empty,
-  defaultStacks: Seq[Stack] = Seq()
-) {
-  lazy val applications = packages.values.map(_.app).toSet
-}
-
 case class Stage(name: String)
+
 case class Build(projectName:String, id:String)
-case class RecipeName(name:String)
-object DefaultRecipe {
-  def apply() = RecipeName("default")
-}
 
 case class Stack(name: String) extends AnyVal
 

@@ -25,7 +25,6 @@
                         <th>Project Name</th>
                         <th>Branches</th>
                         <th>Target Stage</th>
-                        <th>Recipe to execute</th>
                         <th>Trigger</th>
                         <th></th>
                         <th></th>
@@ -38,7 +37,6 @@
                         <td>@config.projectName</td>
                         <td>@config.branchRE.toString()</td>
                         <td>@config.stage</td>
-                        <td>@config.recipe</td>
                         <td>@config.trigger match {
                             case SuccessfulBuild => { Build succeeds }
                             case Disabled => { Disabled }

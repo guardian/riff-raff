@@ -31,7 +31,6 @@
             '_label -> "Stage",
             '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
         )
-        @b3.text(configForm("recipe"), '_label -> "Recipe to Execute")
         @b3.text(configForm("branchMatcher"), '_label -> "Branch RegEx")
         <legend>Trigger</legend>
         @b3.radio(

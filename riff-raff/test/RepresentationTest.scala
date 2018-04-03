@@ -168,10 +168,10 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
     val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
     val lastTime = new DateTime(2013,1,8,17,20,0)
-    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
-    val configV2Dump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "recipe" : "default" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
+    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
+    val configV2Dump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
 
-    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", "default", Some("^master$"), Trigger.SuccessfulBuild, "Test user", lastTime)
+    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", Some("^master$"), Trigger.SuccessfulBuild, "Test user", lastTime)
     val gratedConfig = config.toDBO
 
     val jsonConfig = JSON.serialize(gratedConfig)

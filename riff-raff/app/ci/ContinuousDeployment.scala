@@ -3,7 +3,7 @@ package ci
 import controllers.Logging
 import deployment.{ContinuousDeploymentRequestSource, Deployments}
 import lifecycle.Lifecycle
-import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
+import magenta.{DeployParameters, Deployer, Stage, Build => MagentaBuild}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze

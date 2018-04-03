@@ -1,7 +1,7 @@
 package docs
 
 import magenta.artifact.S3Path
-import magenta.{App, Build, Deployer, DeploymentPackage, DeployParameters, DeployTarget, RecipeName, Region, Stack, Stage}
+import magenta.{App, Build, Deployer, DeploymentPackage, DeployParameters, DeployTarget, Region, Stack, Stage}
 import magenta.deployment_type.{DeploymentType, Param}
 
 case class ActionDoc(name: String, documentation: String, isDefault: Boolean)
