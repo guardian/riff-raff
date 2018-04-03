@@ -16,7 +16,6 @@ The parameters available are:
  - `build` - the build number
  - `stage` - the environment in which you would like the deploy carried out
  - `manualStage` - this is an alternative to the stage parameter and should be ignored for this form
- - `recipe` - choose the recipe to resolve
  - `action` - this can be `preview` or `deploy`
 
 For example, to do a preview of a deploy of riff-raff in CODE you might write:

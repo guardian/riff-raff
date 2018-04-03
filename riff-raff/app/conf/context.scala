@@ -229,11 +229,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
 object Configuration extends Configuration("riff-raff", webappConfDirectory = "env")
 
-object DeployInfoMode extends Enumeration {
-  val URL = Value("URL")
-  val Execute = Value("Execute")
-}
-
 class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) {
   val applicationName = "riff-raff"
 

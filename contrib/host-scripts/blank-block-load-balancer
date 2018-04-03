@@ -1,8 +1,0 @@
-#!/bin/bash
-#
-# This script doesn't do anything, it can be deployed to machines that have
-# smart load balancers so as to provide a consistant interface.
-#
-# You may want to do something similar, but ELB's and some load balancers will
-# retry an error on another server, so killing the server might be more efficient
-

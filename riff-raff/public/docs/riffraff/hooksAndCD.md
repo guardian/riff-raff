@@ -33,7 +33,7 @@ In the first case you'll need some form of external system to make the API call 
 
 A continuous deployment configuration is designed to watch for new builds and react to
  events. You can currently set up a configuration that reacts to a successful build. When the matching event occurs,
- Riff-Raff will start a deploy automatically to the specified environment, using the specified recipe.
+ Riff-Raff will start a deploy automatically to the specified environment.
 
 In either case, the configuration can be set to filter by VCS branch (e.g. only builds of the `master` branch trigger
  a new deploy - allowing work on other branches to be safely ignored).
@@ -59,8 +59,6 @@ values in your URLs substituting this syntax: `%deploy.<variable>%`
   * `build`
   * `project`
   * `stage`
-  * `recipe`
-  * `hosts` (comma separated list of hosts)
   * `deployer`
   * `uuid`
   * `tag.XXXX` - where XXXX is the name of an available tag (for a list of tags it is easiest to look at the `tag` dict
