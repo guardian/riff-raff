@@ -21,13 +21,11 @@ object SelfDeploy extends DeploymentType {
       |
       |Despite there being a default for this we are migrating to always requiring it to be specified.
     """.stripMargin
-  ).defaultFromContext{ case (_, target) =>
-    target.stack.nameOption.map(stackName => s"$stackName-dist").toRight("You must specify bucket explicitly when not using stacks")
-  }
+  ).defaultFromContext{ case (_, target) => Right(s"${target.stack.name}-dist") }
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
-  ).defaultFromContext((pkg, _) => Right(pkg.legacyConfig))
+  ).default(false)
 
   val managementPort = Param[Int]("managementPort",
     "For deferred deployment only: The port of the management pages containing the location of the switchboard"
@@ -64,7 +62,7 @@ object SelfDeploy extends DeploymentType {
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    val hosts = pkg.apps.toList.flatMap(app => resources.lookup.hosts.get(pkg, app, target.parameters, target.stack))
+    val hosts = resources.lookup.hosts.get(pkg, pkg.app, target.parameters, target.stack).toList
     hosts.map{ host =>
       ChangeSwitch(
         host,

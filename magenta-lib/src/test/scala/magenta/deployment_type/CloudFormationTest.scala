@@ -19,16 +19,16 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val artifactClient: AmazonS3 = null
   val region = Region("eu-west-1")
   val deploymentTypes = Seq(CloudFormation)
-  val app = Seq(App("app"))
-  val namedStack = NamedStack("cfn")
+  val app = App("app")
+  val testStack = Stack("cfn")
   val cfnStackName = s"cfn-app-PROD"
-  def p(data: Map[String, JsValue]) = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"), true,
+  def p(data: Map[String, JsValue]) = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
     deploymentTypes)
 
   "cloudformation deployment type" should "have an updateStack action" in {
-    val data: Map[String, JsValue] = Map.empty
+    val data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, checkTask) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParamTags, _, stage, stack, ifAbsent, alwaysUpload) =>
@@ -38,9 +38,9 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
             userParams should be(Map.empty)
             amiParamTags should be(Map.empty)
             stage should be(PROD)
-            stack should be(NamedStack("cfn"))
+            stack should be(Stack("cfn"))
             ifAbsent should be(true)
-            alwaysUpload shouldBe false
+            alwaysUpload shouldBe true
         }
         inside(checkTask) {
           case CheckUpdateEventsTask(taskRegion, updateStackName) =>
@@ -58,7 +58,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
         "RouterAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -74,7 +74,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
         "myAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -92,7 +92,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       "amiTags" -> Json.obj("myApp" -> JsString("fakeApp"))
     )
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -105,7 +105,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "respect the defaults for amiTags and amiParameter" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -117,7 +117,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "add an implicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")), "amiEncrypted" -> JsBoolean(true))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -129,7 +129,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "allow an explicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp"), "Encrypted" -> JsString("monkey")), "amiEncrypted" -> JsBoolean(true))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), namedStack, region))) {
+    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
       case List(updateTask, _) =>
         inside(updateTask) {
           case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
@@ -141,7 +141,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = UpdateCloudFormationTask.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -153,7 +153,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(NamedStack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = UpdateCloudFormationTask.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -172,20 +172,20 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   }
 
   "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {
-    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = true, appendStage = true) shouldBe
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = true, appendStage = true) shouldBe
       LookupByName("cfn-stackname-STAGE")
-    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = true) shouldBe
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = true) shouldBe
       LookupByName("stackname-STAGE")
-    LookupByName(NamedStack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = false) shouldBe
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = false) shouldBe
       LookupByName("stackname")
   }
 
   it should "correctly create a LookupByTags from deploy parameters" in {
     val data: Map[String, JsValue] = Map()
-    val app = Seq(App("app"))
-    val stack = NamedStack("cfn")
+    val app = App("app")
+    val stack = Stack("cfn")
     val cfnStackName = s"cfn-app-PROD"
-    val pkg = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"), true,
+    val pkg = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
       deploymentTypes)
     val target = DeployTarget(parameters(), stack, region)
     LookupByTags(pkg, target, reporter) shouldBe LookupByTags(Map("Stack" -> "cfn", "Stage" -> "PROD", "App" -> "app"))

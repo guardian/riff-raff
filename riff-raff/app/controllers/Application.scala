@@ -94,8 +94,8 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
   def deployInfoHosts(appFilter: String) = authAction { implicit request =>
     val hosts = prismLookup.hosts.all.filter { host =>
-      host.apps.exists(_.toString.matches(s"(?i).*${appFilter}.*")) &&
-      request.getQueryString("stack").forall(s => host.stack.exists(_ == s))
+      host.app.toString.matches(s"(?i).*${appFilter}.*") &&
+      request.getQueryString("stack").forall(s => host.stack == s)
     }.groupBy(_.stage)
     Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))
   }

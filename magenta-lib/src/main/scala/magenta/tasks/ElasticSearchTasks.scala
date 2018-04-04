@@ -9,7 +9,7 @@ import okhttp3._
 import org.json4s._
 import play.api.libs.json.Json
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
                                            (implicit val keyRing: KeyRing)
@@ -23,7 +23,7 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
-    val instance = EC2(asg.getInstances.headOption.getOrElse {
+    val instance = EC2(asg.getInstances.asScala.headOption.getOrElse {
       throw new IllegalArgumentException("Auto-scaling group: %s had no instances" format (asg))
     }, ec2Client)
     val node = ElasticSearchNode(instance.getPublicDnsName)
@@ -40,7 +40,7 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
     implicit val ec2Client = EC2.makeEc2Client(keyRing, region)
     implicit val elbClient = ELB.client(keyRing, region)
-    val newNode = asg.getInstances.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
+    val newNode = asg.getInstances.asScala.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
     val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).getPublicDnsName)
 
     def cullInstance(instance: Instance) {
@@ -57,7 +57,7 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
         if (!stopFlag) ASG.cull(asg, instance, asgClient, elbClient)
     }
 
-    val instancesToKill = asg.getInstances.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
+    val instancesToKill = asg.getInstances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
     val orderedInstancesToKill = instancesToKill.transposeBy(_.getAvailabilityZone)
     orderedInstancesToKill.foreach(cullInstance)
   }

@@ -9,22 +9,16 @@ package object fixtures {
 
   val app1 = App("the_role")
 
+  val stack = Stack("test-stack")
+
   val lookupEmpty = stubLookup()
 
-  val lookupSingleHost = stubLookup(List(Host("the_host", stage=CODE.name).app(app1)))
+  val lookupSingleHost = stubLookup(List(Host("the_host", app1, stage=CODE.name, stack.name)))
 
   val basePackageType = stubDeploymentType(Seq("init_action_one"))
 
-  val baseRecipe = Recipe("one",
-    deploymentSteps = basePackageType.mkDeploymentStep("init_action_one")(stubPackage(basePackageType)) :: Nil,
-    dependsOn = Nil)
-
-  def project(recipes: Recipe*) = Project(Map.empty, recipes.map(r => r.name -> r).toMap)
-
-  def project(recipe: Recipe, stacks: Stack*) = Project(Map.empty, Map(recipe.name -> recipe), defaultStacks = stacks)
-
-  def stubPackage(deploymentType: DeploymentType) =
-    DeploymentPackage("stub project", Seq(app1), Map(), "stub-package-type", null, false, Seq(deploymentType))
+  def stubPackage(deploymentType: DeploymentType): DeploymentPackage =
+    DeploymentPackage("stub project", app1, Map(), "stub-package-type", null, Seq(deploymentType))
 
   def stubDeploymentType(actionNames: Seq[String], params: ParamRegister => List[Param[_]] = _ => Nil,
     name: String = "stub-package-type") = {
@@ -60,18 +54,10 @@ package object fixtures {
       def data: DataLookup = new DataLookup {
         def datum(key: String, app: App, stage: Stage, stack: Stack): Option[Datum] = {
           val matchingList = resourceData.getOrElse(key, List.empty)
-          stack match {
-            case UnnamedStack =>
-              matchingList.filter(_.stack.isEmpty).find{data =>
-                data.appRegex.findFirstMatchIn(app.name).isDefined &&
-                data.stageRegex.findFirstMatchIn(stage.name).isDefined
-              }
-            case NamedStack(stackName) =>
-              matchingList.filter(_.stack.isDefined).find{data =>
-                data.stackRegex.exists(_.findFirstMatchIn(stackName).isDefined) &&
-                data.appRegex.findFirstMatchIn(app.name).isDefined &&
-                data.stageRegex.findFirstMatchIn(stage.name).isDefined
-              }
+          matchingList.find{data =>
+            data.stack == stack.name &&
+            data.app == app.name &&
+            data.stage == stage.name
           }
         }
         def all: Map[String, Seq[Datum]] = resourceData
@@ -86,14 +72,14 @@ package object fixtures {
         def get(pkg: DeploymentPackage, app: App, params: DeployParameters, stack: Stack): Seq[Host] = {
           hostsSeq.filter{ host =>
             host.stage == params.stage.name &&
-            host.apps.contains(app) &&
+            host.app == app &&
             host.isValidForStack(stack)
           }
         }
         def all: Seq[Host] = hostsSeq
       }
 
-      def keyRing(stage: Stage, apps: Set[App], stack: Stack) = KeyRing()
+      override def keyRing(stage: Stage, app: App, stack: Stack) = KeyRing()
 
       def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String] = ???
     }

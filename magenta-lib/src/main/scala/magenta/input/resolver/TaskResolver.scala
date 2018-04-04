@@ -5,7 +5,7 @@ import magenta.artifact.{S3Artifact, S3Path}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.DeploymentTasks
 import magenta.input.{ConfigErrors, Deployment}
-import magenta.{App, DeployParameters, DeployTarget, DeploymentPackage, DeploymentResources, NamedStack, Region}
+import magenta.{App, DeploymentPackage, DeploymentResources, DeployParameters, DeployTarget, Region, Stack}
 
 object TaskResolver {
   def resolve(deployment: Deployment, deploymentResources: DeploymentResources, parameters: DeployParameters,
@@ -20,7 +20,7 @@ object TaskResolver {
         stack <- deployment.stacks.toList
         actionName <- deployment.actions.toList
         deploymentStep = deploymentType.mkDeploymentStep(actionName)(deploymentPackage)
-        target = DeployTarget(parameters, NamedStack(stack), Region(region))
+        target = DeployTarget(parameters, Stack(stack), Region(region))
         task <- deploymentStep.resolve(deploymentResources, target)
       } yield task
       DeploymentTasks(tasks,
@@ -33,11 +33,10 @@ object TaskResolver {
 
     DeploymentPackage(
       name = deployment.name,
-      pkgApps = Seq(App(deployment.app)),
+      pkgApp = App(deployment.app),
       pkgSpecificData = deployment.parameters,
       deploymentTypeName = deployment.`type`,
       s3Package = S3Path(artifact, s"${deployment.contentDirectory}/"),
-      legacyConfig = false,
       deploymentTypes = deploymentTypes
     )
   }

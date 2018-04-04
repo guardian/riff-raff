@@ -20,7 +20,7 @@ trait Lookup {
   def hosts: HostLookup
   def stages: Seq[String]
   def data: DataLookup
-  def keyRing(stage: Stage, apps: Set[App], stack: Stack): KeyRing
+  def keyRing(stage: Stage, app: App, stack: Stack): KeyRing
   def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String]
 }
 

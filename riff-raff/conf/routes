@@ -20,10 +20,6 @@ POST        /configuration/validation                       controllers.Applicat
 GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String,deployments:Option[String])
 GET         /preview/yaml/showTasks                         controllers.PreviewController.showTasks(previewId:String)
 
-GET         /preview/json                                   controllers.DeployController.preview(project:String,build:String,stage:String,recipe:String,hosts:String,stacks:String)
-GET         /preview/json/content                           controllers.DeployController.previewContent(id:String,project:String,build:String,stage:String,recipe:String,hosts:String)
-
-
 # Deployment pages
 GET         /deployment/request                             controllers.DeployController.deploy
 POST        /deployment/request                             controllers.DeployController.processForm

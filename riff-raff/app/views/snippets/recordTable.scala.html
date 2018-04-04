@@ -52,26 +52,20 @@
             }
 
             <td>
-                @defining(Some(record.recipe.name).filter(_ != "default")) { recipe =>
-                    @if(record.parameters.stacks.nonEmpty || recipe.nonEmpty || record.parameters.selector != magenta.input.All) {
-                        @htmlTooltip(placement = "left") {
-                            @Some(record.recipe.name).filter(_ != "default").map{ recipe => <strong>Recipe:</strong> @recipe <br/>}
-                            @if(record.parameters.stacks.nonEmpty) {
-                                <strong>Stacks:</strong> @record.parameters.stacks.map(_.name).mkString(", ") <br/>
-                            }
-                            @record.parameters.selector match {
-                                case magenta.input.DeploymentKeysSelector(ids) => {
-                                    <strong>Restricted to deployments:</strong><br/>
-                                        @ids.map { id =>
-                                            @snippets.deploymentInstance(id)<br/>
-                                        }
+                @if(record.parameters.selector != magenta.input.All) {
+                    @htmlTooltip(placement = "left") {
+                        @record.parameters.selector match {
+                            case magenta.input.DeploymentKeysSelector(ids) => {
+                                <strong>Restricted to deployments:</strong><br/>
+                                    @ids.map { id =>
+                                        @snippets.deploymentInstance(id)<br/>
+                                    }
 
-                                }
-                                case magenta.input.All => {}
                             }
-                        } {
-                            <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+                            case magenta.input.All => {}
                         }
+                    } {
+                        <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
                     }
                 }
             </td>

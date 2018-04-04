@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3Client
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
-import magenta.{Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, NamedStack, Project, Region, Stage}
+import magenta.{App, Build, DeployContext, Deployer, DeployParameters, DeployReporter, Host, KeyRing, Region, Stage}
 import magenta.tasks._
 import org.joda.time.DateTime
 import org.scalatest.mockito.MockitoSugar
@@ -13,16 +13,20 @@ object Fixtures extends MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val artifactClient = mock[AmazonS3Client]
 
+  private val host = Host("testHost", App("testApp"), "CODE", "testStack")
+
   val threeSimpleTasks: List[Task] = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
-    SayHello(Host("testHost")),
-    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
+    SayHello(host),
+    ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
   val twoTasks = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
-    ChangeSwitch(Host("testHost"), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
+    ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
+
+  val threeSimpleTasksGraph = DeploymentGraph(threeSimpleTasks, "test")
 
   val simpleGraph: Graph[DeploymentTasks] = {
     DeploymentGraph(twoTasks, "branch one") joinParallel DeploymentGraph(twoTasks, "branch two")
@@ -44,13 +48,10 @@ object Fixtures extends MockitoSugar {
     uuid,
     DeployParameters(Deployer(deployer),
       Build(projectName, buildId),
-      Stage(stage),
-      stacks = stacks.map(NamedStack.apply)
+      Stage(stage)
     )
   )
 
-  def createContext(tasks: List[Task], uuid: UUID, parameters: DeployParameters): DeployContext =
-    createContext(DeploymentGraph(tasks, parameters.stacks.head.name), uuid, parameters)
   def createContext(taskGraph: Graph[DeploymentTasks], uuid: UUID, parameters: DeployParameters): DeployContext =
     DeployContext(uuid, parameters, taskGraph)
 

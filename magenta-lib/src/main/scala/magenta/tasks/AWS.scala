@@ -4,9 +4,9 @@ import java.nio.ByteBuffer
 
 import com.amazonaws.{AmazonClientException, AmazonWebServiceRequest, ClientConfiguration}
 import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
-import com.amazonaws.regions.{RegionUtils, Region => AwsRegion}
-import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition
+import com.amazonaws.regions.{Region => AwsRegion}
 import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
+import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition
 import com.amazonaws.services.autoscaling.{AmazonAutoScaling, AmazonAutoScalingClientBuilder}
 import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
 import com.amazonaws.services.cloudformation.{AmazonCloudFormation, AmazonCloudFormationClientBuilder}
@@ -14,18 +14,18 @@ import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack, Tag =>
 import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2ClientBuilder}
 import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
 import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancing => ClassicELB, AmazonElasticLoadBalancingClientBuilder => ClassicELBBuilder}
-import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancing => ApplicationELB, AmazonElasticLoadBalancingClientBuilder => ApplicationELBBuilder}
 import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
+import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancing => ApplicationELB, AmazonElasticLoadBalancingClientBuilder => ApplicationELBBuilder}
 import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
 import com.amazonaws.services.lambda.{AWSLambda, AWSLambdaClientBuilder}
 import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.securitytoken.{AWSSecurityTokenService, AWSSecurityTokenServiceClientBuilder}
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import com.gu.management.Loggable
-import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, NamedStack, Region, Stack, Stage, UnnamedStack}
+import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, Region, Stack, Stage}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -186,12 +186,7 @@ object ASG extends AWS {
       def hasTag(key: String, value: String) = asg.getTags.asScala exists { tag =>
         tag.getKey == key && tag.getValue == value
       }
-      def matchApp(app: App, stack: Stack): Boolean = {
-        stack match {
-          case UnnamedStack => hasTag("Role", pkg.name) || hasTag("App", pkg.name)
-          case NamedStack(stackName) => hasTag("Stack", stackName) && hasTag("App", app.name)
-        }
-      }
+      def matchApp(app: App, stack: Stack): Boolean = hasTag("Stack", stack.name) && hasTag("App", app.name)
     }
 
     def listAutoScalingGroups(nextToken: Option[String] = None): List[AutoScalingGroup] = {
@@ -207,25 +202,18 @@ object ASG extends AWS {
 
     val groups = listAutoScalingGroups()
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
-    val appToMatchingGroups = pkg.apps.flatMap { app =>
-      val matches = filteredByStage.filter(_.matchApp(app, stack))
-      if (matches.isEmpty) None else Some(ASGMatch(app, matches))
+    val appToMatchingGroups = {
+      val matches = filteredByStage.filter(_.matchApp(pkg.app, stack))
+      if (matches.isEmpty) None else Some(ASGMatch(pkg.app, matches))
     }
 
-    val appMatch:ASGMatch = appToMatchingGroups match {
-      case Seq() =>
+    appToMatchingGroups match {
+      case None =>
         reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
-      case Seq(onlyMatch) => onlyMatch
-      case firstMatch +: otherMatches =>
-        reporter.info(s"More than one app matches an autoscaling group, the first in the list will be used")
-        firstMatch
-    }
-
-    appMatch match {
-      case ASGMatch(_, List(singleGroup)) =>
+      case Some(ASGMatch(_, List(singleGroup))) =>
         reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName} (${singleGroup.getAutoScalingGroupARN})")
         singleGroup
-      case ASGMatch(app, groupList) =>
+      case Some(ASGMatch(app, groupList)) =>
         reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }

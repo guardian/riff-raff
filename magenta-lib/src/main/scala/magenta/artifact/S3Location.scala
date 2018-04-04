@@ -1,13 +1,10 @@
 package magenta.artifact
 
-import java.io.File
-
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
-import magenta.json.JsonInputFile
-import magenta.{Build, DeployReporter}
-import play.api.libs.json.{JsPath, JsonValidationError}
+import magenta.Build
+import play.api.libs.json.{JsonValidationError, JsPath}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -95,75 +92,6 @@ object S3Artifact {
     s"${build.projectName}/${build.id}/"
   }
 }
-
-case class S3JsonArtifact(bucket: String, key: String) extends S3Artifact {
-  val deployObjectName: String = "deploy.json"
-}
-
-object S3JsonArtifact extends Loggable {
-  def apply(build: Build, bucket: String): S3JsonArtifact = {
-    val prefix = S3Artifact.buildPrefix(build)
-    S3JsonArtifact(bucket, prefix)
-  }
-
-  def fetchInputFile(artifact: S3JsonArtifact, deprecatedPause: Option[Int])(
-    implicit client: AmazonS3, reporter: DeployReporter): Either[ArtifactResolutionError, JsonInputFile] = {
-
-    import cats.syntax.either._
-    val possibleJson = (artifact.deployObject.fetchContentAsString()(client)).orElse {
-      convertFromZipBundle(artifact, deprecatedPause)
-      artifact.deployObject.fetchContentAsString()(client)
-    }
-    possibleJson.leftMap[ArtifactResolutionError](S3ArtifactError(_)).flatMap(s =>
-      JsonInputFile.parse(s).leftMap(JsonArtifactError(_))
-    )
-  }
-
-  def convertFromZipBundle(artifact: S3JsonArtifact, deprecatedPause: Option[Int])(implicit client: AmazonS3, reporter: DeployReporter): Unit = {
-    reporter.fail(
-      """NO LONGER SUPPORTED: The artifact.zip format is no longer supported - please switch to the new format (if you
-        |are using sbt-riffraff-artifact then simply upgrade to >= 0.9.4, if you use the TeamCity upload plugin
-        |you'll need to use the riffRaffNotifyTeamcity task instead of the riffRaffArtifact task).""".stripMargin)
-    deprecatedPause.foreach { pause =>
-      reporter.warning(
-        s"To persuade you to migrate we will now\npause this deploy for $pause seconds whilst you reflect on your ways.")
-      Thread.sleep(pause * 1000)
-    }
-    reporter.info("Converting artifact.zip to S3 layout")
-    implicit val sourceBucket: Option[String] = Some(artifact.bucket)
-    S3ZipArtifact.withDownload(artifact){ dir =>
-      val filesToUpload = resolveFiles(dir.toFile, artifact.key)
-      reporter.info(s"Uploading contents of artifact (${filesToUpload.size} files) to S3")
-      filesToUpload.foreach{ case (file, key) =>
-        val metadata = new ObjectMetadata()
-        metadata.setContentLength(file.length)
-        val req = new PutObjectRequest(artifact.bucket, key, file).withMetadata(metadata)
-        client.putObject(req)
-      }
-      reporter.info(s"Zip artifact converted")
-    }(client, reporter)
-
-    S3ZipArtifact.delete(artifact)
-    reporter.verbose("Zip artifact deleted")
-  }
-
-  private def subDirectoryPrefix(key: String, file:File): String = {
-    if (key.isEmpty) {
-      file.getName
-    } else {
-      val delimiter = if (key.endsWith("/")) "" else "/"
-      s"$key$delimiter${file.getName}"
-    }
-  }
-  private def resolveFiles(file: File, key: String): Seq[(File, String)] = {
-    if (!file.isDirectory) Seq((file, key))
-    else file.listFiles.toSeq.flatMap(f => resolveFiles(f, subDirectoryPrefix(key, f))).distinct
-  }
-}
-
-sealed abstract class ArtifactResolutionError
-case class S3ArtifactError(underlying: S3Error) extends ArtifactResolutionError
-case class JsonArtifactError(underlying: Seq[(JsPath, Seq[JsonValidationError])]) extends ArtifactResolutionError
 
 case class S3YamlArtifact(bucket: String, key: String) extends S3Artifact {
   val deployObjectName: String = "riff-raff.yaml"

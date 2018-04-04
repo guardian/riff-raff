@@ -30,8 +30,7 @@
         <tr>
             <th>Name</th>
             <th>Description</th>
-            <th>Default (riff-raff.yaml)</th>
-            <th>Default (legacy deploy.json)</th>
+            <th>Default</th>
         </tr>
     </thead>
     <tbody>
@@ -39,13 +38,7 @@
         <tr>
           <td>@param.name</td>
           <td>@docs.MarkDownParser.toHtml(param.documentation)</td>
-            @if(param.defaultLegacy != param.default) {
-                <td nowrap="nowrap"><em><strong>@param.default.getOrElse{&lt;no default&gt;}</strong></em></td>
-                <td nowrap="nowrap"><em><strong>@param.defaultLegacy.getOrElse{&lt;no default&gt;}</strong></em></td>
-            } else {
-                <td nowrap="nowrap"><em>@param.default.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
-                <td nowrap="nowrap"><em>@param.defaultLegacy.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
-            }
+          <td nowrap="nowrap"><em>@param.default.getOrElse{<strong>&lt;no default&gt;</strong>}</em></td>
         </tr>
         }
     </tbody>

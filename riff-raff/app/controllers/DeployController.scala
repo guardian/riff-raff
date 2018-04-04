@@ -45,16 +45,9 @@ class DeployController(
         BadRequest(views.html.deploy.form(errors, prismLookup))
       },
       form => {
-        log.info(s"Host list: ${form.hosts}")
-        val defaultRecipe = prismLookup.data
-          .datum("default-recipe", App(form.project), Stage(form.stage), UnnamedStack)
-          .map(data => RecipeName(data.value)).getOrElse(DefaultRecipe())
         val parameters = new DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
-          recipe = form.recipe.map(RecipeName).getOrElse(defaultRecipe),
-          stacks = form.stacks.map(NamedStack(_)),
-          hostList = form.hosts,
           selector = form.makeSelector
         )
 
@@ -66,10 +59,6 @@ class DeployController(
             }
             Redirect(routes.PreviewController.preview(
               parameters.build.projectName, parameters.build.id, parameters.stage.name, maybeKeys)
-            ).flashing(
-              "previewRecipe" -> parameters.recipe.name,
-              "previewHosts" -> parameters.hostList.mkString(","),
-              "previewStacks" -> parameters.stacks.flatMap(_.nameOption).mkString(",")
             )
           case "deploy" =>
             val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)).valueOr{ error =>
@@ -98,43 +87,6 @@ class DeployController(
     val record = deployments.get(UUID.fromString(uuid))
     Ok(views.html.deploy.logContent(record))
   }
-
-  def preview(projectName: String, buildId: String, stage: String, recipe: String, hosts: String, stacks: String) = AuthAction { implicit request =>
-    val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-    val stackList = stacks.split(",").toList.filterNot(_.isEmpty).map(NamedStack(_))
-    val parameters = DeployParameters(Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), stackList, hostList)
-    val previewId = LegacyPreviewController.startPreview(parameters, prismLookup, deploymentTypes)
-    Ok(views.html.preview.json.preview(request, parameters, previewId.toString))
-  }
-
-  def previewContent(previewId: String, projectName: String, buildId: String, stage: String, recipe: String, hosts: String) =
-    AuthAction { implicit request =>
-      val previewUUID = UUID.fromString(previewId)
-      val hostList = hosts.split(",").toList.filterNot(_.isEmpty)
-      val parameters = DeployParameters(
-        Deployer(request.user.fullName), Build(projectName, buildId), Stage(stage), RecipeName(recipe), Seq(), hostList
-      )
-      val result = LegacyPreviewController.getPreview(previewUUID, parameters)
-      result match {
-        case Some(LegacyPreviewResult(future, startTime)) =>
-          future.value match {
-            case Some(Success(preview)) =>
-              try {
-                Ok(views.html.preview.json.content(request, preview))
-              } catch {
-                case exception: Exception =>
-                  Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-              }
-            case Some(Failure(exception)) => Ok(views.html.errorContent(exception, "Couldn't retrieve preview information."))
-            case None =>
-              val duration = new org.joda.time.Duration(startTime, new DateTime())
-              Ok(views.html.preview.json.loading(request, duration.getStandardSeconds))
-          }
-        case _ =>
-          val exception = new IllegalStateException("Future for preview wasn't found")
-          Ok(views.html.errorContent(exception, "Couldn't resolve preview information."))
-      }
-    }
 
   def history() = AuthAction { implicit request =>
     Ok(views.html.deploy.history(prismLookup))
@@ -231,8 +183,7 @@ class DeployController(
       case All => Nil
     }
 
-    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name,
-      Some(record.recipe.name), "deploy", Nil, record.stacks.toList.flatMap(_.nameOption), keys, None)
+    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name, "deploy", keys, None)
 
     val fields = DeployParameterForm.form.fill(params).data
 
@@ -285,7 +236,6 @@ class DeployController(
 
     val build = Build(projectName, id)
     val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
-      .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
 
     deployObject.map {
       case (path, contents) => Ok(contents).as(path.extension.map {
@@ -304,7 +254,6 @@ class DeployController(
 
     val build = Build(projectName, id)
     val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
-      .orElse(pathAndContent(S3JsonArtifact(build, Configuration.artifact.aws.bucketName)))
 
     deployObject.map { case (artifact, path, configFile) =>
       val objects = artifact.listAll()(Configuration.artifact.aws.client)

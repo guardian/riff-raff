@@ -55,8 +55,6 @@ trait Record {
   lazy val buildId = parameters.build.id
   lazy val deployerName = parameters.deployer.name
   lazy val stage = parameters.stage
-  lazy val stacks = parameters.stacks
-  lazy val recipe = parameters.recipe
   lazy val isRunning = report.isRunning
   lazy val isDone = (!isRunning && report.size > 1) || isSummarised || isMarkedAsFailed
   lazy val state = {

@@ -42,7 +42,6 @@ the history section in the web GUI.  By default the most recent deploys will be 
                 {
                     stage: "CODE",
                     projectName: "tools::dummy-app",
-                    recipe: "default",
                     uuid: "19097f12-7a8d-4fc0-80bc-630f3cb43bdc",
                     build: "5",
                     deployer: "Simon Hildrew",
@@ -89,9 +88,7 @@ An example fragment (sent as `application/json`) might be:
     {
       "project":"tools::dummy-app",
       "build":"17",
-      "stage":"INFRA",
-      "recipe":"default",
-      "hosts":["10-252-94-200.gc2.dc1.gnm"]
+      "stage":"INFRA"
     }
 
 The response you receive will contain something like this:
@@ -102,15 +99,11 @@ The response you receive will contain something like this:
         "request": {
           "project":"tools::dummy-app",
           "build":"17",
-          "stage":"INFRA",
-          "recipe":"default",
-          "hosts":["10-252-94-200.gc2.dc1.gnm"]
+          "stage":"INFRA"
         },
         "uuid":"42738f4a-40e2-4d82-b720-ddb4a22ad81c"
       }
     }
-
-`recipe` and `hosts` are optional and default to `default` and the empty list respectively.
 
 Deploy stop endpoint
 --------------------

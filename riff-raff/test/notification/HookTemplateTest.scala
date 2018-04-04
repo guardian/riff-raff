@@ -64,9 +64,6 @@ class HookTemplateTest extends FunSuite with Matchers {
     projectName = "A Project",
     buildId = "a123",
     stage = "PROD",
-    recipe = "default",
-    stacks = Nil,
-    hostList = Nil,
     tags = Map("foo" -> "bar"),
     AllDocument
   )

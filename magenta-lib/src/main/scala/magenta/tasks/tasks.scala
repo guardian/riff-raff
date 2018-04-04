@@ -110,7 +110,7 @@ object S3Upload {
   def awsMimeTypeLookup(fileName: String): String = mimeTypes.getMimetype(fileName)
 
   def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
-    (stack.flatMap(_.nameOption) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
+    (stack.map(_.name) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }
   def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
@@ -171,7 +171,6 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
-  override def taskHost = Some(host)
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     reporter.info("Hello to " + host.name + "!")
   }
@@ -217,28 +216,6 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 
 object ChangeSwitch {
   val client = new OkHttpClient()
-}
-
-case class UpdateLambda(
-                   s3Path: S3Path,
-                   functionName: String, region: Region)
-                 (implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
-  def description = s"Updating $functionName Lambda"
-  def verbose = description
-
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = Lambda.makeLambdaClient(keyRing, region)
-    reporter.verbose(s"Starting update $functionName Lambda")
-    val inputStream = artifactClient.getObject(s3Path.bucket, s3Path.key).getObjectContent
-    val buffer = try {
-      ByteBuffer.wrap(IOUtils.toByteArray(inputStream))
-    } finally {
-      inputStream.close()
-    }
-    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, buffer))
-    reporter.verbose(s"Finished update $functionName Lambda")
-  }
-
 }
 
 case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {

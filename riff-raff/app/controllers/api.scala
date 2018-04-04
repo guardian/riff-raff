@@ -262,7 +262,6 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
       "build" -> deploy.parameters.build.id,
       "stage" -> deploy.parameters.stage.name,
       "deployer" -> deploy.parameters.deployer.name,
-      "recipe" -> deploy.parameters.recipe.name,
       "status" -> deploy.state.toString,
       "logURL" -> routes.DeployController.viewUUID(deploy.uuid.toString).absoluteURL(),
       "tags" -> toJson(deploy.allMetaData),
@@ -294,23 +293,16 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
   val deployRequestReader =
     (__ \ "project").read[String] and
     (__ \ "build").read[String] and
-    (__ \ "stage").read[String] and
-    (__ \ "recipe").readNullable[String] and
-    (__ \ "hosts").readNullable[List[String]] tupled
+    (__ \ "stage").read[String] tupled
 
   def deploy = ApiJsonEndpoint("deploy", parse.json) { implicit request =>
     deployRequestReader.reads(request.body).fold(
       valid = { deployRequest =>
-        val (project, build, stage, recipeOption, hostsOption) = deployRequest
-        val recipe = recipeOption.map(RecipeName).getOrElse(DefaultRecipe())
-        val hosts = hostsOption.getOrElse(Nil)
+        val (project, build, stage) = deployRequest
         val params = DeployParameters(
           Deployer(request.fullName),
           Build(project, build),
-          Stage(stage),
-          recipe,
-          Nil,
-          hosts
+          Stage(stage)
         )
         assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
 
@@ -322,9 +314,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
                 "request" -> Json.obj(
                   "project" -> project,
                   "build" -> build,
-                  "stage" -> stage,
-                  "recipe" -> recipe.name,
-                  "hosts" -> toJson(hosts)
+                  "stage" -> stage
                 ),
                 "uuid" -> deployId.toString,
                 "logURL" -> routes.DeployController.viewUUID(deployId.toString).absoluteURL()

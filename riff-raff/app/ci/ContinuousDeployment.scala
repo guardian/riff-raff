@@ -3,7 +3,7 @@ package ci
 import controllers.Logging
 import deployment.{ContinuousDeploymentRequestSource, Deployments}
 import lifecycle.Lifecycle
-import magenta.{DeployParameters, Deployer, RecipeName, Stage, Build => MagentaBuild}
+import magenta.{DeployParameters, Deployer, Stage, Build => MagentaBuild}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.ChangeFreeze
@@ -22,7 +22,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
     }
   }
 
-  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList _).getOrElse{
     log.error("Failed to retrieve CD configs")
     Nil
   }
@@ -76,8 +76,7 @@ object ContinuousDeployment extends Logging {
     DeployParameters(
       Deployer("Continuous Deployment"),
       build.toMagentaBuild,
-      Stage(config.stage),
-      RecipeName(config.recipe)
+      Stage(config.stage)
     )
   }
 

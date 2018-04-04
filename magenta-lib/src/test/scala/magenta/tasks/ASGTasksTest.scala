@@ -21,10 +21,10 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
     val asg = new AutoScalingGroup().withDesiredCapacity(3).withAutoScalingGroupName("test").withMaxSize(10)
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
-      true, deploymentTypes)
+    val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
+      deploymentTypes)
 
-    val task = new DoubleSize(p, Stage("PROD"), UnnamedStack, Region("eu-west-1"))
+    val task = new DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
     task.execute(asg, reporter, false, asgClientMock)
 
@@ -39,10 +39,10 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val p = DeploymentPackage("test", Seq(App("app")), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
-      true, deploymentTypes)
+    val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
+      deploymentTypes)
 
-    val task = new CheckGroupSize(p, Stage("PROD"), UnnamedStack, Region("eu-west-1"))
+    val task = new CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
     val thrown = intercept[FailException](task.execute(asg, reporter, false, asgClientMock))
 

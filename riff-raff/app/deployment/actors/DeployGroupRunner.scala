@@ -12,8 +12,8 @@ import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
 import magenta.input.resolver.Resolver
-import magenta.json.JsonReader
-import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources, Region}
+import magenta.{DeployContext, DeploymentResources, DeployReporter, DeployStoppedException, Region}
+import org.bson.json.JsonReader
 import org.joda.time.DateTime
 import resources.PrismLookup
 
@@ -182,7 +182,7 @@ class DeployGroupRunner(
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
 
-      val context: Either[ArtifactResolutionError, DeployContext] = riffRaffYamlString.map { yaml =>
+      val context = riffRaffYamlString.map { yaml =>
         val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
         graph.map(DeployContext(record.uuid, record.parameters, _)) match {
           case Invalid(errors) =>
@@ -190,25 +190,11 @@ class DeployGroupRunner(
             safeReporter.fail(s"Failed to successfully resolve the deployment: ${errors.errors.toList.size} errors")
           case Valid(success) => success
         }
-      } orElse {
-        safeReporter.info("Falling back to deploy.json")
-        val s3Artifact = S3JsonArtifact(record.parameters.build, bucketName)
-        val json = S3JsonArtifact.fetchInputFile(s3Artifact, deprecatedPause)
-        val project = json.map(JsonReader.buildProject(_, s3Artifact, deploymentTypes))
-        safeReporter.fail(
-          """NO LONGER SUPPORTED: deploy.json is no longer a supported format for deployment configuration. Please
-            |migrate to riff-raff.yaml.""".stripMargin)
-        deprecatedPause.foreach { pause =>
-          safeReporter.warning(s"To persuade you to migrate we will now pause this deploy for $pause seconds whilst you reflect on your ways.")
-          Thread.sleep(pause * 1000)
-        }
-        project.map(DeployContext(record.uuid, record.parameters, _, resources, Region(target.aws.deployJsonRegionName)))
       }
 
       val c = context.recover {
-        case S3ArtifactError(EmptyS3Location(location)) => safeReporter.fail(s"No file found at $location")
-        case S3ArtifactError(UnknownS3Error(e)) => safeReporter.fail("Error while resolving deploy context", e)
-        case JsonArtifactError(parseErrors) => safeReporter.fail(s"Couldn't parse `deploy.json`: $parseErrors")
+        case EmptyS3Location(location) => safeReporter.fail(s"No file found at $location")
+        case UnknownS3Error(e) => safeReporter.fail("Error while resolving deploy context", e)
       }.getOrElse(safeReporter.fail("Unexpected error while resolving deploy context"))
 
       if (DeploymentGraph.toTaskList(c.tasks).isEmpty)
