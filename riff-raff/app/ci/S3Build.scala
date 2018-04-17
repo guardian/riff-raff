@@ -38,7 +38,13 @@ object S3Build extends Logging {
 
   def buildAt(location: S3Object): Either[S3BuildError, S3Build] =
     location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError(_))
-      .flatMap(s => parse(s).leftMap[S3BuildError](S3BuildParseError(_)))
+      .flatMap { s =>
+        val s3BuildEither = parse(s)
+        if (s3BuildEither.isLeft) {
+          log.warn(s"Error parsing JSON from $location: $s3BuildEither")
+        }
+        s3BuildEither.leftMap[S3BuildError](S3BuildParseError(_))
+      }
 
   def parse(json: String): Either[Seq[(JsPath, Seq[JsonValidationError])], S3Build] = {
     import play.api.libs.functional.syntax._
