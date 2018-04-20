@@ -1,5 +1,13 @@
+import java.time.Duration
+import java.util.function.Supplier
+
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
+import com.gu.play.secretrotation.aws.ParameterStore
+import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
+import conf.Configuration
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -24,6 +32,7 @@ import router.Routes
 import schedule.DeployScheduler
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
+  with RotatingSecretComponents
   with AhcWSComponents
   with I18nComponents
   with CSRFComponents
@@ -33,6 +42,15 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
+
+  val secretStateSupplier: Supplier[SecretState] = new ParameterStore.SecretSupplier(
+      TransitionTiming(
+          usageDelay = Duration.ofMinutes(3),
+          overlapDuration = Duration.ofHours(2)
+      ),
+    "/RiffRaff/PlayApplicationSecret",
+    AWSSimpleSystemsManagementClientBuilder.standard().withRegion(Regions.getCurrentRegion.getName).withCredentials(Configuration.credentialsProviderChain(None, None)).build()
+  )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
