@@ -11,6 +11,7 @@ import controllers.{Logging, routes}
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import java.util.UUID
 
+import awscala.dynamodbv2.DynamoDB
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
@@ -103,11 +104,19 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object dynamoDb {
     lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
-    val client = AmazonDynamoDBAsyncClientBuilder.standard()
-      .withCredentials(credentialsProviderChain(None, None))
-      .withRegion(regionName)
-      .withClientConfiguration(new ClientConfiguration())
-      .build()
+
+    val client = {
+      if (Configuration.stage == "DEV") {
+        DynamoDB.local()
+      }
+      else {
+        AmazonDynamoDBAsyncClientBuilder.standard()
+          .withCredentials(credentialsProviderChain(None, None))
+          .withRegion(regionName)
+          .withClientConfiguration(new ClientConfiguration())
+          .build()
+      }
+    }
   }
 
   object freeze {

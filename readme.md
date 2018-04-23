@@ -54,16 +54,61 @@ The simple form for requesting a deploy can be seen here (further options are av
 Riff-Raff polls our build server frequently and can be configured to automatically start a deploy for newly completed builds
 
 How do I run Riff-Raff locally if I want to hack on it?
--------------------------------------------------------
+-----
 
-Assuming you have a reasonably recent version of Java installed, 
+### Creating local configuration
 
- * Create a basic configuration file at ~/.gu/riff-raff.properties (S3 and mongo config is probably the minimum)
- * Run the sbt script
- * enter `project riffraff` at the SBT prompt
- * enter `run` at the SBT prompt
- * visit http://localhost:9000/
- * Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/properties 
+1. Create a basic configuration file at `~/.gu/riff-raff.properties`
+
+2. Add the required content - S3 and mongo config are probably the minimum.
+You can always speak to one of the Riff Raff maintainers, or a recent contributor, for guidance on the content.
+
+### DynamoDB
+
+#### Running DynamoDB
+
+Riff Raff uses DynamoDB to persist some information. To run Riff Raff 
+locally you will need to make sure you have DynamoDB running.
+
+1. Ensure you have DynamoDB as a local jar. [You can download DynamoDB to run as a local jar from the AWS website](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tools.DynamoDBLocal.html).
+
+2. To run DynamoDB for development, navigate to the directory where you extracted the DynamoDBLocal.jar and run the following command:
+
+```
+java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb -inMemory
+
+```
+    
+#### Creating the DynamoDB tables
+
+Riff Raff expects certain tables to exist in DynamoDB. The easiest way to 
+set these up locally is to run the test that exists for this purpose.
+
+1. In the `AuditTrailDBTest.scala` file, find the line that says `"create
+database table"`. You'll notice this string is followed by the `ignore`
+operator. 
+
+2. With DynamoDB running locally, change `ignore` to `in` and then run 
+these tests.
+
+3. Once the test has run, change that line back to `ignore`.
+
+Since this runs an in-memory version of DynamoDB, you'll need to set
+the tables up again each time you restart DynamoDB. 
+
+### Running the application
+
+Assuming you have a reasonably recent version of Java installed, and DynamoDB
+is running with the required tables created, you should now be ready to run 
+the application!
+
+1. Run the sbt script in the root of the project
+
+2. Enter `project riffraff` at the SBT prompt
+
+3. Enter `run` at the SBT prompt
+
+4. Visit http://localhost:9000/
 
 
 What is still left to do?

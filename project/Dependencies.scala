@@ -16,6 +16,7 @@ object Dependencies {
     "org.parboiled" %% "parboiled" % "2.1.4",
     "org.typelevel" %% "cats" % "0.9.0",
     "com.kailuowang" %% "henkan-convert" % "0.2.10",
+    "com.github.seratch" %% "awscala" % "0.5.9",
     "org.scalatest" %% "scalatest" % "3.0.3" % Test,
     "org.mockito" % "mockito-core" % "1.10.19" % Test
   )
