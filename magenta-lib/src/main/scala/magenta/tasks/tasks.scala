@@ -58,7 +58,7 @@ case class S3Upload(
         case (path: S3Path, _) => path.show()
         case (location, _) => location.toString()
       }).mkString("\n")
-      reporter.warning(s"No files found to upload in $locationDescription")
+      reporter.fail(s"No files found to upload in $locationDescription")
     }
 
     val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
