@@ -23,6 +23,19 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   val deploymentTypes = Nil
 
+  private def mockClassicELBGroupHealth(classicELBClient: ClassicELBClient, state: String) = {
+    when (classicELBClient.describeInstanceHealth(
+      new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
+    )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState(state)))
+  }
+
+  private def mockTargetGroupHealth(appELBClient: ApplicationELBClient, state: TargetHealthStateEnum) = {
+    when (appELBClient.describeTargetHealth(
+      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
+    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
+      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(state))))
+  }
+
   it should "find the matching auto-scaling group with Stack and App tags" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
 
@@ -74,21 +87,17 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
 
     val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD").withDesiredCapacity(1)
 
-    when (classicELBClient.describeInstanceHealth(
-      new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
-    )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
+    mockClassicELBGroupHealth(classicELBClient, "")
 
     ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
-      Left("Only 0 of 1 ELB instances InService")
+      Left("Only 0 of 1 Classic ELB instances InService")
 
-    when (classicELBClient.describeInstanceHealth(
-      new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
-    )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("InService")))
+    mockClassicELBGroupHealth(classicELBClient, "InService")
 
     ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
-  it should "wait for instances in an ELB target group to be bealthy" in {
+  it should "wait for instances in an ELB target group to be healthy" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
@@ -97,18 +106,38 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       .withTargetGroupARNs("elbTargetARN")
       .withDesiredCapacity(1)
 
-    when (appELBClient.describeTargetHealth(
-      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
-    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
-      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(TargetHealthStateEnum.Unhealthy))))
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Unhealthy)
 
     ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
-      Left("Only 0 of 1 Application ELB instances healthy")
+      Left("Only 0 of 1 V2 ELB instances healthy")
 
-    when (appELBClient.describeTargetHealth(
-      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
-    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
-      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(TargetHealthStateEnum.Healthy))))
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Healthy)
+
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+  }
+
+  it should "wait for classic ELB and ELB target group to report as healthy" in {
+    val asgClientMock = mock[AmazonAutoScalingClient]
+    val appELBClient = mock[ApplicationELBClient]
+    val classicELBClient = mock[ClassicELBClient]
+
+    val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD")
+      .withTargetGroupARNs("elbTargetARN")
+      .withDesiredCapacity(1)
+
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Unhealthy)
+
+    mockClassicELBGroupHealth(classicELBClient, "")
+
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+      Left("Only 0 of 1 Classic ELB instances InService")
+
+    mockClassicELBGroupHealth(classicELBClient, "InService")
+
+    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+      Left("Only 0 of 1 V2 ELB instances healthy")
+
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Healthy)
 
     ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }

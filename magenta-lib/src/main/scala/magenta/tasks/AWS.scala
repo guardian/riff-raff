@@ -27,6 +27,8 @@ import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import com.gu.management.Loggable
 import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, Region, Stack, Stage}
 
+import cats.implicits._
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -121,6 +123,9 @@ object ASG extends AWS {
     client.updateAutoScalingGroup(
       new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
+  /**
+    * Check status of all ELBs, or all instance states if there are no ELBs
+    */
   def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScaling,
     elbClient: ELB.Client): Either[String, Unit] = {
 
@@ -134,30 +139,36 @@ object ASG extends AWS {
         Right(())
     }
 
-    (elbName(asg), elbTargetArn(asg)) match {
-      case (Some(name), None) => {
-        val elbHealth = ELB.instanceHealth(name, elbClient.classic)
-        matchCapacityAndState(elbHealth, "InService", Some("ELB"))
-      }
-      case (None, Some(arn)) => {
-        val elbHealth = ELB.targetInstancesHealth(arn, elbClient.application)
-        matchCapacityAndState(elbHealth, TargetHealthStateEnum.Healthy.toString, Some("Application ELB"))
-      }
-      case (None, None) => {
-        val instanceStates = asg.getInstances.asScala.toList.map(_.getLifecycleState)
-        matchCapacityAndState(instanceStates, LifecycleState.InService.toString, None)
-      }
-      case (Some(_), Some(_)) => Left(
-        "Don't know how to check for stability of an ASG associated with a classic and application load balancer")
+    def checkClassicELB(name: String): Either[String, Unit] = {
+      val elbHealth = ELB.instanceHealth(name, elbClient.classic)
+      matchCapacityAndState(elbHealth, "InService", Some("Classic ELB"))
+    }
+
+    def checkTargetGroup(arn: String): Either[String, Unit] = {
+      val elbHealth = ELB.targetInstancesHealth(arn, elbClient.application)
+      matchCapacityAndState(elbHealth, TargetHealthStateEnum.Healthy.toString, Some("V2 ELB"))
+    }
+
+    val classicElbNames = elbNames(asg)
+    val targetGroupArns = elbTargetArns(asg)
+
+    if (classicElbNames.nonEmpty || targetGroupArns.nonEmpty) {
+      for {
+        _ <- classicElbNames.map(checkClassicELB).sequenceU
+        _ <- targetGroupArns.map(checkTargetGroup).sequenceU
+      } yield ()
+    } else {
+      val instanceStates = asg.getInstances.asScala.toList.map(_.getLifecycleState)
+      matchCapacityAndState(instanceStates, LifecycleState.InService.toString, None)
     }
   }
 
-  def elbName(asg: AutoScalingGroup) = asg.getLoadBalancerNames.asScala.headOption
+  def elbNames(asg: AutoScalingGroup): List[String] = asg.getLoadBalancerNames.asScala.toList
 
-  def elbTargetArn(asg: AutoScalingGroup) = asg.getTargetGroupARNs.asScala.headOption
+  def elbTargetArns(asg: AutoScalingGroup): List[String] = asg.getTargetGroupARNs.asScala.toList
 
   def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScaling, elbClient: ELB.Client) = {
-    ELB.deregister(elbName(asg), elbTargetArn(asg), instance, elbClient)
+    ELB.deregister(elbNames(asg).headOption, elbTargetArns(asg).headOption, instance, elbClient)
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
