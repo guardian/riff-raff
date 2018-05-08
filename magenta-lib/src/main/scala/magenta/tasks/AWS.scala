@@ -168,7 +168,7 @@ object ASG extends AWS {
   def elbTargetArns(asg: AutoScalingGroup): List[String] = asg.getTargetGroupARNs.asScala.toList
 
   def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScaling, elbClient: ELB.Client) = {
-    ELB.deregister(elbNames(asg).headOption, elbTargetArns(asg).headOption, instance, elbClient)
+    ELB.deregister(elbNames(asg), elbTargetArns(asg), instance, elbClient)
 
     asgClient.terminateInstanceInAutoScalingGroup(
       new TerminateInstanceInAutoScalingGroupRequest()
@@ -259,7 +259,7 @@ object ELB extends AWS {
     client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName))
       .getInstanceStates.asScala.toList.map(_.getState)
 
-  def deregister(elbName: Option[String], elbTargetARN: Option[String], instance: ASGInstance, client: Client) = {
+  def deregister(elbName: List[String], elbTargetARN: List[String], instance: ASGInstance, client: Client) = {
     elbName.foreach(name =>
       client.classic.deregisterInstancesFromLoadBalancer(
         new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(name)
