@@ -38,9 +38,11 @@ will be merged together when the file is parsed.
 
 ### deployments
 
-Map of named DeploymentOrTemplate objects. The key is the name of each deployment and the value is a 
-`DeploymentOrTemplate` object representing a deployment step.
+Map of named DeploymentOrTemplate objects. Keys in this map represent deployment names, and by default Riff-Raff will
+attempt to load deployment content from a directory adjacent to riff-raff.yaml with the same name as the deployment.
+Changing the `contentDirectory` property overrides this default behaviour.
 
+The values in the map are  `DeploymentOrTemplate` objects, each representing a deployment step.
 
 DeploymentOrTemplate
 --------------------
