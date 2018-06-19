@@ -81,6 +81,8 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val domain: String = configuration.getStringProperty("auth.domain").getOrException("No auth domain configured")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
+    lazy val secretStateSupplierKeyName: String = configuration.getStringProperty("auth.secretStateSupplier.keyName", "/RiffRaff/PlayApplicationSecret")
+    lazy val secretStateSupplierRegion: String = configuration.getStringProperty("auth.secretStateSupplier.region", "eu-west-1")
   }
 
   object concurrency {
@@ -200,7 +202,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
-  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain =
+  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain = {
     new AWSCredentialsProviderChain(
       new AWSCredentialsProvider {
         override def getCredentials: AWSCredentials = (for {
@@ -215,6 +217,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       new ProfileCredentialsProvider("deployTools"),
       InstanceProfileCredentialsProvider.getInstance()
     )
+  }
 
   def awsRegion(name: String): Region = RegionUtils.getRegion(name)
 

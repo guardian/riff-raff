@@ -2,7 +2,6 @@ import java.time.Duration
 import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
-import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
 import com.gu.play.secretrotation.aws.ParameterStore
@@ -24,12 +23,12 @@ import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
 import resources.PrismLookup
+import router.Routes
+import schedule.DeployScheduler
 import utils.HstsFilter
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import router.Routes
-import schedule.DeployScheduler
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
@@ -40,17 +39,23 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with AssetsComponents
   with Logging {
 
+  val secretStateSupplier: Supplier[SecretState] = {
+    new ParameterStore.SecretSupplier(
+      TransitionTiming(
+        usageDelay = Duration.ofMinutes(3),
+        overlapDuration = Duration.ofHours(2)
+      ),
+      conf.Configuration.auth.secretStateSupplierKeyName,
+      AWSSimpleSystemsManagementClientBuilder.standard()
+        .withRegion(conf.Configuration.auth.secretStateSupplierRegion)
+        .withCredentials(Configuration.credentialsProviderChain(None, None))
+        .build()
+    )
+  }
+
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
-  val secretStateSupplier: Supplier[SecretState] = new ParameterStore.SecretSupplier(
-      TransitionTiming(
-          usageDelay = Duration.ofMinutes(3),
-          overlapDuration = Duration.ofHours(2)
-      ),
-    "/RiffRaff/PlayApplicationSecret",
-    AWSSimpleSystemsManagementClientBuilder.standard().withRegion(Regions.getCurrentRegion.getName).withCredentials(Configuration.credentialsProviderChain(None, None)).build()
-  )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy

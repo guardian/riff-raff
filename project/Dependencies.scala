@@ -8,7 +8,7 @@ object Dependencies {
     val guardianManagement = "5.37"
     val jackson = "2.8.2"
     // keep in sync with plugin
-    val play = "2.6.0"
+    val play = "2.6.9"
   }
 
   val commonDeps = Seq(
