@@ -19,6 +19,9 @@ val commonSettings = Seq(
 
 lazy val root = project.in(file("."))
   .aggregate(lib, riffraff)
+  .settings(
+    name := "riff-raff"
+  )
 
 lazy val lib = project.in(file("magenta-lib"))
   .settings(commonSettings)

@@ -25,7 +25,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     """.stripMargin
 
   val templatePath = Param[String]("templatePath",
-    documentation = "Location of template to use within package. If it has a standard YAML file extension (`.yml` or `.yaml`), the template will be converted from YAML to JSON."
+    documentation = "Location of template to use within package."
   ).default("""cloud-formation/cfn.json""")
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
