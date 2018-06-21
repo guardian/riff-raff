@@ -1,3 +1,4 @@
+@import utils.DateFormats
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import helper.CSRF
 @import magenta.input.All
@@ -25,7 +26,7 @@
             <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage.name</h2>
 
             @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
-                <small>This deploy @if(record.isRunning) {is running} else {ran} on @hostname</small>
+                <small>This deploy started at @record.time.toString(DateFormats.Short) on @hostname</small>
             }
 
             @for(vcs <- record.vcsInfo) {
