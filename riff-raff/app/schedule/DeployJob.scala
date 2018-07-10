@@ -26,18 +26,24 @@ class DeployJob extends Job with Logging {
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
     result match {
-      case Left(error) => log.warn(error.message)
+      case Left(error) => {
+        //Send ang msg
+        log.warn(error.message)
+      }
       case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
     }
   }
 }
 
+<<<<<<< HEAD
 object DeployJob extends Logging with LogAndSquashBehaviour {
+  val scheduledDeployer = Deployer("Scheduled Deployment")
+
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = DeployParameters(
-          Deployer("Scheduled Deployment"),
+          scheduledDeployer,
           lastDeploy.parameters.build,
           lastDeploy.stage
         )

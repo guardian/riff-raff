@@ -58,6 +58,7 @@ object Dependencies {
     "com.gu" %% "scanamo" % "0.9.5",
     "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.0",
+    "com.gu" %% "anghammarad-client" % "1.0.4",
     "org.webjars" %% "webjars-play" % "2.6.0",
     "org.webjars" % "jquery" % "3.1.1",
     "org.webjars" % "jquery-ui" % "1.12.1",
