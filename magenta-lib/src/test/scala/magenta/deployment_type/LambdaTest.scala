@@ -47,7 +47,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       UpdateS3Lambda(
-        functionName = "MyFunction-PROD",
+        function = LambdaFunctionName("MyFunction-PROD"),
         s3Bucket = "lambda-bucket",
         s3Key = "test/PROD/lambda/test-file.zip",
         region = defaultRegion
@@ -68,7 +68,28 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
-        functionName = "some-stackMyFunction-PROD",
+        function = LambdaFunctionName("some-stackMyFunction-PROD"),
+        s3Bucket = "lambda-bucket",
+        s3Key = "some-stack/PROD/lambda/test-file.zip",
+        region = defaultRegion
+      )
+    ))
+  }
+
+  it should "use tags instead of function names" in {
+    val dataWithLookupByTags: Map[String, JsValue] = Map(
+      "bucket" -> JsString("lambda-bucket"),
+      "fileName" -> JsString("test-file.zip"),
+      "lookupByTags" -> JsBoolean(true)
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    tasks should be (List(
+      UpdateS3Lambda(
+        function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),
         s3Bucket = "lambda-bucket",
         s3Key = "some-stack/PROD/lambda/test-file.zip",
         region = defaultRegion

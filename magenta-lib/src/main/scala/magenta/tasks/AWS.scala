@@ -18,7 +18,7 @@ import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstanc
 import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancing => ApplicationELB, AmazonElasticLoadBalancingClientBuilder => ApplicationELBBuilder}
 import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
 import com.amazonaws.services.lambda.{AWSLambda, AWSLambdaClientBuilder}
-import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
+import com.amazonaws.services.lambda.model.{FunctionConfiguration, ListFunctionsRequest, ListTagsRequest, UpdateFunctionCodeRequest}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
@@ -26,7 +26,6 @@ import com.amazonaws.services.securitytoken.{AWSSecurityTokenService, AWSSecurit
 import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import com.gu.management.Loggable
 import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, Region, Stack, Stage}
-
 import cats.implicits._
 
 import scala.annotation.tailrec
@@ -58,7 +57,7 @@ object S3 extends AWS {
     region: Region, reporter: DeployReporter, deleteAfterDays: Option[Int] = None): String = {
     val accountNumber = STS.getAccountNumber(stsClient)
     val bucketName = s"$prefix-$accountNumber-${region.name}"
-    if (!s3Client.doesBucketExist(bucketName)) {
+    if (!s3Client.doesBucketExistV2(bucketName)) {
       reporter.info(s"Creating bucket for this account and region: $bucketName ${region.name}")
       val createBucketRequest = region.name match {
         case "us-east-1" => new CreateBucketRequest(bucketName) // this needs to be special cased as setting this explicitly blows up
@@ -103,6 +102,41 @@ object Lambda extends AWS {
       .withFunctionName(functionName)
       .withS3Bucket(s3Bucket)
       .withS3Key(s3Key)
+  }
+
+  def findFunctionByTags(tags: Map[String, String], reporter: DeployReporter, client: AWSLambda): Option[FunctionConfiguration] = {
+
+    def tagsMatch(function: FunctionConfiguration): Boolean = {
+      val tagResponse = client.listTags(new ListTagsRequest().withResource(function.getFunctionArn))
+      val functionTags = tagResponse.getTags.asScala.toSet
+      tags.forall { functionTags.contains }
+    }
+
+    @tailrec
+    def recur(nextMarker: Option[String] = None, existingFunctions: List[FunctionConfiguration] = Nil): List[FunctionConfiguration] = {
+      val request = new ListFunctionsRequest().withMarker(nextMarker.orNull)
+      val response = client.listFunctions(request)
+
+      val stacks = response.getFunctions.asScala.foldLeft(existingFunctions) {
+        case (agg, function) if tagsMatch(function) => function :: agg
+        case (agg, _) => agg
+      }
+
+      Option(response.getNextMarker) match {
+        case None => stacks
+        case marker => recur(marker, stacks)
+      }
+    }
+
+    recur() match {
+      case functionConfiguration :: Nil =>
+        reporter.verbose(s"Found function ${functionConfiguration.getFunctionName} (${functionConfiguration.getFunctionArn})")
+        Some(functionConfiguration)
+      case Nil =>
+        None
+      case multiple =>
+        reporter.fail(s"More than one function matched for $tags (matched ${multiple.map(_.getFunctionName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+    }
   }
 }
 

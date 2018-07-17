@@ -36,6 +36,12 @@ object Lambda extends DeploymentType  {
     optional = true
   )
 
+  val lookupByTags = Param[Boolean]("lookupByTags",
+    """When true, this will lookup the function to deploy to by using the Stack, Stage and App tags on a function.
+      |The values looked up come from the `stacks` and `app` in the riff-raff.yaml and the stage deployed to.
+    """.stripMargin
+  ).default(false)
+
   val prefixStackParam = Param[Boolean]("prefixStack",
     "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(true)
 
@@ -66,25 +72,33 @@ object Lambda extends DeploymentType  {
     optional = true
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[LambdaFunction] = {
+  def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
     val bucket = bucketParam(pkg, target, reporter)
 
     val stage = target.parameters.stage.name
 
-    (functionNamesParam.get(pkg), functionsParam.get(pkg), prefixStackParam(pkg, target, reporter)) match {
-      case (Some(functionNames), None, prefixStack) =>
+    (functionNamesParam.get(pkg), functionsParam.get(pkg), lookupByTags(pkg, target, reporter), prefixStackParam(pkg, target, reporter)) match {
+      case (Some(functionNames), None, false, prefixStack) =>
         val stackNamePrefix = if (prefixStack) target.stack.name else ""
         for {
           name <- functionNames
-        } yield LambdaFunction(s"$stackNamePrefix$name$stage", fileNameParam(pkg, target, reporter), target.region, bucket)
-        
-      case (None, Some(functionsMap), _) =>
+        } yield UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, bucket)
+
+      case (None, Some(functionsMap), false, _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        List(LambdaFunction(functionName, fileName, target.region, bucket))
+        List(UpdateLambdaFunction(LambdaFunctionName(functionName), fileName, target.region, bucket))
 
-      case _ => reporter.fail("Must specify one of 'functions' or 'functionNames' parameters")
+      case (None, None, true, _) =>
+        val tags = LambdaFunctionTags(Map(
+          "Stack" -> target.stack.name,
+          "App" -> pkg.app.name,
+          "Stage" -> stage
+        ))
+        List(UpdateLambdaFunction(tags, fileNameParam(pkg, target, reporter), target.region, bucket))
+
+      case _ => reporter.fail("Must specify one of 'functions', 'functionNames' or 'lookupByTags' parameters")
     }
   }
 
@@ -128,7 +142,7 @@ object Lambda extends DeploymentType  {
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
         UpdateS3Lambda(
-          lambda.functionName,
+          lambda.function,
           lambda.s3Bucket,
           s3Key,
           lambda.region
@@ -139,4 +153,7 @@ object Lambda extends DeploymentType  {
   def defaultActions = List(uploadLambda, updateLambda)
 }
 
-case class LambdaFunction(functionName: String, fileName: String, region: Region, s3Bucket: String)
+sealed trait LambdaFunction
+case class LambdaFunctionName(name: String) extends LambdaFunction
+case class LambdaFunctionTags(tags: Map[String, String]) extends LambdaFunction
+case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: String)

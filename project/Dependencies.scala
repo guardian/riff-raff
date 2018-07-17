@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "1.11.106"
+    val aws = "1.11.358"
     val guardianManagement = "5.37"
     val jackson = "2.8.2"
     // keep in sync with plugin
