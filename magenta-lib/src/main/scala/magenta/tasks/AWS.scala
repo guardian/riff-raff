@@ -22,7 +22,7 @@ import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancin
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DeregisterTargetsRequest, DescribeTargetHealthRequest, TargetDescription, TargetHealthStateEnum}
 import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELB}
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.UpdateFunctionCodeRequest
+import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, ListFunctionsRequest, ListTagsRequest, UpdateFunctionCodeRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.sts.StsClient
@@ -100,6 +100,28 @@ object Lambda extends AWS {
       .s3Bucket(s3Bucket)
       .s3Key(s3Key)
       .build()
+
+  def findFunctionByTags(tags: Map[String, String], reporter: DeployReporter, client: LambdaClient): Option[FunctionConfiguration] = {
+
+    def tagsMatch(function: FunctionConfiguration): Boolean = {
+      val tagResponse = client.listTags(ListTagsRequest.builder().resource(function.functionArn).build())
+      val functionTags = tagResponse.tags().asScala.toSet
+      tags.forall { functionTags.contains }
+    }
+
+    val response = client.listFunctionsPaginator()
+    val matchingConfigurations = response.functions().asScala.filter(tagsMatch).toList
+
+    matchingConfigurations match {
+      case functionConfiguration :: Nil =>
+        reporter.verbose(s"Found function ${functionConfiguration.functionName} (${functionConfiguration.functionArn})")
+        Some(functionConfiguration)
+      case Nil =>
+        None
+      case multiple =>
+        reporter.fail(s"More than one function matched for $tags (matched ${multiple.map(_.functionName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+    }
+  }
 }
 
 object ASG extends AWS {
