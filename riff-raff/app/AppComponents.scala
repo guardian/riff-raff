@@ -10,6 +10,7 @@ import conf.Configuration
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
+import housekeeping.ArtifactHousekeeping
 import magenta.deployment_type._
 import persistence.ScheduleRepository
 import play.api.ApplicationLoader.Context
@@ -68,6 +69,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deployments = new Deployments(deploymentEngine, builds)
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
+  val housekeeper = new ArtifactHousekeeping(deployments)
 
   val authAction = new AuthAction[AnyContent](
     conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
@@ -97,7 +99,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
-  val testingController = new Testing(prismLookup, authAction, controllerComponents)
+  val testingController = new Testing(prismLookup, authAction, controllerComponents, housekeeper)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {

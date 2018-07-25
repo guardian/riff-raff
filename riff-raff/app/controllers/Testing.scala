@@ -4,6 +4,7 @@ import java.util.UUID
 
 import com.gu.googleauth.AuthAction
 import deployment.{DeployFilter, DeployRecord, PaginationView}
+import housekeeping.ArtifactHousekeeping
 import magenta._
 import magenta.input.All
 import magenta.tasks.Task
@@ -18,12 +19,23 @@ import play.api.mvc._
 import resources.PrismLookup
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.Future
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+class Testing(prismLookup: PrismLookup,
+              authAction: AuthAction[AnyContent],
+              val controllerComponents: ControllerComponents,
+              houseKeeping: ArtifactHousekeeping)(implicit val wsClient: WSClient)
   extends BaseController with Logging with I18nSupport {
   import Testing._
+
+  def doHousekeeping = authAction { implicit request =>
+    Future{
+      houseKeeping.housekeepArtifacts(new DateTime())
+    }(scala.concurrent.ExecutionContext.Implicits.global)
+    Ok("Kicked off housekeeping")
+  }
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
