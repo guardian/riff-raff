@@ -97,4 +97,26 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     ))
   }
 
+  it should "omit prefix when prefixStackToKeyParam is set to false" in {
+    val dataWithLookupByTags: Map[String, JsValue] = Map(
+      "bucket" -> JsString("lambda-bucket"),
+      "fileName" -> JsString("test-file.zip"),
+      "lookupByTags" -> JsBoolean(true),
+      "prefixStackToKey" -> JsBoolean(false)
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    tasks should be (List(
+      UpdateS3Lambda(
+        function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),
+        s3Bucket = "lambda-bucket",
+        s3Key = "PROD/lambda/test-file.zip",
+        region = defaultRegion
+      )
+    ))
+  }
+
 }
