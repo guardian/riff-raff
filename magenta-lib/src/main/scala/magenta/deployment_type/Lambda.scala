@@ -45,6 +45,10 @@ object Lambda extends DeploymentType  {
   val prefixStackParam = Param[Boolean]("prefixStack",
     "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(true)
 
+  val prefixStackToKeyParam = Param[Boolean]("prefixStackToKey",
+    documentation = "Whether to prefix `package` to the S3 location"
+  ).default(true)
+
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
@@ -102,8 +106,10 @@ object Lambda extends DeploymentType  {
     }
   }
 
-  def makeS3Key(stack: Stack, params:DeployParameters, pkg:DeploymentPackage, fileName: String): String = {
-    List(stack.name, params.stage.name, pkg.app.name, fileName).mkString("/")
+  def makeS3Key(target: DeployTarget, pkg:DeploymentPackage, fileName: String, reporter: DeployReporter): String = {
+    val prefixStack = prefixStackToKeyParam(pkg, target, reporter)
+    val prefix = if (prefixStack) List(target.stack.name) else Nil
+    (prefix :: List(target.parameters.stage.name, pkg.app.name, fileName)).mkString("/")
   }
 
   val uploadLambda = Action("uploadLambda",
@@ -113,7 +119,7 @@ object Lambda extends DeploymentType  {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: AmazonS3 = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-      val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
+      val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
       S3Upload(
         lambda.region,
         lambda.s3Bucket,
@@ -140,7 +146,7 @@ object Lambda extends DeploymentType  {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: AmazonS3 = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-        val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
+        val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
         UpdateS3Lambda(
           lambda.function,
           lambda.s3Bucket,
