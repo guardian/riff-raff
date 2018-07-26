@@ -6,13 +6,15 @@ import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagement
 import com.gu.googleauth.AuthAction
 import com.gu.play.secretrotation.aws.ParameterStore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
-import conf.Configuration
+import conf.{Configuration, DeployMetrics}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
+import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
-import persistence.ScheduleRepository
+import notification.HooksClient
+import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
 import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
@@ -24,12 +26,14 @@ import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
 import resources.PrismLookup
+import riffraff.RiffRaffManagementServer
 import router.Routes
 import schedule.DeployScheduler
-import utils.HstsFilter
+import utils.{HstsFilter, ScheduledAgent}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
@@ -88,6 +92,39 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     Future.successful(deployScheduler.shutdown())
   }
   deployScheduler.initialise(ScheduleRepository.getScheduleList())
+
+  val hooksClient = new HooksClient(wsClient, executionContext)
+  val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
+
+  // the management server takes care of shutting itself down with a lifecycle hook
+  val management = new conf.Management(shutdownWhenInactive, deployments)
+  val managementServer = new RiffRaffManagementServer(management.applicationName, management.pages, Logger("ManagementServer"))
+
+  val lifecycleSingletons = Seq(
+    ScheduledAgent,
+    deployments,
+    builds,
+    targetResolver,
+    DeployMetrics,
+    hooksClient,
+    SummariseDeploysHousekeeping,
+    continuousDeployment,
+    managementServer,
+    shutdownWhenInactive
+  )
+
+  log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
+  lifecycleSingletons.foreach(_.init())
+
+  context.lifecycle.addStopHook(() => Future {
+    lifecycleSingletons.reverse.foreach { singleton =>
+      try {
+        singleton.shutdown()
+      } catch {
+        case NonFatal(e) => log.error("Caught unhandled exception whilst calling shutdown() on Lifecycle singleton", e)
+      }
+    }
+  }(ExecutionContext.global))
 
   val applicationController = new Application(prismLookup, availableDeploymentTypes, authAction, controllerComponents, assets)(environment, wsClient, executionContext)
   val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes, builds, authAction, controllerComponents)
