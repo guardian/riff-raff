@@ -125,6 +125,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val hour = configuration.getIntegerProperty("housekeeping.hour", 4)
     lazy val minute = configuration.getIntegerProperty("housekeeping.minute", 0)
     object tagOldArtifacts {
+      lazy val hourOfDay = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.hourOfDay", 2)
+      lazy val minuteOfHour = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minuteOfHour", 0)
+
       lazy val enabled = configuration.getStringProperty("housekeeping.tagOldArtifacts.enabled", "false") == "true"
       lazy val tagKey = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagKey", "housekeeping")
       lazy val tagValue = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagValue", "delete")

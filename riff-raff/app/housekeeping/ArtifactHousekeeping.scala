@@ -2,10 +2,12 @@ package housekeeping
 
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.{ListObjectsV2Request, ObjectTagging, SetObjectTaggingRequest, Tag}
-import com.gu.management.Loggable
 import conf.Configuration
+import controllers.Logging
 import deployment.{DeployFilter, Deployments, PaginationView}
-import org.joda.time.{DateTime, Duration}
+import lifecycle.Lifecycle
+import org.joda.time.{DateTime, Duration, LocalTime}
+import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -46,9 +48,23 @@ object ArtifactHousekeeping {
   }
 }
 
-class ArtifactHousekeeping(deployments: Deployments) extends Loggable {
+class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecycle {
   private val s3Client = Configuration.artifact.aws.client
   private val artifactBucketName = Configuration.artifact.aws.bucketName
+
+  lazy val housekeepingTime = new LocalTime(Configuration.housekeeping.tagOldArtifacts.hourOfDay, Configuration.housekeeping.tagOldArtifacts.minuteOfHour)
+
+  var scheduledAgent:Option[ScheduledAgent[Int]] = None
+
+  val update = DailyScheduledAgentUpdate[Int](housekeepingTime){ _ + housekeepArtifacts(new DateTime()) }
+
+  def init() {
+    scheduledAgent = Some(ScheduledAgent(0, update))
+  }
+  def shutdown() {
+    scheduledAgent.foreach(_.shutdown())
+    scheduledAgent = None
+  }
 
   def getBuildIdsToKeep(projectName: String) = {
     val deployList = deployments.getDeploys(
@@ -60,11 +76,11 @@ class ArtifactHousekeeping(deployments: Deployments) extends Loggable {
     deploysToKeep.map(_.buildId)
   }
 
-  def cleanUpTheBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToDelete: Set[String], now: DateTime): Unit = {
+  def tagBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
     val tag = new Tag(Configuration.housekeeping.tagOldArtifacts.tagKey, Configuration.housekeeping.tagOldArtifacts.tagValue)
     val taggingObj = new ObjectTagging(List(tag).asJava)
-    buildsToDelete.foreach { buildId =>
-      logger.info(s"Tagging build ID $buildId")
+    buildsToTag.foreach { buildId =>
+      log.info(s"Tagging build ID $buildId")
       val objects = ArtifactHousekeeping.pagedAwsRequest() { token =>
         val request = new ListObjectsV2Request()
           .withDelimiter("/")
@@ -81,32 +97,38 @@ class ArtifactHousekeeping(deployments: Deployments) extends Loggable {
       }
 
       objectsToTag.foreach { obj =>
-        logger.info(s"Tagging ${obj.getKey}")
+        log.info(s"Tagging ${obj.getKey}")
         val request = new SetObjectTaggingRequest(bucket, obj.getKey, taggingObj)
         client.setObjectTagging(request)
       }
       Thread.sleep(500)
     }
+    buildsToTag.size
   }
 
-  def housekeepArtifacts(now: DateTime) = {
+  def housekeepArtifacts(now: DateTime): Int = {
     if (Configuration.housekeeping.tagOldArtifacts.enabled) {
-      logger.info("Running housekeeping")
+      log.info("Running housekeeping")
       val projectNames = ArtifactHousekeeping.getProjectNames(s3Client, artifactBucketName)
-      projectNames.foreach { name =>
-        logger.info(s"Housekeeping project '$name'")
+      val taggedBuilds = projectNames.map { name =>
+        log.info(s"Housekeeping project '$name'")
         val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
         val buildIdsToKeep = getBuildIdsToKeep(name).toSet
         val missingBuilds = buildIdsToKeep -- buildIdsForProject
         if (missingBuilds.nonEmpty) {
-          logger.error("Some builds we wanted to keep were not found, possible something is awry.")
+          log.error("Some builds we wanted to keep were not found, possible something is awry. Skipping tagging.")
+          0
         } else {
-          val buildsToDelete = buildIdsForProject -- buildIdsToKeep
-          cleanUpTheBuilds(s3Client, artifactBucketName, name, buildsToDelete, now)
+          val buildsToTag = buildIdsForProject -- buildIdsToKeep
+          tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
         }
       }
+      val numberOfTaggedBuilds = taggedBuilds.sum
+      log.info(s"Tagged $numberOfTaggedBuilds builds for deletion")
+      numberOfTaggedBuilds
     } else {
-      logger.info("Artifact housekeeping not enabled - skipping")
+      log.info("Artifact housekeeping not enabled - skipping")
+      0
     }
   }
 }
