@@ -31,13 +31,6 @@ class Testing(prismLookup: PrismLookup,
   extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
   import Testing._
 
-  def doHousekeeping = authAction { implicit request =>
-    Future{
-      houseKeeping.housekeepArtifacts(new DateTime())
-    }(scala.concurrent.ExecutionContext.Implicits.global)
-    Ok("Kicked off housekeeping")
-  }
-
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), All)
