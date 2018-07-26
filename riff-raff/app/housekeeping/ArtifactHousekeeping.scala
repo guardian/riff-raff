@@ -66,14 +66,17 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
     scheduledAgent = None
   }
 
-  def getBuildIdsToKeep(projectName: String) = {
-    val deployList = deployments.getDeploys(
-      filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"))),
-      pagination = PaginationView(pageSize=Some(Configuration.housekeeping.tagOldArtifacts.numberToScan))
-    )
-    val perStageDeploys = deployList.groupBy(_.stage).values
-    val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(Configuration.housekeeping.tagOldArtifacts.numberToKeep))
-    deploysToKeep.map(_.buildId)
+  def getBuildIdsToKeep(projectName: String): Either[Throwable, List[String]] = {
+    for {
+      deployList <- deployments.getDeploys(
+        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"))),
+        pagination = PaginationView(pageSize = Some(Configuration.housekeeping.tagOldArtifacts.numberToScan))
+      )
+    } yield {
+      val perStageDeploys = deployList.groupBy(_.stage).values.toList
+      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(Configuration.housekeeping.tagOldArtifacts.numberToKeep))
+      deploysToKeep.map(_.buildId)
+    }
   }
 
   def tagBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
@@ -83,7 +86,6 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
       log.info(s"Tagging build ID $buildId")
       val objects = ArtifactHousekeeping.pagedAwsRequest() { token =>
         val request = new ListObjectsV2Request()
-          .withDelimiter("/")
           .withBucketName(artifactBucketName)
           .withPrefix(s"$projectName/$buildId/")
           .withContinuationToken(token.orNull)
@@ -113,14 +115,21 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
       val taggedBuilds = projectNames.map { name =>
         log.info(s"Housekeeping project '$name'")
         val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
-        val buildIdsToKeep = getBuildIdsToKeep(name).toSet
-        val missingBuilds = buildIdsToKeep -- buildIdsForProject
-        if (missingBuilds.nonEmpty) {
-          log.error("Some builds we wanted to keep were not found, possible something is awry. Skipping tagging.")
-          0
-        } else {
-          val buildsToTag = buildIdsForProject -- buildIdsToKeep
-          tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
+        getBuildIdsToKeep(name) match {
+          case Left(t) =>
+            log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
+            0
+          case Right(buildIdsToKeep) =>
+            val buildIdsToKeepSet = buildIdsToKeep.toSet
+            log.info(s"Keeping ${buildIdsToKeepSet.size} builds of $name (${buildIdsToKeepSet.toList.sorted})")
+            val missingBuilds = buildIdsToKeepSet -- buildIdsForProject
+            if (missingBuilds.nonEmpty) {
+              log.error("Some builds we wanted to keep were not found, possible something is awry. Skipping tagging.")
+              0
+            } else {
+              val buildsToTag = buildIdsForProject -- buildIdsToKeepSet
+              tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
+            }
         }
       }
       val numberOfTaggedBuilds = taggedBuilds.sum

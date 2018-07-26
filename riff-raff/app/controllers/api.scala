@@ -23,7 +23,7 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.Results.Unauthorized
 import play.api.mvc.{Action, _}
 import utils.Json.DefaultJodaDateWrites
-import utils.{ChangeFreeze, Graph}
+import utils.{ChangeFreeze, Graph, LogAndSquashBehaviour}
 
 case class ApiKey(
   application:String,
@@ -99,7 +99,7 @@ object ApiKeyGenerator {
 
 class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAction: AuthAction[AnyContent],
   val controllerComponents: ControllerComponents)(
-  implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport {
+  implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   object ApiJsonEndpoint {
     val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
@@ -206,7 +206,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
     val filter = deployment.DeployFilter.fromRequest(request).map(_.withMaxDaysAgo(Some(90))).orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
     val count = deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
-    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false)
+    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).logAndSquashException(Nil)
 
     def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
@@ -273,7 +273,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
     val filter = deployment.DeployFilter.fromRequest(request)
     val count = deployments.countDeploys(filter)
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count))
-    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).reverse
+    val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).logAndSquashException(Nil).reverse
 
     val deploys = deployList.map{ record2apiResponse }
     val response = Map(

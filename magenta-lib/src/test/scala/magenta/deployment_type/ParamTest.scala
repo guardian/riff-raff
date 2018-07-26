@@ -29,7 +29,7 @@ class ParamTest extends FlatSpec with Matchers with MockitoSugar {
     val param = Param[String]("test")
 
     register.paramsList.size shouldBe 1
-    register.paramsList should contain("test" -> param)
+    register.paramsList shouldBe Map("test" -> param)
   }
 
   it should "extract a value from a package using get" in {
