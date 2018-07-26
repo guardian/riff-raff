@@ -6,6 +6,7 @@ import conf.Configuration
 import controllers.Logging
 import deployment.{DeployFilter, Deployments, PaginationView}
 import lifecycle.Lifecycle
+import magenta.RunState
 import org.joda.time.{DateTime, Duration, LocalTime}
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 
@@ -69,7 +70,7 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
   def getBuildIdsToKeep(projectName: String): Either[Throwable, List[String]] = {
     for {
       deployList <- deployments.getDeploys(
-        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"))),
+        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
         pagination = PaginationView(pageSize = Some(Configuration.housekeeping.tagOldArtifacts.numberToScan))
       )
     } yield {
