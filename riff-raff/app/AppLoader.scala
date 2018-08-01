@@ -1,14 +1,5 @@
-import conf.DeployMetrics
-import lifecycle.ShutdownWhenInactive
-import notification.HooksClient
-import persistence.SummariseDeploysHousekeeping
 import play.api.ApplicationLoader.Context
-import play.api.{Application, ApplicationLoader, Logger, LoggerConfigurator}
-import riffraff.RiffRaffManagementServer
-import utils.ScheduledAgent
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
+import play.api.{Application, ApplicationLoader, LoggerConfigurator}
 
 class AppLoader extends ApplicationLoader {
 
