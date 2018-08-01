@@ -24,7 +24,7 @@ object ArtifactHousekeeping {
     }
   }
 
-  def getProjectNames(client: AmazonS3, bucket: String) = {
+  def getProjectNames(client: AmazonS3, bucket: String): List[String] = {
     pagedAwsRequest(){ token =>
       val request = new ListObjectsV2Request()
         .withDelimiter("/")
@@ -35,7 +35,7 @@ object ArtifactHousekeeping {
     }
   }
 
-  def getBuildIds(client: AmazonS3, bucket: String, projectName: String) = {
+  def getBuildIds(client: AmazonS3, bucket: String, projectName: String): List[String] = {
     val prefix = s"$projectName/"
     pagedAwsRequest(){ token =>
       val request = new ListObjectsV2Request()
@@ -45,6 +45,19 @@ object ArtifactHousekeeping {
         .withContinuationToken(token.orNull)
       val result = client.listObjectsV2(request)
       result.getCommonPrefixes.asScala.toList.map(_.stripPrefix(prefix).stripSuffix("/")) -> Option(result.getNextContinuationToken)
+    }
+  }
+
+  def getBuildIdsToKeep(deployments: Deployments, projectName: String): Either[Throwable, List[String]] = {
+    for {
+      deployList <- deployments.getDeploys(
+        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
+        pagination = PaginationView(pageSize = Some(Configuration.housekeeping.tagOldArtifacts.numberToScan))
+      )
+    } yield {
+      val perStageDeploys = deployList.groupBy(_.stage).values.toList
+      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(Configuration.housekeeping.tagOldArtifacts.numberToKeep))
+      deploysToKeep.map(_.buildId)
     }
   }
 }
@@ -65,19 +78,6 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
   def shutdown() {
     scheduledAgent.foreach(_.shutdown())
     scheduledAgent = None
-  }
-
-  def getBuildIdsToKeep(projectName: String): Either[Throwable, List[String]] = {
-    for {
-      deployList <- deployments.getDeploys(
-        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
-        pagination = PaginationView(pageSize = Some(Configuration.housekeeping.tagOldArtifacts.numberToScan))
-      )
-    } yield {
-      val perStageDeploys = deployList.groupBy(_.stage).values.toList
-      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(Configuration.housekeeping.tagOldArtifacts.numberToKeep))
-      deploysToKeep.map(_.buildId)
-    }
   }
 
   def tagBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
@@ -116,7 +116,7 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
       val taggedBuilds = projectNames.map { name =>
         log.info(s"Housekeeping project '$name'")
         val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
-        getBuildIdsToKeep(name) match {
+        ArtifactHousekeeping.getBuildIdsToKeep(deployments, name) match {
           case Left(t) =>
             log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
             0
