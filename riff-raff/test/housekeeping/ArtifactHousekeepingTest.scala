@@ -133,38 +133,4 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
     verify(artifactClientMock, times(1)).listObjectsV2(any[ListObjectsV2Request])
     result.map(_.getKey) shouldEqual List("object-x0", "object-x1", "object-x2")
   }
-
-  "tagBuilds" should "not call setObjectTagging, and return zero when there are no builds to tag" in {
-    val artifactClientMock: AmazonS3 = mock[AmazonS3Client]
-    val deploymentsMock = mock[Deployments]
-    val artifactHousekeeping = new ArtifactHousekeeping(deploymentsMock)
-
-    when(artifactClientMock.listObjectsV2(any[ListObjectsV2Request])) thenReturn mockListObjectsV2Result(List())
-
-    val result = artifactHousekeeping.tagBuilds(artifactClientMock, "bucket-name", "project-name", Set(), housekeepingDate)
-    verify(artifactClientMock, times(0)).setObjectTagging(any[SetObjectTaggingRequest])
-    result shouldEqual 0
-  }
-
-  it should "call setObjectTagging for each object, then return the number of builds that have been tagged" in {
-    val artifactClientMock: AmazonS3 = mock[AmazonS3Client]
-    val deploymentsMock = mock[Deployments]
-    val artifactHousekeeping = new ArtifactHousekeeping(deploymentsMock)
-
-    when(artifactClientMock.listObjectsV2(any[ListObjectsV2Request])) thenReturn mockListObjectsV2Result(
-      List(
-        ObjectSummary(s"object-1", "project-name", oldDate),
-        ObjectSummary(s"object-2", "project-name", oldDate)
-      ))
-
-    val result = artifactHousekeeping.tagBuilds(artifactClientMock, "bucket-name", "project-name", Set("11", "12"), housekeepingDate)
-    verify(artifactClientMock, times(4)).setObjectTagging(any[SetObjectTaggingRequest])
-    result shouldEqual 2
-  }
-
-  "ArtifactHousekeeping" should "do nothing and return zero if not enabled" in {
-    val deploymentsMock = mock[Deployments]
-    val artifactHousekeeping = new ArtifactHousekeeping(deploymentsMock)
-    artifactHousekeeping.housekeepArtifacts(housekeepingDate) shouldEqual 0
-  }
 }
