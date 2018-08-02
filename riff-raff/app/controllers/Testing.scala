@@ -4,6 +4,7 @@ import java.util.UUID
 
 import com.gu.googleauth.AuthAction
 import deployment.{DeployFilter, DeployRecord, PaginationView}
+import housekeeping.ArtifactHousekeeping
 import magenta._
 import magenta.input.All
 import magenta.tasks.Task
@@ -16,13 +17,18 @@ import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import resources.PrismLookup
+import utils.LogAndSquashBehaviour
 
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.Future
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
-  extends BaseController with Logging with I18nSupport {
+class Testing(prismLookup: PrismLookup,
+              authAction: AuthAction[AnyContent],
+              val controllerComponents: ControllerComponents,
+              houseKeeping: ArtifactHousekeeping)(implicit val wsClient: WSClient)
+  extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
   import Testing._
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
@@ -115,7 +121,7 @@ class Testing(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val 
   def S3LatencyList(limit:Int, csv: Boolean) = authAction { implicit request =>
     val filter = DeployFilter.fromRequest
     val pagination = PaginationView.fromRequest
-    val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true)
+    val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true).logAndSquashException(Nil)
     val times = allDeploys.map { deploy =>
       val taskRunLines = deploy.messages.flatMap { message =>
         message.stack.top match {

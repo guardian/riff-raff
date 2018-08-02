@@ -14,6 +14,7 @@ import org.joda.time.{DateTime, Period}
 import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import notification.HookConfig
+import cats.syntax.either._
 
 trait MongoSerialisable[A] {
 
@@ -206,7 +207,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView) = logAndSquashExceptions[Iterable[DeployRecordDocument]](None,Nil){
+  override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Either.catchNonFatal {
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
     val cursor = deployCollection.find(criteria).sort(MongoDBObject("startTime" -> -1)).pagination(pagination)
     cursor.toIterable.flatMap { DeployRecordDocument.fromDBO(_) }

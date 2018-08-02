@@ -4,19 +4,15 @@ import cats.data.EitherT
 import com.gu.googleauth._
 import com.mongodb.casbah.commons.MongoDBObject
 import conf.Configuration.auth
-import conf._
 import deployment.{DeployFilter, Deployments}
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
-import play.api.data.Forms._
 import play.api.data._
+import play.api.data.Forms._
 import play.api.i18n.I18nSupport
-import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.BodyParsers._
-import play.api.mvc.Results._
 import play.api.mvc._
-import rx.functions.Actions
+import utils.LogAndSquashBehaviour
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -51,7 +47,7 @@ trait AuthorisationValidator {
 
 class Login(deployments: Deployments, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent])
   (implicit val wsClient: WSClient, val executionContext: ExecutionContext)
-  extends BaseController with Logging with LoginSupport with I18nSupport {
+  extends BaseController with Logging with LoginSupport with I18nSupport with LogAndSquashBehaviour {
 
   val validator = new AuthorisationValidator {
     def emailDomainWhitelist = auth.domains
@@ -91,7 +87,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   }
 
   def profile = authAction { request =>
-    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).reverse
+    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).logAndSquashException(Nil).reverse
     Ok(views.html.auth.profile(request, records))
   }
 

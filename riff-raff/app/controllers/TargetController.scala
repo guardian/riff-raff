@@ -7,9 +7,10 @@ import persistence.TargetDynamoRepository
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import utils.LogAndSquashBehaviour
 
 class TargetController(deployments: Deployments, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
-  extends BaseController with Logging with I18nSupport {
+  extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   def findMatch(region: String, stack: String, app: String) = authAction {
     val targetIds = TargetDynamoRepository.find(Target(region, stack, app))
@@ -34,7 +35,7 @@ class TargetController(deployments: Deployments, authAction: AuthAction[AnyConte
     maybeTargetId.map { targetId =>
       // find recent deploys of this project / stage
       val filter = DeployFilter(projectName = Some(s"^${targetId.projectName}$$"), stage = Some(stage))
-      val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(20))).reverse
+      val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(20))).logAndSquashException(Nil).reverse
       Ok(views.html.deployTarget.selectVersion(targetId, stage, records, request))
     }.getOrElse(NotFound(s"No target found for $targetKey and $projectName"))
   }

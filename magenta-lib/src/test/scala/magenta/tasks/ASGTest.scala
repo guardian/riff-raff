@@ -16,7 +16,7 @@ import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
@@ -39,7 +39,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   it should "find the matching auto-scaling group with Stack and App tags" in {
     val asgClientMock = mock[AmazonAutoScalingClient]
 
-    val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
+    val desiredGroup: AutoScalingGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
     when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
       new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
@@ -49,7 +49,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
         AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ))
+      ).asJava)
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
@@ -70,7 +70,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
         AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ))
+      ).asJava)
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
@@ -175,7 +175,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
       new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
         AutoScalingGroup("Role" -> "other", "Stage" -> "PROD"),
         AutoScalingGroup("Role" -> "example", "Stage" -> "TEST")
-      )).withNextToken("someToken" +
+      ).asJava).withNextToken("someToken" +
         "")
     when (asgClientMock.describeAutoScalingGroups(secondRequest)) thenReturn
       new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
@@ -183,7 +183,7 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
         AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
         AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD"),
         desiredGroup
-      ))
+      ).asJava)
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
@@ -191,11 +191,17 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   object AutoScalingGroup {
-    def apply(tags: (String, String)*) = new AutoScalingGroup().withTags(tags map {
-      case (key, value) => new TagDescription().withKey(key).withValue(value)
-    })
-    def apply(elbName: String, tags: (String, String)*) = new AutoScalingGroup().withTags(tags map {
-      case (key, value) => new TagDescription().withKey(key).withValue(value)
-    }).withLoadBalancerNames(elbName)
+    def apply(tags: (String, String)*) = {
+      val awsTags = tags map {
+        case (key, value) => new TagDescription().withKey(key).withValue(value)
+      }
+      new AutoScalingGroup().withTags(awsTags.asJava)
+    }
+    def apply(elbName: String, tags: (String, String)*) = {
+      val awsTags = tags map {
+        case (key, value) => new TagDescription().withKey(key).withValue(value)
+      }
+      new AutoScalingGroup().withTags(awsTags.asJava).withLoadBalancerNames(elbName)
+    }
   }
 }

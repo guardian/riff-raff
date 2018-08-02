@@ -9,6 +9,9 @@ import magenta._
 import controllers.SimpleDeployDetail
 import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
 import henkan.convert.Syntax._
+import cats.syntax.traverse._
+import cats.instances.list._
+import cats.instances.either._
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
@@ -109,7 +112,7 @@ trait DocumentStore {
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Iterable[DeployRecordDocument] = Nil
+  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLog(uuid: UUID) {}
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
@@ -172,15 +175,17 @@ object DocumentStoreConverter extends Logging {
     }
   }
 
-  def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Seq[DeployRecord] = {
-    documentStore.getDeploys(filter, pagination).toSeq.flatMap{ deployDocument =>
-      try {
-        val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
-        Some(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
-      } catch {
-        case e:Exception =>
-          log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)
-          None
+  def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Either[Throwable, List[DeployRecord]] = {
+    documentStore.getDeploys(filter, pagination).flatMap { records =>
+      records.toList.traverse { deployDocument =>
+        try {
+          val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
+          Right(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
+        } catch {
+          case e: Exception =>
+            log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)
+            Left(e)
+        }
       }
     }
   }

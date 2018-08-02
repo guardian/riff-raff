@@ -188,12 +188,13 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
     }
   }
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Iterable[Record] =
+  def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Either[Throwable, List[Record]] = {
     DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)
+  }
 
-  def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): List[Record] = {
+  def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): Either[Throwable, List[Record]] = {
     require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
-    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).toList.sortWith{ _.time.getMillis < _.time.getMillis }
+    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).map(_.sortWith{ _.time.getMillis < _.time.getMillis })
   }
 
   def getLastCompletedDeploys(project: String): Map[String, Record] = {

@@ -124,6 +124,22 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val summariseDeploysAfterDays = configuration.getIntegerProperty("housekeeping.summariseDeploysAfterDays", 90)
     lazy val hour = configuration.getIntegerProperty("housekeeping.hour", 4)
     lazy val minute = configuration.getIntegerProperty("housekeeping.minute", 0)
+    object tagOldArtifacts {
+      lazy val hourOfDay = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.hourOfDay", 2)
+      lazy val minuteOfHour = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minuteOfHour", 0)
+
+      lazy val enabled = configuration.getStringProperty("housekeeping.tagOldArtifacts.enabled", "false") == "true"
+      lazy val tagKey = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagKey", "housekeeping")
+      lazy val tagValue = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagValue", "delete")
+      // this should be a few days longer than the expiration age of the riffraff-builds bucket (28 days by default)
+      //  so that it is less likely that a user will try and deploy a build that has since been removed
+      lazy val minimumAgeDays = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minimumAgeDay", 40)
+      // the number to scan (we look at this number of most recent deploys to figure out what to keep, anything older
+      // than this will not be considered)
+      lazy val numberToScan = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.numberToScan", 50)
+      // the number of artifacts to keep per stage
+      lazy val numberToKeep = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.numberToKeep", 5)
+    }
   }
 
   object logging {

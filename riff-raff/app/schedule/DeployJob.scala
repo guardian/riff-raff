@@ -6,6 +6,7 @@ import deployment._
 import magenta.{Deployer, DeployParameters, RunState}
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
 import schedule.DeployScheduler.JobDataKeys
+import utils.LogAndSquashBehaviour
 
 import scala.annotation.tailrec
 import scala.util.Try
@@ -31,7 +32,7 @@ class DeployJob extends Job with Logging {
   }
 }
 
-object DeployJob {
+object DeployJob extends Logging with LogAndSquashBehaviour {
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
@@ -61,7 +62,7 @@ object DeployJob {
       )
       val pagination = PaginationView().withPageSize(Some(1))
 
-      val result = Try(deployments.getDeploys(Some(filter), pagination).headOption).toOption.flatten
+      val result = Try(deployments.getDeploys(Some(filter), pagination).logAndSquashException(Nil).headOption).toOption.flatten
       result match {
         case Some(record) => Right(record)
         case None =>

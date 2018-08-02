@@ -26,13 +26,14 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
+import utils.LogAndSquashBehaviour
 
 import scala.util.{Failure, Success}
 
 class DeployController(
   deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
   buildSource: Builds, AuthAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)
-  (implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport {
+  (implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   def deploy = AuthAction { implicit request =>
     Ok(views.html.deploy.form(DeployParameterForm.form, prismLookup))
@@ -94,7 +95,7 @@ class DeployController(
 
   def historyContent() = AuthAction { implicit request =>
     val records = try {
-      deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).reverse
+      deployments.getDeploys(deployment.DeployFilter.fromRequest(request), deployment.PaginationView.fromRequest(request), fetchLogs = false).logAndSquashException(Nil).reverse
     } catch {
       case e: Exception =>
         log.error("Exception whilst fetching records", e)
@@ -133,7 +134,7 @@ class DeployController(
         RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
       val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
-      val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).reverse
+      val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).logAndSquashException(Nil).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }
   }
