@@ -125,7 +125,7 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
           case Left(_) =>
             log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
             0
-          case Right(buildIdsToKeep) =>
+          case Right(buildIdsToKeep) if buildIdsToKeep.nonEmpty =>
             val buildIdsToKeepSet = buildIdsToKeep.toSet
             log.info(s"Keeping ${buildIdsToKeepSet.size} builds of $name (${buildIdsToKeepSet.toList.sorted})")
             val missingBuilds = buildIdsToKeepSet -- buildIdsForProject
@@ -136,6 +136,9 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
               val buildsToTag = buildIdsForProject -- buildIdsToKeepSet
               tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
             }
+          case Right(_) =>
+            log.error(s"List of builds to keep for project $name was empty, possible something is awry. Skipping tagging.")
+            0
         }
       }
       val numberOfTaggedBuilds = taggedBuilds.sum
