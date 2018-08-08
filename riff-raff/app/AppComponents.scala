@@ -2,6 +2,7 @@ import java.time.Duration
 import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
 import com.gu.play.secretrotation.aws.ParameterStore
@@ -29,7 +30,7 @@ import resources.PrismLookup
 import riffraff.RiffRaffManagementServer
 import router.Routes
 import schedule.DeployScheduler
-import utils.{HstsFilter, ScheduledAgent}
+import utils.{ElkLogging, HstsFilter, ScheduledAgent}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -61,6 +62,13 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
+  val elkLogging = new ElkLogging(
+    Configuration.stage,
+    Configuration.logging.regionName,
+    Configuration.logging.elkStreamName,
+    Configuration.logging.credentialsProvider,
+    applicationLifecycle
+  )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy

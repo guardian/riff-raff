@@ -144,6 +144,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object logging {
     lazy val verbose = configuration.getStringProperty("logging").exists(_.equalsIgnoreCase("VERBOSE"))
+    lazy val elkStreamName = configuration.getStringProperty("logging.elkStreamName")
+    lazy val accessKey = configuration.getStringProperty("logging.aws.accessKey")
+    lazy val secretKey = configuration.getStringProperty("logging.aws.secretKey")
+    lazy val regionName = configuration.getStringProperty("logging.aws.region", "eu-west-1")
+    lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {

@@ -64,6 +64,8 @@ object Dependencies {
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
     "org.webjars" % "momentjs" % "2.16.0",
+    "net.logstash.logback" % "logstash-logback-encoder" % "5.1",
+    "com.gu" % "kinesis-logback-appender" % "1.4.2",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.5.3" % Test,
