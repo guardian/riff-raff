@@ -13,7 +13,7 @@ val commonSettings = Seq(
   version := "1.0",
   resolvers ++= Seq(
     "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
-    "Guardian Github Releases" at "http://guardian.github.com/maven/repo-releases"
+    "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases"
   )
 )
 
