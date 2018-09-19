@@ -1,8 +1,11 @@
 package magenta.deployment_type
 
+import java.util.UUID
+
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.{CheckUpdateEventsTask, UpdateCloudFormationTask}
+import magenta.tasks.{CheckChangeSetCreatedTask, CreateChangeSetTask}
+import scala.concurrent.duration._
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
@@ -66,8 +69,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       val globalParams = templateParameters(pkg, target, reporter)
       val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
       val params = globalParams ++ stageParams
+
+      val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
+
       List(
-        UpdateCloudFormationTask(
+        CreateChangeSetTask(
           target.region,
           cloudFormationStackLookupStrategy,
           S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
@@ -77,9 +83,16 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
           target.parameters.stage,
           target.stack,
           createStackIfAbsent(pkg, target, reporter),
-          true
+          alwaysUploadToS3 = true,
+          changeSetName
         ),
-        CheckUpdateEventsTask(target.region, cloudFormationStackLookupStrategy)
+        CheckChangeSetCreatedTask(
+          target.region,
+          cloudFormationStackLookupStrategy,
+          changeSetName,
+          // TODO MRB: should definitely be a parameter
+          10.minutes.toMillis
+        )
       )
     }
   }
