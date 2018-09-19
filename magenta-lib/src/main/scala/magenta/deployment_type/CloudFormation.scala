@@ -185,8 +185,12 @@ object CloudFormationChangeSet extends DeploymentType with CloudFormationDeploym
       CheckUpdateEventsTask(
         target.region,
         cloudFormationStackLookupStrategy
+      ),
+      DeleteChangeSetTask(
+        target.region,
+        cloudFormationStackLookupStrategy,
+        changeSetName
       )
-      // TODO MRB: delete change set?
     )
   }
   }

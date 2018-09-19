@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import com.amazonaws.services.cloudformation.model.{ChangeSetType, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import com.amazonaws.services.cloudformation.model.{ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters.{CfnParam, TagCriteria}
@@ -45,7 +45,6 @@ case class CreateChangeSetTask(
     val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters.asScala
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
-    // TODO MRB: should this be the "SAM" deployment type and not have ami parameters et al
     val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
       val ami = latestImage(accountNumber)(region.name)(tags)
       ami.map(name ->)
@@ -130,5 +129,22 @@ case class ExecuteChangeSetTask(
   }
 
   def description = s"Execute change set $changeSetName on stack $cloudFormationStackLookupStrategy"
+  def verbose = description
+}
+
+case class DeleteChangeSetTask(
+  region: Region,
+  cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
+  changeSetName: String
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+    val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+    val stackName = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
+
+    val request = new DeleteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
+    cfnClient.deleteChangeSet(request)
+  }
+
+  def description = s"Delete change set $changeSetName on stack $cloudFormationStackLookupStrategy"
   def verbose = description
 }
