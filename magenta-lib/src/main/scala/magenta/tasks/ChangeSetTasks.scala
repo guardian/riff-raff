@@ -92,6 +92,9 @@ case class CheckChangeSetCreatedTask(
         case "CREATE_COMPLETE" =>
           true
 
+        case "FAILED" if response.getChanges.isEmpty =>
+          true
+
         case "FAILED" =>
           reporter.fail(response.getStatusReason)
 
@@ -115,8 +118,15 @@ case class ExecuteChangeSetTask(
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
     val stackName = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
 
-    val request = new ExecuteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
-    cfnClient.executeChangeSet(request)
+    val describeRequest = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
+    val describeResponse = cfnClient.describeChangeSet(describeRequest)
+
+    if(describeResponse.getChanges.isEmpty) {
+      reporter.info(s"No changes to perform for $changeSetName on stack $cloudFormationStackLookupStrategy")
+    } else {
+      val request = new ExecuteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
+      cfnClient.executeChangeSet(request)
+    }
   }
 
   def description = s"Execute change set $changeSetName on stack $cloudFormationStackLookupStrategy"
