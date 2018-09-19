@@ -62,10 +62,10 @@ case class CreateChangeSetTask(
     val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
     val changeSetType = if(maybeCfStack.isEmpty) { ChangeSetType.CREATE } else { ChangeSetType.UPDATE }
 
-    if(changeSetType == ChangeSetType.CREATE && createStackIfAbsent) {
-      CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
-    } else {
+    if(changeSetType == ChangeSetType.CREATE && !createStackIfAbsent) {
       reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
+    } else {
+      CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
     }
   }
 

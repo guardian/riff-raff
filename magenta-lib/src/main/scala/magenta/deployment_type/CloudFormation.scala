@@ -4,14 +4,14 @@ import java.util.UUID
 
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.{CheckChangeSetCreatedTask, CheckUpdateEventsTask, CreateChangeSetTask, ExecuteChangeSetTask}
+import magenta.tasks._
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage}
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
-
   val name = "cloud-formation"
-  def documentation =
-    """Update an AWS CloudFormation template.
-      |
+
+  def baseDocumentation =
+    """
       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
@@ -26,12 +26,19 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |to this bucket and sent to CloudFormation using the template URL parameter.
     """.stripMargin
 
+  def documentation =
+    s"""Update an AWS CloudFormation template.
+      |$baseDocumentation
+    """.stripMargin
+
   val templatePath = Param[String]("templatePath",
     documentation = "Location of template to use within package."
   ).default("""cloud-formation/cfn.json""")
+
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
   ).default(Map.empty)
+
   val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
     documentation =
       """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
@@ -46,11 +53,10 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         |templateParameters parameters, with stage-specific values overriding general parameters
         |when in conflict.""".stripMargin
   ).default(Map.empty)
+
   val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
-
-  val secondsToWait = Param("secondsToWait", "Number of seconds to wait for the template to update").default(15 * 60)
 
   val updateStack = Action("updateStack",
     """
@@ -64,17 +70,15 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       val reporter = resources.reporter
 
       val amiParameterMap: Map[CfnParam, TagCriteria] = getAmiParameterMap(pkg, target, reporter)
-
       val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
 
       val globalParams = templateParameters(pkg, target, reporter)
       val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
+
       val params = globalParams ++ stageParams
 
-      val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
-
       List(
-        CreateChangeSetTask(
+        UpdateCloudFormationTask(
           target.region,
           cloudFormationStackLookupStrategy,
           S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
@@ -84,26 +88,106 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
           target.parameters.stage,
           target.stack,
           createStackIfAbsent(pkg, target, reporter),
-          alwaysUploadToS3 = true,
-          changeSetName
+          alwaysUploadToS3 = true
         ),
-        CheckChangeSetCreatedTask(
-          target.region,
-          cloudFormationStackLookupStrategy,
-          changeSetName,
-          secondsToWait(pkg, target, reporter) * 1000
-        ),
-        ExecuteChangeSetTask(
-          target.region,
-          cloudFormationStackLookupStrategy,
-          changeSetName
-        ),
-        CheckUpdateEventsTask(
-          target.region,
-          cloudFormationStackLookupStrategy
-        )
+        CheckUpdateEventsTask(target.region, cloudFormationStackLookupStrategy)
       )
     }
+  }
+
+  def defaultActions = List(updateStack)
+}
+
+object CloudFormationChangeSet extends DeploymentType with CloudFormationDeploymentTypeParameters {
+
+  val name = "cloud-formation-change-set"
+  def documentation =
+    s"""Update an AWS CloudFormation template by creating and executing a change set.
+       |This allows Riff Raff to deploy templates that define transforms such as applications written using the AWS Serverless Model.
+       |${CloudFormation.baseDocumentation}
+    """.stripMargin
+
+  val templatePath = Param[String]("templatePath",
+    documentation = "Location of template to use within package."
+  ).default("""cloud-formation/cfn.json""")
+
+  val templateParameters = Param[Map[String, String]]("templateParameters",
+    documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
+  ).default(Map.empty)
+
+  val templateStageParameters = Param[Map[String, Map[String, String]]]("templateStageParameters",
+    documentation =
+      """Like templateParameters, a map of parameter names and values, but in this case keyed by stage to
+        |support stage-specific configuration. E.g.
+        |
+        |    {
+        |        "CODE": { "apiUrl": "my.code.endpoint", ... },
+        |        "PROD": { "apiUrl": "my.prod.endpoint", ... },
+        |    }
+        |
+        |At deploy time, parameters for the matching stage (if found) are merged into any
+        |templateParameters parameters, with stage-specific values overriding general parameters
+        |when in conflict.""".stripMargin
+  ).default(Map.empty)
+
+  val createStackIfAbsent = Param[Boolean]("createStackIfAbsent",
+    documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
+  ).default(true)
+
+  val secondsToWait = Param("secondsToWait", "Number of seconds to wait for the template to update").default(15 * 60)
+
+  val updateStack = Action("updateStack",
+    """
+      |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
+      |runs another task that _tails_ the stack update events (as well as possible).
+      |
+    """.stripMargin
+  ){ (pkg, resources, target) => {
+    implicit val keyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient = resources.artifactClient
+    val reporter = resources.reporter
+
+    val amiParameterMap: Map[CfnParam, TagCriteria] = getAmiParameterMap(pkg, target, reporter)
+    val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
+
+    val globalParams = templateParameters(pkg, target, reporter)
+    val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
+
+    val params = globalParams ++ stageParams
+
+    val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
+
+    List(
+      CreateChangeSetTask(
+        target.region,
+        cloudFormationStackLookupStrategy,
+        S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
+        params,
+        amiParameterMap,
+        getLatestAmi(pkg, target, reporter, resources.lookup),
+        target.parameters.stage,
+        target.stack,
+        createStackIfAbsent(pkg, target, reporter),
+        alwaysUploadToS3 = true,
+        changeSetName
+      ),
+      CheckChangeSetCreatedTask(
+        target.region,
+        cloudFormationStackLookupStrategy,
+        changeSetName,
+        secondsToWait(pkg, target, reporter) * 1000
+      ),
+      ExecuteChangeSetTask(
+        target.region,
+        cloudFormationStackLookupStrategy,
+        changeSetName
+      ),
+      CheckUpdateEventsTask(
+        target.region,
+        cloudFormationStackLookupStrategy
+      )
+    )
+  }
   }
 
   def defaultActions = List(updateStack)
