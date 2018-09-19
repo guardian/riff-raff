@@ -4,8 +4,7 @@ import java.util.UUID
 
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.{CheckChangeSetCreatedTask, CreateChangeSetTask}
-import scala.concurrent.duration._
+import magenta.tasks.{CheckChangeSetCreatedTask, CheckUpdateEventsTask, CreateChangeSetTask, ExecuteChangeSetTask}
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
@@ -51,6 +50,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
 
+  val secondsToWait = Param("secondsToWait", "Number of seconds to wait for the template to update").default(15 * 60)
+
   val updateStack = Action("updateStack",
     """
       |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
@@ -90,8 +91,16 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
           target.region,
           cloudFormationStackLookupStrategy,
           changeSetName,
-          // TODO MRB: should definitely be a parameter
-          10.minutes.toMillis
+          secondsToWait(pkg, target, reporter) * 1000
+        ),
+        ExecuteChangeSetTask(
+          target.region,
+          cloudFormationStackLookupStrategy,
+          changeSetName
+        ),
+        CheckUpdateEventsTask(
+          target.region,
+          cloudFormationStackLookupStrategy
         )
       )
     }

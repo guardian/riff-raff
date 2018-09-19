@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import com.amazonaws.services.cloudformation.model.{ChangeSetType, DescribeChangeSetRequest}
+import com.amazonaws.services.cloudformation.model.{ChangeSetType, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters.{CfnParam, TagCriteria}
@@ -103,5 +103,22 @@ case class CheckChangeSetCreatedTask(
   }
 
   def description = s"Checking change set $changeSetName creation for stack $cloudFormationStackLookupStrategy"
+  def verbose = description
+}
+
+case class ExecuteChangeSetTask(
+  region: Region,
+  cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
+  changeSetName: String
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
+    val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+    val stackName = UpdateCloudFormationTask.nameToCallNewStack(cloudFormationStackLookupStrategy)
+
+    val request = new ExecuteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
+    cfnClient.executeChangeSet(request)
+  }
+
+  def description = s"Execute change set $changeSetName on stack $cloudFormationStackLookupStrategy"
   def verbose = description
 }
