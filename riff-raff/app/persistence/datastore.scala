@@ -28,26 +28,35 @@ trait DataStore extends DocumentStore {
 
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
-  def getAuthorisation(email: String): Option[AuthorisationRecord] = None
-  def getAuthorisationList:List[AuthorisationRecord] = Nil
-  def setAuthorisation(auth: AuthorisationRecord) {}
-  def deleteAuthorisation(email: String) {}
+  def getAuthorisation(email: String): Option[AuthorisationRecord]
+  def getAuthorisationList:List[AuthorisationRecord]
+  def setAuthorisation(auth: AuthorisationRecord): Unit
+  def deleteAuthorisation(email: String): Unit
 
-  def createApiKey(newKey: ApiKey) {}
-  def getApiKeyList:Iterable[ApiKey] = Nil
-  def getApiKey(key: String): Option[ApiKey] = None
-  def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
-  def getApiKeyByApplication(application: String): Option[ApiKey] = None
-  def deleteApiKey(key: String) {}
-
-  def writeKey(key:String, value:String) {}
-  def readKey(key:String): Option[String] = None
-  def deleteKey(key: String) {}
+  def createApiKey(newKey: ApiKey): Unit
+  def getApiKeyList:Iterable[ApiKey]
+  def getApiKey(key: String): Option[ApiKey]
+  def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
+  def getApiKeyByApplication(application: String): Option[ApiKey]
+  def deleteApiKey(key: String): Unit
 }
 
 object Persistence extends Logging {
 
-  object NoOpDataStore extends DataStore with Logging {}
+  object NoOpDataStore extends DataStore with Logging {
+    def getAuthorisation(email: String) = None
+    def getAuthorisationList = Nil
+    def setAuthorisation(auth: AuthorisationRecord) {}
+    def deleteAuthorisation(email: String) {}
+
+    def createApiKey(newKey: ApiKey) {}
+    def getApiKeyList = Nil
+    def getApiKey(key: String) = None
+    def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
+    def getApiKeyByApplication(application: String) = None
+    def deleteApiKey(key: String) {}
+
+  }
 
   lazy val store: DataStore = {
     val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)

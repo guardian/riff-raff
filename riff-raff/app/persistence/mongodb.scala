@@ -63,7 +63,6 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   val deployLogCollection = getCollection("deployV2Logs")
   val authCollection = getCollection("auth")
   val apiKeyCollection = getCollection("apiKeys")
-  val keyValuesCollection = getCollection("keyValues")
 
   val collections = List(deployCollection, deployLogCollection, authCollection, apiKeyCollection)
 
@@ -290,31 +289,6 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       case 0.0 =>
         val errorMessage = result.as[String]("errmsg")
         throw new IllegalArgumentException(s"Failed to execute mongo query: $errorMessage")
-    }
-  }
-
-  override def writeKey(key: String, value: String) {
-    logAndSquashExceptions[Unit](Some(s"Writing value $value for key $key"), ()) {
-      keyValuesCollection.findAndModify(
-        query = MongoDBObject("key" -> key),
-        update = MongoDBObject("key" -> key, "value" -> value),
-        upsert = true,
-        fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew = false
-      )
-    }
-  }
-
-  override def readKey(key: String): Option[String] =
-    logAndSquashExceptions[Option[String]](Some(s"Retrieving value for key $key"), None) {
-      keyValuesCollection.findOne(MongoDBObject("key" -> key)).flatMap(_.getAs[String]("value"))
-    }
-
-  override def deleteKey(key: String) {
-    logAndSquashExceptions[Unit](Some(s"Deleting key value pair for key $key"), ()) {
-      keyValuesCollection.findAndRemove(MongoDBObject("key" -> key))
     }
   }
 
