@@ -40,9 +40,6 @@ trait DataStore extends DocumentStore {
   def getApiKeyByApplication(application: String): Option[ApiKey] = None
   def deleteApiKey(key: String) {}
 
-  def writeKey(key:String, value:String) {}
-  def readKey(key:String): Option[String] = None
-  def deleteKey(key: String) {}
 }
 
 object Persistence extends Logging {
