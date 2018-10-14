@@ -18,7 +18,7 @@ import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstanc
 import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancing => ApplicationELB, AmazonElasticLoadBalancingClientBuilder => ApplicationELBBuilder}
 import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
 import com.amazonaws.services.lambda.{AWSLambda, AWSLambdaClientBuilder}
-import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
+import com.amazonaws.services.lambda.model.{UpdateFunctionCodeRequest, UpdateAliasRequest, InvokeRequest}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
@@ -103,7 +103,23 @@ object Lambda extends AWS {
       .withFunctionName(functionName)
       .withS3Bucket(s3Bucket)
       .withS3Key(s3Key)
+      .withPublish(true) //publish a new version of the lambda with the new code
   }
+
+  def lambdaUpdateAliasRequest(functionName: String, aliasName: String, functionVersion: String): UpdateAliasRequest = {
+    new UpdateAliasRequest()
+      .withName(aliasName)
+      .withFunctionName(functionName)
+      .withFunctionVersion(functionVersion)
+  }
+
+  def lambdaInvokeHealthCheckRequest(functionName: String, functionVersion: String, healthCheckPayload: String) = {
+    new InvokeRequest()
+      .withFunctionName(functionName)
+      .withQualifier(functionVersion)
+      .withPayload(healthCheckPayload)
+  }
+
 }
 
 object ASG extends AWS {

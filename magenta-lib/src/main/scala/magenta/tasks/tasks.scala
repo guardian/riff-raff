@@ -223,10 +223,33 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
   def verbose = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+    ////todo all of this should come from the deployment config
+    val liveAliasName = "Live" // the name of the alias all the prod stuff is going to use
+    val healthCheckPayload = "{}" // the payload to send in the healthcheck invocation this should also be configured to make sure lambdas know they are executing a healthcheck if they would break / change stuff by running with a empty json
+    val expectedHealthCheckResponse = "{}" // maybe we should make this optional for lambdas that always return something different and we only care that the execution is successful
+    /////////////////////
+
     val client = Lambda.makeLambdaClient(keyRing, region)
     reporter.verbose(s"Starting update $functionName Lambda")
-    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-    reporter.verbose(s"Finished update $functionName Lambda")
+    val updateFunctionResult = client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
+    val newVersion = updateFunctionResult.getVersion
+    reporter.verbose(s"Created new version $newVersion of $functionName Lambda")
+    //todo these next 2 steps (healthcheck and updating the alias) probably has to happen in a different task - see how it is done for ec2
+    //check that the healtcheck passes
+    //todo this probably should be async ( again check what is done for ec2)
+    val healthCheckResponse = client.invoke(Lambda.lambdaInvokeHealthCheckRequest(functionName, newVersion, healthCheckPayload))
+
+    def asString(byteBuffer: ByteBuffer): String =  new String(byteBuffer.array(), "UTF-8")
+
+    if (healthCheckResponse.getStatusCode != 200 || asString(healthCheckResponse.getPayload) != expectedHealthCheckResponse) {
+        reporter.fail("lambda healthcheck failed! - probably we should log the lambda response, lambda log and some other stuff here")
+      } else {
+
+      client.updateAlias(Lambda.lambdaUpdateAliasRequest(functionName, liveAliasName, newVersion))
+      reporter.verbose(s"Finished update $functionName Lambda")
+
+    }
+
   }
 
 }
