@@ -14,8 +14,10 @@ import com.gu.management.Loggable
 import magenta.artifact._
 import magenta.deployment_type.param_reads.PatternValue
 import okhttp3._
+import play.api.libs.json.Json
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 import scala.util.control.NonFatal
 
 case class S3Upload(
@@ -217,7 +219,10 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 object ChangeSwitch {
   val client = new OkHttpClient()
 }
-
+case class ApiGatewayStatus(StatusCode: String)
+object ApiGatewayStatus {
+  implicit val reads = Json.reads[ApiGatewayStatus]
+}
 case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $functionName Lambda using S3 $s3Bucket:$s3Key"
   def verbose = description
@@ -226,7 +231,7 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
     ////todo all of this should come from the deployment config
     val liveAliasName = "Live" // the name of the alias all the prod stuff is going to use
     val healthCheckPayload = "{}" // the payload to send in the healthcheck invocation this should also be configured to make sure lambdas know they are executing a healthcheck if they would break / change stuff by running with a empty json
-    val expectedHealthCheckResponse = "{}" // maybe we should make this optional for lambdas that always return something different and we only care that the execution is successful
+    val maybeExpectedApiGatewayStatus: Option[String] = Some("200") //for non api gateway lambdas this can be none a
     /////////////////////
 
     val client = Lambda.makeLambdaClient(keyRing, region)
@@ -239,14 +244,19 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
     //todo this probably should be async ( again check what is done for ec2)
     val healthCheckResponse = client.invoke(Lambda.lambdaInvokeHealthCheckRequest(functionName, newVersion, healthCheckPayload))
 
-    def asString(byteBuffer: ByteBuffer): String =  new String(byteBuffer.array(), "UTF-8")
+    def validApiGatewayStatus: Boolean = maybeExpectedApiGatewayStatus.map { expectedStatus =>
+      val responseString = new String(healthCheckResponse.getPayload.array, "UTF-8")
+      val actualApiGatewayStatus = Json.parse(responseString).asOpt[ApiGatewayStatus]
+      actualApiGatewayStatus.contains(expectedStatus)
+    } getOrElse (true)
 
-    if (healthCheckResponse.getStatusCode != 200 || asString(healthCheckResponse.getPayload) != expectedHealthCheckResponse) {
-        reporter.fail("lambda healthcheck failed! - probably we should log the lambda response, lambda log and some other stuff here")
-      } else {
-
+    if (healthCheckResponse.getStatusCode == 200 && validApiGatewayStatus) {
       client.updateAlias(Lambda.lambdaUpdateAliasRequest(functionName, liveAliasName, newVersion))
       reporter.verbose(s"Finished update $functionName Lambda")
+    } else {
+
+      reporter.fail("lambda healthcheck failed! - probably we should log the lambda response, lambda log and some other stuff here")
+
 
     }
 
