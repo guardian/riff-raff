@@ -219,7 +219,7 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
 object ChangeSwitch {
   val client = new OkHttpClient()
 }
-case class ApiGatewayStatus(StatusCode: String)
+case class ApiGatewayStatus(statusCode: String)
 object ApiGatewayStatus {
   implicit val reads = Json.reads[ApiGatewayStatus]
 }
@@ -247,7 +247,7 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
     def validApiGatewayStatus: Boolean = maybeExpectedApiGatewayStatus.map { expectedStatus =>
       val responseString = new String(healthCheckResponse.getPayload.array, "UTF-8")
       val actualApiGatewayStatus = Json.parse(responseString).asOpt[ApiGatewayStatus]
-      actualApiGatewayStatus.contains(expectedStatus)
+      actualApiGatewayStatus.exists(_.statusCode == expectedStatus)
     } getOrElse (true)
 
     if (healthCheckResponse.getStatusCode == 200 && validApiGatewayStatus) {
@@ -256,8 +256,6 @@ case class UpdateS3Lambda(functionName: String, s3Bucket: String, s3Key: String,
     } else {
 
       reporter.fail("lambda healthcheck failed! - probably we should log the lambda response, lambda log and some other stuff here")
-
-
     }
 
   }
