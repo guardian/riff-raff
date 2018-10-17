@@ -185,11 +185,11 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       deployCollection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))
     }
 
-  override def writeLog(log: LogDocument) {
-    logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
+  override def writeLog(log: LogDocument) =
+    (logExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
       deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => writeLog(log))
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
