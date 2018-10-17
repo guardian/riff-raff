@@ -108,13 +108,13 @@ trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument): Either[Throwable, Unit]
   def writeLog(log: LogDocument): Either[Throwable, Unit]
   def updateStatus(uuid: UUID, status: RunState.Value): Either[Throwable, Unit]
-  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {}
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Either[Throwable, Unit]
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
   def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
-  def deleteDeployLog(uuid: UUID) {}
+  def deleteDeployLog(uuid: UUID): Either[Throwable, Unit]
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
   def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil

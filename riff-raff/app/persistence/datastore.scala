@@ -6,6 +6,7 @@ import magenta.Build
 import java.util.UUID
 import ci.ContinuousDeploymentConfig
 import conf.DatastoreMetrics.DatastoreRequest
+import org.joda.time.DateTime
 
 trait DataStore extends DocumentStore {
   def log: Logger
@@ -66,7 +67,9 @@ object Persistence extends Logging {
     def findProjects = nil
     def writeDeploy(deploy: DeployRecordDocument) = unit
     def writeLog(log: LogDocument) = unit
+    def deleteDeployLog(uuid: UUID) = unit
     def updateStatus(uuid: UUID, state: magenta.RunState.Value) = unit
+    def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = unit
   }
 
   lazy val store: DataStore = {

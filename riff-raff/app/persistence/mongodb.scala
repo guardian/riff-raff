@@ -171,14 +171,14 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       ()
     }).retry(maxRetries)(_ => updateStatus(uuid, status))
 
-  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
-    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings"), ()) {
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) =
+    (logExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
       val fields =
         List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
         totalTasks.map("totalTasks" ->)
       deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings))
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
@@ -218,12 +218,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     deployCollection.count(criteria).toInt
   }
 
-  override def deleteDeployLog(uuid: UUID) {
-    logAndSquashExceptions(None,()) {
+  override def deleteDeployLog(uuid: UUID) =
+    (logExceptions(None) {
       deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
       deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => deleteDeployLog(uuid))
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
     deployCollection.find(
