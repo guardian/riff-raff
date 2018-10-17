@@ -72,6 +72,7 @@ object Persistence extends Logging {
     def getApiKeyByApplication(application: String) = None
     def deleteApiKey(key: String) {}
 
+    def findProjects = Right(Nil)
   }
 
   lazy val store: DataStore = {

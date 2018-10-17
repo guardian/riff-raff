@@ -290,7 +290,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def findProjects(): List[String] = logAndSquashExceptions[List[String]](None,Nil) {
+  override def findProjects: Either[Throwable, List[String]] = logExceptions(None) {
     deployCollection.distinct("parameters.projectName").map(_.asInstanceOf[String]).toList
   }
 

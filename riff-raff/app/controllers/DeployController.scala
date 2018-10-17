@@ -216,15 +216,19 @@ class DeployController(
   }
 
   def dashboardContent(projects: String, search: Boolean) = AuthAction { implicit request =>
+    def go(terms: List[String]): Either[Throwable, List[String]] = terms match {
+      case Nil => Right(Nil)
+      case term :: terms => for {
+        psTerm <- deployments.findProjects.map(_.filter(_.contains(term)))
+        psTerms <- go(terms)
+      } yield psTerm ++ psTerms
+    }
+
     val projectTerms = projects.split(",").toList.filterNot("" ==)
-    val projectNames = if (search) {
-      projectTerms.flatMap(term => {
-        deployments.findProjects().filter(_.contains(term))
-      })
-    } else projectTerms
-    val deploys = projectNames.map { project =>
+    val projectNames = if (search) go(projectTerms) else Right(projectTerms)
+    val deploys = projectNames.map(_.map { project =>
       project -> deployments.getLastCompletedDeploys(project)
-    }.filterNot(_._2.isEmpty)
+    }.filterNot(_._2.isEmpty))
     Ok(views.html.deploy.dashboardContent(deploys))
   }
 
