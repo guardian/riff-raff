@@ -111,12 +111,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
     }
 
-  override def createApiKey(newKey: ApiKey) {
-    logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
+  override def createApiKey(newKey: ApiKey) =
+    (logExceptions(Some("Saving new API key %s" format newKey.key)) {
       val dbo = newKey.toDBO
       apiKeyCollection.insert(dbo)
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => createApiKey(newKey))
 
   override def getApiKeyList = logExceptions(Some("Requesting list of API keys")) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
