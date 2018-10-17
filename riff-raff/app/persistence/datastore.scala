@@ -70,6 +70,7 @@ object Persistence extends Logging {
     def deleteDeployLog(uuid: UUID) = unit
     def updateStatus(uuid: UUID, state: magenta.RunState.Value) = unit
     def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = unit
+    def addMetaData(uuid: UUID, metaData: Map[String, String]) = unit
   }
 
   lazy val store: DataStore = {

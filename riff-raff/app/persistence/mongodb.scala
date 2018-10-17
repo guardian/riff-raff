@@ -238,15 +238,15 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def addMetaData(uuid: UUID, metaData: Map[String, String]) {
-    logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]) = 
+    (logExceptions(Some("Adding metadata %s to %s" format (metaData, uuid))) {
       val update = metaData.map { case (tag, value) =>
         $set(("parameters.tags.%s" format tag) -> value)
       }.fold(MongoDBObject())(_ ++ _)
       if (update.size > 0)
         deployCollection.update( MongoDBObject("_id" -> uuid), update )
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => addMetaData(uuid, metaData))
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {

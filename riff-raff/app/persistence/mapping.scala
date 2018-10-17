@@ -121,7 +121,7 @@ trait DocumentStore {
   def summariseDeploy(uuid: UUID) {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
   def findProjects: Either[Throwable, List[String]]
-  def addMetaData(uuid: UUID, metaData: Map[String, String]) {}
+  def addMetaData(uuid: UUID, metaData: Map[String, String]): Either[Throwable, Unit]
 }
 
 object DocumentStoreConverter extends Logging {
