@@ -107,7 +107,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument): Either[Throwable, Unit]
   def writeLog(log: LogDocument): Either[Throwable, Unit]
-  def updateStatus(uuid: UUID, status: RunState.Value) {}
+  def updateStatus(uuid: UUID, status: RunState.Value): Either[Throwable, Unit]
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {}
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil

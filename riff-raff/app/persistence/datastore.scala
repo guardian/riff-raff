@@ -66,6 +66,7 @@ object Persistence extends Logging {
     def findProjects = nil
     def writeDeploy(deploy: DeployRecordDocument) = unit
     def writeLog(log: LogDocument) = unit
+    def updateStatus(uuid: UUID, state: magenta.RunState.Value) = unit
   }
 
   lazy val store: DataStore = {

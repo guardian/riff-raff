@@ -165,11 +165,11 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       ()
     }).retry(maxRetries)(_ => writeDeploy(deploy))
 
-  override def updateStatus(uuid: UUID, status: RunState.Value) {
-    logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
+  override def updateStatus(uuid: UUID, status: RunState.Value) =
+    (logExceptions(Some("Updating status of %s to %s" format (uuid, status))) {
       deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => updateStatus(uuid, status))
 
   override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
     logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings"), ()) {
