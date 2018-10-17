@@ -42,7 +42,7 @@ trait DataStore extends DocumentStore {
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
-  def deleteApiKey(key: String): Unit
+  def deleteApiKey(key: String): Either[Throwable, Unit]
 }
 
 object Persistence extends Logging {
@@ -62,7 +62,7 @@ object Persistence extends Logging {
     def getApiKey(key: String) = None
     def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
     def getApiKeyByApplication(application: String) = None
-    def deleteApiKey(key: String) {}
+    def deleteApiKey(key: String) = unit
 
     def findProjects = nil
     def writeDeploy(deploy: DeployRecordDocument) = unit

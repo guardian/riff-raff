@@ -150,11 +150,11 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       apiKeyCollection.findOne(MongoDBObject("application" -> application)).flatMap(ApiKey.fromDBO(_))
     }
 
-  override def deleteApiKey(key: String) {
-    logAndSquashExceptions(Some("Deleting API key for %s" format key),()) {
+  override def deleteApiKey(key: String) =
+    (logExceptions(Some("Deleting API key for %s" format key)) {
       apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => deleteApiKey(key))
 
   val  maxRetries = 10
 
