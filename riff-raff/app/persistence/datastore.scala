@@ -50,7 +50,7 @@ trait DataStore extends DocumentStore {
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
   def createApiKey(newKey: ApiKey): Unit
-  def getApiKeyList:Iterable[ApiKey]
+  def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
@@ -66,7 +66,7 @@ object Persistence extends Logging {
     def deleteAuthorisation(email: String) = Right(())
 
     def createApiKey(newKey: ApiKey) {}
-    def getApiKeyList = Nil
+    def getApiKeyList = Right(Nil)
     def getApiKey(key: String) = None
     def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
     def getApiKeyByApplication(application: String) = None

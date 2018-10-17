@@ -117,7 +117,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def getApiKeyList = logAndSquashExceptions[Iterable[ApiKey]](Some("Requesting list of API keys"), Nil) {
+  override def getApiKeyList = logExceptions(Some("Requesting list of API keys")) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
     keys.toIterable.flatMap( ApiKey.fromDBO(_) )
   }
