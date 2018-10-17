@@ -87,7 +87,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   }
 
   def profile = authAction { request =>
-    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).logAndSquashException(Nil).reverse
+    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).map(_.reverse)
     Ok(views.html.auth.profile(request, records))
   }
 
