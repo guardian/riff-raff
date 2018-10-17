@@ -44,10 +44,10 @@ trait DataStore extends DocumentStore {
 
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
-  def getAuthorisation(email: String): Option[AuthorisationRecord]
-  def getAuthorisationList:List[AuthorisationRecord]
-  def setAuthorisation(auth: AuthorisationRecord): Unit
-  def deleteAuthorisation(email: String): Unit
+  def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]]
+  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
+  def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
+  def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
   def createApiKey(newKey: ApiKey): Unit
   def getApiKeyList:Iterable[ApiKey]
@@ -60,10 +60,10 @@ trait DataStore extends DocumentStore {
 object Persistence extends Logging {
 
   object NoOpDataStore extends DataStore with Logging {
-    def getAuthorisation(email: String) = None
-    def getAuthorisationList = Nil
-    def setAuthorisation(auth: AuthorisationRecord) {}
-    def deleteAuthorisation(email: String) {}
+    def getAuthorisation(email: String) = Right(None)
+    def getAuthorisationList = Right(Nil)
+    def setAuthorisation(auth: AuthorisationRecord) = Right(())
+    def deleteAuthorisation(email: String) = Right(())
 
     def createApiKey(newKey: ApiKey) {}
     def getApiKeyList = Nil

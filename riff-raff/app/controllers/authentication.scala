@@ -55,7 +55,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
       auth.whitelist.addresses.contains(lowerCaseEmail) ||
-        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).isDefined)
+        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
     }
   }
 
@@ -94,7 +94,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
+    Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.map(_.sortBy(_.email))))
   }
 
   def authForm = authAction { implicit request =>

@@ -82,8 +82,8 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   deployLogCollection.createIndex("deploy")
   apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
-  override def setAuthorisation(auth: AuthorisationRecord) {
-    logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
+  override def setAuthorisation(auth: AuthorisationRecord) =
+    logExceptions(Some("Creating auth object %s" format auth)) {
       val criteriaId = MongoDBObject("_id" -> auth.email)
       authCollection.findAndModify(
         query = criteriaId,
@@ -94,23 +94,21 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
         returnNew=false
       )
     }
-  }
 
-  override def getAuthorisation(email: String): Option[AuthorisationRecord] =
-    logAndSquashExceptions[Option[AuthorisationRecord]](Some("Requesting authorisation object for %s" format email),None) {
+  override def getAuthorisation(email: String) =
+    logExceptions(Some("Requesting authorisation object for %s" format email)) {
       authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
-  override def getAuthorisationList: List[AuthorisationRecord] =
-    logAndSquashExceptions[List[AuthorisationRecord]](Some("Requesting list of authorisation objects"), Nil) {
+  override def getAuthorisationList =
+    logExceptions(Some("Requesting list of authorisation objects")) {
       authCollection.find().flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
-  override def deleteAuthorisation(email: String) {
-    logAndSquashExceptions(Some("Deleting authorisation object for %s" format email),()) {
+  override def deleteAuthorisation(email: String) =
+    logExceptions(Some("Deleting authorisation object for %s" format email)) {
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
     }
-  }
 
   override def createApiKey(newKey: ApiKey) {
     logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
