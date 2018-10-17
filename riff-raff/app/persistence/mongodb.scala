@@ -41,6 +41,8 @@ object MongoDatastore extends Logging {
 
   val MESSAGE_STACKS = "messageStacks"
 
+  val MAX_RETRIES = 3
+
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
@@ -58,6 +60,8 @@ object MongoDatastore extends Logging {
 }
 
 class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
+  import MongoDatastore.MAX_RETRIES
+
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
@@ -111,7 +115,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def createApiKey(newKey: ApiKey) =
-    retry(maxRetries) {  
+    retry(MAX_RETRIES) {  
       logExceptions(Some("Saving new API key %s" format newKey.key)) {
         val dbo = newKey.toDBO
         apiKeyCollection.insert(dbo)
@@ -152,17 +156,15 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def deleteApiKey(key: String) =
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(Some("Deleting API key for %s" format key)) {
         apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
         ()
       }
     }
 
-  val  maxRetries = 10
-
   override def writeDeploy(deploy: DeployRecordDocument) =
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(Some("Saving deploy record document for %s" format deploy.uuid)) {
         val gratedDeploy = deploy.toDBO
         deployCollection.insert(gratedDeploy, WriteConcern.Safe)
@@ -171,7 +173,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def updateStatus(uuid: UUID, status: RunState.Value) =
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(Some("Updating status of %s to %s" format (uuid, status))) {
         deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
         ()
@@ -182,7 +184,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     val fields =
       List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
           totalTasks.map("totalTasks" ->)
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
         deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
         ()
@@ -196,7 +198,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def writeLog(log: LogDocument) =
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
         deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
         ()
@@ -231,7 +233,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   }
 
   override def deleteDeployLog(uuid: UUID) =
-    retry(maxRetries) { 
+    retry(MAX_RETRIES) { 
       logExceptions(None) {
         deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
         deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
@@ -257,7 +259,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       $set(("parameters.tags.%s" format tag) -> value)
     }.fold(MongoDBObject())(_ ++ _)
     if (update.size > 0)
-      retry(maxRetries) { 
+      retry(MAX_RETRIES) { 
         logExceptions(Some("Adding metadata %s to %s" format (metaData, uuid))) {
           deployCollection.update( MongoDBObject("_id" -> uuid), update )
           ()
