@@ -111,13 +111,13 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def createApiKey(newKey: ApiKey) =
-    retry(maxRetries) { _: Unit => 
+    retry(maxRetries) {  
       logExceptions(Some("Saving new API key %s" format newKey.key)) {
         val dbo = newKey.toDBO
         apiKeyCollection.insert(dbo)
         ()
       }
-    }(())
+    }
 
   override def getApiKeyList = logExceptions(Some("Requesting list of API keys")) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
@@ -152,42 +152,42 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def deleteApiKey(key: String) =
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(Some("Deleting API key for %s" format key)) {
         apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
         ()
       }
-    }(())
+    }
 
   val  maxRetries = 10
 
   override def writeDeploy(deploy: DeployRecordDocument) =
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(Some("Saving deploy record document for %s" format deploy.uuid)) {
         val gratedDeploy = deploy.toDBO
         deployCollection.insert(gratedDeploy, WriteConcern.Safe)
         ()
       }
-    }(())
+    }
 
   override def updateStatus(uuid: UUID, status: RunState.Value) =
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(Some("Updating status of %s to %s" format (uuid, status))) {
         deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
         ()
       }
-    }(())
+    }
 
   override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) = {
     val fields =
       List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
           totalTasks.map("totalTasks" ->)
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
         deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
         ()
       }
-    }(())
+    }
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
@@ -196,12 +196,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def writeLog(log: LogDocument) =
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
         deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
         ()
       }
-    }(())
+    }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
@@ -231,13 +231,13 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   }
 
   override def deleteDeployLog(uuid: UUID) =
-    retry(maxRetries) { _: Unit =>
+    retry(maxRetries) { 
       logExceptions(None) {
         deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
         deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
         ()
       }
-    }(())
+    }
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
     deployCollection.find(
@@ -257,12 +257,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       $set(("parameters.tags.%s" format tag) -> value)
     }.fold(MongoDBObject())(_ ++ _)
     if (update.size > 0)
-      retry(maxRetries) { _: Unit =>
+      retry(maxRetries) { 
         logExceptions(Some("Adding metadata %s to %s" format (metaData, uuid))) {
           deployCollection.update( MongoDBObject("_id" -> uuid), update )
           ()
         }
-      }(())
+      }
     else
       Right(())
   }

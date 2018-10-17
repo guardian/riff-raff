@@ -30,9 +30,9 @@ trait DataStore extends DocumentStore {
     }
   }
 
-  def retry[T, S](n: Int)(f: T => Either[Throwable, S]): T => Either[Throwable, S] =
-    t => f(t) match {
-      case Left(_) if n > 0 => retry(n - 1)(f)(t)
+  def retry[T, S](n: Int)(either: => Either[Throwable, S]): Either[Throwable, S] =
+    either match {
+      case Left(_) if n > 0 => retry(n - 1)(either)
       case otherwise => otherwise
     }
 
