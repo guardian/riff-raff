@@ -17,7 +17,7 @@
         <h3>Recent deploys</h3>
         @deployerRecords match {
             case Left(t) => {
-                <p>Could not fetch list of deploys: @t.getMessage</p>
+                <div class="alert alert-error"><strong>Could not fetch list of deploys:</strong> @t.getMessage</div>
                 <pre>@t.printStackTrace</pre>
             }
             
