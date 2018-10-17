@@ -43,12 +43,12 @@ trait DataStore extends DocumentStore {
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
-  def createApiKey(newKey: ApiKey): Either[Throwable, Unit]
+  def createApiKey(newKey: ApiKey): Unit
   def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
-  def deleteApiKey(key: String): Either[Throwable, Unit]
+  def deleteApiKey(key: String): Unit
 }
 
 object Persistence extends Logging {
@@ -63,20 +63,20 @@ object Persistence extends Logging {
     def setAuthorisation(auth: AuthorisationRecord) = unit
     def deleteAuthorisation(email: String) = unit
 
-    def createApiKey(newKey: ApiKey) = unit
+    def createApiKey(newKey: ApiKey) = ()
     def getApiKeyList = nil
     def getApiKey(key: String) = None
     def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
     def getApiKeyByApplication(application: String) = None
-    def deleteApiKey(key: String) = unit
+    def deleteApiKey(key: String) = ()
 
     def findProjects = nil
-    def writeDeploy(deploy: DeployRecordDocument) = unit
-    def writeLog(log: LogDocument) = unit
-    def deleteDeployLog(uuid: UUID) = unit
-    def updateStatus(uuid: UUID, state: magenta.RunState.Value) = unit
-    def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = unit
-    def addMetaData(uuid: UUID, metaData: Map[String, String]) = unit
+    def writeDeploy(deploy: DeployRecordDocument) = ()
+    def writeLog(log: LogDocument) = ()
+    def deleteDeployLog(uuid: UUID) = ()
+    def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
+    def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
+    def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
   }
 
   lazy val store: DataStore = {
