@@ -47,20 +47,25 @@ trait DataStore extends DocumentStore {
 object Persistence extends Logging {
 
   object NoOpDataStore extends DataStore with Logging {
-    def getAuthorisation(email: String) = Right(None)
-    def getAuthorisationList = Right(Nil)
-    def setAuthorisation(auth: AuthorisationRecord) = Right(())
-    def deleteAuthorisation(email: String) = Right(())
+    private val none = Right(None)
+    private val nil = Right(Nil)
+    private val unit = Right(())
+
+    def getAuthorisation(email: String) = none
+    def getAuthorisationList = nil
+    def setAuthorisation(auth: AuthorisationRecord) = unit
+    def deleteAuthorisation(email: String) = unit
 
     def createApiKey(newKey: ApiKey) {}
-    def getApiKeyList = Right(Nil)
+    def getApiKeyList = nil
     def getApiKey(key: String) = None
     def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
     def getApiKeyByApplication(application: String) = None
     def deleteApiKey(key: String) {}
 
-    def findProjects = Right(Nil)
-    def writeDeploy(deploy: DeployRecordDocument) = Right(())
+    def findProjects = nil
+    def writeDeploy(deploy: DeployRecordDocument) = unit
+    def writeLog(log: LogDocument) = unit
   }
 
   lazy val store: DataStore = {
