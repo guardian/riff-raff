@@ -15,6 +15,7 @@ import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import notification.HookConfig
 import cats.syntax.either._
+import utils.LogAndSquashBehaviour
 
 trait MongoSerialisable[A] {
 
@@ -57,7 +58,7 @@ object MongoDatastore extends Logging {
   }
 }
 
-class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
+class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging with LogAndSquashBehaviour {
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
@@ -155,12 +156,14 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def writeDeploy(deploy: DeployRecordDocument) {
-    logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
+  val  maxRetries = 10
+
+  override def writeDeploy(deploy: DeployRecordDocument) =
+    (logExceptions(Some("Saving deploy record document for %s" format deploy.uuid)) {
       val gratedDeploy = deploy.toDBO
       deployCollection.insert(gratedDeploy, WriteConcern.Safe)
-    }
-  }
+      ()
+    }).retry(maxRetries)(_ => writeDeploy(deploy))
 
   override def updateStatus(uuid: UUID, status: RunState.Value) {
     logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {

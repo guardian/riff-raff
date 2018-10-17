@@ -105,7 +105,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 }
 
 trait DocumentStore {
-  def writeDeploy(deploy: DeployRecordDocument) {}
+  def writeDeploy(deploy: DeployRecordDocument): Either[Throwable, Unit]
   def writeLog(log: LogDocument) {}
   def updateStatus(uuid: UUID, status: RunState.Value) {}
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {}
