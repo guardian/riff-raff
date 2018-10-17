@@ -26,6 +26,22 @@ trait DataStore extends DocumentStore {
     }
   }
 
+  def logExceptions[T](message: Option[String])(block: => T): Either[Throwable, T] = {
+    try {
+      message.foreach(log.debug(_))
+      val value = DatastoreRequest.measure {
+        block
+      }
+      message.foreach(m => log.debug("Completed: %s" format m))
+      Right(value)
+    } catch {
+      case t:Throwable =>
+        val errorMessage = "Caught exception%s" format message.map("whilst %s" format _).getOrElse("")
+        log.error(errorMessage, t)
+        Left(t)
+    }
+  }
+
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
   def getAuthorisation(email: String): Option[AuthorisationRecord]
