@@ -15,11 +15,5 @@ trait LogAndSquashBehaviour {
           default
       }
     }
-
-    def retry(max: Int)(f: Either[Throwable, T] => Either[Throwable, T]): Either[Throwable, T] =
-      either match {
-        case Left(_) if max > 0 => f(either).retry(max - 1)(f)
-        case _ => either
-      }
   }
 }

@@ -30,6 +30,12 @@ trait DataStore extends DocumentStore {
     }
   }
 
+  def retry[T, S](n: Int)(f: T => Either[Throwable, S]): T => Either[Throwable, S] =
+    t => f(t) match {
+      case Left(_) if n > 0 => retry(n - 1)(f)(t)
+      case otherwise => otherwise
+    }
+
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]]

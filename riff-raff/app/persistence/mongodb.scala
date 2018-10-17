@@ -15,7 +15,6 @@ import com.mongodb.casbah.query.Imports._
 import com.mongodb.util.JSON
 import notification.HookConfig
 import cats.syntax.either._
-import utils.LogAndSquashBehaviour
 
 trait MongoSerialisable[A] {
 
@@ -58,7 +57,7 @@ object MongoDatastore extends Logging {
   }
 }
 
-class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging with LogAndSquashBehaviour {
+class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
@@ -112,11 +111,13 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def createApiKey(newKey: ApiKey) =
-    (logExceptions(Some("Saving new API key %s" format newKey.key)) {
-      val dbo = newKey.toDBO
-      apiKeyCollection.insert(dbo)
-      ()
-    }).retry(maxRetries)(_ => createApiKey(newKey))
+    retry(maxRetries) { _: Unit => 
+      logExceptions(Some("Saving new API key %s" format newKey.key)) {
+        val dbo = newKey.toDBO
+        apiKeyCollection.insert(dbo)
+        ()
+      }
+    }(())
 
   override def getApiKeyList = logExceptions(Some("Requesting list of API keys")) {
     val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
@@ -151,34 +152,43 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def deleteApiKey(key: String) =
-    (logExceptions(Some("Deleting API key for %s" format key)) {
-      apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
-      ()
-    }).retry(maxRetries)(_ => deleteApiKey(key))
+    retry(maxRetries) { _: Unit =>
+      logExceptions(Some("Deleting API key for %s" format key)) {
+        apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
+        ()
+      }
+    }(())
 
   val  maxRetries = 10
 
   override def writeDeploy(deploy: DeployRecordDocument) =
-    (logExceptions(Some("Saving deploy record document for %s" format deploy.uuid)) {
-      val gratedDeploy = deploy.toDBO
-      deployCollection.insert(gratedDeploy, WriteConcern.Safe)
-      ()
-    }).retry(maxRetries)(_ => writeDeploy(deploy))
+    retry(maxRetries) { _: Unit =>
+      logExceptions(Some("Saving deploy record document for %s" format deploy.uuid)) {
+        val gratedDeploy = deploy.toDBO
+        deployCollection.insert(gratedDeploy, WriteConcern.Safe)
+        ()
+      }
+    }(())
 
   override def updateStatus(uuid: UUID, status: RunState.Value) =
-    (logExceptions(Some("Updating status of %s to %s" format (uuid, status))) {
-      deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
-      ()
-    }).retry(maxRetries)(_ => updateStatus(uuid, status))
+    retry(maxRetries) { _: Unit =>
+      logExceptions(Some("Updating status of %s to %s" format (uuid, status))) {
+        deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
+        ()
+      }
+    }(())
 
-  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) =
-    (logExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
-      val fields =
-        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
-        totalTasks.map("totalTasks" ->)
-      deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
-      ()
-    }).retry(maxRetries)(_ => updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings))
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) = {
+    val fields =
+      List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
+          totalTasks.map("totalTasks" ->)
+    retry(maxRetries) { _: Unit =>
+      logExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
+        deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
+        ()
+      }
+    }(())
+  }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] =
     logAndSquashExceptions[Option[DeployRecordDocument]](Some("Retrieving deploy record document for %s" format uuid), None) {
@@ -186,10 +196,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def writeLog(log: LogDocument) =
-    (logExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
-      deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
-      ()
-    }).retry(maxRetries)(_ => writeLog(log))
+    retry(maxRetries) { _: Unit =>
+      logExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
+        deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
+        ()
+      }
+    }(())
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
@@ -219,11 +231,13 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   }
 
   override def deleteDeployLog(uuid: UUID) =
-    (logExceptions(None) {
-      deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
-      deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
-      ()
-    }).retry(maxRetries)(_ => deleteDeployLog(uuid))
+    retry(maxRetries) { _: Unit =>
+      logExceptions(None) {
+        deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
+        deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
+        ()
+      }
+    }(())
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
     deployCollection.find(
@@ -238,15 +252,20 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def addMetaData(uuid: UUID, metaData: Map[String, String]) = 
-    (logExceptions(Some("Adding metadata %s to %s" format (metaData, uuid))) {
-      val update = metaData.map { case (tag, value) =>
-        $set(("parameters.tags.%s" format tag) -> value)
-      }.fold(MongoDBObject())(_ ++ _)
-      if (update.size > 0)
-        deployCollection.update( MongoDBObject("_id" -> uuid), update )
-      ()
-    }).retry(maxRetries)(_ => addMetaData(uuid, metaData))
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]) = {
+    val update = metaData.map { case (tag, value) =>
+      $set(("parameters.tags.%s" format tag) -> value)
+    }.fold(MongoDBObject())(_ ++ _)
+    if (update.size > 0)
+      retry(maxRetries) { _: Unit =>
+        logExceptions(Some("Adding metadata %s to %s" format (metaData, uuid))) {
+          deployCollection.update( MongoDBObject("_id" -> uuid), update )
+          ()
+        }
+      }(())
+    else
+      Right(())
+  }
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
