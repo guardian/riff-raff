@@ -16,10 +16,10 @@ trait LogAndSquashBehaviour {
       }
     }
 
-    def retry[E, A](max: Int)(f: A => Either[Throwable, A])(z: A, e: Throwable): Either[Throwable, A] =
-      if (max == 0)
-        Left(e)
-      else
-        f(z).fold(retry(max - 1)(f)(z, _), Right(_))
+    def retry(max: Int)(f: Either[Throwable, T] => Either[Throwable, T]): Either[Throwable, T] =
+      either match {
+        case Left(_) if max > 0 => f(either).retry(max - 1)(f)
+        case _ => either
+      }
   }
 }
