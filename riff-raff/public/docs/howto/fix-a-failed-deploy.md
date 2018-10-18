@@ -14,9 +14,14 @@ deploy successfully, and that all live boxes are in the correct state.
 
 ## Reducing the size of an ASG
 
-When Riff-Raff starts a deploy it will protect existing instances against scale in events. This is done
-to make it easy to recover from this kind of failure. Simply change the size of the ASG to half
-the size and the new instances will be the ones that are terminated as the older ones are protected.
+When Riff-Raff starts an autoscaling deploy it will protect existing instances against scale in events. 
+This is done to make it easy to recover from this kind of failure. If an autoscaling deploy fails it is 
+usually because the new instances don't pass their healthcheck and come into service.
+
+To rollback the deploy you should:
+ - change the desired size of the ASG back to the original value (typically half)
+ - redeploy the project to a known good version (this will ensure that the correct artifact is deployed
+ and that the scale in protection is cleared)
 
 ## Manually Kill Bad Boxes
 
