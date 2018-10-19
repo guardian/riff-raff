@@ -19,6 +19,7 @@ This is done to make it easy to recover from this kind of failure. If an autosca
 usually because the new instances don't pass their healthcheck and come into service.
 
 To rollback the deploy you should:
+
  - change the desired size of the ASG back to the original value (typically half)
  - redeploy the project to a known good version (this will ensure that the correct artifact is deployed
  and that the scale in protection is cleared)
