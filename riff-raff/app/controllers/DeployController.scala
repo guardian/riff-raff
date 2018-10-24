@@ -229,7 +229,10 @@ class DeployController(
     val deploys = projectNames.map(_.map { project =>
       project -> deployments.getLastCompletedDeploys(project)
     }.filterNot(_._2.isEmpty))
-    Ok(views.html.deploy.dashboardContent(deploys))
+    deploys.fold(
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch deploys")),
+      (ds: List[(String,Map[String,deployment.Record])]) => Ok(views.html.deploy.dashboardContent(ds))
+    )
   }
 
   def deployConfig(projectName: String, id: String) = AuthAction { implicit request =>
