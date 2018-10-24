@@ -4,7 +4,7 @@ import cats.data.EitherT
 import com.gu.googleauth._
 import com.mongodb.casbah.commons.MongoDBObject
 import conf.Configuration.auth
-import deployment.{DeployFilter, Deployments}
+import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data._
@@ -55,7 +55,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
       auth.whitelist.addresses.contains(lowerCaseEmail) ||
-        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).isDefined)
+        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
     }
   }
 
@@ -87,14 +87,20 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   }
 
   def profile = authAction { request =>
-    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).logAndSquashException(Nil).reverse
-    Ok(views.html.auth.profile(request, records))
+    val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).map(_.reverse)
+    records.fold(
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch list of deploys")),
+      (as: List[Record]) => Ok(views.html.auth.profile(request, as))
+    )
   }
 
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    Ok(views.html.auth.list(request, Persistence.store.getAuthorisationList.sortBy(_.email)))
+    Persistence.store.getAuthorisationList.map(_.sortBy(_.email)).fold(
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")),
+      (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(request, as))
+    )
   }
 
   def authForm = authAction { implicit request =>

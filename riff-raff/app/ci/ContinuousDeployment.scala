@@ -6,7 +6,7 @@ import lifecycle.Lifecycle
 import magenta.{DeployParameters, Deployer, Stage, Build => MagentaBuild}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
-import utils.ChangeFreeze
+import utils.{ChangeFreeze, Retriable}
 
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -22,7 +22,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
     }
   }
 
-  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList _).getOrElse{
+  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
     log.error("Failed to retrieve CD configs")
     Nil
   }
@@ -62,7 +62,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
 
 }
 
-object ContinuousDeployment extends Logging {
+object ContinuousDeployment extends Logging with Retriable {
 
   def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
@@ -79,13 +79,5 @@ object ContinuousDeployment extends Logging {
       Stage(config.stage)
     )
   }
-
-  def retryUpTo[T](maxAttempts: Int)(thunk: () => T): Try[T] = {
-    val thunkStream = Stream.continually(Try(thunk()))
-      .take(maxAttempts)
-
-    thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
-  }
-
 }
 
