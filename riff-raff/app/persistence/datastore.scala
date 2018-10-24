@@ -7,34 +7,27 @@ import java.util.UUID
 import ci.ContinuousDeploymentConfig
 import conf.DatastoreMetrics.DatastoreRequest
 import org.joda.time.DateTime
+import utils.Retriable
 
-trait DataStore extends DocumentStore {
+trait DataStore extends DocumentStore with Retriable {
   def log: Logger
 
-  def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T = 
+  def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T =
     logExceptions(message)(block).fold(_ => default, identity)
 
-  def logExceptions[T](message: Option[String])(block: => T): Either[Throwable, T] = {
+  def logExceptions[T](message: Option[String])(block: => T): Either[Throwable, T] =
     try {
-      message.foreach(log.debug(_))
-      val value = DatastoreRequest.measure {
-        block
-      }
-      message.foreach(m => log.debug("Completed: %s" format m))
-      Right(value)
+      val result = run(block)
+      message.foreach(m => log.debug("Completed: $s" format m))
+      Right(result)
     } catch {
-      case t:Throwable =>
-        val errorMessage = "Caught exception%s" format message.map("whilst %s" format _).getOrElse("")
-        log.error(errorMessage, t)
+      case t: Throwable =>
+        val error = "Caught exception%s" format message.map(" whilst %s" format _).getOrElse("")
+        log.error(error, t)
         Left(t)
     }
-  }
 
-  def retry[T, S](n: Int)(either: => Either[Throwable, S]): Either[Throwable, S] =
-    either match {
-      case Left(_) if n > 0 => retry(n - 1)(either)
-      case otherwise => otherwise
-    }
+  def run[T](block: => T): T = DatastoreRequest.measure(block)
 
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
