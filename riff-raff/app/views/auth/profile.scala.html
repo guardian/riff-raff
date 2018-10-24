@@ -1,4 +1,4 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: Either[Throwable, List[deployment.Record]])
+@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: List[deployment.Record])
 
 @main("Profile", request) {
     @defining(request.user) { id =>
@@ -15,15 +15,6 @@
 
         <div class="clearfix"></div>
         <h3>Recent deploys</h3>
-        @deployerRecords match {
-            case Left(t) => {
-                <div class="alert alert-error"><strong>Could not fetch list of deploys:</strong> @t.getMessage</div>
-                <pre>@t.printStackTrace</pre>
-            }
-            
-            case Right(rs) => {
-                @snippets.recordTable(rs)
-            }
-        }
+        @snippets.recordTable(deployerRecords)
     }
 }

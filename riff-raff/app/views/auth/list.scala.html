@@ -1,4 +1,4 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], authList: Either[Throwable, Seq[controllers.AuthorisationRecord]])
+@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], authList: Seq[controllers.AuthorisationRecord])
 @import helper.CSRF
 
 @main("Authorisation List", request) {
@@ -6,43 +6,35 @@
     <hr/>
     <p><a class="btn btn-primary" href="@routes.Login.authForm()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add authorisation</a></p>
     <div class="content">
-    @authList match {
-        case Left(t) => {
-            <div class="alert alert-error"><strong>Could not fetch authorisation list: @t.getMessage</strong></div>
-            <pre>@t.printStackTrace</pre>
-        }
+    @if(authList.isEmpty) {
+        <div class="alert alert-warning"><strong>No authorisations.</strong></div>
+    } else {
 
-        case Right(auths) if auths.isEmpty => {
-            <div class="alert alert-warning"><strong>No authorisations.</strong></div>
-        }
-
-        case Right(auths) => {
-            <table class="table table-condensed">
-                <thead>
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    <th>Date added</th>
+                    <th>Authorised E-mail</th>
+                    <th>Approver</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @authList.map { auth =>
                     <tr>
-                        <th>Date added</th>
-                        <th>Authorised E-mail</th>
-                        <th>Approver</th>
-                        <th></th>
+                        <td>@utils.DateFormats.Short.print(auth.approvedDate)</td>
+                        <td>@auth.email</td>
+                        <td><span class="label label-default">@auth.approvedBy</span></td>
+                        <td>
+                        @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
+                            @CSRF.formField
+                            <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
+                        }
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @auths.map { auth =>
-                        <tr>
-                            <td>@utils.DateFormats.Short.print(auth.approvedDate)</td>
-                            <td>@auth.email</td>
-                            <td><span class="label label-default">@auth.approvedBy</span></td>
-                            <td>
-                            @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
-                                @CSRF.formField
-                                <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
-                            }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
+                }
+            </tbody>
+        </table>
     }
     </div>
 }
