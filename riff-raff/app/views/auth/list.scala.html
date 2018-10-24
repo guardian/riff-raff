@@ -9,6 +9,7 @@
     @if(authList.isEmpty) {
         <div class="alert alert-warning"><strong>No authorisations.</strong></div>
     } else {
+
         <table class="table table-condensed">
             <thead>
                 <tr>
@@ -19,19 +20,19 @@
                 </tr>
             </thead>
             <tbody>
-            @authList.map { auth =>
-                <tr>
-                    <td>@utils.DateFormats.Short.print(auth.approvedDate)</td>
-                    <td>@auth.email</td>
-                    <td><span class="label label-default">@auth.approvedBy</span></td>
-                    <td>
-                    @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
-                        @CSRF.formField
-                        <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
-                    }
-                    </td>
-                </tr>
-            }
+                @authList.map { auth =>
+                    <tr>
+                        <td>@utils.DateFormats.Short.print(auth.approvedDate)</td>
+                        <td>@auth.email</td>
+                        <td><span class="label label-default">@auth.approvedBy</span></td>
+                        <td>
+                        @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
+                            @CSRF.formField
+                            <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
+                        }
+                        </td>
+                    </tr>
+                }
             </tbody>
         </table>
     }
