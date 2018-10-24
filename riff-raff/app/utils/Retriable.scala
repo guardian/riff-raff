@@ -2,21 +2,26 @@ package utils
 
 import play.api.Logger
 import scala.util.{ Try, Success, Failure }
+import scala.annotation.tailrec
 
 trait Retriable {
   def log: Logger
 
   def retryUpTo[T](maxAttempts: Int, message: Option[String] = None)(thunk: => T): Try[T] = {
-    val thunkStream = Stream.continually(Try(thunk)).take(maxAttempts)
-    thunkStream.zipWithIndex.foldRight[Try[T]](Failure(new RuntimeException("Giving up after %d attempts" format maxAttempts))) { 
-      case ((a: Success[T], i), _) =>
-        message.foreach(m => log.debug("Completed after %d attempts: %s".format(i + 1, m)))
-        a
-      case ((Failure(t), i), b) =>
-        val errorMessage = "Caught exception %s (attempt #%d)".format(message.map("whilst %s" format _).getOrElse(""), i + 1)
+    @tailrec def go(s: Stream[Try[T]], n: Int): Try[T] = s match {
+      case (f @ Failure(t)) #:: tail =>
+        val errorMessage = "Caught exception %s (attempt #%d)".format(message.map("whilst %s" format _).getOrElse(""), n)
         log.error(errorMessage, t)
-        b
+        if (n == maxAttempts) 
+          f
+        else
+          go(tail, n + 1)
+      case (s: Success[_]) #:: _ =>
+        message.foreach(m => log.debug("Completed after %d attempts: %s".format(n, m)))
+        s
     }
-    thunkStream.find(_.isSuccess).getOrElse(thunkStream.head)
+
+    val thunkStream = Stream.continually(Try(thunk))
+    go(thunkStream, 1)
   }
 }
