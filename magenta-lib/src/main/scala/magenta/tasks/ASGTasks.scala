@@ -2,7 +2,7 @@ package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.autoscaling.AmazonAutoScaling
-import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, SetInstanceProtectionRequest}
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, LifecycleState, SetInstanceProtectionRequest}
 import magenta.{KeyRing, Stage, _}
 
 import scala.collection.JavaConverters._
@@ -37,8 +37,10 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
 
 case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
-    if (asg.getInstances.asScala.nonEmpty) {
-      val instanceIds = asg.getInstances.asScala.toList.map(_.getInstanceId)
+    val instances = asg.getInstances.asScala.toList
+    val instancesInService = instances.filter(_.getLifecycleState == LifecycleState.InService.toString)
+    if (instancesInService.nonEmpty) {
+      val instanceIds = instancesInService.map(_.getInstanceId)
       val request = new SetInstanceProtectionRequest()
         .withAutoScalingGroupName(asg.getAutoScalingGroupName)
         .withInstanceIds(instanceIds: _*)
