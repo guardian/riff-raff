@@ -2,8 +2,10 @@ package magenta
 
 import java.util.UUID
 
+import magenta.ContextMessage._
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
+import magenta.Message._
 
 class ReportingTest extends FlatSpec with Matchers {
 

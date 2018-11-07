@@ -7,11 +7,13 @@ import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
-import play.api.data._
 import play.api.data.Forms._
+import play.api.data._
 import play.api.i18n.I18nSupport
+import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
+import utils.Json._
 import utils.LogAndSquashBehaviour
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,8 +22,12 @@ class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequ
   lazy val fullName = s"API:${apiKey.application}"
 }
 
-case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime)
+case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) {
+  def contentBlob = (approvedBy, approvedDate)
+}
 object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
+  implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
+
   implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
   private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {
     def toDBO(a: AuthorisationRecord) = MongoDBObject("_id" -> a.email, "approvedBy" -> a.approvedBy, "approvedDate" -> a.approvedDate)
@@ -35,7 +41,7 @@ trait AuthorisationValidator {
   def emailWhitelistContains(email:String): Boolean
   def isAuthorised(id: UserIdentity) = authorisationError(id).isEmpty
   def authorisationError(id: UserIdentity): Option[String] = {
-    if (!emailDomainWhitelist.isEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
+    if (emailDomainWhitelist.nonEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
       Some(s"The e-mail address domain you used to login to Riff-Raff (${id.email}) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
     } else if (emailWhitelistEnabled && !emailWhitelistContains(id.email)) {
       Some(s"The e-mail address you used to login to Riff-Raff (${id.email}) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator.")

@@ -44,7 +44,7 @@ class DeployController(
         BadRequest(views.html.deploy.form(errors, prismLookup))
       },
       form => {
-        val parameters = new DeployParameters(Deployer(request.user.fullName),
+        val parameters = DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
           selector = form.makeSelector
@@ -131,7 +131,7 @@ class DeployController(
       val restrictions = maybeStage.toSeq.flatMap { stage =>
         RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
-      val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
+      val filter = DeployFilter(projectName = Some(s"$project"), stage = maybeStage)
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).logAndSquashException(Nil).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }

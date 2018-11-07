@@ -6,7 +6,9 @@ import java.util.UUID
 import akka.actor.{Actor, ActorSystem, Props}
 import controllers.Logging
 import lifecycle.Lifecycle
-import magenta.{Deploy, DeployParameters, FinishContext, _}
+import magenta.ContextMessage._
+import magenta.{DeployParameters, DeployReporter}
+import magenta.Message._
 import org.joda.time.DateTime
 import persistence.{DeployRecordDocument, HookConfigRepository, Persistence}
 import play.api.libs.json.Json
@@ -62,7 +64,7 @@ case class HookConfig(id: UUID,
               "stage" -> Seq(record.parameters.stage),
               "deployer" -> Seq(record.parameters.deployer),
               "uuid" -> Seq(record.uuid.toString),
-              "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
+              "tags" -> record.parameters.tags.toSeq.map{ case (k, v) => s"$k:$v" }
             ))
           )
       }).map { response =>

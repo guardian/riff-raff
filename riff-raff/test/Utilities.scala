@@ -4,6 +4,8 @@ import java.util.UUID
 
 import deployment.DeployRecord
 import gnieh.diffson.playJson._
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
 import magenta.input.All
 import org.joda.time.DateTime

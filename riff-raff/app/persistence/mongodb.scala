@@ -93,7 +93,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
         upsert = true, fields = MongoDBObject(),
         sort = MongoDBObject(),
         remove = false,
-        returnNew=false
+        returnNew = false
       )
     }
 
@@ -130,10 +130,10 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
-    val setLastUsed = $set("lastUsed" -> (new DateTime()))
+    val setLastUsed = $set("lastUsed" -> new DateTime())
     val incCounter = counter.map(name => $inc(("callCounters.%s" format name) -> 1L)).getOrElse(MongoDBObject())
     val update = setLastUsed ++ incCounter
-    logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key),None) {
+    logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key), None) {
       apiKeyCollection.findAndModify(
         query = MongoDBObject("_id" -> key),
         fields = MongoDBObject(),
@@ -163,7 +163,8 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def updateStatus(uuid: UUID, status: RunState.Value) =
+
+  override def updateStatus(uuid: UUID, status: RunState) =
     retryUpTo(MAX_RETRIES, Some("Updating status of %s to %s" format (uuid, status))) {
       deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
     }
@@ -188,12 +189,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
-    logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
+    logAndSquashExceptions[Iterable[LogDocument]](Some("Retrieving logs for deploy %s" format uuid),Nil) {
       val criteria = MongoDBObject("deploy" -> uuid)
       deployLogCollection.find(criteria).toIterable.flatMap(LogDocument.fromDBO(_))
     }
 
-  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil) {
     val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toIterable.map { dbo =>
@@ -211,7 +212,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
 
   override def countDeploys(filter: Option[DeployFilter]) = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
     val criteria = filter.map(_.criteria).getOrElse(MongoDBObject())
-    deployCollection.count(criteria).toInt
+    deployCollection.count(criteria)
   }
 
   override def deleteDeployLog(uuid: UUID) = {
@@ -232,24 +233,24 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def addMetaData(uuid: UUID, metaData: Map[String, String]) = {
-    val update = metaData.map { case (tag, value) =>
-      $set(("parameters.tags.%s" format tag) -> value)
-    }.fold(MongoDBObject())(_ ++ _)
-    if (update.size > 0)
-      retryUpTo(MAX_RETRIES, Some("Adding metadata %s to %s" format (metaData, uuid))) {
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]) =  {
+    logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
+      val update = metaData.map { case (tag, value) =>
+        $set(("parameters.tags.%s" format tag) -> value)
+      }.fold(MongoDBObject())(_ ++ _)
+      if (update.nonEmpty)
         deployCollection.update( MongoDBObject("_id" -> uuid), update )
       }
   }
 
   override def summariseDeploy(uuid: UUID) {
     logAndSquashExceptions(Some("Summarising deploy %s" format uuid),()) {
-      deployCollection.update( MongoDBObject("_id" -> uuid), $set("summarised" -> true))
+      deployCollection.update(MongoDBObject("_id" -> uuid), $set("summarised" -> true))
       deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
     }
   }
 
-  override def getLastCompletedDeploys(projectName: String):Map[String,UUID] = {
+  override def getLastCompletedDeploys(projectName: String): Map[String,UUID] = {
     val threshold = new DateTime().minus(new Period().withDays(90))
     val pipeBuilder = MongoDBList.newBuilder
     pipeBuilder += MongoDBObject("$match" ->

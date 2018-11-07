@@ -2,20 +2,21 @@ package persistence
 
 import java.util.UUID
 
-import org.joda.time.DateTime
-import controllers.Logging
-import deployment.{DeployFilter, DeployRecord, PaginationView}
-import magenta._
-import controllers.SimpleDeployDetail
-import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
-import henkan.convert.Syntax._
-import cats.syntax.traverse._
-import cats.instances.list._
 import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.traverse._
+import controllers.{Logging, SimpleDeployDetail}
+import deployment.{DeployFilter, DeployRecord, PaginationView}
+import henkan.convert.Syntax._
+import magenta.ContextMessage._
+import magenta._
+import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
+import org.joda.time.DateTime
+import persistence.DeploymentSelectorDocument._
 
-case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
+case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
-  def +(newStatus: RunState.Value): RecordConverter = copy(status = newStatus)
+  def +(newStatus: RunState): RecordConverter = copy(status = newStatus)
 
   def apply(message: MessageWrapper): Option[LogDocument] = {
     val stackId=message.messageId
@@ -107,7 +108,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument): Unit
   def writeLog(log: LogDocument): Unit
-  def updateStatus(uuid: UUID, status: RunState.Value): Unit
+  def updateStatus(uuid: UUID, status: RunState): Unit
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
@@ -128,7 +129,7 @@ object DocumentStoreConverter extends Logging {
   val documentStore: DocumentStore = Persistence.store
 
   def saveDeploy(record: DeployRecord) {
-    if (!record.messages.isEmpty) throw new IllegalArgumentException
+    if (record.messages.nonEmpty) throw new IllegalArgumentException
     val converter = RecordConverter(record)
     documentStore.writeDeploy(converter.deployDocument)
     converter.logDocuments.foreach(documentStore.writeLog)
@@ -150,7 +151,7 @@ object DocumentStoreConverter extends Logging {
     updateDeployStatus(record.uuid, record.state)
   }
 
-  def updateDeployStatus(uuid: UUID, state: RunState.Value) {
+  def updateDeployStatus(uuid: UUID, state: RunState) {
     documentStore.updateStatus(uuid, state)
   }
 
@@ -164,7 +165,10 @@ object DocumentStoreConverter extends Logging {
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
       val deployDocument = getDeployDocument(uuid)
-      val logDocuments = if (fetchLog) getDeployLogs(uuid) else Nil
+      val logDocuments =
+        if (fetchLog)
+          getDeployLogs(uuid)
+        else Nil
       deployDocument.map { deploy =>
         DocumentConverter(deploy, logDocuments.toSeq).deployRecord
       }

@@ -1,13 +1,12 @@
 package persistence
 
-import play.api.Logger
-import controllers.{ApiKey, AuthorisationRecord, Logging}
-import magenta.Build
 import java.util.UUID
-import ci.ContinuousDeploymentConfig
+
 import conf.DatastoreMetrics.DatastoreRequest
 import org.joda.time.DateTime
 import utils.Retriable
+import controllers.{ApiKey, AuthorisationRecord, Logging}
+import play.api.Logger
 
 trait DataStore extends DocumentStore with Retriable {
   def log: Logger
@@ -67,15 +66,21 @@ object Persistence extends Logging {
     def writeDeploy(deploy: DeployRecordDocument) = ()
     def writeLog(log: LogDocument) = ()
     def deleteDeployLog(uuid: UUID) = ()
-    def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
+    def updateStatus(uuid: UUID, state: magenta.RunState) = ()
     def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
     def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
   }
 
-  lazy val store: DataStore = {
+  lazy val store: DataStore = postgresStore
+
+  private lazy val mongoStore: DataStore = {
     val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)
-    log.info("Persistence datastore initialised as %s" format (dataStore))
+    log.info("Persistence datastore initialised as %s" format dataStore)
     dataStore
+  }
+
+  private lazy val postgresStore: DataStore = {
+    PostgresDatastore.buildDatastore()
   }
 
 }

@@ -5,6 +5,8 @@ import java.util.UUID
 import com.gu.googleauth.AuthAction
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import housekeeping.ArtifactHousekeeping
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
 import magenta.input.All
 import magenta.tasks.Task
@@ -14,15 +16,19 @@ import persistence.{DocumentStoreConverter, Persistence}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
+import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import resources.PrismLookup
+import utils.Json._
 import utils.LogAndSquashBehaviour
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Future
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
+object SimpleDeployDetail {
+  implicit def formats: Format[SimpleDeployDetail] = Json.format[SimpleDeployDetail]
+}
 
 class Testing(prismLookup: PrismLookup,
               authAction: AuthAction[AnyContent],
@@ -158,21 +164,18 @@ class Testing(prismLookup: PrismLookup,
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         form.action match {
-          case "summarise" => {
+          case "summarise" =>
             log.info("Summarising deploy with UUID %s" format form.uuid)
             Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
-          case "deleteV2" => {
+          case "deleteV2" =>
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
             Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
-          case "addStringUUID" => {
+          case "addStringUUID" =>
             log.info("Adding string UUID for %s" format form.uuid)
             Persistence.store.addStringUUID(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
         }
       }
     )

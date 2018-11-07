@@ -3,6 +3,7 @@ package deployment
 import java.net.URLEncoder
 import play.api.mvc.{Call, RequestHeader}
 import magenta.RunState
+import scalikejdbc._
 
 trait QueryStringBuilder {
   def queryStringParams: List[(String,String)]
@@ -16,7 +17,7 @@ case class DeployFilter(
   projectName: Option[String] = None,
   stage: Option[String] = None,
   deployer: Option[String] = None,
-  status: Option[RunState.Value] = None,
+  status: Option[RunState] = None,
   maxDaysAgo: Option[Int] = None,
   hasWarnings: Option[Boolean] = None) extends QueryStringBuilder {
 
@@ -30,10 +31,19 @@ case class DeployFilter(
       hasWarnings.map("hasWarnings" -> _.toString)
   }
 
+  lazy val sqlParams: List[SQLSyntax] = List(
+    projectName.map(pn => sqls"content->'parameters'->>'projectName' = $pn"),
+    stage.map(s => sqls"content->'parameters'->>'stage' = $s"),
+    deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
+    status.map(s => sqls"content->>'status' = ${s.name}"),
+    maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = $mda"),
+    hasWarnings.map(hw => sqls"content->'parameters'->>'hasWarnings' = $hw")
+  ).flatten
+
   def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)
   def withStage(stage: Option[String]) = this.copy(stage=stage)
   def withDeployer(deployer: Option[String]) = this.copy(deployer=deployer)
-  def withStatus(status: Option[RunState.Value]) = this.copy(status=status)
+  def withStatus(status: Option[RunState]) = this.copy(status=status)
   def withMaxDaysAgo(maxDaysAgo: Option[Int]) = this.copy(maxDaysAgo=maxDaysAgo)
   def withHasWarnings(hasWarnings: Option[Boolean]) = this.copy(hasWarnings=hasWarnings)
 
@@ -84,7 +94,7 @@ object HostFilter {
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)
 
     def listParam(s: String): List[String] =
-      r.queryString.get(s).getOrElse(Nil).flatMap(_.split(",").map(_.trim).filter(!_.isEmpty)).toList
+      r.queryString.getOrElse(s, Nil).flatMap(_.split(",").map(_.trim).filter(!_.isEmpty)).toList
 
     HostFilter(
       stage = param("stage"),
@@ -169,7 +179,7 @@ case class DeployFilterPagination(filter: DeployFilter, pagination: PaginationVi
   def withProjectName(projectName: Option[String]) = this.copy(filter=filter.withProjectName(projectName))
   def withStage(stage: Option[String]) = this.copy(filter=filter.withStage(stage))
   def withDeployer(deployer: Option[String]) = this.copy(filter=filter.withDeployer(deployer))
-  def withStatus(status: Option[RunState.Value]) = this.copy(filter=filter.withStatus(status))
+  def withStatus(status: Option[RunState]) = this.copy(filter=filter.withStatus(status))
   def withPage(page: Int): DeployFilterPagination = this.copy(pagination=pagination.withPage(page))
   def withPageSize(size: Option[Int]) = this.copy(pagination=pagination.withPageSize(size))
 

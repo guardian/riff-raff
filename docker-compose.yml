@@ -1,0 +1,11 @@
+version: '3'
+services:
+  riffraff-db:
+    container_name: riffraff-db
+    image: postgres:9.6-alpine
+    ports:
+    - 7432:5432
+    environment:
+    - POSTGRES_USER=riffraff
+    - POSTGRES_PASSWORD=riffraff
+    - POSTGRES_DB=riffraff

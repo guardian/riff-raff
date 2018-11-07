@@ -15,14 +15,13 @@ import org.joda.time.{DateTime, LocalDate}
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
 import play.api.data.Forms._
 import play.api.data._
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
-import play.api.mvc.Results.Unauthorized
 import play.api.mvc.{Action, _}
-import utils.Json.DefaultJodaDateWrites
+import utils.Json._
 import utils.{ChangeFreeze, Graph, LogAndSquashBehaviour}
 
 case class ApiKey(
@@ -37,6 +36,8 @@ case class ApiKey(
 }
 
 object ApiKey extends MongoSerialisable[ApiKey] {
+  implicit def formats: Format[ApiKey] = Json.format[ApiKey]
+
   implicit val keyFormat:MongoFormat[ApiKey] = new KeyMongoFormat
   private class KeyMongoFormat extends MongoFormat[ApiKey] with Logging {
     def toDBO(a: ApiKey) = {
@@ -211,7 +212,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).logAndSquashException(Nil)
 
-    def description(state: RunState.Value) = state + " deploys" + filter.map { f =>
+    def description(state: RunState) = state + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
     }.getOrElse("")
 

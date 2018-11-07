@@ -1,19 +1,29 @@
 package magenta
 
-import org.joda.time.{DateTime, DateTimeZone}
-import org.joda.time.format.DateTimeFormat
 import java.util.{Locale, UUID}
 
-object RunState extends Enumeration {
-  type State = Value
-  val NotRunning = Value("Not running")
-  val Completed = Value("Completed")
-  val Running = Value("Running")
-  val ChildRunning = Value("Child running")
-  val Failed = Value("Failed")
+import enumeratum.values._
+import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
+import magenta.Message._
+import magenta.ContextMessage._
 
-  def mostSignificant(value1: Value, value2: Value): Value = {
-    if (value1.id > value2.id) value1 else value2
+sealed abstract class RunState(val value: Short, val name: String) extends ShortEnumEntry
+
+case object RunState extends ShortEnum[RunState] with ShortPlayJsonValueEnum[RunState] {
+
+  case object NotRunning extends RunState(value = 1, name = "Not running")
+  case object Completed extends RunState(value = 2, name = "Completed")
+  case object Running extends RunState(value = 3, name = "Running")
+  case object ChildRunning extends RunState(value = 4, name = "Child running")
+  case object Failed extends RunState(value = 5, name = "Failed")
+
+  val values = findValues
+
+  def withName(name: String): RunState = values.find(_.name == name).getOrElse(throw new Exception(s"No RunState found with name $name"))
+
+  def mostSignificant(value1: RunState, value2: RunState): RunState = {
+    if (value1.value > value2.value) value1 else value2
   }
 }
 
@@ -40,7 +50,7 @@ trait MessageState {
   def message:Message
   def startContext:StartContext
   def finished:Option[Message]
-  def state: RunState.State
+  def state: RunState
   def isRunning:Boolean = state == RunState.Running
   def messageId: UUID
 }
@@ -72,7 +82,7 @@ case class FailMessageState(startContext: StartContext, fail: FailContext, time:
 trait DeployReport {
   def message: Message
   def timeString: Option[String]
-  def state: RunState.Value
+  def state: RunState
   def allMessages: Seq[MessageState]
   def children: List[DeployReportTree]
   def isRunning: Boolean
@@ -82,8 +92,8 @@ trait DeployReport {
 
   def failureMessage: Option[Fail] = allMessages.map(_.message).collect{ case fail: Fail => fail }.headOption
 
-  def cascadeState: RunState.Value = {
-    children.foldLeft(state){ (acc:RunState.Value, child:DeployReport) =>
+  def cascadeState: RunState = {
+    children.foldLeft(state){ (acc:RunState, child:DeployReport) =>
       val childState = child.cascadeState match {
         case RunState.Running => RunState.ChildRunning
         case _ => child.cascadeState

@@ -15,6 +15,8 @@ import magenta.deployment_type._
 import notification.{HooksClient, ScheduledDeployFailureNotifications}
 import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
+import play.api.db.evolutions.EvolutionsComponents
+import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.I18nComponents
 import play.api.libs.ws.ahc.AhcWSComponents
@@ -41,6 +43,9 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with CSRFComponents
   with GzipFilterComponents
   with AssetsComponents
+  with EvolutionsComponents
+  with DBComponents
+  with HikariCPComponents
   with Logging {
 
   val secretStateSupplier: SnapshotProvider = {
@@ -64,6 +69,9 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     domain = Config.auth.domain,
     antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
   )
+
+  //Lazy val needs to be accessed so that database evolutions are applied
+  applicationEvolutions
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
