@@ -194,4 +194,18 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
     ungratedDeployKeys shouldBe keysSelectorDocument
   }
 
+  "Rich list" should "retain the order of a list" in {
+    case class Monkey(name: String, age: Int)
+    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3))
+    val distinctMonkies = monkies.distinctOn(identity)
+    distinctMonkies shouldBe monkies
+  }
+
+  it should "remove duplicates later in the list" in {
+    case class Monkey(name: String, age: Int)
+    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3), Monkey("bob", 3))
+    val distinctMonkies = monkies.distinctOn(_.name)
+    distinctMonkies shouldBe List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3))
+  }
+
 }

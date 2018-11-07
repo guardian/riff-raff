@@ -159,7 +159,7 @@ object DocumentStoreConverter extends Logging {
   }
 
   def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
-  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid)
+  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
 
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {

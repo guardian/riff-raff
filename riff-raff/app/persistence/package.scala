@@ -1,12 +1,12 @@
 package persistence
 
-import magenta._
-import deployment.{PaginationView, DeployFilter}
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.Imports._
 import com.mongodb.DBObject
 import com.mongodb.casbah.MongoCursor
-import org.joda.time.{LocalDate, DateMidnight}
+import deployment.{DeployFilter, PaginationView}
+import magenta._
+import org.joda.time.LocalDate
 
 object `package` {
   implicit class deployFilter2Criteria(filter: DeployFilter) {
@@ -33,5 +33,18 @@ object `package` {
 
   implicit class message2MessageDocument(message: Message) {
     def asMessageDocument: MessageDocument = MessageDocument(message)
+  }
+
+  implicit class richList[T](list: List[T]) {
+    def distinctOn[N](f: T => N): List[T] = {
+      list.foldLeft((Set.empty[N], List.empty[T])){ case ((distinctElements, acc), item) =>
+          val element = f(item)
+          if (distinctElements.contains(element)) {
+            distinctElements -> acc
+          } else {
+            (distinctElements + element) -> (item :: acc)
+          }
+      }._2.reverse
+    }
   }
 }
