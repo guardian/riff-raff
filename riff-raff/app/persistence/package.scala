@@ -37,14 +37,14 @@ object `package` {
 
   implicit class richList[T](list: List[T]) {
     def distinctOn[N](f: T => N): List[T] = {
-      list.foldLeft((Set.empty[N], List.empty[T])){ case ((distinctElements, acc), item) =>
+      list.foldRight((Set.empty[N], List.empty[T])){ case (item, (distinctElements, acc)) =>
           val element = f(item)
           if (distinctElements.contains(element)) {
             distinctElements -> acc
           } else {
             (distinctElements + element) -> (item :: acc)
           }
-      }._2.reverse
+      }._2
     }
   }
 }
