@@ -1,8 +1,10 @@
 package deployment
 
 import java.net.URLEncoder
-import play.api.mvc.{Call, RequestHeader}
+
 import magenta.RunState
+import play.api.libs.json.{Format, Json}
+import play.api.mvc.{Call, RequestHeader}
 import scalikejdbc._
 
 trait QueryStringBuilder {
@@ -35,9 +37,9 @@ case class DeployFilter(
     projectName.map(pn => sqls"content->'parameters'->>'projectName' = $pn"),
     stage.map(s => sqls"content->'parameters'->>'stage' = $s"),
     deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
-    status.map(s => sqls"content->>'status' = ${s.name}"),
+    status.map(s => sqls"content->>'status' = ${s.entryName}"),
     maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = $mda"),
-    hasWarnings.map(hw => sqls"content->'parameters'->>'hasWarnings' = $hw")
+    hasWarnings.map(hw => sqls"content->>'hasWarnings' = $hw")
   ).flatten
 
   def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)
@@ -55,6 +57,8 @@ case class DeployFilter(
 }
 
 object DeployFilter {
+  implicit def formats: Format[DeployFilter] = Json.format[DeployFilter]
+
   def fromRequest(implicit r: RequestHeader):Option[DeployFilter] = {
     def param(s: String): Option[String] =
       r.queryString.get(s).flatMap(_.headOption).filter(!_.isEmpty)

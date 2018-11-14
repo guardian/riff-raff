@@ -186,6 +186,12 @@ object Config extends Logging {
     lazy val collectionPrefix = getStringOpt("mongo.collectionPrefix").getOrElse("")
   }
 
+  object postgres {
+    lazy val url = configuration("db.default.url")
+    lazy val user = configuration("db.default.user")
+    lazy val password = configuration("db.default.password")
+  }
+
   object stages {
     lazy val order = getStringList("stages.order").filterNot(_ == "")
     lazy val ordering = UnnaturalOrdering(order, aliensAtEnd = false)

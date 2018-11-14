@@ -163,7 +163,6 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-
   override def updateStatus(uuid: UUID, status: RunState) =
     retryUpTo(MAX_RETRIES, Some("Updating status of %s to %s" format (uuid, status))) {
       deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)

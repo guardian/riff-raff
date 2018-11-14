@@ -2,25 +2,26 @@ package magenta
 
 import java.util.{Locale, UUID}
 
-import enumeratum.values._
+import enumeratum.EnumEntry.CapitalWords
+import enumeratum.{Enum, EnumEntry, PlayJsonEnum}
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, DateTimeZone}
 import magenta.Message._
 import magenta.ContextMessage._
 
-sealed abstract class RunState(val value: Short, val name: String) extends ShortEnumEntry
+sealed trait RunState extends EnumEntry {
+  val value: Int
+}
 
-case object RunState extends ShortEnum[RunState] with ShortPlayJsonValueEnum[RunState] {
-
-  case object NotRunning extends RunState(value = 1, name = "Not running")
-  case object Completed extends RunState(value = 2, name = "Completed")
-  case object Running extends RunState(value = 3, name = "Running")
-  case object ChildRunning extends RunState(value = 4, name = "Child running")
-  case object Failed extends RunState(value = 5, name = "Failed")
+object RunState extends Enum[RunState] with PlayJsonEnum[RunState] with CapitalWords {
 
   val values = findValues
 
-  def withName(name: String): RunState = values.find(_.name == name).getOrElse(throw new Exception(s"No RunState found with name $name"))
+  case object NotRunning extends RunState { override val value: Int = 1 }
+  case object Completed extends RunState { override val value: Int = 2 }
+  case object Running extends RunState { override val value: Int = 3 }
+  case object ChildRunning extends RunState { override val value: Int = 4 }
+  case object Failed extends RunState { override val value: Int = 5 }
 
   def mostSignificant(value1: RunState, value2: RunState): RunState = {
     if (value1.value > value2.value) value1 else value2
@@ -90,7 +91,7 @@ trait DeployReport {
   def hasChildren: Boolean = children.nonEmpty
   def size: Int = allMessages.size
 
-  def failureMessage: Option[Fail] = allMessages.map(_.message).collect{ case fail: Fail => fail }.headOption
+  def failureMessage: Option[Fail] = allMessages.map(_.message).collectFirst { case fail: Fail => fail }
 
   def cascadeState: RunState = {
     children.foldLeft(state){ (acc:RunState, child:DeployReport) =>
