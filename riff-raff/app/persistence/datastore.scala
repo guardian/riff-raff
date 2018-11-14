@@ -71,7 +71,7 @@ object Persistence extends Logging {
     def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
   }
 
-  lazy val store: DataStore = postgresStore
+  lazy val store: DataStore = mongoStore
 
   private lazy val mongoStore: DataStore = {
     val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)

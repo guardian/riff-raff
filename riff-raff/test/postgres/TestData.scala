@@ -5,9 +5,10 @@ import java.util.UUID
 import controllers.{ApiKey, AuthorisationRecord}
 import magenta.RunState
 import org.joda.time.DateTime
-import persistence.{DeployRecordDocument, DeploymentSelectorDocument, ParametersDocument}
+import persistence.MessageDocument.DeployDocument
+import persistence.{DeployRecordDocument, DeploymentSelectorDocument, LogDocument, MessageDocument, ParametersDocument}
 
-object Generators {
+object TestData {
   val dateTime = DateTime.now()
 
   def someApiKey: ApiKey = new ApiKey(
@@ -32,14 +33,14 @@ object Generators {
       stringUUID = Some(uuid.toString),
       startTime = dateTime,
       parameters = ParametersDocument(
-        deployer = "developer@gu.com",
-        projectName = "project-name",
-        buildId = "some-id",
+        deployer = s"developer.$uuid@gu.com",
+        projectName = s"project-name-$uuid",
+        buildId = s"id-$uuid",
         stage = "TEST",
         tags = Map.empty,
         selector = DeploymentSelectorDocument.AllDocument
       ),
-      status = RunState.Running,
+      status = RunState.Completed,
       summarised = Some(true),
       totalTasks = Some(3),
       completedTasks = Some(1),
@@ -47,4 +48,12 @@ object Generators {
       hasWarnings = Some(false)
     )
   }
+
+  def someLogDocument: LogDocument = new LogDocument(
+    deploy = UUID.randomUUID(),
+    id = UUID.randomUUID(),
+    parent = Some(UUID.randomUUID()),
+    document = DeployDocument(),
+    time = dateTime
+  )
 }

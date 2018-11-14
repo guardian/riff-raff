@@ -7,6 +7,7 @@ import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
 import org.joda.time.{DateTime, Period}
+import play.api.libs.json
 import play.api.libs.json._
 import scalikejdbc._
 import utils.Json._
@@ -16,13 +17,13 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM auth WHERE email = $email".map(res => Json.parse(res.string(1)).as[AuthorisationRecord]).single.apply()
+      sql"SELECT content FROM auth WHERE email = $email".map(AuthorisationRecord(_)).single.apply()
     }
   }
 
   def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = logExceptions(Some("Requesting list of authorisation objects")) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM auth".map(res => Json.parse(res.string(1)).as[AuthorisationRecord]).list().apply()
+      sql"SELECT content FROM auth".map(AuthorisationRecord(_)).list().apply()
     }
   }
 
@@ -47,12 +48,12 @@ class PostgresDatastore extends DataStore with Logging {
 
   def getApiKeyList: Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM apiKey".map(res => Json.parse(res.string(1)).as[ApiKey]).list().apply()
+      sql"SELECT content FROM apiKey".map(ApiKey(_)).list().apply()
     }
   }
 
   def getApiKey(key: String): Option[ApiKey] = DB readOnly { implicit session =>
-    sql"SELECT content FROM apiKey WHERE id = $key".map(res => Json.parse(res.string(1)).as[ApiKey]).single.apply()
+    sql"SELECT content FROM apiKey WHERE id = $key".map(ApiKey(_)).single.apply()
   }
 
   //TODO: Fix this
@@ -65,11 +66,11 @@ class PostgresDatastore extends DataStore with Logging {
         s"""{"lastUsed": "$dateTime"}"""
 
     sql"""UPDATE apiKey SET content = content || $update::jsonb WHERE id = $key""".update().apply()
-    sql"SELECT content FROM apiKey WHERE id = $key".map(res => Json.parse(res.string(1)).as[ApiKey]).single().apply()
+    sql"SELECT content FROM apiKey WHERE id = $key".map(ApiKey(_)).single().apply()
   }
 
   def getApiKeyByApplication(application: String): Option[ApiKey] = DB readOnly { implicit session =>
-    sql"SELECT content FROM apiKey WHERE content->>'application' = $application".map(res => Json.parse(res.string(1)).as[ApiKey]).single.apply()
+    sql"SELECT content FROM apiKey WHERE content->>'application' = $application".map(ApiKey(_)).single.apply()
   }
 
   def deleteApiKey(key: String): Unit = DB localTx { implicit session =>
@@ -83,36 +84,34 @@ class PostgresDatastore extends DataStore with Logging {
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] = DB readOnly { implicit session =>
-    sql"SELECT content FROM deploy WHERE id = $uuid::uuid".map(res =>
-      Json.parse(res.string(1)).as[DeployRecordDocument]
-    ).single.apply()
+    sql"SELECT content FROM deploy WHERE id = $uuid::uuid".map(DeployRecordDocument(_)).single.apply()
   }
 
   override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = DB readOnly { implicit session =>
     val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
     val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")
-    Right(sql"SELECT content FROM deploy $whereFilters $paginationFilters".map(res =>
-      Json.parse(res.string(1)).as[DeployRecordDocument]
-    ).list.apply())
+    Right(sql"SELECT content FROM deploy $whereFilters $paginationFilters".map(DeployRecordDocument(_)).list.apply())
   }
 
   override def updateStatus(uuid: UUID, status: RunState): Unit = DB localTx { implicit session =>
     val update = Json.toJson(Map("status" -> status.entryName)).toString()
-    sql"UPDATE deploy SET content = content || $update WHERE id = $uuid".update.apply()
+    sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
   }
 
   override def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean): Unit = DB localTx { implicit session =>
-    val updates: Map[String, Any] = Map(
-      "completedTasks" -> completedTasks,
-      "lastActivityTime" -> lastActivityTime,
-      "hasWarnings" -> hasWarnings) ++ totalTasks.map("totalTasks" -> _)
-    sql"UPDATE deploy SET content = content || $updates WHERE id = $uuid".update.apply()
+    val updatesMap: Map[String, JsValue] = Map(
+      "completedTasks" -> JsNumber(completedTasks),
+      "lastActivityTime" -> json.JsString(lastActivityTime.toString()),
+      "hasWarnings" -> JsBoolean(hasWarnings)) ++ totalTasks.map("totalTasks" -> JsNumber(_))
+
+    val updates = Json.toJson(updatesMap).toString()
+    sql"UPDATE deploy SET content = content || $updates::jsonb WHERE id = $uuid".update.apply()
   }
 
   // Used in testing
   override def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = DB readOnly { implicit session =>
     val limitSQL = if (limit == 0) sqls"" else sqls"LIMIT $limit"
-    sql"SELECT id, content->>'startTime' FROM deploy ORDER BY content.startTime $limitSQL".map(res => Json.parse(res.string(1)).as[SimpleDeployDetail]).single.apply()
+    sql"SELECT id, content->>'startTime' FROM deploy ORDER BY content.startTime $limitSQL".map(SimpleDeployDetail(_)).single.apply()
   }
 
   override def countDeploys(filter: Option[DeployFilter]): Int = DB readOnly { implicit session =>
@@ -122,40 +121,55 @@ class PostgresDatastore extends DataStore with Logging {
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = DB readOnly { implicit session =>
     sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'startTime')::TIMESTAMP < $dateTime::TIMESTAMP AND (content->>'summarised') IS NOT NULL"
-      .map(res => Json.parse(res.string(1)).as[SimpleDeployDetail]).list.apply()
+      .map(SimpleDeployDetail(_)).list.apply()
   }
 
-  //TODO: Figure out how to do the update
-  override def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit = DB localTx { implicit session =>
-    val update = metaData.map { case (tag, value) =>
-      sqls"content->>'{parameters,tags,$tag}'" -> value
-    }
-    if (update.nonEmpty) sql"UPDATE deploy SET content || $update".update.apply()
-  }
+  // Most likely not used
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit = {}
+//    DB localTx { implicit session =>
+//    val update = metaData.map { case (tag, value) =>
+//      sqls"content->>'{parameters,tags,$tag}'" -> value
+//    }
+//    if (update.nonEmpty) sql"UPDATE deploy SET content || $update::jsonb WHERE id = $uuid".update.apply()
+//  }
 
   override def findProjects(): Either[Throwable, List[String]] = logExceptions(None) {
     DB readOnly { implicit session =>
-      sql"SELECT DISTINCT ON (content->'{parameters.projectName}') content FROM deploy".map(_.string(1)).list.apply()
+      sql"SELECT DISTINCT content->'parameters'->>'projectName' FROM deploy".map(_.string(1)).list.apply()
     }
   }
 
-  override def addStringUUID(uuid: UUID): Unit = DB localTx { implicit session =>
-    sql"UPDATE deploy SET stringUUID = ${uuid.toString} WHERE id = $uuid".update.apply()
-  }
+  //TODO: Deprecate stringUUID
+  override def addStringUUID(uuid: UUID): Unit = {}
+//    DB localTx { implicit session =>
+//    val update = Json.toJson(Map("stringUUID" -> uuid.toString)).toString()
+//    sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
+//  }
 
-  override def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = DB readOnly { implicit session =>
-    sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'stringUUID') IS NULL"
-      .map(res => Json.parse(res.string(1)).as[SimpleDeployDetail]).list.apply()
-  }
+  override def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = { List.empty }
+//    DB readOnly { implicit session =>
+//    sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'stringUUID') IS NULL".map(SimpleDeployDetail(_)).list.apply()
+//  }
 
   override def getLastCompletedDeploys(projectName: String): Map[String,UUID] = DB readOnly { implicit session =>
-    val threshold = new DateTime().minus(new Period().withDays(90))
+    val threshold: DateTime = new DateTime().minus(new Period().withDays(90))
 
-    ???
+    val list: Seq[(String, UUID)] = sql"""
+      SELECT id, content->'parameters'->>'stage'
+      FROM deploy
+      WHERE content->'parameters'->>'projectName'=$projectName
+        AND content->>'status'='Completed'
+        AND (content->>'startTime')::TIMESTAMP > $threshold::TIMESTAMP
+      GROUP BY content->'parameters'->>'projectName', content->'parameters'->>'stage', id
+      ORDER BY content->>'startTime'
+    """.map(res => (res.string(2), UUID.fromString(res.string(1)))).list.apply()
+
+    list.toMap
   }
 
   override def summariseDeploy(uuid: UUID): Unit = DB localTx { implicit session =>
-    sql"UPDATE deploy SET content->>'summarised' = 'true' WHERE id = $uuid".update.apply()
+    val update = Json.toJson(Map("summarised" -> true)).toString()
+    sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
     sql"DELETE FROM deployLog WHERE id = $uuid".update.apply()
   }
 
@@ -166,13 +180,12 @@ class PostgresDatastore extends DataStore with Logging {
 
   // Table: deployLog(id: String, content: jsonb)
   override def writeLog(log: LogDocument): Unit = DB localTx { implicit session =>
-    sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $log::jsonb)".update.apply()
+    val json = Json.toJson(log).toString()
+    sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $json::jsonb)".update.apply()
   }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] = DB readOnly { implicit session =>
-    sql"SELECT content FROM deployLog WHERE id = ${uuid.toString}".map(res =>
-      Json.parse(res.string(1)).as[LogDocument]
-    ).list.apply()
+    sql"SELECT content FROM deployLog WHERE id = $uuid".map(LogDocument(_)).list.apply()
   }
 }
 

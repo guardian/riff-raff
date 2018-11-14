@@ -68,8 +68,6 @@ object Dependencies {
     "net.logstash.logback" % "logstash-logback-encoder" % "5.1",
     "com.gu" % "kinesis-logback-appender" % "1.4.2",
     "org.scalikejdbc" %% "scalikejdbc" % "3.3.0",
-//    "com.h2database" % "h2" % "1.4.197",
-//    "ch.qos.logback" % "logback-classic" % "1.2.3",
     "org.postgresql" % "postgresql" % "42.2.5",
     filters,
     ws,

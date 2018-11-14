@@ -46,13 +46,13 @@ object MessageState {
 
 trait MessageState {
   val timeOfDayFormatter = DateTimeFormat.mediumTime.withLocale(Locale.UK).withZone(DateTimeZone.forID("Europe/London"))
-  def time:DateTime
+  def time: DateTime
   def timeOfDay = timeOfDayFormatter.print(time)
-  def message:Message
-  def startContext:StartContext
-  def finished:Option[Message]
+  def message: Message
+  def startContext: StartContext
+  def finished: Option[Message]
   def state: RunState
-  def isRunning:Boolean = state == RunState.Running
+  def isRunning: Boolean = state == RunState.Running
   def messageId: UUID
 }
 

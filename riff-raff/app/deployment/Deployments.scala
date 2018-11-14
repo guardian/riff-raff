@@ -169,14 +169,12 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
         )
 
       record match {
-        case None => {
+        case None =>
           log.warn(s"$uuid not found in internal caches")
           allDeploys
-        }
-        case Some(rec) => {
+        case Some(rec) =>
           log.debug(s"About to  remove deploy record $uuid from internal caches")
           allDeploys - rec.uuid
-        }
       }
     }
     firePostCleanup(uuid)

@@ -39,7 +39,7 @@ case class DeployFilter(
     deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
     status.map(s => sqls"content->>'status' = ${s.entryName}"),
     maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = $mda"),
-    hasWarnings.map(hw => sqls"content->>'hasWarnings' = $hw")
+    hasWarnings.map(hw => sqls"content->>'hasWarnings' = ${hw.toString}")
   ).flatten
 
   def withProjectName(projectName: Option[String]) = this.copy(projectName=projectName)

@@ -13,6 +13,7 @@ import play.api.i18n.I18nSupport
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
+import scalikejdbc.WrappedResultSet
 import utils.Json._
 import utils.LogAndSquashBehaviour
 
@@ -27,6 +28,8 @@ case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: 
 }
 object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
   implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
+
+  def apply(res: WrappedResultSet): AuthorisationRecord = Json.parse(res.string(1)).as[AuthorisationRecord]
 
   implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
   private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {

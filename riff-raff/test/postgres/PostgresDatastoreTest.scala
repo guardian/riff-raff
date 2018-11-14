@@ -2,9 +2,11 @@ package postgres
 
 import controllers.{ApiKey, AuthorisationRecord}
 import deployment.{DeployFilter, PaginationView}
+import magenta.RunState.ChildRunning
+import org.joda.time.DateTime
 import org.scalatest.{FreeSpec, Matchers}
-import persistence.DeployRecordDocument
-import postgres.Generators._
+import persistence.{DeployRecordDocument, LogDocument}
+import postgres.TestData._
 import scalikejdbc._
 
 class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers {
@@ -174,6 +176,128 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers 
 
           dbDeploys.right.get.size shouldBe 1
           dbDeploys.right.get.head shouldBe deploy
+        }
+      }
+    }
+
+    "update the status of a deploy" in {
+      withFixture {
+        withDeploys() { deploys =>
+          datastore.updateStatus(deploys.head.uuid, ChildRunning)
+
+          val dbDeploy = datastore.readDeploy(deploys.head.uuid)
+
+          dbDeploy shouldBe defined
+          dbDeploy.get.status shouldBe ChildRunning
+        }
+      }
+    }
+
+    "update the deploy summary of a deploy" in {
+      withFixture {
+        withDeploys() { deploys =>
+          val completedTasks = 11
+          val totalTasks = Some(20)
+          val lastActivityTime = DateTime.now()
+          val hasWarnings = true
+
+          datastore.updateDeploySummary(deploys.head.uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
+
+          val dbDeploy = datastore.readDeploy(deploys.head.uuid)
+
+          dbDeploy shouldBe defined
+          dbDeploy.get.completedTasks.get shouldBe completedTasks
+          dbDeploy.get.totalTasks shouldBe totalTasks
+          dbDeploy.get.lastActivityTime.get shouldBe lastActivityTime
+          dbDeploy.get.hasWarnings.get shouldBe hasWarnings
+        }
+      }
+    }
+
+    "count deploys using filters" in {
+      withFixture {
+        withDeploys(5) { deploys =>
+          val deploy = deploys.head
+
+          val stageDeployFilter = DeployFilter(stage = Some(deploy.parameters.stage))
+
+          val dbDeploys = datastore.countDeploys(Some(stageDeployFilter))
+
+          dbDeploys shouldBe 5
+
+          val allDeployFilters = DeployFilter(
+            projectName = Some(deploy.parameters.projectName),
+            stage = Some(deploy.parameters.stage),
+            deployer = Some(deploy.parameters.deployer),
+            status = Some(deploy.status),
+            maxDaysAgo = None,
+            hasWarnings = deploy.hasWarnings
+          )
+          val dbDeploy = datastore.countDeploys(Some(allDeployFilters))
+
+          dbDeploy shouldBe 1
+        }
+      }
+    }
+
+    "get complete deploys older than date" in {
+      withFixture {
+        withDeploys(5) { _ =>
+          val dbDeploys = datastore.getCompleteDeploysOlderThan(DateTime.now())
+          dbDeploys.size shouldBe 5
+        }
+      }
+    }
+
+    "find projects" in {
+      withFixture {
+        withDeploys(5) { _ =>
+          datastore.findProjects().size shouldBe 5
+        }
+      }
+    }
+
+    "get latest completed deploys for project" in {
+      withFixture {
+        withDeploys(3) { deploys =>
+          val map = datastore.getLastCompletedDeploys(deploys.head.parameters.projectName)
+          map.size shouldBe 1
+        }
+      }
+    }
+
+    "summarise deploy deploy" in {
+      withFixture {
+        withDeploys() { deploys =>
+          datastore.summariseDeploy(deploys.head.uuid)
+          val dbDeploy = datastore.readDeploy(deploys.head.uuid)
+
+          dbDeploy.get.summarised.get shouldBe true
+        }
+      }
+    }
+  }
+
+  "DeployLog table" - {
+    def withFixture(test: => Any)= {
+      try test
+      finally {
+        DB localTx { implicit session =>
+          sql"DELETE FROM deployLog".update.apply()
+        }
+      }
+    }
+
+    def withLogDocument(test: LogDocument => Any) = {
+      val logDoc = someLogDocument
+      datastore.writeLog(logDoc)
+      test(logDoc)
+    }
+
+    "create and read a deploy log" in {
+      withFixture {
+        withLogDocument { logDoc =>
+          datastore.readLogs(logDoc.id) shouldBe logDoc
         }
       }
     }

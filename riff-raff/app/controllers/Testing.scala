@@ -20,6 +20,7 @@ import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import resources.PrismLookup
+import scalikejdbc.WrappedResultSet
 import utils.Json._
 import utils.LogAndSquashBehaviour
 
@@ -28,6 +29,11 @@ import scala.collection.mutable.ArrayBuffer
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 object SimpleDeployDetail {
   implicit def formats: Format[SimpleDeployDetail] = Json.format[SimpleDeployDetail]
+
+  def apply(res: WrappedResultSet): SimpleDeployDetail = new SimpleDeployDetail(
+    uuid = UUID.fromString(res.string(1)),
+    time = res.stringOpt(2).map(new DateTime(_))
+  )
 }
 
 class Testing(prismLookup: PrismLookup,

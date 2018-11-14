@@ -165,10 +165,7 @@ object DocumentStoreConverter extends Logging {
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
       val deployDocument = getDeployDocument(uuid)
-      val logDocuments =
-        if (fetchLog)
-          getDeployLogs(uuid)
-        else Nil
+      val logDocuments = if (fetchLog) getDeployLogs(uuid) else Nil
       deployDocument.map { deploy =>
         DocumentConverter(deploy, logDocuments.toSeq).deployRecord
       }

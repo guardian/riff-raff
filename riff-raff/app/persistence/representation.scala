@@ -12,6 +12,7 @@ import magenta._
 import org.joda.time.DateTime
 import persistence.ParametersDocument._
 import play.api.libs.json.{Format, Json}
+import scalikejdbc.WrappedResultSet
 import utils.Json._
 
 case class DeployRecordDocument(uuid: UUID,
@@ -27,6 +28,8 @@ case class DeployRecordDocument(uuid: UUID,
 
 object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   implicit def formats: Format[DeployRecordDocument] = Json.format[DeployRecordDocument]
+
+  def apply(res: WrappedResultSet): DeployRecordDocument = Json.parse(res.string(1)).as[DeployRecordDocument]
 
   def apply(uuid:String, startTime: DateTime, parameters: ParametersDocument, status: String): DeployRecordDocument = {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
@@ -111,6 +114,8 @@ case class LogDocument(
 
 object LogDocument extends MongoSerialisable[LogDocument] {
   implicit def formats: Format[LogDocument] = Json.format[LogDocument]
+
+  def apply(res: WrappedResultSet): LogDocument = Json.parse(res.string(1)).as[LogDocument]
 
   def apply(wrapper: MessageWrapper): LogDocument = {
     LogDocument(wrapper.context.deployId, wrapper.messageId, wrapper.context.parentId, wrapper.stack.top, wrapper.stack.time)
