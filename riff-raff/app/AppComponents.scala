@@ -79,7 +79,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   )
 
   val availableDeploymentTypes = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, CloudFormationChangeSet, Lambda, AmiCloudFormationParameter, SelfDeploy
+    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
   val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
   val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, conf.Configuration.deprecation.pauseSeconds)

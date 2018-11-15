@@ -9,9 +9,9 @@ import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
-import magenta.tasks._
-import org.scalatest.{FlatSpec, Inside, Matchers}
-import play.api.libs.json.{JsBoolean, Json, JsString, JsValue}
+import magenta.tasks.{UpdateCloudFormationTask, _}
+import org.scalatest.{FlatSpec, Inside, Matchers, path}
+import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
   implicit val fakeKeyRing = KeyRing()
@@ -25,29 +25,30 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   def p(data: Map[String, JsValue]) = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
     deploymentTypes)
 
-  "cloudformation deployment type" should "have an updateStack action" in {
-    val data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false))
+  private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false))) = {
+    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient)
+    CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(), testStack, region))
+  }
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, checkTask) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(taskRegion, stackName, path, userParams, amiParamTags, _, stage, stack, ifAbsent, alwaysUpload) =>
-            taskRegion should be(region)
-            stackName should be(LookupByName(cfnStackName))
-            path should be(S3Path("artifact-bucket", "test/123/cloud-formation/cfn.json"))
-            userParams should be(Map.empty)
-            amiParamTags should be(Map.empty)
-            stage should be(PROD)
-            stack should be(Stack("cfn"))
-            ifAbsent should be(true)
-            alwaysUpload shouldBe true
-        }
-        inside(checkTask) {
-          case CheckUpdateEventsTask(taskRegion, updateStackName) =>
-            taskRegion should be(region)
-            updateStackName should be(LookupByName(cfnStackName))
-        }
-    }
+  it should "generate the tasks in the correct order" in {
+    val tasks = generateTasks()
+    tasks should have size(5)
+
+    tasks(0) shouldBe a[CreateChangeSetTask]
+    tasks(1) shouldBe a[CheckChangeSetCreatedTask]
+    tasks(2) shouldBe a[ExecuteChangeSetTask]
+    tasks(3) shouldBe a[CheckUpdateEventsTask]
+    tasks(4) shouldBe a[DeleteChangeSetTask]
+  }
+
+  it should "use the same change set name across all tasks" in {
+    val tasks = generateTasks()
+
+    val changeSetName = tasks(0).asInstanceOf[CreateChangeSetTask].changeSetName
+    tasks(1).asInstanceOf[CheckChangeSetCreatedTask].changeSetName should be(changeSetName)
+    tasks(2).asInstanceOf[ExecuteChangeSetTask].changeSetName should be(changeSetName)
+    // check updates does not use the change set name
+    tasks(4).asInstanceOf[DeleteChangeSetTask].changeSetName should be(changeSetName)
   }
 
   it should "ignore amiTags when amiParametersToTags and amiTags are provided" in {
@@ -58,13 +59,9 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
         "RouterAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map("AMI" -> Map("myApp1" -> "fakeApp1"), "RouterAMI" -> Map("myApp2" -> "fakeApp2")))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+
+    create.amiParameterMap should be(Map("AMI" -> Map("myApp1" -> "fakeApp1"), "RouterAMI" -> Map("myApp2" -> "fakeApp2")))
   }
 
   it should "use all values on amiParametersToTags" in {
@@ -74,16 +71,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
         "myAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map(
-              "AMI" -> Map("myApp1" -> "fakeApp1"),
-              "myAMI" -> Map("myApp2" -> "fakeApp2")
-            ))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+
+    create.amiParameterMap should be(Map(
+      "AMI" -> Map("myApp1" -> "fakeApp1"),
+      "myAMI" -> Map("myApp2" -> "fakeApp2")
+    ))
   }
 
   it should "respect a non-default amiParameter" in {
@@ -92,50 +85,31 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       "amiTags" -> Json.obj("myApp" -> JsString("fakeApp"))
     )
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map("myAMI" -> Map("myApp" -> "fakeApp")))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+
+    create.amiParameterMap should be(Map("myAMI" -> Map("myApp" -> "fakeApp")))
   }
 
 
   it should "respect the defaults for amiTags and amiParameter" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map("AMI" -> Map("myApp" -> "fakeApp")))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp")))
   }
 
   it should "add an implicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")), "amiEncrypted" -> JsBoolean(true))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
   }
 
   it should "allow an explicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp"), "Encrypted" -> JsString("monkey")), "amiEncrypted" -> JsBoolean(true))
 
-    inside(CloudFormation.actionsMap("updateStack").taskGenerator(p(data), DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), testStack, region))) {
-      case List(updateTask, _) =>
-        inside(updateTask) {
-          case UpdateCloudFormationTask(_, _, _, _, amiParamTags, _, _, _, _, _) =>
-            amiParamTags should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
-        }
-    }
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
   }
 
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
