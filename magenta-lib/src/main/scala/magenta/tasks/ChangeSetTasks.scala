@@ -10,18 +10,18 @@ import magenta.{DeployReporter, KeyRing, Region, Stack, Stage}
 
 import scala.collection.JavaConverters._
 
-case class CreateChangeSetTask(
+class CreateChangeSetTask(
    region: Region,
    cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
    templatePath: S3Path,
    userParameters: Map[String, String],
-   amiParameterMap: Map[CfnParam, TagCriteria],
+   val amiParameterMap: Map[CfnParam, TagCriteria],
    latestImage: String => String => Map[String,String] => Option[String],
    stage: Stage,
    stack: Stack,
    createStackIfAbsent:Boolean,
    alwaysUploadToS3:Boolean,
-   changeSetName: String
+   val changeSetName: String
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
@@ -78,11 +78,11 @@ case class CreateChangeSetTask(
   def verbose = description
 }
 
-case class CheckChangeSetCreatedTask(
+class CheckChangeSetCreatedTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  changeSetName: String,
-  duration: Long
+  val changeSetName: String,
+  override val duration: Long
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with RepeatedPollingCheck {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
@@ -110,10 +110,10 @@ case class CheckChangeSetCreatedTask(
   def verbose = description
 }
 
-case class ExecuteChangeSetTask(
+class ExecuteChangeSetTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  changeSetName: String
+  val changeSetName: String
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
@@ -134,10 +134,10 @@ case class ExecuteChangeSetTask(
   def verbose = description
 }
 
-case class DeleteChangeSetTask(
+class DeleteChangeSetTask(
   region: Region,
   cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
-  changeSetName: String
+  val changeSetName: String
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)

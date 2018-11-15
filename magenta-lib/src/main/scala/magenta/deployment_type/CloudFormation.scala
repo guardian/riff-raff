@@ -10,20 +10,20 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
 
   val name = "cloud-formation"
   def documentation =
-    s"""Update an AWS CloudFormation template by creating and executing a change set.
-       |
-       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
-       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
-       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
-       |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
-       |in your riff-raff.yaml.
-       |
-       |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
-       |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
-       |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
-       |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
-       |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
-       |to this bucket and sent to CloudFormation using the template URL parameter.
+    """Update an AWS CloudFormation template by creating and executing a change set.
+      |
+      |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
+      |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
+      |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
+      |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
+      |in your riff-raff.yaml.
+      |
+      |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
+      |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
+      |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
+      |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
+      |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
+      |to this bucket and sent to CloudFormation using the template URL parameter.
     """.stripMargin
 
   val templatePath = Param[String]("templatePath",
@@ -78,7 +78,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
 
     List(
-      CreateChangeSetTask(
+      new CreateChangeSetTask(
         target.region,
         cloudFormationStackLookupStrategy,
         S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
@@ -91,22 +91,22 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         alwaysUploadToS3 = true,
         changeSetName
       ),
-      CheckChangeSetCreatedTask(
+      new CheckChangeSetCreatedTask(
         target.region,
         cloudFormationStackLookupStrategy,
         changeSetName,
         secondsToWaitForChangeSetCreation(pkg, target, reporter) * 1000
       ),
-      ExecuteChangeSetTask(
+      new ExecuteChangeSetTask(
         target.region,
         cloudFormationStackLookupStrategy,
         changeSetName
       ),
-      CheckUpdateEventsTask(
+      new CheckUpdateEventsTask(
         target.region,
         cloudFormationStackLookupStrategy
       ),
-      DeleteChangeSetTask(
+      new DeleteChangeSetTask(
         target.region,
         cloudFormationStackLookupStrategy,
         changeSetName

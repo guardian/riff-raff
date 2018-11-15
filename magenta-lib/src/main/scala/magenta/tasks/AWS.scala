@@ -404,10 +404,11 @@ object CloudFormation extends AWS {
       .withCapabilities(CAPABILITY_NAMED_IAM)
       .withParameters(paramsList.toSeq.asJava)
 
-    maybeTags.foreach { tags =>
-      val sdkTags = tags.map{ case (key, value) => new CfnTag().withKey(key).withValue(value) }
-      request.setTags(sdkTags.asJavaCollection)
-    }
+    val tags: Iterable[CfnTag] = maybeTags
+      .map(_.map { case (key, value) => new CfnTag().withKey(key).withValue(value) })
+      .getOrElse(Iterable.empty)
+
+    request.withTags(tags.toSeq: _*)
 
     val requestWithTemplate = template match {
       case TemplateBody(body) => request.withTemplateBody(body)

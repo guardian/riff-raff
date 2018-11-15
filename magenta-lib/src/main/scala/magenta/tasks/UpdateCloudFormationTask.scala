@@ -191,7 +191,7 @@ case class UpdateAmiCloudFormationParameterTask(
   def verbose = description
 }
 
-case class CheckUpdateEventsTask(
+class CheckUpdateEventsTask(
   region: Region,
   stackLookupStrategy: CloudFormationStackLookupStrategy
 )(implicit val keyRing: KeyRing) extends Task {

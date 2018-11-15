@@ -179,7 +179,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   }
 
   "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
-    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask].copy(createStackIfAbsent = false)
+    val data: Map[String, JsValue] = Map("createStackIfAbsent" -> JsBoolean(false))
+    val create = generateTasks(data).head.asInstanceOf[CreateChangeSetTask]
 
     intercept[FailException] {
       create.getChangeSetType(None, reporter)
