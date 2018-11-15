@@ -3,7 +3,7 @@ package magenta.deployment_type
 import java.util.UUID
 
 import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.cloudformation.model.{ChangeSetType, Stack => CloudFormationStack}
+import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, Stack => CloudFormationStack}
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
@@ -187,12 +187,35 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "perform create if existing stack is empty" in {
-    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask]
+    val (create: CreateChangeSetTask) :: _ = generateTasks()
     create.getChangeSetType(None, reporter) should be(ChangeSetType.CREATE)
   }
 
   it should "perform update if existing stack is non-empty" in {
-    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask]
+    val (create: CreateChangeSetTask) :: _ = generateTasks()
     create.getChangeSetType(Some(new CloudFormationStack()), reporter) should be(ChangeSetType.UPDATE)
+  }
+
+  "CheckChangeSetCreatedTask" should "pass on CREATE_COMPLETE" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    check.shouldStopWaiting("CREATE_COMPLETE", "", List.empty, reporter) should be(true)
+  }
+
+  it should "pass on FAILED if there are no changes to execute" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    check.shouldStopWaiting("FAILED", "", List.empty, reporter) should be(true)
+  }
+
+  it should "fail on FAILED" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+
+    intercept[FailException] {
+      check.shouldStopWaiting("FAILED", "", List(new Change()), reporter)
+    }
+  }
+
+  it should "continue on any other status" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    check.shouldStopWaiting("UPDATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
   }
 }

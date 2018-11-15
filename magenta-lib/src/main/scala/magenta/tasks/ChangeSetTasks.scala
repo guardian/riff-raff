@@ -1,7 +1,6 @@
 package magenta.tasks
 
-import com.amazonaws.services.cloudformation.model.{ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
-import com.amazonaws.services.cloudformation.model.{Stack => CloudFormationStack}
+import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest, Stack => CloudFormationStack}
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters.{CfnParam, TagCriteria}
@@ -59,7 +58,7 @@ case class CreateChangeSetTask(
     reporter.info(s"Change set name: $changeSetName")
     reporter.info(s"Parameters: $parameters")
 
-    val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
+    val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy) { case LookupByTags(tags) => tags }
     val changeSetType = getChangeSetType(maybeCfStack, reporter)
 
     CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
@@ -94,21 +93,17 @@ case class CheckChangeSetCreatedTask(
       val request = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
       val response = cfnClient.describeChangeSet(request)
 
-      response.getStatus match {
-        case "CREATE_COMPLETE" =>
-          true
-
-        case "FAILED" if response.getChanges.isEmpty =>
-          true
-
-        case "FAILED" =>
-          reporter.fail(response.getStatusReason)
-
-        case other =>
-          reporter.verbose(other)
-          false
-      }
+      shouldStopWaiting(response.getStatus, response.getStatusReason, response.getChanges.asScala, reporter)
     }
+  }
+
+  def shouldStopWaiting(status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = status match {
+    case "CREATE_COMPLETE" => true
+    case "FAILED" if changes.isEmpty => true
+    case "FAILED" => reporter.fail(statusReason)
+    case _ =>
+      reporter.verbose(status)
+      false
   }
 
   def description = s"Checking change set $changeSetName creation for stack $cloudFormationStackLookupStrategy"
