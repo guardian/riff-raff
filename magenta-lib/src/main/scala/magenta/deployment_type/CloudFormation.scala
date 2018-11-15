@@ -5,30 +5,12 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks._
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage}
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
   val name = "cloud-formation"
 
-  def baseDocumentation =
-    """
-      |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
-      |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
-      |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
-      |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
-      |in your riff-raff.yaml.
-      |
-      |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
-      |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
-      |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
-      |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
-      |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
-      |to this bucket and sent to CloudFormation using the template URL parameter.
-    """.stripMargin
-
   def documentation =
     s"""Update an AWS CloudFormation template.
-      |$baseDocumentation
     """.stripMargin
 
   val templatePath = Param[String]("templatePath",
@@ -103,8 +85,19 @@ object CloudFormationChangeSet extends DeploymentType with CloudFormationDeploym
   val name = "cloud-formation-change-set"
   def documentation =
     s"""Update an AWS CloudFormation template by creating and executing a change set.
-       |This allows Riff Raff to deploy templates that define transforms such as applications written using the AWS Serverless Model.
-       |${CloudFormation.baseDocumentation}
+       |
+       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
+       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
+       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
+       |mean-time. Alternatively, you will need to add this as a dependency to your autoscaling deploy
+       |in your riff-raff.yaml.
+       |
+       |Note that if you are using the riff-raff.yaml configuration format or if your template is over 51,200 bytes then
+       |this task relies on a bucket in your account called `riff-raff-cfn-templates-<accountNumber>-<region>`. If it
+       |doesn't exist Riff-Raff will try to create it (it will need permissions to call S3 create bucket and STS get
+       |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
+       |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
+       |to this bucket and sent to CloudFormation using the template URL parameter.
     """.stripMargin
 
   val templatePath = Param[String]("templatePath",
@@ -134,7 +127,8 @@ object CloudFormationChangeSet extends DeploymentType with CloudFormationDeploym
     documentation = "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
 
-  val secondsToWait = Param("secondsToWait", "Number of seconds to wait for the template to update").default(15 * 60)
+  val secondsToWaitForChangeSetCreation = Param("secondsToWaitForChangeSetCreation",
+    "Number of seconds to wait for the change set to be created").default(15 * 60)
 
   val updateStack = Action("updateStack",
     """
@@ -175,7 +169,7 @@ object CloudFormationChangeSet extends DeploymentType with CloudFormationDeploym
         target.region,
         cloudFormationStackLookupStrategy,
         changeSetName,
-        secondsToWait(pkg, target, reporter) * 1000
+        secondsToWaitForChangeSetCreation(pkg, target, reporter) * 1000
       ),
       ExecuteChangeSetTask(
         target.region,
