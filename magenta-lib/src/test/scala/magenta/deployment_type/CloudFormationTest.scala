@@ -2,15 +2,15 @@ package magenta.deployment_type
 
 import java.util.UUID
 
-import com.amazonaws.regions.RegionUtils
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.cloudformation.model.{ChangeSetType, Stack => CloudFormationStack}
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks.{UpdateCloudFormationTask, _}
-import org.scalatest.{FlatSpec, Inside, Matchers, path}
+import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
@@ -176,5 +176,23 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "exclude when there is an encrypted tag that is not set to false" in {
     CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "something")) shouldBe false
     CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "true")) shouldBe false
+  }
+
+  "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
+    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask].copy(createStackIfAbsent = false)
+
+    intercept[FailException] {
+      create.getChangeSetType(None, reporter)
+    }
+  }
+
+  it should "perform create if existing stack is empty" in {
+    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask]
+    create.getChangeSetType(None, reporter) should be(ChangeSetType.CREATE)
+  }
+
+  it should "perform update if existing stack is non-empty" in {
+    val create = generateTasks().head.asInstanceOf[CreateChangeSetTask]
+    create.getChangeSetType(Some(new CloudFormationStack()), reporter) should be(ChangeSetType.UPDATE)
   }
 }

@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import com.amazonaws.services.cloudformation.model.{ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import com.amazonaws.services.cloudformation.model.{Stack => CloudFormationStack}
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters.{CfnParam, TagCriteria}
@@ -59,12 +60,18 @@ case class CreateChangeSetTask(
     reporter.info(s"Parameters: $parameters")
 
     val stackTags = PartialFunction.condOpt(cloudFormationStackLookupStrategy){ case LookupByTags(tags) => tags }
+    val changeSetType = getChangeSetType(maybeCfStack, reporter)
+
+    CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
+  }
+
+  def getChangeSetType(maybeCfStack: Option[CloudFormationStack], reporter: DeployReporter): ChangeSetType = {
     val changeSetType = if(maybeCfStack.isEmpty) { ChangeSetType.CREATE } else { ChangeSetType.UPDATE }
 
     if(changeSetType == ChangeSetType.CREATE && !createStackIfAbsent) {
       reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
     } else {
-      CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
+      changeSetType
     }
   }
 
