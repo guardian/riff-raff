@@ -1,14 +1,15 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.cloudformation.model.{AmazonCloudFormationException, StackEvent}
+import com.amazonaws.services.cloudformation.AmazonCloudFormation
+import com.amazonaws.services.cloudformation.model.{AmazonCloudFormationException, StackEvent, Stack => CloudFormationStack}
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.CloudFormationStackLookupStrategy
-import magenta.{DeploymentPackage, DeployReporter, DeployTarget, KeyRing, Region, Stack, Stage}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 
 import scala.collection.JavaConverters._
@@ -94,21 +95,6 @@ object UpdateCloudFormationTask {
     val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
     addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name))
-  }
-
-  def nameToCallNewStack(strategy: CloudFormationStackLookupStrategy): String = {
-    val intrinsicKeyOrder = List("Stack", "Stage", "App")
-    strategy match {
-      case LookupByName(name) => name
-      case LookupByTags(tags) =>
-        val orderedTags = tags.toList.sortBy{ case (key, value) =>
-          // order by the intrinsic ordering and then alphabetically for keys we don't know
-          val order = intrinsicKeyOrder.indexOf(key)
-          val intrinsicOrdering = if (order == -1) Int.MaxValue else order
-          (intrinsicOrdering, key)
-        }
-        orderedTags.map{ case (key, value) => value }.mkString("-")
-    }
   }
 
   def processTemplate(stackName: String, templateBody: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenService,
