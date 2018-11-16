@@ -2,14 +2,14 @@ package magenta.deployment_type
 
 import java.util.UUID
 
+import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType}
 import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, Stack => CloudFormationStack}
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
-import magenta.tasks.{UpdateCloudFormationTask, _}
+import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 
@@ -41,16 +41,6 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     tasks(4) shouldBe a[DeleteChangeSetTask]
   }
 
-  it should "use the same change set name across all tasks" in {
-    val tasks = generateTasks()
-
-    val changeSetName = tasks(0).asInstanceOf[CreateChangeSetTask].changeSetName
-    tasks(1).asInstanceOf[CheckChangeSetCreatedTask].changeSetName should be(changeSetName)
-    tasks(2).asInstanceOf[ExecuteChangeSetTask].changeSetName should be(changeSetName)
-    // check updates does not use the change set name
-    tasks(4).asInstanceOf[DeleteChangeSetTask].changeSetName should be(changeSetName)
-  }
-
   it should "ignore amiTags when amiParametersToTags and amiTags are provided" in {
     val data: Map[String, JsValue] = Map(
       "amiTags" -> Json.obj("myApp" -> JsString("fakeApp")),
@@ -61,7 +51,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
-    create.amiParameterMap should be(Map("AMI" -> Map("myApp1" -> "fakeApp1"), "RouterAMI" -> Map("myApp2" -> "fakeApp2")))
+    create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp1" -> "fakeApp1"), "RouterAMI" -> Map("myApp2" -> "fakeApp2")))
   }
 
   it should "use all values on amiParametersToTags" in {
@@ -73,7 +63,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
-    create.amiParameterMap should be(Map(
+    create.unresolvedParameters.amiParameterMap should be(Map(
       "AMI" -> Map("myApp1" -> "fakeApp1"),
       "myAMI" -> Map("myApp2" -> "fakeApp2")
     ))
@@ -87,7 +77,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
-    create.amiParameterMap should be(Map("myAMI" -> Map("myApp" -> "fakeApp")))
+    create.unresolvedParameters.amiParameterMap should be(Map("myAMI" -> Map("myApp" -> "fakeApp")))
   }
 
 
@@ -95,27 +85,27 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")))
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
-    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp")))
+    create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp")))
   }
 
   it should "add an implicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")), "amiEncrypted" -> JsBoolean(true))
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
-    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
+    create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
   }
 
   it should "allow an explicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp"), "Encrypted" -> JsString("monkey")), "amiEncrypted" -> JsBoolean(true))
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
-    create.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
+    create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
   }
 
   "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = CloudFormationParameters.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -127,7 +117,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = UpdateCloudFormationTask.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = CloudFormationParameters.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -137,11 +127,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "create new CFN stack names" in {
-    import UpdateCloudFormationTask.nameToCallNewStack
-    nameToCallNewStack(LookupByName("name-of-stack")) shouldBe "name-of-stack"
-    nameToCallNewStack(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE"))) shouldBe
+    import CloudFormationStackLookup.getNewStackName
+
+    getNewStackName(LookupByName("name-of-stack")) shouldBe "name-of-stack"
+    getNewStackName(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE"))) shouldBe
       "stackName-STAGE-appName"
-    nameToCallNewStack(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE", "Extra" -> "extraBit"))) shouldBe
+    getNewStackName(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE", "Extra" -> "extraBit"))) shouldBe
       "stackName-STAGE-appName-extraBit"
   }
 
@@ -158,7 +149,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val data: Map[String, JsValue] = Map()
     val app = App("app")
     val stack = Stack("cfn")
-    val cfnStackName = s"cfn-app-PROD"
+
     val pkg = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
       deploymentTypes)
     val target = DeployTarget(parameters(), stack, region)
@@ -178,23 +169,20 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "true")) shouldBe false
   }
 
-  "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
-    val data: Map[String, JsValue] = Map("createStackIfAbsent" -> JsBoolean(false))
-    val create = generateTasks(data).head.asInstanceOf[CreateChangeSetTask]
+  import CloudFormationStackLookup.getChangeSetType
 
+  "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
     intercept[FailException] {
-      create.getChangeSetType(None, reporter)
+      getChangeSetType("test", stackExists = false, createStackIfAbsent = false, reporter)
     }
   }
 
   it should "perform create if existing stack is empty" in {
-    val (create: CreateChangeSetTask) :: _ = generateTasks()
-    create.getChangeSetType(None, reporter) should be(ChangeSetType.CREATE)
+    getChangeSetType("test", stackExists = false, createStackIfAbsent = true, reporter) should be(ChangeSetType.CREATE)
   }
 
   it should "perform update if existing stack is non-empty" in {
-    val (create: CreateChangeSetTask) :: _ = generateTasks()
-    create.getChangeSetType(Some(new CloudFormationStack()), reporter) should be(ChangeSetType.UPDATE)
+    getChangeSetType("test", stackExists = true, createStackIfAbsent = true, reporter) should be(ChangeSetType.UPDATE)
   }
 
   "CheckChangeSetCreatedTask" should "pass on CREATE_COMPLETE" in {

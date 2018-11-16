@@ -1,28 +1,18 @@
 package magenta.tasks
 
-import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import com.amazonaws.services.cloudformation.model.{Change, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
-import magenta.deployment_type.CloudFormationDeploymentTypeParameters.{CfnParam, TagCriteria}
-import magenta.tasks.CloudFormation.ParameterValue
 import magenta.tasks.UpdateCloudFormationTask._
-import magenta.{DeployReporter, KeyRing, Region, Stack, Stage}
+import magenta.{DeployReporter, KeyRing, Region}
 
 import scala.collection.JavaConverters._
 
 class CreateChangeSetTask(
    region: Region,
-   stackName: String,
    templatePath: S3Path,
-   userParameters: Map[String, String],
-   val amiParameterMap: Map[CfnParam, TagCriteria],
-   latestImage: String => String => Map[String,String] => Option[String],
-   stage: Stage,
-   stack: Stack,
-   alwaysUploadToS3:Boolean,
-   val changeSetName: String,
-   changeSetType: ChangeSetType,
-   stackTags: Option[Map[String, String]]
+   stackLookup: CloudFormationStackLookup,
+   val unresolvedParameters: CloudFormationParameters
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
@@ -35,41 +25,35 @@ class CreateChangeSetTask(
       reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
     )
 
-    val template = processTemplate(stackName, templateString, s3Client, stsClient, region, alwaysUploadToS3, reporter)
+    val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
 
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters.asScala
-      .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
-
-    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      val ami = latestImage(accountNumber)(region.name)(tags)
-      ami.map(name ->)
-    }
-
-    val parameters: Map[String, ParameterValue] =
-      combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
+    val parameters = unresolvedParameters.resolve(template, accountNumber, cfnClient)
 
     reporter.info("Creating Cloudformation change set")
     reporter.info(s"Stack name: $stackName")
-    reporter.info(s"Change set name: $changeSetName")
+    reporter.info(s"Change set name: ${unresolvedParameters.changeSetName}")
     reporter.info(s"Parameters: $parameters")
 
-    CloudFormation.createChangeSet(reporter, changeSetName, changeSetType, stackName, stackTags, template, parameters, cfnClient)
+    CloudFormation.createChangeSet(reporter, unresolvedParameters.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, parameters, cfnClient)
   }
 
-  def description = s"Create change set $changeSetName for stack $stackName with ${templatePath.fileName}"
+  def description = s"Create change set ${unresolvedParameters.changeSetName} for stack ${stackLookup.strategy} with ${templatePath.fileName}"
   def verbose = description
 }
 
 class CheckChangeSetCreatedTask(
   region: Region,
-  stackName: String,
-  val changeSetName: String,
+  stackLookup: CloudFormationStackLookup,
   override val duration: Long
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with RepeatedPollingCheck {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     check(reporter, stopFlag) {
       val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+
+      val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+      val changeSetName = stackLookup.changeSetName
 
       val request = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
       val response = cfnClient.describeChangeSet(request)
@@ -87,17 +71,19 @@ class CheckChangeSetCreatedTask(
       false
   }
 
-  def description = s"Checking change set $changeSetName creation for stack $stackName"
+  def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
   def verbose = description
 }
 
 class ExecuteChangeSetTask(
   region: Region,
-  stackName: String,
-  val changeSetName: String
+  stackLookup: CloudFormationStackLookup,
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+
+    val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+    val changeSetName = stackLookup.changeSetName
 
     val describeRequest = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
     val describeResponse = cfnClient.describeChangeSet(describeRequest)
@@ -110,22 +96,24 @@ class ExecuteChangeSetTask(
     }
   }
 
-  def description = s"Execute change set $changeSetName on stack $stackName"
+  def description = s"Execute change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
   def verbose = description
 }
 
 class DeleteChangeSetTask(
   region: Region,
-  stackName: String,
-  val changeSetName: String
+  stackLookup: CloudFormationStackLookup,
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+
+    val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+    val changeSetName = stackLookup.changeSetName
 
     val request = new DeleteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
     cfnClient.deleteChangeSet(request)
   }
 
-  def description = s"Delete change set $changeSetName on stack $stackName"
+  def description = s"Delete change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
   def verbose = description
 }

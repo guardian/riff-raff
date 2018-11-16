@@ -2,14 +2,10 @@ package magenta.deployment_type
 
 import java.util.UUID
 
-import com.amazonaws.services.cloudformation.AmazonCloudFormation
-import com.amazonaws.services.cloudformation.model.{ChangeSetType, Stack}
-import magenta.DeployReporter
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
+import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
-import magenta.tasks.{CloudFormation => AWSCloudFormation}
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
@@ -78,51 +74,36 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val globalParams = templateParameters(pkg, target, reporter)
     val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
 
-    val params = globalParams ++ stageParams
-    val createNewStack = createStackIfAbsent(pkg, target, reporter)
-
-    val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
-
-    val cfnClient = AWSCloudFormation.makeCfnClient(keyRing, target.region)
-    val existingStack = getStack(cloudFormationStackLookupStrategy, reporter, cfnClient)
-
-    val stackName = existingStack.map(_.getStackName).getOrElse(getNewStackName(cloudFormationStackLookupStrategy))
-    val changeSetType = if(existingStack.isEmpty) { ChangeSetType.CREATE } else { ChangeSetType.UPDATE }
+    val userParams = globalParams ++ stageParams
+    val amiLookupFn = getLatestAmi(pkg, target, reporter, resources.lookup)
 
     val stackTags = cloudFormationStackLookupStrategy match {
       case LookupByTags(tags) => Some(tags)
       case _ => None
     }
 
-    if(changeSetType == ChangeSetType.CREATE && !createNewStack) {
-      reporter.fail(s"Stack $cloudFormationStackLookupStrategy doesn't exist and createStackIfAbsent is false")
-    }
+    val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
+    val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage, target.region,
+      changeSetName, stackTags, userParams, amiParameterMap, amiLookupFn)
+
+    val createNewStack = createStackIfAbsent(pkg, target, reporter)
+    val stackLookup = new CloudFormationStackLookup(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
 
     List(
       new CreateChangeSetTask(
         target.region,
-        stackName,
-        S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
-        params,
-        amiParameterMap,
-        getLatestAmi(pkg, target, reporter, resources.lookup),
-        target.parameters.stage,
-        target.stack,
-        alwaysUploadToS3 = true,
-        changeSetName,
-        changeSetType,
-        stackTags
+        templatePath = S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
+        stackLookup,
+        unresolvedParameters
       ),
       new CheckChangeSetCreatedTask(
         target.region,
-        stackName,
-        changeSetName,
+        stackLookup,
         secondsToWaitForChangeSetCreation(pkg, target, reporter) * 1000
       ),
       new ExecuteChangeSetTask(
         target.region,
-        stackName,
-        changeSetName
+        stackLookup
       ),
       new CheckUpdateEventsTask(
         target.region,
@@ -130,30 +111,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       ),
       new DeleteChangeSetTask(
         target.region,
-        stackName,
-        changeSetName
+        stackLookup
       )
     )
   }
   }
 
   def defaultActions = List(updateStack)
-
-  def getStack(strategy: CloudFormationStackLookupStrategy, reporter: DeployReporter, cfnClient: AmazonCloudFormation): Option[Stack] = strategy match {
-    case LookupByName(name) => AWSCloudFormation.describeStack(name, cfnClient)
-    case LookupByTags(tags) => AWSCloudFormation.findStackByTags(tags, reporter, cfnClient)
-  }
-
-  def getNewStackName(strategy: CloudFormationStackLookupStrategy): String = strategy match {
-    case LookupByName(name) => name
-    case LookupByTags(tags) =>
-      val intrinsicKeyOrder = List("Stack", "Stage", "App")
-      val orderedTags = tags.toList.sortBy { case (key, value) =>
-        // order by the intrinsic ordering and then alphabetically for keys we don't know
-        val order = intrinsicKeyOrder.indexOf(key)
-        val intrinsicOrdering = if (order == -1) Int.MaxValue else order
-        (intrinsicOrdering, key)
-      }
-      orderedTags.map { case (key, value) => value }.mkString("-")
-  }
 }
