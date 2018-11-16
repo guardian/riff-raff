@@ -1,7 +1,7 @@
 package magenta.tasks
 
 import com.amazonaws.services.cloudformation.AmazonCloudFormation
-import com.amazonaws.services.cloudformation.model.{AmazonCloudFormationException, ChangeSetType, StackEvent}
+import com.amazonaws.services.cloudformation.model.{AmazonCloudFormationException, ChangeSetType, Parameter, StackEvent}
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
@@ -97,8 +97,9 @@ class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
                                val changeSetName: String, val stackTags: Option[Map[String, String]],
                                val userParameters: Map[String, String], val amiParameterMap: Map[CfnParam, TagCriteria],
                                latestImage: String => String => Map[String,String] => Option[String]) {
+  import CloudFormationParameters._
 
-  def resolve(template: Template, accountNumber: String, cfnClient: AmazonCloudFormation): Map[String, ParameterValue] = {
+  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: AmazonCloudFormation): Iterable[Parameter] = {
     val templateParameters = CloudFormation.validateTemplate(template, cfnClient).getParameters.asScala
       .map(tp => TemplateParameter(tp.getParameterKey, Option(tp.getDefaultValue).isDefined))
 
@@ -106,11 +107,25 @@ class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
       latestImage(accountNumber)(region.name)(tags).map(name -> _)
     }
 
-    CloudFormationParameters.combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    val combined = combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    convertParameters(combined, changeSetType, reporter)
   }
 }
 
 object CloudFormationParameters {
+  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): Iterable[Parameter] = {
+    parameters map {
+      case (k, SpecifiedValue(v)) =>
+        new Parameter().withParameterKey(k).withParameterValue(v)
+
+      case (k, UseExistingValue) if tpe == ChangeSetType.CREATE =>
+        reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+
+      case (k, UseExistingValue) =>
+        new Parameter().withParameterKey(k).withUsePreviousValue(true)
+    }
+  }
+
   def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {

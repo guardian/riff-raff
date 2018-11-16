@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import java.util.UUID
 
-import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType}
+import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, Parameter}
 import com.amazonaws.services.s3.AmazonS3
 import magenta._
 import magenta.artifact.S3Path
@@ -102,10 +102,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
   }
 
-  "UpdateCloudFormationTask" should "substitute stack and stage parameters" in {
+  import CloudFormationParameters.combineParameters
+
+  "CloudFormationParameters" should "substitute stack and stage parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
-    val combined = CloudFormationParameters.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -117,13 +119,40 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
-    val combined = CloudFormationParameters.combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "param3" -> UseExistingValue,
       "Stage" -> SpecifiedValue(PROD.name)
     ))
+  }
+
+  import CloudFormationParameters.convertParameters
+
+  it should "convert specified parameter" in {
+    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE, reporter) should
+      contain only new Parameter().withParameterKey("key").withParameterValue("value")
+  }
+
+  it should "use existing value" in {
+    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE, reporter) should
+      contain only new Parameter().withParameterKey("key").withUsePreviousValue(true)
+  }
+
+  it should "fail if using existing value on stack creation" in {
+    intercept[FailException] {
+      convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE, reporter)
+    }
+  }
+
+  "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = true, appendStage = true) shouldBe
+      LookupByName("cfn-stackname-STAGE")
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = true) shouldBe
+      LookupByName("stackname-STAGE")
+    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = false) shouldBe
+      LookupByName("stackname")
   }
 
   it should "create new CFN stack names" in {
@@ -134,15 +163,6 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
       "stackName-STAGE-appName"
     getNewStackName(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE", "Extra" -> "extraBit"))) shouldBe
       "stackName-STAGE-appName-extraBit"
-  }
-
-  "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {
-    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = true, appendStage = true) shouldBe
-      LookupByName("cfn-stackname-STAGE")
-    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = true) shouldBe
-      LookupByName("stackname-STAGE")
-    LookupByName(Stack("cfn"), Stage("STAGE"), "stackname", prependStack = false, appendStage = false) shouldBe
-      LookupByName("stackname")
   }
 
   it should "correctly create a LookupByTags from deploy parameters" in {
