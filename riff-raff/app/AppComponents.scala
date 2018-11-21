@@ -146,6 +146,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val targetController = new TargetController(deployments, authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
   val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
+  val migrationController = new MigrationController(authAction, controllerComponents)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
@@ -168,6 +169,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     targetController,
     loginController,
     testingController,
+    migrationController,
     assets
   )
 }

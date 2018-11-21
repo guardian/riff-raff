@@ -121,6 +121,9 @@ GET         /testing/testcharset                            controllers.Testing.
 GET         /testing/deployinfo                             controllers.Testing.hosts
 GET         /builds                                         controllers.DeployController.builds
 
+# Migration pages
+GET         /migration                                      controllers.MigrationController.form
+
 # Javascript routing
 GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes
 
