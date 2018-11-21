@@ -122,7 +122,10 @@ GET         /testing/deployinfo                             controllers.Testing.
 GET         /builds                                         controllers.DeployController.builds
 
 # Migration pages
-GET         /migration                                      controllers.MigrationController.form
+GET         /migration/request                              controllers.MigrationController.form
+POST        /migration/request                              controllers.MigrationController.start
+GET         /migration/migrate                              controllers.MigrationController.run
+GET         /migration/preview                              controllers.MigrationController.dryRun
 
 # Javascript routing
 GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes

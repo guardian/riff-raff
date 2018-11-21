@@ -1,0 +1,60 @@
+@import b3.vertical.fieldConstructor
+@import com.mongodb.casbah._
+@import helper.CSRF
+@import persistence.{ CollectionStats }
+@(migrationForm: Form[controllers.forms.MigrationParameters], tables: Map[String, CollectionStats])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+
+@main("Migration request", request) {
+
+  <h2>Migrate MongoDB</h2>
+
+  @b3.form(routes.MigrationController.start) {
+    @CSRF.formField
+
+    <div class="form-group">
+      <table class="table">
+        <thead>
+          <tr>
+            <td></td>
+            <th>Source</th>
+            <td></td>
+            <th>Destination</th>
+          </tr>
+        </thead>
+        <tbody>
+        @tables.zipWithIndex.map { case ((table, stats), index) =>
+          <tr>
+            <td>
+              @b3.checkbox(migrationForm("collections"), 'id -> ("collections" + index), 'value -> table, 'class -> "colselector", 'for -> ("tablename" + index))
+            </td>
+            <td>
+              <b>@table</b>
+              (@{stats.documentCount} items)
+            </td>
+            <td>☛</td>
+            <td>
+              @b3.text(migrationForm("tables"), 'id -> ("tablename" + index), 'value -> table, 'disabled -> true, 'class -> "tablename")
+            </td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="form-group">
+      @b3.text(migrationForm("limit"), '_label -> "Limit", 'pattern -> "∞|([1-9][0-9]*)", 'value -> "∞")
+    </div>
+
+    <div class="actions">
+      <button name="action" value="migrate" type="submit" class="btn btn-primary">Migrate</button>
+      <button name="action" value="preview" type="submit" class="btn btn-default">Preview</button>
+    </div>
+  }
+}
+
+<script>
+  $('.colselector').change(evt => {
+    const input = $(`#${$(evt.currentTarget).attr('for')}`);
+    input.prop('disabled', !input.prop('disabled'));
+  });
+</script>

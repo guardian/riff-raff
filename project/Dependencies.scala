@@ -75,4 +75,16 @@ object Dependencies {
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
 
+  lazy val migrationDeps = Seq(
+    "org.mongodb.scala" %% "mongo-scala-driver" % "2.5.0",
+    "org.scalikejdbc"   %% "scalikejdbc"        % "3.3.0",
+    "org.scalaz"        %% "scalaz-core"        % "7.3.0-M26",
+    "org.scalaz"        %% "scalaz-zio"         % "0.3.2",
+    "org.scalaz"        %% "scalaz-zio-interop" % "0.3.2",
+    "io.circe"          %% "circe-core"         % "0.10.0",
+    "io.circe"          %% "circe-generic"      % "0.10.0",
+    "io.circe"          %% "circe-parser"       % "0.10.0",
+    "io.circe"          %% "circe-testing"      % "0.10.0" % Test,
+    "org.scalacheck"    %% "scalacheck"         % "1.14.0" % Test
+  )
 }

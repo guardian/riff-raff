@@ -88,3 +88,11 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     includeFilter in (Assets, LessKeys.less) := "*.less"
   ))
+
+lazy val migration = (project in file("migration"))
+  .settings(commonSettings)
+  .settings(
+    publish := { },
+    libraryDependencies ++= migrationDeps,
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
+  )
