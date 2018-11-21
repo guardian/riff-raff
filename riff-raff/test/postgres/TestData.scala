@@ -5,8 +5,7 @@ import java.util.UUID
 import controllers.{ApiKey, AuthorisationRecord}
 import magenta.RunState
 import org.joda.time.DateTime
-import persistence.MessageDocument.DeployDocument
-import persistence.{DeployRecordDocument, DeploymentSelectorDocument, LogDocument, MessageDocument, ParametersDocument}
+import persistence.{AllDocument, DeployRecordDocument, LogDocument, MessageDocument, ParametersDocument}
 
 object TestData {
   val dateTime = DateTime.now()
@@ -38,7 +37,7 @@ object TestData {
         buildId = s"id-$uuid",
         stage = "TEST",
         tags = Map.empty,
-        selector = DeploymentSelectorDocument.AllDocument
+        selector = AllDocument
       ),
       status = RunState.Completed,
       summarised = Some(true),
@@ -49,11 +48,11 @@ object TestData {
     )
   }
 
-  def someLogDocument: LogDocument = new LogDocument(
+  def someLogDocument(document: MessageDocument): LogDocument = new LogDocument(
     deploy = UUID.randomUUID(),
     id = UUID.randomUUID(),
     parent = Some(UUID.randomUUID()),
-    document = DeployDocument(),
+    document = document,
     time = dateTime
   )
 }

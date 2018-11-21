@@ -10,8 +10,9 @@ import magenta.ContextMessage._
 import magenta.Message._
 import magenta._
 import org.joda.time.DateTime
+import persistence.DetailConversions.{taskDetail, throwableDetail}
 import persistence.ParametersDocument._
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json._
 import scalikejdbc.WrappedResultSet
 import utils.Json._
 
@@ -67,6 +68,39 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
   }
 }
 
+sealed trait DeploymentSelectorDocument {
+  def asDBObject: DBObject = {
+    val fields: List[(String,Any)] = List("_typeHint" -> getClass.getName) ++ dboFields
+    fields.toMap
+  }
+  def dboFields: List[(String,Any)]
+}
+object DeploymentSelectorDocument {
+  implicit def formats = new Format[DeploymentSelectorDocument] {
+    override def writes(doc: DeploymentSelectorDocument): JsValue = doc match {
+      case AllDocument => JsObject(List("_typeHint" -> JsString(AllDocument.getClass.getName)))
+      case dsd@DeploymentKeysSelectorDocument(_) => Json.toJson(dsd).as[JsObject] + ("_typeHint" -> JsString(DeploymentKeysSelectorDocument.getClass.getName))
+      case dsd => throw new IllegalArgumentException(s"Don't know how to write DeploymentSelectorDocument of type $dsd}")
+    }
+
+
+    override def reads(json: JsValue): JsResult[DeploymentSelectorDocument] = (json \ "_typeHint").as[String] match {
+      case "persistence.AllDocument$" => JsSuccess(AllDocument)
+      case "persistence.DeploymentKeysSelectorDocument$" => JsSuccess(json.as[DeploymentKeysSelectorDocument])
+      case hint => throw new IllegalArgumentException(s"Don't know how to construct DeploymentSelectorDocument of type $hint}")
+    }
+  }
+
+  def from(dbo: DBObject): DeploymentSelectorDocument = {
+    dbo.as[String]("_typeHint") match {
+      case "persistence.AllDocument$" => AllDocument
+      case "persistence.DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
+        dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
+      )
+    }
+  }
+}
+
 case class ParametersDocument(
   deployer: String,
   projectName: String,
@@ -99,8 +133,88 @@ object ParametersDocument extends MongoSerialisable[ParametersDocument] {
       buildId = dbo.as[String]("buildId"),
       stage = dbo.as[String]("stage"),
       tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap,
-      selector = dbo.getAs[DBObject]("selector").map(DeploymentSelectorDocument.from).getOrElse(DeploymentSelectorDocument.AllDocument)
+      selector = dbo.getAs[DBObject]("selector").map(DeploymentSelectorDocument.from).getOrElse(AllDocument)
     ))
+  }
+}
+
+sealed trait MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message] = None): Message
+  def asDBObject:DBObject = {
+    val fields: List[(String,Any)] =
+      List("_typeHint" -> getClass.getName) ++ dboFields
+    fields.toMap
+  }
+  def dboFields: List[(String,Any)] = Nil
+}
+object MessageDocument {
+
+  implicit def formats = new Format[MessageDocument] {
+    override def writes(doc: MessageDocument): JsValue = doc match {
+      case DeployDocument => JsObject(List("_typeHint" -> JsString(DeployDocument.getClass.getName)))
+      case d@TaskListDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(TaskListDocument.getClass.getName))
+      case d@TaskRunDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(TaskRunDocument.getClass.getName))
+      case d@InfoDocument(_) => Json.toJson(d).as[JsObject] + ("_type   Hint" -> JsString(InfoDocument.getClass.getName))
+      case d@CommandOutputDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(CommandOutputDocument.getClass.getName))
+      case d@CommandErrorDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(CommandErrorDocument.getClass.getName))
+      case d@VerboseDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(VerboseDocument.getClass.getName))
+      case d@FailDocument(_, _) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(FailDocument.getClass.getName))
+      case FinishContextDocument => JsObject(List("_typeHint" -> JsString(FinishContextDocument.getClass.getName)))
+      case FailContextDocument => JsObject(List("_typeHint" -> JsString(FailContextDocument.getClass.getName)))
+      case d@WarningDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(WarningDocument.getClass.getName))
+      case d => throw new IllegalArgumentException(s"Don't know how to write MessageDocument of type $d}")
+    }
+
+
+    override def reads(json: JsValue): JsResult[MessageDocument] = (json \ "_typeHint").as[String] match {
+      case "persistence.DeployDocument$" => JsSuccess(DeployDocument)
+      case "persistence.TaskListDocument$" => JsSuccess(json.as[TaskListDocument])
+      case "persistence.TaskRunDocument$" => JsSuccess(json.as[TaskRunDocument])
+      case "persistence.InfoDocument$" => JsSuccess(json.as[InfoDocument])
+      case "persistence.CommandOutputDocument$" => JsSuccess(json.as[CommandOutputDocument])
+      case "persistence.CommandErrorDocument$" => JsSuccess(json.as[CommandErrorDocument])
+      case "persistence.VerboseDocument$" => JsSuccess(json.as[VerboseDocument])
+      case "persistence.FailDocument$" => JsSuccess(json.as[FailDocument])
+      case "persistence.FinishContextDocument$" => JsSuccess(FinishContextDocument)
+      case "persistence.FailContextDocument$" => JsSuccess(FailContextDocument)
+      case "persistence.WarningDocument$" => JsSuccess(json.as[WarningDocument])
+      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+    }
+  }
+
+  def apply(from: Message): MessageDocument = {
+    from match {
+      case Deploy(_) => DeployDocument
+      case TaskList(taskList) => TaskListDocument(taskList)
+      case TaskRun(task) => TaskRunDocument(task)
+      case Info(text) => InfoDocument(text)
+      case CommandOutput(text) => CommandOutputDocument(text)
+      case CommandError(text) => CommandErrorDocument(text)
+      case Verbose(text) => VerboseDocument(text)
+      case Fail(text, detail) => FailDocument(text, detail)
+      case FinishContext(_) => FinishContextDocument
+      case FailContext(_) => FailContextDocument
+      case Warning(text) => WarningDocument(text)
+      case StartContext(_) => throw new IllegalArgumentException("StartContext can not be turned into a MessageDocument")
+    }
+  }
+
+  def from(dbo: DBObject): MessageDocument = {
+    import DetailConversions._
+    dbo.as[String]("_typeHint") match {
+      case "persistence.DeployDocument" => DeployDocument
+      case "persistence.TaskListDocument" => TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
+      case "persistence.TaskRunDocument" => TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
+      case "persistence.InfoDocument" => InfoDocument(dbo.as[String]("text"))
+      case "persistence.CommandOutputDocument" => CommandOutputDocument(dbo.as[String]("text"))
+      case "persistence.CommandErrorDocument" => CommandErrorDocument(dbo.as[String]("text"))
+      case "persistence.VerboseDocument" => VerboseDocument(dbo.as[String]("text"))
+      case "persistence.FailDocument" => FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
+      case "persistence.FinishContextDocument" => FinishContextDocument
+      case "persistence.FailContextDocument" => FailContextDocument
+      case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
+      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+    }
   }
 }
 
@@ -204,113 +318,87 @@ object DetailConversions {
   }
 }
 
-sealed trait MessageDocument extends EnumEntry {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message] = None): Message
-  def asDBObject:DBObject = {
-    val fields:List[(String,Any)] =
-      List("_typeHint" -> getClass.getName) ++ dboFields
-    fields.toMap
-  }
-  def dboFields:List[(String,Any)] = Nil
+case object DeployDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Deploy(params)
 }
 
-case object MessageDocument extends Enum[MessageDocument] with PlayJsonEnum[MessageDocument] {
+case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
+  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
+}
+object TaskListDocument {
+  implicit def formats: Format[TaskListDocument] = Json.format[TaskListDocument]
+}
 
-  case class DeployDocument() extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Deploy(params)
-  }
-  case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
-    override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
-  }
-  case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
-    override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
-  }
-  case class InfoDocument(text: String) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
-    override lazy val dboFields = List("text" -> text)
-  }
-  case class CommandOutputDocument(text: String) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
-    override lazy val dboFields = List("text" -> text)
-  }
-  case class CommandErrorDocument(text: String) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
-    override lazy val dboFields = List("text" -> text)
-  }
-  case class VerboseDocument(text: String) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
-    override lazy val dboFields = List("text" -> text)
-  }
-  case class WarningDocument(text: String) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
-    override lazy val dboFields = List("text" -> text)
-  }
-  case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
-    override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
-  }
-  case class FinishContextDocument() extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
-  }
-  case class FailContextDocument() extends MessageDocument {
-    def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get)
-  }
+case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
+  override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
+}
+object TaskRunDocument {
+  implicit def formats: Format[TaskRunDocument] = Json.format[TaskRunDocument]
+}
 
-  val values = findValues
+case class InfoDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object InfoDocument {
+  implicit def formats: Format[InfoDocument] = Json.format[InfoDocument]
+}
 
-  def apply(from: Message): MessageDocument = {
-    from match {
-      case Deploy(_) => DeployDocument()
-      case TaskList(taskList) => TaskListDocument(taskList)
-      case TaskRun(task) => TaskRunDocument(task)
-      case Info(text) => InfoDocument(text)
-      case CommandOutput(text) => CommandOutputDocument(text)
-      case CommandError(text) => CommandErrorDocument(text)
-      case Verbose(text) => VerboseDocument(text)
-      case Fail(text, detail) => FailDocument(text,detail)
-      case FinishContext(message) => FinishContextDocument()
-      case FailContext(message) => FailContextDocument()
-      case Warning(text) => WarningDocument(text)
-      case StartContext(_) => throw new IllegalArgumentException("StartContext can not be turned into a MessageDocument")
-    }
-  }
-  //TODO: Clean up after migration
-  def from(dbo:DBObject): MessageDocument = {
-    import DetailConversions._
-    dbo.as[String]("_typeHint") match {
-      case "persistence.DeployDocument" | "persistence.MessageDocument$DeployDocument" =>
-        DeployDocument()
-      case "persistence.TaskListDocument" | "persistence.MessageDocument$TaskListDocument" =>
-        TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
-      case "persistence.TaskRunDocument" | "persistence.MessageDocument$TaskRunDocument"=>
-        TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
-      case "persistence.InfoDocument" | "persistence.MessageDocument$InfoDocument" =>
-        InfoDocument(dbo.as[String]("text"))
-      case "persistence.CommandOutputDocument" | "persistence.MessageDocument$CommandOutputDocument" =>
-        CommandOutputDocument(dbo.as[String]("text"))
-      case "persistence.CommandErrorDocument" | "persistence.MessageDocument$CommandErrorDocument" =>
-        CommandErrorDocument(dbo.as[String]("text"))
-      case "persistence.VerboseDocument" | "persistence.MessageDocument$VerboseDocument" =>
-        VerboseDocument(dbo.as[String]("text"))
-      case "persistence.FailDocument" | "persistence.MessageDocument$FailDocument" =>
-        FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
-      case "persistence.FinishContextDocument" | "persistence.MessageDocument$FinishContextDocument" =>
-        FinishContextDocument()
-      case "persistence.FailContextDocument" | "persistence.MessageDocument$FailContextDocument" =>
-        FailContextDocument()
-      case "persistence.WarningDocument" | "persistence.MessageDocument$WarningDocument" =>
-        WarningDocument(dbo.as[String]("text"))
-      case hint =>
-        throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
-    }
-  }
+case class CommandOutputDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object CommandOutputDocument {
+  implicit def formats: Format[CommandOutputDocument] = Json.format[CommandOutputDocument]
+}
+
+case class CommandErrorDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object CommandErrorDocument {
+  implicit def formats: Format[CommandErrorDocument] = Json.format[CommandErrorDocument]
+}
+
+case class VerboseDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object VerboseDocument {
+  implicit def formats: Format[VerboseDocument] = Json.format[VerboseDocument]
+}
+
+case class WarningDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object WarningDocument {
+  implicit def formats: Format[WarningDocument] = Json.format[WarningDocument]
+}
+
+case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
+  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
+}
+object FailDocument {
+  implicit def formats: Format[FailDocument] = Json.format[FailDocument]
+}
+
+case object FinishContextDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
+}
+
+case object FailContextDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get)
 }
 
 case class DeploymentKeyDocument(name: String, action: String, stack: String, region: String)
 
 object DeploymentKeyDocument extends MongoSerialisable[DeploymentKeyDocument] {
+  implicit def formats: Format[DeploymentKeyDocument] = Json.format[DeploymentKeyDocument]
+
   implicit val deploymentKeyFormat: MongoFormat[DeploymentKeyDocument] = new DeploymentKeyFormat
   private class DeploymentKeyFormat extends MongoFormat[DeploymentKeyDocument] {
     def toDBO(a: DeploymentKeyDocument) = {
@@ -335,30 +423,15 @@ object DeploymentKeyDocument extends MongoSerialisable[DeploymentKeyDocument] {
   }
 }
 
-sealed trait DeploymentSelectorDocument extends EnumEntry {
-  def asDBObject: DBObject = {
-    val fields: List[(String,Any)] = List("_typeHint" -> getClass.getName) ++ dboFields
-    fields.toMap
-  }
-  def dboFields: List[(String,Any)]
+
+
+case object AllDocument extends DeploymentSelectorDocument {
+  def dboFields = Nil
 }
 
-case object DeploymentSelectorDocument extends Enum[DeploymentSelectorDocument] with PlayJsonEnum[DeploymentSelectorDocument] {
-  case object AllDocument extends DeploymentSelectorDocument {
-    def dboFields = Nil
-  }
-  case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument {
-    def dboFields = List("keys" -> ids.map(_.toDBO))
-  }
-
-  val values = findValues
-
-  def from(dbo: DBObject): DeploymentSelectorDocument = {
-    dbo.as[String]("_typeHint") match {
-      case "persistence.AllDocument$" | "persistence.DeploymentSelectorDocument$AllDocument$" => AllDocument
-      case "persistence.DeploymentKeysSelectorDocument" | "persistence.DeploymentSelectorDocument$DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
-        dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
-      )
-    }
-  }
+case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument {
+  def dboFields = List("keys" -> ids.map(_.toDBO))
+}
+object DeploymentKeysSelectorDocument {
+  implicit def formats: Format[DeploymentKeysSelectorDocument] = Json.format[DeploymentKeysSelectorDocument]
 }

@@ -5,7 +5,7 @@ import java.util.UUID
 import magenta.RunState
 import org.joda.time.DateTime
 import org.scalatest.{FunSuite, Matchers}
-import persistence.DeploymentSelectorDocument.AllDocument
+import persistence.AllDocument
 import persistence.{DeployRecordDocument, ParametersDocument}
 
 import scala.util.{Success, Try}

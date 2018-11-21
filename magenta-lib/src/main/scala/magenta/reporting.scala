@@ -23,9 +23,7 @@ object RunState extends Enum[RunState] with PlayJsonEnum[RunState] with CapitalW
   case object ChildRunning extends RunState { override val value: Int = 4 }
   case object Failed extends RunState { override val value: Int = 5 }
 
-  def mostSignificant(value1: RunState, value2: RunState): RunState = {
-    if (value1.value > value2.value) value1 else value2
-  }
+  def mostSignificant(value1: RunState, value2: RunState): RunState = if (value1.value > value2.value) value1 else value2
 }
 
 object MessageState {
@@ -35,12 +33,10 @@ object MessageState {
       case _ => SimpleMessageState(message, time, id)
     }
   }
-  def apply(message: StartContext, end: ContextMessage, time:DateTime, id: UUID): MessageState = {
-    end match {
-      case finish:FinishContext => FinishMessageState(message, finish, time, id)
-      case fail:FailContext => FailMessageState(message, fail, time, id)
-      case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
-    }
+  def apply(message: StartContext, end: ContextMessage, time:DateTime, id: UUID): MessageState = end match {
+    case finish:FinishContext => FinishMessageState(message, finish, time, id)
+    case fail:FailContext => FailMessageState(message, fail, time, id)
+    case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
   }
 }
 

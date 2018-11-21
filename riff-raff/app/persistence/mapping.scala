@@ -92,11 +92,10 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     log.document match {
       case leaf if children.isEmpty =>
         List(messageWrapper(log, MessageStack(leaf.asMessage(parameters, messagesTail.headOption) :: messagesTail, log.time)))
-      case node => {
+      case node =>
         val message:Message = node.asMessage(parameters)
         messageWrapper(log,MessageStack(StartContext(message) :: messagesTail, log.time)) ::
           children.flatMap(child => convertToMessageWrappers(tree, child, message :: messagesTail))
-      }
     }
   }
 

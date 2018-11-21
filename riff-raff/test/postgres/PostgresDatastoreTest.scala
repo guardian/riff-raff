@@ -3,9 +3,10 @@ package postgres
 import controllers.{ApiKey, AuthorisationRecord}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState.ChildRunning
+import magenta.{TaskDetail, ThrowableDetail}
 import org.joda.time.DateTime
 import org.scalatest.{FreeSpec, Matchers}
-import persistence.{DeployRecordDocument, LogDocument}
+import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
 import postgres.TestData._
 import scalikejdbc._
 
@@ -288,16 +289,37 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers 
       }
     }
 
-    def withLogDocument(test: LogDocument => Any) = {
-      val logDoc = someLogDocument
-      datastore.writeLog(logDoc)
-      test(logDoc)
+    def withLogDocument(logDocument: LogDocument)(test: LogDocument => Any) = {
+      datastore.writeLog(logDocument)
+      test(logDocument)
     }
 
-    "create and read a deploy log" in {
+    "read a deploy log with a DeployDocument document type" in {
+      val deployLog = someLogDocument(DeployDocument)
+
       withFixture {
-        withLogDocument { logDoc =>
-          datastore.readLogs(logDoc.id) shouldBe logDoc
+        withLogDocument(deployLog) { logDoc =>
+          datastore.readLogs(logDoc.id).head shouldBe logDoc
+        }
+      }
+    }
+
+    "read a deploy log with a TaskListDocument document type" in {
+      withFixture {
+        val deployLog = someLogDocument(TaskListDocument(List(TaskDetail("name1", "description1", "verbose1"), TaskDetail("name2", "description2", "verbose2"))))
+
+        withLogDocument(deployLog) { logDoc =>
+          datastore.readLogs(logDoc.id).head shouldBe logDoc
+        }
+      }
+    }
+
+    "read a deploy log with a FailDocument document type" in {
+      withFixture {
+        val deployLog = someLogDocument(FailDocument("fail", ThrowableDetail("name", "message", "stacktrace")))
+
+        withLogDocument(deployLog) { logDoc =>
+          datastore.readLogs(logDoc.id).head shouldBe logDoc
         }
       }
     }

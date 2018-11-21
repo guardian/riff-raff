@@ -7,8 +7,8 @@ import magenta.Message.Info
 import magenta._
 import magenta.input.{DeploymentKey, DeploymentKeysSelector}
 import org.scalatest.{FlatSpec, Matchers}
-import persistence.DeploymentSelectorDocument.{AllDocument, DeploymentKeysSelectorDocument}
-import persistence.MessageDocument.DeployDocument
+import persistence.{AllDocument, DeploymentKeysSelectorDocument}
+import persistence.DeployDocument
 import persistence._
 
 class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
@@ -63,7 +63,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
     val tree = LogDocumentTree(logDocuments)
     tree.roots.size should be(1)
     tree.roots.head match {
-      case LogDocument(_, _, None, DeployDocument(),_) =>
+      case LogDocument(_, _, None, DeployDocument,_) =>
       case _ => fail("Didn't get the expected document when trying to locate the root")
     }
   }

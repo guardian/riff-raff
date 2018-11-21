@@ -6,10 +6,13 @@ import enumeratum._
 import magenta.metrics.MagentaMetrics
 import magenta.tasks.Task
 import org.joda.time.DateTime
+import play.api.libs.json.{Format, Json}
 import rx.lang.scala.{Observable, Subject}
 
 case class ThrowableDetail(name: String, message:String, stackTrace: String, cause: Option[ThrowableDetail] = None)
 object ThrowableDetail {
+  implicit def formats: Format[ThrowableDetail] = Json.format[ThrowableDetail]
+
   implicit def Throwable2ThrowableDetail(t:Throwable): ThrowableDetail = ThrowableDetail(t)
   def apply(t:Throwable): ThrowableDetail = {
     ThrowableDetail(t.getClass.getName, Option(t.getMessage).getOrElse(""), t.getStackTrace.mkString("\n"), Option(t.getCause).map(ThrowableDetail(_)))
@@ -20,8 +23,10 @@ case class TaskDetail(name: String, description:String, verbose:String) {
   def fullDescription = name + " " + description
 }
 object TaskDetail {
+  implicit def formats: Format[TaskDetail] = Json.format[TaskDetail]
+
   implicit def Task2TaskDetail(t:Task): TaskDetail = TaskDetail(t)
-  implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_)).toList
+  implicit def TaskList2TaskDetailList(tl:List[Task]): List[TaskDetail] = tl.map(TaskDetail(_))
   def apply(t:Task): TaskDetail = {
     TaskDetail(t.name, t.description, t.verbose)
   }
