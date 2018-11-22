@@ -202,7 +202,7 @@ object MessageDocument {
   def from(dbo: DBObject): MessageDocument = {
     import DetailConversions._
     dbo.as[String]("_typeHint") match {
-      case "persistence.DeployDocument" => DeployDocument
+      case "persistence.DeployDocument$" => DeployDocument
       case "persistence.TaskListDocument" => TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
       case "persistence.TaskRunDocument" => TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
       case "persistence.InfoDocument" => InfoDocument(dbo.as[String]("text"))
@@ -210,13 +210,91 @@ object MessageDocument {
       case "persistence.CommandErrorDocument" => CommandErrorDocument(dbo.as[String]("text"))
       case "persistence.VerboseDocument" => VerboseDocument(dbo.as[String]("text"))
       case "persistence.FailDocument" => FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
-      case "persistence.FinishContextDocument" => FinishContextDocument
-      case "persistence.FailContextDocument" => FailContextDocument
+      case "persistence.FinishContextDocument$" => FinishContextDocument
+      case "persistence.FailContextDocument$" => FailContextDocument
       case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
       case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
     }
   }
 }
+
+
+case object DeployDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Deploy(params)
+}
+
+case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
+  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
+}
+object TaskListDocument {
+  implicit def formats: Format[TaskListDocument] = Json.format[TaskListDocument]
+}
+
+case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
+  override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
+}
+object TaskRunDocument {
+  implicit def formats: Format[TaskRunDocument] = Json.format[TaskRunDocument]
+}
+
+case class InfoDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object InfoDocument {
+  implicit def formats: Format[InfoDocument] = Json.format[InfoDocument]
+}
+
+case class CommandOutputDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object CommandOutputDocument {
+  implicit def formats: Format[CommandOutputDocument] = Json.format[CommandOutputDocument]
+}
+
+case class CommandErrorDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object CommandErrorDocument {
+  implicit def formats: Format[CommandErrorDocument] = Json.format[CommandErrorDocument]
+}
+
+case class VerboseDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object VerboseDocument {
+  implicit def formats: Format[VerboseDocument] = Json.format[VerboseDocument]
+}
+
+case class WarningDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
+  override lazy val dboFields = List("text" -> text)
+}
+object WarningDocument {
+  implicit def formats: Format[WarningDocument] = Json.format[WarningDocument]
+}
+
+case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
+  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
+}
+object FailDocument {
+  implicit def formats: Format[FailDocument] = Json.format[FailDocument]
+}
+
+case object FinishContextDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
+}
+
+case object FailContextDocument extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get)
+}
+
 
 case class LogDocument(
   deploy: UUID,
@@ -316,82 +394,6 @@ object DetailConversions {
       cause = dbo.getAs[DBObject]("cause").flatMap(dbo => fromDBO(dbo))
     ))
   }
-}
-
-case object DeployDocument extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Deploy(params)
-}
-
-case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
-  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
-}
-object TaskListDocument {
-  implicit def formats: Format[TaskListDocument] = Json.format[TaskListDocument]
-}
-
-case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
-  override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
-}
-object TaskRunDocument {
-  implicit def formats: Format[TaskRunDocument] = Json.format[TaskRunDocument]
-}
-
-case class InfoDocument(text: String) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
-  override lazy val dboFields = List("text" -> text)
-}
-object InfoDocument {
-  implicit def formats: Format[InfoDocument] = Json.format[InfoDocument]
-}
-
-case class CommandOutputDocument(text: String) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
-  override lazy val dboFields = List("text" -> text)
-}
-object CommandOutputDocument {
-  implicit def formats: Format[CommandOutputDocument] = Json.format[CommandOutputDocument]
-}
-
-case class CommandErrorDocument(text: String) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
-  override lazy val dboFields = List("text" -> text)
-}
-object CommandErrorDocument {
-  implicit def formats: Format[CommandErrorDocument] = Json.format[CommandErrorDocument]
-}
-
-case class VerboseDocument(text: String) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
-  override lazy val dboFields = List("text" -> text)
-}
-object VerboseDocument {
-  implicit def formats: Format[VerboseDocument] = Json.format[VerboseDocument]
-}
-
-case class WarningDocument(text: String) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
-  override lazy val dboFields = List("text" -> text)
-}
-object WarningDocument {
-  implicit def formats: Format[WarningDocument] = Json.format[WarningDocument]
-}
-
-case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
-  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
-}
-object FailDocument {
-  implicit def formats: Format[FailDocument] = Json.format[FailDocument]
-}
-
-case object FinishContextDocument extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FinishContext(originalMessage.get)
-}
-
-case object FailContextDocument extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = FailContext(originalMessage.get)
 }
 
 case class DeploymentKeyDocument(name: String, action: String, stack: String, region: String)
