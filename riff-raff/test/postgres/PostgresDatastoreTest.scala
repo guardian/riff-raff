@@ -55,7 +55,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers 
           val dbApiKey = datastore.getAndUpdateApiKey(apiKey.key, Some("history"))
 
           dbApiKey shouldBe defined
-          apiKey shouldBe dbApiKey.get
+          dbApiKey.get.callCounters shouldBe Map("history" -> 11)
         }
       }
     }

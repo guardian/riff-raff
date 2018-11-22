@@ -2,7 +2,7 @@
 
 # --- !Ups
 
-CREATE TABLE apiKey (id CHAR(32) PRIMARY KEY, content jsonb NOT NULL);
+CREATE TABLE apiKey (key CHAR(100) PRIMARY KEY, content jsonb NOT NULL);
 
 CREATE TABLE auth (email VARCHAR(100) PRIMARY KEY, content jsonb NOT NULL);
 

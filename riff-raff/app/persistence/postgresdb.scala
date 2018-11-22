@@ -43,7 +43,7 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: apiKey(id: String, content: jsonb)
   def createApiKey(newKey: ApiKey): Unit = DB localTx { implicit session =>
     val json = Json.toJson(newKey).toString()
-    sql"INSERT INTO apiKey (id, content) VALUES (${newKey.key}, $json::jsonb)".update.apply()
+    sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb)".update.apply()
   }
 
   def getApiKeyList: Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
@@ -53,20 +53,37 @@ class PostgresDatastore extends DataStore with Logging {
   }
 
   def getApiKey(key: String): Option[ApiKey] = DB readOnly { implicit session =>
-    sql"SELECT content FROM apiKey WHERE id = $key".map(ApiKey(_)).single.apply()
+    sql"SELECT content FROM apiKey WHERE key = $key".map(ApiKey(_)).single.apply()
   }
 
-  //TODO: Fix this
-  def getAndUpdateApiKey(key: String, counter: Option[String]): Option[ApiKey] = DB localTx { implicit session =>
-    val dateTime = DateTime.now().toString()
-    val update =
-      if(counter.isDefined)
-        sqls"""{"lastUsed": "$dateTime", "callCounters": {"${counter.get}": "10"}}"""
-      else
-        s"""{"lastUsed": "$dateTime"}"""
+  def getAndUpdateApiKey(key: String, counterOpt: Option[String]): Option[ApiKey] = DB localTx { implicit session =>
+    val now = java.time.ZonedDateTime.now.toOffsetDateTime.toString
 
-    sql"""UPDATE apiKey SET content = content || $update::jsonb WHERE id = $key""".update().apply()
-    sql"SELECT content FROM apiKey WHERE id = $key".map(ApiKey(_)).single().apply()
+    val q: SQLSyntax = counterOpt match {
+      case Some(counter) =>
+        val content: String = s"""
+        jsonb_set(
+            content || '{"lastUsed": "$now"}',
+            '{callCounters, $counter}',
+            (COALESCE(content->'callCounters'->>'$counter','0')::int + 1)::text::jsonb
+        )
+        """
+        SQLSyntax.createUnsafely(s"""
+          UPDATE
+              apiKey
+          SET
+              content = $content
+          WHERE
+              key = '$key';
+          """)
+      case None =>
+        sqls"""UPDATE apiKey SET content = content || '{"lastUsed": "$now"}'::jsonb WHERE key = $key"""
+    }
+
+    sql"$q".update.apply()
+
+    //return updated apiKey
+    sql"SELECT content FROM apiKey WHERE key = $key".map(ApiKey(_)).single().apply()
   }
 
   def getApiKeyByApplication(application: String): Option[ApiKey] = DB readOnly { implicit session =>
@@ -74,7 +91,7 @@ class PostgresDatastore extends DataStore with Logging {
   }
 
   def deleteApiKey(key: String): Unit = DB localTx { implicit session =>
-    sql"DELETE FROM apiKey WHERE id = $key".update.apply()
+    sql"DELETE FROM apiKey WHERE key = $key".update.apply()
   }
 
   // Table: deploy(id: String, content: jsonb)
@@ -126,7 +143,7 @@ class PostgresDatastore extends DataStore with Logging {
 
   // Most likely not used
   override def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit = {}
-//    DB localTx { implicit session =>
+//  DB localTx { implicit session =>
 //    val update = metaData.map { case (tag, value) =>
 //      sqls"content->>'{parameters,tags,$tag}'" -> value
 //    }
@@ -141,13 +158,13 @@ class PostgresDatastore extends DataStore with Logging {
 
   //TODO: Deprecate stringUUID
   override def addStringUUID(uuid: UUID): Unit = {}
-//    DB localTx { implicit session =>
+//  DB localTx { implicit session =>
 //    val update = Json.toJson(Map("stringUUID" -> uuid.toString)).toString()
 //    sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
 //  }
 
   override def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = { List.empty }
-//    DB readOnly { implicit session =>
+//  DB readOnly { implicit session =>
 //    sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'stringUUID') IS NULL".map(SimpleDeployDetail(_)).list.apply()
 //  }
 

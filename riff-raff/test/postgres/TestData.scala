@@ -12,7 +12,7 @@ object TestData {
 
   def someApiKey: ApiKey = new ApiKey(
     application = "test-application",
-    key = "test-key",
+    key = UUID.randomUUID().toString,
     issuedBy = "guardian-developer",
     created = dateTime,
     lastUsed = Some(dateTime),
