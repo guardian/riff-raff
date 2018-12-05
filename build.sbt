@@ -54,7 +54,9 @@ lazy val riffraff = project.in(file("riff-raff"))
     buildInfoPackage := "riffraff",
 
     resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
-    libraryDependencies ++= riffRaffDeps,
+    libraryDependencies ++= riffRaffDeps ++ migrationDeps,
+
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
 
     javaOptions in Universal ++= Seq(
       s"-Dpidfile.path=/dev/null",
@@ -88,11 +90,3 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     includeFilter in (Assets, LessKeys.less) := "*.less"
   ))
-
-lazy val migration = (project in file("migration"))
-  .settings(commonSettings)
-  .settings(
-    publish := { },
-    libraryDependencies ++= migrationDeps,
-    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8")
-  )

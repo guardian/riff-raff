@@ -124,8 +124,8 @@ GET         /builds                                         controllers.DeployCo
 # Migration pages
 GET         /migration/request                              controllers.MigrationController.form
 POST        /migration/request                              controllers.MigrationController.start
-GET         /migration/migrate                              controllers.MigrationController.run
-GET         /migration/preview                              controllers.MigrationController.dryRun
+GET         /migration/migrate                              controllers.MigrationController.run(settings: controllers.forms.MigrationParameters)
+GET         /migration/preview                              controllers.MigrationController.dryRun(settings: controllers.forms.MigrationParameters)
 
 # Javascript routing
 GET         /assets/javascripts/routes                      controllers.Application.javascriptRoutes

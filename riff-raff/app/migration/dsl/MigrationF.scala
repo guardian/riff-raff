@@ -1,7 +1,7 @@
 package migration
 package dsl
 
-import migration.data.{ToPostgre, FromMongo}
+import migration.data.{ToPostgres, FromMongo}
 import org.mongodb.scala._
 
 sealed abstract class ColType { self =>
@@ -18,7 +18,8 @@ case object ColUUID extends ColType
 sealed abstract class MigrationF[A]
 final case class GetCollection(mongo: MongoDatabase, name: String) extends MigrationF[MongoCollection[Document]]
 final case class GetCount(collection: MongoCollection[Document]) extends MigrationF[Long]
-final case class GetCursor[A](collection: MongoCollection[Document], skip: Int, limit: Int, formatter: FromMongo[A]) extends MigrationF[List[A]]
+final case class GetCursor(collection: MongoCollection[Document]) extends MigrationF[FindObservable[Document]]
 final case class DropTable(name: String) extends MigrationF[Unit]
 final case class CreateTable(name: String, id: String, idType: ColType) extends MigrationF[Unit]
-final case class InsertAll[A](table: String, records: List[A], formatter: ToPostgre[A]) extends MigrationF[Unit]
+final case class InsertAll[A](table: String, records: List[A], formatter: ToPostgres[A]) extends MigrationF[Unit]
+final case class GetItems[A](cursor: FindObservable[Document], limit: Int, formatter: FromMongo[A]) extends MigrationF[List[A]]

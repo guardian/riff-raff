@@ -19,17 +19,18 @@ class MigrationController(AuthAction: AuthAction[AnyContent], val controllerComp
   def start = AuthAction { implicit request =>
     MigrationParameters.form.bindFromRequest().fold(
       errors => {
-        // logger.info(s"Errors: ${errors.errors}")
+        log.info(s"Errors: ${errors.errors}")
+        BadRequest(views.html.migration.form(errors, Persistence.store.collectionStats))
       },
       form => {
         form.action match {
           case "preview" =>
 
-            Redirect(routes.MigrationController.dryRun)
+            Redirect(routes.MigrationController.dryRun(form))
 
           case "migrate" =>
 
-            Redirect(routes.MigrationController.run)
+            Redirect(routes.MigrationController.run(form))
 
           case _ =>
             throw new RuntimeException("Unknown action")
@@ -38,7 +39,7 @@ class MigrationController(AuthAction: AuthAction[AnyContent], val controllerComp
     )
   }
 
-  def run = AuthAction { implicit request => NotFound }
+  def run(settings: MigrationParameters) = AuthAction { implicit request => NotFound }
 
-  def dryRun = AuthAction { implicit request => NotFound }
+  def dryRun(settings: MigrationParameters) = AuthAction { implicit request => NotFound }
 }

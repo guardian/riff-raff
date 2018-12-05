@@ -21,8 +21,11 @@ package object migration {
   def getCount(coll: MongoCollection[Document]): Migration[MigrationError, Long] =
     FreeT.liftF(GetCount(coll))
 
-  def getCursor[A](coll: MongoCollection[Document], skip: Int, limit: Int)(implicit F: FromMongo[A]): Migration[MigrationError, List[A]] =
-    FreeT.liftF[MigrationF, IO[MigrationError, ?], List[A]](GetCursor(coll, skip, limit, F))
+  def getCursor(coll: MongoCollection[Document]): Migration[MigrationError, FindObservable[Document]] =
+    FreeT.liftF(GetCursor(coll))
+
+  def getItems[A](cursor: FindObservable[Document], limit: Int)(implicit F: FromMongo[A]): Migration[MigrationError, List[A]] =
+    FreeT.liftF[MigrationF, IO[MigrationError, ?], List[A]](GetItems(cursor, limit, F))
 
   def dropTable(name: String): Migration[MigrationError, Unit] = 
     FreeT.liftF(DropTable(name))
@@ -30,6 +33,6 @@ package object migration {
   def createTable(name: String, id: String, idType: ColType): Migration[MigrationError, Unit] = 
     FreeT.liftF(CreateTable(name, id, idType))
     
-  def insertAll[A](table: String, records: List[A])(implicit T: ToPostgre[A]): Migration[MigrationError, Unit] = 
+  def insertAll[A](table: String, records: List[A])(implicit T: ToPostgres[A]): Migration[MigrationError, Unit] = 
     FreeT.liftF[MigrationF, IO[MigrationError, ?], Unit](InsertAll(table, records, T))
 }

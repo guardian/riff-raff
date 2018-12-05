@@ -7,7 +7,7 @@ import scalikejdbc._
 
 final case class PgTable[A](name: String, id: String, idType: ColType)
 
-object Postgre {
+object Postgres {
   def connect(db: String, user: String, password: String): IO[MigrationError, Unit] =
     IO.syncThrowable {
       Class.forName("org.postgresql.Driver")
@@ -35,7 +35,7 @@ object Postgre {
       }
     } leftMap(DatabaseError(_))
 
-  def insertAll[A](table: String, records: List[A], formatter: ToPostgre[A]): IO[MigrationError, Unit] =
+  def insertAll[A](table: String, records: List[A], formatter: ToPostgres[A]): IO[MigrationError, Unit] =
     IO.traverse(records.grouped(100).toList) { records =>
       IO.syncThrowable {
         DB localTx { implicit session =>

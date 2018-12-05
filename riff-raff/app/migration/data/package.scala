@@ -3,9 +3,13 @@ package migration
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
+import java.nio.ByteBuffer
 import java.time.Instant
 import java.util.UUID
+import org.bson.{ BsonBinary, BsonBinaryReader, UuidRepresentation }
+import org.bson.codecs.{ Decoder, DecoderContext, UuidCodec }
 import org.mongodb.scala.{ Document => MDocument, _ }
+import scala.util.Try
 import scalaz._, scalaz.std._, scalaz.syntax.std._, Scalaz._
 
 package object data extends FromBsonInstances {
@@ -14,6 +18,15 @@ package object data extends FromBsonInstances {
   implicit class RichDocument(val doc: MDocument) extends AnyVal {
     def getAs[A](key: String)(implicit B: FromBson[A]): Option[A] =
       doc.get(key).flatMap(B.getAs(_))
+  }
+
+  implicit class RichBsonBinary(val binary: BsonBinary) extends AnyVal {
+    def asUuid(rep: UuidRepresentation): UUID = {
+      val reader = new BsonBinaryReader(ByteBuffer.wrap(binary.getData))
+      val context = DecoderContext.builder.build
+      val codec = new UuidCodec(rep)
+      codec.decode(reader, context)
+    }
   }
 
   ///
@@ -183,25 +196,25 @@ package object data extends FromBsonInstances {
 
   ///
   /// Postgre encoders
-  implicit val apiKeyPE: ToPostgre[ApiKey] = new ToPostgre[ApiKey] {
+  implicit val apiKeyPE: ToPostgres[ApiKey] = new ToPostgres[ApiKey] {
     type K = String
     def key(a: ApiKey) = a.key
     def json(a: ApiKey) = apiKeyEncoder(a)
   }
 
-  implicit val authPE: ToPostgre[Auth] = new ToPostgre[Auth] {
+  implicit val authPE: ToPostgres[Auth] = new ToPostgres[Auth] {
     type K = String
     def key(a: Auth) = a.email
     def json(a: Auth) = authEncoder(a)
   }
 
-  implicit val deployPE: ToPostgre[Deploy] = new ToPostgre[Deploy] {
+  implicit val deployPE: ToPostgres[Deploy] = new ToPostgres[Deploy] {
     type K = UUID
     def key(a: Deploy) = a.id
     def json(a: Deploy) = deployEncoder(a)
   }
 
-  implicit val logPE: ToPostgre[Log] = new ToPostgre[Log] {
+  implicit val logPE: ToPostgres[Log] = new ToPostgres[Log] {
     type K = UUID
     def key(a: Log) = a.id
     def json(a: Log) = deployLogEncoder(a)

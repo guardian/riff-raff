@@ -13,19 +13,22 @@ object MigrateInterpreter extends (MigrationF ~> IO[MigrationError, ?]) {
     case GetCollection(mongo, name) =>
       Mongo.getCollection(mongo, name)
 
-    case GetCursor(collection, skip, limit, formatter) =>
-      Mongo.getCursor(collection, skip, limit, formatter)
+    case GetCursor(collection) =>
+      Mongo.getCursor(collection)
+
+    case GetItems(cursor, limit, formatter) =>
+      Mongo.getItems(cursor, limit, formatter)
 
     case GetCount(collection) =>
       Mongo.getCount(collection)
       
     case CreateTable(name, idName, idType) => 
-      Postgre.createTable(name, idName, idType)
+      Postgres.createTable(name, idName, idType)
     
     case DropTable(name) => 
-      Postgre.dropTable(name)
+      Postgres.dropTable(name)
     
     case InsertAll(table, records, formatter) =>
-      Postgre.insertAll(table, records, formatter)
+      Postgres.insertAll(table, records, formatter)
   }
 }

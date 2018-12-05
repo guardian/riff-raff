@@ -17,9 +17,9 @@ object MigrationApp extends App with Args with Migrator {
     parseArgs(args) redeem (
       _ => usage.const(ExitStatus.ExitNow(1)), 
       cfg => IO.bracket(
-        Mongo.connect(cfg.mongoUri) <* Postgre.connect(cfg.pgUri, cfg.pgUser, cfg.pgPassword)          
+        Mongo.connect(cfg.mongoUri) <* Postgres.connect(cfg.pgUri, cfg.pgUser, cfg.pgPassword)          
       ) { case (mongoClient, _) => 
-        Mongo.disconnect(mongoClient) *> Postgre.disconnect
+        Mongo.disconnect(mongoClient) *> Postgres.disconnect
       } { case (_, mongoDb) => 
         IO.traverse(cfg.tables) { mongoTable =>
           val program = mongoTable match {

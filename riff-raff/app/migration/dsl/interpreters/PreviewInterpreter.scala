@@ -18,8 +18,11 @@ object PreviewInterpreter extends (MigrationF ~> IO[MigrationError, ?]) {
     case GetCount(collection) =>
       Mongo.getCount(collection)
       
-    case GetCursor(collection, skip, limit, formatter) =>
-      Mongo.getCursor(collection, skip, limit, formatter)
+    case GetCursor(collection) =>
+      Mongo.getCursor(collection)
+
+    case GetItems(cursor, limit, formatter) =>
+      Mongo.getItems(cursor, limit, formatter)
 
     case InsertAll(table, records, formatter) =>
       putStrLn(s"INSERT INTO $table VALUES").leftMap(ConsoleError(_)) *>
