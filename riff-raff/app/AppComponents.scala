@@ -14,7 +14,7 @@ import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
-import notification.HooksClient
+import notification.{HooksClient, ScheduledDeployFailureNotifications}
 import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
 import play.api.http.DefaultHttpErrorHandler
@@ -82,6 +82,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
+  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(availableDeploymentTypes)
 
   val authAction = new AuthAction[AnyContent](
     conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
@@ -119,7 +120,8 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     continuousDeployment,
     managementServer,
     shutdownWhenInactive,
-    artifactHousekeeper
+    artifactHousekeeper,
+    scheduledDeployNotifier
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")

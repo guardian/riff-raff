@@ -36,13 +36,12 @@ class DeployJob extends Job with Logging {
 }
 
 object DeployJob extends Logging with LogAndSquashBehaviour {
-  val scheduledDeployer = Deployer("Scheduled Deployment")
 
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = DeployParameters(
-          scheduledDeployer,
+          ScheduledDeployer.deployer,
           lastDeploy.parameters.build,
           lastDeploy.stage
         )
