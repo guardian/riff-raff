@@ -35,7 +35,6 @@ class DeployJob extends Job with Logging {
   }
 }
 
-<<<<<<< HEAD
 object DeployJob extends Logging with LogAndSquashBehaviour {
   val scheduledDeployer = Deployer("Scheduled Deployment")
 
