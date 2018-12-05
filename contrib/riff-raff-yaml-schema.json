@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/guardian/riff-raff/master/contrib/riff-raff-yaml-schema.json",
+  "title": "Riff-Raff deployment",
+  "definitions": {
+    "stacks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(.*)$"
+      },
+      "uniqueItems": true,
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(.*)$"
+      },
+      "uniqueItems": true,
+    },
+    "deployment-or-template": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "The type of the deployment",
+          "examples": [
+            "aws-s3",
+            "cloud-formation"
+          ]
+        },
+        "template": {
+          "type": "string",
+          "title": "The name of a template to inherit properties from"
+        },
+        "stacks": { "$ref": "#/definitions/stacks" },
+        "regions": { "$ref": "#/definitions/regions" },
+        "app": {
+          "title": "Override the name of the app (defaults to the name of the deployment)",
+          "type": "string"
+        },
+        "contentDirectory": {
+          "title": "Override the directory suffix used to find the files for this deployment (defaults to the deployment name)",
+          "type": "string"
+        },
+        "dependencies": {
+          "title": "List of deployments that must be completed before this deployment starts",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "parameters": {
+          "type": "object",
+          "title": "Parameters for the deployment type",
+          "uniqueItems": true
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["type"],
+          "not": { "required": ["template"] }
+        },
+        {
+          "required": ["template"],
+          "not": { "required": ["type"] }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "required": [
+    "deployments"
+  ],
+  "properties": {
+    "stacks": { "$ref": "#/definitions/stacks" },
+    "regions": { "$ref": "#/definitions/regions" },
+    "templates": {
+      "patternProperties": {
+        "^.*$": { "$ref": "#/definitions/deployment-or-template" }
+      },
+      "additionalProperties": false
+    },
+    "deployments": {
+      "patternProperties": {
+        "^.*$": { "$ref": "#/definitions/deployment-or-template" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
