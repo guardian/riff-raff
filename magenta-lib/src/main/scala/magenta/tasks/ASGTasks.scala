@@ -1,8 +1,8 @@
 package magenta.tasks
 
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.autoscaling.{AmazonAutoScaling}
-import com.amazonaws.services.autoscaling.model.AutoScalingGroup
+import com.amazonaws.services.autoscaling.AmazonAutoScaling
+import com.amazonaws.services.autoscaling.model.{AutoScalingGroup, LifecycleState, SetInstanceProtectionRequest}
 import magenta.{KeyRing, Stage, _}
 
 import scala.collection.JavaConverters._
@@ -33,6 +33,25 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
   }
 
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
+}
+
+case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AmazonAutoScaling) {
+    val instances = asg.getInstances.asScala.toList
+    val instancesInService = instances.filter(_.getLifecycleState == LifecycleState.InService.toString)
+    if (instancesInService.nonEmpty) {
+      val instanceIds = instancesInService.map(_.getInstanceId)
+      val request = new SetInstanceProtectionRequest()
+        .withAutoScalingGroupName(asg.getAutoScalingGroupName)
+        .withInstanceIds(instanceIds: _*)
+        .withProtectedFromScaleIn(true)
+      asgClient.setInstanceProtection(request)
+    } else {
+      reporter.verbose(s"No instances to protect")
+    }
+  }
+
+  lazy val description = "Protect existing instances against scale in events"
 }
 
 case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {

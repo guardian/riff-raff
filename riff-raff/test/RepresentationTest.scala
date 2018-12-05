@@ -165,35 +165,6 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
     ungratedApiKey should be(Some(apiKey))
   }
 
-  "ContinuousDeploymentConfig" should "never change without careful thought and testing of migration" in {
-    val uuid = UUID.fromString("ae46a1c9-7762-4f05-9f32-6d6cd8c496c7")
-    val lastTime = new DateTime(2013,1,8,17,20,0)
-    val configDump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "branchMatcher" : "^master$" , "enabled" : true , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
-    val configV2Dump = """{ "_id" : { "$uuid" : "ae46a1c9-7762-4f05-9f32-6d6cd8c496c7"} , "projectName" : "test::project" , "stage" : "TEST" , "branchMatcher" : "^master$" , "triggerMode" : 1 , "user" : "Test user" , "lastEdited" : { "$date" : "2013-01-08T17:20:00.000Z"}}"""
-
-    val config = ContinuousDeploymentConfig(uuid, "test::project", "TEST", Some("^master$"), Trigger.SuccessfulBuild, "Test user", lastTime)
-    val gratedConfig = config.toDBO
-
-    val jsonConfig = JSON.serialize(gratedConfig)
-    val diff = compareJson(configV2Dump, jsonConfig)
-    diff.toString should be("[ ]")
-    // TODO - check ordering as well?
-    //jsonConfig should be(configDump)
-
-    val ungratedDBObject = JSON.parse(configDump).asInstanceOf[DBObject]
-    ungratedDBObject.toString should be(configDump)
-
-    val ungratedConfig = ContinuousDeploymentConfig.fromDBO(new MongoDBObject(ungratedDBObject))
-    ungratedConfig should be(Some(config))
-
-    val ungratedV2DBObject = JSON.parse(configV2Dump).asInstanceOf[DBObject]
-    ungratedV2DBObject.toString should be(configV2Dump)
-
-    val ungratedV2Config = ContinuousDeploymentConfig.fromDBO(new MongoDBObject(ungratedV2DBObject))
-    ungratedV2Config should be(Some(config))
-
-  }
-
   "DeploymentSelectorDocument" should "not change AllDocument without careful thought and testing of migration" in {
     val allDump =
       """{ "_typeHint" : "persistence.AllDocument$"}"""
@@ -221,6 +192,20 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
 
     val ungratedDeployKeys = DeploymentSelectorDocument.from(ungratedDeployIdsDBOject)
     ungratedDeployKeys shouldBe keysSelectorDocument
+  }
+
+  "Rich list" should "retain the order of a list" in {
+    case class Monkey(name: String, age: Int)
+    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3))
+    val distinctMonkies = monkies.distinctOn(identity)
+    distinctMonkies shouldBe monkies
+  }
+
+  it should "remove duplicates later in the list" in {
+    case class Monkey(name: String, age: Int)
+    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3), Monkey("bob", 3))
+    val distinctMonkies = monkies.distinctOn(_.name)
+    distinctMonkies shouldBe List(Monkey("fred", 1), Monkey("marjorie", 3), Monkey("bob", 3))
   }
 
 }

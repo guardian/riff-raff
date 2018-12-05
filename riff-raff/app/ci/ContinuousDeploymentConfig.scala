@@ -2,9 +2,6 @@ package ci
 
 import java.util.UUID
 import org.joda.time.DateTime
-import persistence.{MongoFormat, MongoSerialisable}
-import com.mongodb.casbah.commons.MongoDBObject
-import com.mongodb.casbah.commons.Implicits._
 
 object Trigger extends Enumeration {
   type Mode = Value
@@ -32,42 +29,3 @@ case class ContinuousDeploymentConfig(
   }
 }
 
-object ContinuousDeploymentConfig extends MongoSerialisable[ContinuousDeploymentConfig] {
-  implicit val configFormat: MongoFormat[ContinuousDeploymentConfig] = new ConfigMongoFormat
-  private class ConfigMongoFormat extends MongoFormat[ContinuousDeploymentConfig] {
-    def toDBO(a: ContinuousDeploymentConfig) = {
-      val values = Map(
-        "_id" -> a.id,
-        "projectName" -> a.projectName,
-        "stage" -> a.stage,
-        "triggerMode" -> a.trigger.id,
-        "user" -> a.user,
-        "lastEdited" -> a.lastEdited
-      ) ++
-        (a.branchMatcher map ("branchMatcher" -> _))
-      values.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject) = {
-      val enabledDB = dbo.getAs[Boolean]("enabled")
-      val triggerDB = dbo.getAs[Int]("triggerMode")
-      val triggerMode = (enabledDB, triggerDB) match {
-        case (_, Some(triggerModeId)) => Trigger(triggerModeId)
-        case (Some(true), None) => Trigger.SuccessfulBuild
-        case (Some(false), None) => Trigger.Disabled
-        case _ => Trigger.Disabled
-      }
-
-      Some(ContinuousDeploymentConfig(
-        id = dbo.as[UUID]("_id"),
-        projectName = dbo.as[String]("projectName"),
-        stage = dbo.as[String]("stage"),
-        trigger = triggerMode,
-        user = dbo.as[String]("user"),
-        lastEdited = dbo.as[DateTime]("lastEdited"),
-        branchMatcher = dbo.getAs[String]("branchMatcher")
-      ))
-
-    }
-  }
-}

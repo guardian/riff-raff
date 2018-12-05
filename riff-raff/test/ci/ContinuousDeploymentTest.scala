@@ -47,7 +47,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
 
   it should "retry until finds success" in {
     var i = 0
-    def failingFun() = {
+    def failingFun = {
       if (i < 3) {
         i = i + 1
         throw new RuntimeException(s"erk $i")
@@ -55,11 +55,11 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
       else i
     }
 
-    val success = ContinuousDeployment.retryUpTo(4)(() => failingFun())
+    val success = ContinuousDeployment.retryUpTo(4)(failingFun)
     success should be (Success(3))
 
     i = 0
-    val failure = ContinuousDeployment.retryUpTo(2)(() => failingFun())
+    val failure = ContinuousDeployment.retryUpTo(2)(failingFun)
     failure.isFailure should be (true)
   }
 }

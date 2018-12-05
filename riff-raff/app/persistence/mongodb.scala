@@ -41,6 +41,8 @@ object MongoDatastore extends Logging {
 
   val MESSAGE_STACKS = "messageStacks"
 
+  val MAX_RETRIES = 3
+
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
@@ -58,12 +60,13 @@ object MongoDatastore extends Logging {
 }
 
 class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
+  import MongoDatastore.MAX_RETRIES
+
   def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
   val authCollection = getCollection("auth")
   val apiKeyCollection = getCollection("apiKeys")
-  val keyValuesCollection = getCollection("keyValues")
 
   val collections = List(deployCollection, deployLogCollection, authCollection, apiKeyCollection)
 
@@ -83,8 +86,8 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
   deployLogCollection.createIndex("deploy")
   apiKeyCollection.createIndex(MongoDBObject("application" -> 1), "uniqueApplicationIndex", true)
 
-  override def setAuthorisation(auth: AuthorisationRecord) {
-    logAndSquashExceptions(Some("Creating auth object %s" format auth),()) {
+  override def setAuthorisation(auth: AuthorisationRecord) =
+    logExceptions(Some("Creating auth object %s" format auth)) {
       val criteriaId = MongoDBObject("_id" -> auth.email)
       authCollection.findAndModify(
         query = criteriaId,
@@ -95,35 +98,33 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
         returnNew=false
       )
     }
-  }
 
-  override def getAuthorisation(email: String): Option[AuthorisationRecord] =
-    logAndSquashExceptions[Option[AuthorisationRecord]](Some("Requesting authorisation object for %s" format email),None) {
+  override def getAuthorisation(email: String) =
+    logExceptions(Some("Requesting authorisation object for %s" format email)) {
       authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
-  override def getAuthorisationList: List[AuthorisationRecord] =
-    logAndSquashExceptions[List[AuthorisationRecord]](Some("Requesting list of authorisation objects"), Nil) {
+  override def getAuthorisationList =
+    logExceptions(Some("Requesting list of authorisation objects")) {
       authCollection.find().flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
-  override def deleteAuthorisation(email: String) {
-    logAndSquashExceptions(Some("Deleting authorisation object for %s" format email),()) {
+  override def deleteAuthorisation(email: String) =
+    logExceptions(Some("Deleting authorisation object for %s" format email)) {
       authCollection.findAndRemove(MongoDBObject("_id" -> email))
     }
-  }
 
-  override def createApiKey(newKey: ApiKey) {
-    logAndSquashExceptions(Some("Saving new API key %s" format newKey.key),()) {
+  override def createApiKey(newKey: ApiKey) =
+    retryUpTo(MAX_RETRIES, Some("Saving new API key %s" format newKey.key)) {
       val dbo = newKey.toDBO
       apiKeyCollection.insert(dbo)
     }
-  }
 
-  override def getApiKeyList = logAndSquashExceptions[Iterable[ApiKey]](Some("Requesting list of API keys"), Nil) {
-    val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
-    keys.toIterable.flatMap( ApiKey.fromDBO(_) )
-  }
+  override def getApiKeyList = 
+    logExceptions(Some("Requesting list of API keys")) {
+      val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
+      keys.toIterable.flatMap( ApiKey.fromDBO(_) )
+    }
 
   override def getApiKey(key: String) =
     logAndSquashExceptions[Option[ApiKey]](Some("Getting API key details for %s" format key),None) {
@@ -152,30 +153,28 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       apiKeyCollection.findOne(MongoDBObject("application" -> application)).flatMap(ApiKey.fromDBO(_))
     }
 
-  override def deleteApiKey(key: String) {
-    logAndSquashExceptions(Some("Deleting API key for %s" format key),()) {
+  override def deleteApiKey(key: String) =
+    retryUpTo(MAX_RETRIES, Some("Deleting API key for %s" format key)) {
       apiKeyCollection.findAndRemove(MongoDBObject("_id" -> key))
     }
-  }
 
-  override def writeDeploy(deploy: DeployRecordDocument) {
-    logAndSquashExceptions(Some("Saving deploy record document for %s" format deploy.uuid),()) {
-      val gratedDeploy = deploy.toDBO
+  override def writeDeploy(deploy: DeployRecordDocument) = {
+    val gratedDeploy = deploy.toDBO
+    retryUpTo(MAX_RETRIES, Some("Saving deploy record document for %s" format deploy.uuid)) {
       deployCollection.insert(gratedDeploy, WriteConcern.Safe)
     }
   }
 
-  override def updateStatus(uuid: UUID, status: RunState.Value) {
-    logAndSquashExceptions(Some("Updating status of %s to %s" format (uuid, status)), ()) {
+  override def updateStatus(uuid: UUID, status: RunState.Value) =
+    retryUpTo(MAX_RETRIES, Some("Updating status of %s to %s" format (uuid, status))) {
       deployCollection.update(MongoDBObject("_id" -> uuid), $set("status" -> status.toString), concern=WriteConcern.Safe)
     }
-  }
 
-  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
-    logAndSquashExceptions(Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings"), ()) {
-      val fields =
-        List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
-        totalTasks.map("totalTasks" ->)
+  override def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) = {
+    val fields =
+      List("completedTasks" -> completedTasks, "lastActivityTime" -> lastActivityTime, "hasWarnings" -> hasWarnings) ++
+          totalTasks.map("totalTasks" ->)
+    retryUpTo(MAX_RETRIES, Some(s"Updating summary of $uuid to total:$totalTasks, completed:$completedTasks, lastActivity:$lastActivityTime, hasWarnings:$hasWarnings")) {
       deployCollection.update(MongoDBObject("_id" -> uuid), $set(fields: _*), concern=WriteConcern.Safe)
     }
   }
@@ -185,11 +184,10 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       deployCollection.findOneByID(uuid).flatMap(DeployRecordDocument.fromDBO(_))
     }
 
-  override def writeLog(log: LogDocument) {
-    logAndSquashExceptions(Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy)),()) {
+  override def writeLog(log: LogDocument) =
+    retryUpTo(MAX_RETRIES, Some("Writing new log document with id %s for deploy %s" format (log.id, log.deploy))) {
       deployLogCollection.insert(log.toDBO, WriteConcern.Safe)
     }
-  }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] =
     logAndSquashExceptions[Iterable[LogDocument]](Some("Retriving logs for deploy %s" format uuid),Nil) {
@@ -218,11 +216,9 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     deployCollection.count(criteria).toInt
   }
 
-  override def deleteDeployLog(uuid: UUID) {
-    logAndSquashExceptions(None,()) {
-      deployCollection.findAndRemove(MongoDBObject("_id" -> uuid))
-      deployLogCollection.remove(MongoDBObject("deploy" -> uuid))
-    }
+  override def deleteDeployLog(uuid: UUID) = {
+    retryUpTo(MAX_RETRIES) { deployCollection.findAndRemove(MongoDBObject("_id" -> uuid)) }
+    retryUpTo(MAX_RETRIES) { deployLogCollection.remove(MongoDBObject("deploy" -> uuid)) }
   }
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
@@ -238,14 +234,14 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def addMetaData(uuid: UUID, metaData: Map[String, String]) {
-    logAndSquashExceptions(Some("Adding metadata %s to %s" format (metaData, uuid)),()) {
-      val update = metaData.map { case (tag, value) =>
-        $set(("parameters.tags.%s" format tag) -> value)
-      }.fold(MongoDBObject())(_ ++ _)
-      if (update.size > 0)
+  override def addMetaData(uuid: UUID, metaData: Map[String, String]) = {
+    val update = metaData.map { case (tag, value) =>
+      $set(("parameters.tags.%s" format tag) -> value)
+    }.fold(MongoDBObject())(_ ++ _)
+    if (update.size > 0)
+      retryUpTo(MAX_RETRIES, Some("Adding metadata %s to %s" format (metaData, uuid))) {
         deployCollection.update( MongoDBObject("_id" -> uuid), update )
-    }
+      }
   }
 
   override def summariseDeploy(uuid: UUID) {
@@ -293,32 +289,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
   }
 
-  override def writeKey(key: String, value: String) {
-    logAndSquashExceptions[Unit](Some(s"Writing value $value for key $key"), ()) {
-      keyValuesCollection.findAndModify(
-        query = MongoDBObject("key" -> key),
-        update = MongoDBObject("key" -> key, "value" -> value),
-        upsert = true,
-        fields = MongoDBObject(),
-        sort = MongoDBObject(),
-        remove = false,
-        returnNew = false
-      )
-    }
-  }
-
-  override def readKey(key: String): Option[String] =
-    logAndSquashExceptions[Option[String]](Some(s"Retrieving value for key $key"), None) {
-      keyValuesCollection.findOne(MongoDBObject("key" -> key)).flatMap(_.getAs[String]("value"))
-    }
-
-  override def deleteKey(key: String) {
-    logAndSquashExceptions[Unit](Some(s"Deleting key value pair for key $key"), ()) {
-      keyValuesCollection.findAndRemove(MongoDBObject("key" -> key))
-    }
-  }
-
-  override def findProjects(): List[String] = logAndSquashExceptions[List[String]](None,Nil) {
+  override def findProjects: Either[Throwable, List[String]] = logExceptions(None) {
     deployCollection.distinct("parameters.projectName").map(_.asInstanceOf[String]).toList
   }
 

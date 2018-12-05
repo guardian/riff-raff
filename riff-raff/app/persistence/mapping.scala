@@ -105,23 +105,23 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 }
 
 trait DocumentStore {
-  def writeDeploy(deploy: DeployRecordDocument) {}
-  def writeLog(log: LogDocument) {}
-  def updateStatus(uuid: UUID, status: RunState.Value) {}
-  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {}
+  def writeDeploy(deploy: DeployRecordDocument): Unit
+  def writeLog(log: LogDocument): Unit
+  def updateStatus(uuid: UUID, status: RunState.Value): Unit
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
   def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
   def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
-  def deleteDeployLog(uuid: UUID) {}
+  def deleteDeployLog(uuid: UUID): Unit
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
   def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
-  def findProjects(): List[String] = Nil
-  def addMetaData(uuid: UUID, metaData: Map[String, String]) {}
+  def findProjects: Either[Throwable, List[String]]
+  def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit
 }
 
 object DocumentStoreConverter extends Logging {
@@ -159,7 +159,7 @@ object DocumentStoreConverter extends Logging {
   }
 
   def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
-  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid)
+  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
 
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
@@ -195,5 +195,5 @@ object DocumentStoreConverter extends Logging {
   def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
     documentStore.getLastCompletedDeploys(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
 
-  def findProjects(): List[String] = documentStore.findProjects()
+  def findProjects: Either[Throwable, List[String]] = documentStore.findProjects
 }

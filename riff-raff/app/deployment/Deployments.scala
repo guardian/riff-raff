@@ -201,9 +201,8 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
     DocumentStoreConverter.getLastCompletedDeploys(project)
   }
 
-  def findProjects(): List[String] = {
-    DocumentStoreConverter.findProjects()
-  }
+  def findProjects: Either[Throwable, List[String]] =
+    DocumentStoreConverter.findProjects
 
   def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
 

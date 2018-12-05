@@ -310,7 +310,7 @@ object CloudFormation extends AWS {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
-  val CAPABILITY_IAM = "CAPABILITY_IAM"
+  val CAPABILITY_NAMED_IAM = "CAPABILITY_NAMED_IAM"
 
   def makeCfnClient(keyRing: KeyRing, region: Region): AmazonCloudFormation = {
     AmazonCloudFormationClientBuilder.standard()
@@ -331,7 +331,7 @@ object CloudFormation extends AWS {
   def updateStack(name: String, template: Template, parameters: Map[String, ParameterValue],
     client: AmazonCloudFormation) = {
 
-    val request = new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_IAM).withParameters(
+    val request = new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_NAMED_IAM).withParameters(
       parameters map {
         case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
         case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
@@ -348,7 +348,7 @@ object CloudFormation extends AWS {
     client.updateStack(
       new UpdateStackRequest()
         .withStackName(name)
-        .withCapabilities(CAPABILITY_IAM)
+        .withCapabilities(CAPABILITY_NAMED_IAM)
         .withUsePreviousTemplate(true)
         .withParameters(
           parameters map {
@@ -363,7 +363,7 @@ object CloudFormation extends AWS {
 
     val request = new CreateStackRequest()
       .withStackName(name)
-      .withCapabilities(CAPABILITY_IAM)
+      .withCapabilities(CAPABILITY_NAMED_IAM)
       .withParameters(
         parameters map {
           case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)

@@ -218,12 +218,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     }
   }
 
-  object target {
-    object aws {
-      lazy val deployJsonRegionName = configuration.getStringProperty("target.aws.deployJsonRegion", "eu-west-1")
-    }
-  }
-
   object deprecation {
     def pauseSeconds: Option[Int] = {
       val days = Days.daysBetween(new DateTime(2017,5,22,0,0,0), new DateTime()).getDays
