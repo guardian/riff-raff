@@ -1,40 +1,43 @@
 package conf
 
-import com.amazonaws.auth._
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
-import com.gu.management._
-import logback.LogbackLevelPage
-import com.gu.conf.ConfigurationFactory
-import magenta._
-import controllers.{Logging, routes}
-import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
+import com.amazonaws.auth._
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.util.EC2MetadataUtils
-
-import collection.mutable
-import persistence.{CollectionStats, Persistence}
+import com.gu.googleauth.GoogleAuthConfig
+import com.gu.management._
+import com.gu.management.logback.LogbackLevelPage
+import controllers.{Logging, routes}
 import deployment.Deployments
+import deployment.actors.DeployMetricsActor
+import lifecycle.{Lifecycle, ShutdownWhenInactive}
+import magenta._
+import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, Days}
+import persistence.{CollectionStats, Persistence}
+import play.api.{Configuration => PlayConf}
+import riffraff.BuildInfo
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
-import scala.concurrent.duration._
 import scala.collection.JavaConverters._
-import org.joda.time.format.ISODateTimeFormat
-import com.gu.googleauth.GoogleAuthConfig
-import deployment.actors.DeployMetricsActor
-import org.joda.time.{DateTime, Days, Period}
-import riffraff.BuildInfo
-
+import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
-class Configuration(val application: String, val webappConfDirectory: String = "env") extends Logging {
-  protected val configuration = ConfigurationFactory.getConfiguration(application, webappConfDirectory)
+class Configuration(val configuration: PlayConf) extends Logging {
+  
+  private def getString(path: String): String = configuration.get[String](path)
+  private def getStringOpt(path: String): Option[String] = configuration.getOptional[String](path)
+  private def getStringList(path: String): List[String] = configuration.get[List[String]](path)
+  private def getBooleanOpt(path: String): Option[Boolean] = configuration.getOptional[Boolean](path)
+  private def getIntOpt(path: String): Option[Int] = configuration.getOptional[Int](path)
 
   implicit class RichOption[T](val option: Option[T]) {
     def getOrException(exceptionMessage: String): T = {
@@ -70,41 +73,41 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object auth {
-    lazy val domains: List[String] = configuration.getStringPropertiesSplitByComma("auth.domains")
+    lazy val domains: List[String] = getStringList("auth.domains")
     object whitelist {
-      lazy val useDatabase: Boolean = configuration.getStringProperty("auth.whitelist.useDatabase", "false") == "true"
-      lazy val addresses: List[String] = configuration.getStringPropertiesSplitByComma("auth.whitelist.addresses")
+      lazy val useDatabase: Boolean = getBooleanOpt("auth.whitelist.useDatabase").getOrElse(false)
+      lazy val addresses: List[String] = getStringList("auth.whitelist.addresses")
     }
-    lazy val clientId: String = configuration.getStringProperty("auth.clientId").getOrException("No client ID configured")
-    lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
-    lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
-    lazy val domain: String = configuration.getStringProperty("auth.domain").getOrException("No auth domain configured")
+    lazy val clientId: String = getStringOpt("auth.clientId").getOrException("No client ID configured")
+    lazy val clientSecret: String = getStringOpt("auth.clientSecret").getOrException("No client secret configured")
+    lazy val redirectUrl: String = getStringOpt("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
+    lazy val domain: String = getStringOpt("auth.domain").getOrException("No auth domain configured")
     lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
-    lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
-    lazy val secretStateSupplierKeyName: String = configuration.getStringProperty("auth.secretStateSupplier.keyName", "/RiffRaff/PlayApplicationSecret")
-    lazy val secretStateSupplierRegion: String = configuration.getStringProperty("auth.secretStateSupplier.region", "eu-west-1")
+    lazy val superusers: List[String] = getStringList("auth.superusers")
+    lazy val secretStateSupplierKeyName: String = getStringOpt("auth.secretStateSupplier.keyName").getOrElse("/RiffRaff/PlayApplicationSecret")
+    lazy val secretStateSupplierRegion: String = getStringOpt("auth.secretStateSupplier.region").getOrElse("eu-west-1")
   }
 
   object concurrency {
-    lazy val maxDeploys = configuration.getIntegerProperty("concurrency.maxDeploys", 8)
+    lazy val maxDeploys = getIntOpt("concurrency.maxDeploys").getOrElse(8)
   }
 
   object continuousDeployment {
-    lazy val enabled = configuration.getStringProperty("continuousDeployment.enabled", "false") == "true"
+    lazy val enabled = getBooleanOpt("continuousDeployment.enabled").getOrElse(false)
   }
 
   object scheduledDeployment {
-    lazy val enabled = configuration.getStringProperty("scheduledDeployment.enabled", "false") == "true"
+    lazy val enabled = getBooleanOpt("scheduledDeployment.enabled").getOrElse(false)
   }
 
   object credentials {
     def lookupSecret(service: String, id:String): Option[String] = {
-      configuration.getStringProperty("credentials.%s.%s" format (service, id))
+      getString("credentials.%s.%s" format (service, id))
     }
   }
 
   object dynamoDb {
-    lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
+    lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
     val client = AmazonDynamoDBAsyncClientBuilder.standard()
       .withCredentials(credentialsProviderChain(None, None))
       .withRegion(regionName)
@@ -114,9 +117,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object freeze {
     private val formatter = ISODateTimeFormat.dateTime()
-    lazy val startDate = configuration.getStringProperty("freeze.startDate").map(formatter.parseDateTime)
-    lazy val endDate = configuration.getStringProperty("freeze.endDate").map(formatter.parseDateTime)
-    lazy val message = configuration.getStringProperty("freeze.message", "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
+    lazy val startDate = getString("freeze.startDate").map(formatter.parseDateTime)
+    lazy val endDate = getString("freeze.endDate").map(formatter.parseDateTime)
+    lazy val message = getString("freeze.message", "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
     lazy val stages = configuration.getStringPropertiesSplitByComma("freeze.stages")
   }
 
@@ -128,9 +131,9 @@ class Configuration(val application: String, val webappConfDirectory: String = "
       lazy val hourOfDay = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.hourOfDay", 2)
       lazy val minuteOfHour = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minuteOfHour", 0)
 
-      lazy val enabled = configuration.getStringProperty("housekeeping.tagOldArtifacts.enabled", "false") == "true"
-      lazy val tagKey = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagKey", "housekeeping")
-      lazy val tagValue = configuration.getStringProperty("housekeeping.tagOldArtifacts.tagValue", "delete")
+      lazy val enabled = getString("housekeeping.tagOldArtifacts.enabled", "false") == "true"
+      lazy val tagKey = getString("housekeeping.tagOldArtifacts.tagKey", "housekeeping")
+      lazy val tagValue = getString("housekeeping.tagOldArtifacts.tagValue", "delete")
       // this should be a few days longer than the expiration age of the riffraff-builds bucket (28 days by default)
       //  so that it is less likely that a user will try and deploy a build that has since been removed
       lazy val minimumAgeDays = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minimumAgeDay", 40)
@@ -143,23 +146,23 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   }
 
   object logging {
-    lazy val verbose = configuration.getStringProperty("logging").exists(_.equalsIgnoreCase("VERBOSE"))
-    lazy val elkStreamName = configuration.getStringProperty("logging.elkStreamName")
-    lazy val accessKey = configuration.getStringProperty("logging.aws.accessKey")
-    lazy val secretKey = configuration.getStringProperty("logging.aws.secretKey")
-    lazy val regionName = configuration.getStringProperty("logging.aws.region", "eu-west-1")
+    lazy val verbose = getString("logging").exists(_.equalsIgnoreCase("VERBOSE"))
+    lazy val elkStreamName = getString("logging.elkStreamName")
+    lazy val accessKey = getString("logging.aws.accessKey")
+    lazy val secretKey = getString("logging.aws.secretKey")
+    lazy val regionName = getString("logging.aws.region", "eu-west-1")
     lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {
-    lazy val prismUrl = configuration.getStringProperty("lookup.prismUrl").getOrException("Prism URL not specified")
+    lazy val prismUrl = getString("lookup.prismUrl").getOrException("Prism URL not specified")
     lazy val timeoutSeconds = configuration.getIntegerProperty("lookup.timeoutSeconds", 30)
   }
 
   object mongo {
     lazy val isConfigured = uri.isDefined
-    lazy val uri = configuration.getStringProperty("mongo.uri")
-    lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
+    lazy val uri = getString("mongo.uri")
+    lazy val collectionPrefix = getString("mongo.collectionPrefix","")
   }
 
   object stages {
@@ -169,11 +172,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object artifact {
     object aws {
-      implicit lazy val bucketName = configuration.getStringProperty("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
-      lazy val accessKey = configuration.getStringProperty("artifact.aws.accessKey")
-      lazy val secretKey = configuration.getStringProperty("artifact.aws.secretKey")
+      implicit lazy val bucketName = getString("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
+      lazy val accessKey = getString("artifact.aws.accessKey")
+      lazy val secretKey = getString("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = configuration.getStringProperty("artifact.aws.region", "eu-west-1")
+      lazy val regionName = getString("artifact.aws.region", "eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -184,11 +187,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   object build {
     lazy val pollingPeriodSeconds = configuration.getIntegerProperty("build.pollingPeriodSeconds", 10)
     object aws {
-      implicit lazy val bucketName = configuration.getStringProperty("build.aws.bucketName")
-      lazy val accessKey = configuration.getStringProperty("build.aws.accessKey")
-      lazy val secretKey = configuration.getStringProperty("build.aws.secretKey")
+      implicit lazy val bucketName = getString("build.aws.bucketName")
+      lazy val accessKey = getString("build.aws.accessKey")
+      lazy val secretKey = getString("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = configuration.getStringProperty("build.aws.region", "eu-west-1")
+      lazy val regionName = getString("build.aws.region", "eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -198,11 +201,11 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object tag {
     object aws {
-      implicit lazy val bucketName = configuration.getStringProperty("tag.aws.bucketName")
-      lazy val accessKey = configuration.getStringProperty("tag.aws.accessKey")
-      lazy val secretKey = configuration.getStringProperty("tag.aws.secretKey")
+      implicit lazy val bucketName = getString("tag.aws.bucketName")
+      lazy val accessKey = getString("tag.aws.accessKey")
+      lazy val secretKey = getString("tag.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = configuration.getStringProperty("tag.aws.region", "eu-west-1")
+      lazy val regionName = getString("tag.aws.region", "eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -237,7 +240,7 @@ class Configuration(val application: String, val webappConfDirectory: String = "
   def awsRegion(name: String): Region = RegionUtils.getRegion(name)
 
   object urls {
-    lazy val publicPrefix: String = configuration.getStringProperty("urls.publicPrefix", "http://localhost:9000")
+    lazy val publicPrefix: String = getString("urls.publicPrefix", "http://localhost:9000")
   }
 
   val version:String = BuildInfo.buildNumber
