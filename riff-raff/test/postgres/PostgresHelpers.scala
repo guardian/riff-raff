@@ -8,21 +8,30 @@ import scalikejdbc.ConnectionPool
 
 trait PostgresHelpers {
 //  lazy val datastore = PostgresDatastore.buildDatastore()
+
+  lazy private val url = "jdbc:postgresql://localhost:44444/riffraff"
+  lazy private val user = "riffraff"
+  lazy private val password = "riffraff"
+
   lazy val datastore = {
     Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton("jdbc:postgresql://localhost:44444/riffraff", "riffraff", "riffraff")
+    ConnectionPool.singleton(url, user, password)
 
+    applyEvolutions
+
+    new PostgresDatastore
+  }
+
+  private def applyEvolutions = {
     val db = Databases(
       driver = "org.postgresql.Driver",
-      url = "jdbc:postgresql://localhost:44444/riffraff",
+      url = url,
       name = "default",
       config = Map(
-        "username" -> "riffraff",
-        "password" -> "riffraff"
+        "username" -> user,
+        "password" -> password
       )
     )
     Evolutions.applyEvolutions(db)
-
-    new PostgresDatastore
   }
 }
