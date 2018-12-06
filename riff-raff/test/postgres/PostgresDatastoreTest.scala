@@ -1,5 +1,7 @@
 package postgres
 
+import com.whisk.docker.DockerFactory
+import com.whisk.docker.scalatest.DockerTestKit
 import controllers.{ApiKey, AuthorisationRecord}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState.ChildRunning
@@ -9,8 +11,9 @@ import org.scalatest.{FreeSpec, Matchers}
 import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
 import postgres.TestData._
 import scalikejdbc._
+import utils.DockerPostgresService
 
-class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers {
+class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit with DockerPostgresService with PostgresHelpers {
   "ApiKey table" - {
     def withFixture(test: => Any)= {
       try test
@@ -261,8 +264,17 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with PostgresHelpers 
     "get latest completed deploys for project" in {
       withFixture {
         withDeploys(3) { deploys =>
-          val map = datastore.getLastCompletedDeploys(deploys.head.parameters.projectName)
-          map.size shouldBe 1
+          val projectName = deploys.head.parameters.projectName
+
+          val newDeploy = someDeploy
+          datastore.writeDeploy(newDeploy.copy(parameters = newDeploy.parameters.copy(projectName = projectName)))
+          val anotherDeploy = someDeploy
+          datastore.writeDeploy(anotherDeploy.copy(parameters = anotherDeploy.parameters.copy(projectName = projectName, stage = "CODE")))
+          val result = datastore.getLastCompletedDeploys(projectName)
+
+          result.size shouldBe 2
+          result.keys shouldBe Set("TEST", "CODE")
+          result("TEST") shouldBe newDeploy.uuid
         }
       }
     }

@@ -88,18 +88,5 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     javaOptions in Test += "-Dconfig.file=riff-raff/conf/application.test.conf",
 
-    testOptions in Test += Tests.Setup(_ => {
-      println(s"Launching docker container with PostgresSQL")
-      s"docker-compose -f docker-compose-test.yml up -d".!
-
-      // This is needed to ensure docker has had enough time to start up
-      Thread.sleep(5000)
-    }),
-
-    testOptions in Test += Tests.Cleanup(_ => {
-      println(s"Removing docker container with PostgresSQL")
-      s"docker-compose -f docker-compose-test.yml down".!
-    }),
-
     includeFilter in (Assets, LessKeys.less) := "*.less"
   ))

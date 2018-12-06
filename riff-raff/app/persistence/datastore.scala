@@ -2,6 +2,7 @@ package persistence
 
 import java.util.UUID
 
+import conf.Configuration
 import conf.DatastoreMetrics.DatastoreRequest
 import org.joda.time.DateTime
 import utils.Retriable
@@ -71,7 +72,7 @@ object Persistence extends Logging {
     def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
   }
 
-  lazy val store: DataStore = mongoStore
+  lazy val store: DataStore = if (Configuration.postgres.isEnabled) postgresStore else mongoStore
 
   private lazy val mongoStore: DataStore = {
     val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)

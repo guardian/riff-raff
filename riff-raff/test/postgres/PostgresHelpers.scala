@@ -10,11 +10,11 @@ trait PostgresHelpers {
 //  lazy val datastore = PostgresDatastore.buildDatastore()
   lazy val datastore = {
     Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton("jdbc:postgresql://localhost:7431/riffraff", "riffraff", "riffraff")
+    ConnectionPool.singleton("jdbc:postgresql://localhost:44444/riffraff", "riffraff", "riffraff")
 
     val db = Databases(
       driver = "org.postgresql.Driver",
-      url = "jdbc:postgresql://localhost:7431/riffraff",
+      url = "jdbc:postgresql://localhost:44444/riffraff",
       name = "default",
       config = Map(
         "username" -> "riffraff",

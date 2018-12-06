@@ -187,6 +187,7 @@ object Config extends Logging {
   }
 
   object postgres {
+    lazy val isEnabled: Boolean = configuration.getStringProperty("postgres.enabled").exists(_.toBoolean)
     lazy val url = configuration("db.default.url")
     lazy val user = configuration("db.default.user")
     lazy val password = configuration("db.default.password")

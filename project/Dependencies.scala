@@ -69,6 +69,8 @@ object Dependencies {
     "com.gu" % "kinesis-logback-appender" % "1.4.2",
     "org.scalikejdbc" %% "scalikejdbc" % "3.3.0",
     "org.postgresql" % "postgresql" % "42.2.5",
+    "com.whisk" %% "docker-testkit-scalatest" % "0.9.8" % "test",
+    "com.whisk" %% "docker-testkit-impl-spotify" % "0.9.8" % "test",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.5.17" % Test,
