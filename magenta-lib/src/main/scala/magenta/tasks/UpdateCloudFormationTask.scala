@@ -52,8 +52,8 @@ trait RetryCloudFormationUpdate {
   }
 }
 
-class CloudFormationStackLookup(val strategy: CloudFormationStackLookupStrategy, val changeSetName: String, createStackIfAbsent: Boolean) {
-  import CloudFormationStackLookup._
+class CloudFormationStackMetadata(val strategy: CloudFormationStackLookupStrategy, val changeSetName: String, createStackIfAbsent: Boolean) {
+  import CloudFormationStackMetadata._
 
   def lookup(reporter: DeployReporter, cfnClient: AmazonCloudFormation): (String, ChangeSetType) = {
     val existingStack = strategy match {
@@ -68,7 +68,7 @@ class CloudFormationStackLookup(val strategy: CloudFormationStackLookupStrategy,
   }
 }
 
-object CloudFormationStackLookup {
+object CloudFormationStackMetadata {
   def getChangeSetType(stackName: String, stackExists: Boolean, createStackIfAbsent: Boolean, reporter: DeployReporter): ChangeSetType = {
     if(!stackExists && !createStackIfAbsent) {
       reporter.fail(s"Stack $stackName doesn't exist and createStackIfAbsent is false")
@@ -94,8 +94,8 @@ object CloudFormationStackLookup {
 }
 
 class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
-                               val changeSetName: String, val stackTags: Option[Map[String, String]],
-                               val userParameters: Map[String, String], val amiParameterMap: Map[CfnParam, TagCriteria],
+                               val stackTags: Option[Map[String, String]], val userParameters: Map[String, String],
+                               val amiParameterMap: Map[CfnParam, TagCriteria],
                                latestImage: String => String => Map[String,String] => Option[String]) {
   import CloudFormationParameters._
 

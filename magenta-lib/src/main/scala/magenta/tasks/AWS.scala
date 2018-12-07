@@ -395,8 +395,8 @@ object CloudFormation extends AWS {
       .withParameters(parameters.toSeq.asJava)
 
     val tags: Iterable[CfnTag] = maybeTags
-      .map(_.map { case (key, value) => new CfnTag().withKey(key).withValue(value) })
-      .getOrElse(Iterable.empty)
+      .getOrElse(Map.empty)
+      .map  { case (key, value) => new CfnTag().withKey(key).withValue(value) }
 
     request.withTags(tags.toSeq: _*)
 

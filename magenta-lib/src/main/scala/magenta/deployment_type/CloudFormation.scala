@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import java.net.URLEncoder
 import java.util.UUID
 
 import magenta.artifact.S3Path
@@ -82,12 +83,14 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       case _ => None
     }
 
-    val changeSetName = s"riff-raff-${UUID.randomUUID().toString}"
+    val rawChangeSetName = s"riff-raff-${target.parameters.build.projectName}-${target.parameters.stage}-${target.parameters.build.id}-${target.region.name}"
+    val changeSetName = URLEncoder.encode(rawChangeSetName, "utf-8")
+
     val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage, target.region,
-      changeSetName, stackTags, userParams, amiParameterMap, amiLookupFn)
+      stackTags, userParams, amiParameterMap, amiLookupFn)
 
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
-    val stackLookup = new CloudFormationStackLookup(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
+    val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
 
     List(
       new CreateChangeSetTask(

@@ -9,10 +9,10 @@ import magenta.{DeployReporter, KeyRing, Region}
 import scala.collection.JavaConverters._
 
 class CreateChangeSetTask(
-   region: Region,
-   templatePath: S3Path,
-   stackLookup: CloudFormationStackLookup,
-   val unresolvedParameters: CloudFormationParameters
+                           region: Region,
+                           templatePath: S3Path,
+                           stackLookup: CloudFormationStackMetadata,
+                           val unresolvedParameters: CloudFormationParameters
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
@@ -32,20 +32,20 @@ class CreateChangeSetTask(
 
     reporter.info("Creating Cloudformation change set")
     reporter.info(s"Stack name: $stackName")
-    reporter.info(s"Change set name: ${unresolvedParameters.changeSetName}")
+    reporter.info(s"Change set name: ${stackLookup.changeSetName}")
     reporter.info(s"Parameters: $parameters")
 
-    CloudFormation.createChangeSet(reporter, unresolvedParameters.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, parameters, cfnClient)
+    CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, parameters, cfnClient)
   }
 
-  def description = s"Create change set ${unresolvedParameters.changeSetName} for stack ${stackLookup.strategy} with ${templatePath.fileName}"
+  def description = s"Create change set ${stackLookup.changeSetName} for stack ${stackLookup.strategy} with ${templatePath.fileName}"
   def verbose = description
 }
 
 class CheckChangeSetCreatedTask(
-  region: Region,
-  stackLookup: CloudFormationStackLookup,
-  override val duration: Long
+                                 region: Region,
+                                 stackLookup: CloudFormationStackMetadata,
+                                 override val duration: Long
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with RepeatedPollingCheck {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
@@ -66,9 +66,11 @@ class CheckChangeSetCreatedTask(
     case "CREATE_COMPLETE" => true
     case "FAILED" if changes.isEmpty => true
     case "FAILED" => reporter.fail(statusReason)
-    case _ =>
+    case "CREATE_IN_PROGRESS" =>
       reporter.verbose(status)
       false
+    case _ =>
+      reporter.fail(s"Unknown change set status $status")
   }
 
   def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
@@ -76,8 +78,8 @@ class CheckChangeSetCreatedTask(
 }
 
 class ExecuteChangeSetTask(
-  region: Region,
-  stackLookup: CloudFormationStackLookup,
+                            region: Region,
+                            stackLookup: CloudFormationStackMetadata,
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
@@ -101,8 +103,8 @@ class ExecuteChangeSetTask(
 }
 
 class DeleteChangeSetTask(
-  region: Region,
-  stackLookup: CloudFormationStackLookup,
+                           region: Region,
+                           stackLookup: CloudFormationStackMetadata,
 )(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)

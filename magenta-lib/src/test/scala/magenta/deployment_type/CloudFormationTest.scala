@@ -156,7 +156,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   }
 
   it should "create new CFN stack names" in {
-    import CloudFormationStackLookup.getNewStackName
+    import CloudFormationStackMetadata.getNewStackName
 
     getNewStackName(LookupByName("name-of-stack")) shouldBe "name-of-stack"
     getNewStackName(LookupByTags(Map("Stack" -> "stackName", "App" -> "appName", "Stage" -> "STAGE"))) shouldBe
@@ -189,7 +189,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "true")) shouldBe false
   }
 
-  import CloudFormationStackLookup.getChangeSetType
+  import CloudFormationStackMetadata.getChangeSetType
 
   "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
     intercept[FailException] {
