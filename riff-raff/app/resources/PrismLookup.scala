@@ -1,6 +1,7 @@
 package resources
 
 import cats.syntax.group
+import conf.Config
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import play.api.libs.ws.WSClient
@@ -148,7 +149,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
 
   val secretProvider = new SecretProvider {
     def lookup(service: String, account: String): Option[String] =
-      conf.Configuration.credentials.lookupSecret(service, account)
+      Config.credentials.lookupSecret(service, account)
   }
 
   private def get(accountNumber: Option[String], region: String, tags: Map[String, String]): Seq[Image] = {

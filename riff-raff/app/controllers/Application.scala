@@ -2,6 +2,7 @@ package controllers
 
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.{AuthAction, UserIdentity}
+import conf.Config
 import docs.{DeployTypeDocs, MarkDownParser}
 import magenta.deployment_type.DeploymentType
 import magenta.input.All
@@ -48,7 +49,7 @@ object Menu {
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.HooksController.list()),
-      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = conf.Configuration.auth.whitelist.useDatabase),
+      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = Config.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys()),
       SingleMenuItem("Restrictions", routes.Restrictions.list()),
       SingleMenuItem("Schedules", routes.ScheduleController.list())
@@ -94,7 +95,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
   def deployInfoHosts(appFilter: String) = authAction { implicit request =>
     val hosts = prismLookup.hosts.all.filter { host =>
-      host.app.toString.matches(s"(?i).*${appFilter}.*") &&
+      host.app.toString.matches(s"(?i).*$appFilter.*") &&
       request.getQueryString("stack").forall(s => host.stack == s)
     }.groupBy(_.stage)
     Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))

@@ -1,12 +1,12 @@
 package ci
 
-import conf.Configuration
+import conf.Config
 import magenta.artifact.S3Path
 import play.api.libs.json.Json
 
 object S3Tag {
-  lazy val bucketName = Configuration.tag.aws.bucketName
-  implicit lazy val client = Configuration.tag.aws.client
+  lazy val bucketName = Config.tag.aws.bucketName
+  implicit lazy val client = Config.tag.aws.client
 
   import cats.syntax.either._
 

@@ -1,6 +1,6 @@
 package ci
 
-import conf.Configuration
+import conf.Config
 import controllers.Logging
 import magenta.artifact.{S3Error, S3Location, S3Object}
 import org.joda.time.DateTime
@@ -25,8 +25,8 @@ case class S3Project(id: String, name: String) extends Job
 
 object S3Build extends Logging {
 
-  lazy val bucketName = Configuration.build.aws.bucketName.get
-  implicit lazy val client = Configuration.build.aws.client
+  lazy val bucketName = Config.build.aws.bucketName
+  implicit lazy val client = Config.build.aws.client
 
   def buildJsons: Seq[S3Object] = Try {
     S3Location.listAll(bucketName).filter(_.key.endsWith("build.json"))
@@ -37,13 +37,13 @@ object S3Build extends Logging {
   } get
 
   def buildAt(location: S3Object): Either[S3BuildError, S3Build] =
-    location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError(_))
+    location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError)
       .flatMap { s =>
         val s3BuildEither = parse(s)
         if (s3BuildEither.isLeft) {
           log.warn(s"Error parsing JSON from $location: $s3BuildEither")
         }
-        s3BuildEither.leftMap[S3BuildError](S3BuildParseError(_))
+        s3BuildEither.leftMap[S3BuildError](S3BuildParseError)
       }
 
   def parse(json: String): Either[Seq[(JsPath, Seq[JsonValidationError])], S3Build] = {

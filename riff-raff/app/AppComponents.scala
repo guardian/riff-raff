@@ -2,12 +2,11 @@ import java.time.Duration
 import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
-import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
 import com.gu.play.secretrotation.aws.ParameterStore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
-import conf.{Configuration, DeployMetrics}
+import conf.{Config, DeployMetrics}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -32,8 +31,8 @@ import router.Routes
 import schedule.DeployScheduler
 import utils.{ElkLogging, HstsFilter, ScheduledAgent}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
@@ -51,10 +50,10 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
         usageDelay = Duration.ofMinutes(3),
         overlapDuration = Duration.ofHours(2)
       ),
-      conf.Configuration.auth.secretStateSupplierKeyName,
+      Config.auth.secretStateSupplierKeyName,
       AWSSimpleSystemsManagementClientBuilder.standard()
-        .withRegion(conf.Configuration.auth.secretStateSupplierRegion)
-        .withCredentials(Configuration.credentialsProviderChain(None, None))
+        .withRegion(Config.auth.secretStateSupplierRegion)
+        .withCredentials(Config.credentialsProviderChain(None, None))
         .build()
     )
   }
@@ -63,18 +62,18 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   implicit val implicitWsClient = wsClient
 
   val elkLogging = new ElkLogging(
-    Configuration.stage,
-    Configuration.logging.regionName,
-    Configuration.logging.elkStreamName,
-    Configuration.logging.credentialsProvider,
+    Config.stage,
+    Config.logging.regionName,
+    Config.logging.elkStreamName,
+    Config.logging.credentialsProvider,
     applicationLifecycle
   )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
-  val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
-  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, conf.Configuration.deprecation.pauseSeconds)
+  val prismLookup = new PrismLookup(wsClient, Config.lookup.prismUrl, Config.lookup.timeoutSeconds.seconds)
+  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, Config.deprecation.pauseSeconds)
   val buildPoller = new CIBuildPoller(executionContext)
   val builds = new Builds(buildPoller)
   val targetResolver = new TargetResolver(buildPoller, availableDeploymentTypes)
@@ -84,7 +83,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
 
   val authAction = new AuthAction[AnyContent](
-    conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    Config.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,

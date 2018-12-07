@@ -14,6 +14,7 @@ import com.amazonaws.util.EC2MetadataUtils
 import com.gu.googleauth.GoogleAuthConfig
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
+import com.typesafe.config.{Config, ConfigFactory}
 import controllers.{Logging, routes}
 import deployment.Deployments
 import deployment.actors.DeployMetricsActor
@@ -22,7 +23,6 @@ import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
 import persistence.{CollectionStats, Persistence}
-import play.api.{Configuration => PlayConf}
 import riffraff.BuildInfo
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
@@ -31,13 +31,15 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
-class Configuration(val configuration: PlayConf) extends Logging {
+object Config extends Logging {
+
+  val configuration: Config = ConfigFactory.load()
   
-  private def getString(path: String): String = configuration.get[String](path)
-  private def getStringOpt(path: String): Option[String] = configuration.getOptional[String](path)
-  private def getStringList(path: String): List[String] = configuration.get[List[String]](path)
-  private def getBooleanOpt(path: String): Option[Boolean] = configuration.getOptional[Boolean](path)
-  private def getIntOpt(path: String): Option[Int] = configuration.getOptional[Int](path)
+  private def getString(path: String): String = configuration.getString(path)
+  private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
+  private def getStringList(path: String): List[String] = configuration.getStringList(path).asScala.toList
+  private def getBooleanOpt(path: String): Option[Boolean] = Try(configuration.getBoolean(path)).toOption
+  private def getIntOpt(path: String): Option[Int] = Try(configuration.getInt(path)).toOption
 
   implicit class RichOption[T](val option: Option[T]) {
     def getOrException(exceptionMessage: String): T = {
@@ -101,9 +103,7 @@ class Configuration(val configuration: PlayConf) extends Logging {
   }
 
   object credentials {
-    def lookupSecret(service: String, id:String): Option[String] = {
-      getString("credentials.%s.%s" format (service, id))
-    }
+    def lookupSecret(service: String, id:String): Option[String] = getStringOpt(s"credentials.$service.$id")
   }
 
   object dynamoDb {
@@ -117,66 +117,66 @@ class Configuration(val configuration: PlayConf) extends Logging {
 
   object freeze {
     private val formatter = ISODateTimeFormat.dateTime()
-    lazy val startDate = getString("freeze.startDate").map(formatter.parseDateTime)
-    lazy val endDate = getString("freeze.endDate").map(formatter.parseDateTime)
-    lazy val message = getString("freeze.message", "There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
-    lazy val stages = configuration.getStringPropertiesSplitByComma("freeze.stages")
+    lazy val startDate = getStringOpt("freeze.startDate").map(formatter.parseDateTime)
+    lazy val endDate = getStringOpt("freeze.endDate").map(formatter.parseDateTime)
+    lazy val message = getStringOpt("freeze.message").getOrElse("There is currently a change freeze. I'm not going to stop you, but you should think carefully about what you are about to do.")
+    lazy val stages = getStringList("freeze.stages")
   }
 
   object housekeeping {
-    lazy val summariseDeploysAfterDays = configuration.getIntegerProperty("housekeeping.summariseDeploysAfterDays", 90)
-    lazy val hour = configuration.getIntegerProperty("housekeeping.hour", 4)
-    lazy val minute = configuration.getIntegerProperty("housekeeping.minute", 0)
+    lazy val summariseDeploysAfterDays = getIntOpt("housekeeping.summariseDeploysAfterDays").getOrElse(90)
+    lazy val hour = getIntOpt("housekeeping.hour").getOrElse(4)
+    lazy val minute = getIntOpt("housekeeping.minute").getOrElse(0)
     object tagOldArtifacts {
-      lazy val hourOfDay = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.hourOfDay", 2)
-      lazy val minuteOfHour = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minuteOfHour", 0)
+      lazy val hourOfDay = getIntOpt("housekeeping.tagOldArtifacts.hourOfDay").getOrElse(2)
+      lazy val minuteOfHour = getIntOpt("housekeeping.tagOldArtifacts.minuteOfHour").getOrElse(0)
 
-      lazy val enabled = getString("housekeeping.tagOldArtifacts.enabled", "false") == "true"
-      lazy val tagKey = getString("housekeeping.tagOldArtifacts.tagKey", "housekeeping")
-      lazy val tagValue = getString("housekeeping.tagOldArtifacts.tagValue", "delete")
+      lazy val enabled = getBooleanOpt("housekeeping.tagOldArtifacts.enabled").getOrElse(false)
+      lazy val tagKey = getStringOpt("housekeeping.tagOldArtifacts.tagKey").getOrElse("housekeeping")
+      lazy val tagValue = getStringOpt("housekeeping.tagOldArtifacts.tagValue").getOrElse("delete")
       // this should be a few days longer than the expiration age of the riffraff-builds bucket (28 days by default)
       //  so that it is less likely that a user will try and deploy a build that has since been removed
-      lazy val minimumAgeDays = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.minimumAgeDay", 40)
+      lazy val minimumAgeDays = getIntOpt("housekeeping.tagOldArtifacts.minimumAgeDay").getOrElse(40)
       // the number to scan (we look at this number of most recent deploys to figure out what to keep, anything older
       // than this will not be considered)
-      lazy val numberToScan = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.numberToScan", 50)
+      lazy val numberToScan = getIntOpt("housekeeping.tagOldArtifacts.numberToScan").getOrElse(50)
       // the number of artifacts to keep per stage
-      lazy val numberToKeep = configuration.getIntegerProperty("housekeeping.tagOldArtifacts.numberToKeep", 5)
+      lazy val numberToKeep = getIntOpt("housekeeping.tagOldArtifacts.numberToKeep").getOrElse(5)
     }
   }
 
   object logging {
-    lazy val verbose = getString("logging").exists(_.equalsIgnoreCase("VERBOSE"))
-    lazy val elkStreamName = getString("logging.elkStreamName")
-    lazy val accessKey = getString("logging.aws.accessKey")
-    lazy val secretKey = getString("logging.aws.secretKey")
-    lazy val regionName = getString("logging.aws.region", "eu-west-1")
+    lazy val verbose = getStringOpt("logging").exists(_.equalsIgnoreCase("VERBOSE"))
+    lazy val elkStreamName = getStringOpt("logging.elkStreamName")
+    lazy val accessKey = getStringOpt("logging.aws.accessKey")
+    lazy val secretKey = getStringOpt("logging.aws.secretKey")
+    lazy val regionName = getStringOpt("logging.aws.region").getOrElse("eu-west-1")
     lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {
-    lazy val prismUrl = getString("lookup.prismUrl").getOrException("Prism URL not specified")
-    lazy val timeoutSeconds = configuration.getIntegerProperty("lookup.timeoutSeconds", 30)
+    lazy val prismUrl = getStringOpt("lookup.prismUrl").getOrException("Prism URL not specified")
+    lazy val timeoutSeconds = getIntOpt("lookup.timeoutSeconds").getOrElse(30)
   }
 
   object mongo {
     lazy val isConfigured = uri.isDefined
-    lazy val uri = getString("mongo.uri")
-    lazy val collectionPrefix = getString("mongo.collectionPrefix","")
+    lazy val uri = getStringOpt("mongo.uri")
+    lazy val collectionPrefix = getStringOpt("mongo.collectionPrefix").getOrElse("")
   }
 
   object stages {
-    lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
+    lazy val order = getStringList("stages.order").filterNot(_ == "")
     lazy val ordering = UnnaturalOrdering(order, aliensAtEnd = false)
   }
 
   object artifact {
     object aws {
-      implicit lazy val bucketName = getString("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
-      lazy val accessKey = getString("artifact.aws.accessKey")
-      lazy val secretKey = getString("artifact.aws.secretKey")
+      implicit lazy val bucketName = getStringOpt("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
+      lazy val accessKey = getStringOpt("artifact.aws.accessKey")
+      lazy val secretKey = getStringOpt("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getString("artifact.aws.region", "eu-west-1")
+      lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -185,13 +185,13 @@ class Configuration(val configuration: PlayConf) extends Logging {
   }
 
   object build {
-    lazy val pollingPeriodSeconds = configuration.getIntegerProperty("build.pollingPeriodSeconds", 10)
+    lazy val pollingPeriodSeconds = getIntOpt("build.pollingPeriodSeconds").getOrElse(10)
     object aws {
       implicit lazy val bucketName = getString("build.aws.bucketName")
-      lazy val accessKey = getString("build.aws.accessKey")
-      lazy val secretKey = getString("build.aws.secretKey")
+      lazy val accessKey = getStringOpt("build.aws.accessKey")
+      lazy val secretKey = getStringOpt("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getString("build.aws.region", "eu-west-1")
+      lazy val regionName = getStringOpt("build.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -201,11 +201,11 @@ class Configuration(val configuration: PlayConf) extends Logging {
 
   object tag {
     object aws {
-      implicit lazy val bucketName = getString("tag.aws.bucketName")
-      lazy val accessKey = getString("tag.aws.accessKey")
-      lazy val secretKey = getString("tag.aws.secretKey")
+      implicit lazy val bucketName = getStringOpt("tag.aws.bucketName")
+      lazy val accessKey = getStringOpt("tag.aws.accessKey")
+      lazy val secretKey = getStringOpt("tag.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getString("tag.aws.region", "eu-west-1")
+      lazy val regionName = getStringOpt("tag.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
         .withCredentials(credentialsProvider)
         .withRegion(regionName)
@@ -240,15 +240,13 @@ class Configuration(val configuration: PlayConf) extends Logging {
   def awsRegion(name: String): Region = RegionUtils.getRegion(name)
 
   object urls {
-    lazy val publicPrefix: String = getString("urls.publicPrefix", "http://localhost:9000")
+    lazy val publicPrefix: String = getStringOpt("urls.publicPrefix").getOrElse("http://localhost:9000")
   }
 
   val version:String = BuildInfo.buildNumber
 
   override def toString: String = configuration.toString
 }
-
-object Configuration extends Configuration("riff-raff", webappConfDirectory = "env")
 
 class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) {
   val applicationName = "riff-raff"
@@ -312,10 +310,10 @@ object DatastoreMetrics {
     "Database requests",
     "outgoing requests to the database"
   )
-  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { map =>  Persistence.store.collectionStats }
+  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  Persistence.store.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
-  def deployCollectionCount: Long = collectionStats().get("%sdeployV2" format Configuration.mongo.collectionPrefix).map(_.documentCount).getOrElse(0L)
+  def deployCollectionCount: Long = collectionStats().get(s"${Config.mongo.collectionPrefix}deployV2").map(_.documentCount).getOrElse(0L)
   object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
   object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
   object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)

@@ -1,7 +1,7 @@
 package ci
 
 import cats.syntax.either._
-import conf.Configuration
+import conf.Config
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta.artifact._
@@ -45,9 +45,9 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
   }
 
   def fetchYaml(build: CIBuild): Either[S3Error, String] = {
-    val artifact = S3YamlArtifact(build.toMagentaBuild, Configuration.artifact.aws.bucketName)
+    val artifact = S3YamlArtifact(build.toMagentaBuild, Config.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
-    S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+    S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
   }
 
   def extractTargets(graph: Graph[Deployment]): Set[Target] = {
