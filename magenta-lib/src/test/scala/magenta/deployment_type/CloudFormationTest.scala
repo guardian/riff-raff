@@ -223,8 +223,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     }
   }
 
-  it should "continue on any other status" in {
+  it should "continue on CREATE_IN_PROGRESS" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
-    check.shouldStopWaiting("UPDATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
+    check.shouldStopWaiting("CREATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
   }
 }
