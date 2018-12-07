@@ -93,6 +93,10 @@ class ExecuteChangeSetTask(
     if(describeResponse.getChanges.isEmpty) {
       reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
     } else {
+      describeResponse.getChanges.asScala.foreach { change =>
+        reporter.verbose(s"${change.getType} - ${change.getResourceChange}")
+      }
+
       val request = new ExecuteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
       cfnClient.executeChangeSet(request)
     }
