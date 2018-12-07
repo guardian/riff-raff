@@ -7,6 +7,7 @@ import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
+import org.joda.time.DateTime
 
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
@@ -83,8 +84,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       case _ => None
     }
 
-    val rawChangeSetName = s"riff-raff-${target.parameters.build.projectName}-${target.parameters.stage}-${target.parameters.build.id}-${target.region.name}"
-    val changeSetName = URLEncoder.encode(rawChangeSetName, "utf-8")
+    val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
 
     val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage, target.region,
       stackTags, userParams, amiParameterMap, amiLookupFn)
