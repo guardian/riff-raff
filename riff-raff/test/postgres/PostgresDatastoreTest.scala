@@ -1,6 +1,5 @@
 package postgres
 
-import com.whisk.docker.DockerFactory
 import com.whisk.docker.scalatest.DockerTestKit
 import controllers.{ApiKey, AuthorisationRecord}
 import deployment.{DeployFilter, PaginationView}
@@ -85,8 +84,8 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
         withAuth { auth =>
           val dbAuth = datastore.getAuthorisation(auth.email)
 
-          dbAuth shouldBe defined
-          auth shouldBe dbAuth.get
+          dbAuth shouldBe 'right
+          dbAuth.right.get shouldBe Some(auth)
         }
       }
     }
@@ -95,7 +94,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
       withFixture {
         withAuth { auth =>
           datastore.deleteAuthorisation(auth.email)
-          datastore.getAuthorisation(auth.email) shouldBe None
+          datastore.getAuthorisation(auth.email).right.get shouldBe None
         }
       }
     }
@@ -256,7 +255,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
     "find projects" in {
       withFixture {
         withDeploys(5) { _ =>
-          datastore.findProjects().size shouldBe 5
+          datastore.findProjects().right.get.size shouldBe 5
         }
       }
     }
