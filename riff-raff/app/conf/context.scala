@@ -38,7 +38,7 @@ object Config extends Logging {
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
-  private def getStringList(path: String): List[String] = configuration.getStringList(path).asScala.toList
+  private def getStringList(path: String): List[String] = configuration.getString(path).split(",").map(_.trim).toList
   private def getBooleanOpt(path: String): Option[Boolean] = Try(configuration.getBoolean(path)).toOption
   private def getIntOpt(path: String): Option[Int] = Try(configuration.getInt(path)).toOption
 
