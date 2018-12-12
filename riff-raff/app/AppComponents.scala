@@ -14,6 +14,7 @@ import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
+import migration.Migration
 import notification.HooksClient
 import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
@@ -79,6 +80,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val builds = new Builds(buildPoller)
   val targetResolver = new TargetResolver(buildPoller, availableDeploymentTypes)
   val deployments = new Deployments(deploymentEngine, builds)
+  val migrations = new Migration()
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
@@ -119,7 +121,8 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     continuousDeployment,
     managementServer,
     shutdownWhenInactive,
-    artifactHousekeeper
+    artifactHousekeeper,
+    migrations
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -146,7 +149,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val targetController = new TargetController(deployments, authAction, controllerComponents)
   val loginController = new Login(deployments, controllerComponents, authAction)
   val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
-  val migrationController = new MigrationController(authAction, controllerComponents)
+  val migrationController = new MigrationController(authAction, migrations, controllerComponents)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {

@@ -3,7 +3,7 @@ package controllers.forms
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.mvc.QueryStringBindable
-import scalaz._, Scalaz._
+import cats._, cats.implicits._
 
 final case class MigrationParameters(collections: List[String], tables: List[String], limit: Option[Int], action: String)
 
@@ -29,7 +29,7 @@ object MigrationParameters {
         limit       <- O.bind("limit", params)
         action      <- S.bind("action", params)
       } yield {
-        (collections |@| tables |@| limit |@| action)(MigrationParameters(_, _, _, _))
+        (collections |@| tables |@| limit |@| action).map(MigrationParameters(_, _, _, _))
       }
 
     override def unbind(key: String, params: MigrationParameters): String = {

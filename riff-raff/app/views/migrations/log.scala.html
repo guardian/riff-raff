@@ -1,0 +1,8 @@
+@(status: Map[String, Double])
+
+@status.map { case (collection, value) =>
+  <div>
+    <b>@collection</b>
+    <progress max=100 min=0 value="@value"></progress>
+  </div>
+}

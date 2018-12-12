@@ -3,38 +3,24 @@ package dsl
 package interpreters
 
 import migration.data._
-import scalaz._, Scalaz._
 import scalaz.zio.IO
-import scalaz.zio.interop.console.scalaz._
-import scalaz.zio.interop.scalaz72._
+import scalaz.zio.console._
 import scalikejdbc._
 
-object PreviewInterpreter extends (MigrationF ~> IO[MigrationError, ?]) {
-  def apply[A](op: MigrationF[A]): IO[MigrationError, A] = op match {
+object PreviewInterpreter extends Migrator {
 
-    case GetCollection(mongo, name) =>
-      Mongo.getCollection(mongo, name)
+  val WINDOW_SIZE = 1000
 
-    case GetCount(collection) =>
-      Mongo.getCount(collection)
-      
-    case GetCursor(collection) =>
-      Mongo.getCursor(collection)
+  def dropTable(name: String): IO[Nothing, Unit] =
+    putStrLn(s"DROP TABLE IF EXISTS $name")
 
-    case GetItems(cursor, limit, formatter) =>
-      Mongo.getItems(cursor, limit, formatter)
+  def createTable(name: String, idName: String, idType: ColType): IO[Nothing, Unit] =
+    putStrLn(s"CREATE TABLE $name ( $idName $idType PRIMARY KEY, content jsonb )")
 
-    case InsertAll(table, records, formatter) =>
-      putStrLn(s"INSERT INTO $table VALUES").leftMap(ConsoleError(_)) *>
-        IO.traverse(records){ rec =>
-          indent *> putStrLn(s"( ${formatter.key(rec)}, ${formatter.json(rec)} )")
-        }.leftMap(ConsoleError(_)).void
+  def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]): IO[Nothing, _] =
+    putStrLn(s"INSERT INTO $table VALUES") *>
+      IO.traverse(records){ rec =>
+        indent *> putStrLn(s"( ${formatter.key(rec)}, ${formatter.json(rec)} )")
+      }
 
-    case CreateTable(name, idName, idType) =>
-      putStrLn(s"CREATE TABLE $name ( $idName $idType PRIMARY KEY, content jsonb )").leftMap(ConsoleError(_))
-    
-    case DropTable(name) =>
-      putStrLn(s"DROP TABLE IF EXISTS $name").leftMap(ConsoleError(_))
-    
-  }
 }

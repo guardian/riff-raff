@@ -10,7 +10,7 @@ import org.bson.{ BsonBinary, BsonBinaryReader, UuidRepresentation }
 import org.bson.codecs.{ Decoder, DecoderContext, UuidCodec }
 import org.mongodb.scala.{ Document => MDocument, _ }
 import scala.util.Try
-import scalaz._, scalaz.std._, scalaz.syntax.std._, Scalaz._
+import cats._, cats.implicits._
 
 package object data extends FromBsonInstances {
   ///
@@ -39,14 +39,14 @@ package object data extends FromBsonInstances {
       dbo.getAs[Instant]("created") |@|
       dbo.getAs[Option[Instant]]("lastUsed") |@|
       (dbo.getAs[MDocument]("callCounters").map(_.toBsonDocument) >>= FromBson[Map[String, Long]].getAs)
-    )(ApiKey)
+    ).map(ApiKey)
 
   implicit val authParser: FromMongo[Auth] = (dbo: MDocument) =>
     (
       dbo.getAs[String]("_id") |@|
       dbo.getAs[String]("approvedBy") |@|
       dbo.getAs[Instant]("approvedDate")
-    )(Auth)
+    ).map(Auth)
 
   implicit val deployParser: FromMongo[Deploy] = (dbo: MDocument) =>
     (
@@ -60,7 +60,7 @@ package object data extends FromBsonInstances {
       dbo.getAs[Option[Int]]("completedTasks") |@|
       dbo.getAs[Option[Instant]]("lastActivityTime") |@|
       dbo.getAs[Option[Boolean]]("hasWarnings")
-    )(Deploy)
+    ).map(Deploy)
 
   implicit val parametersParser: FromMongo[Parameters] = (dbo: MDocument) =>
     (
@@ -70,7 +70,7 @@ package object data extends FromBsonInstances {
       dbo.getAs[String]("stage") |@|
       dbo.getAs[Map[String, String]]("tags") |@|
       (dbo.getAs[MDocument]("selector") >>= FromMongo[DeploymentSelector].parseMongo)
-    )(Parameters)
+    ).map(Parameters)
 
   implicit val deploySelectorParser: FromMongo[DeploymentSelector] = (dbo: MDocument) =>
     dbo.getAs[String]("_typeHint") >>= {
@@ -87,7 +87,7 @@ package object data extends FromBsonInstances {
       dbo.getAs[String]("action") |@|
       dbo.getAs[String]("stack") |@|
       dbo.getAs[String]("region")
-    )(DeploymentKey)
+    ).map(DeploymentKey)
 
   implicit val logParser: FromMongo[Log] = (dbo: MDocument) =>
     (
@@ -96,7 +96,7 @@ package object data extends FromBsonInstances {
       dbo.getAs[Option[UUID]]("parent") |@|
       (dbo.getAs[MDocument]("document") >>= FromMongo[Document].parseMongo) |@|
       dbo.getAs[Instant]("time")
-    )(Log)
+    ).map(Log)
 
   implicit val documentParser: FromMongo[Document] = (dbo: MDocument) =>
     dbo.getAs[String]("_typeHint") >>= {
@@ -132,7 +132,7 @@ package object data extends FromBsonInstances {
       dbo.getAs[String]("name") |@|
       dbo.getAs[String]("description") |@|
       dbo.getAs[String]("verbose")
-    )(TaskDetail)
+    ).map(TaskDetail)
    
   implicit val throwableDetailParser: FromMongo[ThrowableDetail] = (dbo: MDocument) =>
     (
@@ -143,7 +143,7 @@ package object data extends FromBsonInstances {
         case None => Some(None)
         case Some(doc) => Some(throwableDetailParser.parseMongo(doc))
       })
-    )(ThrowableDetail)
+    ).map(ThrowableDetail)
   ///
 
   ///

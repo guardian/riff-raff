@@ -9,7 +9,7 @@ import org.mongodb.scala.{ Document => MDocument, _ }
 import org.mongodb.scala.bson.BsonValue
 import scala.collection.JavaConverters._
 import scala.util.Try
-import scalaz._, Scalaz._
+import cats._, cats.implicits._
 
 trait FromBson[A] {
   def getAs(b: BsonValue): Option[A]
@@ -41,7 +41,7 @@ trait FromBsonInstances {
     Try(b.asBoolean.getValue).toOption
 
   implicit def mapBson[A](implicit A: FromBson[A]): FromBson[Map[String, A]] = (b: BsonValue) =>
-    Try(b.asDocument.asScala.toMap).toOption.flatMap(_.traverse(A.getAs))
+    Try(b.asDocument.asScala.toMap).toOption.flatMap(_.unorderedTraverse(A.getAs))
   
   implicit val documentBson: FromBson[MDocument] = (b: BsonValue) =>
     Try(b.asDocument.asScala.toMap.toList).map(MDocument(_)).toOption

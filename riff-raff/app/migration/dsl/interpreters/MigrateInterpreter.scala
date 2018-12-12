@@ -3,32 +3,42 @@ package dsl
 package interpreters
 
 import migration.data._
-import scalaz.~>
+import cats.~>
 import scalaz.zio.IO
 import scalikejdbc._
 
-object MigrateInterpreter extends (MigrationF ~> IO[MigrationError, ?]) {
-  def apply[A](op: MigrationF[A]): IO[MigrationError, A] = op match {
+object MigrateInterpreter extends Migrator {
+  
+  val WINDOW_SIZE = 1000
 
-    case GetCollection(mongo, name) =>
-      Mongo.getCollection(mongo, name)
+  def dropTable(name: String): IO[MigrationError, Unit] =
+    IO.syncThrowable {
+      DB autoCommit { implicit session =>
+        sql"DROP TABLE IF EXISTS ${name}".execute.apply()
+      }
+      ()
+    } leftMap(DatabaseError(_))
 
-    case GetCursor(collection) =>
-      Mongo.getCursor(collection)
+  def createTable(name: String, idName: String, idType: ColType): IO[MigrationError, Unit] =
+    IO.syncThrowable {
+      DB autoCommit { implicit session =>
+        sql"CREATE TABLE ${name} (${idName} {idType} PRIMARY KEY, content jsonb)"
+          .bindByName('idType -> idType.toString)
+          .execute
+          .apply()
+        ()
+      }
+    } leftMap(DatabaseError(_))
 
-    case GetItems(cursor, limit, formatter) =>
-      Mongo.getItems(cursor, limit, formatter)
-
-    case GetCount(collection) =>
-      Mongo.getCount(collection)
-      
-    case CreateTable(name, idName, idType) => 
-      Postgres.createTable(name, idName, idType)
-    
-    case DropTable(name) => 
-      Postgres.dropTable(name)
-    
-    case InsertAll(table, records, formatter) =>
-      Postgres.insertAll(table, records, formatter)
-  }
+  def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]): IO[MigrationError, _] =
+    IO.traverse(records.grouped(100).toList) { records =>
+      IO.syncThrowable {
+        DB localTx { implicit session =>
+          withSQL {
+            insert.into(new SQLSyntaxSupport[A] { override val tableName = table })
+              .values(records.map(r => (formatter.key(r).toString, formatter.json(r).noSpaces)))
+          }.update.apply()
+        }
+      } leftMap(DatabaseError(_))
+    }
 }

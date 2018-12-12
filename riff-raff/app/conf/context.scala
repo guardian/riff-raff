@@ -162,6 +162,12 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val collectionPrefix = configuration.getStringProperty("mongo.collectionPrefix","")
   }
 
+  object postgres {
+    lazy val url = configuration.getStringProperty("postgres.uri")
+    lazy val user = configuration.getStringProperty("postgres.user")
+    lazy val password = configuration.getStringProperty("postgres.password")
+  }
+
   object stages {
     lazy val order = configuration.getStringPropertiesSplitByComma("stages.order").filterNot(""==)
     lazy val ordering = UnnaturalOrdering(order, aliensAtEnd = false)
