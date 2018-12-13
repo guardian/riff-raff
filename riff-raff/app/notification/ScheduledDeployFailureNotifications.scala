@@ -4,7 +4,7 @@ import java.util.UUID
 import ci.TargetResolver
 import controllers.{Logging, routes}
 import lifecycle.Lifecycle
-import magenta.{Deploy, DeployParameters, DeployReporter, FailContext}
+import magenta.{DeployParameters, DeployReporter, Fail}
 import scala.concurrent.ExecutionContext
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
@@ -53,9 +53,12 @@ class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(
     }
   }
 
+  def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
+
   val messageSub = DeployReporter.messages.subscribe(message => {
     message.stack.top match {
-      case FailContext(Deploy(parameters)) if parameters.deployer == ScheduledDeployer.deployer =>
+      case Fail(_, _, parameters) if scheduledDeploy(parameters) =>
+        log.info(s"Attempting to send notification via Anghammarad")
         failedDeployNotification(message.context.deployId, parameters)
       case _ =>
     }
