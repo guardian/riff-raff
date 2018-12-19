@@ -28,9 +28,8 @@ class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(
     val deriveAnghammaradTargets = for {
       yaml <- TargetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
-      magentaTargets = TargetResolver.extractTargets(deployGraph)
     } yield {
-      magentaTargets.toList.flatMap { target =>
+      TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
         List(App(target.app), Stack(target.stack))
       } ++ List(Stage(parameters.stage.name))
     }

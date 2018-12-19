@@ -27,7 +27,7 @@ class DeployJob extends Job with Logging {
     } yield uuid
     result match {
       case Left(error) => {
-        //Send ang msg
+        // TODO: send an Anghammarad notification to inform a team that their scheduled deploy didn't start
         log.warn(error.message)
       }
       case Right(uuid) => log.info(s"Started scheduled deploy $uuid")

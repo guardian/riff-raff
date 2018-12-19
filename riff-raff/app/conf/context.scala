@@ -100,7 +100,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val snsClient = AmazonSNSAsyncClientBuilder.standard()
       .withCredentials(credentialsProviderChain(None, None))
       .withRegion(regionName)
-      .withClientConfiguration(new ClientConfiguration())
       .build()
     lazy val anghammaradTopicARN: String = configuration.getStringProperty("scheduledDeployment.anghammaradTopicARN").getOrException("No anghammarad topic ARN supplied")
   }
