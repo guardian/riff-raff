@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "1.11.106"
-    val guardianManagement = "5.37"
+    val guardianManagement = "5.41"
     val jackson = "2.8.2"
   }
 
