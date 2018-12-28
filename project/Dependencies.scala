@@ -7,8 +7,6 @@ object Dependencies {
     val aws = "1.11.106"
     val guardianManagement = "5.37"
     val jackson = "2.8.2"
-    // keep in sync with plugin
-    val play = "2.6.9"
   }
 
   val commonDeps = Seq(
@@ -39,7 +37,7 @@ object Dependencies {
     "com.gu" %% "fastly-api-client" % "0.2.6",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-    "com.typesafe.play" %% "play-json" % Versions.play
+    "com.typesafe.play" %% "play-json" % "2.6.13"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
