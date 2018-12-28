@@ -19,7 +19,7 @@ object Dependencies {
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
-    "com.squareup.okhttp3" % "okhttp" % "3.8.1",
+    "com.squareup.okhttp3" % "okhttp" % "3.12.1",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
     "com.github.seratch.com.veact" %% "scala-ssh" % "0.8.0-1" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
