@@ -1,12 +1,12 @@
 import java.time.Duration
-import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
+import com.gu.googleauth.{GoogleAuthConfig, AntiForgeryChecker}
 import com.gu.play.secretrotation.aws.ParameterStore
-import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
+import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
 import conf.{Configuration, DeployMetrics}
 import controllers._
 import deployment.preview.PreviewCoordinator
@@ -45,7 +45,15 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with AssetsComponents
   with Logging {
 
-  val secretStateSupplier: Supplier[SecretState] = {
+  val googleAuthConfig = GoogleAuthConfig(
+    clientId = Configuration.auth.clientId,
+    clientSecret = Configuration.auth.clientSecret,
+    redirectUrl = Configuration.auth.redirectUrl,
+    domain = Configuration.auth.domain,
+    antiForgeryChecker = AntiForgeryChecker.borrowSettingsFromPlay(httpConfiguration)
+  )
+
+  val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
       TransitionTiming(
         usageDelay = Duration.ofMinutes(3),
@@ -84,7 +92,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
 
   val authAction = new AuthAction[AnyContent](
-    conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -144,7 +152,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val restrictionsController = new Restrictions(authAction, controllerComponents)
   val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
-  val loginController = new Login(deployments, controllerComponents, authAction)
+  val loginController = new Login(deployments, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
