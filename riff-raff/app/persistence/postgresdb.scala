@@ -30,7 +30,7 @@ class PostgresDatastore extends DataStore with Logging {
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = logExceptions(Some(s"Creating auth object $auth")) {
     DB localTx { implicit session =>
       val json = Json.toJson(auth).toString()
-      sql"INSERT INTO auth (email, content) VALUES (${auth.email}, $json::jsonb)".update.apply()
+      sql"INSERT INTO auth (email, content) VALUES (${auth.email}, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb".update.apply()
     }
   }
 
@@ -43,7 +43,7 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: apiKey(id: String, content: jsonb)
   def createApiKey(newKey: ApiKey): Unit = DB localTx { implicit session =>
     val json = Json.toJson(newKey).toString()
-    sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb)".update.apply()
+    sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb".update.apply()
   }
 
   def getApiKeyList: Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
@@ -97,7 +97,7 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: deploy(id: String, content: jsonb)
   override def writeDeploy(deploy: DeployRecordDocument): Unit = DB localTx { implicit session =>
     val json = Json.toJson(deploy).toString()
-    sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}::uuid, $json::jsonb)".update.apply()
+    sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] = DB readOnly { implicit session =>
@@ -198,7 +198,7 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: deployLog(id: String, content: jsonb)
   override def writeLog(log: LogDocument): Unit = DB localTx { implicit session =>
     val json = Json.toJson(log).toString()
-    sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $json::jsonb)".update.apply()
+    sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
   }
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] = DB readOnly { implicit session =>
