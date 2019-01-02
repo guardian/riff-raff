@@ -154,8 +154,8 @@ object ASG extends AWS {
 
     if (classicElbNames.nonEmpty || targetGroupArns.nonEmpty) {
       for {
-        _ <- classicElbNames.map(checkClassicELB).sequence
-        _ <- targetGroupArns.map(checkTargetGroup).sequence
+        _ <- classicElbNames.map(checkClassicELB).sequenceU
+        _ <- targetGroupArns.map(checkTargetGroup).sequenceU
       } yield ()
     } else {
       val instanceStates = asg.getInstances.asScala.toList.map(_.getLifecycleState)

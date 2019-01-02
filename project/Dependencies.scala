@@ -5,21 +5,23 @@ object Dependencies {
 
   object Versions {
     val aws = "1.11.106"
-    val guardianManagement = "5.41"
+    val guardianManagement = "5.37"
     val jackson = "2.8.2"
+    // keep in sync with plugin
+    val play = "2.6.9"
   }
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.26.5",
-    "org.parboiled" %% "parboiled" % "2.1.5",
-    "org.typelevel" %% "cats-core" % "1.0.1",
+    "org.parboiled" %% "parboiled" % "2.1.4",
+    "org.typelevel" %% "cats" % "0.9.0",
     "com.kailuowang" %% "henkan-convert" % "0.2.10",
     "org.scalatest" %% "scalatest" % "3.0.3" % Test,
     "org.mockito" % "mockito-core" % "1.10.19" % Test
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
-    "com.squareup.okhttp3" % "okhttp" % "3.12.1",
+    "com.squareup.okhttp3" % "okhttp" % "3.8.1",
     "org.bouncycastle" % "bcprov-jdk16" % "1.46",
     "org.bouncycastle" % "bcpg-jdk16" % "1.46",
     "com.github.seratch.com.veact" %% "scala-ssh" % "0.8.0-1" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
@@ -37,7 +39,7 @@ object Dependencies {
     "com.gu" %% "fastly-api-client" % "0.2.6",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-    "com.typesafe.play" %% "play-json" % "2.6.13"
+    "com.typesafe.play" %% "play-json" % Versions.play
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
@@ -47,10 +49,10 @@ object Dependencies {
     "com.gu" %% "management-internal" % Versions.guardianManagement,
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "configuration" % "4.2",
-    "com.gu" %% "play-googleauth" % "0.7.7",
-    "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.12",
+    "com.gu" %% "play-googleauth" % "0.7.0",
+    "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.7",
     "org.mongodb" %% "casbah" % "3.1.1",
-    "com.typesafe.akka" %% "akka-agent" % "2.5.17",
+    "com.typesafe.akka" %% "akka-agent" % "2.5.3",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
     "com.gu" %% "scanamo" % "0.9.5",
@@ -66,7 +68,7 @@ object Dependencies {
     "com.gu" % "kinesis-logback-appender" % "1.4.2",
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.5.17" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.5.3" % Test,
     "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
