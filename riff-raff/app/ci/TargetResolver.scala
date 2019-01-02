@@ -20,7 +20,7 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, All).toEither
       targets = extractTargets(deployGraph)
     } yield {
-      targets.map{ t =>
+      targets.map { t =>
         Either.catchNonFatal(t -> TargetDynamoRepository.set(t, build.jobName, build.startTime))
       }
     }
