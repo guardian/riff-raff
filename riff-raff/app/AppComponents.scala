@@ -45,27 +45,27 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with AssetsComponents
   with Logging {
 
-  val googleAuthConfig = GoogleAuthConfig(
-    clientId = Configuration.auth.clientId,
-    clientSecret = Configuration.auth.clientSecret,
-    redirectUrl = Configuration.auth.redirectUrl,
-    domain = Configuration.auth.domain,
-    antiForgeryChecker = AntiForgeryChecker.borrowSettingsFromPlay(httpConfiguration)
-  )
-
   val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
-      TransitionTiming(
+      transitionTiming = TransitionTiming(
         usageDelay = Duration.ofMinutes(3),
         overlapDuration = Duration.ofHours(2)
       ),
-      conf.Configuration.auth.secretStateSupplierKeyName,
-      AWSSimpleSystemsManagementClientBuilder.standard()
+      parameterName = conf.Configuration.auth.secretStateSupplierKeyName,
+      ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
         .withRegion(conf.Configuration.auth.secretStateSupplierRegion)
         .withCredentials(Configuration.credentialsProviderChain(None, None))
         .build()
     )
   }
+
+  lazy val googleAuthConfig = GoogleAuthConfig(
+    clientId = Configuration.auth.clientId,
+    clientSecret = Configuration.auth.clientSecret,
+    redirectUrl = Configuration.auth.redirectUrl,
+    domain = Configuration.auth.domain,
+    antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
+  )
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
