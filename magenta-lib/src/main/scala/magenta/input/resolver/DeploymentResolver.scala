@@ -2,7 +2,6 @@ package magenta.input.resolver
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
-import cats.syntax.apply._
 import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.instances.list._
@@ -11,7 +10,7 @@ import play.api.libs.json.JsValue
 
 object DeploymentResolver {
   def resolve(config: RiffRaffDeployConfig): Validated[ConfigErrors, List[PartiallyResolvedDeployment]] = {
-    config.deployments.traverse { case (label, rawDeployment) =>
+    config.deployments.traverseU[Validated[ConfigErrors, PartiallyResolvedDeployment]] { case (label, rawDeployment) =>
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates)
         deployment <- resolveDeployment(label, templated, config.stacks, config.regions)
@@ -25,9 +24,9 @@ object DeploymentResolver {
     * deployment attributes with any globally defined properties.
     */
   private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Validated[ConfigErrors, PartiallyResolvedDeployment] = {
-    ((Validated.fromOption(templated.`type`, ConfigErrors(label, "No type field provided")),
-      Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), ConfigErrors(label, "No stacks provided")),
-      Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), ConfigErrors(label, "No regions provided")))).mapN { case (deploymentType, stacks, regions) =>
+    (Validated.fromOption(templated.`type`, ConfigErrors(label, "No type field provided")) |@|
+      Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), ConfigErrors(label, "No stacks provided")) |@|
+      Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), ConfigErrors(label, "No regions provided"))) map { (deploymentType, stacks, regions) =>
       PartiallyResolvedDeployment(
         name = label,
         `type` = deploymentType,
