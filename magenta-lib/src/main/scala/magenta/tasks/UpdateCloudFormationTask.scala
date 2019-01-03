@@ -62,7 +62,7 @@ class CloudFormationStackMetadata(val strategy: CloudFormationStackLookupStrateg
     }
 
     val stackName = existingStack.map(_.getStackName).getOrElse(getNewStackName(strategy))
-    val changeSetType = getChangeSetType(stackName, existingStack.isEmpty, createStackIfAbsent, reporter)
+    val changeSetType = getChangeSetType(stackName, existingStack.nonEmpty, createStackIfAbsent, reporter)
 
     (stackName, changeSetType)
   }
