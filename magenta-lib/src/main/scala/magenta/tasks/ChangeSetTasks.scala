@@ -1,12 +1,13 @@
 package magenta.tasks
 
-import com.amazonaws.services.cloudformation.model.{Change, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import com.amazonaws.services.cloudformation.model._
 import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
 
 import scala.collection.JavaConverters._
+import scala.util.{Success, Try}
 
 class CreateChangeSetTask(
                            region: Region,
@@ -62,15 +63,19 @@ class CheckChangeSetCreatedTask(
     }
   }
 
-  def shouldStopWaiting(status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = status match {
-    case "CREATE_COMPLETE" => true
-    case "FAILED" if changes.isEmpty => true
-    case "FAILED" => reporter.fail(statusReason)
-    case "CREATE_IN_PROGRESS" =>
-      reporter.verbose(status)
-      false
-    case _ =>
-      reporter.fail(s"Unknown change set status $status")
+  def shouldStopWaiting(status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = {
+    import ChangeSetStatus._
+
+    Try(valueOf(status)) match {
+      case Success(CREATE_COMPLETE) => true
+      case Success(FAILED) if changes.isEmpty => true
+      case Success(FAILED) => reporter.fail(statusReason)
+      case Success(CREATE_IN_PROGRESS | CREATE_PENDING) =>
+        reporter.verbose(status)
+        false
+      case _ =>
+        reporter.fail(s"Unexpected change set status $status")
+    }
   }
 
   def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
