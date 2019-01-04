@@ -384,6 +384,30 @@ object CloudFormation extends AWS {
     client.createStack(requestWithTemplate)
   }
 
+  def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
+                      template: Template, parameters: Iterable[Parameter], client: AmazonCloudFormation): Unit = {
+
+    val request = new CreateChangeSetRequest()
+      .withChangeSetName(name)
+      .withChangeSetType(tpe)
+      .withStackName(stackName)
+      .withCapabilities(CAPABILITY_NAMED_IAM)
+      .withParameters(parameters.toSeq.asJava)
+
+    val tags: Iterable[CfnTag] = maybeTags
+      .getOrElse(Map.empty)
+      .map  { case (key, value) => new CfnTag().withKey(key).withValue(value) }
+
+    request.withTags(tags.toSeq: _*)
+
+    val requestWithTemplate = template match {
+      case TemplateBody(body) => request.withTemplateBody(body)
+      case TemplateUrl(url) => request.withTemplateURL(url)
+    }
+
+    client.createChangeSet(requestWithTemplate)
+  }
+
   def describeStack(name: String, client: AmazonCloudFormation) =
     try {
       client.describeStacks(
