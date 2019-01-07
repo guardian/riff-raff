@@ -56,9 +56,9 @@ class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(
 
   val messageSub = DeployReporter.messages.subscribe(message => {
     message.stack.top match {
-      case Fail(_, _, parameters) if scheduledDeploy(parameters) =>
+      case Fail(_, _) if scheduledDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        failedDeployNotification(message.context.deployId, parameters)
+        failedDeployNotification(message.context.deployId, message.context.parameters)
       case _ =>
     }
   })

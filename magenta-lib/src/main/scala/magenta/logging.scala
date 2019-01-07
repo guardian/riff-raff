@@ -88,7 +88,7 @@ object DeployReporter {
     currentReporter.previousReporter
   }
   def failContext(currentReporter: DeployReporter, message: String, reason: Throwable) {
-    send(currentReporter, Fail(message, reason, currentReporter.messageContext.parameters))
+    send(currentReporter, Fail(message, reason))
     failContext(currentReporter)
   }
 
@@ -124,7 +124,7 @@ object DeployReporter {
 
   private def failException(reporter: DeployReporter, message: String, e: Option[Throwable] = None): FailException = {
     val exception = e.getOrElse(new RuntimeException(message))
-    send(reporter, Fail(message, exception, reporter.messageContext.parameters))
+    send(reporter, Fail(message, exception))
     new FailException(message, e.orNull)
   }
   private def failException(reporter: DeployReporter, message: String, e: Throwable): FailException = {
@@ -165,7 +165,7 @@ case class Info(text: String) extends Message
 case class CommandOutput(text: String) extends Message
 case class CommandError(text: String) extends Message
 case class Verbose(text: String) extends Message
-case class Fail(text: String, detail: ThrowableDetail, parameters: DeployParameters) extends Message
+case class Fail(text: String, detail: ThrowableDetail) extends Message
 case class Warning(text: String) extends Message
 
 case class StartContext(originalMessage: Message) extends ContextMessage { lazy val text = s"Starting ${originalMessage.text}" }

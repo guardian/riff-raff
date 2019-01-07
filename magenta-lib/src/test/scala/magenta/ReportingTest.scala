@@ -137,7 +137,7 @@ class ReportingTest extends FlatSpec with Matchers {
   val verbose = Verbose("return value 0")
   val finishDep = FinishContext(deploy)
   val finishInfo = FinishContext(infoMsg)
-  val failMsg = Fail("Failed", new RuntimeException("Failed"), parameters)
+  val failMsg = Fail("Failed", new RuntimeException("Failed"))
   val failInfo = FailContext(infoMsg)
   val failDep = FailContext(deploy)
   val messageStacks: List[MessageStack] =

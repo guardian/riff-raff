@@ -227,7 +227,7 @@ case class WarningDocument(text: String) extends MessageDocument {
   override lazy val dboFields = List("text" -> text)
 }
 case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
-  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail, params)
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
   override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
 }
 case class FinishContextDocument() extends MessageDocument {
@@ -247,7 +247,7 @@ object MessageDocument {
       case CommandOutput(text) => CommandOutputDocument(text)
       case CommandError(text) => CommandErrorDocument(text)
       case Verbose(text) => VerboseDocument(text)
-      case Fail(text, detail, _) => FailDocument(text,detail)
+      case Fail(text, detail) => FailDocument(text,detail)
       case FinishContext(message) => FinishContextDocument()
       case FailContext(message) => FailContextDocument()
       case Warning(text) => WarningDocument(text)
