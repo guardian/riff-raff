@@ -36,9 +36,9 @@ class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
-        val failureMessage = s"Your scheduled deploy failed. This means that your AMI may become out of date. If no successful deploys occur between now and the next scheduled attempt, it will not be retried."
+        val failureMessage = s"Your scheduled deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
         Anghammarad.notify(
-          subject = "Scheduled deploy failed",
+          subject = s"Scheduled deploy failed",
           message = failureMessage,
           sourceSystem = "riff-raff",
           channel = All,
