@@ -27,7 +27,6 @@ import utils.{ScheduledAgent, UnnaturalOrdering}
 import scala.concurrent.duration._
 import scala.collection.JavaConverters._
 import org.joda.time.format.ISODateTimeFormat
-import com.gu.googleauth.GoogleAuthConfig
 import deployment.actors.DeployMetricsActor
 import org.joda.time.{DateTime, Days, Period}
 import riffraff.BuildInfo
@@ -80,7 +79,6 @@ class Configuration(val application: String, val webappConfDirectory: String = "
     lazy val clientSecret: String = configuration.getStringProperty("auth.clientSecret").getOrException("No client secret configured")
     lazy val redirectUrl: String = configuration.getStringProperty("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
     lazy val domain: String = configuration.getStringProperty("auth.domain").getOrException("No auth domain configured")
-    lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = configuration.getStringPropertiesSplitByComma("auth.superusers")
     lazy val secretStateSupplierKeyName: String = configuration.getStringProperty("auth.secretStateSupplier.keyName", "/RiffRaff/PlayApplicationSecret")
     lazy val secretStateSupplierRegion: String = configuration.getStringProperty("auth.secretStateSupplier.region", "eu-west-1")
