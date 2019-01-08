@@ -266,14 +266,19 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
           val projectName = deploys.head.parameters.projectName
 
           val newDeploy = someDeploy
-          datastore.writeDeploy(newDeploy.copy(parameters = newDeploy.parameters.copy(projectName = projectName)))
+          val modifiedNewDeploy = newDeploy.copy(startTime = newDeploy.startTime.plusSeconds(1), parameters = newDeploy.parameters.copy(projectName = projectName))
+          datastore.writeDeploy(modifiedNewDeploy)
+
           val anotherDeploy = someDeploy
-          datastore.writeDeploy(anotherDeploy.copy(parameters = anotherDeploy.parameters.copy(projectName = projectName, stage = "CODE")))
+          val modifiedDeploy = anotherDeploy.copy(startTime = anotherDeploy.startTime.plusSeconds(1), parameters = anotherDeploy.parameters.copy(projectName = projectName, stage = "CODE"))
+          datastore.writeDeploy(modifiedDeploy)
+
           val result = datastore.getLastCompletedDeploys(projectName)
 
           result.size shouldBe 2
           result.keys shouldBe Set("TEST", "CODE")
           result("TEST") shouldBe newDeploy.uuid
+          result("CODE") shouldBe modifiedDeploy.uuid
         }
       }
     }

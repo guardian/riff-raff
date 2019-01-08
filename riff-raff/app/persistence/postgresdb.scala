@@ -164,13 +164,12 @@ class PostgresDatastore extends DataStore with Logging {
     val threshold: DateTime = new DateTime().minus(new Period().withDays(90))
 
     val list: Seq[(String, UUID)] = sql"""
-      SELECT id, content->'parameters'->>'stage'
+      SELECT id, content->'parameters'->>'stage', MAX((content->>'startTime')::TIMESTAMP)
       FROM deploy
       WHERE content->'parameters'->>'projectName'=$projectName
         AND content->>'status'='Completed'
         AND (content->>'startTime')::TIMESTAMP > $threshold::TIMESTAMP
-      GROUP BY content->'parameters'->>'projectName', content->'parameters'->>'stage', id
-      ORDER BY content->>'startTime'
+      GROUP BY content->'parameters'->>'stage', id
     """.map(res => (res.string(2), UUID.fromString(res.string(1)))).list.apply()
 
     list.toMap
