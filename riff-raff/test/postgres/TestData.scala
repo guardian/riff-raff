@@ -7,8 +7,10 @@ import magenta.RunState
 import org.joda.time.DateTime
 import persistence.{AllDocument, DeployRecordDocument, LogDocument, MessageDocument, ParametersDocument}
 
+import scala.util.Random
+
 object TestData {
-  val dateTime = DateTime.now()
+  def dateTime = DateTime.now().minusMinutes(new Random().nextInt(10))
 
   def someApiKey: ApiKey = new ApiKey(
     application = "test-application",
