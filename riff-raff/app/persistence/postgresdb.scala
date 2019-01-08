@@ -97,11 +97,11 @@ class PostgresDatastore extends DataStore with Logging {
   // Table: deploy(id: String, content: jsonb)
   override def writeDeploy(deploy: DeployRecordDocument): Unit = DB localTx { implicit session =>
     val json = Json.toJson(deploy).toString()
-    sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
+    sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] = DB readOnly { implicit session =>
-    sql"SELECT content FROM deploy WHERE id = $uuid::uuid".map(DeployRecordDocument(_)).single.apply()
+    sql"SELECT content FROM deploy WHERE id = $uuid".map(DeployRecordDocument(_)).single.apply()
   }
 
   override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = DB readOnly { implicit session =>
@@ -158,15 +158,7 @@ class PostgresDatastore extends DataStore with Logging {
 
   //TODO: Deprecate stringUUID
   override def addStringUUID(uuid: UUID): Unit = {}
-//  DB localTx { implicit session =>
-//    val update = Json.toJson(Map("stringUUID" -> uuid.toString)).toString()
-//    sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
-//  }
-
   override def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = { List.empty }
-//  DB readOnly { implicit session =>
-//    sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'stringUUID') IS NULL".map(SimpleDeployDetail(_)).list.apply()
-//  }
 
   override def getLastCompletedDeploys(projectName: String): Map[String,UUID] = DB readOnly { implicit session =>
     val threshold: DateTime = new DateTime().minus(new Period().withDays(90))
