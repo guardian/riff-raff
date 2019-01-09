@@ -16,6 +16,7 @@ import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
+import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
 import com.amazonaws.util.EC2MetadataUtils
 
 import collection.mutable
@@ -93,6 +94,12 @@ class Configuration(val application: String, val webappConfDirectory: String = "
 
   object scheduledDeployment {
     lazy val enabled = configuration.getStringProperty("scheduledDeployment.enabled", "false") == "true"
+    lazy val regionName = configuration.getStringProperty("scheduledDeployment.aws.region", "eu-west-1")
+    lazy val snsClient = AmazonSNSAsyncClientBuilder.standard()
+      .withCredentials(credentialsProviderChain(None, None))
+      .withRegion(regionName)
+      .build()
+    lazy val anghammaradTopicARN: String = configuration.getStringProperty("scheduledDeployment.anghammaradTopicARN").getOrException("No anghammarad topic ARN supplied")
   }
 
   object credentials {
