@@ -30,6 +30,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |
       |In addition to any permissions required in order to create, modify and delete the resources within the template
       |itself the Riff-Raff user in your account must have the following permissions to create and execute changes:
+      |
       |  - `cloudformation:CreateChangeSet`
       |  - `cloudformation:DescribeStacks`
       |  - `cloudformation:DescribeStackEvents`
