@@ -58,7 +58,7 @@ How do I run Riff-Raff locally if I want to hack on it?
 
 Assuming you have a reasonably recent version of Java installed, 
 
- * Create a basic configuration file at ~/.gu/riff-raff.properties (S3 and mongo config is probably the minimum)
+ * Create a basic configuration file at /etc/gu/riff-raff.properties (S3 and mongo config is probably the minimum)
  * Run the sbt script
  * enter `project riffraff` at the SBT prompt
  * enter `run` at the SBT prompt
