@@ -48,7 +48,7 @@ HOME="/home/$APP"
 # Install a new copy of the properties file
 id -u ${USER} &>/dev/null || adduser --system --home ${HOME} --disabled-password ${USER}
 CONFIG_ORIGIN="s3://$CONFIG_BUCKET/$STACK/$APP/$STAGE.conf"
-mkdir -p ${HOME}/.gu
+mkdir -p /etc/gu
 CONFIG_DESTINATION=/etc/gu/riff-raff.conf
 aws s3 cp ${CONFIG_ORIGIN} ${CONFIG_DESTINATION} --region ${REGION}
 
