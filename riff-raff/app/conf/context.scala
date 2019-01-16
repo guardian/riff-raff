@@ -1,6 +1,5 @@
 package conf
 
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
@@ -15,7 +14,7 @@ import com.amazonaws.util.EC2MetadataUtils
 import com.gu.googleauth.GoogleAuthConfig
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import controllers.{Logging, routes}
 import deployment.Deployments
 import deployment.actors.DeployMetricsActor
@@ -34,7 +33,7 @@ import scala.util.{Success, Try}
 
 object Config extends Logging {
 
-  val configuration: Config = ConfigFactory.load()
+  val configuration = ConfigFactory.load()
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
