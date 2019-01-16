@@ -1,5 +1,6 @@
 package conf
 
+import java.io.File
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
@@ -33,7 +34,9 @@ import scala.util.{Success, Try}
 
 object Config extends Logging {
 
-  val configuration = ConfigFactory.load()
+  val applicationConf = ConfigFactory.parseResources("application.conf")
+  val userConf = ConfigFactory.parseFile(new File(s"${scala.util.Properties.userHome}/.gu/riff-raff.conf"))
+  val configuration = userConf.withFallback(applicationConf).resolve()
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
