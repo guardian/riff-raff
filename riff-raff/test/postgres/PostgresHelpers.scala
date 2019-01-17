@@ -1,35 +1,25 @@
 package postgres
 
-import conf.Configuration
+import conf.Config
 import persistence.PostgresDatastore
 import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
-import scalikejdbc.ConnectionPool
 
 trait PostgresHelpers {
-//  lazy val datastore = PostgresDatastore.buildDatastore()
-
-  lazy private val url = "jdbc:postgresql://localhost:44444/riffraff"
-  lazy private val user = "riffraff"
-  lazy private val password = "riffraff"
-
   lazy val datastore = {
-    Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton(url, user, password)
-
+    val db = PostgresDatastore.buildDatastore()
     applyEvolutions
-
-    new PostgresDatastore
+    db
   }
 
   private def applyEvolutions = {
     val db = Databases(
       driver = "org.postgresql.Driver",
-      url = url,
+      url = Config.postgres.url,
       name = "default",
       config = Map(
-        "username" -> user,
-        "password" -> password
+        "username" -> Config.postgres.user,
+        "password" -> Config.postgres.password
       )
     )
     Evolutions.applyEvolutions(db)

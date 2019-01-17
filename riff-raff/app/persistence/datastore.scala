@@ -2,12 +2,12 @@ package persistence
 
 import java.util.UUID
 
-import conf.Configuration
+import conf.Config
 import conf.DatastoreMetrics.DatastoreRequest
-import org.joda.time.DateTime
-import utils.Retriable
 import controllers.{ApiKey, AuthorisationRecord, Logging}
+import org.joda.time.DateTime
 import play.api.Logger
+import utils.Retriable
 
 trait DataStore extends DocumentStore with Retriable {
   def log: Logger
@@ -29,7 +29,7 @@ trait DataStore extends DocumentStore with Retriable {
 
   def run[T](block: => T): T = DatastoreRequest.measure(block)
 
-  def collectionStats:Map[String, CollectionStats] = Map.empty
+  def collectionStats: Map[String, CollectionStats] = Map.empty
 
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]]
   def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
@@ -72,7 +72,7 @@ object Persistence extends Logging {
     def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
   }
 
-  lazy val store: DataStore = if (Configuration.postgres.isEnabled) postgresStore else mongoStore
+  lazy val store: DataStore = if (Config.postgres.isEnabled) postgresStore else mongoStore
 
   private lazy val mongoStore: DataStore = {
     val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)

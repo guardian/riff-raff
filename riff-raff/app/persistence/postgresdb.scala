@@ -2,7 +2,7 @@ package persistence
 
 import java.util.UUID
 
-import conf.Configuration
+import conf.Config
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
@@ -200,7 +200,7 @@ class PostgresDatastore extends DataStore with Logging {
 object PostgresDatastore {
   def buildDatastore() = {
     Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton(Configuration.postgres.url, Configuration.postgres.user, Configuration.postgres.password)
+    ConnectionPool.singleton(Config.postgres.url, Config.postgres.user, Config.postgres.password)
 
     new PostgresDatastore
   }

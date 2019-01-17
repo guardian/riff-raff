@@ -1,9 +1,6 @@
 package conf
 
-<<<<<<< HEAD
 import java.io.File
-=======
->>>>>>> Docker container running postgres + basic queries
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
@@ -14,18 +11,11 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
-<<<<<<< HEAD
 import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
 import com.amazonaws.util.EC2MetadataUtils
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.ConfigFactory
-=======
-import com.amazonaws.util.EC2MetadataUtils
-import com.gu.conf.ConfigurationFactory
-import com.gu.management._
-import com.gu.management.logback.LogbackLevelPage
->>>>>>> Docker container running postgres + basic queries
 import controllers.{Logging, routes}
 import deployment.Deployments
 import deployment.actors.DeployMetricsActor
@@ -187,10 +177,10 @@ object Config extends Logging {
   }
 
   object postgres {
-    lazy val isEnabled: Boolean = configuration.getStringProperty("postgres.enabled").exists(_.toBoolean)
-    lazy val url = configuration("db.default.url")
-    lazy val user = configuration("db.default.user")
-    lazy val password = configuration("db.default.password")
+    lazy val isEnabled = getBooleanOpt("postgres.enabled").getOrElse(false)
+    lazy val url = getString("db.default.url")
+    lazy val user = getString("db.default.user")
+    lazy val password = getString("db.default.password")
   }
 
   object stages {
