@@ -40,7 +40,7 @@ fi
 function updateScript {
 	SCRIPT_LOCATION="/opt/riff-raff"
 
-	aws --region eu-west-1 --profile deployTools s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
+	aws --region eu-west-1 s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
 
 	if cmp ${SCRIPT_LOCATION}/bootstrap.sh /tmp/new-bootstrap.sh > /dev/null; then
 		echo "Bootstrap.sh has latest version."
