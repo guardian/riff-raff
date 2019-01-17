@@ -25,7 +25,7 @@ object TargetResolver {
   }
 
   def fetchYaml(build: Build): Either[S3Error, String] = {    
-    val artifact = S3YamlArtifact(build.toMagentaBuild, Config.artifact.aws.bucketName)
+    val artifact = S3YamlArtifact(build, Config.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
     S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
   }

@@ -2,16 +2,10 @@ import java.time.Duration
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
-import com.gu.googleauth.AuthAction
-import com.gu.googleauth.{GoogleAuthConfig, AntiForgeryChecker}
+import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.ParameterStore
-
-import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
-import conf.{Config, DeployMetrics}
-
 import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
-import conf.{Configuration, DeployMetrics}
-
+import conf.{Config, DeployMetrics}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -64,10 +58,10 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   }
 
   lazy val googleAuthConfig = GoogleAuthConfig(
-    clientId = Configuration.auth.clientId,
-    clientSecret = Configuration.auth.clientSecret,
-    redirectUrl = Configuration.auth.redirectUrl,
-    domain = Configuration.auth.domain,
+    clientId = Config.auth.clientId,
+    clientSecret = Config.auth.clientSecret,
+    redirectUrl = Config.auth.redirectUrl,
+    domain = Config.auth.domain,
     antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
   )
 
@@ -97,7 +91,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(availableDeploymentTypes)
 
   val authAction = new AuthAction[AnyContent](
-    Config.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,

@@ -10,28 +10,14 @@ import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
-
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
 import com.amazonaws.util.EC2MetadataUtils
-import com.gu.googleauth.GoogleAuthConfig
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.ConfigFactory
 import controllers.{Logging, routes}
 import deployment.Deployments
-
-import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
-import com.amazonaws.util.EC2MetadataUtils
-
-import collection.mutable
-import persistence.{CollectionStats, Persistence}
-import deployment.Deployments
-import utils.{ScheduledAgent, UnnaturalOrdering}
-
-import scala.concurrent.duration._
-import scala.collection.JavaConverters._
-import org.joda.time.format.ISODateTimeFormat
-
 import deployment.actors.DeployMetricsActor
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import magenta._
