@@ -32,15 +32,15 @@ while getopts ":s:" OPT; do
   esac
 done
 
-if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD"  ]; then
+if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD" ] && [ "${STAGE}" != "DEV" ]; then
   echo "Must specify a valid stage (PROD or CODE)"
   exit 1
 fi
 
 function updateScript {
-	CURRENT_HASH=$(md5sum bootstrap.sh | cut -d ' ' -f 1)
+	CURRENT_HASH=$(md5sum /opt/riff-raff/bootstrap.sh | cut -d ' ' -f 1)
 
-	aws --region eu-west-1 --profile deployTools s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
+	aws --region eu-west-1 s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
 
 	NEW_HASH=$(md5sum /tmp/new-bootstrap.sh | cut -d ' ' -f 1)
 
@@ -48,8 +48,8 @@ function updateScript {
 		echo "Bootstrap.sh has latest version."
 	else
 		echo "Bootstrap.sh has changed. Replacing with latest version."
-		mv /tmp/new-bootstrap.sh ${PWD}/bootstrap.sh
-		chmod +x ${PWD}/bootstrap.sh
+		mv /tmp/new-bootstrap.sh /opt/riff-raff/bootstrap.sh
+		chmod +x /opt/riff-raff/bootstrap.sh
 		./bootstrap.sh -s ${STAGE}
 		exit
 	fi
