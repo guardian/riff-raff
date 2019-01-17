@@ -37,6 +37,26 @@ if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD"  ]; then
   exit 1
 fi
 
+function updateScript {
+	CURRENT_HASH=$(md5sum bootstrap.sh | cut -d ' ' -f 1)
+
+	aws --region eu-west-1 --profile deployTools s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
+
+	NEW_HASH=$(md5sum /tmp/new-bootstrap.sh | cut -d ' ' -f 1)
+
+	if [ $CURRENT_HASH = $NEW_HASH ]; then
+		echo "Bootstrap.sh has latest version."
+	else
+		echo "Bootstrap.sh has changed. Replacing with latest version."
+		mv /tmp/new-bootstrap.sh ${PWD}/bootstrap.sh
+		chmod +x ${PWD}/bootstrap.sh
+		./bootstrap.sh -s ${STAGE}
+		exit
+	fi
+}
+
+updateScript
+
 REGION="eu-west-1"
 STACK="deploy"
 APP="riff-raff"
