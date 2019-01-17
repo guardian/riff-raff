@@ -46,7 +46,6 @@ object Dependencies {
   val riffRaffDeps = commonDeps ++ Seq(
     "com.gu" %% "management-internal" % Versions.guardianManagement,
     "com.gu" %% "management-logback" % Versions.guardianManagement,
-    "com.gu" %% "configuration" % "4.2",
     "com.gu" %% "play-googleauth" % "0.7.7",
     "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.12",
     "org.mongodb" %% "casbah" % "3.1.1",

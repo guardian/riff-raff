@@ -12,8 +12,7 @@ import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph, StartNode, ValueNode}
 import magenta.input.resolver.Resolver
-import magenta.{DeployContext, DeploymentResources, DeployReporter, DeployStoppedException, Region}
-import org.bson.json.JsonReader
+import magenta.{DeployContext, DeployReporter, DeployStoppedException, DeploymentResources}
 import org.joda.time.DateTime
 import resources.PrismLookup
 
@@ -171,10 +170,10 @@ class DeployGroupRunner(
   private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import cats.syntax.either._
-      import conf.Configuration._
+      import conf.Config
 
-      implicit val client = artifact.aws.client
-      val bucketName = artifact.aws.bucketName
+      implicit val client = Config.artifact.aws.client
+      val bucketName = Config.artifact.aws.bucketName
 
       safeReporter.info("Reading riff-raff.yaml")
       val resources = DeploymentResources(safeReporter, prismLookup, client)

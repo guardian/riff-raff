@@ -3,7 +3,7 @@ package controllers
 import cats.data.EitherT
 import com.gu.googleauth._
 import com.mongodb.casbah.commons.MongoDBObject
-import conf.Configuration.auth
+import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
 import persistence.{MongoFormat, MongoSerialisable, Persistence}
@@ -50,12 +50,12 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   extends BaseController with Logging with LoginSupport with I18nSupport with LogAndSquashBehaviour {
 
   val validator = new AuthorisationValidator {
-    def emailDomainWhitelist = auth.domains
-    def emailWhitelistEnabled = auth.whitelist.useDatabase || auth.whitelist.addresses.nonEmpty
+    def emailDomainWhitelist = Config.auth.domains
+    def emailWhitelistEnabled = Config.auth.whitelist.useDatabase || Config.auth.whitelist.addresses.nonEmpty
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
-      auth.whitelist.addresses.contains(lowerCaseEmail) ||
-        (auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
+      Config.auth.whitelist.addresses.contains(lowerCaseEmail) ||
+        (Config.auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
     }
   }
 

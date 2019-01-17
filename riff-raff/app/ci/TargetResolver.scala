@@ -1,7 +1,7 @@
 package ci
 
 import cats.syntax.either._
-import conf.Configuration
+import conf.Config
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta.Build
@@ -15,7 +15,7 @@ import persistence.TargetDynamoRepository
 case class Target(region: String, stack: String, app: String)
 
 object TargetResolver {
-  def extractTargets(graph: Graph[Deployment]): Set[Target] = {
+  def extractTargets(graph: Graph[Deployment]): Set[Target] = {   
     graph.nodes.values.flatMap { deployment =>
       for {
         region <- deployment.regions.toList
@@ -24,10 +24,10 @@ object TargetResolver {
     }
   }
 
-  def fetchYaml(build: Build): Either[S3Error, String] = {
-    val artifact = S3YamlArtifact(build, Configuration.artifact.aws.bucketName)
+  def fetchYaml(build: Build): Either[S3Error, String] = {    
+    val artifact = S3YamlArtifact(build, Config.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
-    S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+    S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
   }
 }
 
@@ -61,7 +61,7 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
         }
     }
   }
-
+  
   override def init() = {}
 
   override def shutdown() = {

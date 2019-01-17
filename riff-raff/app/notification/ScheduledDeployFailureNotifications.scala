@@ -8,16 +8,16 @@ import magenta.{DeployParameters, DeployReporter, Fail}
 import scala.concurrent.ExecutionContext
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
-import conf.Configuration
+import conf.Config
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import schedule.ScheduledDeployer
 
 class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(implicit ec: ExecutionContext) extends Lifecycle with Logging {
 
-  private val anghammaradTopicARN = Configuration.scheduledDeployment.anghammaradTopicARN
-  private val snsClient = Configuration.scheduledDeployment.snsClient
-  private val prefix = Configuration.urls.publicPrefix
+  lazy private val anghammaradTopicARN = Config.scheduledDeployment.anghammaradTopicARN
+  lazy private val snsClient = Config.scheduledDeployment.snsClient
+  lazy private val prefix = Config.urls.publicPrefix
 
   def url(uuid: UUID): String = {
     val path = routes.DeployController.viewUUID(uuid.toString,true)

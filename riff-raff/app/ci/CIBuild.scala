@@ -2,7 +2,7 @@ package ci
 
 import java.util.concurrent.Executors
 
-import conf.Configuration
+import conf.Config
 import rx.lang.scala.Observable
 import org.joda.time.DateTime
 import controllers.Logging
@@ -34,7 +34,7 @@ class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
   import concurrent.duration._
   implicit val ec = executionContext
 
-  val pollingPeriod = Configuration.build.pollingPeriodSeconds.seconds
+  val pollingPeriod = Config.build.pollingPeriodSeconds.seconds
 
   val initialFiles: Seq[S3Object] = for {
     location <- S3Build.buildJsons
@@ -43,7 +43,7 @@ class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
   val initialBuilds: Future[Seq[CIBuild]] = {
     implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(50))
     log.logger.info(s"Found ${initialFiles.length} builds to parse")
-    (Future.traverse(initialFiles)(l => Future(retrieveBuild(l)))).map(_.flatten)
+    Future.traverse(initialFiles)(l => Future(retrieveBuild(l))).map(_.flatten)
   }
 
   val newBuilds: Observable[CIBuild] = {

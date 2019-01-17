@@ -2,19 +2,17 @@ package persistence
 
 import java.util.UUID
 
-import com.mongodb.casbah._
+import cats.syntax.either._
 import com.mongodb.casbah.Imports.WriteConcern
-import conf.Configuration
+import com.mongodb.casbah._
+import com.mongodb.casbah.commons.MongoDBObject
+import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
+import com.mongodb.casbah.query.Imports._
+import conf.Config
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
-import magenta.{Build, RunState}
-import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
-import com.mongodb.casbah.commons.MongoDBObject
+import magenta.RunState
 import org.joda.time.{DateTime, Period}
-import com.mongodb.casbah.query.Imports._
-import com.mongodb.util.JSON
-import notification.HookConfig
-import cats.syntax.either._
 
 trait MongoSerialisable[A] {
 
@@ -46,8 +44,8 @@ object MongoDatastore extends Logging {
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
-    if (Configuration.mongo.isConfigured) {
-      val uri = MongoClientURI(Configuration.mongo.uri.get)
+    if (Config.mongo.isConfigured) {
+      val uri = MongoClientURI(Config.mongo.uri.get)
       val mongoClient = MongoClient(uri)
       val db = MongoDB(mongoClient, uri.database.get)
       Some(new MongoDatastore(db))
@@ -62,7 +60,7 @@ object MongoDatastore extends Logging {
 class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
   import MongoDatastore.MAX_RETRIES
 
-  def getCollection(name: String) = database(s"${Configuration.mongo.collectionPrefix}$name")
+  def getCollection(name: String) = database(s"${Config.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
   val authCollection = getCollection("auth")

@@ -9,15 +9,15 @@ import cats.syntax.either._
 import ci.{Builds, S3Tag, TagClassification}
 import com.amazonaws.services.s3.model.GetObjectRequest
 import com.gu.googleauth.AuthAction
-import conf.Configuration
+import conf.Config
 import controllers.forms.{DeployParameterForm, UuidForm}
 import deployment._
 import magenta._
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
+import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
-import org.joda.time.{DateTime, DateTimeZone}
 import persistence.RestrictionConfigDynamoRepository
 import play.api.http.HttpEntity
 import play.api.i18n.I18nSupport
@@ -27,8 +27,6 @@ import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import utils.LogAndSquashBehaviour
-
-import scala.util.{Failure, Success}
 
 class DeployController(
   deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
@@ -198,7 +196,7 @@ class DeployController(
 
   def markAsFailed = AuthAction { implicit request =>
     UuidForm.form.bindFromRequest().fold(
-      errors => Redirect(routes.DeployController.history),
+      _ => Redirect(routes.DeployController.history()),
       form => {
         form.action match {
           case "markAsFailed" =>
@@ -238,12 +236,12 @@ class DeployController(
   def deployConfig(projectName: String, id: String) = AuthAction { implicit request =>
     def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
-      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
       deployObjectContent.map(deployObjectPath -> _)
     }
 
     val build = Build(projectName, id)
-    val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
+    val deployObject = pathAndContent(S3YamlArtifact(build, Config.artifact.aws.bucketName))
 
     deployObject.map {
       case (path, contents) => Ok(contents).as(path.extension.map {
@@ -256,15 +254,15 @@ class DeployController(
   def deployFiles(projectName: String, id: String) = AuthAction { implicit request =>
     def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Artifact, S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
-      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
       deployObjectContent.map(content => (artifact, deployObjectPath, content))
     }
 
     val build = Build(projectName, id)
-    val deployObject = pathAndContent(S3YamlArtifact(build, Configuration.artifact.aws.bucketName))
+    val deployObject = pathAndContent(S3YamlArtifact(build, Config.artifact.aws.bucketName))
 
     deployObject.map { case (artifact, path, configFile) =>
-      val objects = artifact.listAll()(Configuration.artifact.aws.client)
+      val objects = artifact.listAll()(Config.artifact.aws.client)
       val relativeObjects = objects.map{ obj => obj.relativeTo(artifact) -> obj}
       Ok(views.html.artifact.listFiles(request, projectName, id, relativeObjects))
     } getOrElse {
@@ -273,7 +271,7 @@ class DeployController(
   }
 
   def getArtifactFile(key: String) = AuthAction { implicit request =>
-    val s3doc = Configuration.artifact.aws.client.getObject(new GetObjectRequest(Configuration.artifact.aws.bucketName, key))
+    val s3doc = Config.artifact.aws.client.getObject(new GetObjectRequest(Config.artifact.aws.bucketName, key))
     val stream = s3doc.getObjectContent
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(s3doc.getObjectMetadata.getContentType)

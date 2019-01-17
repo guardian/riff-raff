@@ -1,20 +1,20 @@
 package ci
 
+import conf.Config
 import controllers.Logging
 import deployment.{ContinuousDeploymentRequestSource, Deployments}
 import lifecycle.Lifecycle
-import magenta.{DeployParameters, Deployer, Stage, Build => MagentaBuild}
+import magenta.{DeployParameters, Deployer, Stage}
 import persistence.ContinuousDeploymentConfigRepository.getContinuousDeploymentList
 import rx.lang.scala.{Observable, Subscription}
 import utils.{ChangeFreeze, Retriable}
 
-import scala.util.Try
 import scala.util.control.NonFatal
 
 class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments) extends Lifecycle with Logging {
   import ContinuousDeployment._
 
-  val builds = buildCandidates(buildPoller.newBuilds)
+  val builds: Observable[CIBuild] = buildCandidates(buildPoller.newBuilds)
 
   val sub: Subscription = builds.subscribe { b =>
     getMatchesForSuccessfulBuilds(b, cdConfigs) foreach  { x =>
@@ -22,7 +22,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
     }
   }
 
-  def cdConfigs = retryUpTo(5)(getContinuousDeploymentList).getOrElse{
+  def cdConfigs: List[ContinuousDeploymentConfig] = retryUpTo(5)(getContinuousDeploymentList()).getOrElse{
     log.error("Failed to retrieve CD configs")
     Nil
   }
@@ -43,7 +43,7 @@ class ContinuousDeployment(buildPoller: CIBuildPoller, deployments: Deployments)
   }
 
   def runDeploy(params: DeployParameters) {
-    if (conf.Configuration.continuousDeployment.enabled) {
+    if (Config.continuousDeployment.enabled) {
       if (!ChangeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")
         try {
