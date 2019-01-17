@@ -32,7 +32,7 @@ while getopts ":s:" OPT; do
   esac
 done
 
-if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD" ] && [ "${STAGE}" != "DEV" ]; then
+if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD" ]; then
   echo "Must specify a valid stage (PROD or CODE)"
   exit 1
 fi
