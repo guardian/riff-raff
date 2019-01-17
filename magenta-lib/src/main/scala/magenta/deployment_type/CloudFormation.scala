@@ -27,6 +27,18 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |caller identity. If you don't want this to happen then then you are welcome to create it yourself. Riff-Raff will
       |create it with a lifecycle rule that deletes objects after one day. Templates over 51,200 bytes will be uploaded
       |to this bucket and sent to CloudFormation using the template URL parameter.
+      |
+      |In addition to any permissions required in order to create, modify and delete the resources within the template
+      |itself the Riff-Raff user in your account must have the following permissions to create and execute changes:
+      |
+      |  - `cloudformation:CreateChangeSet`
+      |  - `cloudformation:DescribeStacks`
+      |  - `cloudformation:DescribeStackEvents`
+      |  - `cloudformation:DescribeChangeSet`
+      |  - `cloudformation:ExecuteChangeSet`
+      |  - `cloudformation:DeleteChangeSet`
+      |  - `cloudformation:CreateStack` (if `createStackIfAbsent` has not been manually set to false in riff-raff.yaml)
+      |
     """.stripMargin
 
   val templatePath = Param[String]("templatePath",

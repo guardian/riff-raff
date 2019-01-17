@@ -4,6 +4,7 @@ import cats.syntax.either._
 import conf.Configuration
 import controllers.Logging
 import lifecycle.Lifecycle
+import magenta.Build
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.Graph
@@ -13,12 +14,29 @@ import persistence.TargetDynamoRepository
 
 case class Target(region: String, stack: String, app: String)
 
+object TargetResolver {
+  def extractTargets(graph: Graph[Deployment]): Set[Target] = {
+    graph.nodes.values.flatMap { deployment =>
+      for {
+        region <- deployment.regions.toList
+        stack <- deployment.stacks.toList
+      } yield Target(region, stack, deployment.app)
+    }
+  }
+
+  def fetchYaml(build: Build): Either[S3Error, String] = {
+    val artifact = S3YamlArtifact(build, Configuration.artifact.aws.bucketName)
+    val deployObjectPath = artifact.deployObject
+    S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
+  }
+}
+
 class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[DeploymentType]) extends Lifecycle with Logging {
   val poller = ciBuildPoller.newBuilds.subscribe { build =>
     val result = for {
-      yaml <- fetchYaml(build)
+      yaml <- TargetResolver.fetchYaml(build.toMagentaBuild)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, All).toEither
-      targets = extractTargets(deployGraph)
+      targets = TargetResolver.extractTargets(deployGraph)
     } yield {
       targets.map { t =>
         Either.catchNonFatal(t -> TargetDynamoRepository.set(t, build.jobName, build.startTime))
@@ -41,21 +59,6 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
           case (msg, Some(t)) => log.warn(s"Error resolving target for $build: $msg", t)
           case (msg, None) => log.warn(s"Error resolving target for $build: $msg")
         }
-    }
-  }
-
-  def fetchYaml(build: CIBuild): Either[S3Error, String] = {
-    val artifact = S3YamlArtifact(build.toMagentaBuild, Configuration.artifact.aws.bucketName)
-    val deployObjectPath = artifact.deployObject
-    S3Location.fetchContentAsString(deployObjectPath)(Configuration.artifact.aws.client)
-  }
-
-  def extractTargets(graph: Graph[Deployment]): Set[Target] = {
-    graph.nodes.values.flatMap { deployment =>
-      for {
-        region <- deployment.regions.toList
-        stack <- deployment.stacks.toList
-      } yield Target(region, stack, deployment.app)
     }
   }
 

@@ -328,22 +328,6 @@ object CloudFormation extends AWS {
     client.validateTemplate(request)
   }
 
-  def updateStack(name: String, template: Template, parameters: Map[String, ParameterValue],
-    client: AmazonCloudFormation) = {
-
-    val request = new UpdateStackRequest().withStackName(name).withCapabilities(CAPABILITY_NAMED_IAM).withParameters(
-      parameters map {
-        case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-        case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
-      } toSeq: _*
-    )
-    val requestWithTemplate = template match {
-      case TemplateBody(body) => request.withTemplateBody(body)
-      case TemplateUrl(url) => request.withTemplateURL(url)
-    }
-    client.updateStack(requestWithTemplate)
-  }
-
   def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: AmazonCloudFormation) =
     client.updateStack(
       new UpdateStackRequest()
@@ -357,32 +341,6 @@ object CloudFormation extends AWS {
           } toSeq: _*
         )
     )
-
-  def createStack(reporter: DeployReporter, name: String, maybeTags: Option[Map[String, String]], template: Template, parameters: Map[String, ParameterValue],
-    client: AmazonCloudFormation) = {
-
-    val request = new CreateStackRequest()
-      .withStackName(name)
-      .withCapabilities(CAPABILITY_NAMED_IAM)
-      .withParameters(
-        parameters map {
-          case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
-          case (k, UseExistingValue) => reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
-        } toSeq: _*
-      )
-
-    val requestWithTemplate = template match {
-      case TemplateBody(body) => request.withTemplateBody(body)
-      case TemplateUrl(url) => request.withTemplateURL(url)
-    }
-
-    maybeTags.foreach { tags =>
-      val sdkTags = tags.map{ case (key, value) => new CfnTag().withKey(key).withValue(value) }
-      request.setTags(sdkTags.asJavaCollection)
-    }
-
-    client.createStack(requestWithTemplate)
-  }
 
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
                       template: Template, parameters: Iterable[Parameter], client: AmazonCloudFormation): Unit = {
