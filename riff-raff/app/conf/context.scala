@@ -10,6 +10,7 @@ import com.amazonaws.regions.{Region, RegionUtils, Regions}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
+
 import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.amazonaws.util.EC2MetadataUtils
 import com.gu.googleauth.GoogleAuthConfig
@@ -18,6 +19,19 @@ import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.ConfigFactory
 import controllers.{Logging, routes}
 import deployment.Deployments
+
+import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
+import com.amazonaws.util.EC2MetadataUtils
+
+import collection.mutable
+import persistence.{CollectionStats, Persistence}
+import deployment.Deployments
+import utils.{ScheduledAgent, UnnaturalOrdering}
+
+import scala.concurrent.duration._
+import scala.collection.JavaConverters._
+import org.joda.time.format.ISODateTimeFormat
+
 import deployment.actors.DeployMetricsActor
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
 import magenta._
@@ -83,11 +97,11 @@ object Config extends Logging {
       lazy val useDatabase: Boolean = getBooleanOpt("auth.whitelist.useDatabase").getOrElse(false)
       lazy val addresses: List[String] = getStringList("auth.whitelist.addresses")
     }
+
     lazy val clientId: String = getStringOpt("auth.clientId").getOrException("No client ID configured")
     lazy val clientSecret: String = getStringOpt("auth.clientSecret").getOrException("No client secret configured")
     lazy val redirectUrl: String = getStringOpt("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
     lazy val domain: String = getStringOpt("auth.domain").getOrException("No auth domain configured")
-    lazy val googleAuthConfig = GoogleAuthConfig(auth.clientId, auth.clientSecret, auth.redirectUrl, auth.domain)
     lazy val superusers: List[String] = getStringList("auth.superusers")
     lazy val secretStateSupplierKeyName: String = getStringOpt("auth.secretStateSupplier.keyName").getOrElse("/RiffRaff/PlayApplicationSecret")
     lazy val secretStateSupplierRegion: String = getStringOpt("auth.secretStateSupplier.region").getOrElse("eu-west-1")
@@ -103,6 +117,12 @@ object Config extends Logging {
 
   object scheduledDeployment {
     lazy val enabled = getBooleanOpt("scheduledDeployment.enabled").getOrElse(false)
+    lazy val regionName = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
+    lazy val snsClient = AmazonSNSAsyncClientBuilder.standard()
+      .withCredentials(credentialsProviderChain(None, None))
+      .withRegion(regionName)
+      .build()
+    lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
   }
 
   object credentials {

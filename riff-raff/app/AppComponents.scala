@@ -1,19 +1,24 @@
 import java.time.Duration
-import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.AuthAction
+import com.gu.googleauth.{GoogleAuthConfig, AntiForgeryChecker}
 import com.gu.play.secretrotation.aws.ParameterStore
+
 import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
 import conf.{Config, DeployMetrics}
+
+import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
+import conf.{Configuration, DeployMetrics}
+
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
-import notification.HooksClient
+import notification.{HooksClient, ScheduledDeployFailureNotifications}
 import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
 import play.api.http.DefaultHttpErrorHandler
@@ -44,19 +49,27 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with AssetsComponents
   with Logging {
 
-  val secretStateSupplier: Supplier[SecretState] = {
+  val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
-      TransitionTiming(
+      transitionTiming = TransitionTiming(
         usageDelay = Duration.ofMinutes(3),
         overlapDuration = Duration.ofHours(2)
       ),
-      Config.auth.secretStateSupplierKeyName,
-      AWSSimpleSystemsManagementClientBuilder.standard()
+      parameterName = Config.auth.secretStateSupplierKeyName,
+      ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
         .withRegion(Config.auth.secretStateSupplierRegion)
         .withCredentials(Config.credentialsProviderChain(None, None))
         .build()
     )
   }
+
+  lazy val googleAuthConfig = GoogleAuthConfig(
+    clientId = Configuration.auth.clientId,
+    clientSecret = Configuration.auth.clientSecret,
+    redirectUrl = Configuration.auth.redirectUrl,
+    domain = Configuration.auth.domain,
+    antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
+  )
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
@@ -81,6 +94,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
+  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(availableDeploymentTypes)
 
   val authAction = new AuthAction[AnyContent](
     Config.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
@@ -118,7 +132,8 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     continuousDeployment,
     managementServer,
     shutdownWhenInactive,
-    artifactHousekeeper
+    artifactHousekeeper,
+    scheduledDeployNotifier
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -143,7 +158,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val restrictionsController = new Restrictions(authAction, controllerComponents)
   val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
-  val loginController = new Login(deployments, controllerComponents, authAction)
+  val loginController = new Login(deployments, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {

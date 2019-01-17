@@ -45,7 +45,7 @@ trait AuthorisationValidator {
   }
 }
 
-class Login(deployments: Deployments, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent])
+class Login(deployments: Deployments, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent], val authConfig: GoogleAuthConfig)
   (implicit val wsClient: WSClient, val executionContext: ExecutionContext)
   extends BaseController with Logging with LoginSupport with I18nSupport with LogAndSquashBehaviour {
 
@@ -75,7 +75,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
       _ <- EitherT.fromEither[Future] {
         if (validator.isAuthorised(identity)) Right(())
         else Left(redirectWithError(
-          failureRedirectTarget,  validator.authorisationError(identity).getOrElse("Unknown error"), authConfig.antiForgeryKey, request.session))
+          failureRedirectTarget,  validator.authorisationError(identity).getOrElse("Unknown error")))
       }
     } yield {
       setupSessionWhenSuccessful(identity)
@@ -125,8 +125,6 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
     } )
     Redirect(routes.Login.authList())
   }
-
-  override def authConfig: GoogleAuthConfig = Config.auth.googleAuthConfig
 
   override val failureRedirectTarget: Call = routes.Login.login()
   override val defaultRedirectTarget: Call = routes.Application.index()

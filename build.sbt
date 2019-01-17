@@ -3,7 +3,7 @@ import Helpers._
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.12.2",
+  scalaVersion := "2.12.8",
   scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions", "-Ypartial-unification"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
@@ -12,8 +12,8 @@ val commonSettings = Seq(
   ),
   version := "1.0",
   resolvers ++= Seq(
-    "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
-    "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases"
+    "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/",
+    "Guardian Github Releases" at "https://guardian.github.com/maven/repo-releases"
   )
 )
 
