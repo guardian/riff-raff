@@ -34,9 +34,9 @@ import scala.util.{Success, Try}
 
 object Config extends Logging {
 
-  val applicationConf = ConfigFactory.parseResources("application.conf")
-  val userConf = ConfigFactory.parseFile(new File(s"${scala.util.Properties.userHome}/.gu/riff-raff.conf"))
-  val configuration = userConf.withFallback(applicationConf).resolve()
+  private val applicationConf = ConfigFactory.parseResources("application.conf")
+  private val userConf = ConfigFactory.parseFile(new File(s"${scala.util.Properties.userHome}/.gu/riff-raff.conf"))
+  private val configuration = userConf.withFallback(applicationConf).resolve()
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
