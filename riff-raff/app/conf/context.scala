@@ -40,7 +40,7 @@ object Config extends Logging {
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
-  private def getStringList(path: String): List[String] = Try(configuration.getString(path)).toOption.map(_.split(",").map(_.trim).toList).getOrElse(List.empty)
+  private def getStringList(path: String): List[String] = getStringOpt(path).map(_.split(",").map(_.trim).toList).getOrElse(List.empty)
   private def getBooleanOpt(path: String): Option[Boolean] = Try(configuration.getBoolean(path)).toOption
   private def getIntOpt(path: String): Option[Int] = Try(configuration.getInt(path)).toOption
 
