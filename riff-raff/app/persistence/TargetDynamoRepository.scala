@@ -1,8 +1,8 @@
 package persistence
 
 import ci.Target
-import com.amazonaws.services.dynamodbv2.model.PutItemResult
 import com.gu.scanamo.Table
+import com.gu.scanamo.error.DynamoReadError
 import org.joda.time.DateTime
 
 case class TargetId(targetKey: String, projectName: String, region: String, stack: String, app: String, lastSeen: DateTime) {
@@ -20,7 +20,7 @@ object TargetDynamoRepository extends DynamoRepository {
 
   import com.gu.scanamo.syntax._
 
-  def set(target: Target, projectName: String, lastSeen: DateTime): PutItemResult =
+  def set(target: Target, projectName: String, lastSeen: DateTime): Option[Either[DynamoReadError, TargetId]] =
     exec(table.put(TargetId(target, projectName, lastSeen)))
 
   def get(targetKey: String, projectName: String): Option[TargetId] = {

@@ -10,7 +10,7 @@ object ConfigErrors {
   def apply(context: String, message: String): ConfigErrors = ConfigErrors(ConfigError(context, message))
   def apply(error: ConfigError): ConfigErrors = ConfigErrors(NEL.of(error))
   implicit val sg = new Semigroup[ConfigErrors] {
-    def combine(x: ConfigErrors, y: ConfigErrors): ConfigErrors = ConfigErrors(x.errors.concat(y.errors))
+    def combine(x: ConfigErrors, y: ConfigErrors): ConfigErrors = ConfigErrors(x.errors.concatNel(y.errors))
   }
 }
 

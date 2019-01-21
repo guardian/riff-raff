@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import cats.syntax.either._
 import com.gu.management.Loggable
-import conf.Configuration
+import conf.Config
 import magenta.artifact.{S3Error, S3YamlArtifact}
 import magenta.deployment_type.DeploymentType
 import magenta.{DeployParameters, DeployReporter, DeploymentResources}
@@ -31,8 +31,8 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
     val previewId = UUID.randomUUID()
     logger.info(s"Starting preview for $previewId")
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val resources = DeploymentResources(muteLogger, prismLookup, Configuration.artifact.aws.client)
-    val artifact = S3YamlArtifact.apply(parameters.build, conf.Configuration.artifact.aws.bucketName)
+    val resources = DeploymentResources(muteLogger, prismLookup, Config.artifact.aws.client)
+    val artifact = S3YamlArtifact.apply(parameters.build, Config.artifact.aws.bucketName)
     val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 
     maybeConfig.map(config => {

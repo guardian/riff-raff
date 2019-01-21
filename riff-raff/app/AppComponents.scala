@@ -1,13 +1,11 @@
 import java.time.Duration
-import java.util.function.Supplier
 
 import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
-import com.amazonaws.regions.Regions
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
-import com.gu.googleauth.AuthAction
+import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.ParameterStore
-import com.gu.play.secretrotation.{RotatingSecretComponents, SecretState, TransitionTiming}
-import conf.{Configuration, DeployMetrics}
+import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
+import conf.{Config, DeployMetrics}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -15,7 +13,7 @@ import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
 import migration.Migration
-import notification.HooksClient
+import notification.{HooksClient, ScheduledDeployFailureNotifications}
 import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
 import play.api.ApplicationLoader.Context
 import play.api.http.DefaultHttpErrorHandler
@@ -33,8 +31,8 @@ import router.Routes
 import schedule.DeployScheduler
 import utils.{ElkLogging, HstsFilter, ScheduledAgent}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 class AppComponents(context: Context) extends BuiltInComponentsFromContext(context)
@@ -46,36 +44,44 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with AssetsComponents
   with Logging {
 
-  val secretStateSupplier: Supplier[SecretState] = {
+  val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
-      TransitionTiming(
+      transitionTiming = TransitionTiming(
         usageDelay = Duration.ofMinutes(3),
         overlapDuration = Duration.ofHours(2)
       ),
-      conf.Configuration.auth.secretStateSupplierKeyName,
-      AWSSimpleSystemsManagementClientBuilder.standard()
-        .withRegion(conf.Configuration.auth.secretStateSupplierRegion)
-        .withCredentials(Configuration.credentialsProviderChain(None, None))
+      parameterName = Config.auth.secretStateSupplierKeyName,
+      ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
+        .withRegion(Config.auth.secretStateSupplierRegion)
+        .withCredentials(Config.credentialsProviderChain(None, None))
         .build()
     )
   }
+
+  lazy val googleAuthConfig = GoogleAuthConfig(
+    clientId = Config.auth.clientId,
+    clientSecret = Config.auth.clientSecret,
+    redirectUrl = Config.auth.redirectUrl,
+    domain = Config.auth.domain,
+    antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
+  )
 
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
   val elkLogging = new ElkLogging(
-    Configuration.stage,
-    Configuration.logging.regionName,
-    Configuration.logging.elkStreamName,
-    Configuration.logging.credentialsProvider,
+    Config.stage,
+    Config.logging.regionName,
+    Config.logging.elkStreamName,
+    Config.logging.credentialsProvider,
     applicationLifecycle
   )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
-  val prismLookup = new PrismLookup(wsClient, conf.Configuration.lookup.prismUrl, conf.Configuration.lookup.timeoutSeconds.seconds)
-  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, conf.Configuration.deprecation.pauseSeconds)
+  val prismLookup = new PrismLookup(wsClient, Config.lookup.prismUrl, Config.lookup.timeoutSeconds.seconds)
+  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, Config.deprecation.pauseSeconds)
   val buildPoller = new CIBuildPoller(executionContext)
   val builds = new Builds(buildPoller)
   val targetResolver = new TargetResolver(buildPoller, availableDeploymentTypes)
@@ -84,9 +90,10 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
   val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
   val artifactHousekeeper = new ArtifactHousekeeping(deployments)
+  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(availableDeploymentTypes)
 
   val authAction = new AuthAction[AnyContent](
-    conf.Configuration.auth.googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -122,7 +129,8 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     managementServer,
     shutdownWhenInactive,
     artifactHousekeeper,
-    migrations
+    migrations,
+    scheduledDeployNotifier
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -147,7 +155,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val restrictionsController = new Restrictions(authAction, controllerComponents)
   val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
   val targetController = new TargetController(deployments, authAction, controllerComponents)
-  val loginController = new Login(deployments, controllerComponents, authAction)
+  val loginController = new Login(deployments, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
   val migrationController = new MigrationController(authAction, migrations, controllerComponents)
 

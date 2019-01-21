@@ -62,7 +62,7 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
           target.parameters.stage,
           target.stack
         ),
-        CheckUpdateEventsTask(
+        new CheckUpdateEventsTask(
           target.region,
           cloudFormationStackLookupStrategy
         )

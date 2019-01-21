@@ -1,7 +1,7 @@
 package resources
 
 import org.joda.time.{DateTime, Duration}
-import conf.Configuration
+import conf.Config
 import magenta.Lookup
 import java.net.URLEncoder
 

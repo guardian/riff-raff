@@ -27,7 +27,7 @@ object Resolver {
     for {
       config <- RiffRaffYamlReader.fromString(yamlConfig)
       deployments <- DeploymentResolver.resolve(config)
-      validatedDeployments <- deployments.traverseU[Validated[ConfigErrors, Deployment]]{deployment =>
+      validatedDeployments <- deployments.traverse {deployment =>
         DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes)
       }
       prunedDeployments = DeploymentPruner.prune(validatedDeployments, DeploymentPruner.create(selector))

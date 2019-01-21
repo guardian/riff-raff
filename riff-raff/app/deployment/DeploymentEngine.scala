@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import com.typesafe.config.ConfigFactory
+import conf.Config
 import controllers.Logging
 import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
 import magenta.deployment_type.DeploymentType
@@ -48,7 +49,7 @@ class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[Deployment
 
 object DeploymentEngine {
 
-  private val concurrentDeploys = conf.Configuration.concurrency.maxDeploys
+  private val concurrentDeploys = Config.concurrency.maxDeploys
 
   private lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(

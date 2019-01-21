@@ -32,10 +32,26 @@ while getopts ":s:" OPT; do
   esac
 done
 
-if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD"  ]; then
+if [ "${STAGE}" != "CODE" ] && [ "${STAGE}" != "PROD" ]; then
   echo "Must specify a valid stage (PROD or CODE)"
   exit 1
 fi
+
+function updateScript {
+	SCRIPT_LOCATION="/opt/riff-raff"
+
+	aws --region eu-west-1 s3 cp s3://deploy-tools-dist/deploy/${STAGE}/riff-raff/bootstrap.sh /tmp/new-bootstrap.sh
+
+	if cmp ${SCRIPT_LOCATION}/bootstrap.sh /tmp/new-bootstrap.sh > /dev/null; then
+		echo "Bootstrap.sh has latest version."
+	else
+		echo "Bootstrap.sh has changed. Replacing with latest version."
+		install /tmp/new-bootstrap.sh ${SCRIPT_LOCATION}/bootstrap.sh
+		exec ./bootstrap.sh -s ${STAGE}
+	fi
+}
+
+updateScript
 
 REGION="eu-west-1"
 STACK="deploy"
@@ -47,9 +63,9 @@ HOME="/home/$APP"
 
 # Install a new copy of the properties file
 id -u ${USER} &>/dev/null || adduser --system --home ${HOME} --disabled-password ${USER}
-CONFIG_ORIGIN="s3://$CONFIG_BUCKET/$STACK/$APP/$STAGE.properties"
+CONFIG_ORIGIN="s3://$CONFIG_BUCKET/$STACK/$APP/$STAGE.conf"
 mkdir -p ${HOME}/.gu
-CONFIG_DESTINATION=${HOME}/.gu/riff-raff.properties
+CONFIG_DESTINATION=${HOME}/.gu/riff-raff.conf
 aws s3 cp ${CONFIG_ORIGIN} ${CONFIG_DESTINATION} --region ${REGION}
 
 # Install the application that was packaged by the sbt-native-packager

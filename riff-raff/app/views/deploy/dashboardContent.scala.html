@@ -1,6 +1,6 @@
 @(deployRecords: List[(String,Map[String,deployment.Record])])
 
-@defining(deployRecords.flatMap(_._2.values).map(_.stage.name).distinct.sorted(conf.Configuration.stages.ordering)) { stages =>
+@defining(deployRecords.flatMap(_._2.values).map(_.stage.name).distinct.sorted(conf.Config.stages.ordering)) { stages =>
     <table class="table">
     <thead>
         <tr>

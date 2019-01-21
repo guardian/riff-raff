@@ -1,6 +1,6 @@
 package schedule
 
-import conf.Configuration
+import conf.Config
 import controllers.Logging
 import deployment._
 import magenta.{Deployer, DeployParameters, RunState}
@@ -15,29 +15,33 @@ class DeployJob extends Job with Logging {
   private def getAs[T](key: String)(implicit jobDataMap: JobDataMap): T = jobDataMap.get(key).asInstanceOf[T]
 
   override def execute(context: JobExecutionContext): Unit = {
-    implicit val jobDataMap = context.getJobDetail.getJobDataMap
+    implicit val jobDataMap: JobDataMap = context.getJobDetail.getJobDataMap
     val deployments = getAs[Deployments](JobDataKeys.Deployments)
     val projectName = getAs[String](JobDataKeys.ProjectName)
     val stage = getAs[String](JobDataKeys.Stage)
 
     val result = for {
       record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, Configuration.scheduledDeployment.enabled)
+      params <- DeployJob.createDeployParameters(record, Config.scheduledDeployment.enabled)
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
     result match {
-      case Left(error) => log.warn(error.message)
+      case Left(error) => {
+        // TODO: send an Anghammarad notification to inform a team that their scheduled deploy didn't start
+        log.warn(error.message)
+      }
       case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
     }
   }
 }
 
 object DeployJob extends Logging with LogAndSquashBehaviour {
+
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = DeployParameters(
-          Deployer("Scheduled Deployment"),
+          ScheduledDeployer.deployer,
           lastDeploy.parameters.build,
           lastDeploy.stage
         )

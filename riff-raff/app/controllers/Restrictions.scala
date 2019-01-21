@@ -3,15 +3,15 @@ package controllers
 import java.util.UUID
 
 import com.gu.googleauth.AuthAction
-import conf.Configuration.auth
+import conf.Config
 import deployment.Error
 import org.joda.time.DateTime
 import persistence.RestrictionConfigDynamoRepository
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, Controller, ControllerComponents}
+import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 
 import scala.util.Try
@@ -42,7 +42,7 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
 
   def list = authAction { implicit request =>
     val configs = RestrictionConfigDynamoRepository.getRestrictionList.toList.sortBy(r => r.projectName + r.stage)
-    Ok(views.html.restrictions.list(configs, auth.superusers))
+    Ok(views.html.restrictions.list(configs, Config.auth.superusers))
   }
 
   def form = authAction { implicit request =>
@@ -55,7 +55,7 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
     restrictionsForm.bindFromRequest().fold(
       formWithErrors => Ok(views.html.restrictions.form(formWithErrors, saveDisabled = false)),
       f => {
-        RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(f.id), request.user, auth.superusers) match {
+        RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(f.id), request.user, Config.auth.superusers) match {
           case Right(_) =>
             val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
               request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
@@ -73,7 +73,7 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
       val form = restrictionsForm.fill(
         RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.whitelist, rc.continuousDeployment, rc.note)
       )
-      val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, auth.superusers).isLeft
+      val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, Config.auth.superusers).isLeft
 
       Ok(views.html.restrictions.form(
         restrictionForm = form,
@@ -83,7 +83,7 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
   }
 
   def delete(id: String) = authAction { request =>
-    RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, auth.superusers) match {
+    RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, Config.auth.superusers) match {
       case Right(_) =>
         RestrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
         Redirect(routes.Restrictions.list())
