@@ -47,8 +47,7 @@ class Migration() extends Lifecycle with Logging {
 
           case "deployV2Logs" => run(mongoDb, mongoTable, PgTable[Log]("deployLog", "id", ColUUID))
 
-          case _ =>
-            IO.fail(MissingTable(mongoTable))
+          case _              => IO.fail(MissingTable(mongoTable))
         }
       }
     }
