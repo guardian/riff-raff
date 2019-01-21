@@ -4,7 +4,7 @@ import migration.data._
 import migration.dsl.interpreters._
 import org.mongodb.scala.{ Document => MDocument, _ }
 import cats._, cats.implicits._
-import scalaz.zio.{ Fiber, IO, App, Queue, ExitResult }
+import scalaz.zio.{ Fiber, IO, App, Ref, Queue, ExitResult }
 import scalaz.zio.console._
 
 trait Migrator {
@@ -55,11 +55,12 @@ trait Migrator {
     mongoDb: MongoDatabase, 
     mongoTable: String, 
     pgTable: PgTable[A]
-  ): IO[MigrationError, Unit] =
+  ): IO[MigrationError, (Ref[Long], Fiber[MigrationError, _], Fiber[MigrationError, _])] =
     for {
       _ <- putStr(s"Starting migration $mongoTable -> ${pgTable.name}... ")
       coll <- getCollection(mongoDb, mongoTable)
       n <- getCount(coll)
+      cpt <- Ref(n)
       _ <- putStrLn(s"Found $n items to migrate")
       _ <- dropTable(pgTable.name)
       _ <- createTable(pgTable.name, pgTable.id, pgTable.idType)
@@ -67,9 +68,8 @@ trait Migrator {
       q <- Queue.bounded[A](WINDOW_SIZE)
       cursor <- getCursor(coll)
       f1 <- getAllItems(q, cursor).fork
-      f2 <- insertAllItems(q, pgTable).fork
-      _ <- Fiber.joinAll(f1 :: f2 :: Nil)
-    } yield ()
+      f2 <- insertAllItems(q, cpt, pgTable).fork
+    } yield (cpt, f1, f2)
 
   def getAllItems[A: FromMongo](queue: Queue[A], cursor: FindObservable[MDocument]): IO[MigrationError, _] = {
     def loop: IO[MigrationError, _] =
@@ -83,13 +83,16 @@ trait Migrator {
     loop
   }
 
-  def insertAllItems[A: ToPostgres](queue: Queue[A], pgTable: PgTable[A]): IO[MigrationError, _] = {
+  def insertAllItems[A: ToPostgres](queue: Queue[A], counter: Ref[Long], pgTable: PgTable[A]): IO[MigrationError, _] = {
     def loop: IO[MigrationError, _] =
       queue.takeUpTo(WINDOW_SIZE).flatMap { items =>
-        if (items.length < WINDOW_SIZE)
-          insertAll(pgTable.name, items)
-        else
-          insertAll(pgTable.name, items) *> loop
+        IO.flatten(counter.modify { n => 
+          val op = if (items.length < WINDOW_SIZE)
+            insertAll(pgTable.name, items)
+          else
+            insertAll(pgTable.name, items) *> loop
+          (op, n - items.length)
+        })
       }
 
     loop

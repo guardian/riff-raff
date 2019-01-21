@@ -5,8 +5,10 @@ import migration.dsl.interpreters._
 import controllers.Logging
 import controllers.forms.MigrationParameters
 import lifecycle.Lifecycle
+import org.mongodb.scala.MongoDatabase
 import scalaz.zio._
 import scalaz.zio.internal.Executor
+import scalaz.zio.duration._
 import scala.concurrent.{Future, Promise}
 
 class Migration() extends Lifecycle with Logging {
@@ -37,18 +39,14 @@ class Migration() extends Lifecycle with Logging {
     } { case (_, mongoDb) => 
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => 
-            MigrateInterpreter.migrate(mongoDb, mongoTable, PgTable[ApiKey]("apiKey", "id", ColString(32, false))) *> 
-              IO.sync { status += mongoTable -> 100 }
-          case "auth"         => 
-            MigrateInterpreter.migrate(mongoDb, mongoTable, PgTable[Auth]("auth", "email", ColString(100, true))) *> 
-              IO.sync { status += mongoTable -> 100 }
-          case "deployV2"     => 
-            MigrateInterpreter.migrate(mongoDb, mongoTable, PgTable[Deploy]("deploy", "id", ColUUID)) *> 
-              IO.sync { status += mongoTable -> 100 }
-          case "deployV2Logs" => 
-            MigrateInterpreter.migrate(mongoDb, mongoTable, PgTable[Log]("deployLog", "id", ColUUID)) *> 
-              IO.sync { status += mongoTable -> 100 }
+          case "apiKeys"      => run(mongoDb, mongoTable, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
+            
+          case "auth"         => run(mongoDb, mongoTable, PgTable[Auth]("auth", "email", ColString(100, true)))
+            
+          case "deployV2"     => run(mongoDb, mongoTable, PgTable[Deploy]("deploy", "id", ColUUID))
+
+          case "deployV2Logs" => run(mongoDb, mongoTable, PgTable[Log]("deployLog", "id", ColUUID))
+
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
@@ -64,5 +62,23 @@ class Migration() extends Lifecycle with Logging {
 
     promise.future
   }
+
+  def run[A: FromMongo: ToPostgres](mongoDb: MongoDatabase, mongoTable: String, pgTable: PgTable[A]) =
+    for {
+      vals <- MigrateInterpreter.migrate(mongoDb, mongoTable, pgTable)
+      (counter, reader, writer) = vals
+      progress <- monitor(mongoTable, counter).fork
+      _ <- Fiber.joinAll(reader :: writer :: Nil)
+      _ <- progress.interrupt
+    } yield ()
+
+  def monitor(mongoTable: String, counter: Ref[Long]): IO[Nothing, Unit] =
+    (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval)).forever
+
+}
+
+object Migration {
+
+  val interval: Duration = Duration(1L, java.util.concurrent.TimeUnit.SECONDS)
 
 }
