@@ -29,10 +29,10 @@ class Migration() extends Lifecycle with Logging {
 
   def migrate(settings: MigrationParameters): Future[Unit] = {
     val ioprogram = IO.bracket(
-      Mongo.connect(conf.Configuration.mongo.uri.get) <* Postgres.connect(
-        conf.Configuration.postgres.url.get, 
-        conf.Configuration.postgres.user.get, 
-        conf.Configuration.postgres.password.get
+      Mongo.connect(conf.Config.mongo.uri.get) <* Postgres.connect(
+        conf.Config.postgres.url.get, 
+        conf.Config.postgres.user.get, 
+        conf.Config.postgres.password.get
       )
     ) { case (mongoClient, _) => 
       Mongo.disconnect(mongoClient) *> Postgres.disconnect
