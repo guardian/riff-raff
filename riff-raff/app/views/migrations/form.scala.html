@@ -12,36 +12,6 @@
     @CSRF.formField
 
     <div class="form-group">
-      <table class="table">
-        <thead>
-          <tr>
-            <td></td>
-            <th>Source</th>
-            <td></td>
-            <th>Destination</th>
-          </tr>
-        </thead>
-        <tbody>
-        @tables.zipWithIndex.map { case ((table, stats), index) =>
-          <tr>
-            <td>
-              @b3.checkbox(migrationForm("collections"), 'id -> ("collections" + index), 'value -> table, 'class -> "colselector", 'for -> ("tablename" + index))
-            </td>
-            <td>
-              <b>@table</b>
-              (@{stats.documentCount} items)
-            </td>
-            <td>☛</td>
-            <td>
-              @b3.text(migrationForm("tables"), 'id -> ("tablename" + index), 'value -> table, 'disabled -> true, 'class -> "tablename")
-            </td>
-          </tr>
-        }
-        </tbody>
-      </table>
-    </div>
-
-    <div class="form-group">
       @b3.text(migrationForm("limit"), '_label -> "Limit", 'pattern -> "∞|([1-9][0-9]*)", 'value -> "∞")
     </div>
 

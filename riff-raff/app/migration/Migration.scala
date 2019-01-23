@@ -37,7 +37,7 @@ class Migration() extends Lifecycle with Logging {
     ) { _ => 
       Postgres.disconnect
     } { _ => 
-      IO.traverse(settings.collections) { mongoTable =>
+      IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
           case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
           case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit)
