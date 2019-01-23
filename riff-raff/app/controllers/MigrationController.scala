@@ -8,12 +8,12 @@ import forms.MigrationParameters
 import play.api.i18n.I18nSupport
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Result}
 import utils.LogAndSquashBehaviour
-import persistence.{DeployRecordDocument, LogDocument, Persistence}
+import persistence.{DeployRecordDocument, LogDocument, Persistence, MongoFormat}
 import migration._
 import migration.data._
 import migration.dsl._
 import migration.dsl.interpreters._
-import scalaz.zio.{ IO, RTS, ExitResult, FiberFailure }
+import scalaz.zio.{ Fiber, IO, RTS, ExitResult, Ref, FiberFailure }
 import scala.concurrent.Promise
 
 class MigrationController(
@@ -62,16 +62,12 @@ class MigrationController(
     val rts = new RTS {}
 
     val ioprogram = 
-      IO.traverse(settings.collections) { mongoTable =>
+      IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => 
-            PreviewInterpreter.migrate(MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
-          case "auth"         => 
-            PreviewInterpreter.migrate(MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
-          case "deployV2"     => 
-            PreviewInterpreter.migrate(MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
-          case "deployV2Logs" => 
-            PreviewInterpreter.migrate(MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
+          case "apiKeys"      => PreviewInterpreter.migrate(MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit).supervised(Fiber.joinAll)
+          case "auth"         => PreviewInterpreter.migrate(MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit).supervised(Fiber.joinAll)
+          case "deployV2"     => PreviewInterpreter.migrate(MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit).supervised(Fiber.joinAll)
+          case "deployV2Logs" => PreviewInterpreter.migrate(MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit).supervised(Fiber.joinAll)
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }

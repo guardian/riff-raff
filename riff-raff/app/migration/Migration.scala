@@ -40,14 +40,10 @@ class Migration() extends Lifecycle with Logging {
     } { _ => 
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
-            
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
-            
-          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
-
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
-
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit)
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit)
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit)
           case _              => IO.fail(MissingTable(mongoTable))
         }
       }
@@ -63,9 +59,9 @@ class Migration() extends Lifecycle with Logging {
     promise.future
   }
 
-  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A]) =
+  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Long]) =
     for {
-      vals <- MigrateInterpreter.migrate(retriever, pgTable)
+      vals <- MigrateInterpreter.migrate(retriever, pgTable, limit)
       (counter, reader, writer) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)

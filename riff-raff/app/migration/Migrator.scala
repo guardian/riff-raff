@@ -18,16 +18,17 @@ trait Migrator {
   
   def migrate[A: MongoFormat: ToPostgres](
     retriever: MongoRetriever[A], 
-    pgTable: PgTable[A]
+    pgTable: PgTable[A],
+    limit: Option[Long]
   ): IO[MigrationError, (Ref[Long], Fiber[MigrationError, _], Fiber[MigrationError, _])] =
     for {
-      _ <- putStr(s"Starting migration to ${pgTable.name}... ")
-      n <- retriever.getCount
+      _ <- putStrLn(s"Starting migration to ${pgTable.name}... ")
+      n <- limit.map(IO.now).getOrElse(retriever.getCount)
       cpt <- Ref(n)
       _ <- putStrLn(s"Found $n items to migrate")
       _ <- dropTable(pgTable.name)
       _ <- createTable(pgTable.name, pgTable.id, pgTable.idType)
-      _ <- putStr(s"Moving items...")
+      _ <- putStrLn(s"Moving items...")
       q <- Queue.bounded[A](WINDOW_SIZE)
       f1 <- retriever.getAllItems(q, WINDOW_SIZE).fork
       f2 <- insertAllItems(q, cpt, pgTable).fork
