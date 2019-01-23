@@ -8,7 +8,7 @@ import forms.MigrationParameters
 import play.api.i18n.I18nSupport
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Result}
 import utils.LogAndSquashBehaviour
-import persistence.Persistence
+import persistence.{DeployRecordDocument, LogDocument, Persistence}
 import migration._
 import migration.data._
 import migration.dsl._
@@ -61,30 +61,21 @@ class MigrationController(
   def dryRun(settings: MigrationParameters) = AuthAction.async { implicit request => 
     val rts = new RTS {}
 
-    val ioprogram = IO.bracket(
-      Mongo.connect(conf.Config.mongo.uri.get) <* Postgres.connect(
-        conf.Config.postgres.url.get, 
-        conf.Config.postgres.user.get, 
-        conf.Config.postgres.password.get
-      )
-    ) { case (mongoClient, _) => 
-      Mongo.disconnect(mongoClient) *> Postgres.disconnect
-    } { case (_, mongoDb) => 
+    val ioprogram = 
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
           case "apiKeys"      => 
-            PreviewInterpreter.migrate(mongoDb, mongoTable, PgTable[migration.data.ApiKey]("apiKey", "id", ColString(32, false)))
+            PreviewInterpreter.migrate(MongoRetriever.ApiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
           case "auth"         => 
-            PreviewInterpreter.migrate(mongoDb, mongoTable, PgTable[migration.data.Auth]("auth", "email", ColString(100, true)))
+            PreviewInterpreter.migrate(MongoRetriever.AuthRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
           case "deployV2"     => 
-            PreviewInterpreter.migrate(mongoDb, mongoTable, PgTable[migration.data.Deploy]("deploy", "id", ColUUID))
+            PreviewInterpreter.migrate(MongoRetriever.DeployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
           case "deployV2Logs" => 
-            PreviewInterpreter.migrate(mongoDb, mongoTable, PgTable[migration.data.Log]("deployLog", "id", ColUUID))
+            PreviewInterpreter.migrate(MongoRetriever.LogRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
       }
-    }
 
     val promise = Promise[Result]()
 

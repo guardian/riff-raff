@@ -1,4 +1,3 @@
-import migration.data.{ Document => _, _ }
 import migration.dsl._
 import java.io.IOException
 import org.mongodb.scala._

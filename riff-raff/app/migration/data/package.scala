@@ -1,176 +1,41 @@
 package migration
 
+import controllers.{ ApiKey, AuthorisationRecord }
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import java.nio.ByteBuffer
-import java.time.Instant
+import org.joda.time.DateTime
 import java.util.UUID
-import org.bson.{ BsonBinary, BsonBinaryReader, UuidRepresentation }
-import org.bson.codecs.{ Decoder, DecoderContext, UuidCodec }
-import org.mongodb.scala.{ Document => MDocument, _ }
+import magenta.{RunState, ThrowableDetail, TaskDetail}
+import persistence._
 import scala.util.Try
 import cats._, cats.implicits._
 
-package object data extends FromBsonInstances {
-  ///
-  /// BSON decoders
-  implicit class RichDocument(val doc: MDocument) extends AnyVal {
-    def getAs[A](key: String)(implicit B: FromBson[A]): Option[A] =
-      doc.get(key).flatMap(B.getAs(_))
-  }
-
-  implicit class RichBsonBinary(val binary: BsonBinary) extends AnyVal {
-    def asUuid(rep: UuidRepresentation): UUID = {
-      val reader = new BsonBinaryReader(ByteBuffer.wrap(binary.getData))
-      val context = DecoderContext.builder.build
-      val codec = new UuidCodec(rep)
-      codec.decode(reader, context)
-    }
-  }
-
-  ///
-  /// Mongo decoders
-  implicit val apiKeyParser: FromMongo[ApiKey] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("_id") |@|
-      dbo.getAs[String]("application") |@|
-      dbo.getAs[String]("issuedBy") |@|
-      dbo.getAs[Instant]("created") |@|
-      dbo.getAs[Option[Instant]]("lastUsed") |@|
-      (dbo.getAs[MDocument]("callCounters").map(_.toBsonDocument) >>= FromBson[Map[String, Long]].getAs)
-    ).map(ApiKey)
-
-  implicit val authParser: FromMongo[Auth] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("_id") |@|
-      dbo.getAs[String]("approvedBy") |@|
-      dbo.getAs[Instant]("approvedDate")
-    ).map(Auth)
-
-  implicit val deployParser: FromMongo[Deploy] = (dbo: MDocument) =>
-    (
-      dbo.getAs[UUID]("_id") |@|
-      dbo.getAs[Option[String]]("stringUUID") |@|
-      dbo.getAs[Instant]("startTime") |@|
-      (dbo.getAs[MDocument]("parameters") >>= FromMongo[Parameters].parseMongo) |@|
-      dbo.getAs[RunState]("status") |@|
-      dbo.getAs[Option[Boolean]]("summarised") |@|
-      dbo.getAs[Option[Int]]("totalTasks") |@|
-      dbo.getAs[Option[Int]]("completedTasks") |@|
-      dbo.getAs[Option[Instant]]("lastActivityTime") |@|
-      dbo.getAs[Option[Boolean]]("hasWarnings")
-    ).map(Deploy)
-
-  implicit val parametersParser: FromMongo[Parameters] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("deployer") |@|
-      dbo.getAs[String]("projectName") |@|
-      dbo.getAs[String]("buildId") |@|
-      dbo.getAs[String]("stage") |@|
-      dbo.getAs[Map[String, String]]("tags") |@|
-      (dbo.getAs[MDocument]("selector") >>= FromMongo[DeploymentSelector].parseMongo)
-    ).map(Parameters)
-
-  implicit val deploySelectorParser: FromMongo[DeploymentSelector] = (dbo: MDocument) =>
-    dbo.getAs[String]("_typeHint") >>= {
-      case "persistence.DeploymentKeysSelectorDocument" => 
-        dbo.getAs[List[MDocument]]("ids")
-          .flatMap(_.traverse(FromMongo[DeploymentKey].parseMongo))
-          .map(KeysSelector)
-      case _ => Some(AllSelector)
-    }
-
-  implicit val deployKeyParser: FromMongo[DeploymentKey] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("name") |@|
-      dbo.getAs[String]("action") |@|
-      dbo.getAs[String]("stack") |@|
-      dbo.getAs[String]("region")
-    ).map(DeploymentKey)
-
-  implicit val logParser: FromMongo[Log] = (dbo: MDocument) =>
-    (
-      dbo.getAs[UUID]("deploy") |@|
-      dbo.getAs[UUID]("id") |@|
-      dbo.getAs[Option[UUID]]("parent") |@|
-      (dbo.getAs[MDocument]("document") >>= FromMongo[Document].parseMongo) |@|
-      dbo.getAs[Instant]("time")
-    ).map(Log)
-
-  implicit val documentParser: FromMongo[Document] = (dbo: MDocument) =>
-    dbo.getAs[String]("_typeHint") >>= {
-      case "persistence.DeployDocument"        => Some(DeployDocument)
-      case "persistence.InfoDocument"          => dbo.getAs[String]("text") map InfoDocument
-      case "persistence.TaskListDocument"      =>
-        for {
-          objs <- dbo.getAs[List[MDocument]]("taskList")
-          tasks <- objs.toList.traverse(any => FromMongo[TaskDetail].parseMongo(any.asInstanceOf[MDocument]))
-        } yield TaskListDocument(tasks)
-      case "persistence.TaskRunDocument"       => 
-        for {
-          obj <- dbo.getAs[MDocument]("task")
-          task <- FromMongo[TaskDetail].parseMongo(obj)
-        } yield TaskRunDocument(task)
-      case "persistence.CommandOutputDocument" => dbo.getAs[String]("text") map CommandOutputDocument
-      case "persistence.CommandErrorDocument"  => dbo.getAs[String]("text") map CommandErrorDocument
-      case "persistence.WarningDocument"       => dbo.getAs[String]("text") map WarningDocument
-      case "persistence.FailDocument"          => 
-        for { 
-          text <- dbo.getAs[String]("text")
-          detail <- dbo.getAs[MDocument]("detail")
-          parsedDetail <- FromMongo[ThrowableDetail].parseMongo(detail)
-        } yield FailDocument(text, parsedDetail)
-      case "persistence.VerboseDocument"       => dbo.getAs[String]("text") map VerboseDocument
-      case "persistence.FinishContextDocument" => Some(FinishContextDocument)
-      case "persistence.FailContextDocument"   => Some(FailContextDocument)
-      case _                                   => None
-    }
-
-  implicit val taskdetailParser: FromMongo[TaskDetail] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("name") |@|
-      dbo.getAs[String]("description") |@|
-      dbo.getAs[String]("verbose")
-    ).map(TaskDetail)
-   
-  implicit val throwableDetailParser: FromMongo[ThrowableDetail] = (dbo: MDocument) =>
-    (
-      dbo.getAs[String]("name") |@|
-      dbo.getAs[String]("message") |@|
-      dbo.getAs[String]("stackTrace") |@|
-      (dbo.getAs[Option[MDocument]]("cause") >>= {
-        case None => Some(None)
-        case Some(doc) => Some(throwableDetailParser.parseMongo(doc))
-      })
-    ).map(ThrowableDetail)
-  ///
+package object data {
 
   ///
   /// JSON encoders
   def remove(field: String): Json => Json = json => json.asObject.fold(json)(o => Json.fromJsonObject(o.remove(field)))
 
-  implicit val instantEncoder          : Encoder[Instant] = Encoder[String].contramap(_.toString)
-  // implicit val uuidEncoder             : Encoder[UUID] = Encoder[String].contramap(_.toString)
+  implicit val instantEncoder          : Encoder[DateTime] = Encoder[String].contramap(_.toString)
   val _apiKeyEncoder                   : Encoder[ApiKey] = deriveEncoder
   implicit val apiKeyEncoder           : Encoder[ApiKey] = _apiKeyEncoder.mapJson(remove("key"))
-  val _authEncoder                     : Encoder[Auth] = deriveEncoder
-  implicit val authEncoder             : Encoder[Auth] = _authEncoder.mapJson(remove("email"))
-  implicit val deployRunState          : Encoder[RunState] = Encoder[String].contramap(_.toString)
-  implicit val deployDeploymentKey     : Encoder[DeploymentKey] = deriveEncoder
-  implicit val deployParameters        : Encoder[Parameters] = deriveEncoder
-  val _deployEncoder                   : Encoder[Deploy] = deriveEncoder
-  implicit val deployEncoder           : Encoder[Deploy] = _deployEncoder.mapJson(remove("id"))
+  val _authEncoder                     : Encoder[AuthorisationRecord] = deriveEncoder
+  implicit val authEncoder             : Encoder[AuthorisationRecord] = _authEncoder.mapJson(remove("email"))
+  implicit val deployRunState          : Encoder[RunState.Value] = Encoder.enumEncoder(RunState)
+  implicit val deployDeploymentKey     : Encoder[DeploymentKeyDocument] = deriveEncoder
+  implicit val deployDeploymentSelector: Encoder[DeploymentSelectorDocument] = Encoder.instance {
+    case AllDocument       => JsonObject("_typeHint" -> "persistence.AllSelector".asJson).asJson
+    case DeploymentKeysSelectorDocument(ids) => JsonObject("_typeHint" -> "persistence.DeploymentKeysSelectorDocument".asJson, "ids" -> ids.asJson).asJson
+  }
+  implicit val deployParameters        : Encoder[ParametersDocument] = deriveEncoder
+  val _deployEncoder                   : Encoder[DeployRecordDocument] = deriveEncoder
+  implicit val deployEncoder           : Encoder[DeployRecordDocument] = _deployEncoder.mapJson(remove("uuid"))
   implicit val deployThrowableDetail   : Encoder[ThrowableDetail] = deriveEncoder
   implicit val deployTaskDetail        : Encoder[TaskDetail] = deriveEncoder
-  val _deployLog                       : Encoder[Log] = deriveEncoder
-  implicit val deployLogEncoder        : Encoder[Log] = _deployLog.mapJson(remove("deploy"))
-  implicit val deployDeploymentSelector: Encoder[DeploymentSelector] = Encoder.instance {
-    case AllSelector       => JsonObject("_typeHint" -> "persistence.AllSelector".asJson).asJson
-    case KeysSelector(ids) => JsonObject("_typeHint" -> "persistence.DeploymentKeysSelectorDocument".asJson, "ids" -> ids.asJson).asJson
-  }
-  implicit val deployDocument          : Encoder[Document] = Encoder.instance {
-    case DeployDocument => JsonObject("_typeHint" -> "persistence.DeployDocument".asJson).asJson
+  implicit val deployDocument          : Encoder[MessageDocument] = Encoder.instance {
+    case DeployDocument() => JsonObject("_typeHint" -> "persistence.DeployDocument".asJson).asJson
     case InfoDocument(text) => JsonObject("_typeHint" -> "persistence.InfoDocument".asJson, "text" -> text.asJson).asJson
     case TaskListDocument(tasks) => JsonObject(
       "_typeHint" -> "persistence.TaskListDocument".asJson,
@@ -189,34 +54,36 @@ package object data extends FromBsonInstances {
       "detail" -> taskDetail.asJson
     ).asJson
     case VerboseDocument(text) => JsonObject("_typeHint" -> "persistence.VerboseDocument".asJson, "text" -> text.asJson).asJson
-    case FinishContextDocument => JsonObject("_typeHint" -> "persistence.FinishContextDocument".asJson).asJson
-    case FailContextDocument   => JsonObject("_typeHint" -> "persistence.FailContextDocument".asJson).asJson
+    case FinishContextDocument() => JsonObject("_typeHint" -> "persistence.FinishContextDocument".asJson).asJson
+    case FailContextDocument() => JsonObject("_typeHint" -> "persistence.FailContextDocument".asJson).asJson
   }
-  ///
+  val _deployLog                       : Encoder[LogDocument] = deriveEncoder
+  implicit val deployLogEncoder        : Encoder[LogDocument] = _deployLog.mapJson(remove("deploy"))
+  // ///
 
-  ///
-  /// Postgre encoders
+  // ///
+  // /// Postgre encoders
   implicit val apiKeyPE: ToPostgres[ApiKey] = new ToPostgres[ApiKey] {
     type K = String
     def key(a: ApiKey) = a.key
     def json(a: ApiKey) = apiKeyEncoder(a)
   }
 
-  implicit val authPE: ToPostgres[Auth] = new ToPostgres[Auth] {
+  implicit val authPE: ToPostgres[AuthorisationRecord] = new ToPostgres[AuthorisationRecord] {
     type K = String
-    def key(a: Auth) = a.email
-    def json(a: Auth) = authEncoder(a)
+    def key(a: AuthorisationRecord) = a.email
+    def json(a: AuthorisationRecord) = authEncoder(a)
   }
 
-  implicit val deployPE: ToPostgres[Deploy] = new ToPostgres[Deploy] {
+  implicit val deployPE: ToPostgres[DeployRecordDocument] = new ToPostgres[DeployRecordDocument] {
     type K = UUID
-    def key(a: Deploy) = a.id
-    def json(a: Deploy) = deployEncoder(a)
+    def key(a: DeployRecordDocument) = a.uuid
+    def json(a: DeployRecordDocument) = deployEncoder(a)
   }
 
-  implicit val logPE: ToPostgres[Log] = new ToPostgres[Log] {
+  implicit val logPE: ToPostgres[LogDocument] = new ToPostgres[LogDocument] {
     type K = UUID
-    def key(a: Log) = a.id
-    def json(a: Log) = deployLogEncoder(a)
+    def key(a: LogDocument) = a.id
+    def json(a: LogDocument) = deployLogEncoder(a)
   }
 }

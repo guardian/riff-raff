@@ -2,10 +2,11 @@ package migration
 
 import migration.data._
 import migration.dsl.interpreters._
-import controllers.Logging
+import controllers.{ ApiKey, AuthorisationRecord, Logging }
 import controllers.forms.MigrationParameters
 import lifecycle.Lifecycle
 import org.mongodb.scala.MongoDatabase
+import persistence.{MongoFormat, LogDocument, Persistence, DeployRecordDocument}
 import scalaz.zio._
 import scalaz.zio.internal.Executor
 import scalaz.zio.duration._
@@ -29,23 +30,23 @@ class Migration() extends Lifecycle with Logging {
 
   def migrate(settings: MigrationParameters): Future[Unit] = {
     val ioprogram = IO.bracket(
-      Mongo.connect(conf.Config.mongo.uri.get) <* Postgres.connect(
+      Postgres.connect(
         conf.Config.postgres.url.get, 
         conf.Config.postgres.user.get, 
         conf.Config.postgres.password.get
       )
-    ) { case (mongoClient, _) => 
-      Mongo.disconnect(mongoClient) *> Postgres.disconnect
-    } { case (_, mongoDb) => 
+    ) { _ => 
+      Postgres.disconnect
+    } { _ => 
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoDb, mongoTable, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
+          case "apiKeys"      => run(mongoTable, MongoRetriever.ApiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
             
-          case "auth"         => run(mongoDb, mongoTable, PgTable[Auth]("auth", "email", ColString(100, true)))
+          case "auth"         => run(mongoTable, MongoRetriever.AuthRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
             
-          case "deployV2"     => run(mongoDb, mongoTable, PgTable[Deploy]("deploy", "id", ColUUID))
+          case "deployV2"     => run(mongoTable, MongoRetriever.DeployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
 
-          case "deployV2Logs" => run(mongoDb, mongoTable, PgTable[Log]("deployLog", "id", ColUUID))
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.LogRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
 
           case _              => IO.fail(MissingTable(mongoTable))
         }
@@ -62,9 +63,9 @@ class Migration() extends Lifecycle with Logging {
     promise.future
   }
 
-  def run[A: FromMongo: ToPostgres](mongoDb: MongoDatabase, mongoTable: String, pgTable: PgTable[A]) =
+  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A]) =
     for {
-      vals <- MigrateInterpreter.migrate(mongoDb, mongoTable, pgTable)
+      vals <- MigrateInterpreter.migrate(retriever, pgTable)
       (counter, reader, writer) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)

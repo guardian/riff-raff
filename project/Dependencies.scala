@@ -74,7 +74,6 @@ object Dependencies {
   )
 
   lazy val migrationDeps = Seq(
-    "org.mongodb.scala" %% "mongo-scala-driver" % "2.5.0",
     "org.scalikejdbc"   %% "scalikejdbc"        % "3.3.0",
     "org.scalaz"        %% "scalaz-zio"         % "0.5.1",
     "org.scalaz"        %% "scalaz-zio-interop-shared" % "0.5.1",
