@@ -64,10 +64,10 @@ class MigrationController(
     val ioprogram = 
       IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => PreviewInterpreter.migrate(MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit).supervised(Fiber.joinAll)
-          case "auth"         => PreviewInterpreter.migrate(MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit).supervised(Fiber.joinAll)
-          case "deployV2"     => PreviewInterpreter.migrate(MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit).supervised(Fiber.joinAll)
-          case "deployV2Logs" => PreviewInterpreter.migrate(MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit).supervised(Fiber.joinAll)
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit)
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit)
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit)
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
@@ -82,4 +82,12 @@ class MigrationController(
 
     promise.future
   }
+
+  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Int]) =
+    for {
+      vals <- PreviewInterpreter.migrate(retriever, pgTable, limit)
+      (_, reader, writer) = vals
+      _ <- reader.join
+      _ <- writer.interrupt
+    } yield ()
 }

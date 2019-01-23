@@ -5,14 +5,14 @@ import play.api.data.Forms._
 import play.api.mvc.QueryStringBindable
 import cats._, cats.implicits._
 
-final case class MigrationParameters(collections: List[String], tables: List[String], limit: Option[Long], action: String)
+final case class MigrationParameters(collections: List[String], tables: List[String], limit: Option[Int], action: String)
 
 object MigrationParameters {
   val form = Form[MigrationParameters](
     mapping(
       "collections" -> list(nonEmptyText),
       "tables"      -> list(nonEmptyText),
-      "limit"       -> optional(longNumber),
+      "limit"       -> optional(number),
       "action"      -> nonEmptyText
     )(MigrationParameters.apply)(MigrationParameters.unapply)
   )
@@ -20,7 +20,7 @@ object MigrationParameters {
   implicit def queryStringBindable(implicit 
     S: QueryStringBindable[String],
     L: QueryStringBindable[List[String]],
-    O: QueryStringBindable[Option[Long]]
+    O: QueryStringBindable[Option[Int]]
   ) = new QueryStringBindable[MigrationParameters] {
     override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, MigrationParameters]] = 
       for {

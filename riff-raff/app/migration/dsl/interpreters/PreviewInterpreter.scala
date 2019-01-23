@@ -2,6 +2,7 @@ package migration
 package dsl
 package interpreters
 
+import io.circe.Printer
 import migration.data._
 import scalaz.zio.IO
 import scalaz.zio.console._
@@ -20,7 +21,7 @@ object PreviewInterpreter extends Migrator {
   def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]): IO[Nothing, _] =
     putStrLn(s"INSERT INTO $table VALUES") *>
       IO.traverse(records){ rec =>
-        indent *> putStrLn(s"( ${formatter.key(rec)}, ${formatter.json(rec)} )")
+        indent *> putStrLn(s"( ${formatter.key(rec)}, ${Printer.noSpaces.pretty(formatter.json(rec))} )")
       }
 
 }

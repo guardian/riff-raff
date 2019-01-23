@@ -5,7 +5,6 @@ import migration.dsl.interpreters._
 import controllers.{ ApiKey, AuthorisationRecord, Logging }
 import controllers.forms.MigrationParameters
 import lifecycle.Lifecycle
-import org.mongodb.scala.MongoDatabase
 import persistence.{MongoFormat, LogDocument, Persistence, DeployRecordDocument}
 import scalaz.zio._
 import scalaz.zio.internal.Executor
@@ -59,16 +58,16 @@ class Migration() extends Lifecycle with Logging {
     promise.future
   }
 
-  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Long]) =
+  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Int]) =
     for {
       vals <- MigrateInterpreter.migrate(retriever, pgTable, limit)
       (counter, reader, writer) = vals
       progress <- monitor(mongoTable, counter).fork
-      _ <- Fiber.joinAll(reader :: writer :: Nil)
-      _ <- progress.interrupt
+      _ <- reader.join
+      _ <- Fiber.interruptAll(writer :: progress :: Nil)
     } yield ()
 
-  def monitor(mongoTable: String, counter: Ref[Long]): IO[Nothing, Unit] =
+  def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =
     (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval)).forever
 
 }
