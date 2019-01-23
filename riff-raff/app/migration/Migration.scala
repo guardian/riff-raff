@@ -40,13 +40,13 @@ class Migration() extends Lifecycle with Logging {
     } { _ => 
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.ApiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
             
-          case "auth"         => run(mongoTable, MongoRetriever.AuthRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
             
-          case "deployV2"     => run(mongoTable, MongoRetriever.DeployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
 
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.LogRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
 
           case _              => IO.fail(MissingTable(mongoTable))
         }

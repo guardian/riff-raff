@@ -29,7 +29,7 @@ trait Migrator {
       _ <- createTable(pgTable.name, pgTable.id, pgTable.idType)
       _ <- putStr(s"Moving items...")
       q <- Queue.bounded[A](WINDOW_SIZE)
-      f1 <- retriever.getAllItems.fork
+      f1 <- retriever.getAllItems(q, WINDOW_SIZE).fork
       f2 <- insertAllItems(q, cpt, pgTable).fork
     } yield (cpt, f1, f2)
 

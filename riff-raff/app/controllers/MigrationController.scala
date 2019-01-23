@@ -65,13 +65,13 @@ class MigrationController(
       IO.traverse(settings.collections) { mongoTable =>
         mongoTable match {
           case "apiKeys"      => 
-            PreviewInterpreter.migrate(MongoRetriever.ApiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
+            PreviewInterpreter.migrate(MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)))
           case "auth"         => 
-            PreviewInterpreter.migrate(MongoRetriever.AuthRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
+            PreviewInterpreter.migrate(MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)))
           case "deployV2"     => 
-            PreviewInterpreter.migrate(MongoRetriever.DeployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
+            PreviewInterpreter.migrate(MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID))
           case "deployV2Logs" => 
-            PreviewInterpreter.migrate(MongoRetriever.LogRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
+            PreviewInterpreter.migrate(MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID))
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
