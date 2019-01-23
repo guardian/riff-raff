@@ -31,12 +31,13 @@ object MongoRetriever {
     def getCount = IO.sync(Persistence.store.collectionStats.get("deployV2").map(_.documentCount).getOrElse(0L))
     def getItems(pagination: PaginationView) =
       IO.flatten(IO.sync(IO.fromEither(Persistence.store.getDeploys(None, pagination)))).leftMap(DatabaseError)
-  }
+    }
     
   def logRetriever(implicit F0: MongoFormat[LogDocument]) = new MongoRetriever[LogDocument] {
     val F = F0
     def getCount = IO.sync(Persistence.store.collectionStats.get("deployV2Logs").map(_.documentCount).getOrElse(0L))
-    def getItems(pagination: PaginationView) = ???
+    def getItems(pagination: PaginationView) =
+      IO.flatten(IO.sync(IO.fromEither(Persistence.store.readAllLogs(pagination)))).leftMap(DatabaseError)
   }
   
   def authRetriever(implicit F0: MongoFormat[AuthorisationRecord]) = new MongoRetriever[AuthorisationRecord] {

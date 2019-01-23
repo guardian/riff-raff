@@ -193,6 +193,12 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       deployLogCollection.find(criteria).toIterable.flatMap(LogDocument.fromDBO(_))
     }
 
+  override def readAllLogs(pagination: PaginationView): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
+    val criteria = MongoDBObject()
+    val cursor = deployLogCollection.find(criteria).sort(MongoDBObject("time" -> -1)).pagination(pagination)
+    cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
+  }
+
   override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
     val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)

@@ -111,6 +111,7 @@ trait DocumentStore {
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
+  def readAllLogs(pagination: PaginationView): Either[Throwable, Iterable[LogDocument]] = Right(Nil)
   def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
   def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
