@@ -61,7 +61,7 @@ class MigrationController(
   def dryRun(settings: MigrationParameters) = AuthAction.async { implicit request => 
     val rts = new RTS {}
 
-    val ioprogram = 
+    val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
       IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
           case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
@@ -76,18 +76,23 @@ class MigrationController(
     val promise = Promise[Result]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(_) => promise.success(Redirect(routes.MigrationController.form))
-      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorContent(new FiberFailure(t), "Migration failed")))
+      case ExitResult.Succeeded(responses) => promise.success(Ok(views.html.migrations.preview(responses)))
+      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorPage(new FiberFailure(t))))
     }
 
     promise.future
   }
 
-  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Int]) =
+  def run[A: MongoFormat: ToPostgres](
+    mongoTable: String, 
+    retriever: MongoRetriever[A], 
+    pgTable: PgTable[A], 
+    limit: Option[Int]
+  ): IO[MigrationError, List[PreviewResponse]] =
     for {
       vals <- PreviewInterpreter.migrate(retriever, pgTable, limit)
       (_, reader, writer) = vals
       _ <- reader.join
-      _ <- writer.interrupt
-    } yield ()
+      responses <- writer.join
+    } yield responses
 }

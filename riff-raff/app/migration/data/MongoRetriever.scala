@@ -16,10 +16,9 @@ trait MongoRetriever[A] {
   def getAllItems(queue: Queue[A], size: Int, max: Int): IO[MigrationError, _] = {
     def loop(page: Int, max: Int): IO[MigrationError, _] =
       if (max <= 0)
-        IO.now(())
+        IO.unit
       else
         getItems(PaginationView(Some(size), page)).map(_.take(max)).flatMap { items =>
-          putStrLn(s"Found ${page * size + items.size} of $max items") *>
             queue.offerAll(items) *> loop(page + 1, max - items.size)
         }
 

@@ -45,7 +45,7 @@ class Migration() extends Lifecycle with Logging {
           case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit)
           case _              => IO.fail(MissingTable(mongoTable))
         }
-      }
+      }      
     }
 
     val promise = Promise[Unit]()
@@ -63,8 +63,8 @@ class Migration() extends Lifecycle with Logging {
       vals <- MigrateInterpreter.migrate(retriever, pgTable, limit)
       (counter, reader, writer) = vals
       progress <- monitor(mongoTable, counter).fork
-      _ <- reader.join
-      _ <- Fiber.interruptAll(writer :: progress :: Nil)
+      _ <- Fiber.joinAll(reader :: writer :: Nil)
+      _ <- progress.interrupt
     } yield ()
 
   def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =

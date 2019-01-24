@@ -7,7 +7,7 @@ import cats.~>
 import scalaz.zio.IO
 import scalikejdbc._
 
-object MigrateInterpreter extends Migrator {
+object MigrateInterpreter extends Migrator[Unit] {
   
   val WINDOW_SIZE = 1000
 
@@ -30,7 +30,7 @@ object MigrateInterpreter extends Migrator {
       }
     } leftMap(DatabaseError(_))
 
-  def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]): IO[MigrationError, _] =
+  def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]): IO[MigrationError, Unit] =
     IO.traverse(records.grouped(100).toList) { records =>
       IO.syncThrowable {
         DB localTx { implicit session =>
@@ -40,5 +40,5 @@ object MigrateInterpreter extends Migrator {
           }.update.apply()
         }
       } leftMap(DatabaseError(_))
-    }
+    }.void
 }
