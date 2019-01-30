@@ -19,9 +19,9 @@ object PreviewInterpreter extends Migrator[PreviewResponse] {
     IO.now(DropTable(s"DROP TABLE IF EXISTS $name"))
 
   def createTable(name: String, idName: String, idType: ColType) =
-    IO.now(CreateTable(s"CREATE TABLE $name ( $idName $idType PRIMARY KEY, content jsonb )"))
+    IO.now(CreateTable(s"CREATE TABLE $name ( $idName $idType PRIMARY KEY, content jsonb NOT NULL )"))
 
-  def insertAll[A](table: String, records: List[A])(implicit formatter: ToPostgres[A]) =
+  def insertAll[A](table: String, id: String, records: List[A])(implicit formatter: ToPostgres[A]) =
     IO.traverse(records){ rec =>
       IO.now(s"( ${formatter.key(rec)}, ${Printer.noSpaces.pretty(formatter.json(rec))} )")
     }.map(InsertValues(s"INSERT INTO $table VALUES", _))

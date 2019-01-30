@@ -189,7 +189,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
   }
 
   def listKeys = authAction { implicit request =>
-    Persistence.store.getApiKeyList.fold(
+    Persistence.store.getApiKeyList(None).fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch API keys")),
       (ks: Iterable[ApiKey]) => Ok(views.html.api.list(request, ks))
     )

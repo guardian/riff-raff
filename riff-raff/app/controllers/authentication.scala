@@ -97,7 +97,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    Persistence.store.getAuthorisationList.map(_.sortBy(_.email)).fold(
+    Persistence.store.getAuthorisationList(None).map(_.sortBy(_.email)).fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")),
       (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(request, as))
     )

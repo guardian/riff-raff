@@ -51,7 +51,7 @@ class MigrationController(
   }
 
   def view = AuthAction { implicit request =>
-    ???
+    Ok(views.html.migrations.view())
   }
 
   def status = AuthAction { implicit request =>
@@ -91,8 +91,8 @@ class MigrationController(
   ): IO[MigrationError, List[PreviewResponse]] =
     for {
       vals <- PreviewInterpreter.migrate(retriever, pgTable, limit)
-      (_, reader, writer) = vals
+      (_, reader, writer, r1, r2) = vals
       _ <- reader.join
       responses <- writer.join
-    } yield responses
+    } yield r1 :: r2 :: responses
 }

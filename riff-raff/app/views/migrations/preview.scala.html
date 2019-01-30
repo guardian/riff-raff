@@ -8,8 +8,12 @@
       <pre>
         @responsess.map { responses =>
           @responses.map {
-            case DropTable(sql) => { @sql }
-            case CreateTable(sql) => { @sql }
+            case DropTable(sql) => { 
+              @sql 
+            }
+            case CreateTable(sql) => { 
+              @sql 
+            }
             case InsertValues(prelude, values) => {
               @prelude
               @values.map { value =>

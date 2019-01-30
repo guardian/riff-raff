@@ -102,9 +102,9 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
-  override def getAuthorisationList =
+  override def getAuthorisationList(pagination: Option[PaginationView] = None) = 
     logExceptions(Some("Requesting list of authorisation objects")) {
-      authCollection.find().flatMap(AuthorisationRecord.fromDBO(_)).toList
+      pagination.foldLeft(authCollection.find().sort(MongoDBObject("email" -> 1)))(_ pagination _).flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
   override def deleteAuthorisation(email: String) =
@@ -118,10 +118,9 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
       apiKeyCollection.insert(dbo)
     }
 
-  override def getApiKeyList = 
+  override def getApiKeyList(pagination: Option[PaginationView] = None) = 
     logExceptions(Some("Requesting list of API keys")) {
-      val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
-      keys.toIterable.flatMap( ApiKey.fromDBO(_) )
+      pagination.foldLeft(apiKeyCollection.find().sort(MongoDBObject("key" -> 1)))(_ pagination _).toIterable.flatMap( ApiKey.fromDBO(_) )
     }
 
   override def getApiKey(key: String) =
@@ -194,8 +193,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def readAllLogs(pagination: PaginationView): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
-    val criteria = MongoDBObject()
-    val cursor = deployLogCollection.find(criteria).sort(MongoDBObject("time" -> -1)).pagination(pagination)
+    val cursor = deployLogCollection.find().sort(MongoDBObject("time" -> -1)).pagination(pagination)
     cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
   }
 

@@ -4,7 +4,6 @@ import controllers.{ ApiKey, AuthorisationRecord }
 import deployment.PaginationView
 import persistence.{ Persistence, DeployRecordDocument, LogDocument, MongoFormat }
 import scalaz.zio.{IO, Queue}
-import scalaz.zio.console._
 
 trait MongoRetriever[A] {
   implicit def F: MongoFormat[A]
@@ -18,9 +17,12 @@ trait MongoRetriever[A] {
       if (max <= 0)
         IO.unit
       else
-        getItems(PaginationView(Some(size), page)).map(_.take(max)).flatMap { items =>
+        getItems(PaginationView(Some(size), page))
+          // `size` may be larger than `max`, 
+          .map(_.take(max))
+          .flatMap { items =>
             queue.offerAll(items) *> loop(page + 1, max - items.size)
-        }
+          }
 
     loop(0, max)
   }
@@ -52,7 +54,7 @@ object MongoRetriever {
     val F = F0
     val getCount = IO.sync(Persistence.store.collectionStats.get("apiKeys").map(_.documentCount.toInt).getOrElse(0))
     def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither(Persistence.store.getApiKeyList))).leftMap(DatabaseError)
+      IO.flatten(IO.sync(IO.fromEither(Persistence.store.getApiKeyList(None)))).leftMap(DatabaseError)
   }
 
 }

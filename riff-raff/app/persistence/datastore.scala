@@ -6,6 +6,7 @@ import magenta.Build
 import java.util.UUID
 import ci.ContinuousDeploymentConfig
 import conf.DatastoreMetrics.DatastoreRequest
+import deployment.PaginationView
 import org.joda.time.DateTime
 import utils.Retriable
 
@@ -32,12 +33,12 @@ trait DataStore extends DocumentStore with Retriable {
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]]
-  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
+  def getAuthorisationList(pagination: Option[PaginationView] = None): Either[Throwable, List[AuthorisationRecord]]
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
   def createApiKey(newKey: ApiKey): Unit
-  def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
+  def getApiKeyList(pagination: Option[PaginationView] = None): Either[Throwable, Iterable[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
@@ -52,12 +53,12 @@ object Persistence extends Logging {
     private val unit = Right(())
 
     def getAuthorisation(email: String) = none
-    def getAuthorisationList = nil
+    def getAuthorisationList(pagination: Option[PaginationView] = None) = nil
     def setAuthorisation(auth: AuthorisationRecord) = unit
     def deleteAuthorisation(email: String) = unit
 
     def createApiKey(newKey: ApiKey) = ()
-    def getApiKeyList = nil
+    def getApiKeyList(pagination: Option[PaginationView] = None) = nil
     def getApiKey(key: String) = None
     def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
     def getApiKeyByApplication(application: String) = None

@@ -61,7 +61,7 @@ class Migration() extends Lifecycle with Logging {
   def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Int]) =
     for {
       vals <- MigrateInterpreter.migrate(retriever, pgTable, limit)
-      (counter, reader, writer) = vals
+      (counter, reader, writer, _, _) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)
       _ <- progress.interrupt
