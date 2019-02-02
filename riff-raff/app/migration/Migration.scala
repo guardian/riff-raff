@@ -9,6 +9,7 @@ import persistence.{MongoFormat, LogDocument, Persistence, DeployRecordDocument}
 import scalaz.zio._
 import scalaz.zio.internal.Executor
 import scalaz.zio.duration._
+import scalaz.zio.console._
 import scala.concurrent.{Future, Promise}
 
 class Migration() extends Lifecycle with Logging {
@@ -39,10 +40,10 @@ class Migration() extends Lifecycle with Logging {
     } { _ => 
       IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit)
-          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit)
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit)
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, settings.limit)
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, settings.limit)
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, settings.limit)
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, settings.limit)
           case _              => IO.fail(MissingTable(mongoTable))
         }
       }      
@@ -58,13 +59,15 @@ class Migration() extends Lifecycle with Logging {
     promise.future
   }
 
-  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], pgTable: PgTable[A], limit: Option[Int]) =
+  def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], limit: Option[Int]) =
     for {
-      vals <- MigrateInterpreter.migrate(retriever, pgTable, limit)
+      _ <- putStrLn(s"Migrating $mongoTable...")
+      vals <- MigrateInterpreter.migrate(retriever, limit)
       (counter, reader, writer, _, _) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)
       _ <- progress.interrupt
+      _ <- putStrLn(s"Done!")
     } yield ()
 
   def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =

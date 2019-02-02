@@ -64,10 +64,10 @@ class MigrationController(
     val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
       IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, PgTable[ApiKey]("apiKey", "id", ColString(32, false)), settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, PgTable[AuthorisationRecord]("auth", "email", ColString(100, true)), settings.limit)
-          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, PgTable[DeployRecordDocument]("deploy", "id", ColUUID), settings.limit)
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, PgTable[LogDocument]("deployLog", "id", ColUUID), settings.limit)
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, settings.limit)
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, settings.limit)
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, settings.limit)
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, settings.limit)
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
@@ -86,11 +86,10 @@ class MigrationController(
   def run[A: MongoFormat: ToPostgres](
     mongoTable: String, 
     retriever: MongoRetriever[A], 
-    pgTable: PgTable[A], 
     limit: Option[Int]
   ): IO[MigrationError, List[PreviewResponse]] =
     for {
-      vals <- PreviewInterpreter.migrate(retriever, pgTable, limit)
+      vals <- PreviewInterpreter.migrate(retriever, limit)
       (_, reader, writer, r1, r2) = vals
       _ <- reader.join
       responses <- writer.join

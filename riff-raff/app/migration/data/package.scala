@@ -11,6 +11,7 @@ import magenta.{RunState, ThrowableDetail, TaskDetail}
 import persistence._
 import scala.util.Try
 import cats._, cats.implicits._
+import scalikejdbc._
 
 package object data {
 
@@ -67,23 +68,51 @@ package object data {
     type K = String
     def key(a: ApiKey) = a.key
     def json(a: ApiKey) = apiKeyEncoder(a)
+    val tableName = "apiKey"
+    val id = "id"
+    val idType = ColString(32, false)
+    val drop = sql"DROP TABLE IF EXISTS apiKey"
+    val create = sql"CREATE TABLE apiKey (id varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
+    def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
+      sql"INSERT INTO apiKey VALUES ($key, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
 
   implicit val authPE: ToPostgres[AuthorisationRecord] = new ToPostgres[AuthorisationRecord] {
     type K = String
     def key(a: AuthorisationRecord) = a.email
     def json(a: AuthorisationRecord) = authEncoder(a)
+    val tableName = "auth"
+    val id = "email"
+    val idType = ColString(100, true)
+    val drop = sql"DROP TABLE IF EXISTS auth"
+    val create = sql"CREATE TABLE auth (email varchar(100) PRIMARY KEY, content jsonb NOT NULL)"
+    def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
+      sql"INSERT INTO auth VALUES ($key, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb"
   }
 
   implicit val deployPE: ToPostgres[DeployRecordDocument] = new ToPostgres[DeployRecordDocument] {
     type K = UUID
     def key(a: DeployRecordDocument) = a.uuid
     def json(a: DeployRecordDocument) = deployEncoder(a)
+    val tableName = "deploy"
+    val id = "id"
+    val idType = ColUUID
+    val drop = sql"DROP TABLE IF EXISTS deploy"
+    val create = sql"CREATE TABLE deploy (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
+      sql"INSERT INTO deploy VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
 
   implicit val logPE: ToPostgres[LogDocument] = new ToPostgres[LogDocument] {
     type K = UUID
     def key(a: LogDocument) = a.id
     def json(a: LogDocument) = deployLogEncoder(a)
+    val tableName = "deployLog"
+    val id = "id"
+    val idType = ColUUID
+    val drop = sql"DROP TABLE IF EXISTS deployLog"
+    val create = sql"CREATE TABLE deployLog (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
+      sql"INSERT INTO deployLog VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
 }

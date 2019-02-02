@@ -15,15 +15,14 @@ object PreviewInterpreter extends Migrator[PreviewResponse] {
 
   val WINDOW_SIZE = 1000
 
-  def dropTable(name: String) =
-    IO.now(DropTable(s"DROP TABLE IF EXISTS $name"))
+  def dropTable(pgTable: ToPostgres[_]) =
+    IO.now(DropTable(pgTable.drop.statement))
 
-  def createTable(name: String, idName: String, idType: ColType) =
-    IO.now(CreateTable(s"CREATE TABLE $name ( $idName $idType PRIMARY KEY, content jsonb NOT NULL )"))
+  def createTable(pgTable: ToPostgres[_]) =
+    IO.now(CreateTable(pgTable.create.statement))
 
-  def insertAll[A](table: String, id: String, records: List[A])(implicit formatter: ToPostgres[A]) =
-    IO.traverse(records){ rec =>
-      IO.now(s"( ${formatter.key(rec)}, ${Printer.noSpaces.pretty(formatter.json(rec))} )")
-    }.map(InsertValues(s"INSERT INTO $table VALUES", _))
-
+  def insertAll[A](pgTable: ToPostgres[A], records: List[A]) =
+    IO.traverse(records){ record =>
+      IO.now(pgTable.insert(pgTable.key(record), pgTable.json(record).noSpaces).statement)
+    }.map(InsertValues("", _))
 }
