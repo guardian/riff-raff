@@ -38,15 +38,10 @@ class Migration() extends Lifecycle with Logging {
     ) { _ => 
       Postgres.disconnect
     } { _ => 
-      IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
-        mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, settings.limit)
-          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, settings.limit)
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, settings.limit)
-          case _              => IO.fail(MissingTable(mongoTable))
-        }
-      }      
+      run("apiKeys", MongoRetriever.apiKeyRetriever, settings.limit) *>
+        run("auth", MongoRetriever.authRetriever, settings.limit) *>
+        run("deployV2", MongoRetriever.deployRetriever, settings.limit) *>
+        run("deployV2Logs", MongoRetriever.logRetriever, settings.limit)
     }
 
     val promise = Promise[Unit]()
