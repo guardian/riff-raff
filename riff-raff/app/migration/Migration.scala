@@ -71,7 +71,9 @@ class Migration() extends Lifecycle with Logging {
     } yield ()
 
   def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =
-    (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval)).forever
+    (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval))
+      .forever
+      .ensuring(IO.sync(status.foreach { case (k, v) => status += k -> 100 }))
 
 }
 
