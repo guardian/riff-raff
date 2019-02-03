@@ -74,6 +74,6 @@ class Migration() extends Lifecycle with Logging {
 
 object Migration {
 
-  val interval: Duration = Duration(1L, java.util.concurrent.TimeUnit.SECONDS)
+  val interval: Duration = Duration(200L, java.util.concurrent.TimeUnit.MILLISECONDS)
 
 }
