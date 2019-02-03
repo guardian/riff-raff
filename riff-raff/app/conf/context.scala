@@ -175,9 +175,9 @@ object Config extends Logging {
   }
 
   object postgres {
-    lazy val url = getStringOpt("postgres.uri")
-    lazy val user = getStringOpt("postgres.user")
-    lazy val password = getStringOpt("postgres.password")
+    lazy val url = getString("postgres.uri")
+    lazy val user = getString("postgres.user")
+    lazy val password = getString("postgres.password")
   }
 
   object stages {

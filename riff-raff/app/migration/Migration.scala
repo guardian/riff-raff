@@ -31,9 +31,9 @@ class Migration() extends Lifecycle with Logging {
   def migrate(settings: MigrationParameters): Future[Unit] = {
     val ioprogram = IO.bracket(
       Postgres.connect(
-        conf.Config.postgres.url.get, 
-        conf.Config.postgres.user.get, 
-        conf.Config.postgres.password.get
+        conf.Config.postgres.url, 
+        conf.Config.postgres.user, 
+        conf.Config.postgres.password
       )
     ) { _ => 
       Postgres.disconnect
