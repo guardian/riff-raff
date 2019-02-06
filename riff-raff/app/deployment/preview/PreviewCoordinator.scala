@@ -16,7 +16,7 @@ import scala.collection.concurrent.{Map => ConcurrentMap}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Loggable {
+class PreviewCoordinator(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Loggable {
   private val previews: ConcurrentMap[UUID, PreviewResult] = new ConcurrentHashMap[UUID, PreviewResult]().asScala
 
   def cleanupPreviews() {
@@ -31,8 +31,8 @@ class PreviewCoordinator(prismLookup: PrismLookup, deploymentTypes: Seq[Deployme
     val previewId = UUID.randomUUID()
     logger.info(s"Starting preview for $previewId")
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val resources = DeploymentResources(muteLogger, prismLookup, Config.artifact.aws.client)
-    val artifact = S3YamlArtifact.apply(parameters.build, Config.artifact.aws.bucketName)
+    val resources = DeploymentResources(muteLogger, prismLookup, config.artifact.aws.client)
+    val artifact = S3YamlArtifact.apply(parameters.build, config.artifact.aws.bucketName)
     val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 
     maybeConfig.map(config => {

@@ -16,8 +16,13 @@ import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 
 import scala.util.Try
 
-class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient) extends BaseController
-  with I18nSupport {
+class Restrictions(config: Config,
+                   menu: Menu,
+                   authAction: AuthAction[AnyContent],
+                   restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository,
+                   val controllerComponents: ControllerComponents)
+                  (implicit val wsClient: WSClient)
+  extends BaseController with I18nSupport {
 
   lazy val restrictionsForm = Form[RestrictionForm](
     mapping(
@@ -41,25 +46,25 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
   )
 
   def list = authAction { implicit request =>
-    val configs = RestrictionConfigDynamoRepository.getRestrictionList.toList.sortBy(r => r.projectName + r.stage)
-    Ok(views.html.restrictions.list(configs, Config.auth.superusers))
+    val configs = restrictionConfigDynamoRepository.getRestrictionList.toList.sortBy(r => r.projectName + r.stage)
+    Ok(views.html.restrictions.list(config, menu)(configs))
   }
 
   def form = authAction { implicit request =>
     val newForm = restrictionsForm.fill(
       RestrictionForm(UUID.randomUUID(), "", "", editingLocked = false, Seq.empty, continuousDeployment = false, ""))
-    Ok(views.html.restrictions.form(newForm, saveDisabled = false))
+    Ok(views.html.restrictions.form(config, menu)(newForm, saveDisabled = false))
   }
 
   def save = authAction { implicit request =>
     restrictionsForm.bindFromRequest().fold(
-      formWithErrors => Ok(views.html.restrictions.form(formWithErrors, saveDisabled = false)),
+      formWithErrors => Ok(views.html.restrictions.form(config, menu)(formWithErrors, saveDisabled = false)),
       f => {
-        RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(f.id), request.user, Config.auth.superusers) match {
+        RestrictionChecker.isEditable(restrictionConfigDynamoRepository.getRestriction(f.id), request.user, config.auth.superusers) match {
           case Right(_) =>
             val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
               request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
-            RestrictionConfigDynamoRepository.setRestriction(newConfig)
+            restrictionConfigDynamoRepository.setRestriction(newConfig)
             Redirect(routes.Restrictions.list())
           case Left(Error(reason)) =>
             Forbidden(s"Not possible to update this restriction: $reason")
@@ -69,13 +74,13 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
   }
 
   def edit(id: String) = authAction { implicit request =>
-    RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)).map{ rc =>
+    restrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)).map{ rc =>
       val form = restrictionsForm.fill(
         RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.whitelist, rc.continuousDeployment, rc.note)
       )
-      val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, Config.auth.superusers).isLeft
+      val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, config.auth.superusers).isLeft
 
-      Ok(views.html.restrictions.form(
+      Ok(views.html.restrictions.form(config, menu)(
         restrictionForm = form,
         saveDisabled = cannotSave
       ))
@@ -83,9 +88,9 @@ class Restrictions(authAction: AuthAction[AnyContent], val controllerComponents:
   }
 
   def delete(id: String) = authAction { request =>
-    RestrictionChecker.isEditable(RestrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, Config.auth.superusers) match {
+    RestrictionChecker.isEditable(restrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, config.auth.superusers) match {
       case Right(_) =>
-        RestrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
+        restrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
         Redirect(routes.Restrictions.list())
       case Left(Error(reason)) =>
         Forbidden(s"Not possible to delete this restriction: $reason")

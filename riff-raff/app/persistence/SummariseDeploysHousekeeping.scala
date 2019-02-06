@@ -3,20 +3,19 @@ package persistence
 import lifecycle.Lifecycle
 import conf.Config
 import org.joda.time.{LocalDate, LocalTime}
-import persistence.Persistence.store
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 import controllers.Logging
 
-object SummariseDeploysHousekeeping extends Lifecycle with Logging {
-  lazy val maxAgeDays = Config.housekeeping.summariseDeploysAfterDays
-  lazy val housekeepingTime = new LocalTime(Config.housekeeping.hour, Config.housekeeping.minute)
+class SummariseDeploysHousekeeping(config: Config, datastore: DataStore) extends Lifecycle with Logging {
+  lazy val maxAgeDays = config.housekeeping.summariseDeploysAfterDays
+  lazy val housekeepingTime = new LocalTime(config.housekeeping.hour, config.housekeeping.minute)
 
   def summariseDeploys(): Int = {
     log.info("Summarising deploys older than %d days" format maxAgeDays)
     val maxAgeThreshold = LocalDate.now().minusDays(maxAgeDays)
-    val deploys = store.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay).toList
+    val deploys = datastore.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay).toList
     log.info("Found %d deploys to summarise" format deploys.size)
-    deploys.foreach(detail => store.summariseDeploy(detail.uuid))
+    deploys.foreach(detail => datastore.summariseDeploy(detail.uuid))
     log.info("Finished summarising")
     deploys.size
   }

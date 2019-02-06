@@ -1,4 +1,5 @@
-@(hookForm: Form[controllers.HookForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@(config: Config, menu: Menu)(hookForm: Form[controllers.HookForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -68,4 +69,4 @@
     })
 </script>
 
-}
+}(config, menu)

@@ -1,4 +1,5 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("About Deployment Information", request) {
 
@@ -19,4 +20,4 @@
 
     </div>
 
-}
+}(config, menu)

@@ -1,6 +1,7 @@
 @import magenta.input.All
 @import magenta.input.DeploymentKeysSelector
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
         parameters: magenta.DeployParameters,
         previewId: String)
 
@@ -51,4 +52,4 @@
         @views.html.preview.yaml.loading(request, 0L)
     </div>
 
-}
+}(config, menu)

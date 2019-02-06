@@ -8,8 +8,8 @@ import magenta.Build
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.Graph
-import magenta.input.{All, ConfigErrors, Deployment}
 import magenta.input.resolver.Resolver
+import magenta.input.{All, ConfigErrors, Deployment}
 import persistence.TargetDynamoRepository
 
 case class Target(region: String, stack: String, app: String)
@@ -24,22 +24,23 @@ object TargetResolver {
     }
   }
 
-  def fetchYaml(build: Build): Either[S3Error, String] = {    
-    val artifact = S3YamlArtifact(build, Config.artifact.aws.bucketName)
-    val deployObjectPath = artifact.deployObject
-    S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
-  }
+
 }
 
-class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[DeploymentType]) extends Lifecycle with Logging {
+class TargetResolver(config: Config,
+                     ciBuildPoller: CIBuildPoller,
+                     deploymentTypes: Seq[DeploymentType],
+                     targetDynamoRepository: TargetDynamoRepository)
+  extends Lifecycle with Logging {
+
   val poller = ciBuildPoller.newBuilds.subscribe { build =>
     val result = for {
-      yaml <- TargetResolver.fetchYaml(build.toMagentaBuild)
+      yaml <- fetchYaml(build.toMagentaBuild)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, All).toEither
       targets = TargetResolver.extractTargets(deployGraph)
     } yield {
       targets.map { t =>
-        Either.catchNonFatal(t -> TargetDynamoRepository.set(t, build.jobName, build.startTime))
+        Either.catchNonFatal(t -> targetDynamoRepository.set(t, build.jobName, build.startTime))
       }
     }
     result match {
@@ -60,6 +61,12 @@ class TargetResolver(ciBuildPoller: CIBuildPoller, deploymentTypes: Seq[Deployme
           case (msg, None) => log.warn(s"Error resolving target for $build: $msg")
         }
     }
+  }
+
+  def fetchYaml(build: Build): Either[S3Error, String] = {
+    val artifact = S3YamlArtifact(build, config.artifact.aws.bucketName)
+    val deployObjectPath = artifact.deployObject
+    S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
   }
   
   override def init() = {}

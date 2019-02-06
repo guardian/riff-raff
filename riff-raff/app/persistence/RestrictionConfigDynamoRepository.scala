@@ -5,8 +5,9 @@ import java.util.UUID
 import com.gu.scanamo.Table
 import restrictions.{RestrictionConfig, RestrictionsConfigRepository}
 import cats.syntax.either._
+import conf.Config
 
-object RestrictionConfigDynamoRepository extends DynamoRepository with RestrictionsConfigRepository {
+class RestrictionConfigDynamoRepository(config: Config) extends DynamoRepository(config) with RestrictionsConfigRepository {
   def tablePrefix = "riffraff-restriction-config"
 
   val table = Table[RestrictionConfig](tableName)

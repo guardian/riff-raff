@@ -1,4 +1,5 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], projects: String, search: Boolean)
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], projects: String, search: Boolean)
 
 @main("Dashboard", request, List("auto-refresh")) {
     <h2>Dashboard</h2>
@@ -7,4 +8,4 @@
     <div class="content" data-ajax-refresh="@{routes.DeployController.dashboardContent(projects, search)}" data-ajax-interval="60000">
         <p><img height="15" width="21" src="@routes.Assets.at("images/parrot-small.gif")"/> Analysing history...</p>
     </div>
-}
+}(config, menu)

@@ -1,4 +1,5 @@
-@(request: Request[AnyContent], documentation: Html)
+@import conf.Config
+@(config: Config, menu: Menu)(request: Request[AnyContent], documentation: Html)
 
 @mainNoAuth("Welcome", request) {
     
@@ -12,4 +13,4 @@
             @documentation
         </div>
     </div>
-}
+}(config, menu)

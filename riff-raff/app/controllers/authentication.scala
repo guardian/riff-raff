@@ -6,9 +6,9 @@ import com.mongodb.casbah.commons.MongoDBObject
 import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
-import play.api.data._
+import persistence.{DataStore, MongoFormat, MongoSerialisable}
 import play.api.data.Forms._
+import play.api.data._
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
 import play.api.mvc._
@@ -35,7 +35,7 @@ trait AuthorisationValidator {
   def emailWhitelistContains(email:String): Boolean
   def isAuthorised(id: UserIdentity) = authorisationError(id).isEmpty
   def authorisationError(id: UserIdentity): Option[String] = {
-    if (!emailDomainWhitelist.isEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
+    if (emailDomainWhitelist.nonEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
       Some(s"The e-mail address domain you used to login to Riff-Raff (${id.email}) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
     } else if (emailWhitelistEnabled && !emailWhitelistContains(id.email)) {
       Some(s"The e-mail address you used to login to Riff-Raff (${id.email}) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator.")
@@ -45,23 +45,23 @@ trait AuthorisationValidator {
   }
 }
 
-class Login(deployments: Deployments, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent], val authConfig: GoogleAuthConfig)
+class Login(config: Config, menu: Menu, deployments: Deployments, datastore: DataStore, val controllerComponents: ControllerComponents, val authAction: AuthAction[AnyContent], val authConfig: GoogleAuthConfig)
   (implicit val wsClient: WSClient, val executionContext: ExecutionContext)
   extends BaseController with Logging with LoginSupport with I18nSupport with LogAndSquashBehaviour {
 
   val validator = new AuthorisationValidator {
-    def emailDomainWhitelist = Config.auth.domains
-    def emailWhitelistEnabled = Config.auth.whitelist.useDatabase || Config.auth.whitelist.addresses.nonEmpty
+    def emailDomainWhitelist = config.auth.domains
+    def emailWhitelistEnabled = config.auth.whitelist.useDatabase || config.auth.whitelist.addresses.nonEmpty
     def emailWhitelistContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
-      Config.auth.whitelist.addresses.contains(lowerCaseEmail) ||
-        (Config.auth.whitelist.useDatabase && Persistence.store.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
+      config.auth.whitelist.addresses.contains(lowerCaseEmail) ||
+        (config.auth.whitelist.useDatabase && datastore.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
     }
   }
 
   def login = Action { request =>
     val error = request.flash.get("error")
-    Ok(views.html.auth.login(request, error))
+    Ok(views.html.auth.login(config, menu)(request, error))
   }
 
   def loginAction = Action.async { implicit request =>
@@ -89,30 +89,30 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   def profile = authAction { request =>
     val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).map(_.reverse)
     records.fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch list of deploys")),
-      (as: List[Record]) => Ok(views.html.auth.profile(request, as))
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch list of deploys")(config)),
+      (as: List[Record]) => Ok(views.html.auth.profile(config, menu)(request, as))
     )
   }
 
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    Persistence.store.getAuthorisationList.map(_.sortBy(_.email)).fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")),
-      (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(request, as))
+    datastore.getAuthorisationList.map(_.sortBy(_.email)).fold(
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")(config)),
+      (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(config, menu)(request, as))
     )
   }
 
   def authForm = authAction { implicit request =>
-    Ok(views.html.auth.form(authorisationForm))
+    Ok(views.html.auth.form(config, menu)(authorisationForm))
   }
 
   def authSave = authAction { implicit request =>
     authorisationForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.auth.form(errors)),
+      errors => BadRequest(views.html.auth.form(config, menu)(errors)),
       email => {
         val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
-        Persistence.store.setAuthorisation(auth)
+        datastore.setAuthorisation(auth)
         Redirect(routes.Login.authList())
       }
     )
@@ -121,7 +121,7 @@ class Login(deployments: Deployments, val controllerComponents: ControllerCompon
   def authDelete = authAction { implicit request =>
     authorisationForm.bindFromRequest().fold( _ => {}, email => {
       log.info(s"${request.user.fullName} deleted authorisation for $email")
-      Persistence.store.deleteAuthorisation(email)
+      datastore.deleteAuthorisation(email)
     } )
     Redirect(routes.Login.authList())
   }

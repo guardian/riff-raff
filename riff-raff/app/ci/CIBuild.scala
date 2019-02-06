@@ -30,14 +30,14 @@ trait Job {
   def name: String
 }
 
-class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
+class CIBuildPoller(config: Config, s3BuildOps: S3BuildOps, executionContext: ExecutionContext) extends Logging {
   import concurrent.duration._
   implicit val ec = executionContext
 
-  val pollingPeriod = Config.build.pollingPeriodSeconds.seconds
+  val pollingPeriod = config.build.pollingPeriodSeconds.seconds
 
   val initialFiles: Seq[S3Object] = for {
-    location <- S3Build.buildJsons
+    location <- s3BuildOps.buildJsons
   } yield location
 
   val initialBuilds: Future[Seq[CIBuild]] = {
@@ -48,7 +48,7 @@ class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
 
   val newBuilds: Observable[CIBuild] = {
     val observable = (for {
-      location <- Every(pollingPeriod)(Observable.from(S3Build.buildJsons)).distinct if !initialFiles.contains(location)
+      location <- Every(pollingPeriod)(Observable.from(s3BuildOps.buildJsons)).distinct if !initialFiles.contains(location)
       build <- Observable.from(retrieveBuild(location))
     } yield build).publish
     observable.connect // make it a "hot" observable, i.e. it runs even if nobody is subscribed to it
@@ -66,7 +66,7 @@ class CIBuildPoller(executionContext: ExecutionContext) extends Logging {
 
   private def retrieveBuild(location: S3Object): Option[CIBuild] = {
     import cats.syntax.either._
-    S3Build.buildAt(location)
+    s3BuildOps.buildAt(location)
       .leftMap(e => log.error(s"Problem getting build definition from $location: $e"))
       .toOption
   }

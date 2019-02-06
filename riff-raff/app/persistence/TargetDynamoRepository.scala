@@ -3,6 +3,7 @@ package persistence
 import ci.Target
 import com.gu.scanamo.Table
 import com.gu.scanamo.error.DynamoReadError
+import conf.Config
 import org.joda.time.DateTime
 
 case class TargetId(targetKey: String, projectName: String, region: String, stack: String, app: String, lastSeen: DateTime) {
@@ -14,7 +15,7 @@ object TargetId {
   def targetKey(tgt: Target) = Seq(tgt.region,tgt.stack,tgt.app).mkString("|")
 }
 
-object TargetDynamoRepository extends DynamoRepository {
+class TargetDynamoRepository(config: Config) extends DynamoRepository(config) {
   def tablePrefix = "riffraff-target-ids"
   val table = Table[TargetId](tableName)
 

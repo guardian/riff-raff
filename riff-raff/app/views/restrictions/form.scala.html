@@ -1,7 +1,8 @@
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 @import _root_.restrictions.RestrictionForm
-@(restrictionForm: Form[RestrictionForm], saveDisabled: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@(config: Config, menu: Menu)(restrictionForm: Form[RestrictionForm], saveDisabled: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 
 @main("Create Restriction", request) {
 
@@ -77,4 +78,4 @@
     })
 </script>
 
-}
+}(config, menu)

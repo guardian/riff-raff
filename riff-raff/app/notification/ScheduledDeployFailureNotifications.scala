@@ -13,11 +13,15 @@ import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import schedule.ScheduledDeployer
 
-class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(implicit ec: ExecutionContext) extends Lifecycle with Logging {
+class ScheduledDeployFailureNotifications(config: Config,
+                                          deploymentTypes: Seq[DeploymentType],
+                                          targetResolver: TargetResolver)
+                                         (implicit ec: ExecutionContext)
+  extends Lifecycle with Logging {
 
-  lazy private val anghammaradTopicARN = Config.scheduledDeployment.anghammaradTopicARN
-  lazy private val snsClient = Config.scheduledDeployment.snsClient
-  lazy private val prefix = Config.urls.publicPrefix
+  lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
+  lazy private val snsClient = config.scheduledDeployment.snsClient
+  lazy private val prefix = config.urls.publicPrefix
 
   def url(uuid: UUID): String = {
     val path = routes.DeployController.viewUUID(uuid.toString,true)
@@ -26,7 +30,7 @@ class ScheduledDeployFailureNotifications(deploymentTypes: Seq[DeploymentType])(
 
   def failedDeployNotification(uuid: UUID, parameters: DeployParameters) = {
     val deriveAnghammaradTargets = for {
-      yaml <- TargetResolver.fetchYaml(parameters.build)
+      yaml <- targetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
     } yield {
       TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>

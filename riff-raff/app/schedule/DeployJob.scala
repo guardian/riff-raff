@@ -11,7 +11,7 @@ import utils.LogAndSquashBehaviour
 import scala.annotation.tailrec
 import scala.util.Try
 
-class DeployJob extends Job with Logging {
+class DeployJob(config: Config) extends Job with Logging {
   private def getAs[T](key: String)(implicit jobDataMap: JobDataMap): T = jobDataMap.get(key).asInstanceOf[T]
 
   override def execute(context: JobExecutionContext): Unit = {
@@ -22,7 +22,7 @@ class DeployJob extends Job with Logging {
 
     val result = for {
       record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, Config.scheduledDeployment.enabled)
+      params <- DeployJob.createDeployParameters(record, config.scheduledDeployment.enabled)
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
     result match {

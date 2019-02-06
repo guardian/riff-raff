@@ -1,4 +1,5 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.DeployRecord)
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.DeployRecord)
 @import helper.CSRF
 
 @main("Debug Viewer", request) {
@@ -40,4 +41,4 @@
         }
         </tbody>
     </table>
-}
+}(config, menu)

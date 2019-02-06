@@ -1,4 +1,5 @@
-@(deployForm: Form[controllers.forms.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@(config: Config, menu: Menu)(deployForm: Form[controllers.forms.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import helper.CSRF
 @main("Deploy confirmation", request) {
 
@@ -41,4 +42,4 @@
     }
     }
 
-}
+}(config, menu)

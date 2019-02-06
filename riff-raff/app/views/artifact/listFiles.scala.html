@@ -1,5 +1,6 @@
 @import magenta.artifact.S3Object
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], projectName: String, id: String, objects: Seq[(String, S3Object)])
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], projectName: String, id: String, objects: Seq[(String, S3Object)])
 
 @main(s"Artifact files for $projectName / $id", request) {
     <h2>Artifact listing for @projectName build @id</h2>
@@ -18,4 +19,4 @@
             </table>
         }
     </div>
-}
+}(config, menu)

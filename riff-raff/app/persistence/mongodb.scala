@@ -35,20 +35,18 @@ trait CollectionStats {
   def documentCount: Long
 }
 
-object MongoDatastore extends Logging {
+class MongoDatastoreOps(config: Config) extends Logging {
 
   val MESSAGE_STACKS = "messageStacks"
-
-  val MAX_RETRIES = 3
 
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
-    if (Config.mongo.isConfigured) {
-      val uri = MongoClientURI(Config.mongo.uri.get)
+    if (config.mongo.isConfigured) {
+      val uri = MongoClientURI(config.mongo.uri.get)
       val mongoClient = MongoClient(uri)
       val db = MongoDB(mongoClient, uri.database.get)
-      Some(new MongoDatastore(db))
+      Some(new MongoDatastore(config, db))
     } else None
   } catch {
     case e:Throwable =>
@@ -57,10 +55,10 @@ object MongoDatastore extends Logging {
   }
 }
 
-class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
-  import MongoDatastore.MAX_RETRIES
+class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config) with DocumentStore with Logging {
+  val MAX_RETRIES = 3
 
-  def getCollection(name: String) = database(s"${Config.mongo.collectionPrefix}$name")
+  def getCollection(name: String) = database(s"${config.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
   val authCollection = getCollection("auth")
@@ -130,7 +128,7 @@ class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore wit
     }
 
   override def getAndUpdateApiKey(key: String, counter: Option[String]) = {
-    val setLastUsed = $set("lastUsed" -> (new DateTime()))
+    val setLastUsed = $set("lastUsed" -> new DateTime())
     val incCounter = counter.map(name => $inc(("callCounters.%s" format name) -> 1L)).getOrElse(MongoDBObject())
     val update = setLastUsed ++ incCounter
     logAndSquashExceptions[Option[ApiKey]](Some("Getting and updating API key details for %s" format key),None) {

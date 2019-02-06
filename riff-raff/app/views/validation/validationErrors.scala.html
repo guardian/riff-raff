@@ -1,5 +1,6 @@
 @import magenta.input.ConfigErrors
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], errors: ConfigErrors)
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], errors: ConfigErrors)
 
 @main("Validation errors", request) {
     <div class="clearfix"><p>&nbsp;</p></div>
@@ -18,4 +19,4 @@
         </div>
     }
     <div class="clearfix"></div>
-}
+}(config, menu)

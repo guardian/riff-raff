@@ -1,15 +1,14 @@
 package persistence
 
-import play.api.Logger
-import controllers.{ApiKey, AuthorisationRecord, Logging}
-import magenta.Build
 import java.util.UUID
-import ci.ContinuousDeploymentConfig
-import conf.DatastoreMetrics.DatastoreRequest
+
+import conf.{Config, DatastoreMetrics}
+import controllers.{ApiKey, AuthorisationRecord, Logging}
 import org.joda.time.DateTime
+import play.api.Logger
 import utils.Retriable
 
-trait DataStore extends DocumentStore with Retriable {
+abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def log: Logger
 
   def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T =
@@ -27,7 +26,7 @@ trait DataStore extends DocumentStore with Retriable {
         Left(t)
     }
 
-  def run[T](block: => T): T = DatastoreRequest.measure(block)
+  def run[T](block: => T): T = new DatastoreMetrics(config, this).DatastoreRequest.measure(block)
 
   def collectionStats:Map[String, CollectionStats] = Map.empty
 
@@ -44,40 +43,30 @@ trait DataStore extends DocumentStore with Retriable {
   def deleteApiKey(key: String): Unit
 }
 
-object Persistence extends Logging {
+class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
+  private val none = Right(None)
+  private val nil = Right(Nil)
+  private val unit = Right(())
 
-  object NoOpDataStore extends DataStore with Logging {
-    private val none = Right(None)
-    private val nil = Right(Nil)
-    private val unit = Right(())
+  def getAuthorisation(email: String) = none
+  def getAuthorisationList = nil
+  def setAuthorisation(auth: AuthorisationRecord) = unit
+  def deleteAuthorisation(email: String) = unit
 
-    def getAuthorisation(email: String) = none
-    def getAuthorisationList = nil
-    def setAuthorisation(auth: AuthorisationRecord) = unit
-    def deleteAuthorisation(email: String) = unit
+  def createApiKey(newKey: ApiKey) = ()
+  def getApiKeyList = nil
+  def getApiKey(key: String) = None
+  def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
+  def getApiKeyByApplication(application: String) = None
+  def deleteApiKey(key: String) = ()
 
-    def createApiKey(newKey: ApiKey) = ()
-    def getApiKeyList = nil
-    def getApiKey(key: String) = None
-    def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
-    def getApiKeyByApplication(application: String) = None
-    def deleteApiKey(key: String) = ()
-
-    def findProjects = nil
-    def writeDeploy(deploy: DeployRecordDocument) = ()
-    def writeLog(log: LogDocument) = ()
-    def deleteDeployLog(uuid: UUID) = ()
-    def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
-    def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
-    def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
-  }
-
-  lazy val store: DataStore = {
-    val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)
-    log.info("Persistence datastore initialised as %s" format (dataStore))
-    dataStore
-  }
-
+  def findProjects = nil
+  def writeDeploy(deploy: DeployRecordDocument) = ()
+  def writeLog(log: LogDocument) = ()
+  def deleteDeployLog(uuid: UUID) = ()
+  def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
+  def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
+  def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
 }
 
 

@@ -13,8 +13,25 @@ import resources.PrismLookup
 
 import scala.collection.JavaConverters._
 
-class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: => Option[Int]) extends Logging {
-  import DeploymentEngine._
+class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: => Option[Int]) extends Logging {
+
+  private val concurrentDeploys = config.concurrency.maxDeploys
+
+  private lazy val dispatcherConfig = ConfigFactory.parseMap(
+    Map(
+      "akka.deploy-dispatcher.type" -> "Dispatcher",
+      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
+      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
+      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
+      "akka.deploy-dispatcher.throughput" -> "1"
+    ).asJava
+  )
+
+  private lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
+
+  private lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
 
   private lazy val deploymentRunnerFactory = (context: ActorRefFactory, runnerName: String) => context.actorOf(
     props = Props(new TasksRunner(stopFlagAgent)).withDispatcher("akka.deploy-dispatcher"),
@@ -24,7 +41,7 @@ class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[Deployment
   private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
       props = Props(
-        new DeployGroupRunner(record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, deprecatedPause)
+        new DeployGroupRunner(config, record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, deprecatedPause)
       ).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
@@ -45,25 +62,4 @@ class DeploymentEngine(prismLookup: PrismLookup, deploymentTypes: Seq[Deployment
   def getDeployStopFlag(uuid: UUID): Boolean = {
     stopFlagAgent().contains(uuid)
   }
-}
-
-object DeploymentEngine {
-
-  private val concurrentDeploys = Config.concurrency.maxDeploys
-
-  private lazy val dispatcherConfig = ConfigFactory.parseMap(
-    Map(
-      "akka.deploy-dispatcher.type" -> "Dispatcher",
-      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
-      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
-      "akka.deploy-dispatcher.throughput" -> "1"
-    ).asJava
-  )
-
-  private lazy val system = ActorSystem("deploy", dispatcherConfig.withFallback(ConfigFactory.load()))
-
-  private lazy val stopFlagAgent = Agent(Map.empty[UUID, String])(system.dispatcher)
 }
