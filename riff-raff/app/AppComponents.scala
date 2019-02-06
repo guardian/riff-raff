@@ -99,7 +99,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val s3Tag = new S3Tag(config)
 
   val prismLookup = new PrismLookup(config, wsClient)
-  val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes, config.deprecation.pauseSeconds)
+  val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes)
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
   val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)

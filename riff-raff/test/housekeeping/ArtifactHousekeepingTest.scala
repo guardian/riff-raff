@@ -87,7 +87,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
     when (deploymentsMock.getDeploys(any[Option[DeployFilter]], any[PaginationView], any[Boolean])) thenReturn
       Right(oldDeploys ++ newDeploys)
 
-    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject")
+    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject", 50, 5)
     val recentCodeDeploys = List("25", "24", "23", "22", "21")
     val recentProdDeploys = List("15", "14", "13", "12", "11")
     result shouldEqual Right(recentProdDeploys ++ recentCodeDeploys)
@@ -100,7 +100,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
     when (deploymentsMock.getDeploys(any[Option[DeployFilter]], any[PaginationView], any[Boolean])) thenReturn
       Right(oldDeploys ++ newDeploys ++ oldBuildToProd)
 
-    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject")
+    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject", 50, 5)
     val recentCodeDeploys = List("25", "24", "23", "22", "21")
     val recentProdDeploys = List("10", "15", "14", "13", "12")
     result shouldEqual Right(recentProdDeploys ++ recentCodeDeploys)
@@ -117,7 +117,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
     when (deploymentsMock.getDeploys(any[Option[DeployFilter]], any[PaginationView], any[Boolean])) thenReturn
       Right(deploys)
 
-    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject")
+    val result = ArtifactHousekeeping.getBuildIdsToKeep(deploymentsMock, "testProject", 50, 5)
     result shouldEqual Right(List("2", "3", "4", "5"))
   }
 
@@ -129,7 +129,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
         List.tabulate(3)(n => ObjectSummary(s"object-z$n", "project-name", newDate.plusDays(n)))
     )
 
-    val result = ArtifactHousekeeping.getObjectsToTag(artifactClientMock, "bucket-name", "project-name", "12", housekeepingDate)
+    val result = ArtifactHousekeeping.getObjectsToTag(artifactClientMock, "bucket-name", "project-name", "12", housekeepingDate, 40)
     verify(artifactClientMock, times(1)).listObjectsV2(any[ListObjectsV2Request])
     result.map(_.getKey) shouldEqual List("object-x0", "object-x1", "object-x2")
   }

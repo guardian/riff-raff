@@ -24,6 +24,59 @@ object ArtifactHousekeeping {
       case None => ts
     }
   }
+
+  def getProjectNames(client: AmazonS3, bucket: String): List[String] = {
+    pagedAwsRequest(){ token =>
+      val request = new ListObjectsV2Request()
+        .withDelimiter("/")
+        .withBucketName(bucket)
+        .withContinuationToken(token.orNull)
+      val result = client.listObjectsV2(request)
+      result.getCommonPrefixes.asScala.toList.map(_.stripSuffix("/")) -> Option(result.getNextContinuationToken)
+    }
+  }
+
+  def getBuildIds(client: AmazonS3, bucket: String, projectName: String): List[String] = {
+    val prefix = s"$projectName/"
+    pagedAwsRequest(){ token =>
+      val request = new ListObjectsV2Request()
+        .withDelimiter("/")
+        .withBucketName(bucket)
+        .withPrefix(prefix)
+        .withContinuationToken(token.orNull)
+      val result = client.listObjectsV2(request)
+      result.getCommonPrefixes.asScala.toList.map(_.stripPrefix(prefix).stripSuffix("/")) -> Option(result.getNextContinuationToken)
+    }
+  }
+
+  def getBuildIdsToKeep(deployments: Deployments, projectName: String, numberToScan: Int, numberToKeep: Int): Either[Throwable, List[String]] = {
+    for {
+      deployList <- deployments.getDeploys(
+        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
+        pagination = PaginationView(pageSize = Some(numberToScan))
+      )
+    } yield {
+      val perStageDeploys = deployList.groupBy(_.stage).values.toList
+      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(numberToKeep))
+      deploysToKeep.map(_.buildId)
+    }
+  }
+
+  def getObjectsToTag(client: AmazonS3, artifactBucketName: String, projectName: String, buildId: String, now: DateTime, minimumAgeDays: Int): List[S3ObjectSummary] = {
+    val objects = pagedAwsRequest() { token =>
+      val request = new ListObjectsV2Request()
+        .withBucketName(artifactBucketName)
+        .withPrefix(s"$projectName/$buildId/")
+        .withContinuationToken(token.orNull)
+      val result = client.listObjectsV2(request)
+      result.getObjectSummaries.asScala.toList -> Option(result.getNextContinuationToken)
+    }
+
+    objects.filter { obj =>
+      val age = new Duration(new DateTime(obj.getLastModified), now)
+      age.getStandardDays > minimumAgeDays
+    }
+  }
 }
 
 class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Logging with Lifecycle {
@@ -50,7 +103,7 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
 
     buildsToTag.foreach { buildId =>
       log.info(s"Tagging build ID $buildId")
-      val objectsToTag = getObjectsToTag(client, bucket, projectName, buildId, now)
+      val objectsToTag = ArtifactHousekeeping.getObjectsToTag(client, bucket, projectName, buildId, now, config.housekeeping.tagOldArtifacts.minimumAgeDays)
 
       objectsToTag.foreach { obj =>
         log.info(s"Tagging ${obj.getKey}")
@@ -65,11 +118,11 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
   def housekeepArtifacts(now: DateTime): Int = {
     if (config.housekeeping.tagOldArtifacts.enabled) {
       log.info("Running housekeeping")
-      val projectNames = getProjectNames(s3Client, artifactBucketName)
+      val projectNames = ArtifactHousekeeping.getProjectNames(s3Client, artifactBucketName)
       val taggedBuilds = projectNames.map { name =>
         log.info(s"Housekeeping project '$name'")
-        val buildIdsForProject = getBuildIds(s3Client, artifactBucketName, name).toSet
-        getBuildIdsToKeep(deployments, name) match {
+        val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
+        ArtifactHousekeeping.getBuildIdsToKeep(deployments, name, config.housekeeping.tagOldArtifacts.numberToScan, config.housekeeping.tagOldArtifacts.numberToKeep) match {
           case Left(_) =>
             log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
             0
@@ -98,56 +151,5 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
     }
   }
 
-  def getProjectNames(client: AmazonS3, bucket: String): List[String] = {
-    pagedAwsRequest(){ token =>
-      val request = new ListObjectsV2Request()
-        .withDelimiter("/")
-        .withBucketName(bucket)
-        .withContinuationToken(token.orNull)
-      val result = client.listObjectsV2(request)
-      result.getCommonPrefixes.asScala.toList.map(_.stripSuffix("/")) -> Option(result.getNextContinuationToken)
-    }
-  }
 
-  def getBuildIds(client: AmazonS3, bucket: String, projectName: String): List[String] = {
-    val prefix = s"$projectName/"
-    pagedAwsRequest(){ token =>
-      val request = new ListObjectsV2Request()
-        .withDelimiter("/")
-        .withBucketName(bucket)
-        .withPrefix(prefix)
-        .withContinuationToken(token.orNull)
-      val result = client.listObjectsV2(request)
-      result.getCommonPrefixes.asScala.toList.map(_.stripPrefix(prefix).stripSuffix("/")) -> Option(result.getNextContinuationToken)
-    }
-  }
-
-  def getBuildIdsToKeep(deployments: Deployments, projectName: String): Either[Throwable, List[String]] = {
-    for {
-      deployList <- deployments.getDeploys(
-        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
-        pagination = PaginationView(pageSize = Some(config.housekeeping.tagOldArtifacts.numberToScan))
-      )
-    } yield {
-      val perStageDeploys = deployList.groupBy(_.stage).values.toList
-      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(config.housekeeping.tagOldArtifacts.numberToKeep))
-      deploysToKeep.map(_.buildId)
-    }
-  }
-
-  def getObjectsToTag(client: AmazonS3, artifactBucketName: String, projectName: String, buildId: String, now: DateTime): List[S3ObjectSummary] = {
-    val objects = pagedAwsRequest() { token =>
-      val request = new ListObjectsV2Request()
-        .withBucketName(artifactBucketName)
-        .withPrefix(s"$projectName/$buildId/")
-        .withContinuationToken(token.orNull)
-      val result = client.listObjectsV2(request)
-      result.getObjectSummaries.asScala.toList -> Option(result.getNextContinuationToken)
-    }
-
-    objects.filter { obj =>
-      val age = new Duration(new DateTime(obj.getLastModified), now)
-      age.getStandardDays > config.housekeeping.tagOldArtifacts.minimumAgeDays
-    }
-  }
 }

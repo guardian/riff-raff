@@ -13,7 +13,7 @@ import resources.PrismLookup
 
 import scala.collection.JavaConverters._
 
-class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], deprecatedPause: => Option[Int]) extends Logging {
+class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Logging {
 
   private val concurrentDeploys = config.concurrency.maxDeploys
 
@@ -41,7 +41,7 @@ class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes
   private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
       props = Props(
-        new DeployGroupRunner(config, record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, deprecatedPause)
+        new DeployGroupRunner(config, record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, config.deprecation.pauseSeconds)
       ).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
