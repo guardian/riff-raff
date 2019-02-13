@@ -3,6 +3,7 @@ package controllers
 import java.util.UUID
 
 import com.gu.googleauth.AuthAction
+import conf.Config
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import housekeeping.ArtifactHousekeeping
 import magenta._
@@ -10,7 +11,7 @@ import magenta.input.All
 import magenta.tasks.Task
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, Duration}
-import persistence.{DocumentStoreConverter, Persistence}
+import persistence.{DataStore, DocumentStoreConverter}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
@@ -20,11 +21,14 @@ import resources.PrismLookup
 import utils.LogAndSquashBehaviour
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Future
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
 
-class Testing(prismLookup: PrismLookup,
+class Testing(config: Config,
+              menu: Menu,
+              datastore: DataStore,
+              prismLookup: PrismLookup,
+              documentStoreConverter: DocumentStoreConverter,
               authAction: AuthAction[AnyContent],
               val controllerComponents: ControllerComponents,
               houseKeeping: ArtifactHousekeeping)(implicit val wsClient: WSClient)
@@ -88,20 +92,20 @@ class Testing(prismLookup: PrismLookup,
 
     val report = DeployRecord(new DateTime(), logUUID, parameters, messages=input.toList.take(take))
 
-    Ok(views.html.test.reportTest(request,report,verbose))
+    Ok(views.html.test.reportTest(config, menu)(request, report, verbose))
   }
 
   def hosts = authAction { Ok(s"Deploy Info hosts:\n${prismLookup.hosts.all.map(h => s"${h.name} - ${h.tags.getOrElse("group", "n/a")}").mkString("\n")}") }
 
   def form =
     authAction { implicit request =>
-      Ok(views.html.test.form(testForm))
+      Ok(views.html.test.form(testForm)(config, menu))
     }
 
   def formPost =
     authAction { implicit request =>
       testForm.bindFromRequest().fold(
-        errors => BadRequest(views.html.test.form(errors)),
+        errors => BadRequest(views.html.test.form(errors)(config, menu)),
         form => {
           log.info("Form post: %s" format form.toString)
           Redirect(routes.Testing.form)
@@ -114,14 +118,14 @@ class Testing(prismLookup: PrismLookup,
   }
 
   def uuidList(limit:Int) = authAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
-    Ok(views.html.test.uuidList(request, allDeploys.take(limit)))
+    val allDeploys = datastore.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    Ok(views.html.test.uuidList(config, menu)(request, allDeploys.take(limit)))
   }
 
   def S3LatencyList(limit:Int, csv: Boolean) = authAction { implicit request =>
     val filter = DeployFilter.fromRequest
     val pagination = PaginationView.fromRequest
-    val allDeploys = DocumentStoreConverter.getDeployList(filter, pagination, fetchLog = true).logAndSquashException(Nil)
+    val allDeploys = documentStoreConverter.getDeployList(filter, pagination, fetchLog = true).logAndSquashException(Nil)
     val times = allDeploys.map { deploy =>
       val taskRunLines = deploy.messages.flatMap { message =>
         message.stack.top match {
@@ -145,12 +149,12 @@ class Testing(prismLookup: PrismLookup,
       Ok(csvLines.mkString("\n")).as("text/csv").withHeaders("Content-Disposition" -> "attachment; filename=s3Latencies.csv")
     }
     else
-      Ok(views.html.test.s3Latencies(request, times))
+      Ok(views.html.test.s3Latencies(config, menu)(request, times))
   }
 
   def debugLogViewer(uuid: String) = authAction { implicit request =>
-    val deploy = DocumentStoreConverter.getDeploy(UUID.fromString(uuid))
-    deploy.map(deploy => Ok(views.html.test.debugLogViewer(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
+    val deploy = documentStoreConverter.getDeploy(UUID.fromString(uuid))
+    deploy.map(deploy => Ok(views.html.test.debugLogViewer(config, menu)(request, deploy))).getOrElse(NotFound("Can't find document with that UUID"))
   }
 
   def actionUUID = authAction { implicit request =>
@@ -158,29 +162,26 @@ class Testing(prismLookup: PrismLookup,
       errors => Redirect(routes.Testing.uuidList()),
       form => {
         form.action match {
-          case "summarise" => {
+          case "summarise" =>
             log.info("Summarising deploy with UUID %s" format form.uuid)
-            Persistence.store.summariseDeploy(UUID.fromString(form.uuid))
+            datastore.summariseDeploy(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
-          case "deleteV2" => {
+          case "deleteV2" =>
             log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
-            Persistence.store.deleteDeployLog(UUID.fromString(form.uuid))
+            datastore.deleteDeployLog(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
-          case "addStringUUID" => {
+          case "addStringUUID" =>
             log.info("Adding string UUID for %s" format form.uuid)
-            Persistence.store.addStringUUID(UUID.fromString(form.uuid))
+            datastore.addStringUUID(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
-          }
         }
       }
     )
   }
 
   def transferAllUUIDs = authAction { implicit request =>
-    val allDeploys = Persistence.store.getDeployUUIDsWithoutStringUUIDs
-    allDeploys.foreach(deploy => Persistence.store.addStringUUID(deploy.uuid))
+    val allDeploys = datastore.getDeployUUIDsWithoutStringUUIDs
+    allDeploys.foreach(deploy => datastore.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
   }
 

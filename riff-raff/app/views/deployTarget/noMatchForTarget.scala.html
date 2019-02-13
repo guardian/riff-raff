@@ -1,5 +1,6 @@
 @import ci.Target
-@(target: Target, request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, menu: Menu)(target: Target, request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("No match for target", request) {
     <h3>No match found</h3>
@@ -13,4 +14,4 @@
         Not what you expected? Deploy targets are resolved and indexed when Riff-Raff discovers a brand new build. Try
         kicking off a new CI build for the related project and then try refreshing this page.
     </p>
-}
+}(config, menu)

@@ -6,8 +6,9 @@ import ci.{ContinuousDeploymentConfig, Trigger}
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.{DynamoFormat, Table}
 import cats.syntax.either._
+import conf.Config
 
-object ContinuousDeploymentConfigRepository extends DynamoRepository {
+class ContinuousDeploymentConfigRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)

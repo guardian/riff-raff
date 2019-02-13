@@ -1,6 +1,7 @@
 @import persistence.TargetId
 @import deployment.Record
-@(targetId: TargetId, stage: String, records: List[Record], request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, menu: Menu)(targetId: TargetId, stage: String, records: List[Record], request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("Select build to deploy", request) {
     <h3>Select build to redeploy to @stage</h3>
@@ -14,4 +15,4 @@
             Riff Raff has not been used to deploy @targetId.projectName to @stage
         </div>
     }
-}
+}(config, menu)

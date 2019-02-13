@@ -1,6 +1,7 @@
-@(error: Throwable)
+@import conf.Config
+@(config: Config)(error: Throwable)
 
-@page("Error")(menu.menubar(Html("")), Html("")){
+@page("Error")(menu.menubar(config)(Html("")), Html("")){
 
     <h2>Dammit! Janet!</h2>
 
@@ -10,4 +11,4 @@
     @errorPageException(error)
     </div>
 
-}
+}(config)

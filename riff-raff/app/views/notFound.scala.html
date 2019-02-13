@@ -1,8 +1,9 @@
-@(request: Request[AnyContent], message:String)
+@import conf.Config
+@(config: Config, menu: Menu)(request: Request[AnyContent], message: String)
 
 @mainNoAuth("Not found", request){
     <h2>Master, Rocky has broken his chain and vanished</h2>
 
     <p>@message</p>
 
-}
+}(config, menu)

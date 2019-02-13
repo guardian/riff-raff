@@ -23,10 +23,10 @@ case class S3Build(
 
 case class S3Project(id: String, name: String) extends Job
 
-object S3Build extends Logging {
+class S3BuildOps(config: Config) extends Logging {
 
-  lazy val bucketName = Config.build.aws.bucketName
-  implicit lazy val client = Config.build.aws.client
+  lazy val bucketName = config.build.aws.bucketName
+  implicit lazy val client = config.build.aws.client
 
   def buildJsons: Seq[S3Object] = Try {
     S3Location.listAll(bucketName).filter(_.key.endsWith("build.json"))

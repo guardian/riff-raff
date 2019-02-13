@@ -1,4 +1,5 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: List[deployment.Record])
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployerRecords: List[deployment.Record])
 
 @main("Profile", request) {
     @defining(request.user) { id =>
@@ -17,4 +18,4 @@
         <h3>Recent deploys</h3>
         @snippets.recordTable(deployerRecords)
     }
-}
+}(config, menu)

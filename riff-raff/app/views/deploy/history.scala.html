@@ -1,4 +1,5 @@
-@(prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, menu: Menu)(prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 @import deployment.DeployFilterPagination
 
 @main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
@@ -32,4 +33,4 @@
     <div class="content" data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
         <p>Loading...</p>
     </div>
-}
+}(config, menu)

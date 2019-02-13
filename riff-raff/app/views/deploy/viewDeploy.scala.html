@@ -1,5 +1,6 @@
 @import utils.DateFormats
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], record: deployment.Record, verbose: Boolean = false, stopFlag: Boolean = false)
 @import helper.CSRF
 @import magenta.input.All
 @import magenta.input.DeploymentKeysSelector
@@ -100,4 +101,4 @@
 
     @stopDeployButton(record, stopFlag)
 
-}
+}(config, menu)

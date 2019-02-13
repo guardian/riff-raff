@@ -5,9 +5,10 @@ import java.util.UUID
 import ci.Trigger
 import com.gu.scanamo.syntax._
 import com.gu.scanamo.{DynamoFormat, Table}
+import conf.Config
 import schedule.ScheduleConfig
 
-object ScheduleRepository extends DynamoRepository {
+class ScheduleRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)

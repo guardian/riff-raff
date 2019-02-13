@@ -1,7 +1,8 @@
-@(request: Request[AnyContent])
+@import conf.Config
+@(request: Request[AnyContent])(config: Config, menu: Menu)
 @import com.gu.googleauth.UserIdentity
 
-@menubar{
+@menubar(config){
     @defining(UserIdentity.fromRequest(request)) { identity =>
         @if(identity.isDefined) {
             <ul class="btn-group pull-right hidden-xs nav navbar-nav">
@@ -20,12 +21,12 @@
         } else {
             <ul class="nav navbar-nav pull-right">
                 <li>
-                    <a href="@Menu.loginMenuItem.target"><i class="glyphicon glyphicon-user"></i> @Menu.loginMenuItem.title</a>
+                    <a href="@menu.loginMenuItem.target"><i class="glyphicon glyphicon-user"></i> @menu.loginMenuItem.title</a>
                 </li>
             </ul>
         }
         <ul class="nav navbar-nav navbar-collapse collapse">
-        @for(item <- Menu.menuItems) {
+        @for(item <- menu.menuItems) {
             @menubaritem(request, item)
         }
         </ul>

@@ -1,4 +1,5 @@
-@(configForm: Form[controllers.ScheduleController.ScheduleForm], prismLookup: resources.PrismLookup, timeZones: List[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@(config: Config, menu: Menu)(configForm: Form[controllers.ScheduleController.ScheduleForm], prismLookup: resources.PrismLookup, timeZones: List[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -50,4 +51,4 @@
             <a href="@routes.ScheduleController.list()" class="btn btn-danger">Cancel</a>
         </div>
     }
-}
+}(config, menu)

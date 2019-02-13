@@ -1,16 +1,16 @@
-@()
 @import utils.ChangeFreeze
+@(changeFreeze: ChangeFreeze)
 
-@if(ChangeFreeze.frozen){
+@if(changeFreeze.frozen){
   <script src='@routes.Assets.at("javascripts/modal-confirm.js")'></script>
-  <div id="freezeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="freezeModalLabel" aria-hidden="true" data-stages="@ChangeFreeze.stages.mkString(",")">
+  <div id="freezeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="freezeModalLabel" aria-hidden="true" data-stages="@changeFreeze.stages.mkString(",")">
       <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
           <h3>Change Freeze</h3>
       </div>
       <div class="modal-body">
-          <p>A change freeze is in place from @ChangeFreeze.from to @ChangeFreeze.to</p>
-          <p>@Html(ChangeFreeze.message)</p>
+          <p>A change freeze is in place from @changeFreeze.from to @changeFreeze.to</p>
+          <p>@Html(changeFreeze.message)</p>
       </div>
       <div class="modal-footer">
           <button id="freezeCancel" type="button" class="btn btn-primary">Cancel</button>
