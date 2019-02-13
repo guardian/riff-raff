@@ -36,9 +36,6 @@ trait CollectionStats {
 }
 
 class MongoDatastoreOps(config: Config) extends Logging {
-
-  val MESSAGE_STACKS = "messageStacks"
-
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
@@ -54,9 +51,13 @@ class MongoDatastoreOps(config: Config) extends Logging {
       None
   }
 }
+object MongoDatastore {
+  val MESSAGE_STACKS = "messageStacks"
+  val MAX_RETRIES = 3
+}
 
 class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config) with DocumentStore with Logging {
-  val MAX_RETRIES = 3
+  import MongoDatastore._
 
   def getCollection(name: String) = database(s"${config.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
