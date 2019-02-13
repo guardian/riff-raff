@@ -319,7 +319,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
 
       withFixture {
         withLogDocument(deployLog) { logDoc =>
-          datastore.readLogs(logDoc.id).head shouldBe logDoc
+          datastore.readLogs(logDoc.deploy).head shouldBe logDoc
         }
       }
     }
@@ -329,7 +329,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
         val deployLog = someLogDocument(TaskListDocument(List(TaskDetail("name1", "description1", "verbose1"), TaskDetail("name2", "description2", "verbose2"))))
 
         withLogDocument(deployLog) { logDoc =>
-          datastore.readLogs(logDoc.id).head shouldBe logDoc
+          datastore.readLogs(logDoc.deploy).head shouldBe logDoc
         }
       }
     }
@@ -339,7 +339,7 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
         val deployLog = someLogDocument(FailDocument("fail", ThrowableDetail("name", "message", "stacktrace")))
 
         withLogDocument(deployLog) { logDoc =>
-          datastore.readLogs(logDoc.id).head shouldBe logDoc
+          datastore.readLogs(logDoc.deploy).head shouldBe logDoc
         }
       }
     }

@@ -230,7 +230,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   override def readLogs(uuid: UUID): Iterable[LogDocument] = logAndSquashExceptions(Some(s"Retrieving logs for deploy $uuid"), List.empty[LogDocument]) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM deployLog WHERE id = $uuid".map(LogDocument(_)).list.apply()
+      sql"SELECT content FROM deployLog WHERE content ->>'deploy' = ${uuid.toString()}".map(LogDocument(_)).list.apply()
     }
   }
 }
