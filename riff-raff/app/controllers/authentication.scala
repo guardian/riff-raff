@@ -6,7 +6,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.{MongoFormat, MongoSerialisable}
 import persistence.{DataStore, MongoFormat, MongoSerialisable}
 import play.api.data.Forms._
 import play.api.data._

@@ -14,6 +14,8 @@ import magenta.input.resolver.Resolver
 import magenta.{DeployParameters, DeployReporter}
 import schedule.ScheduledDeployer
 
+import scala.concurrent.ExecutionContext
+
 class ScheduledDeployFailureNotifications(config: Config,
                                           deploymentTypes: Seq[DeploymentType],
                                           targetResolver: TargetResolver)

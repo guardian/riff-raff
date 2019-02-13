@@ -87,8 +87,6 @@ lazy val riffraff = project.in(file("riff-raff"))
     },
 
     fork in Test := false,
-
-    javaOptions in Test += "-Dconfig.file=riff-raff/conf/application.test.conf",
-
+    
     includeFilter in (Assets, LessKeys.less) := "*.less"
   ))

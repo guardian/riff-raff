@@ -151,7 +151,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
 
 
   def updateDeployStatus(uuid: UUID, state: RunState) {
-    documentStore.updateStatus(uuid, state)
+    datastore.updateStatus(uuid, state)
   }
 
   def addMetaData(uuid: UUID, metaData: Map[String, String]) {

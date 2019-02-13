@@ -13,7 +13,7 @@ import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
 import notification.{HooksClient, ScheduledDeployFailureNotifications}
-import persistence.{ContinuousDeploymentConfigRepository, DataStore, DocumentStoreConverter, HookConfigRepository, MongoDatastoreOps, NoOpDataStore, RestrictionConfigDynamoRepository, ScheduleRepository, SummariseDeploysHousekeeping, TargetDynamoRepository}
+import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -49,10 +49,16 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   
   val config = new Config(context.initialConfiguration.underlying)
 
-  lazy val datastore: DataStore = {
+  lazy val datastore: DataStore = if (config.postgres.isEnabled) postgresStore else mongoStore
+
+  private lazy val mongoStore: DataStore = {
     val dataStore = new MongoDatastoreOps(config).buildDatastore().getOrElse(new NoOpDataStore(config))
     log.info(s"Persistence datastore initialised as $dataStore")
     dataStore
+  }
+
+  private lazy val postgresStore: DataStore = {
+    new PostgresDatastoreOps(config).buildDatastore()
   }
 
   val secretStateSupplier: SnapshotProvider = {

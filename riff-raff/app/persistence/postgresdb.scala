@@ -12,7 +12,7 @@ import play.api.libs.json._
 import scalikejdbc._
 import utils.Json._
 
-class PostgresDatastore extends DataStore with Logging {
+class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {
@@ -197,11 +197,11 @@ class PostgresDatastore extends DataStore with Logging {
   }
 }
 
-object PostgresDatastore {
+class PostgresDatastoreOps(config: Config) {
   def buildDatastore() = {
     Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton(Config.postgres.url, Config.postgres.user, Config.postgres.password)
+    ConnectionPool.singleton(config.postgres.url, config.postgres.user, config.postgres.password)
 
-    new PostgresDatastore
+    new PostgresDatastore(config)
   }
 }

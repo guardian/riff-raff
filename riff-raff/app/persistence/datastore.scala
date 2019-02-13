@@ -43,47 +43,31 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def deleteApiKey(key: String): Unit
 }
 
-object Persistence extends Logging {
+class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
+  import NoOpDataStore._
 
-  class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
-    import NoOpDataStore._
+  final def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = none
+  final val getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = nil
+  final def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = unit
+  final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
 
-    final def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = none
-    final val getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = nil
-    final def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = unit
-    final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
+  final def createApiKey(newKey: ApiKey): Unit = ()
+  final val getApiKeyList: Either[Throwable, Iterable[ApiKey]] = nil
+  final def getApiKey(key: String): Option[ApiKey] = None
+  final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
+  final def getApiKeyByApplication(application: String): Option[ApiKey] = None
+  final def deleteApiKey(key: String): Unit = ()
 
-    final def createApiKey(newKey: ApiKey): Unit = ()
-    final val getApiKeyList: Either[Throwable, Iterable[ApiKey]] = nil
-    final def getApiKey(key: String): Option[ApiKey] = None
-    final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
-    final def getApiKeyByApplication(application: String): Option[ApiKey] = None
-    final def deleteApiKey(key: String): Unit = ()
-
-    final def findProjects = nil
-    final def writeDeploy(deploy: DeployRecordDocument) = ()
-    final def writeLog(log: LogDocument) = ()
-    final def deleteDeployLog(uuid: UUID) = ()
-    final def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
-    final def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
-    final def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
-  }
-  object NoOpDataStore {
-    private final val none = Right(None)
-    private final val nil = Right(Nil)
-    private final val unit = Right(())
-  }
-
-  lazy val store: DataStore = if (Config.postgres.isEnabled) postgresStore else mongoStore
-
-  private lazy val mongoStore: DataStore = {
-    val dataStore = MongoDatastore.buildDatastore().getOrElse(NoOpDataStore)
-    log.info("Persistence datastore initialised as %s" format dataStore)
-    dataStore
-  }
-
-  private lazy val postgresStore: DataStore = {
-    PostgresDatastore.buildDatastore()
-  }
+  final def findProjects = nil
+  final def writeDeploy(deploy: DeployRecordDocument) = ()
+  final def writeLog(log: LogDocument) = ()
+  final def deleteDeployLog(uuid: UUID) = ()
+  final def updateStatus(uuid: UUID, state: magenta.RunState) = ()
+  final def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
+  final def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
 }
-
+object NoOpDataStore {
+  private final val none = Right(None)
+  private final val nil = Right(Nil)
+  private final val unit = Right(())
+}
