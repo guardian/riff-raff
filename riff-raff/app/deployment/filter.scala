@@ -38,7 +38,7 @@ case class DeployFilter(
     stage.map(s => sqls"content->'parameters'->>'stage' = $s"),
     deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
     status.map(s => sqls"content->>'status' = ${s.entryName}"),
-    maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = $mda"),
+    maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = ${mda.toString}"),
     hasWarnings.map(hw => sqls"content->>'hasWarnings' = ${hw.toString}")
   ).flatten
 
