@@ -17,7 +17,7 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def logExceptions[T](message: Option[String])(block: => T): Either[Throwable, T] =
     try {
       val result = run(block)
-      message.foreach(m => log.debug("Completed: $s" format m))
+      message.foreach(m => log.debug(s"Completed: $m"))
       Right(result)
     } catch {
       case t: Throwable =>
