@@ -154,7 +154,7 @@ object MessageDocument {
       case DeployDocument => JsObject(List("_typeHint" -> JsString(DeployDocument.getClass.getName)))
       case d@TaskListDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(TaskListDocument.getClass.getName))
       case d@TaskRunDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(TaskRunDocument.getClass.getName))
-      case d@InfoDocument(_) => Json.toJson(d).as[JsObject] + ("_type   Hint" -> JsString(InfoDocument.getClass.getName))
+      case d@InfoDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(InfoDocument.getClass.getName))
       case d@CommandOutputDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(CommandOutputDocument.getClass.getName))
       case d@CommandErrorDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(CommandErrorDocument.getClass.getName))
       case d@VerboseDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(VerboseDocument.getClass.getName))
