@@ -1,5 +1,5 @@
-@(error: Throwable, message: String)
-@import conf.Config._
+@import conf.Config
+@(error: Throwable, message: String)(config: Config)
 
 <p>@message</p>
 

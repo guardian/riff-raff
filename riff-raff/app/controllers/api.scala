@@ -6,13 +6,14 @@ import java.util.UUID
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.AuthAction
 import com.mongodb.casbah.Imports._
+import conf.Config
 import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
 import magenta._
 import magenta.deployment_type.DeploymentType
 import magenta.input.All
 import magenta.input.resolver.{Resolver => YamlResolver}
 import org.joda.time.{DateTime, LocalDate}
-import persistence.{MongoFormat, MongoSerialisable, Persistence}
+import persistence.{DataStore, MongoFormat, MongoSerialisable}
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.I18nSupport
@@ -101,7 +102,13 @@ object ApiKeyGenerator {
 }
 
 
-class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAction: AuthAction[AnyContent],
+class Api(config: Config,
+          menu: Menu,
+          deployments: Deployments, 
+          deploymentTypes: Seq[DeploymentType], 
+          datastore: DataStore,
+          changeFreeze: ChangeFreeze,
+          authAction: AuthAction[AnyContent],
   val controllerComponents: ControllerComponents)(
   implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
@@ -109,7 +116,6 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
     val INTERNAL_KEY = ApiKey("internal", "n/a", "n/a", new DateTime())
 
     def apply[A](authenticatedRequest: ApiRequest[A])(f: ApiRequest[A] => JsValue): Result = {
-      val format = authenticatedRequest.queryString.get("format").toSeq.flatten
       val jsonpCallback = authenticatedRequest.queryString.get("callback").map(_.head)
 
       val response = try {
@@ -156,7 +162,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
       Action(p) { implicit request =>
         request.queryString.get("key").flatMap(_.headOption) match {
           case Some(urlParam) =>
-            Persistence.store.getAndUpdateApiKey(urlParam, Some(counter)) match {
+            datastore.getAndUpdateApiKey(urlParam, Some(counter)) match {
               case Some(apiKey) => f(new ApiRequest(apiKey, request))
               case None => Unauthorized("The API key provided is not valid. Please check and try again.")
             }
@@ -169,7 +175,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
   }
 
   val applicationForm = Form(
-    "application" -> nonEmptyText.verifying("Application name already exists", Persistence.store.getApiKeyByApplication(_).isEmpty)
+    "application" -> nonEmptyText.verifying("Application name already exists", datastore.getApiKeyByApplication(_).isEmpty)
   )
 
   val apiKeyForm = Form(
@@ -177,25 +183,25 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
   )
 
   def createKeyForm = authAction { implicit request =>
-    Ok(views.html.api.form(applicationForm))
+    Ok(views.html.api.form(config, menu)(applicationForm))
   }
 
   def createKey = authAction { implicit request =>
     applicationForm.bindFromRequest().fold(
-      errors => BadRequest(views.html.api.form(errors)),
+      errors => BadRequest(views.html.api.form(config, menu)(errors)),
       applicationName => {
         val randomKey = ApiKeyGenerator.newKey()
         val key = ApiKey(applicationName, randomKey, request.user.fullName, new DateTime())
-        Persistence.store.createApiKey(key)
+        datastore.createApiKey(key)
         Redirect(routes.Api.listKeys)
       }
     )
   }
 
   def listKeys = authAction { implicit request =>
-    Persistence.store.getApiKeyList.fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch API keys")),
-      (ks: Iterable[ApiKey]) => Ok(views.html.api.list(request, ks))
+    datastore.getApiKeyList.fold(
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch API keys")(config)),
+      (ks: Iterable[ApiKey]) => Ok(views.html.api.list(config, menu)(request, ks))
     )
   }
 
@@ -203,7 +209,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
     apiKeyForm.bindFromRequest().fold(
       errors => Redirect(routes.Api.listKeys()),
       apiKey => {
-        Persistence.store.deleteApiKey(apiKey)
+        datastore.deleteApiKey(apiKey)
         Redirect(routes.Api.listKeys())
       }
     )
@@ -219,7 +225,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
     }.getOrElse("")
 
-    implicit val dateOrdering = new Ordering[LocalDate] {
+    implicit val dateOrdering: Ordering[LocalDate] = new Ordering[LocalDate] {
       override def compare(x: LocalDate, y: LocalDate): Int = x.compareTo(y)
     }
     val allDataByDay = deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
@@ -311,7 +317,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
           Build(project, build),
           Stage(stage)
         )
-        assert(!ChangeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${ChangeFreeze.message}")
+        assert(!changeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${changeFreeze.message}")
 
         deployments.deploy(params, requestSource = ApiRequestSource(request.apiKey)) match {
           case Right(deployId) =>
@@ -359,7 +365,7 @@ class Api(deployments: Deployments, deploymentTypes: Seq[DeploymentType], authAc
 
   def stop = ApiJsonEndpoint("stopDeploy") { implicit request =>
     Form("uuid" -> nonEmptyText).bindFromRequest.fold(
-      errors => throw new IllegalArgumentException("No UUID specified"),
+      _ => throw new IllegalArgumentException("No UUID specified"),
       uuid => {
         val record = deployments.get(UUID.fromString(uuid), fetchLog = false)
         assert(!record.isDone, "Can't stop a deploy that has already completed")

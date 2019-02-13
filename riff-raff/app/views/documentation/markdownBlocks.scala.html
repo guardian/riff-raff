@@ -1,4 +1,5 @@
-@(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
+@import conf.Config
+@(config: Config, menu: Menu)(request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity],
         title: String,
         breadcrumbs: List[controllers.Application.Link],
         sections: Seq[(String, Html)])
@@ -15,4 +16,4 @@
         <h2 id="@sectionTitle.replaceAll("\\W","")">@sectionTitle</h2>
         @html
     }
-}
+}(config, menu)

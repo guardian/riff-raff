@@ -5,6 +5,7 @@ import java.util.UUID
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.AuthAction
 import com.gu.management.Loggable
+import conf.Config
 import controllers.forms.DeployParameterForm
 import deployment.preview.PreviewCoordinator
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
@@ -15,7 +16,11 @@ import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class PreviewController(coordinator: PreviewCoordinator, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(
+class PreviewController(config: Config,
+                        menu: Menu,
+                        coordinator: PreviewCoordinator,
+                        authAction: AuthAction[AnyContent],
+                        val controllerComponents: ControllerComponents)(
   implicit val wsClient: WSClient, executionContext: ExecutionContext
 ) extends BaseController with I18nSupport with Loggable {
   def preview(projectName: String, buildId: String, stage: String, deployments: Option[String]) = authAction { request =>
@@ -26,7 +31,7 @@ class PreviewController(coordinator: PreviewCoordinator, authAction: AuthAction[
     }
     val parameters = DeployParameters(Deployer(request.user.fullName), build, Stage(stage), selector = selector)
     coordinator.startPreview(parameters) match {
-      case Right(id) => Ok(views.html.preview.yaml.preview(request, parameters, id.toString))
+      case Right(id) => Ok(views.html.preview.yaml.preview(config, menu)(request, parameters, id.toString))
       case Left(error) => InternalServerError(error.toString)
     }
   }
@@ -54,7 +59,7 @@ class PreviewController(coordinator: PreviewCoordinator, authAction: AuthAction[
                   totalKeyCount
                 ))
               Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentKeys))
-            case Invalid(errors) => Ok(views.html.validation.validationErrors(request, errors))
+            case Invalid(errors) => Ok(views.html.validation.validationErrors(config, menu)(request, errors))
           }
         }
       case Some(result) =>

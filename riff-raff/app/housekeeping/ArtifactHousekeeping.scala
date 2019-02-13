@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.model._
 import conf.Config
 import controllers.Logging
 import deployment.{DeployFilter, Deployments, PaginationView}
+import housekeeping.ArtifactHousekeeping.pagedAwsRequest
 import magenta.RunState
 import org.joda.time.{DateTime, Duration, LocalTime}
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
@@ -19,7 +20,7 @@ object ArtifactHousekeeping {
     val (values: List[T], nextToken: Option[String]) = f(continuationToken)
     val ts = acc ::: values
     nextToken match {
-      case token @ Some(_) => pagedAwsRequest(token, ts)(f)
+      case token@Some(_) => pagedAwsRequest(token, ts)(f)
       case None => ts
     }
   }
@@ -48,20 +49,20 @@ object ArtifactHousekeeping {
     }
   }
 
-  def getBuildIdsToKeep(deployments: Deployments, projectName: String): Either[Throwable, List[String]] = {
+  def getBuildIdsToKeep(deployments: Deployments, projectName: String, numberToScan: Int, numberToKeep: Int): Either[Throwable, List[String]] = {
     for {
       deployList <- deployments.getDeploys(
         filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
-        pagination = PaginationView(pageSize = Some(Config.housekeeping.tagOldArtifacts.numberToScan))
+        pagination = PaginationView(pageSize = Some(numberToScan))
       )
     } yield {
       val perStageDeploys = deployList.groupBy(_.stage).values.toList
-      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(Config.housekeeping.tagOldArtifacts.numberToKeep))
+      val deploysToKeep = perStageDeploys.flatMap(_.sortBy(-_.time.getMillis).take(numberToKeep))
       deploysToKeep.map(_.buildId)
     }
   }
 
-  def getObjectsToTag(client: AmazonS3, artifactBucketName: String, projectName: String, buildId: String, now: DateTime): List[S3ObjectSummary] = {
+  def getObjectsToTag(client: AmazonS3, artifactBucketName: String, projectName: String, buildId: String, now: DateTime, minimumAgeDays: Int): List[S3ObjectSummary] = {
     val objects = pagedAwsRequest() { token =>
       val request = new ListObjectsV2Request()
         .withBucketName(artifactBucketName)
@@ -73,16 +74,16 @@ object ArtifactHousekeeping {
 
     objects.filter { obj =>
       val age = new Duration(new DateTime(obj.getLastModified), now)
-      age.getStandardDays > Config.housekeeping.tagOldArtifacts.minimumAgeDays
+      age.getStandardDays > minimumAgeDays
     }
   }
 }
 
-class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecycle {
-  private val s3Client = Config.artifact.aws.client
-  private val artifactBucketName = Config.artifact.aws.bucketName
+class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Logging with Lifecycle {
+  private val s3Client = config.artifact.aws.client
+  private val artifactBucketName = config.artifact.aws.bucketName
 
-  lazy val housekeepingTime = new LocalTime(Config.housekeeping.tagOldArtifacts.hourOfDay, Config.housekeeping.tagOldArtifacts.minuteOfHour)
+  lazy val housekeepingTime = new LocalTime(config.housekeeping.tagOldArtifacts.hourOfDay, config.housekeeping.tagOldArtifacts.minuteOfHour)
 
   var scheduledAgent: Option[ScheduledAgent[Int]] = None
 
@@ -97,12 +98,12 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
   }
 
   def tagBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
-    val tag = new Tag(Config.housekeeping.tagOldArtifacts.tagKey, Config.housekeeping.tagOldArtifacts.tagValue)
+    val tag = new Tag(config.housekeeping.tagOldArtifacts.tagKey, config.housekeeping.tagOldArtifacts.tagValue)
     val taggingObj = new ObjectTagging(List(tag).asJava)
 
     buildsToTag.foreach { buildId =>
       log.info(s"Tagging build ID $buildId")
-      val objectsToTag = ArtifactHousekeeping.getObjectsToTag(client, bucket, projectName, buildId, now)
+      val objectsToTag = ArtifactHousekeeping.getObjectsToTag(client, bucket, projectName, buildId, now, config.housekeeping.tagOldArtifacts.minimumAgeDays)
 
       objectsToTag.foreach { obj =>
         log.info(s"Tagging ${obj.getKey}")
@@ -115,13 +116,13 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
   }
 
   def housekeepArtifacts(now: DateTime): Int = {
-    if (Config.housekeeping.tagOldArtifacts.enabled) {
+    if (config.housekeeping.tagOldArtifacts.enabled) {
       log.info("Running housekeeping")
       val projectNames = ArtifactHousekeeping.getProjectNames(s3Client, artifactBucketName)
       val taggedBuilds = projectNames.map { name =>
         log.info(s"Housekeeping project '$name'")
         val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
-        ArtifactHousekeeping.getBuildIdsToKeep(deployments, name) match {
+        ArtifactHousekeeping.getBuildIdsToKeep(deployments, name, config.housekeeping.tagOldArtifacts.numberToScan, config.housekeeping.tagOldArtifacts.numberToKeep) match {
           case Left(_) =>
             log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
             0
@@ -149,4 +150,6 @@ class ArtifactHousekeeping(deployments: Deployments) extends Logging with Lifecy
       0
     }
   }
+
+
 }

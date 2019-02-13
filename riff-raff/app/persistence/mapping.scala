@@ -124,18 +124,17 @@ trait DocumentStore {
   def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit
 }
 
-object DocumentStoreConverter extends Logging {
-  val documentStore: DocumentStore = Persistence.store
+class DocumentStoreConverter(datastore: DataStore) extends Logging {
 
   def saveDeploy(record: DeployRecord) {
     if (record.messages.nonEmpty) throw new IllegalArgumentException
     val converter = RecordConverter(record)
-    documentStore.writeDeploy(converter.deployDocument)
-    converter.logDocuments.foreach(documentStore.writeLog)
+    datastore.writeDeploy(converter.deployDocument)
+    converter.logDocuments.foreach(datastore.writeLog)
   }
 
   def saveMessage(message: MessageWrapper) {
-    documentStore.writeLog(LogDocument(message))
+    datastore.writeLog(LogDocument(message))
   }
 
   def updateDeploySummary(record: DeployRecord) {
@@ -143,23 +142,24 @@ object DocumentStoreConverter extends Logging {
   }
 
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
-    documentStore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
+    datastore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
   }
 
   def updateDeployStatus(record: DeployRecord) {
     updateDeployStatus(record.uuid, record.state)
   }
 
+
   def updateDeployStatus(uuid: UUID, state: RunState) {
     documentStore.updateStatus(uuid, state)
   }
 
   def addMetaData(uuid: UUID, metaData: Map[String, String]) {
-    documentStore.addMetaData(uuid, metaData)
+    datastore.addMetaData(uuid, metaData)
   }
 
-  def getDeployDocument(uuid:UUID) = documentStore.readDeploy(uuid)
-  def getDeployLogs(uuid:UUID) = documentStore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
+  def getDeployDocument(uuid:UUID) = datastore.readDeploy(uuid)
+  def getDeployLogs(uuid:UUID) = datastore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
 
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
@@ -176,7 +176,7 @@ object DocumentStoreConverter extends Logging {
   }
 
   def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Either[Throwable, List[DeployRecord]] = {
-    documentStore.getDeploys(filter, pagination).flatMap { records =>
+    datastore.getDeploys(filter, pagination).flatMap { records =>
       records.toList.traverse { deployDocument =>
         try {
           val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
@@ -190,10 +190,10 @@ object DocumentStoreConverter extends Logging {
     }
   }
 
-  def countDeploys(filter: Option[DeployFilter]): Int = documentStore.countDeploys(filter)
+  def countDeploys(filter: Option[DeployFilter]): Int = datastore.countDeploys(filter)
 
   def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
-    documentStore.getLastCompletedDeploys(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
+    datastore.getLastCompletedDeploys(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
 
-  def findProjects: Either[Throwable, List[String]] = documentStore.findProjects
+  def findProjects: Either[Throwable, List[String]] = datastore.findProjects
 }

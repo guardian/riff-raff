@@ -1,4 +1,5 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deploys:Seq[controllers.SimpleDeployDetail])
 @import helper.CSRF
 
 @main("UUID list", request) {
@@ -44,4 +45,4 @@
     </tbody>
   </table>
 
-}
+}(config, menu)

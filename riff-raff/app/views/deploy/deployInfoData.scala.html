@@ -1,4 +1,5 @@
-@(lookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, menu: Menu)(lookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("Deployment Resources", request, List("deployinfo-app-tabs", "relative-time")) {
 
@@ -32,4 +33,4 @@
             }
         }
     }
-}
+}(config, menu)

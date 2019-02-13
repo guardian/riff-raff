@@ -1,6 +1,7 @@
 @import magenta.input.Deployment
 @import magenta.graph.Graph
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployments: Graph[Deployment])
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], deployments: Graph[Deployment])
 
 @main("Validation output", request) {
     <div class="clearfix"><p>&nbsp;</p></div>
@@ -30,4 +31,4 @@
         </div>
         }
     <div class="clearfix"></div>
-}
+}(config, menu)

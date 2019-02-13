@@ -1,4 +1,6 @@
-@(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@import utils.ChangeFreeze
+@(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -39,5 +41,5 @@
 
     <div class="clearfix"></div>
 
-    @snippets.changeFreezeDialog()
-}
+    @snippets.changeFreezeDialog(changeFreeze)
+}(config, menu)

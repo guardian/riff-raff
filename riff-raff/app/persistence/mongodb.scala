@@ -35,20 +35,15 @@ trait CollectionStats {
   def documentCount: Long
 }
 
-object MongoDatastore extends Logging {
-
-  val MESSAGE_STACKS = "messageStacks"
-
-  val MAX_RETRIES = 3
-
+class MongoDatastoreOps(config: Config) extends Logging {
   RegisterJodaTimeConversionHelpers()
 
   def buildDatastore() = try {
-    if (Config.mongo.isConfigured) {
-      val uri = MongoClientURI(Config.mongo.uri.get)
+    if (config.mongo.isConfigured) {
+      val uri = MongoClientURI(config.mongo.uri.get)
       val mongoClient = MongoClient(uri)
       val db = MongoDB(mongoClient, uri.database.get)
-      Some(new MongoDatastore(db))
+      Some(new MongoDatastore(config, db))
     } else None
   } catch {
     case e:Throwable =>
@@ -56,11 +51,15 @@ object MongoDatastore extends Logging {
       None
   }
 }
+object MongoDatastore {
+  val MESSAGE_STACKS = "messageStacks"
+  val MAX_RETRIES = 3
+}
 
-class MongoDatastore(database: MongoDB) extends DataStore with DocumentStore with Logging {
-  import MongoDatastore.MAX_RETRIES
+class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config) with DocumentStore with Logging {
+  import MongoDatastore._
 
-  def getCollection(name: String) = database(s"${Config.mongo.collectionPrefix}$name")
+  def getCollection(name: String) = database(s"${config.mongo.collectionPrefix}$name")
   val deployCollection = getCollection("deployV2")
   val deployLogCollection = getCollection("deployV2Logs")
   val authCollection = getCollection("auth")

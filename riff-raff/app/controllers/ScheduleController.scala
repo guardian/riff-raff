@@ -4,6 +4,7 @@ import java.text.ParseException
 import java.util.{TimeZone, UUID}
 
 import com.gu.googleauth.AuthAction
+import conf.Config
 import org.joda.time.DateTime
 import org.quartz.CronExpression
 import persistence.ScheduleRepository
@@ -18,8 +19,14 @@ import schedule.{DeployScheduler, ScheduleConfig}
 
 import scala.util.{Failure, Success, Try}
 
-class ScheduleController(authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents,
-                         prismLookup: PrismLookup, deployScheduler: DeployScheduler)(implicit val wsClient: WSClient)
+class ScheduleController(config: Config,
+                         menu: Menu,
+                         authAction: AuthAction[AnyContent],
+                         val controllerComponents: ControllerComponents,
+                         scheduleRepository: ScheduleRepository,
+                         prismLookup: PrismLookup,
+                         deployScheduler: DeployScheduler)
+                        (implicit val wsClient: WSClient)
   extends BaseController with Logging with I18nSupport {
 
   import ScheduleController.ScheduleForm
@@ -51,22 +58,22 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
   )
 
   def list = authAction { implicit request =>
-    val schedules = ScheduleRepository.getScheduleList()
-    Ok(views.html.schedule.list(request, schedules))
+    val schedules = scheduleRepository.getScheduleList()
+    Ok(views.html.schedule.list(config, menu)(request, schedules))
   }
 
   def form = authAction { implicit request =>
-    Ok(views.html.schedule.form(
+    Ok(views.html.schedule.form(config, menu)(
       scheduleForm.fill(ScheduleForm(UUID.randomUUID(), "", "", "", "", enabled = true)), prismLookup, timeZones
     ))
   }
 
   def save = authAction { implicit request =>
     scheduleForm.bindFromRequest().fold(
-      formWithErrors => Ok(views.html.schedule.form(formWithErrors, prismLookup, timeZones)),
+      formWithErrors => Ok(views.html.schedule.form(config, menu)(formWithErrors, prismLookup, timeZones)),
       form => {
         val config = form.toConfig(new DateTime(), request.user.fullName)
-        ScheduleRepository.setSchedule(config)
+        scheduleRepository.setSchedule(config)
         deployScheduler.reschedule(config)
         Redirect(routes.ScheduleController.list())
       }
@@ -74,9 +81,9 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
   }
 
   def edit(id: String) = authAction { implicit request =>
-    ScheduleRepository.getSchedule(UUID.fromString(id))
+    scheduleRepository.getSchedule(UUID.fromString(id))
         .fold(NotFound(s"Schedule with ID $id doesn't exist"))(
-          config => Ok(views.html.schedule.form(scheduleForm.fill(ScheduleForm(config)), prismLookup, timeZones))
+          scheduleConfig => Ok(views.html.schedule.form(config, menu)(scheduleForm.fill(ScheduleForm(scheduleConfig)), prismLookup, timeZones))
         )
   }
 
@@ -86,7 +93,7 @@ class ScheduleController(authAction: AuthAction[AnyContent], val controllerCompo
       {
         case "delete" =>
           val uuid = UUID.fromString(id)
-          ScheduleRepository.deleteSchedule(uuid)
+          scheduleRepository.deleteSchedule(uuid)
           deployScheduler.cancel(uuid)
       }
     )

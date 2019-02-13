@@ -1,4 +1,5 @@
-@(request: Request[AnyContent], error: Option[String] = None)
+@import conf.Config
+@(config: Config, menu: Menu)(request: Request[AnyContent], error: Option[String] = None)
 
 @mainNoAuth("Login", request) {
 <div class="row">
@@ -20,4 +21,4 @@
     </div>
 
 </div>
-}
+}(config, menu)

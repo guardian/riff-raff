@@ -1,7 +1,8 @@
 @import _root_.restrictions.RestrictionConfig
 @import _root_.restrictions.RestrictionChecker
 @import helper.CSRF
-@(configs: Seq[RestrictionConfig], superusers: List[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(appConfig: Config, menu: Menu)(configs: Seq[RestrictionConfig])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main("Restrictions", request){
     <h2>Restrictions</h2>
@@ -31,7 +32,7 @@
             </thead>
             <tbody>
             @for(config <- configs) {
-                @defining(RestrictionChecker.isEditable(Some(config), request.user, superusers).isLeft) { deleteDisabled =>
+                @defining(RestrictionChecker.isEditable(Some(config), request.user, appConfig.auth.superusers).isLeft) { deleteDisabled =>
                     <tr>
                         <td>@utils.DateFormats.Short.print(config.lastEdited)
                             by <span class="label label-default">@config.fullName</span></td>
@@ -59,4 +60,4 @@
     }
     </div>
 
-}
+}(appConfig, menu)

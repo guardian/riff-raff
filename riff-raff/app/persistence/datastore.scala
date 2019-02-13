@@ -2,14 +2,13 @@ package persistence
 
 import java.util.UUID
 
-import conf.Config
-import conf.DatastoreMetrics.DatastoreRequest
+import conf.{Config, DatastoreMetrics}
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import org.joda.time.DateTime
 import play.api.Logger
 import utils.Retriable
 
-trait DataStore extends DocumentStore with Retriable {
+abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def log: Logger
 
   def logAndSquashExceptions[T](message: Option[String], default: T)(block: => T): T =
@@ -27,7 +26,7 @@ trait DataStore extends DocumentStore with Retriable {
         Left(t)
     }
 
-  def run[T](block: => T): T = DatastoreRequest.measure(block)
+  def run[T](block: => T): T = new DatastoreMetrics(config, this).DatastoreRequest.measure(block)
 
   def collectionStats: Map[String, CollectionStats] = Map.empty
 
@@ -46,30 +45,33 @@ trait DataStore extends DocumentStore with Retriable {
 
 object Persistence extends Logging {
 
-  object NoOpDataStore extends DataStore with Logging {
-    private val none = Right(None)
-    private val nil = Right(Nil)
-    private val unit = Right(())
+  class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
+    import NoOpDataStore._
 
-    def getAuthorisation(email: String) = none
-    def getAuthorisationList = nil
-    def setAuthorisation(auth: AuthorisationRecord) = unit
-    def deleteAuthorisation(email: String) = unit
+    final def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = none
+    final val getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = nil
+    final def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = unit
+    final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
 
-    def createApiKey(newKey: ApiKey) = ()
-    def getApiKeyList = nil
-    def getApiKey(key: String) = None
-    def getAndUpdateApiKey(key: String, counter: Option[String] = None) = None
-    def getApiKeyByApplication(application: String) = None
-    def deleteApiKey(key: String) = ()
+    final def createApiKey(newKey: ApiKey): Unit = ()
+    final val getApiKeyList: Either[Throwable, Iterable[ApiKey]] = nil
+    final def getApiKey(key: String): Option[ApiKey] = None
+    final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
+    final def getApiKeyByApplication(application: String): Option[ApiKey] = None
+    final def deleteApiKey(key: String): Unit = ()
 
-    def findProjects = nil
-    def writeDeploy(deploy: DeployRecordDocument) = ()
-    def writeLog(log: LogDocument) = ()
-    def deleteDeployLog(uuid: UUID) = ()
-    def updateStatus(uuid: UUID, state: magenta.RunState) = ()
-    def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
-    def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
+    final def findProjects = nil
+    final def writeDeploy(deploy: DeployRecordDocument) = ()
+    final def writeLog(log: LogDocument) = ()
+    final def deleteDeployLog(uuid: UUID) = ()
+    final def updateStatus(uuid: UUID, state: magenta.RunState.Value) = ()
+    final def updateDeploySummary(uuid: UUID, totalTasks: Option[Int], completedTasks: Int, lastActivityTime: DateTime, hasWarnings: Boolean) = ()
+    final def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
+  }
+  object NoOpDataStore {
+    private final val none = Right(None)
+    private final val nil = Right(Nil)
+    private final val unit = Right(())
   }
 
   lazy val store: DataStore = if (Config.postgres.isEnabled) postgresStore else mongoStore
@@ -83,7 +85,5 @@ object Persistence extends Logging {
   private lazy val postgresStore: DataStore = {
     PostgresDatastore.buildDatastore()
   }
-
 }
-
 

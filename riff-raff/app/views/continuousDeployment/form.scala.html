@@ -1,4 +1,5 @@
-@(configForm: Form[controllers.ContinuousDeployController.ConfigForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@import conf.Config
+@(config: Config, menu: Menu)(configForm: Form[controllers.ContinuousDeployController.ConfigForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import ci.Trigger._
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
@@ -44,4 +45,4 @@
             <a href="@routes.ContinuousDeployController.list()" class="btn btn-danger">Cancel</a>
         </div>
     }
-}
+}(config, menu)

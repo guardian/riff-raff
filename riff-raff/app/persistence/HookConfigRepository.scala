@@ -5,8 +5,9 @@ import java.util.UUID
 import com.gu.scanamo.{DynamoFormat, Table}
 import notification.{HookConfig, HttpMethod}
 import cats.syntax.either._
+import conf.Config
 
-object HookConfigRepository extends DynamoRepository {
+class HookConfigRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val httpMethodFormat =
     DynamoFormat.coercedXmap[HttpMethod, String, NoSuchElementException](HttpMethod.apply)(_.toString)

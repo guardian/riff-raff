@@ -1,6 +1,6 @@
 import java.time.Duration
 
-import ci.{Builds, CIBuildPoller, ContinuousDeployment, TargetResolver}
+import ci._
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.ParameterStore
@@ -13,7 +13,7 @@ import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
 import notification.{HooksClient, ScheduledDeployFailureNotifications}
-import persistence.{ScheduleRepository, SummariseDeploysHousekeeping}
+import persistence.{ContinuousDeploymentConfigRepository, DataStore, DocumentStoreConverter, HookConfigRepository, MongoDatastoreOps, NoOpDataStore, RestrictionConfigDynamoRepository, ScheduleRepository, SummariseDeploysHousekeeping, TargetDynamoRepository}
 import play.api.ApplicationLoader.Context
 import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.{DBComponents, HikariCPComponents}
@@ -30,9 +30,8 @@ import resources.PrismLookup
 import riffraff.RiffRaffManagementServer
 import router.Routes
 import schedule.DeployScheduler
-import utils.{ElkLogging, HstsFilter, ScheduledAgent}
+import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
@@ -47,6 +46,14 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   with DBComponents
   with HikariCPComponents
   with Logging {
+  
+  val config = new Config(context.initialConfiguration.underlying)
+
+  lazy val datastore: DataStore = {
+    val dataStore = new MongoDatastoreOps(config).buildDatastore().getOrElse(new NoOpDataStore(config))
+    log.info(s"Persistence datastore initialised as $dataStore")
+    dataStore
+  }
 
   val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
@@ -54,19 +61,19 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
         usageDelay = Duration.ofMinutes(3),
         overlapDuration = Duration.ofHours(2)
       ),
-      parameterName = Config.auth.secretStateSupplierKeyName,
+      parameterName = config.auth.secretStateSupplierKeyName,
       ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
-        .withRegion(Config.auth.secretStateSupplierRegion)
-        .withCredentials(Config.credentialsProviderChain(None, None))
+        .withRegion(config.auth.secretStateSupplierRegion)
+        .withCredentials(config.credentialsProviderChain(None, None))
         .build()
     )
   }
 
   lazy val googleAuthConfig = GoogleAuthConfig(
-    clientId = Config.auth.clientId,
-    clientSecret = Config.auth.clientSecret,
-    redirectUrl = Config.auth.redirectUrl,
-    domain = Config.auth.domain,
+    clientId = config.auth.clientId,
+    clientSecret = config.auth.clientSecret,
+    redirectUrl = config.auth.redirectUrl,
+    domain = config.auth.domain,
     antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
   )
 
@@ -77,26 +84,38 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   implicit val implicitWsClient = wsClient
 
   val elkLogging = new ElkLogging(
-    Config.stage,
-    Config.logging.regionName,
-    Config.logging.elkStreamName,
-    Config.logging.credentialsProvider,
+    config.stage,
+    config.logging.regionName,
+    config.logging.elkStreamName,
+    config.logging.credentialsProvider,
     applicationLifecycle
   )
 
   val availableDeploymentTypes = Seq(
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
   )
-  val prismLookup = new PrismLookup(wsClient, Config.lookup.prismUrl, Config.lookup.timeoutSeconds.seconds)
-  val deploymentEngine = new DeploymentEngine(prismLookup, availableDeploymentTypes, Config.deprecation.pauseSeconds)
-  val buildPoller = new CIBuildPoller(executionContext)
+
+  val documentStoreConverter = new DocumentStoreConverter(datastore)
+  val targetDynamoRepository = new TargetDynamoRepository(config)
+  val restrictionConfigDynamoRepository = new RestrictionConfigDynamoRepository(config)
+  val s3BuildOps = new S3BuildOps(config)
+  val changeFreeze = new ChangeFreeze(config)
+  val scheduleRepository = new ScheduleRepository(config)
+  val hookConfigRepository = new HookConfigRepository(config)
+  val continuousDeploymentConfigRepository = new ContinuousDeploymentConfigRepository(config)
+  val menu = new Menu(config)
+  val s3Tag = new S3Tag(config)
+
+  val prismLookup = new PrismLookup(config, wsClient)
+  val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes)
+  val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
-  val targetResolver = new TargetResolver(buildPoller, availableDeploymentTypes)
-  val deployments = new Deployments(deploymentEngine, builds)
-  val continuousDeployment = new ContinuousDeployment(buildPoller, deployments)
-  val previewCoordinator = new PreviewCoordinator(prismLookup, availableDeploymentTypes)
-  val artifactHousekeeper = new ArtifactHousekeeping(deployments)
-  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(availableDeploymentTypes)
+  val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)
+  val deployments = new Deployments(deploymentEngine, builds, documentStoreConverter, restrictionConfigDynamoRepository)
+  val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
+  val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes)
+  val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
+  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(config, availableDeploymentTypes, targetResolver)
 
   val authAction = new AuthAction[AnyContent](
     googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
@@ -114,13 +133,13 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     log.info("Shutting down deployment scheduler")
     Future.successful(deployScheduler.shutdown())
   }
-  deployScheduler.initialise(ScheduleRepository.getScheduleList())
+  deployScheduler.initialise(new ScheduleRepository(config).getScheduleList())
 
-  val hooksClient = new HooksClient(wsClient, executionContext)
+  val hooksClient = new HooksClient(datastore, wsClient, executionContext)
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
 
   // the management server takes care of shutting itself down with a lifecycle hook
-  val management = new conf.Management(shutdownWhenInactive, deployments)
+  val management = new conf.Management(config, shutdownWhenInactive, deployments, datastore)
   val managementServer = new RiffRaffManagementServer(management.applicationName, management.pages, Logger("ManagementServer"))
 
   val lifecycleSingletons = Seq(
@@ -130,7 +149,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     targetResolver,
     DeployMetrics,
     hooksClient,
-    SummariseDeploysHousekeeping,
+    new SummariseDeploysHousekeeping(config, datastore),
     continuousDeployment,
     managementServer,
     shutdownWhenInactive,
@@ -151,23 +170,23 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     }
   }(ExecutionContext.global))
 
-  val applicationController = new Application(prismLookup, availableDeploymentTypes, authAction, controllerComponents, assets)(environment, wsClient, executionContext)
-  val deployController = new DeployController(deployments, prismLookup, availableDeploymentTypes, builds, authAction, controllerComponents)
-  val apiController = new Api(deployments, availableDeploymentTypes, authAction, controllerComponents)
-  val continuousDeployController = new ContinuousDeployController(prismLookup, authAction, controllerComponents)
-  val previewController = new PreviewController(previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
-  val hooksController = new HooksController(prismLookup, authAction, controllerComponents)
-  val restrictionsController = new Restrictions(authAction, controllerComponents)
-  val scheduleController = new ScheduleController(authAction, controllerComponents, prismLookup, deployScheduler)
-  val targetController = new TargetController(deployments, authAction, controllerComponents)
-  val loginController = new Login(deployments, controllerComponents, authAction, googleAuthConfig)
-  val testingController = new Testing(prismLookup, authAction, controllerComponents, artifactHousekeeper)
+  val applicationController = new Application(config, menu, prismLookup, availableDeploymentTypes, authAction, controllerComponents, assets)(environment, wsClient, executionContext)
+  val deployController = new DeployController(config, menu, deployments, prismLookup, availableDeploymentTypes, changeFreeze, builds, s3Tag, authAction, restrictionConfigDynamoRepository, controllerComponents)
+  val apiController = new Api(config, menu, deployments, availableDeploymentTypes, datastore, changeFreeze, authAction, controllerComponents)
+  val continuousDeployController = new ContinuousDeployController(config, menu, changeFreeze, prismLookup, authAction, continuousDeploymentConfigRepository, controllerComponents)
+  val previewController = new PreviewController(config, menu, previewCoordinator, authAction, controllerComponents)(wsClient, executionContext)
+  val hooksController = new HooksController(config, menu, prismLookup, authAction, hookConfigRepository, controllerComponents)
+  val restrictionsController = new Restrictions(config, menu, authAction, restrictionConfigDynamoRepository, controllerComponents)
+  val scheduleController = new ScheduleController(config, menu, authAction, controllerComponents, scheduleRepository, prismLookup, deployScheduler)
+  val targetController = new TargetController(config, menu, deployments, targetDynamoRepository, authAction, controllerComponents)
+  val loginController = new Login(config, menu, deployments, datastore, controllerComponents, authAction, googleAuthConfig)
+  val testingController = new Testing(config, menu, datastore, prismLookup, documentStoreConverter, authAction, controllerComponents, artifactHousekeeper)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
       Logger.error("Error whilst trying to serve request", t)
       val reportException = if (t.getCause != null) t.getCause else t
-      Future.successful(InternalServerError(views.html.errorPage(reportException)))
+      Future.successful(InternalServerError(views.html.errorPage(config)(reportException)))
     }
   }
 
