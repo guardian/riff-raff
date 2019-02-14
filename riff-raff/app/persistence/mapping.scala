@@ -180,7 +180,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
       records.traverse { deployDocument =>
         try {
           val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
-          Right(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
+          Right(DocumentConverter(deployDocument, logs).deployRecord)
         } catch {
           case e: Exception =>
             log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)

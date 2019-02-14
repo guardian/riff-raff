@@ -123,7 +123,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     DB readOnly { implicit session =>
       val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
       val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")
-      sql"SELECT content FROM deploy $whereFilters $paginationFilters".map(DeployRecordDocument(_)).list.apply()
+      sql"SELECT content FROM deploy $whereFilters ORDER BY content->>'startTime' DESC $paginationFilters".map(DeployRecordDocument(_)).list.apply()
     }
   }
 
