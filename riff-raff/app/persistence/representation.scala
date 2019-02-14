@@ -5,12 +5,10 @@ import java.util.UUID
 import com.mongodb.DBObject
 import com.mongodb.casbah.commons.Implicits._
 import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
-import enumeratum._
 import magenta.ContextMessage._
 import magenta.Message._
 import magenta._
 import org.joda.time.DateTime
-import persistence.DetailConversions.{taskDetail, throwableDetail}
 import persistence.ParametersDocument._
 import play.api.libs.json._
 import scalikejdbc.WrappedResultSet
@@ -80,14 +78,18 @@ object DeploymentSelectorDocument {
     override def writes(doc: DeploymentSelectorDocument): JsValue = doc match {
       case AllDocument => JsObject(List("_typeHint" -> JsString(AllDocument.getClass.getName)))
       case dsd@DeploymentKeysSelectorDocument(_) => Json.toJson(dsd).as[JsObject] + ("_typeHint" -> JsString(DeploymentKeysSelectorDocument.getClass.getName))
-      case dsd => throw new IllegalArgumentException(s"Don't know how to write DeploymentSelectorDocument of type $dsd}")
+      case dsd =>
+        logger.debug(s"Don't know how to write DeploymentSelectorDocument of type $dsd}")
+        JsNull
     }
 
 
-    override def reads(json: JsValue): JsResult[DeploymentSelectorDocument] = (json \ "_typeHint").as[String] match {
-      case "persistence.AllDocument$" => JsSuccess(AllDocument)
-      case "persistence.DeploymentKeysSelectorDocument$" => JsSuccess(json.as[DeploymentKeysSelectorDocument])
-      case hint => throw new IllegalArgumentException(s"Don't know how to construct DeploymentSelectorDocument of type $hint}")
+    override def reads(json: JsValue): JsResult[DeploymentSelectorDocument] = (json \ "_typeHint").as[String].replace("$", "") match {
+      case "persistence.AllDocument" => JsSuccess(AllDocument)
+      case "persistence.DeploymentKeysSelectorDocument" => JsSuccess(json.as[DeploymentKeysSelectorDocument])
+      case hint =>
+        logger.debug(s"Don't know how to construct DeploymentSelectorDocument of type $hint}")
+        JsSuccess(AllDocument)
     }
   }
 
@@ -166,18 +168,18 @@ object MessageDocument {
     }
 
 
-    override def reads(json: JsValue): JsResult[MessageDocument] = (json \ "_typeHint").as[String] match {
-      case "persistence.DeployDocument$" => JsSuccess(DeployDocument)
-      case "persistence.TaskListDocument$" => JsSuccess(json.as[TaskListDocument])
-      case "persistence.TaskRunDocument$" => JsSuccess(json.as[TaskRunDocument])
-      case "persistence.InfoDocument$" => JsSuccess(json.as[InfoDocument])
-      case "persistence.CommandOutputDocument$" => JsSuccess(json.as[CommandOutputDocument])
-      case "persistence.CommandErrorDocument$" => JsSuccess(json.as[CommandErrorDocument])
-      case "persistence.VerboseDocument$" => JsSuccess(json.as[VerboseDocument])
-      case "persistence.FailDocument$" => JsSuccess(json.as[FailDocument])
-      case "persistence.FinishContextDocument$" => JsSuccess(FinishContextDocument)
-      case "persistence.FailContextDocument$" => JsSuccess(FailContextDocument)
-      case "persistence.WarningDocument$" => JsSuccess(json.as[WarningDocument])
+    override def reads(json: JsValue): JsResult[MessageDocument] = (json \ "_typeHint").as[String].replace("$", "") match {
+      case "persistence.DeployDocument" => JsSuccess(DeployDocument)
+      case "persistence.TaskListDocument" => JsSuccess(json.as[TaskListDocument])
+      case "persistence.TaskRunDocument" => JsSuccess(json.as[TaskRunDocument])
+      case "persistence.InfoDocument" => JsSuccess(json.as[InfoDocument])
+      case "persistence.CommandOutputDocument" => JsSuccess(json.as[CommandOutputDocument])
+      case "persistence.CommandErrorDocument" => JsSuccess(json.as[CommandErrorDocument])
+      case "persistence.VerboseDocument" => JsSuccess(json.as[VerboseDocument])
+      case "persistence.FailDocument" => JsSuccess(json.as[FailDocument])
+      case "persistence.FinishContextDocument" => JsSuccess(FinishContextDocument)
+      case "persistence.FailContextDocument" => JsSuccess(FailContextDocument)
+      case "persistence.WarningDocument" => JsSuccess(json.as[WarningDocument])
       case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
     }
   }
