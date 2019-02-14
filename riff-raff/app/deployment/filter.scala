@@ -3,6 +3,7 @@ package deployment
 import java.net.URLEncoder
 
 import magenta.RunState
+import org.joda.time.LocalDate
 import play.api.libs.json.{Format, Json}
 import play.api.mvc.{Call, RequestHeader}
 import scalikejdbc._
@@ -38,7 +39,10 @@ case class DeployFilter(
     stage.map(s => sqls"content->'parameters'->>'stage' = $s"),
     deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
     status.map(s => sqls"content->>'status' = ${s.entryName}"),
-    maxDaysAgo.map(mda => sqls"content->'parameters'->>'maxDaysAgo' = ${mda.toString}"),
+    maxDaysAgo.map { days =>
+      val dateTime = LocalDate.now.minusDays(days).toDateTimeAtCurrentTime
+      sqls"(content->>'startTime')::TIMESTAMP > $dateTime::TIMESTAMP"
+    },
     hasWarnings.map(hw => sqls"content->>'hasWarnings' = ${hw.toString}")
   ).flatten
 
