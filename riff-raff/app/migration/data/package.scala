@@ -17,13 +17,10 @@ package object data {
 
   ///
   /// JSON encoders
-  def remove(field: String): Json => Json = json => json.asObject.fold(json)(o => Json.fromJsonObject(o.remove(field)))
 
   implicit val instantEncoder          : Encoder[DateTime] = Encoder[String].contramap(_.toString)
-  val _apiKeyEncoder                   : Encoder[ApiKey] = deriveEncoder
-  implicit val apiKeyEncoder           : Encoder[ApiKey] = _apiKeyEncoder.mapJson(remove("key"))
-  val _authEncoder                     : Encoder[AuthorisationRecord] = deriveEncoder
-  implicit val authEncoder             : Encoder[AuthorisationRecord] = _authEncoder.mapJson(remove("email"))
+  implicit val apiKeyEncoder           : Encoder[ApiKey] = deriveEncoder
+  implicit val authEncoder             : Encoder[AuthorisationRecord] = deriveEncoder
   implicit val deployRunState          : Encoder[RunState.Value] = Encoder.enumEncoder(RunState)
   implicit val deployDeploymentKey     : Encoder[DeploymentKeyDocument] = deriveEncoder
   implicit val deployDeploymentSelector: Encoder[DeploymentSelectorDocument] = Encoder.instance {
@@ -31,8 +28,7 @@ package object data {
     case DeploymentKeysSelectorDocument(ids) => JsonObject("_typeHint" -> "persistence.DeploymentKeysSelectorDocument".asJson, "ids" -> ids.asJson).asJson
   }
   implicit val deployParameters        : Encoder[ParametersDocument] = deriveEncoder
-  val _deployEncoder                   : Encoder[DeployRecordDocument] = deriveEncoder
-  implicit val deployEncoder           : Encoder[DeployRecordDocument] = _deployEncoder.mapJson(remove("uuid"))
+  implicit val deployEncoder           : Encoder[DeployRecordDocument] = deriveEncoder
   implicit val deployThrowableDetail   : Encoder[ThrowableDetail] = deriveEncoder
   implicit val deployTaskDetail        : Encoder[TaskDetail] = deriveEncoder
   implicit val deployDocument          : Encoder[MessageDocument] = Encoder.instance {
@@ -58,8 +54,7 @@ package object data {
     case FinishContextDocument() => JsonObject("_typeHint" -> "persistence.FinishContextDocument".asJson).asJson
     case FailContextDocument() => JsonObject("_typeHint" -> "persistence.FailContextDocument".asJson).asJson
   }
-  val _deployLog                       : Encoder[LogDocument] = deriveEncoder
-  implicit val deployLogEncoder        : Encoder[LogDocument] = _deployLog.mapJson(remove("deploy"))
+  implicit val deployLogEncoder        : Encoder[LogDocument] = deriveEncoder
   // ///
 
   // ///
