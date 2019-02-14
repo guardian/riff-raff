@@ -36,7 +36,7 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
   def createApiKey(newKey: ApiKey): Unit
-  def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
+  def getApiKeyList: Either[Throwable, List[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
@@ -52,7 +52,7 @@ class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
   final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
 
   final def createApiKey(newKey: ApiKey): Unit = ()
-  final val getApiKeyList: Either[Throwable, Iterable[ApiKey]] = nil
+  final val getApiKeyList: Either[Throwable, List[ApiKey]] = nil
   final def getApiKey(key: String): Option[ApiKey] = None
   final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
   final def getApiKeyByApplication(application: String): Option[ApiKey] = None

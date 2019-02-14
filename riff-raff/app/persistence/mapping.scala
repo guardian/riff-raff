@@ -110,16 +110,16 @@ trait DocumentStore {
   def updateStatus(uuid: UUID, status: RunState): Unit
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
-  def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
-  def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
+  def readLogs(uuid: UUID): List[LogDocument] = Nil
+  def getDeployUUIDs(limit: Int = 0): List[SimpleDeployDetail] = Nil
+  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, List[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLog(uuid: UUID): Unit
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
-  def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
+  def getDeployUUIDsWithoutStringUUIDs: List[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
-  def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
+  def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = Nil
   def findProjects: Either[Throwable, List[String]]
   def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit
 }
@@ -159,7 +159,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
   }
 
   def getDeployDocument(uuid:UUID) = datastore.readDeploy(uuid)
-  def getDeployLogs(uuid:UUID) = datastore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
+  def getDeployLogs(uuid:UUID) = datastore.readLogs(uuid).distinctOn(log => (log.deploy, log.id))
 
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
@@ -177,7 +177,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
 
   def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Either[Throwable, List[DeployRecord]] = {
     datastore.getDeploys(filter, pagination).flatMap { records =>
-      records.toList.traverse { deployDocument =>
+      records.traverse { deployDocument =>
         try {
           val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
           Right(DocumentConverter(deployDocument, logs.toSeq).deployRecord)

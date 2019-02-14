@@ -119,7 +119,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     }
   }
 
-  override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = logExceptions(Some(s"Requesting list of deploys using filters $filter")) {
+  override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, List[DeployRecordDocument]] = logExceptions(Some(s"Requesting list of deploys using filters $filter")) {
     DB readOnly { implicit session =>
       val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
       val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")
@@ -147,7 +147,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 
   // Used in testing
-  override def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting deploy UUIDs"), List.empty[SimpleDeployDetail]) {
+  override def getDeployUUIDs(limit: Int = 0): List[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting deploy UUIDs"), List.empty[SimpleDeployDetail]) {
     DB readOnly { implicit session =>
       val limitSQL = if (limit == 0) sqls"" else sqls"LIMIT $limit"
       sql"SELECT id, content->>'startTime' FROM deploy ORDER BY content.startTime $limitSQL".map(SimpleDeployDetail(_)).list.apply()
@@ -161,7 +161,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     }
   }
 
-  override def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting completed deploys older than $dateTime"), List.empty[SimpleDeployDetail]) {
+  override def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting completed deploys older than $dateTime"), List.empty[SimpleDeployDetail]) {
     DB readOnly { implicit session =>
       sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'startTime')::TIMESTAMP < $dateTime::TIMESTAMP AND (content->>'summarised') IS NOT NULL"
         .map(SimpleDeployDetail(_)).list.apply()
@@ -185,7 +185,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   //TODO: Deprecate stringUUID
   override def addStringUUID(uuid: UUID): Unit = {}
-  override def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = { List.empty }
+  override def getDeployUUIDsWithoutStringUUIDs: List[SimpleDeployDetail] = { List.empty }
 
   override def getLastCompletedDeploys(projectName: String): Map[String,UUID] = logAndSquashExceptions(Some(s"Requesting last completed deploys for $projectName"), Map.empty[String,UUID]) {
     DB readOnly { implicit session =>
@@ -230,7 +230,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     }
   }
 
-  override def readLogs(uuid: UUID): Iterable[LogDocument] = logAndSquashExceptions(Some(s"Retrieving logs for deploy $uuid"), List.empty[LogDocument]) {
+  override def readLogs(uuid: UUID): List[LogDocument] = logAndSquashExceptions(Some(s"Retrieving logs for deploy $uuid"), List.empty[LogDocument]) {
     DB readOnly { implicit session =>
       sql"SELECT content FROM deployLog WHERE content ->>'deploy' = ${uuid.toString()}".map(LogDocument(_)).list.apply()
     }

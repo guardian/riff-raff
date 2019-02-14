@@ -131,7 +131,7 @@ class Testing(config: Config,
   }
 
   def uuidList(limit:Int) = authAction { implicit request =>
-    val allDeploys = datastore.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    val allDeploys = datastore.getDeployUUIDs().sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(config, menu)(request, allDeploys.take(limit)))
   }
 
