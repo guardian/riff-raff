@@ -256,7 +256,7 @@ object MessageDocument {
   }
   def from(dbo:DBObject): MessageDocument = {
     import DetailConversions._
-    dbo.as[String]("_typeHint") match {
+    dbo.as[String]("_typeHint").filterNot('$' == _) match {
       case "persistence.DeployDocument" => DeployDocument()
       case "persistence.TaskListDocument" =>
         TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
