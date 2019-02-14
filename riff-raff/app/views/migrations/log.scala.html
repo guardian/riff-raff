@@ -3,6 +3,6 @@
 @status.map { case (collection, value) =>
   <div>
     <h3>@collection</h3>
-    <progress max=100 min=0 value="@value"></progress>
+    <progress style="width: 100%" max=100 min=0 value="@value"></progress>
   </div>
 }
