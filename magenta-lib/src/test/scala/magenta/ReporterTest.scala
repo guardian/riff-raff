@@ -1,8 +1,12 @@
 package magenta
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 import java.util.UUID
+
+import magenta.ContextMessage._
+
 import collection.mutable.ListBuffer
+import magenta.Message._
 
 class ReporterTest extends FlatSpec with Matchers {
 

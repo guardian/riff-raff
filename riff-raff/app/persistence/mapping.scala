@@ -2,20 +2,21 @@ package persistence
 
 import java.util.UUID
 
-import org.joda.time.DateTime
-import controllers.Logging
-import deployment.{DeployFilter, DeployRecord, PaginationView}
-import magenta._
-import controllers.SimpleDeployDetail
-import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
-import henkan.convert.Syntax._
-import cats.syntax.traverse._
-import cats.instances.list._
 import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.traverse._
+import controllers.{Logging, SimpleDeployDetail}
+import deployment.{DeployFilter, DeployRecord, PaginationView}
+import henkan.convert.Syntax._
+import magenta.ContextMessage._
+import magenta._
+import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
+import org.joda.time.DateTime
+import persistence.DeploymentSelectorDocument._
 
-case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState.Value, messages:List[MessageWrapper] = Nil) extends Logging {
+case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
-  def +(newStatus: RunState.Value): RecordConverter = copy(status = newStatus)
+  def +(newStatus: RunState): RecordConverter = copy(status = newStatus)
 
   def apply(message: MessageWrapper): Option[LogDocument] = {
     val stackId=message.messageId
@@ -91,11 +92,10 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     log.document match {
       case leaf if children.isEmpty =>
         List(messageWrapper(log, MessageStack(leaf.asMessage(parameters, messagesTail.headOption) :: messagesTail, log.time)))
-      case node => {
+      case node =>
         val message:Message = node.asMessage(parameters)
         messageWrapper(log,MessageStack(StartContext(message) :: messagesTail, log.time)) ::
           children.flatMap(child => convertToMessageWrappers(tree, child, message :: messagesTail))
-      }
     }
   }
 
@@ -107,19 +107,19 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
 trait DocumentStore {
   def writeDeploy(deploy: DeployRecordDocument): Unit
   def writeLog(log: LogDocument): Unit
-  def updateStatus(uuid: UUID, status: RunState.Value): Unit
+  def updateStatus(uuid: UUID, status: RunState): Unit
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
-  def readLogs(uuid: UUID): Iterable[LogDocument] = Nil
-  def getDeployUUIDs(limit: Int = 0): Iterable[SimpleDeployDetail] = Nil
-  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, Iterable[DeployRecordDocument]] = Right(Nil)
+  def readLogs(uuid: UUID): List[LogDocument] = Nil
+  def getDeployUUIDs(limit: Int = 0): List[SimpleDeployDetail] = Nil
+  def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, List[DeployRecordDocument]] = Right(Nil)
   def countDeploys(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLog(uuid: UUID): Unit
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
   def addStringUUID(uuid: UUID) {}
-  def getDeployUUIDsWithoutStringUUIDs: Iterable[SimpleDeployDetail] = Nil
+  def getDeployUUIDsWithoutStringUUIDs: List[SimpleDeployDetail] = Nil
   def summariseDeploy(uuid: UUID) {}
-  def getCompleteDeploysOlderThan(dateTime: DateTime): Iterable[SimpleDeployDetail] = Nil
+  def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = Nil
   def findProjects: Either[Throwable, List[String]]
   def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit
 }
@@ -149,7 +149,8 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
     updateDeployStatus(record.uuid, record.state)
   }
 
-  def updateDeployStatus(uuid: UUID, state: RunState.Value) {
+
+  def updateDeployStatus(uuid: UUID, state: RunState) {
     datastore.updateStatus(uuid, state)
   }
 
@@ -158,7 +159,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
   }
 
   def getDeployDocument(uuid:UUID) = datastore.readDeploy(uuid)
-  def getDeployLogs(uuid:UUID) = datastore.readLogs(uuid).toList.distinctOn(log => (log.deploy, log.id))
+  def getDeployLogs(uuid:UUID) = datastore.readLogs(uuid).distinctOn(log => (log.deploy, log.id))
 
   def getDeploy(uuid:UUID, fetchLog: Boolean = true): Option[DeployRecord] = {
     try {
@@ -176,10 +177,10 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
 
   def getDeployList(filter: Option[DeployFilter], pagination: PaginationView, fetchLog: Boolean = true): Either[Throwable, List[DeployRecord]] = {
     datastore.getDeploys(filter, pagination).flatMap { records =>
-      records.toList.traverse { deployDocument =>
+      records.traverse { deployDocument =>
         try {
           val logs = if (fetchLog) getDeployLogs(deployDocument.uuid) else Nil
-          Right(DocumentConverter(deployDocument, logs.toSeq).deployRecord)
+          Right(DocumentConverter(deployDocument, logs).deployRecord)
         } catch {
           case e: Exception =>
             log.error(s"Couldn't get DeployRecord for ${deployDocument.uuid}", e)

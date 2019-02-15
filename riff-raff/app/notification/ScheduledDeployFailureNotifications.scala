@@ -1,17 +1,20 @@
 package notification
 
 import java.util.UUID
+
 import ci.TargetResolver
-import controllers.{Logging, routes}
-import lifecycle.Lifecycle
-import magenta.{DeployParameters, DeployReporter, Fail}
-import scala.concurrent.ExecutionContext
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
+import controllers.{Logging, routes}
+import lifecycle.Lifecycle
+import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
+import magenta.{DeployParameters, DeployReporter}
 import schedule.ScheduledDeployer
+
+import scala.concurrent.ExecutionContext
 
 class ScheduledDeployFailureNotifications(config: Config,
                                           deploymentTypes: Seq[DeploymentType],
@@ -50,9 +53,9 @@ class ScheduledDeployFailureNotifications(config: Config,
           actions = List(Action("View failed deploy", url(uuid))),
           topicArn = anghammaradTopicARN,
           client = snsClient
-        ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for ${uuid}", ex) }
+        ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for $uuid", ex) }
       case Left(_) =>
-        log.error(s"Failed to derive targets required to notify about failed scheduled deploy: ${uuid}")
+        log.error(s"Failed to derive targets required to notify about failed scheduled deploy: $uuid")
     }
   }
 

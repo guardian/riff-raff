@@ -13,7 +13,7 @@ class SummariseDeploysHousekeeping(config: Config, datastore: DataStore) extends
   def summariseDeploys(): Int = {
     log.info("Summarising deploys older than %d days" format maxAgeDays)
     val maxAgeThreshold = LocalDate.now().minusDays(maxAgeDays)
-    val deploys = datastore.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay).toList
+    val deploys = datastore.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay)
     log.info("Found %d deploys to summarise" format deploys.size)
     deploys.foreach(detail => datastore.summariseDeploy(detail.uuid))
     log.info("Finished summarising")

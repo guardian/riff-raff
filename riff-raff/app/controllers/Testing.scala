@@ -6,6 +6,8 @@ import com.gu.googleauth.AuthAction
 import conf.Config
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import housekeeping.ArtifactHousekeeping
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
 import magenta.input.All
 import magenta.tasks.Task
@@ -15,14 +17,25 @@ import persistence.{DataStore, DocumentStoreConverter}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
+import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import resources.PrismLookup
+import scalikejdbc.WrappedResultSet
+import utils.Json._
 import utils.LogAndSquashBehaviour
 
 import scala.collection.mutable.ArrayBuffer
 
 case class SimpleDeployDetail(uuid: UUID, time: Option[DateTime])
+object SimpleDeployDetail {
+  implicit def formats: Format[SimpleDeployDetail] = Json.format[SimpleDeployDetail]
+
+  def apply(res: WrappedResultSet): SimpleDeployDetail = new SimpleDeployDetail(
+    uuid = UUID.fromString(res.string(1)),
+    time = res.stringOpt(2).map(new DateTime(_))
+  )
+}
 
 class Testing(config: Config,
               menu: Menu,
@@ -118,7 +131,7 @@ class Testing(config: Config,
   }
 
   def uuidList(limit:Int) = authAction { implicit request =>
-    val allDeploys = datastore.getDeployUUIDs().toSeq.sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
+    val allDeploys = datastore.getDeployUUIDs().sortBy(_.time.map(_.getMillis).getOrElse(Long.MaxValue)).reverse
     Ok(views.html.test.uuidList(config, menu)(request, allDeploys.take(limit)))
   }
 

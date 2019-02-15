@@ -6,12 +6,16 @@ import com.mongodb.casbah.commons.MongoDBObject
 import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
+import persistence.{MongoFormat, MongoSerialisable}
 import persistence.{DataStore, MongoFormat, MongoSerialisable}
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.I18nSupport
+import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
+import scalikejdbc.WrappedResultSet
+import utils.Json._
 import utils.LogAndSquashBehaviour
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,8 +24,14 @@ class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequ
   lazy val fullName = s"API:${apiKey.application}"
 }
 
-case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime)
+case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) {
+  def contentBlob = (approvedBy, approvedDate)
+}
 object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
+  implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
+
+  def apply(res: WrappedResultSet): AuthorisationRecord = Json.parse(res.string(1)).as[AuthorisationRecord]
+
   implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
   private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {
     def toDBO(a: AuthorisationRecord) = MongoDBObject("_id" -> a.email, "approvedBy" -> a.approvedBy, "approvedDate" -> a.approvedDate)

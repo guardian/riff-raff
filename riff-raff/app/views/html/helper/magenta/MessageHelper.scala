@@ -14,7 +14,7 @@ object MessageHelper {
     }
   }
   def messageType(reportNode:DeployReport): String = {
-    reportNode.message.getClass.getName.toLowerCase.replace("magenta.","")
+    reportNode.message.getClass.getName.toLowerCase.replace("magenta.", "").replace("message$","")
   }
   def trim(html:Html): Html = { Html(html.body.trim) }
 }

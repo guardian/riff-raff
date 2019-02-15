@@ -37,13 +37,16 @@ object Dependencies {
     "com.gu" %% "fastly-api-client" % "0.2.6",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-    "com.typesafe.play" %% "play-json" % "2.6.13"
+    "com.typesafe.play" %% "play-json" % "2.6.13",
+    "com.beachape" %% "enumeratum-play-json" % "1.5.14"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
 
   val riffRaffDeps = commonDeps ++ Seq(
+    evolutions,
+    jdbc,
     "com.gu" %% "management-internal" % Versions.guardianManagement,
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "play-googleauth" % "0.7.7",
@@ -64,6 +67,10 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.16.0",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.1",
     "com.gu" % "kinesis-logback-appender" % "1.4.2",
+    "org.scalikejdbc" %% "scalikejdbc" % "3.3.0",
+    "org.postgresql" % "postgresql" % "42.2.5",
+    "com.whisk" %% "docker-testkit-scalatest" % "0.9.8" % "test",
+    "com.whisk" %% "docker-testkit-impl-spotify" % "0.9.8" % "test",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.5.17" % Test,

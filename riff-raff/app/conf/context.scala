@@ -19,6 +19,8 @@ import controllers.{Logging, routes}
 import deployment.Deployments
 import deployment.actors.DeployMetricsActor
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
@@ -167,6 +169,13 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val isConfigured = uri.isDefined
     lazy val uri = getStringOpt("mongo.uri")
     lazy val collectionPrefix = getStringOpt("mongo.collectionPrefix").getOrElse("")
+  }
+
+  object postgres {
+    lazy val isEnabled = getBooleanOpt("postgres.enabled").getOrElse(false)
+    lazy val url = getString("db.default.url")
+    lazy val user = getString("db.default.user")
+    lazy val password = getString("db.default.password")
   }
 
   object stages {

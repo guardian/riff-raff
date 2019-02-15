@@ -1,20 +1,29 @@
 package magenta
 
-import org.joda.time.{DateTime, DateTimeZone}
-import org.joda.time.format.DateTimeFormat
 import java.util.{Locale, UUID}
 
-object RunState extends Enumeration {
-  type State = Value
-  val NotRunning = Value("Not running")
-  val Completed = Value("Completed")
-  val Running = Value("Running")
-  val ChildRunning = Value("Child running")
-  val Failed = Value("Failed")
+import enumeratum.EnumEntry.CapitalWords
+import enumeratum.{Enum, EnumEntry, PlayJsonEnum}
+import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
+import magenta.Message._
+import magenta.ContextMessage._
 
-  def mostSignificant(value1: Value, value2: Value): Value = {
-    if (value1.id > value2.id) value1 else value2
-  }
+sealed trait RunState extends EnumEntry {
+  val value: Int
+}
+
+object RunState extends Enum[RunState] with PlayJsonEnum[RunState] with CapitalWords {
+
+  val values = findValues
+
+  case object NotRunning extends RunState { override val value: Int = 1 }
+  case object Completed extends RunState { override val value: Int = 2 }
+  case object Running extends RunState { override val value: Int = 3 }
+  case object ChildRunning extends RunState { override val value: Int = 4 }
+  case object Failed extends RunState { override val value: Int = 5 }
+
+  def mostSignificant(value1: RunState, value2: RunState): RunState = if (value1.value > value2.value) value1 else value2
 }
 
 object MessageState {
@@ -24,24 +33,22 @@ object MessageState {
       case _ => SimpleMessageState(message, time, id)
     }
   }
-  def apply(message: StartContext, end: ContextMessage, time:DateTime, id: UUID): MessageState = {
-    end match {
-      case finish:FinishContext => FinishMessageState(message, finish, time, id)
-      case fail:FailContext => FailMessageState(message, fail, time, id)
-      case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
-    }
+  def apply(message: StartContext, end: ContextMessage, time:DateTime, id: UUID): MessageState = end match {
+    case finish:FinishContext => FinishMessageState(message, finish, time, id)
+    case fail:FailContext => FailMessageState(message, fail, time, id)
+    case notValid => throw new IllegalArgumentException(s"Provided end message not a valid end: $notValid")
   }
 }
 
 trait MessageState {
   val timeOfDayFormatter = DateTimeFormat.mediumTime.withLocale(Locale.UK).withZone(DateTimeZone.forID("Europe/London"))
-  def time:DateTime
+  def time: DateTime
   def timeOfDay = timeOfDayFormatter.print(time)
-  def message:Message
-  def startContext:StartContext
-  def finished:Option[Message]
-  def state: RunState.State
-  def isRunning:Boolean = state == RunState.Running
+  def message: Message
+  def startContext: StartContext
+  def finished: Option[Message]
+  def state: RunState
+  def isRunning: Boolean = state == RunState.Running
   def messageId: UUID
 }
 
@@ -72,7 +79,7 @@ case class FailMessageState(startContext: StartContext, fail: FailContext, time:
 trait DeployReport {
   def message: Message
   def timeString: Option[String]
-  def state: RunState.Value
+  def state: RunState
   def allMessages: Seq[MessageState]
   def children: List[DeployReportTree]
   def isRunning: Boolean
@@ -80,10 +87,10 @@ trait DeployReport {
   def hasChildren: Boolean = children.nonEmpty
   def size: Int = allMessages.size
 
-  def failureMessage: Option[Fail] = allMessages.map(_.message).collect{ case fail: Fail => fail }.headOption
+  def failureMessage: Option[Fail] = allMessages.map(_.message).collectFirst { case fail: Fail => fail }
 
-  def cascadeState: RunState.Value = {
-    children.foldLeft(state){ (acc:RunState.Value, child:DeployReport) =>
+  def cascadeState: RunState = {
+    children.foldLeft(state){ (acc:RunState, child:DeployReport) =>
       val childState = child.cascadeState match {
         case RunState.Running => RunState.ChildRunning
         case _ => child.cascadeState

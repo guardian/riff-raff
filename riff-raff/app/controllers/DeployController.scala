@@ -140,7 +140,7 @@ class DeployController(config: Config,
       val restrictions = maybeStage.toSeq.flatMap { stage =>
         RestrictionChecker.configsThatPreventDeployment(restrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
-      val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
+      val filter = DeployFilter(projectName = Some(s"$project"), stage = maybeStage)
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).logAndSquashException(Nil).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }

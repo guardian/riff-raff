@@ -6,7 +6,9 @@ import java.util.UUID
 import akka.actor.{Actor, ActorSystem, Props}
 import controllers.Logging
 import lifecycle.Lifecycle
-import magenta.{Deploy, DeployParameters, FinishContext, _}
+import magenta.ContextMessage._
+import magenta.{DeployParameters, DeployReporter}
+import magenta.Message._
 import org.joda.time.DateTime
 import persistence.{DataStore, DeployRecordDocument, HookConfigRepository}
 import play.api.libs.json.Json
