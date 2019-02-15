@@ -67,9 +67,9 @@ package object data {
     val id = "id"
     val idType = ColString(32, false)
     val drop = sql"DROP TABLE IF EXISTS apiKey"
-    val create = sql"CREATE TABLE apiKey (id varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
+    val create = sql"CREATE TABLE apiKey (key varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
-      sql"INSERT INTO apiKey VALUES ($key, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
+      sql"INSERT INTO apiKey VALUES ($key, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb"
   }
 
   implicit val authPE: ToPostgres[AuthorisationRecord] = new ToPostgres[AuthorisationRecord] {
