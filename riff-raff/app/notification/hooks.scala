@@ -81,10 +81,10 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-class HooksClient(datastore: DataStore, wsClient: WSClient, executionContext: ExecutionContext) extends Lifecycle with Logging {
+class HooksClient(datastore: DataStore, hookConfigRepository: HookConfigRepository, wsClient: WSClient, executionContext: ExecutionContext) extends Lifecycle with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
-    Some(system.actorOf(Props(classOf[HooksClientActor], datastore, wsClient, executionContext), "hook-client"))
+    Some(system.actorOf(Props(classOf[HooksClientActor], datastore, hookConfigRepository, wsClient, executionContext), "hook-client"))
   } catch {
     case t:Throwable =>
       log.error("Failed to start HookClient", t)

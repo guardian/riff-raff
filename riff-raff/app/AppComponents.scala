@@ -127,7 +127,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   }
   deployScheduler.initialise(new ScheduleRepository(config).getScheduleList())
 
-  val hooksClient = new HooksClient(datastore, wsClient, executionContext)
+  val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
 
   // the management server takes care of shutting itself down with a lifecycle hook
