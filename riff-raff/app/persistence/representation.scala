@@ -79,7 +79,7 @@ object DeploymentSelectorDocument {
       case AllDocument => JsObject(List("_typeHint" -> JsString(AllDocument.getClass.getName)))
       case dsd@DeploymentKeysSelectorDocument(_) => Json.toJson(dsd).as[JsObject] + ("_typeHint" -> JsString(DeploymentKeysSelectorDocument.getClass.getName))
       case dsd =>
-        logger.debug(s"Don't know how to write DeploymentSelectorDocument of type $dsd}")
+        logger.debug(s"Don't know how to write DeploymentSelectorDocument of type $dsd")
         JsNull
     }
 
@@ -88,14 +88,14 @@ object DeploymentSelectorDocument {
       case "persistence.AllDocument" => JsSuccess(AllDocument)
       case "persistence.DeploymentKeysSelectorDocument" => JsSuccess(json.as[DeploymentKeysSelectorDocument])
       case hint =>
-        logger.debug(s"Don't know how to construct DeploymentSelectorDocument of type $hint}")
+        logger.debug(s"Don't know how to construct DeploymentSelectorDocument of type $hint")
         JsSuccess(AllDocument)
     }
   }
 
   def from(dbo: DBObject): DeploymentSelectorDocument = {
-    dbo.as[String]("_typeHint") match {
-      case "persistence.AllDocument$" => AllDocument
+    dbo.as[String]("_typeHint").replace("$", "") match {
+      case "persistence.AllDocument" => AllDocument
       case "persistence.DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
         dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
       )
@@ -164,7 +164,7 @@ object MessageDocument {
       case FinishContextDocument => JsObject(List("_typeHint" -> JsString(FinishContextDocument.getClass.getName)))
       case FailContextDocument => JsObject(List("_typeHint" -> JsString(FailContextDocument.getClass.getName)))
       case d@WarningDocument(_) => Json.toJson(d).as[JsObject] + ("_typeHint" -> JsString(WarningDocument.getClass.getName))
-      case d => throw new IllegalArgumentException(s"Don't know how to write MessageDocument of type $d}")
+      case d => throw new IllegalArgumentException(s"Don't know how to write MessageDocument of type $d")
     }
 
 
@@ -180,7 +180,7 @@ object MessageDocument {
       case "persistence.FinishContextDocument" => JsSuccess(FinishContextDocument)
       case "persistence.FailContextDocument" => JsSuccess(FailContextDocument)
       case "persistence.WarningDocument" => JsSuccess(json.as[WarningDocument])
-      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint")
     }
   }
 
@@ -203,8 +203,8 @@ object MessageDocument {
 
   def from(dbo: DBObject): MessageDocument = {
     import DetailConversions._
-    dbo.as[String]("_typeHint") match {
-      case "persistence.DeployDocument$" => DeployDocument
+    dbo.as[String]("_typeHint").replace("$", "") match {
+      case "persistence.DeployDocument" => DeployDocument
       case "persistence.TaskListDocument" => TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
       case "persistence.TaskRunDocument" => TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
       case "persistence.InfoDocument" => InfoDocument(dbo.as[String]("text"))
@@ -212,10 +212,10 @@ object MessageDocument {
       case "persistence.CommandErrorDocument" => CommandErrorDocument(dbo.as[String]("text"))
       case "persistence.VerboseDocument" => VerboseDocument(dbo.as[String]("text"))
       case "persistence.FailDocument" => FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
-      case "persistence.FinishContextDocument$" => FinishContextDocument
-      case "persistence.FailContextDocument$" => FailContextDocument
+      case "persistence.FinishContextDocument" => FinishContextDocument
+      case "persistence.FailContextDocument" => FailContextDocument
       case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
-      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint}")
+      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint")
     }
   }
 }
