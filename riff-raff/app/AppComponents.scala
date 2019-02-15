@@ -118,7 +118,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
     new HstsFilter()(executionContext)
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
-  val deployScheduler = new DeployScheduler(deployments)
+  val deployScheduler = new DeployScheduler(config, deployments)
   log.info("Starting deployment scheduler")
   deployScheduler.start()
   applicationLifecycle.addStopHook { () =>
@@ -127,7 +127,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   }
   deployScheduler.initialise(new ScheduleRepository(config).getScheduleList())
 
-  val hooksClient = new HooksClient(datastore, wsClient, executionContext)
+  val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
 
   // the management server takes care of shutting itself down with a lifecycle hook

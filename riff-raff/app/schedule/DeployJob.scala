@@ -1,9 +1,8 @@
 package schedule
 
-import conf.Config
 import controllers.Logging
 import deployment._
-import magenta.{Deployer, DeployParameters, RunState}
+import magenta.{DeployParameters, RunState}
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
 import schedule.DeployScheduler.JobDataKeys
 import utils.LogAndSquashBehaviour
@@ -11,7 +10,7 @@ import utils.LogAndSquashBehaviour
 import scala.annotation.tailrec
 import scala.util.Try
 
-class DeployJob(config: Config) extends Job with Logging {
+class DeployJob extends Job with Logging {
   private def getAs[T](key: String)(implicit jobDataMap: JobDataMap): T = jobDataMap.get(key).asInstanceOf[T]
 
   override def execute(context: JobExecutionContext): Unit = {
@@ -19,10 +18,11 @@ class DeployJob(config: Config) extends Job with Logging {
     val deployments = getAs[Deployments](JobDataKeys.Deployments)
     val projectName = getAs[String](JobDataKeys.ProjectName)
     val stage = getAs[String](JobDataKeys.Stage)
+    val scheduledDeploymentEnabled = getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
 
     val result = for {
       record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, config.scheduledDeployment.enabled)
+      params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
     result match {
