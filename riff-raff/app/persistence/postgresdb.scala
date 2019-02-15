@@ -170,12 +170,6 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   // Most likely not used
   override def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit = {}
-//  DB localTx { implicit session =>
-//    val update = metaData.map { case (tag, value) =>
-//      sqls"content->>'{parameters,tags,$tag}'" -> value
-//    }
-//    if (update.nonEmpty) sql"UPDATE deploy SET content || $update::jsonb WHERE id = $uuid".update.apply()
-//  }
 
   override def findProjects(): Either[Throwable, List[String]] = logExceptions(Some("Requesting projects")) {
     DB readOnly { implicit session =>

@@ -65,9 +65,7 @@ lazy val riffraff = project.in(file("riff-raff"))
       "-J-XX:+PrintGCDateStamps",
       s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
     ),
-
-    javaOptions in Test += "-Dconfig.file=conf/application.test.conf",
-
+    
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
     riffRaffPackageType := (packageZipTarball in Universal).value,

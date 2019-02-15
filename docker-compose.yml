@@ -2,7 +2,7 @@ version: '3'
 services:
   riffraff-db:
     container_name: riffraff-db
-    image: postgres:9.6-alpine
+    image: postgres:10.6
     ports:
     - 7432:5432
     environment:

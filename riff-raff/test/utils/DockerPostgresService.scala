@@ -17,7 +17,7 @@ trait DockerPostgresService extends DockerKit {
   val PostgresUser = "riffraff"
   val PostgresPassword = "riffraff"
 
-  val postgresContainer = DockerContainer("postgres:9.6.2")
+  val postgresContainer = DockerContainer("postgres:10.6")
     .withPorts((PostgresAdvertisedPort, Some(PostgresExposedPort)))
     .withEnv(s"POSTGRES_USER=$PostgresUser", s"POSTGRES_PASSWORD=$PostgresPassword")
     .withReadyChecker(
