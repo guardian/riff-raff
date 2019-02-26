@@ -162,6 +162,20 @@ class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit wi
       }
     }
 
+    "get deploys using partial projectName filter" in {
+      withFixture {
+        withDeploys(2) { deploys =>
+          val deploy = deploys.head
+
+          val deployFilter = DeployFilter(projectName = Some("project-name"))
+          val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(pageSize = Some(20), page = 1))
+
+          dbDeploys.right.get.size shouldBe 2
+          dbDeploys.right.get.head.parameters.projectName.startsWith("project-name") shouldBe true
+        }
+      }
+    }
+
     "get deploys using all filters, but no pagination" in {
       withFixture {
         withDeploys(2) { deploys =>
