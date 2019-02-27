@@ -1,0 +1,31 @@
+@import b3.vertical.fieldConstructor
+@import com.mongodb.casbah._
+@import conf.Config
+@import helper.CSRF
+@import persistence.{ CollectionStats }
+@(migrationForm: Form[controllers.forms.MigrationParameters], tables: Map[String, CollectionStats])(config: Config, appMenu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+
+@main("Migration request", request) {
+
+  <h2>Migrate MongoDB</h2>
+
+  @b3.form(routes.MigrationController.start) {
+    @CSRF.formField
+
+    <div class="form-group">
+      @b3.text(migrationForm("limit"), '_label -> "Limit", 'pattern -> "∞|([1-9][0-9]*)", 'value -> "")
+    </div>
+
+    <div class="actions">
+      <button name="action" value="migrate" type="submit" class="btn btn-primary">Migrate</button>
+      <button name="action" value="preview" type="submit" class="btn btn-default">Preview</button>
+    </div>
+  }
+}(config, appMenu)
+
+<script>
+  $('.colselector').change(evt => {
+    const input = $(`#${$(evt.currentTarget).attr('for')}`);
+    input.prop('disabled', !input.prop('disabled'));
+  });
+</script>

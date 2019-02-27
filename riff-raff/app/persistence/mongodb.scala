@@ -101,9 +101,9 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
-  override def getAuthorisationList =
+  override def getAuthorisationList(pagination: Option[PaginationView] = None) = 
     logExceptions(Some("Requesting list of authorisation objects")) {
-      authCollection.find().flatMap(AuthorisationRecord.fromDBO(_)).toList
+      pagination.foldLeft(authCollection.find().sort(MongoDBObject("email" -> 1)))(_ pagination _).flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
   override def deleteAuthorisation(email: String) =
@@ -117,10 +117,9 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       apiKeyCollection.insert(dbo)
     }
 
-  override def getApiKeyList = 
+  override def getApiKeyList(pagination: Option[PaginationView] = None) = 
     logExceptions(Some("Requesting list of API keys")) {
-      val keys = apiKeyCollection.find().sort(MongoDBObject("application" -> 1))
-      keys.toList.flatMap( ApiKey.fromDBO(_) )
+      pagination.foldLeft(apiKeyCollection.find().sort(MongoDBObject("application" -> 1)))(_ pagination _).toIterable.flatMap( ApiKey.fromDBO(_) )
     }
 
   override def getApiKey(key: String) =
@@ -192,7 +191,12 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       deployLogCollection.find(criteria).toList.flatMap(LogDocument.fromDBO(_))
     }
 
-  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[List[SimpleDeployDetail]](None,Nil) {
+  override def readAllLogs(pagination: PaginationView): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
+    val cursor = deployLogCollection.find().sort(MongoDBObject("time" -> -1)).pagination(pagination)
+    cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
+  }
+
+  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[List[SimpleDeployDetail]](None,Nil){
     val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toList.map { dbo =>

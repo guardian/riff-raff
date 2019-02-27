@@ -54,7 +54,7 @@ lazy val riffraff = project.in(file("riff-raff"))
     buildInfoPackage := "riffraff",
 
     resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
-    libraryDependencies ++= riffRaffDeps,
+    libraryDependencies ++= riffRaffDeps ++ migrationDeps,
 
     javaOptions in Universal ++= Seq(
       s"-Dpidfile.path=/dev/null",
