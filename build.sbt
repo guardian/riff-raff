@@ -56,8 +56,6 @@ lazy val riffraff = project.in(file("riff-raff"))
     resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
     libraryDependencies ++= riffRaffDeps ++ migrationDeps,
 
-    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.8"),
-
     javaOptions in Universal ++= Seq(
       s"-Dpidfile.path=/dev/null",
       "-J-XX:MaxRAMFraction=2",
