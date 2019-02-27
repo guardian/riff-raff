@@ -19,7 +19,7 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
           pgTable.drop.execute.apply()
         }
         ()
-      }.unyielding leftMap(DatabaseError(_))
+      }.unyielding mapError(DatabaseError(_))
 
   def createTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
     IO.sync(log.info("Creating table")) *>
@@ -28,15 +28,15 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
           pgTable.create.execute.apply()
         }
         ()
-      }.unyielding leftMap(DatabaseError(_))
+      }.unyielding mapError(DatabaseError(_))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
-      IO.traverse(records) { record =>
+      IO.foreach(records) { record =>
         IO.syncThrowable {
           DB localTx { implicit session =>
             pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
           }
-        }.unyielding leftMap(DatabaseError(_))
+        }.unyielding mapError(DatabaseError(_))
       }.void
 }

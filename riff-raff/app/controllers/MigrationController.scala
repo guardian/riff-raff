@@ -14,7 +14,7 @@ import migration._
 import migration.data._
 import migration.dsl._
 import migration.dsl.interpreters._
-import scalaz.zio.{ Fiber, IO, RTS, ExitResult, Ref, FiberFailure }
+import scalaz.zio.{ Fiber, IO, RTS, Exit, Ref, FiberFailure }
 import scala.concurrent.Promise
 
 class MigrationController(
@@ -66,7 +66,7 @@ class MigrationController(
     val rts = new RTS {}
 
     val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
-      IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
+      IO.foreach(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
           case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
           case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
@@ -80,8 +80,8 @@ class MigrationController(
     val promise = Promise[Result]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(responses) => promise.success(Ok(views.html.migrations.preview(responses)(config, menu)))
-      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorPage(config)(new FiberFailure(t))))
+      case Exit.Success(responses) => promise.success(Ok(views.html.migrations.preview(responses)(config, menu)))
+      case Exit.Failure(t) => promise.success(InternalServerError(views.html.errorPage(config)(new FiberFailure(t))))
     }
 
     promise.future

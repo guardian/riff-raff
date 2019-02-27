@@ -16,13 +16,13 @@ object PreviewInterpreter extends Migrator[PreviewResponse] {
   val WINDOW_SIZE = 1000
 
   def dropTable(pgTable: ToPostgres[_]) =
-    IO.now(DropTable(pgTable.drop.statement))
+    IO.succeed(DropTable(pgTable.drop.statement))
 
   def createTable(pgTable: ToPostgres[_]) =
-    IO.now(CreateTable(pgTable.create.statement))
+    IO.succeed(CreateTable(pgTable.create.statement))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]) =
-    IO.traverse(records){ record =>
-      IO.now(pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).statement)
+    IO.foreach(records){ record =>
+      IO.succeed(pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).statement)
     }.map(InsertValues("", _))
 }

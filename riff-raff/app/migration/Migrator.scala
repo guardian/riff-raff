@@ -4,7 +4,7 @@ import migration.data._
 import migration.dsl.interpreters._
 import persistence.MongoFormat
 import cats._, cats.implicits._
-import scalaz.zio.{ Fiber, IO, App, Ref, Queue, ExitResult }
+import scalaz.zio.{ Fiber, IO, App, Ref, Queue, Exit }
 
 trait Migrator[Response] {
 
@@ -22,7 +22,7 @@ trait Migrator[Response] {
       // n is the maximum number of items we want to retrieve, by default the whole table
       n <- retriever.getCount.map(max => limit.map(Math.min(max, _)).getOrElse(max))
       window = Math.min(n, WINDOW_SIZE)
-      cpt <- Ref(n)
+      cpt <- Ref.make(n)
       r1 <- dropTable(ToPostgres[A])
       r2 <- createTable(ToPostgres[A])
       // we're going to paginate through the results to reduce memory overhead
@@ -36,7 +36,7 @@ trait Migrator[Response] {
       def loop_in(n: Int): IO[MigrationError, List[A]] =
         queue.takeUpTo(window).flatMap { items =>
           if (items.length >= n)
-            IO.now(items.take(n))
+            IO.succeed(items.take(n))
           else if (items.length == 0)
             loop_in(n)
           else
@@ -46,14 +46,14 @@ trait Migrator[Response] {
       for {
         n <- counter.get
         rs <- if (n <= 0)
-          IO.now(resps)
+          IO.succeed(resps)
         else {
           val max = Math.min(n, window)
           loop_in(max).flatMap { items =>
             IO.flatten(counter.modify { n => 
               val op = insertAll(ToPostgres[A], items).flatMap { r => 
                 if (n - items.length <= 0)
-                  IO.now(r :: resps)
+                  IO.succeed(r :: resps)
                 else
                   loop(r :: resps)
               }

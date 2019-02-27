@@ -47,8 +47,8 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     val promise = Promise[Unit]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(_) => promise.success(())
-      case ExitResult.Failed(t) => promise.failure(new FiberFailure(t))
+      case Exit.Success(_) => promise.success(())
+      case Exit.Failure(t) => promise.failure(new FiberFailure(t))
     }
 
     promise.future
