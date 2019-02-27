@@ -2,8 +2,8 @@ package migration
 package dsl
 package interpreters
 
-import io.circe.Printer
 import migration.data._
+import play.api.libs.json.Json
 import scalaz.zio.{IO, Ref}
 
 sealed abstract class PreviewResponse
@@ -23,6 +23,6 @@ object PreviewInterpreter extends Migrator[PreviewResponse] {
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]) =
     IO.traverse(records){ record =>
-      IO.now(pgTable.insert(pgTable.key(record), pgTable.json(record).noSpaces).statement)
+      IO.now(pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).statement)
     }.map(InsertValues("", _))
 }

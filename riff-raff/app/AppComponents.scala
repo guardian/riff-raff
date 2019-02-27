@@ -117,7 +117,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes)
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
-  val migrations = new Migration()
+  val migrations = new Migration(config, datastore)
   val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)
   val deployments = new Deployments(deploymentEngine, builds, documentStoreConverter, restrictionConfigDynamoRepository)
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
@@ -190,7 +190,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val targetController = new TargetController(config, menu, deployments, targetDynamoRepository, authAction, controllerComponents)
   val loginController = new Login(config, menu, deployments, datastore, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(config, menu, datastore, prismLookup, documentStoreConverter, authAction, controllerComponents, artifactHousekeeper)
-  val migrationController = new MigrationController(authAction, migrations, controllerComponents)
+  val migrationController = new MigrationController(authAction, migrations, controllerComponents, datastore, menu, config)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {

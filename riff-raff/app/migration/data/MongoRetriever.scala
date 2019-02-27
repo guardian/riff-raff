@@ -2,7 +2,7 @@ package migration.data
 
 import controllers.{ ApiKey, AuthorisationRecord }
 import deployment.PaginationView
-import persistence.{ Persistence, DeployRecordDocument, LogDocument, MongoFormat }
+import persistence.{ DataStore, DeployRecordDocument, LogDocument, MongoFormat }
 import scalaz.zio.{IO, Queue}
 
 trait MongoRetriever[A] {
@@ -34,32 +34,32 @@ trait MongoRetriever[A] {
 }
 
 object MongoRetriever {
-  def deployRetriever(implicit F0: MongoFormat[DeployRecordDocument]) = new MongoRetriever[DeployRecordDocument] {
+  def deployRetriever(datastore: DataStore)(implicit F0: MongoFormat[DeployRecordDocument]) = new MongoRetriever[DeployRecordDocument] {
     val F = F0
-    val getCount = IO.sync(Persistence.store.collectionStats.get("deployV2").map(_.documentCount.toInt).getOrElse(0))
+    val getCount = IO.sync(datastore.collectionStats.get("deployV2").map(_.documentCount.toInt).getOrElse(0))
     def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { Persistence.store.getDeploys(None, pagination) })).unyielding.leftMap(DatabaseError)
+      IO.flatten(IO.sync(IO.fromEither { datastore.getDeploys(None, pagination) })).unyielding.leftMap(DatabaseError)
     }
     
-  def logRetriever(implicit F0: MongoFormat[LogDocument]) = new MongoRetriever[LogDocument] {
+  def logRetriever(datastore: DataStore)(implicit F0: MongoFormat[LogDocument]) = new MongoRetriever[LogDocument] {
     val F = F0
-    val getCount = IO.sync(Persistence.store.collectionStats.get("deployV2Logs").map(_.documentCount.toInt).getOrElse(0))
+    val getCount = IO.sync(datastore.collectionStats.get("deployV2Logs").map(_.documentCount.toInt).getOrElse(0))
     def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { Persistence.store.readAllLogs(pagination) })).unyielding.leftMap(DatabaseError)
+      IO.flatten(IO.sync(IO.fromEither { datastore.readAllLogs(pagination) })).unyielding.leftMap(DatabaseError)
   }
   
-  def authRetriever(implicit F0: MongoFormat[AuthorisationRecord]) = new MongoRetriever[AuthorisationRecord] {
+  def authRetriever(datastore: DataStore)(implicit F0: MongoFormat[AuthorisationRecord]) = new MongoRetriever[AuthorisationRecord] {
     val F = F0
-    val getCount = IO.sync(Persistence.store.collectionStats.get("auth").map(_.documentCount.toInt).getOrElse(0))
+    val getCount = IO.sync(datastore.collectionStats.get("auth").map(_.documentCount.toInt).getOrElse(0))
     def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { Persistence.store.getAuthorisationList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
+      IO.flatten(IO.sync(IO.fromEither { datastore.getAuthorisationList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
   }
   
-  def apiKeyRetriever(implicit F0: MongoFormat[ApiKey]) = new MongoRetriever[ApiKey] {
+  def apiKeyRetriever(datastore: DataStore)(implicit F0: MongoFormat[ApiKey]) = new MongoRetriever[ApiKey] {
     val F = F0
-    val getCount = IO.sync(Persistence.store.collectionStats.get("apiKeys").map(_.documentCount.toInt).getOrElse(0))
+    val getCount = IO.sync(datastore.collectionStats.get("apiKeys").map(_.documentCount.toInt).getOrElse(0))
     def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { Persistence.store.getApiKeyList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
+      IO.flatten(IO.sync(IO.fromEither { datastore.getApiKeyList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
   }
 
 }

@@ -1,5 +1,6 @@
+@import conf.Config
 @import migration.dsl.interpreters._
-@(responsess: List[List[PreviewResponse]])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@(responsess: List[List[PreviewResponse]])(config: Config, appMenu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main(s"Postgres Migration preview", request) {
   <h2>Migration preview</h2>
@@ -24,4 +25,4 @@
         }
       </pre>
   </div>
-}
+}(config, appMenu)

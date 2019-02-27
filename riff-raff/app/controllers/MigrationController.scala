@@ -3,12 +3,13 @@ package controllers
 import java.net.URLEncoder
 import java.util.UUID
 
+import conf.Config
 import com.gu.googleauth.AuthAction
 import forms.MigrationParameters
 import play.api.i18n.I18nSupport
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents, Result}
 import utils.LogAndSquashBehaviour
-import persistence.{DeployRecordDocument, LogDocument, Persistence, MongoFormat}
+import persistence.{DataStore, DeployRecordDocument, LogDocument, MongoFormat}
 import migration._
 import migration.data._
 import migration.dsl._
@@ -19,20 +20,23 @@ import scala.concurrent.Promise
 class MigrationController(
   AuthAction: AuthAction[AnyContent],
   val migrations: Migration,
-  val controllerComponents: ControllerComponents
+  val controllerComponents: ControllerComponents,
+  val datastore: DataStore,
+  val menu: Menu,
+  val config: Config
 ) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   val WINDOW_SIZE = 100
 
   def form = AuthAction { implicit request =>
-    Ok(views.html.migrations.form(MigrationParameters.form, Persistence.store.collectionStats))
+    Ok(views.html.migrations.form(MigrationParameters.form, datastore.collectionStats)(config, menu))
   }
 
   def start = AuthAction { implicit request =>
     MigrationParameters.form.bindFromRequest().fold(
       errors => {
         log.info(s"Errors: ${errors.errors}")
-        BadRequest(views.html.migrations.form(errors, Persistence.store.collectionStats))
+        BadRequest(views.html.migrations.form(errors, datastore.collectionStats)(config, menu))
       },
       form => {
         form.action match {
@@ -51,7 +55,7 @@ class MigrationController(
   }
 
   def view = AuthAction { implicit request =>
-    Ok(views.html.migrations.view())
+    Ok(views.html.migrations.view(config, menu))
   }
 
   def status = AuthAction { implicit request =>
@@ -64,10 +68,10 @@ class MigrationController(
     val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
       IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever, settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever, settings.limit)
-          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever, settings.limit)
-          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever, settings.limit)
+          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
+          case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
+          case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever(datastore), settings.limit)
+          case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever(datastore), settings.limit)
           case _ =>
             IO.fail(MissingTable(mongoTable))
         }
@@ -76,8 +80,8 @@ class MigrationController(
     val promise = Promise[Result]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(responses) => promise.success(Ok(views.html.migrations.preview(responses)))
-      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorPage(new FiberFailure(t))))
+      case ExitResult.Succeeded(responses) => promise.success(Ok(views.html.migrations.preview(responses)(config, menu)))
+      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorPage(config)(new FiberFailure(t))))
     }
 
     promise.future

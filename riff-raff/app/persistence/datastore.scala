@@ -48,12 +48,12 @@ class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
   import NoOpDataStore._
 
   final def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = none
-  final val getAuthorisationList(pagination: Option[PaginationView] = None) = nil
+  final def getAuthorisationList(pagination: Option[PaginationView] = None) = nil
   final def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = unit
   final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
 
   final def createApiKey(newKey: ApiKey): Unit = ()
-  final val getApiKeyList(pagination: Option[PaginationView] = None) = nil
+  final def getApiKeyList(pagination: Option[PaginationView] = None) = nil
   final def getApiKey(key: String): Option[ApiKey] = None
   final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
   final def getApiKeyByApplication(application: String): Option[ApiKey] = None

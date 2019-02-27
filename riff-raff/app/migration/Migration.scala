@@ -1,18 +1,19 @@
 package migration
 
+import conf.Config
 import migration.data._
 import migration.dsl.interpreters._
 import controllers.{ ApiKey, AuthorisationRecord, Logging }
 import controllers.forms.MigrationParameters
 import lifecycle.Lifecycle
-import persistence.{MongoFormat, LogDocument, Persistence, DeployRecordDocument}
+import persistence.{DataStore, MongoFormat, LogDocument, DeployRecordDocument}
 import scalaz.zio._
 import scalaz.zio.internal.Executor
 import scalaz.zio.duration._
 import scalaz.zio.console._
 import scala.concurrent.{Future, Promise}
 
-class Migration() extends Lifecycle with Logging {
+class Migration(config: Config, datastore: DataStore) extends Lifecycle with Logging {
 
   var rts: RTS = null
 
@@ -31,17 +32,17 @@ class Migration() extends Lifecycle with Logging {
   def migrate(settings: MigrationParameters): Future[Unit] = {
     val ioprogram = IO.bracket(
       Postgres.connect(
-        conf.Config.postgres.url, 
-        conf.Config.postgres.user, 
-        conf.Config.postgres.password
+        config.postgres.url, 
+        config.postgres.user, 
+        config.postgres.password
       )
     ) { _ => 
       Postgres.disconnect
     } { _ => 
-      run("apiKeys", MongoRetriever.apiKeyRetriever, settings.limit) *>
-        run("auth", MongoRetriever.authRetriever, settings.limit) *>
-        run("deployV2", MongoRetriever.deployRetriever, settings.limit) *>
-        run("deployV2Logs", MongoRetriever.logRetriever, settings.limit)
+      run("apiKeys", MongoRetriever.apiKeyRetriever(datastore), settings.limit) *>
+        run("auth", MongoRetriever.authRetriever(datastore), settings.limit) *>
+        run("deployV2", MongoRetriever.deployRetriever(datastore), settings.limit) *>
+        run("deployV2Logs", MongoRetriever.logRetriever(datastore), settings.limit)
     }
 
     val promise = Promise[Unit]()

@@ -196,7 +196,7 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
     cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
   }
 
-  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[Iterable[SimpleDeployDetail]](None,Nil){
+  override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[List[SimpleDeployDetail]](None,Nil){
     val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
     val limitedCursor = if (limit == 0) cursor else cursor.limit(limit)
     limitedCursor.toList.map { dbo =>

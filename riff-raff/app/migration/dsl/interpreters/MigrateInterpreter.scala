@@ -4,6 +4,7 @@ package interpreters
 
 import migration.data._
 import cats.~>
+import play.api.libs.json.Json
 import scalaz.zio.IO
 import scalaz.zio.console._
 import scalikejdbc._
@@ -35,7 +36,7 @@ object MigrateInterpreter extends Migrator[Unit] {
       IO.traverse(records) { record =>
         IO.syncThrowable {
           DB localTx { implicit session =>
-            pgTable.insert(pgTable.key(record), pgTable.json(record).noSpaces).update.apply()
+            pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
           }
         }.unyielding leftMap(DatabaseError(_))
       }.void

@@ -1,8 +1,9 @@
-@()(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+@import conf.Config
+@(config: Config, appMenu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
 
 @main(s"Postgres Migration", request, List("auto-refresh")) {
   <h2>Postgres Migration</h2>
   <div class="content" data-ajax-refresh="@routes.MigrationController.status" data-ajax-interval="200">
       <p>Loading...</p>
   </div>
-}
+}(config, appMenu)

@@ -1,13 +1,13 @@
 package migration
 package data
 
-import io.circe.Json
+import play.api.libs.json.JsValue
 import scalikejdbc._
 
 trait ToPostgres[A] {
   type K
   def key(a: A): K
-  def json(a: A): Json
+  def json(a: A): JsValue
   def tableName: String
   def id: String
   def drop: SQL[Nothing, NoExtractor]
