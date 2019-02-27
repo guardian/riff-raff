@@ -26,7 +26,7 @@ trait Migrator[Response] {
       r1 <- dropTable(ToPostgres[A])
       r2 <- createTable(ToPostgres[A])
       // we're going to paginate through the results to reduce memory overhead
-      q <- Queue.bounded[A](window)
+      q <- Queue.bounded[A](window * 10)
       f1 <- retriever.getAllItems(q, window, n).fork
       f2 <- insertAllItems(q, cpt, window).fork
     } yield (cpt, f1, f2, r1, r2)
