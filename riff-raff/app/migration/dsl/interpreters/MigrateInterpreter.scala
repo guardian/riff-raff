@@ -32,10 +32,12 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
-      IO.foreach(records) { record =>
+      IO.foreach(records.grouped(10).toList) { records10 =>
         IO.blocking {
           DB localTx { implicit session =>
-            pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
+            records10.foreach { record => 
+              pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
+            }
           }
         } mapError(DatabaseError(_))
       }.void
