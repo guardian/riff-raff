@@ -49,20 +49,21 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
       fields.toMap
     }
     def fromDBO(dbo: MongoDBObject) =
-      ParametersDocument.fromDBO(dbo.as[DBObject]("parameters")).map(pd =>
+      ParametersDocument.fromDBO(dbo.as[DBObject]("parameters")).map { pd =>
+        val status = dbo.as[String]("status")
         DeployRecordDocument(
-        uuid = dbo.as[UUID]("_id"),
-        stringUUID = dbo.getAs[String]("stringUUID"),
-        startTime = dbo.as[DateTime]("startTime"),
-        parameters = pd,
-        status = RunState.withName(dbo.as[String]("status")),
-        summarised = dbo.getAs[Boolean]("summarised"),
-        totalTasks = dbo.getAs[Int]("totalTasks"),
-        completedTasks = dbo.getAs[Int]("completedTasks"),
-        lastActivityTime = dbo.getAs[DateTime]("lastActivityTime"),
-        hasWarnings = dbo.getAs[Boolean]("hasWarnings")
-      )
-    )
+          uuid = dbo.as[UUID]("_id"),
+          stringUUID = dbo.getAs[String]("stringUUID"),
+          startTime = dbo.as[DateTime]("startTime"),
+          parameters = pd,
+          status = if (status.toLowerCase == "not running") RunState.NotRunning else RunState.withName(status),
+          summarised = dbo.getAs[Boolean]("summarised"),
+          totalTasks = dbo.getAs[Int]("totalTasks"),
+          completedTasks = dbo.getAs[Int]("completedTasks"),
+          lastActivityTime = dbo.getAs[DateTime]("lastActivityTime"),
+          hasWarnings = dbo.getAs[Boolean]("hasWarnings")
+        )
+      }
   }
 }
 
