@@ -23,7 +23,7 @@ trait MongoRetriever[A] {
           .flatMap { items =>
             // we may also get less elements than required
             // which indicates the end of the table
-            if (items.size < max)
+            if (items.size < size)
               queue.offerAll(items)
             else
               queue.offerAll(items) *> loop(page + 1, max - items.size)
