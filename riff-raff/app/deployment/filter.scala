@@ -35,7 +35,10 @@ case class DeployFilter(
   }
 
   lazy val sqlParams: List[SQLSyntax] = List(
-    projectName.map(pn => sqls"content->'parameters'->>'projectName' = $pn"),
+    projectName.map { pn =>
+      val likeString = s"%$pn%"
+      sqls"content->'parameters'->>'projectName' ilike $likeString"
+    },
     stage.map(s => sqls"content->'parameters'->>'stage' = $s"),
     deployer.map(d => sqls"content->'parameters'->>'deployer' = $d"),
     status.map(s => sqls"content->>'status' = ${s.entryName}"),
