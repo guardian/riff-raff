@@ -56,15 +56,18 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
   }
 
   def run[A: MongoFormat: ToPostgres](mongoTable: String, retriever: MongoRetriever[A], limit: Option[Int]) =
-    for {
-      _ <- putStrLn(s"Migrating $mongoTable...")
+    (for {
+      _ <- IO.sync(log.info(s"Migrating $mongoTable..."))
       vals <- MigrateInterpreter.migrate(retriever, limit)
       (counter, reader, writer, _, _) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)
       _ <- progress.interrupt
-      _ <- putStrLn(s"Done!")
-    } yield ()
+      _ <- IO.sync(log.info(s"Done!"))
+    } yield ()).catchAll {
+      case MissingTable(t)  => IO.sync(log.warn(s"Table $t does not exist bro"))
+      case DatabaseError(t) => IO.sync(log.error(s"Hmm, something went wrong while migrating $mongoTable", t))
+    }
 
   def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =
     (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval))
