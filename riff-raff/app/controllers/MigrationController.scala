@@ -66,10 +66,10 @@ class MigrationController(
     val rts = new RTS {}
 
     val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
-      IO.foreach(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
+      IO.foreach(List("deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
+          // case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
+          // case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
           case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever(datastore), settings.limit)
           case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever(datastore), settings.limit)
           case _ =>
