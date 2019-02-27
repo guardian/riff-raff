@@ -14,29 +14,29 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
 
   def dropTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
     IO.sync(log.info("Dropping table")) *>
-      IO.syncThrowable {
+      IO.blocking {
         DB autoCommit { implicit session =>
           pgTable.drop.execute.apply()
         }
         ()
-      }.unyielding mapError(DatabaseError(_))
+      } mapError(DatabaseError(_))
 
   def createTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
     IO.sync(log.info("Creating table")) *>
-      IO.syncThrowable {
+      IO.blocking {
         DB autoCommit { implicit session =>
           pgTable.create.execute.apply()
         }
         ()
-      }.unyielding mapError(DatabaseError(_))
+      } mapError(DatabaseError(_))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
       IO.foreach(records) { record =>
-        IO.syncThrowable {
+        IO.blocking {
           DB localTx { implicit session =>
             pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
           }
-        }.unyielding mapError(DatabaseError(_))
+        } mapError(DatabaseError(_))
       }.void
 }
