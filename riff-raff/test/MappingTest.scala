@@ -1,12 +1,15 @@
 package test
 
-import org.scalatest.{FlatSpec, Matchers}
-import magenta._
-import persistence._
-import controllers.Logging
 import java.util.UUID
 
-import magenta.input.{DeploymentKey, DeploymentKeysSelector, All}
+import controllers.Logging
+import magenta.Message.Info
+import magenta._
+import magenta.input.{DeploymentKey, DeploymentKeysSelector}
+import org.scalatest.{FlatSpec, Matchers}
+import persistence.{AllDocument, DeploymentKeysSelectorDocument}
+import persistence.DeployDocument
+import persistence._
 
 class MappingTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
@@ -60,7 +63,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
     val tree = LogDocumentTree(logDocuments)
     tree.roots.size should be(1)
     tree.roots.head match {
-      case LogDocument(_, _, None, DeployDocument(),_) =>
+      case LogDocument(_, _, None, DeployDocument,_) =>
       case _ => fail("Didn't get the expected document when trying to locate the root")
     }
   }

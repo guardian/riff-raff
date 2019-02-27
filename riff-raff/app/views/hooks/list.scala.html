@@ -1,4 +1,5 @@
-@(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hooks: Seq[notification.HookConfig])
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], hooks: Seq[notification.HookConfig])
 @import org.joda.time.format.DateTimeFormat._
 @import helper.CSRF
 
@@ -47,4 +48,4 @@
         </table>
     }
     </div>
-}
+}(config, menu)

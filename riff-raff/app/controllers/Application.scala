@@ -40,7 +40,7 @@ case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Ca
   def isVisible(hasIdentity:Boolean = false) = items.exists(_.isVisible(hasIdentity))
 }
 
-object Menu {
+class Menu(config: Config) {
   lazy val menuItems = Seq(
     SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
     SingleMenuItem("History", routes.DeployController.history()),
@@ -50,7 +50,7 @@ object Menu {
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.HooksController.list()),
-      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = Config.auth.whitelist.useDatabase),
+      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = config.auth.whitelist.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys()),
       SingleMenuItem("Restrictions", routes.Restrictions.list()),
       SingleMenuItem("Schedules", routes.ScheduleController.list())
@@ -72,9 +72,15 @@ object Menu {
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
 }
 
-class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], authAction: AuthAction[AnyContent],
-  val controllerComponents: ControllerComponents, assets: Assets)(
-  implicit environment: Environment, val wsClient: WSClient, val executionContext: ExecutionContext)
+class Application(config: Config,
+                  menu: Menu,
+                  prismLookup: PrismLookup,
+                  deploymentTypes: Seq[DeploymentType],
+                  authAction: AuthAction[AnyContent],
+                  val controllerComponents: ControllerComponents, assets: Assets)
+                 (implicit environment: Environment,
+                  val wsClient: WSClient,
+                  val executionContext: ExecutionContext)
   extends BaseController with Logging {
 
   import Application._
@@ -87,11 +93,11 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
       markDown = documentationIndexContents,
       linkRenderer = Some(new docs.MarkDownParser.CallLinkRenderer(link => routes.Application.documentation(link)))
     )
-    Ok(views.html.index(request, documentation))
+    Ok(views.html.index(config, menu)(request, documentation))
   }
 
   def deployInfoData = authAction { implicit request =>
-    Ok(views.html.deploy.deployInfoData(prismLookup))
+    Ok(views.html.deploy.deployInfoData(config, menu)(prismLookup))
   }
 
   def deployInfoHosts(appFilter: String) = authAction { implicit request =>
@@ -99,11 +105,11 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
       host.app.toString.matches(s"(?i).*$appFilter.*") &&
       request.getQueryString("stack").forall(s => host.stack == s)
     }.groupBy(_.stage)
-    Ok(views.html.deploy.deployInfoHosts(request, hosts, prismLookup))
+    Ok(views.html.deploy.deployInfoHosts(config, menu)(request, hosts, prismLookup))
   }
 
   def deployInfoAbout = authAction { request =>
-    Ok(views.html.deploy.deployInfoAbout(request))
+    Ok(views.html.deploy.deployInfoAbout(config, menu)(request))
   }
 
   val Prev = """.*prev:(\S+).*""".r
@@ -148,7 +154,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
         } else {
           val markDownLines = getMarkdownLines(resource)
           if (markDownLines.isEmpty) {
-              NotFound(views.html.notFound(request,s"No documentation found for $resource"))
+              NotFound(views.html.notFound(config, menu)(request, s"No documentation found for $resource"))
           } else {
             val markDown = markDownLines.mkString("\n")
 
@@ -168,9 +174,9 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(docs)
                   (dt.name, typeDocumentation)
                 }
-                Ok(views.html.documentation.markdownBlocks(request, "Deployment Types", breadcrumbs, sections))
+                Ok(views.html.documentation.markdownBlocks(config, menu)(request, "Deployment Types", breadcrumbs, sections))
               case _ =>
-                Ok(views.html.documentation.markdown(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
+                Ok(views.html.documentation.markdown(config, menu)(request, s"Documentation: $title", markDown, breadcrumbs, prev, next))
             }
           }
         }
@@ -180,7 +186,7 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
 
   def validationForm = authAction { request =>
     log.warn("Displaying form")
-    Ok(views.html.validation.validationForm(request))
+    Ok(views.html.validation.validationForm(config, menu)(request))
   }
 
   def validateConfiguration = authAction { request =>
@@ -189,12 +195,12 @@ class Application(prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]
     val maybeConfiguration = data.asFormUrlEncoded.flatMap(_.get("configuration")).getOrElse(Nil).headOption
     maybeConfiguration.fold{
       BadRequest("No configuration provided to validate")
-    }{ config =>
-      Resolver.resolveDeploymentGraph(config, deploymentTypes, All) match {
+    }{ conf =>
+      Resolver.resolveDeploymentGraph(conf, deploymentTypes, All) match {
         case Valid(deployments) =>
-          Ok(views.html.validation.validationPassed(request, deployments))
+          Ok(views.html.validation.validationPassed(config, menu)(request, deployments))
         case Invalid(errors) =>
-          Ok(views.html.validation.validationErrors(request, errors))
+          Ok(views.html.validation.validationErrors(config, menu)(request, errors))
       }
     }
   }

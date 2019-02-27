@@ -1,6 +1,5 @@
 package conf
 
-import java.io.File
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
@@ -15,15 +14,17 @@ import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
 import com.amazonaws.util.EC2MetadataUtils
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config => TypesafeConfig}
 import controllers.{Logging, routes}
 import deployment.Deployments
 import deployment.actors.DeployMetricsActor
 import lifecycle.{Lifecycle, ShutdownWhenInactive}
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
-import persistence.{CollectionStats, Persistence}
+import persistence.{CollectionStats, DataStore}
 import riffraff.BuildInfo
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
@@ -32,11 +33,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
-object Config extends Logging {
-
-  private val applicationConf = ConfigFactory.parseResources("application.conf")
-  private val userConf = ConfigFactory.parseFile(new File(s"${scala.util.Properties.userHome}/.gu/riff-raff.conf"))
-  private val configuration = userConf.withFallback(applicationConf).resolve()
+class Config(configuration: TypesafeConfig) extends Logging {
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
@@ -175,9 +172,10 @@ object Config extends Logging {
   }
 
   object postgres {
-    lazy val url = getString("postgres.uri")
-    lazy val user = getString("postgres.user")
-    lazy val password = getString("postgres.password")
+    lazy val isEnabled = getBooleanOpt("postgres.enabled").getOrElse(false)
+    lazy val url = getString("db.default.url")
+    lazy val user = getString("db.default.user")
+    lazy val password = getString("db.default.password")
   }
 
   object stages {
@@ -263,14 +261,14 @@ object Config extends Logging {
   override def toString: String = configuration.toString
 }
 
-class Management(shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments) {
+class Management(config: Config, shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments, datastore: DataStore) {
   val applicationName = "riff-raff"
 
   val pages = List(
     new BuildInfoPage,
     new HealthcheckManagementPage,
     new Switchboard(applicationName, shutdownWhenInactive.switch :: Healthcheck.switch :: deployments.enableSwitches),
-    StatusPage(applicationName, Metrics.all),
+    StatusPage(applicationName, new Metrics(config, datastore).all),
     new LogbackLevelPage(applicationName)
   )
 }
@@ -318,17 +316,17 @@ object TaskMetrics {
   val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
 }
 
-object DatastoreMetrics {
+class DatastoreMetrics(config: Config, datastore: DataStore) {
   object DatastoreRequest extends TimingMetric(
     "performance",
     "database_requests",
     "Database requests",
     "outgoing requests to the database"
   )
-  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  Persistence.store.collectionStats }
+  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  datastore.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
-  def deployCollectionCount: Long = collectionStats().get(s"${Config.mongo.collectionPrefix}deployV2").map(_.documentCount).getOrElse(0L)
+  def deployCollectionCount: Long = collectionStats().get(s"${config.mongo.collectionPrefix}deployV2").map(_.documentCount).getOrElse(0L)
   object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
   object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
   object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
@@ -345,12 +343,12 @@ object FailedLoginCounter extends CountMetric("webapp",
   "Failed logins",
   "Number of failed logins")
 
-object Metrics {
+class Metrics(config: Config, datastore: DataStore) {
   val all: Seq[Metric] =
     magenta.metrics.MagentaMetrics.all ++
     Seq(LoginCounter, FailedLoginCounter) ++
     //PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
-    DatastoreMetrics.all ++
+    new DatastoreMetrics(config, datastore).all ++
     TaskMetrics.all
 }

@@ -20,12 +20,16 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
-class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit val executionContext: ExecutionContext)
+class Deployments(deploymentEngine: DeploymentEngine,
+                  builds: Builds,
+                  documentStoreConverter: DocumentStoreConverter,
+                  restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository)
+                 (implicit val executionContext: ExecutionContext)
   extends Lifecycle with Logging {
 
   def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[Error, UUID] = {
     log.info(s"Started deploying $requestedParams")
-    val restrictionsPreventingDeploy = RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository,
+    val restrictionsPreventingDeploy = RestrictionChecker.configsThatPreventDeployment(restrictionConfigDynamoRepository,
       requestedParams.build.projectName, requestedParams.stage.name, requestSource)
     if (restrictionsPreventingDeploy.nonEmpty) {
       Left(Error(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}"))
@@ -61,7 +65,7 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
-    DocumentStoreConverter.saveDeploy(record)
+    documentStoreConverter.saveDeploy(record)
     await(uuid)
   }
 
@@ -138,14 +142,14 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
       recordAgent send { record =>
         val updated = record + wrapper
-        DocumentStoreConverter.saveMessage(wrapper)
+        documentStoreConverter.saveMessage(wrapper)
         if (record.state != updated.state) {
-          DocumentStoreConverter.updateDeployStatus(updated)
+          documentStoreConverter.updateDeployStatus(updated)
         }
         if (record.totalTasks != updated.totalTasks ||
             record.completedTasks != updated.completedTasks ||
             record.hasWarnings != updated.hasWarnings) {
-          DocumentStoreConverter.updateDeploySummary(updated)
+          documentStoreConverter.updateDeploySummary(updated)
         }
         if (updated.isDone) {
           cleanup(record.uuid)
@@ -169,14 +173,12 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
         )
 
       record match {
-        case None => {
+        case None =>
           log.warn(s"$uuid not found in internal caches")
           allDeploys
-        }
-        case Some(rec) => {
+        case Some(rec) =>
           log.debug(s"About to  remove deploy record $uuid from internal caches")
           allDeploys - rec.uuid
-        }
       }
     }
     firePostCleanup(uuid)
@@ -189,7 +191,7 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
   }
   def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
   def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Either[Throwable, List[Record]] = {
-    DocumentStoreConverter.getDeployList(filter, pagination, fetchLogs)
+    documentStoreConverter.getDeployList(filter, pagination, fetchLogs)
   }
 
   def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): Either[Throwable, List[Record]] = {
@@ -198,22 +200,22 @@ class Deployments(deploymentEngine: DeploymentEngine, builds: Builds)(implicit v
   }
 
   def getLastCompletedDeploys(project: String): Map[String, Record] = {
-    DocumentStoreConverter.getLastCompletedDeploys(project)
+    documentStoreConverter.getLastCompletedDeploys(project)
   }
 
   def findProjects: Either[Throwable, List[String]] =
-    DocumentStoreConverter.findProjects
+    documentStoreConverter.findProjects
 
-  def countDeploys(filter:Option[DeployFilter]) = DocumentStoreConverter.countDeploys(filter)
+  def countDeploys(filter:Option[DeployFilter]) = documentStoreConverter.countDeploys(filter)
 
   def markAsFailed(record: Record) {
-    DocumentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)
+    documentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)
   }
 
   def get(uuid: UUID, fetchLog: Boolean = true): Record = {
     val agent = library().get(uuid)
     agent.map(_()).getOrElse {
-      DocumentStoreConverter.getDeploy(uuid, fetchLog).get
+      documentStoreConverter.getDeploy(uuid, fetchLog).get
     }
   }
 

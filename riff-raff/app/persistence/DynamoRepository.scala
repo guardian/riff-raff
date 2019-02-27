@@ -7,14 +7,14 @@ import com.gu.scanamo.{DynamoFormat, Scanamo}
 import conf.Config
 import org.joda.time.DateTime
 
-trait DynamoRepository {
+abstract class DynamoRepository(config: Config) {
 
-  val client = Config.dynamoDb.client
+  val client = config.dynamoDb.client
   def exec[A](ops: ScanamoOps[A]): A = Scanamo.exec(client)(ops)
   def tablePrefix: String
 
   // TODO set up Dynamo local
-  val stage = if (Config.stage == "DEV") "CODE" else Config.stage
+  val stage = if (config.stage == "DEV") "CODE" else config.stage
   lazy val tableName = s"$tablePrefix-$stage"
 
   implicit val uuidFormat =

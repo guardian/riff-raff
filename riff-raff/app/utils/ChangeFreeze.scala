@@ -4,19 +4,19 @@ import org.joda.time.{Interval, DateTime}
 import conf.Config
 import org.joda.time.format.DateTimeFormat
 
-object ChangeFreeze {
-  lazy val stages = Config.freeze.stages
-  lazy val message = Config.freeze.message
+class ChangeFreeze(config: Config) {
+  lazy val stages = config.freeze.stages
+  lazy val message = config.freeze.message
   lazy val freezeInterval =
-    (Config.freeze.startDate, Config.freeze.endDate) match {
+    (config.freeze.startDate, config.freeze.endDate) match {
       case (Some(startDate:DateTime), Some(endDate:DateTime)) =>
         Some(new Interval(startDate, endDate))
       case _ => None
     }
 
   lazy val formatter = DateTimeFormat.longDateTime()
-  lazy val from:String = Config.freeze.startDate.map(formatter.print).getOrElse("")
-  lazy val to:String = Config.freeze.endDate.map(formatter.print).getOrElse("")
+  lazy val from:String = config.freeze.startDate.map(formatter.print).getOrElse("")
+  lazy val to:String = config.freeze.endDate.map(formatter.print).getOrElse("")
 
   def choose[A](defrosted: A)(frozen: A):A =
     if (freezeInterval.exists(_.contains(new DateTime()))) frozen else defrosted

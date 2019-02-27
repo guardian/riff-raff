@@ -1,29 +1,27 @@
 package resources
 
-import cats.syntax.group
 import conf.Config
-import org.joda.time.{DateTime, DateTimeZone}
-import org.joda.time.format.DateTimeFormat
-import play.api.libs.ws.WSClient
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.control.NonFatal
-import magenta._
 import controllers.Logging
+import magenta._
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
+import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
+import play.api.libs.ws.WSClient
 import utils.Json._
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 case class Image(imageId: String, creationDate: DateTime, tags: Map[String, String])
 object Image {
-  implicit val formats = Json.format[Image]
+  implicit val formats: OFormat[Image] = Json.format[Image]
 }
 
-class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lookup with Logging {
+class PrismLookup(config: Config, wsClient: WSClient) extends Lookup with Logging {
 
   def keyRing(stage: Stage, app: App, stack: Stack): KeyRing = {
     val KeyPattern = """credentials:(.*)""".r
@@ -41,11 +39,11 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
 
   object prism extends Logging {
     def get[T](path: String, retriesLeft: Int = 5)(block: JsValue => T): T = {
-      val result = wsClient.url(s"$url$path").get().map(_.json).map { json =>
+      val result = wsClient.url(s"${config.lookup.prismUrl}$path").get().map(_.json).map { json =>
         block(json)
       }
       try {
-        Await.result(result, timeout)
+        Await.result(result, config.lookup.timeoutSeconds.seconds)
       } catch {
         case NonFatal(e) =>
           log.warn(s"Call to prism failed ($path; $retriesLeft retries left)", e)
@@ -54,7 +52,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
     }
   }
 
-  val formatter = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss 'UTC' yyyy")
+  val formatter: DateTimeFormatter = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss 'UTC' yyyy")
 
   implicit val datumReads = Json.reads[Datum]
   implicit val hostReads = (
@@ -149,7 +147,7 @@ class PrismLookup(wsClient: WSClient, url: String, timeout: Duration) extends Lo
 
   val secretProvider = new SecretProvider {
     def lookup(service: String, account: String): Option[String] =
-      Config.credentials.lookupSecret(service, account)
+      config.credentials.lookupSecret(service, account)
   }
 
   private def get(accountNumber: Option[String], region: String, tags: Map[String, String]): Seq[Image] = {

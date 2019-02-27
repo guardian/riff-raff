@@ -2,12 +2,13 @@ package deployment
 
 import java.util.UUID
 
-import ci.{Builds, S3Build}
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
+import magenta.ContextMessage._
+import magenta.Message._
 import magenta._
-import org.joda.time.{DateTime, Duration, Interval}
 import org.joda.time.format.PeriodFormatterBuilder
+import org.joda.time.{DateTime, Duration, Interval}
 import utils.VCSInfo
 
 sealed trait RequestSource
@@ -46,7 +47,7 @@ trait Record {
   def parameters: DeployParameters
   def metaData: Map[String, String]
   def report: DeployReport
-  def recordState: Option[RunState.Value]
+  def recordState: Option[RunState]
   def recordTotalTasks: Option[Int]
   def recordCompletedTasks: Option[Int]
   def recordHasWarnings: Option[Boolean]
@@ -72,7 +73,7 @@ trait Record {
   def isStalled: Boolean = {
     recordState.exists {
       case RunState.Running =>
-        val stalledThreshold = (new DateTime()).minus(new Duration(15 * 60 * 1000))
+        val stalledThreshold = new DateTime().minus(new Duration(15 * 60 * 1000))
         lastActivityTime.isBefore(stalledThreshold)
       case _ => false
     }
@@ -138,7 +139,7 @@ case class DeployRecord(time: DateTime,
                         parameters: DeployParameters,
                         metaData: Map[String, String] = Map.empty,
                         messages: List[MessageWrapper] = Nil,
-                        recordState: Option[RunState.Value] = None,
+                        recordState: Option[RunState] = None,
                         recordTotalTasks: Option[Int] = None,
                         recordCompletedTasks: Option[Int] = None,
                         recordLastActivityTime: Option[DateTime] = None,

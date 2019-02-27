@@ -2,7 +2,6 @@ package test
 
 import java.util.UUID
 
-import ci.{ContinuousDeploymentConfig, Trigger}
 import com.mongodb.DBObject
 import com.mongodb.casbah.commons.MongoDBObject
 import com.mongodb.casbah.commons.conversions.scala._
@@ -14,20 +13,19 @@ import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import persistence._
 
-
 class RepresentationTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances {
 
   RegisterJodaTimeConversionHelpers()
 
   "MessageDocument" should "convert from log messages to documents" in {
-    deploy.asMessageDocument should be(DeployDocument())
+    deploy.asMessageDocument should be(DeployDocument)
     infoMsg.asMessageDocument should be(InfoDocument("$ echo hello"))
     cmdOut.asMessageDocument should be(CommandOutputDocument("hello"))
     verbose.asMessageDocument should be(VerboseDocument("return value 0"))
-    finishDep.asMessageDocument should be(FinishContextDocument())
-    finishInfo.asMessageDocument should be(FinishContextDocument())
-    failInfo.asMessageDocument should be(FailContextDocument())
-    failDep.asMessageDocument should be(FailContextDocument())
+    finishDep.asMessageDocument should be(FinishContextDocument)
+    finishInfo.asMessageDocument should be(FinishContextDocument)
+    failInfo.asMessageDocument should be(FailContextDocument)
+    failDep.asMessageDocument should be(FailContextDocument)
     warning.asMessageDocument should be(WarningDocument("deprecation"))
   }
 
@@ -40,7 +38,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   "LogDocument" should "serialise all message types to BSON" in {
     val messages = Seq(deploy, infoMsg, cmdOut, verbose, finishDep, finishInfo, failInfo, failDep)
     val documents = messages.map(LogDocument(testUUID, UUID.randomUUID(), Some(UUID.randomUUID()), _, testTime))
-    documents.foreach{ document =>
+    documents.foreach { document =>
       val dbObject = document.toDBO
       dbObject should not be null
       val encoder = new BasicBSONEncoder()
@@ -54,14 +52,14 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
     val id = UUID.fromString("4ef18506-3b38-4235-9933-d7da831247a6")
     val parentId = UUID.fromString("4236c133-be50-4169-8e0c-096eded5bfeb")
     val messageJsonMap = Map(
-      deploy -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.DeployDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
+      deploy -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.DeployDocument$"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
       infoMsg -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.InfoDocument" , "text" : "$ echo hello"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
       cmdOut -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.CommandOutputDocument" , "text" : "hello"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
       verbose -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.VerboseDocument" , "text" : "return value 0"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
-      finishDep -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FinishContextDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
-      finishInfo -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FinishContextDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
-      failInfo -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FailContextDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
-      failDep -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FailContextDocument"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
+      finishDep -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FinishContextDocument$"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
+      finishInfo -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FinishContextDocument$"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
+      failInfo -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FailContextDocument$"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
+      failDep -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.FailContextDocument$"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}""",
       warning -> """{ "deploy" : { "$uuid" : "90013e69-8afc-4ba2-80a8-d7b063183d13"} , "id" : { "$uuid" : "4ef18506-3b38-4235-9933-d7da831247a6"} , "parent" : { "$uuid" : "4236c133-be50-4169-8e0c-096eded5bfeb"} , "document" : { "_typeHint" : "persistence.WarningDocument" , "text" : "deprecation"} , "time" : { "$date" : "2012-11-08T17:20:00.000Z"}}"""
     )
     messageJsonMap.foreach { case (message, json) =>
@@ -166,8 +164,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
   }
 
   "DeploymentSelectorDocument" should "not change AllDocument without careful thought and testing of migration" in {
-    val allDump =
-      """{ "_typeHint" : "persistence.AllDocument$"}"""
+    val allDump = """{ "_typeHint" : "persistence.AllDocument$"}"""
     val allDbo = AllDocument.asDBObject
     val allJson = JSON.serialize(allDbo)
     val allDiff = compareJson(allDump, allJson)

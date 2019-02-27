@@ -1,4 +1,5 @@
-@(menuBarItems: Html)
+@import conf.Config
+@(config: Config)(menuBarItems: Html)
 
 <nav class="navbar navbar-fixed-top navbar-default">
     <div class="navbar-header">
@@ -8,7 +9,7 @@
             <span class="glyphicon icon-bar"></span>
             <span class="glyphicon icon-bar"></span>
         </button>
-        <a class="navbar-brand" title="Build @conf.Config.version" href="/">Riff Raff</a>
+        <a class="navbar-brand" title="Build @config.version" href="/">Riff Raff</a>
     </div>
     @menuBarItems
 </nav>

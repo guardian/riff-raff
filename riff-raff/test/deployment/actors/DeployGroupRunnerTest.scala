@@ -5,11 +5,13 @@ import java.util.UUID
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
+import conf.Config
 import deployment.{Fixtures, Record}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
 import magenta.tasks.Task
 import org.scalatest.{FlatSpecLike, Matchers}
+import play.api.Configuration
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -122,6 +124,8 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]]) extends DR
 
+  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying)
+
   def createDeployRunner(): DRImpl = {
     val deployCoordinatorProbe = TestProbe()
     val deploymentRunnerProbe = TestProbe()
@@ -129,7 +133,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = system.actorOf(
-      Props(new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
+      Props(new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
         prismLookup = null, deploymentTypes, None)),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
@@ -146,7 +150,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = TestActorRef(
-      new DeployGroupRunner(record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
+      new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
         prismLookup = null, deploymentTypes, None),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )

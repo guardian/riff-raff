@@ -5,7 +5,8 @@ import java.util.UUID
 import magenta._
 import org.joda.time.DateTime
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import persistence.{AllDocument, DeployRecordDocument, ParametersDocument}
+import persistence.AllDocument
+import persistence.{DeployRecordDocument, ParametersDocument}
 import play.api.libs.ws.WSAuthScheme
 import play.api.test.WsTestClient
 

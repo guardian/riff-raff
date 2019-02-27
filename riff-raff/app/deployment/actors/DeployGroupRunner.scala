@@ -6,6 +6,8 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
 import akka.agent.Agent
 import cats.data.Validated.{Invalid, Valid}
+import com.amazonaws.services.s3.AmazonS3
+import conf.Config
 import controllers.Logging
 import deployment.Record
 import magenta.artifact._
@@ -19,6 +21,7 @@ import resources.PrismLookup
 import scala.util.control.NonFatal
 
 class DeployGroupRunner(
+  config: Config,
   record: Record,
   deployCoordinator: ActorRef,
   deploymentRunnerFactory: (ActorRefFactory, String) => ActorRef,
@@ -170,10 +173,9 @@ class DeployGroupRunner(
   private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import cats.syntax.either._
-      import conf.Config
 
-      implicit val client = Config.artifact.aws.client
-      val bucketName = Config.artifact.aws.bucketName
+      implicit val client: AmazonS3 = config.artifact.aws.client
+      val bucketName = config.artifact.aws.bucketName
 
       safeReporter.info("Reading riff-raff.yaml")
       val resources = DeploymentResources(safeReporter, prismLookup, client)

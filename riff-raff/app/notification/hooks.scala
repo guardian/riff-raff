@@ -6,9 +6,11 @@ import java.util.UUID
 import akka.actor.{Actor, ActorSystem, Props}
 import controllers.Logging
 import lifecycle.Lifecycle
-import magenta.{Deploy, DeployParameters, FinishContext, _}
+import magenta.ContextMessage._
+import magenta.{DeployParameters, DeployReporter}
+import magenta.Message._
 import org.joda.time.DateTime
-import persistence.{DeployRecordDocument, HookConfigRepository, Persistence}
+import persistence.{DataStore, DeployRecordDocument, HookConfigRepository}
 import play.api.libs.json.Json
 import play.api.libs.ws._
 
@@ -62,7 +64,7 @@ case class HookConfig(id: UUID,
               "stage" -> Seq(record.parameters.stage),
               "deployer" -> Seq(record.parameters.deployer),
               "uuid" -> Seq(record.uuid.toString),
-              "tags" -> record.parameters.tags.toSeq.map{ case ((k, v)) => s"$k:$v" }
+              "tags" -> record.parameters.tags.toSeq.map{ case (k, v) => s"$k:$v" }
             ))
           )
       }).map { response =>
@@ -81,10 +83,10 @@ object HookConfig {
     HookConfig(UUID.randomUUID(), projectName, stage, url, enabled, new DateTime(), updatedBy)
 }
 
-class HooksClient(wsClient: WSClient, executionContext: ExecutionContext) extends Lifecycle with Logging {
+class HooksClient(datastore: DataStore, hookConfigRepository: HookConfigRepository, wsClient: WSClient, executionContext: ExecutionContext) extends Lifecycle with Logging {
   lazy val system = ActorSystem("notify")
   val actor = try {
-    Some(system.actorOf(Props(classOf[HooksClientActor], wsClient, executionContext), "hook-client"))
+    Some(system.actorOf(Props(classOf[HooksClientActor], datastore, hookConfigRepository, wsClient, executionContext), "hook-client"))
   } catch {
     case t:Throwable =>
       log.error("Failed to start HookClient", t)
@@ -115,14 +117,14 @@ object HooksClientActor {
   case class Finished(uuid: UUID, params: DeployParameters)
 }
 
-class HooksClientActor(implicit wsClient: WSClient, executionContext: ExecutionContext) extends Actor with Logging {
+class HooksClientActor(datastore: DataStore, hookConfigRepository: HookConfigRepository)(implicit wsClient: WSClient, executionContext: ExecutionContext) extends Actor with Logging {
   import notification.HooksClientActor._
 
   def receive = {
     case Finished(uuid, params) =>
-      HookConfigRepository.getPostDeployHook(params.build.projectName, params.stage.name).foreach { config =>
+      hookConfigRepository.getPostDeployHook(params.build.projectName, params.stage.name).foreach { config =>
         try {
-          config.act(Persistence.store.readDeploy(uuid).get)
+          config.act(datastore.readDeploy(uuid).get)
         } catch {
           case t:Throwable =>
             log.warn(s"Exception caught whilst processing post deploy hooks for $config", t)

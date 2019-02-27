@@ -1,23 +1,27 @@
 package lookup
 
+import conf.Config
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import play.api
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc
+import play.api.{Configuration, mvc}
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.routing.sird._
 import play.api.test.WsTestClient
 import play.core.server.Server
 import resources.{Image, PrismLookup}
+import com.typesafe.config.{Config => TypesafeConfig}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 
 class PrismLookupTest extends FlatSpec with Matchers {
+
+  val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying)
 
   def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
     var mockRequest: Option[Request[AnyContent]] = None
@@ -50,7 +54,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
       Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
     )
     withPrismClient(images) { client =>
-      val lookup = new PrismLookup(client, "", 10 seconds)
+      val lookup = new PrismLookup(config, client)
       val result = lookup.getLatestAmi(None, _ => true)("bob")(Map.empty)
       result shouldBe Some("test-later-still-ami")
     }
@@ -58,7 +62,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   it should "narrows ami query by region" in {
     val (result, request) = withPrismClient(Nil) { client =>
-      val lookup = new PrismLookup(client, "", 10 seconds)
+      val lookup = new PrismLookup(config, client)
       lookup.getLatestAmi(None, _ => true)("bob")(Map.empty)
     }
     result shouldBe None
@@ -67,7 +71,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   it should "correctly query using the tags" in {
     val (result, request) = withPrismClient(Nil) { client =>
-      val lookup = new PrismLookup(client, "", 10 seconds)
+      val lookup = new PrismLookup(config, client)
       lookup.getLatestAmi(None, _ => true)("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
     }
     request.map(_.queryString) shouldBe Some(Map(
@@ -86,7 +90,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
       Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
     )
     withPrismClient(images) { client =>
-      val lookup = new PrismLookup(client, "", 10 seconds)
+      val lookup = new PrismLookup(config, client)
       val result = lookup.getLatestAmi(None, CloudFormationDeploymentTypeParameters.unencryptedTagFilter)("bob")(Map.empty)
       result shouldBe Some("test-ami")
     }

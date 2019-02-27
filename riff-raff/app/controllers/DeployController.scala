@@ -26,25 +26,34 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
-import utils.LogAndSquashBehaviour
+import utils.{ChangeFreeze, LogAndSquashBehaviour}
 
-class DeployController(
-  deployments: Deployments, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType],
-  buildSource: Builds, AuthAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)
-  (implicit val wsClient: WSClient) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
+class DeployController(config: Config,
+                       menu: Menu,
+                       deployments: Deployments,
+                       prismLookup: PrismLookup,
+                       deploymentTypes: Seq[DeploymentType],
+                       changeFreeze: ChangeFreeze,
+                       buildSource: Builds,
+                       s3Tag: S3Tag,
+                       AuthAction: AuthAction[AnyContent],
+                       restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository,
+                       val controllerComponents: ControllerComponents)
+                      (implicit val wsClient: WSClient)
+  extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   def deploy = AuthAction { implicit request =>
-    Ok(views.html.deploy.form(DeployParameterForm.form, prismLookup))
+    Ok(views.html.deploy.form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup))
   }
 
   def processForm = AuthAction { implicit request =>
     DeployParameterForm.form.bindFromRequest().fold(
       errors => {
         logger.info(s"Errors: ${errors.errors}")
-        BadRequest(views.html.deploy.form(errors, prismLookup))
+        BadRequest(views.html.deploy.form(config, menu)(changeFreeze)(errors, prismLookup))
       },
       form => {
-        val parameters = new DeployParameters(Deployer(request.user.fullName),
+        val parameters = DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
           selector = form.makeSelector
@@ -79,7 +88,7 @@ class DeployController(
     val uuid = UUID.fromString(uuidString)
     val record = deployments.get(uuid)
     val stopFlag = if (record.isDone) false else deployments.getStopFlag(uuid)
-    Ok(views.html.deploy.viewDeploy(request, record, verbose, stopFlag))
+    Ok(views.html.deploy.viewDeploy(config, menu)(request, record, verbose, stopFlag))
   }
 
   def updatesUUID(uuid: String) = AuthAction { implicit request =>
@@ -88,7 +97,7 @@ class DeployController(
   }
 
   def history() = AuthAction { implicit request =>
-    Ok(views.html.deploy.history(prismLookup))
+    Ok(views.html.deploy.history(config, menu)(prismLookup))
   }
 
   def historyContent() = AuthAction { implicit request =>
@@ -129,9 +138,9 @@ class DeployController(
       Ok("")
     } else {
       val restrictions = maybeStage.toSeq.flatMap { stage =>
-        RestrictionChecker.configsThatPreventDeployment(RestrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
+        RestrictionChecker.configsThatPreventDeployment(restrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
-      val filter = DeployFilter(projectName = Some(s"^$project$$"), stage = maybeStage)
+      val filter = DeployFilter(projectName = Some(s"$project"), stage = maybeStage)
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).logAndSquashException(Nil).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }
@@ -141,7 +150,7 @@ class DeployController(
     log.info(s"Getting build info for $project: $build")
     val buildTagTuple = for {
       b <- buildSource.build(project, build)
-      tags <- S3Tag.of(b)
+      tags <- s3Tag.of(b)
     } yield (b, tags)
 
     buildTagTuple map { case (b, tags) =>
@@ -160,17 +169,17 @@ class DeployController(
 
   def deployConfirmation(deployFormJson: String) = AuthAction { implicit request =>
     val parametersJson = Json.parse(deployFormJson)
-    Ok(views.html.deploy.deployConfirmation(DeployParameterForm.form.bind(parametersJson), isExternal = true))
+    Ok(views.html.deploy.deployConfirmation(config, menu)(DeployParameterForm.form.bind(parametersJson), isExternal = true))
   }
 
   def deployConfirmationExternal = AuthAction { implicit request =>
     val form = DeployParameterForm.form.bindFromRequest()
-    Ok(views.html.deploy.deployConfirmation(form, isExternal = true))
+    Ok(views.html.deploy.deployConfirmation(config, menu)(form, isExternal = true))
   }
 
   def deployAgain = AuthAction { implicit request =>
     val form = DeployParameterForm.form.bindFromRequest()
-    Ok(views.html.deploy.deployConfirmation(form, isExternal = false))
+    Ok(views.html.deploy.deployConfirmation(config, menu)(form, isExternal = false))
   }
 
   def deployAgainUuid(uuidString: String) = AuthAction { implicit request =>
@@ -210,7 +219,7 @@ class DeployController(
   }
 
   def dashboard(projects: String, search: Boolean) = AuthAction { implicit request =>
-    Ok(views.html.deploy.dashboard(request, projects, search))
+    Ok(views.html.deploy.dashboard(config, menu)(request, projects, search))
   }
 
   def dashboardContent(projects: String, search: Boolean) = AuthAction { implicit request =>
@@ -228,20 +237,20 @@ class DeployController(
       project -> deployments.getLastCompletedDeploys(project)
     }.filterNot(_._2.isEmpty))
     deploys.fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch deploys")),
-      (ds: List[(String,Map[String,deployment.Record])]) => Ok(views.html.deploy.dashboardContent(ds))
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch deploys")(config)),
+      (ds: List[(String,Map[String,deployment.Record])]) => Ok(views.html.deploy.dashboardContent(config)(ds))
     )
   }
 
   def deployConfig(projectName: String, id: String) = AuthAction { implicit request =>
     def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
-      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
       deployObjectContent.map(deployObjectPath -> _)
     }
 
     val build = Build(projectName, id)
-    val deployObject = pathAndContent(S3YamlArtifact(build, Config.artifact.aws.bucketName))
+    val deployObject = pathAndContent(S3YamlArtifact(build, config.artifact.aws.bucketName))
 
     deployObject.map {
       case (path, contents) => Ok(contents).as(path.extension.map {
@@ -254,24 +263,24 @@ class DeployController(
   def deployFiles(projectName: String, id: String) = AuthAction { implicit request =>
     def pathAndContent(artifact: S3Artifact): Either[S3Error, (S3Artifact, S3Path, String)] = {
       val deployObjectPath = artifact.deployObject
-      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(Config.artifact.aws.client)
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
       deployObjectContent.map(content => (artifact, deployObjectPath, content))
     }
 
     val build = Build(projectName, id)
-    val deployObject = pathAndContent(S3YamlArtifact(build, Config.artifact.aws.bucketName))
+    val deployObject = pathAndContent(S3YamlArtifact(build, config.artifact.aws.bucketName))
 
     deployObject.map { case (artifact, path, configFile) =>
-      val objects = artifact.listAll()(Config.artifact.aws.client)
+      val objects = artifact.listAll()(config.artifact.aws.client)
       val relativeObjects = objects.map{ obj => obj.relativeTo(artifact) -> obj}
-      Ok(views.html.artifact.listFiles(request, projectName, id, relativeObjects))
+      Ok(views.html.artifact.listFiles(config, menu)(request, projectName, id, relativeObjects))
     } getOrElse {
       NotFound("Project not found")
     }
   }
 
   def getArtifactFile(key: String) = AuthAction { implicit request =>
-    val s3doc = Config.artifact.aws.client.getObject(new GetObjectRequest(Config.artifact.aws.bucketName, key))
+    val s3doc = config.artifact.aws.client.getObject(new GetObjectRequest(config.artifact.aws.bucketName, key))
     val stream = s3doc.getObjectContent
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(s3doc.getObjectMetadata.getContentType)

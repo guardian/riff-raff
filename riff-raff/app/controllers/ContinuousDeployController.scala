@@ -10,10 +10,19 @@ import java.util.UUID
 import org.joda.time.DateTime
 import ci.{ContinuousDeploymentConfig, Trigger}
 import com.gu.googleauth.AuthAction
+import conf.Config
 import persistence.ContinuousDeploymentConfigRepository
 import resources.PrismLookup
+import utils.ChangeFreeze
 
-class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthAction[AnyContent], val controllerComponents: ControllerComponents)(implicit val wsClient: WSClient)
+class ContinuousDeployController(config: Config,
+                                 menu: Menu,
+                                 changeFreeze: ChangeFreeze,
+                                 prismLookup: PrismLookup,
+                                 authAction: AuthAction[AnyContent],
+                                 continuousDeploymentConfigRepository: ContinuousDeploymentConfigRepository,
+                                 val controllerComponents: ControllerComponents)
+                                (implicit val wsClient: WSClient)
   extends BaseController with Logging with I18nSupport {
   import ContinuousDeployController._
 
@@ -28,30 +37,30 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
   )
 
   def list = authAction { implicit request =>
-    val configs = ContinuousDeploymentConfigRepository.getContinuousDeploymentList().sortBy(q => (q.projectName, q.stage))
-    Ok(views.html.continuousDeployment.list(request, configs))
+    val configs = continuousDeploymentConfigRepository.getContinuousDeploymentList().sortBy(q => (q.projectName, q.stage))
+    Ok(views.html.continuousDeployment.list(config, menu)(changeFreeze)(request, configs))
   }
 
   def form = authAction { implicit request =>
-    Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","",None,Trigger.SuccessfulBuild.id)), prismLookup))
+    Ok(views.html.continuousDeployment.form(config, menu)(continuousDeploymentForm.fill(ConfigForm(UUID.randomUUID(),"","",None,Trigger.SuccessfulBuild.id)), prismLookup))
   }
 
   def save = authAction { implicit request =>
     continuousDeploymentForm.bindFromRequest().fold(
-      formWithErrors => Ok(views.html.continuousDeployment.form(formWithErrors, prismLookup)),
+      formWithErrors => Ok(views.html.continuousDeployment.form(config, menu)(formWithErrors, prismLookup)),
       form => {
         val config = ContinuousDeploymentConfig(
           form.id, form.projectName, form.stage, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
-        ContinuousDeploymentConfigRepository.setContinuousDeployment(config)
+        continuousDeploymentConfigRepository.setContinuousDeployment(config)
         Redirect(routes.ContinuousDeployController.list())
       }
     )
   }
 
   def edit(id: String) = authAction { implicit request =>
-    ContinuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ config =>
-      Ok(views.html.continuousDeployment.form(continuousDeploymentForm.fill(ConfigForm(config)), prismLookup))
+    continuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ deploymentConfig =>
+      Ok(views.html.continuousDeployment.form(config, menu)(continuousDeploymentForm.fill(ConfigForm(deploymentConfig)), prismLookup))
     }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
   }
 
@@ -60,7 +69,7 @@ class ContinuousDeployController(prismLookup: PrismLookup, authAction: AuthActio
       errors => {},
       {
         case "delete" =>
-          ContinuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
+          continuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
       }
     )
     Redirect(routes.ContinuousDeployController.list())

@@ -1,4 +1,5 @@
-@(implicit request: Request[AnyContent], record: deployment.Record, verbose:Boolean)
+@import conf.Config
+@(config: Config, menu: Menu)(implicit request: Request[AnyContent], record: deployment.Record, verbose: Boolean)
 
 @mainNoAuth("Report test", request) {
     <!-- verbose @verbose -->
@@ -14,4 +15,4 @@
     <div class="content">
     @deploy.logContent(record)
     </div>
-}
+}(config, menu)
