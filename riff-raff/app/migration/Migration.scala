@@ -10,7 +10,6 @@ import persistence.{DataStore, MongoFormat, LogDocument, DeployRecordDocument}
 import scalaz.zio._
 import scalaz.zio.internal.Executor
 import scalaz.zio.duration._
-import scalaz.zio.console._
 import scala.concurrent.{Future, Promise}
 
 class Migration(config: Config, datastore: DataStore) extends Lifecycle with Logging {
