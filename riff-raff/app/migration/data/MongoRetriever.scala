@@ -7,7 +7,7 @@ import persistence.{ DataStore, DeployRecordDocument, LogDocument, MongoFormat }
 import scalaz.zio.{IO, Queue}
 import org.joda.time.DateTime
 
-trait MongoRetriever[A] {
+trait MongoRetriever[A] extends controllers.Logging {
   implicit def F: MongoFormat[A]
 
   def getCount: IO[MigrationError, Int]
@@ -21,6 +21,7 @@ trait MongoRetriever[A] {
       if (max <= 0)
         IO.unit
       else
+        IO.sync(log.info(s"Getting ${size} items starting at ${startId}")) *>
         getItems(PaginationView(Some(size), page), startId)
           // `size` may be larger than `max`, 
           .map(_.take(max))
