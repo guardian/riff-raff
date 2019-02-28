@@ -38,8 +38,8 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     ) { _ => 
       Postgres.disconnect
     } { _ => 
-      run("apiKeys", MongoRetriever.apiKeyRetriever(datastore), settings.limit) *>
-        run("auth", MongoRetriever.authRetriever(datastore), settings.limit) *>
+      // run("apiKeys", MongoRetriever.apiKeyRetriever(datastore), settings.limit) *>
+      //   run("auth", MongoRetriever.authRetriever(datastore), settings.limit) *>
         run("deployV2", MongoRetriever.deployRetriever(datastore), settings.limit) *>
         run("deployV2Logs", MongoRetriever.logRetriever(datastore), settings.limit)
     }
