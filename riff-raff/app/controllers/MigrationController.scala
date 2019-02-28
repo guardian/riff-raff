@@ -65,7 +65,7 @@ class MigrationController(
   def dryRun(settings: MigrationParameters) = AuthAction.async { implicit request => 
     val rts = new RTS {}
 
-    val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
+    val ioprogram: IO[MigrationError, List[PreviewResponse]] = 
       IO.foreach(List("deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
           // case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
@@ -91,11 +91,11 @@ class MigrationController(
     mongoTable: String, 
     retriever: MongoRetriever[A], 
     limit: Option[Int]
-  ): IO[MigrationError, List[PreviewResponse]] =
+  ): IO[MigrationError, PreviewResponse] =
     for {
       vals <- PreviewInterpreter.migrate(retriever, limit)
       (_, reader, writer, r1) = vals
       _ <- reader.join
       responses <- writer.join
-    } yield r1 :: responses
+    } yield PreviewInterpreter.combine(responses, r1)
 }

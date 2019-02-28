@@ -12,6 +12,9 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
   
   val WINDOW_SIZE = 1000
 
+  def zero = ()
+  def combine(r1: Unit, r2: Unit) = ()
+
   def deleteTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
     IO.sync(log.info("Creating table")) *>
       IO.blocking {

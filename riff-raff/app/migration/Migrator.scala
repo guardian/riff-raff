@@ -12,11 +12,14 @@ trait Migrator[Response] extends controllers.Logging {
 
   def deleteTable(pgTable: ToPostgres[_]): IO[MigrationError, Response]
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Response]
+
+  def zero: Response
+  def combine(r1: Response, r2: Response): Response
   
   def migrate[A: MongoFormat: ToPostgres](
     retriever: MongoRetriever[A], 
     limit: Option[Int]
-  ): IO[MigrationError, (Ref[Int], Fiber[MigrationError, _], Fiber[MigrationError, List[Response]], Response)] =
+  ): IO[MigrationError, (Ref[Int], Fiber[MigrationError, _], Fiber[MigrationError, Response], Response)] =
     for {
       // n is the maximum number of items we want to retrieve, by default the whole table
       n <- retriever.getCount.map(max => limit.map(Math.min(max, _)).getOrElse(max))
@@ -30,8 +33,8 @@ trait Migrator[Response] extends controllers.Logging {
       f2 <- insertAllItems(q, cpt, window).fork
     } yield (cpt, f1, f2, r)
 
-  def insertAllItems[A: ToPostgres](queue: Queue[A], counter: Ref[Int], window: Int): IO[MigrationError, List[Response]] = {
-    def loop(resps: List[Response]): IO[MigrationError, List[Response]] = {
+  def insertAllItems[A: ToPostgres](queue: Queue[A], counter: Ref[Int], window: Int): IO[MigrationError, Response] = {
+    def loop(resps: Response): IO[MigrationError, Response] = {
       def loop_in(n: Int): IO[MigrationError, List[A]] =
         queue.takeUpTo(window).flatMap { items =>
           if (items.length >= n)
@@ -52,9 +55,9 @@ trait Migrator[Response] extends controllers.Logging {
             IO.flatten(counter.modify { n => 
               val op = insertAll(ToPostgres[A], items).flatMap { r => 
                 if (n - items.length <= 0)
-                  IO.succeed(r :: resps)
+                  IO.succeed(combine(resps, r))
                 else
-                  loop(r :: resps)
+                  loop(combine(resps, r))
               }
               (op, n - items.length)
             })
@@ -63,7 +66,7 @@ trait Migrator[Response] extends controllers.Logging {
       } yield rs
     }
 
-    loop(Nil)
+    loop(zero)
   }
     
 }
