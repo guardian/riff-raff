@@ -6,7 +6,7 @@ import persistence.MongoFormat
 import cats._, cats.implicits._
 import scalaz.zio.{ Fiber, IO, App, Ref, Queue, Exit }
 
-trait Migrator[Response] {
+trait Migrator[Response] extends controllers.Logging {
 
   def WINDOW_SIZE: Int
 
@@ -20,6 +20,7 @@ trait Migrator[Response] {
     for {
       // n is the maximum number of items we want to retrieve, by default the whole table
       n <- retriever.getCount.map(max => limit.map(Math.min(max, _)).getOrElse(max))
+      _ <- IO.sync(log.info(s"$n items to migrate"))
       window = Math.min(n, WINDOW_SIZE)
       cpt <- Ref.make(n)
       r <- deleteTable(ToPostgres[A])
