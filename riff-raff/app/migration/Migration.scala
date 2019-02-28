@@ -58,7 +58,7 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     (for {
       _ <- IO.sync(log.info(s"Migrating $mongoTable..."))
       vals <- MigrateInterpreter.migrate(retriever, limit)
-      (counter, reader, writer, _, _) = vals
+      (counter, reader, writer, _) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)
       _ <- progress.interrupt

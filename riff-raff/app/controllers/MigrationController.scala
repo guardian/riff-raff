@@ -94,8 +94,8 @@ class MigrationController(
   ): IO[MigrationError, List[PreviewResponse]] =
     for {
       vals <- PreviewInterpreter.migrate(retriever, limit)
-      (_, reader, writer, r1, r2) = vals
+      (_, reader, writer, r1) = vals
       _ <- reader.join
       responses <- writer.join
-    } yield r1 :: r2 :: responses
+    } yield r1 :: responses
 }

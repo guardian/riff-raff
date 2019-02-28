@@ -15,11 +15,8 @@ object PreviewInterpreter extends Migrator[PreviewResponse] {
 
   val WINDOW_SIZE = 1000
 
-  def dropTable(pgTable: ToPostgres[_]) =
-    IO.succeed(DropTable(pgTable.drop.statement))
-
-  def createTable(pgTable: ToPostgres[_]) =
-    IO.succeed(CreateTable(pgTable.create.statement))
+  def deleteTable(pgTable: ToPostgres[_]) =
+    IO.succeed(CreateTable(pgTable.delete.statement))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]) =
     IO.foreach(records){ record =>

@@ -10,8 +10,7 @@ trait ToPostgres[A] {
   def json(a: A): JsValue
   def tableName: String
   def id: String
-  def drop: SQL[Nothing, NoExtractor]
-  def create: SQL[Nothing, NoExtractor]
+  def delete: SQL[Nothing, NoExtractor]
   def insert(key: K, json: String): SQL[Nothing, NoExtractor]
 }
 

@@ -12,17 +12,13 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
   
   val WINDOW_SIZE = 1000
 
-  def dropTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
-    IO.sync(log.info("Dropping table")) *>
+  def deleteTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
+    IO.sync(log.info("Creating table")) *>
       IO.blocking {
         DB autoCommit { implicit session =>
-          pgTable.drop.execute.apply()
+          pgTable.delete.execute.apply()
         }
-        ()
-      } mapError(DatabaseError(_))
-
-  def createTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
-    IO.sync(log.info("Creating table")) *> IO.blocking(pgTable.create).void.mapError(DatabaseError(_))
+      }.void mapError(DatabaseError(_))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
