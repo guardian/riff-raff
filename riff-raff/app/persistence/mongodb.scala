@@ -200,9 +200,9 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
   }
 
   override def countLogsFromDate(): Int = {
-    deployLogCollection.find(MongoDBObject(
+    deployLogCollection.count(MongoDBObject(
       "time" -> MongoDBObject("$gte" -> deployLogDateFrom)
-    )).count()
+    ))
   }
 
   override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[List[SimpleDeployDetail]](None,Nil){
