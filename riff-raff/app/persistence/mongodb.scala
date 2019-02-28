@@ -194,8 +194,8 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
   val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
   override def readAllLogs(pageSize: Int, startId: Option[UUID]): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
     val cursor = startId.fold(deployLogCollection.find())(startId => deployLogCollection.find(MongoDBObject(
-      "id" -> MongoDBObject("$gt" -> startId)
-    ))).sort(MongoDBObject("id" -> 1)).limit(pageSize)
+      "deploy" -> MongoDBObject("$gt" -> startId)
+    ))).sort(MongoDBObject("deploy" -> 1)).limit(pageSize)
     cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
   }
 
