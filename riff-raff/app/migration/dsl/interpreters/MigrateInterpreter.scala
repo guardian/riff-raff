@@ -22,13 +22,7 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
       } mapError(DatabaseError(_))
 
   def createTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
-    IO.sync(log.info("Creating table")) *>
-      IO.blocking {
-        DB autoCommit { implicit session =>
-          pgTable.create.execute.apply()
-        }
-        ()
-      } mapError(DatabaseError(_))
+    IO.sync(log.info("Creating table")) *> IO.blocking(pgTable.create).void.mapError(DatabaseError(_))
 
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
     IO.sync(log.info(s"Inserting ${records.length} items")) *>

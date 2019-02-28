@@ -23,7 +23,11 @@ package object data {
     val id = "id"
     val idType = ColString(32, false)
     val drop = sql"DROP TABLE IF EXISTS apiKey"
-    val create = sql"CREATE TABLE apiKey (key varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
+    def create = 
+      DB localTx { implicit session =>
+        sql"CREATE TABLE apiKey (key varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
+        sql"CREATE INDEX ON apiKey ((content ->> 'application'))"
+      }
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO apiKey VALUES ($key, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb"
   }
@@ -36,7 +40,10 @@ package object data {
     val id = "email"
     val idType = ColString(100, true)
     val drop = sql"DROP TABLE IF EXISTS auth"
-    val create = sql"CREATE TABLE auth (email varchar(100) PRIMARY KEY, content jsonb NOT NULL)"
+    def create = 
+      DB autoCommit { implicit session =>
+        sql"CREATE TABLE auth (email varchar(100) PRIMARY KEY, content jsonb NOT NULL)"
+      }
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO auth VALUES ($key, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb"
   }
@@ -49,7 +56,14 @@ package object data {
     val id = "id"
     val idType = ColUUID
     val drop = sql"DROP TABLE IF EXISTS deploy"
-    val create = sql"CREATE TABLE deploy (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def create = 
+      DB localTx { implicit session =>
+        sql"CREATE TABLE deploy (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+        sql"CREATE INDEX ON deploy ((content ->> 'startTime'))"
+        sql"CREATE INDEX ON deploy ((content ->> 'status'))"
+        sql"CREATE INDEX ON deploy ((content -> 'parameters' ->> 'projectName'))"
+      }
+    
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO deploy VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
@@ -62,7 +76,13 @@ package object data {
     val id = "id"
     val idType = ColUUID
     val drop = sql"DROP TABLE IF EXISTS deployLog"
-    val create = sql"CREATE TABLE deployLog (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def create = 
+      DB localTx { implicit session =>
+        sql"CREATE TABLE deployLog (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+        sql"CREATE INDEX ON deployLog ((content ->> 'time'))"
+        sql"CREATE INDEX ON deployLog ((content ->> 'deploy'))"
+      }
+
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO deployLog VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
