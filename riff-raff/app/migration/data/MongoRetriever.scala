@@ -45,7 +45,7 @@ object MongoRetriever {
   def logRetriever(datastore: DataStore)(implicit F0: MongoFormat[LogDocument]) = new MongoRetriever[LogDocument] {
     val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
     val F = F0
-    val getCount = IO.blocking(datastore.countLogsFromDate()).mapError(DatabaseError)
+    val getCount = IO.blocking(datastore.collectionStats.get("deployV2Logs").map(_.documentCount.toInt).getOrElse(0)).mapError(DatabaseError)
     def getItems(pagination: PaginationView) =
       IO.blocking { datastore.readAllLogs(pagination) }.absolve.mapError(DatabaseError)
   }

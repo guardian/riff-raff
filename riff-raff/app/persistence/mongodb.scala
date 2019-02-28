@@ -193,9 +193,7 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
 
   val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
   override def readAllLogs(pagination: PaginationView): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
-    val cursor = deployLogCollection.find(MongoDBObject(
-      "time" -> MongoDBObject("$gte" -> deployLogDateFrom)
-    )).sort(MongoDBObject("time" -> -1)).pagination(pagination)
+    val cursor = deployLogCollection.find().pagination(pagination)
     cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
   }
 
