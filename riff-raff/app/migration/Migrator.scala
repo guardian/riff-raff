@@ -47,6 +47,7 @@ trait Migrator[Response] extends controllers.Logging {
 
       for {
         n <- counter.get
+        _ <- IO.sync(log.info(s"$n items remaining to insert"))
         rs <- if (n <= 0)
           IO.succeed(resps)
         else {
