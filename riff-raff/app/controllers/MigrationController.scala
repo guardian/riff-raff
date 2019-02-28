@@ -26,8 +26,6 @@ class MigrationController(
   val config: Config
 ) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
-  val WINDOW_SIZE = 100
-
   def form = AuthAction { implicit request =>
     Ok(views.html.migrations.form(MigrationParameters.form, datastore.collectionStats)(config, menu))
   }
