@@ -13,6 +13,7 @@ import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
 import org.joda.time.{DateTime, Period}
+import org.bson.types.MinKey
 
 trait MongoSerialisable[A] {
 
@@ -192,11 +193,11 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
     }
 
   val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
-  override def readAllLogs(pageSize: Int, startId: Option[UUID]): Either[Throwable, Iterable[LogDocument]] = Either.catchNonFatal {
-    val cursor = startId.fold(deployLogCollection.find())(startId => deployLogCollection.find(MongoDBObject(
-      "deploy" -> MongoDBObject("$gt" -> startId)
-    ))).sort(MongoDBObject("deploy" -> 1)).limit(pageSize)
-    cursor.toIterable.flatMap { LogDocument.fromDBO(_) }
+  override def readAllLogs(pageSize: Int, startId: Option[ObjectId]): Either[Throwable, (Iterable[LogDocument], Option[ObjectId])] = Either.catchNonFatal {
+    val cursor = deployLogCollection.find(MongoDBObject(
+      "_id" -> MongoDBObject("$gt" -> startId.getOrElse(new MinKey()))
+    )).sort(MongoDBObject("_id" -> 1)).limit(pageSize).toIterable
+    (cursor.flatMap { LogDocument.fromDBO(_) }, cursor.lastOption.map(_.as[ObjectId]("_id")))
   }
 
   override def countLogsFromDate(): Int = {

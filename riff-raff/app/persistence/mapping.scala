@@ -12,6 +12,7 @@ import magenta.ContextMessage._
 import magenta._
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.DateTime
+import org.bson.types.ObjectId
 import persistence.DeploymentSelectorDocument._
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState, messages:List[MessageWrapper] = Nil) extends Logging {
@@ -111,7 +112,7 @@ trait DocumentStore {
   def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit
   def readDeploy(uuid: UUID): Option[DeployRecordDocument] = None
   def readLogs(uuid: UUID): List[LogDocument] = Nil
-  def readAllLogs(pageSize: Int, startId: Option[UUID]): Either[Throwable, Iterable[LogDocument]] = Right(Nil)
+  def readAllLogs(pageSize: Int, startId: Option[ObjectId]): Either[Throwable, (Iterable[LogDocument], Option[ObjectId])] = Right((Nil, None))
   def countLogsFromDate(): Int = 0
   def getDeployUUIDs(limit: Int = 0): List[SimpleDeployDetail] = Nil
   def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, List[DeployRecordDocument]] = Right(Nil)
