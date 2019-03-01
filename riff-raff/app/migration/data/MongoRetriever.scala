@@ -2,64 +2,67 @@ package migration.data
 
 import controllers.{ ApiKey, AuthorisationRecord }
 import deployment.PaginationView
+import java.util.UUID
 import persistence.{ DataStore, DeployRecordDocument, LogDocument, MongoFormat }
 import scalaz.zio.{IO, Queue}
+import org.joda.time.DateTime
+import org.bson.types.ObjectId
 
-trait MongoRetriever[A] {
+trait MongoRetriever[A] extends controllers.Logging {
   implicit def F: MongoFormat[A]
 
-  def getCount: IO[Nothing, Int]
+  def getCount: IO[MigrationError, Int]
 
-  def getItems(pagination: PaginationView): IO[MigrationError, Iterable[A]]
+  def getItems(pagination: PaginationView, startId: Option[ObjectId]): IO[MigrationError, (Iterable[A], Option[ObjectId])]
 
   def getAllItems(queue: Queue[A], size: Int, max: Int): IO[MigrationError, _] = {
-    def loop(page: Int, max: Int): IO[MigrationError, _] =
+    def loop(page: Int, max: Int, startId: Option[ObjectId]): IO[MigrationError, _] =
       if (max <= 0)
         IO.unit
       else
-        getItems(PaginationView(Some(size), page))
-          // `size` may be larger than `max`, 
-          .map(_.take(max))
-          .flatMap { items =>
+        IO.sync(log.info(s"Getting ${size} items starting at ${startId}")) *>
+        getItems(PaginationView(Some(size), page), startId)
+          .flatMap { case (items, nextId) =>
             // we may also get less elements than required
             // which indicates the end of the table
             if (items.size < size)
               queue.offerAll(items)
             else
-              queue.offerAll(items) *> loop(page + 1, max - items.size)
+              queue.offerAll(items) *> loop(page + 1, max - items.size, nextId)
           }
 
-    loop(1, max)
+    loop(1, max, None)
   }
 }
 
 object MongoRetriever {
   def deployRetriever(datastore: DataStore)(implicit F0: MongoFormat[DeployRecordDocument]) = new MongoRetriever[DeployRecordDocument] {
     val F = F0
-    val getCount = IO.sync(datastore.collectionStats.get("deployV2").map(_.documentCount.toInt).getOrElse(0))
-    def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { datastore.getDeploys(None, pagination) })).unyielding.leftMap(DatabaseError)
+    val getCount = IO.blocking(datastore.collectionStats.get("deployV2").map(_.documentCount.toInt).getOrElse(0)).mapError(DatabaseError)
+    def getItems(pagination: PaginationView, startId: Option[ObjectId]) =
+      IO.blocking { datastore.getDeploys(None, pagination) }.absolve.mapError(DatabaseError).map((_, None))
     }
     
   def logRetriever(datastore: DataStore)(implicit F0: MongoFormat[LogDocument]) = new MongoRetriever[LogDocument] {
+    val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
     val F = F0
-    val getCount = IO.sync(datastore.collectionStats.get("deployV2Logs").map(_.documentCount.toInt).getOrElse(0))
-    def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { datastore.readAllLogs(pagination) })).unyielding.leftMap(DatabaseError)
+    val getCount = IO.blocking(datastore.collectionStats.get("deployV2Logs").map(_.documentCount.toInt).getOrElse(0)).mapError(DatabaseError)
+    def getItems(pagination: PaginationView, startId: Option[ObjectId]) =
+      IO.blocking { datastore.readAllLogs(pagination.pageSize.get, startId) }.absolve.mapError(DatabaseError)
   }
   
   def authRetriever(datastore: DataStore)(implicit F0: MongoFormat[AuthorisationRecord]) = new MongoRetriever[AuthorisationRecord] {
     val F = F0
-    val getCount = IO.sync(datastore.collectionStats.get("auth").map(_.documentCount.toInt).getOrElse(0))
-    def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { datastore.getAuthorisationList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
+    val getCount = IO.blocking(datastore.collectionStats.get("auth").map(_.documentCount.toInt).getOrElse(0)).mapError(DatabaseError)
+    def getItems(pagination: PaginationView, startId: Option[ObjectId]) =
+      IO.blocking { datastore.getAuthorisationList(Some(pagination)) }.absolve.mapError(DatabaseError).map((_, None))
   }
   
   def apiKeyRetriever(datastore: DataStore)(implicit F0: MongoFormat[ApiKey]) = new MongoRetriever[ApiKey] {
     val F = F0
-    val getCount = IO.sync(datastore.collectionStats.get("apiKeys").map(_.documentCount.toInt).getOrElse(0))
-    def getItems(pagination: PaginationView) =
-      IO.flatten(IO.sync(IO.fromEither { datastore.getApiKeyList(Some(pagination)) })).unyielding.leftMap(DatabaseError)
+    val getCount = IO.blocking(datastore.collectionStats.get("apiKeys").map(_.documentCount.toInt).getOrElse(0)).mapError(DatabaseError)
+    def getItems(pagination: PaginationView, startId: Option[ObjectId]) =
+      IO.blocking { datastore.getApiKeyList(Some(pagination)) }.absolve.mapError(DatabaseError).map((_, None))
   }
 
 }

@@ -14,7 +14,7 @@ import migration._
 import migration.data._
 import migration.dsl._
 import migration.dsl.interpreters._
-import scalaz.zio.{ Fiber, IO, RTS, ExitResult, Ref, FiberFailure }
+import scalaz.zio.{ Fiber, IO, RTS, Exit, Ref, FiberFailure }
 import scala.concurrent.Promise
 
 class MigrationController(
@@ -25,8 +25,6 @@ class MigrationController(
   val menu: Menu,
   val config: Config
 ) extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
-
-  val WINDOW_SIZE = 100
 
   def form = AuthAction { implicit request =>
     Ok(views.html.migrations.form(MigrationParameters.form, datastore.collectionStats)(config, menu))
@@ -65,11 +63,11 @@ class MigrationController(
   def dryRun(settings: MigrationParameters) = AuthAction.async { implicit request => 
     val rts = new RTS {}
 
-    val ioprogram: IO[MigrationError, List[List[PreviewResponse]]] = 
-      IO.traverse(List("apiKeys", "auth", "deployV2", "deployV2Logs")) { mongoTable =>
+    val ioprogram: IO[MigrationError, List[PreviewResponse]] = 
+      IO.foreach(List("deployV2", "deployV2Logs")) { mongoTable =>
         mongoTable match {
-          case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
-          case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
+          // case "apiKeys"      => run(mongoTable, MongoRetriever.apiKeyRetriever(datastore), settings.limit)
+          // case "auth"         => run(mongoTable, MongoRetriever.authRetriever(datastore), settings.limit)
           case "deployV2"     => run(mongoTable, MongoRetriever.deployRetriever(datastore), settings.limit)
           case "deployV2Logs" => run(mongoTable, MongoRetriever.logRetriever(datastore), settings.limit)
           case _ =>
@@ -80,8 +78,8 @@ class MigrationController(
     val promise = Promise[Result]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(responses) => promise.success(Ok(views.html.migrations.preview(responses)(config, menu)))
-      case ExitResult.Failed(t) => promise.success(InternalServerError(views.html.errorPage(config)(new FiberFailure(t))))
+      case Exit.Success(responses) => promise.success(Ok(views.html.migrations.preview(responses)(config, menu)))
+      case Exit.Failure(t) => promise.success(InternalServerError(views.html.errorPage(config)(new FiberFailure(t))))
     }
 
     promise.future
@@ -91,11 +89,11 @@ class MigrationController(
     mongoTable: String, 
     retriever: MongoRetriever[A], 
     limit: Option[Int]
-  ): IO[MigrationError, List[PreviewResponse]] =
+  ): IO[MigrationError, PreviewResponse] =
     for {
       vals <- PreviewInterpreter.migrate(retriever, limit)
-      (_, reader, writer, r1, r2) = vals
+      (_, reader, writer, r1) = vals
       _ <- reader.join
       responses <- writer.join
-    } yield r1 :: r2 :: responses
+    } yield PreviewInterpreter.combine(responses, r1)
 }

@@ -12,31 +12,27 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
   
   val WINDOW_SIZE = 1000
 
-  def dropTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
-    IO.sync(log.info("Dropping table")) *>
-      IO.syncThrowable {
-        DB autoCommit { implicit session =>
-          pgTable.drop.execute.apply()
-        }
-        ()
-      }.unyielding leftMap(DatabaseError(_))
+  def zero = ()
+  def combine(r1: Unit, r2: Unit) = ()
 
-  def createTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
+  def deleteTable(pgTable: ToPostgres[_]): IO[MigrationError, Unit] =
     IO.sync(log.info("Creating table")) *>
-      IO.syncThrowable {
+      IO.blocking {
         DB autoCommit { implicit session =>
-          pgTable.create.execute.apply()
+          pgTable.delete.execute.apply()
         }
-        ()
-      }.unyielding leftMap(DatabaseError(_))
+      }.void mapError(DatabaseError(_))
 
-  def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] =
+  def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] = {
+    val keyJsonPairs = records.map(rec => pgTable.key(rec) -> Json.stringify(pgTable.json(rec)))
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
-      IO.traverse(records) { record =>
-        IO.syncThrowable {
+      IO.foreach(keyJsonPairs.grouped(200).toList) { records =>
+        IO.blocking {
           DB localTx { implicit session =>
-            pgTable.insert(pgTable.key(record), Json.stringify(pgTable.json(record))).update.apply()
+            records.foreach { case (key, json) => pgTable.insert(key, json).update.apply() }
           }
-        }.unyielding leftMap(DatabaseError(_))
+        } mapError(DatabaseError(_))
       }.void
+      
+    }
 }

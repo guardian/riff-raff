@@ -10,7 +10,7 @@ object Postgres {
     IO.syncThrowable {
       Class.forName("org.postgresql.Driver")
       ConnectionPool.singleton(db, user, password)
-    } leftMap(DatabaseError(_))
+    } mapError(DatabaseError(_))
 
   val disconnect: IO[Nothing, Unit] = IO.sync(ConnectionPool.closeAll())
 }

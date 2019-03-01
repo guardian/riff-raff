@@ -22,12 +22,12 @@ package object data {
     val tableName = "apiKey"
     val id = "id"
     val idType = ColString(32, false)
-    val drop = sql"DROP TABLE IF EXISTS apiKey"
-    val create = sql"CREATE TABLE apiKey (key varchar(32) PRIMARY KEY, content jsonb NOT NULL)"
+    def delete =
+      sql"DELETE FROM apiKey"
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO apiKey VALUES ($key, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb"
   }
-
+    
   implicit val authPE: ToPostgres[AuthorisationRecord] = new ToPostgres[AuthorisationRecord] {
     type K = String
     def key(a: AuthorisationRecord) = a.email
@@ -35,8 +35,8 @@ package object data {
     val tableName = "auth"
     val id = "email"
     val idType = ColString(100, true)
-    val drop = sql"DROP TABLE IF EXISTS auth"
-    val create = sql"CREATE TABLE auth (email varchar(100) PRIMARY KEY, content jsonb NOT NULL)"
+    def delete =
+      sql"DELETE FROM auth"
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO auth VALUES ($key, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb"
   }
@@ -48,8 +48,8 @@ package object data {
     val tableName = "deploy"
     val id = "id"
     val idType = ColUUID
-    val drop = sql"DROP TABLE IF EXISTS deploy"
-    val create = sql"CREATE TABLE deploy (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def delete =
+      sql"DELETE FROM deploy"
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO deploy VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }
@@ -61,8 +61,8 @@ package object data {
     val tableName = "deployLog"
     val id = "id"
     val idType = ColUUID
-    val drop = sql"DROP TABLE IF EXISTS deployLog"
-    val create = sql"CREATE TABLE deployLog (id uuid PRIMARY KEY, content jsonb NOT NULL)"
+    def delete =
+      sql"DELETE FROM deployLog"
     def insert(key: K, json: String): SQL[Nothing, NoExtractor] =
       sql"INSERT INTO deployLog VALUES ($key::uuid, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb"
   }

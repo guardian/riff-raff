@@ -38,17 +38,17 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     ) { _ => 
       Postgres.disconnect
     } { _ => 
-      run("apiKeys", MongoRetriever.apiKeyRetriever(datastore), settings.limit) *>
-        run("auth", MongoRetriever.authRetriever(datastore), settings.limit) *>
-        run("deployV2", MongoRetriever.deployRetriever(datastore), settings.limit) *>
+      // run("apiKeys", MongoRetriever.apiKeyRetriever(datastore), settings.limit) *>
+      //   run("auth", MongoRetriever.authRetriever(datastore), settings.limit) *>
+        // run("deployV2", MongoRetriever.deployRetriever(datastore), settings.limit) *>
         run("deployV2Logs", MongoRetriever.logRetriever(datastore), settings.limit)
     }
 
     val promise = Promise[Unit]()
 
     rts.unsafeRunAsync(ioprogram) {
-      case ExitResult.Succeeded(_) => promise.success(())
-      case ExitResult.Failed(t) => promise.failure(new FiberFailure(t))
+      case Exit.Success(_) => promise.success(())
+      case Exit.Failure(t) => promise.failure(new FiberFailure(t))
     }
 
     promise.future
@@ -58,7 +58,7 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     (for {
       _ <- IO.sync(log.info(s"Migrating $mongoTable..."))
       vals <- MigrateInterpreter.migrate(retriever, limit)
-      (counter, reader, writer, _, _) = vals
+      (counter, reader, writer, _) = vals
       progress <- monitor(mongoTable, counter).fork
       _ <- Fiber.joinAll(reader :: writer :: Nil)
       _ <- progress.interrupt
@@ -69,7 +69,7 @@ class Migration(config: Config, datastore: DataStore) extends Lifecycle with Log
     }
 
   def monitor(mongoTable: String, counter: Ref[Int]): IO[Nothing, Unit] =
-    (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / n } } *> IO.sleep(Migration.interval))
+    (counter.get.flatMap { n => IO.sync { status += mongoTable -> 100 / Math.max(n, 1) } } *> IO.sleep(Migration.interval))
       .forever
       .ensuring(IO.sync(status.foreach { case (k, v) => status += k -> 100 }))
 
