@@ -26,10 +26,13 @@ object MigrateInterpreter extends Migrator[Unit] with controllers.Logging {
   def insertAll[A](pgTable: ToPostgres[A], records: List[A]): IO[MigrationError, Unit] = {
     val keyJsonPairs = records.map(rec => pgTable.key(rec) -> Json.stringify(pgTable.json(rec)))
     IO.sync(log.info(s"Inserting ${records.length} items")) *>
-      IO.blocking {
-        DB localTx { implicit session =>
-          keyJsonPairs.foreach { case (key, json) => pgTable.insert(key, json).update.apply() }
-        }
-      }.void mapError(DatabaseError(_))
+      IO.foreach(keyJsonPairs.grouped(200).toList) { records =>
+        IO.blocking {
+          DB localTx { implicit session =>
+            records.foreach { case (key, json) => pgTable.insert(key, json).update.apply() }
+          }
+        } mapError(DatabaseError(_))
+      }.void
+      
     }
 }
