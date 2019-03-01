@@ -45,7 +45,6 @@ class Menu(config: Config) {
     SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
     SingleMenuItem("History", routes.DeployController.history()),
     SingleMenuItem("Deploy", routes.DeployController.deploy()),
-    SingleMenuItem("Migrate", routes.MigrationController.form()),
     DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
