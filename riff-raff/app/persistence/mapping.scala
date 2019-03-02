@@ -12,7 +12,6 @@ import magenta.ContextMessage._
 import magenta._
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.DateTime
-import org.bson.types.ObjectId
 import persistence.DeploymentSelectorDocument._
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState, messages:List[MessageWrapper] = Nil) extends Logging {

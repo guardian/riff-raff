@@ -2,9 +2,6 @@ package persistence
 
 import java.util.UUID
 
-import com.mongodb.DBObject
-import com.mongodb.casbah.commons.Implicits._
-import com.mongodb.casbah.commons.{MongoDBList, MongoDBObject}
 import magenta.ContextMessage._
 import magenta.Message._
 import magenta._
@@ -25,7 +22,7 @@ case class DeployRecordDocument(uuid: UUID,
                                 lastActivityTime: Option[DateTime] = None,
                                 hasWarnings: Option[Boolean] = None)
 
-object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
+object DeployRecordDocument {
   implicit def formats: Format[DeployRecordDocument] = Json.format[DeployRecordDocument]
 
   def apply(res: WrappedResultSet): DeployRecordDocument = Json.parse(res.string(1)).as[DeployRecordDocument]
@@ -34,46 +31,9 @@ object DeployRecordDocument extends MongoSerialisable[DeployRecordDocument] {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
   }
 
-  implicit val deployFormat: MongoFormat[DeployRecordDocument] = new DeployMongoFormat
-  private class DeployMongoFormat extends MongoFormat[DeployRecordDocument] {
-    def toDBO(a: DeployRecordDocument) = {
-      val fields:List[(String,Any)] =
-        List(
-          "_id" -> a.uuid,
-          "startTime" -> a.startTime,
-          "parameters" -> a.parameters.toDBO,
-          "status" -> a.status.toString
-        ) ++ a.stringUUID.map("stringUUID" ->) ++ a.summarised.map("summarised" -> _) ++
-             a.totalTasks.map("totalTasks" ->) ++ a.completedTasks.map("completedTasks" ->) ++
-             a.lastActivityTime.map("lastActivityTime" ->) ++ a.hasWarnings.map("hasWarnings" ->)
-      fields.toMap
-    }
-    def fromDBO(dbo: MongoDBObject) =
-      ParametersDocument.fromDBO(dbo.as[DBObject]("parameters")).map { pd =>
-        val status = dbo.as[String]("status")
-        DeployRecordDocument(
-          uuid = dbo.as[UUID]("_id"),
-          stringUUID = dbo.getAs[String]("stringUUID"),
-          startTime = dbo.as[DateTime]("startTime"),
-          parameters = pd,
-          status = if (status.toLowerCase == "not running") RunState.NotRunning else RunState.withName(status),
-          summarised = dbo.getAs[Boolean]("summarised"),
-          totalTasks = dbo.getAs[Int]("totalTasks"),
-          completedTasks = dbo.getAs[Int]("completedTasks"),
-          lastActivityTime = dbo.getAs[DateTime]("lastActivityTime"),
-          hasWarnings = dbo.getAs[Boolean]("hasWarnings")
-        )
-      }
-  }
 }
 
-sealed trait DeploymentSelectorDocument {
-  def asDBObject: DBObject = {
-    val fields: List[(String,Any)] = List("_typeHint" -> getClass.getName) ++ dboFields
-    fields.toMap
-  }
-  def dboFields: List[(String,Any)]
-}
+sealed trait DeploymentSelectorDocument
 object DeploymentSelectorDocument {
   implicit def formats = new Format[DeploymentSelectorDocument] {
     override def writes(doc: DeploymentSelectorDocument): JsValue = doc match {
@@ -93,15 +53,6 @@ object DeploymentSelectorDocument {
         JsSuccess(AllDocument)
     }
   }
-
-  def from(dbo: DBObject): DeploymentSelectorDocument = {
-    dbo.as[String]("_typeHint").replace("$", "") match {
-      case "persistence.AllDocument" => AllDocument
-      case "persistence.DeploymentKeysSelectorDocument" => DeploymentKeysSelectorDocument(
-        dbo.as[List[DBObject]]("keys").flatMap(dbo => DeploymentKeyDocument.fromDBO(dbo))
-      )
-    }
-  }
 }
 
 case class ParametersDocument(
@@ -113,42 +64,12 @@ case class ParametersDocument(
   selector: DeploymentSelectorDocument
 )
 
-object ParametersDocument extends MongoSerialisable[ParametersDocument] {
+object ParametersDocument {
   implicit def formats: Format[ParametersDocument] = Json.format[ParametersDocument]
-
-  implicit val parametersFormat:MongoFormat[ParametersDocument] = new ParameterMongoFormat
-  private class ParameterMongoFormat extends MongoFormat[ParametersDocument] {
-    def toDBO(a: ParametersDocument) = {
-      val fields:List[(String,Any)] =
-        List(
-          "deployer" -> a.deployer,
-          "projectName" -> a.projectName,
-          "buildId" -> a.buildId,
-          "stage" -> a.stage,
-          "tags" -> a.tags,
-          "selector" -> a.selector.asDBObject
-        )
-      fields.toMap
-    }
-    def fromDBO(dbo: MongoDBObject) = Some(ParametersDocument(
-      deployer = dbo.as[String]("deployer"),
-      projectName = dbo.as[String]("projectName"),
-      buildId = dbo.as[String]("buildId"),
-      stage = dbo.as[String]("stage"),
-      tags = dbo.as[DBObject]("tags").map(entry => (entry._1, entry._2.asInstanceOf[String])).toMap,
-      selector = dbo.getAs[DBObject]("selector").map(DeploymentSelectorDocument.from).getOrElse(AllDocument)
-    ))
-  }
 }
 
 sealed trait MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message] = None): Message
-  def asDBObject:DBObject = {
-    val fields: List[(String,Any)] =
-      List("_typeHint" -> getClass.getName) ++ dboFields
-    fields.toMap
-  }
-  def dboFields: List[(String,Any)] = Nil
 }
 object MessageDocument {
 
@@ -201,24 +122,6 @@ object MessageDocument {
       case StartContext(_) => throw new IllegalArgumentException("StartContext can not be turned into a MessageDocument")
     }
   }
-
-  def from(dbo: DBObject): MessageDocument = {
-    import DetailConversions._
-    dbo.as[String]("_typeHint").replace("$", "") match {
-      case "persistence.DeployDocument" => DeployDocument
-      case "persistence.TaskListDocument" => TaskListDocument(dbo.as[MongoDBList]("taskList").flatMap(dbo => taskDetail.fromDBO(dbo.asInstanceOf[DBObject])).toList)
-      case "persistence.TaskRunDocument" => TaskRunDocument(taskDetail.fromDBO(dbo.as[DBObject]("task")).get)
-      case "persistence.InfoDocument" => InfoDocument(dbo.as[String]("text"))
-      case "persistence.CommandOutputDocument" => CommandOutputDocument(dbo.as[String]("text"))
-      case "persistence.CommandErrorDocument" => CommandErrorDocument(dbo.as[String]("text"))
-      case "persistence.VerboseDocument" => VerboseDocument(dbo.as[String]("text"))
-      case "persistence.FailDocument" => FailDocument(dbo.as[String]("text"), throwableDetail.fromDBO(dbo.as[DBObject]("detail")).get)
-      case "persistence.FinishContextDocument" => FinishContextDocument
-      case "persistence.FailContextDocument" => FailContextDocument
-      case "persistence.WarningDocument" => WarningDocument(dbo.as[String]("text"))
-      case hint => throw new IllegalArgumentException(s"Don't know how to construct MessageDocument of type $hint")
-    }
-  }
 }
 
 
@@ -228,7 +131,6 @@ case object DeployDocument extends MessageDocument {
 
 case class TaskListDocument(taskList: List[TaskDetail]) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskList(taskList)
-  override lazy val dboFields = List("taskList" -> taskList.map(DetailConversions.taskDetail.toDBO))
 }
 object TaskListDocument {
   implicit def formats: Format[TaskListDocument] = Json.format[TaskListDocument]
@@ -236,7 +138,6 @@ object TaskListDocument {
 
 case class TaskRunDocument(task: TaskDetail) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = TaskRun(task)
-  override lazy val dboFields = List("task" -> DetailConversions.taskDetail.toDBO(task))
 }
 object TaskRunDocument {
   implicit def formats: Format[TaskRunDocument] = Json.format[TaskRunDocument]
@@ -244,7 +145,6 @@ object TaskRunDocument {
 
 case class InfoDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Info(text)
-  override lazy val dboFields = List("text" -> text)
 }
 object InfoDocument {
   implicit def formats: Format[InfoDocument] = Json.format[InfoDocument]
@@ -252,7 +152,6 @@ object InfoDocument {
 
 case class CommandOutputDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandOutput(text)
-  override lazy val dboFields = List("text" -> text)
 }
 object CommandOutputDocument {
   implicit def formats: Format[CommandOutputDocument] = Json.format[CommandOutputDocument]
@@ -260,7 +159,6 @@ object CommandOutputDocument {
 
 case class CommandErrorDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = CommandError(text)
-  override lazy val dboFields = List("text" -> text)
 }
 object CommandErrorDocument {
   implicit def formats: Format[CommandErrorDocument] = Json.format[CommandErrorDocument]
@@ -268,7 +166,6 @@ object CommandErrorDocument {
 
 case class VerboseDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Verbose(text)
-  override lazy val dboFields = List("text" -> text)
 }
 object VerboseDocument {
   implicit def formats: Format[VerboseDocument] = Json.format[VerboseDocument]
@@ -276,7 +173,6 @@ object VerboseDocument {
 
 case class WarningDocument(text: String) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Warning(text)
-  override lazy val dboFields = List("text" -> text)
 }
 object WarningDocument {
   implicit def formats: Format[WarningDocument] = Json.format[WarningDocument]
@@ -284,7 +180,6 @@ object WarningDocument {
 
 case class FailDocument(text: String, detail: ThrowableDetail) extends MessageDocument {
   def asMessage(params: DeployParameters, originalMessage: Option[Message]) = Fail(text, detail)
-  override lazy val dboFields = List("text" -> text, "detail" -> DetailConversions.throwableDetail.toDBO(detail))
 }
 object FailDocument {
   implicit def formats: Format[FailDocument] = Json.format[FailDocument]
@@ -307,7 +202,7 @@ case class LogDocument(
   time: DateTime
 )
 
-object LogDocument extends MongoSerialisable[LogDocument] {
+object LogDocument {
   implicit def formats: Format[LogDocument] = Json.format[LogDocument]
 
   def apply(res: WrappedResultSet): LogDocument = Json.parse(res.string(1)).as[LogDocument]
@@ -323,27 +218,6 @@ object LogDocument extends MongoSerialisable[LogDocument] {
     LogDocument(deploy, id, parent, messageDocument.asMessageDocument, time)
   }
 
-  implicit val logFormat: MongoFormat[LogDocument] = new LogMongoFormat
-  private class LogMongoFormat extends MongoFormat[LogDocument] {
-    def toDBO(a: LogDocument) = {
-      val fields:List[(String,Any)] =
-        List(
-          "deploy" -> a.deploy,
-          "id" -> a.id,
-          "document" -> a.document.asDBObject,
-          "time" -> a.time
-        ) ++ a.parent.map("parent" -> _)
-      fields.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject) = Some(LogDocument(
-      deploy = dbo.as[UUID]("deploy"),
-      id = dbo.as[UUID]("id"),
-      parent = dbo.getAs[UUID]("parent"),
-      document = MessageDocument.from(dbo.as[DBObject]("document")),
-      time = dbo.as[DateTime]("time")
-    ))
-  }
 }
 
 case class LogDocumentTree(documents: Seq[LogDocument]) {
@@ -360,83 +234,18 @@ case class LogDocumentTree(documents: Seq[LogDocument]) {
   }
 }
 
-object DetailConversions {
-  val taskDetail = new MongoFormat[TaskDetail] {
-    def toDBO(a: TaskDetail) = {
-      val fields:List[(String,Any)] =
-        List(
-          "name" -> a.name,
-          "description" -> a.description,
-          "verbose" -> a.verbose
-        )
-      fields.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject) = Some(TaskDetail(
-      name = dbo.as[String]("name"),
-      description = dbo.as[String]("description"),
-      verbose = dbo.as[String]("verbose")
-    ))
-  }
-
-  val throwableDetail = new MongoFormat[ThrowableDetail] {
-    def toDBO(a: ThrowableDetail) = {
-      val fields:List[(String,Any)] =
-        List(
-          "name" -> a.name,
-          "message" -> a.message,
-          "stackTrace" -> a.stackTrace
-        ) ++ a.cause.map("cause" -> toDBO(_))
-      fields.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject): Option[ThrowableDetail] = Some(ThrowableDetail(
-      name = dbo.as[String]("name"),
-      message = dbo.as[String]("message"),
-      stackTrace = dbo.as[String]("stackTrace"),
-      cause = dbo.getAs[DBObject]("cause").flatMap(dbo => fromDBO(dbo))
-    ))
-  }
-}
 
 case class DeploymentKeyDocument(name: String, action: String, stack: String, region: String)
 
-object DeploymentKeyDocument extends MongoSerialisable[DeploymentKeyDocument] {
+object DeploymentKeyDocument {
   implicit def formats: Format[DeploymentKeyDocument] = Json.format[DeploymentKeyDocument]
-
-  implicit val deploymentKeyFormat: MongoFormat[DeploymentKeyDocument] = new DeploymentKeyFormat
-  private class DeploymentKeyFormat extends MongoFormat[DeploymentKeyDocument] {
-    def toDBO(a: DeploymentKeyDocument) = {
-      val fields: List[(String, Any)] =
-        List(
-          "name" -> a.name,
-          "action" -> a.action,
-          "stack" -> a.stack,
-          "region" -> a.region
-        )
-      fields.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject) = {
-      Some(DeploymentKeyDocument(
-        name = dbo.as[String]("name"),
-        action = dbo.as[String]("action"),
-        stack = dbo.as[String]("stack"),
-        region = dbo.as[String]("region")
-      ))
-    }
-  }
 }
 
 
 
-case object AllDocument extends DeploymentSelectorDocument {
-  def dboFields = Nil
-}
+case object AllDocument extends DeploymentSelectorDocument
 
-case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument {
-  def dboFields = List("keys" -> ids.map(_.toDBO))
-}
+case class DeploymentKeysSelectorDocument(ids: List[DeploymentKeyDocument]) extends DeploymentSelectorDocument
 object DeploymentKeysSelectorDocument {
   implicit def formats: Format[DeploymentKeysSelectorDocument] = Json.format[DeploymentKeysSelectorDocument]
 }

@@ -12,6 +12,12 @@ import play.api.libs.json._
 import scalikejdbc._
 import utils.Json._
 
+trait CollectionStats {
+  def dataSize: Long
+  def storageSize: Long
+  def documentCount: Long
+}
+
 class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   // Table: auth(email: String, content: jsonb)

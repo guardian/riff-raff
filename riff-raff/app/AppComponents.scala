@@ -49,15 +49,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   
   val config = new Config(context.initialConfiguration.underlying)
 
-  lazy val datastore: DataStore = if (config.postgres.isEnabled) postgresStore else mongoStore
-
-  private lazy val mongoStore: DataStore = {
-    val dataStore = new MongoDatastoreOps(config).buildDatastore().getOrElse(new NoOpDataStore(config))
-    log.info(s"Persistence datastore initialised as $dataStore")
-    dataStore
-  }
-
-  private lazy val postgresStore: DataStore = {
+  lazy val datastore: DataStore = {
     new PostgresDatastoreOps(config).buildDatastore()
   }
 

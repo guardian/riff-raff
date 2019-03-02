@@ -3,21 +3,10 @@ package test
 import com.gu.googleauth.UserIdentity
 import com.gu.googleauth.UserIdentity
 import org.scalatest.{Matchers, FlatSpec}
-import com.mongodb.casbah.Imports._
 import controllers.{AuthorisationValidator, AuthorisationRecord}
 import org.joda.time.DateTime
 
 class AuthenticationTest extends FlatSpec with Matchers {
-  "AuthorisationRecord" should "serialise and deserialise" in {
-    val dateTime = new DateTime()
-    val auth = AuthorisationRecord("test@test.com", "Test Person", dateTime)
-    val dbo = auth.toDBO
-    dbo.as[String]("_id") should be("test@test.com")
-    dbo.as[String]("approvedBy") should be("Test Person")
-    dbo.as[DateTime]("approvedDate") should be(dateTime)
-    AuthorisationRecord.fromDBO(dbo) should be(Some(auth))
-  }
-
   "AuthorisationValidator" should "allow any domain when not configured" in {
     val validator = new AuthorisationValidator {
       def emailDomainWhitelist = Nil

@@ -51,7 +51,6 @@ object Dependencies {
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "play-googleauth" % "0.7.7",
     "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.12",
-    "org.mongodb" %% "casbah" % "3.1.1",
     "com.typesafe.akka" %% "akka-agent" % "2.5.17",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
