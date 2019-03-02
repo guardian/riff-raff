@@ -78,8 +78,9 @@ tag
 database
 --------
 
- - `mongo.uri` - A mongo [standard connection string](http://www.mongodb.org/display/DOCS/Connections)
- - `mongo.collectionPrefix` - Prefix on created collections (allows multiple Riff-Raff instances to use the same mongo database).  Must only contain characters valid in a collection name (letters, underscore, numbers - although not first character).
+ - `db.default.url` - A postgres database URL
+ - `db.default.user` - A username with enough permissions to manipulate the database
+ - `db.default.password` - The user's password
 
 freeze
 ------

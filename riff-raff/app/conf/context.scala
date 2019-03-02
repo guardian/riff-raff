@@ -166,7 +166,6 @@ class Config(configuration: TypesafeConfig) extends Logging {
   }
 
   object postgres {
-    lazy val isEnabled = getBooleanOpt("postgres.enabled").getOrElse(false)
     lazy val url = getString("db.default.url")
     lazy val user = getString("db.default.user")
     lazy val password = getString("db.default.password")
