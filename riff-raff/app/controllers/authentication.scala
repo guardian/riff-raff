@@ -107,7 +107,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    datastore.getAuthorisationList(None).map(_.sortBy(_.email)).fold(
+    datastore.getAuthorisationList.map(_.sortBy(_.email)).fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")(config)),
       (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(config, menu)(request, as))
     )

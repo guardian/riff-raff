@@ -79,10 +79,4 @@ object Dependencies {
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
-
-  lazy val migrationDeps = Seq(
-    "org.scalaz"        %% "scalaz-zio"         % "0.6.3",
-    "org.scalaz"        %% "scalaz-zio-interop-shared" % "0.6.3",
-    "org.scalacheck"    %% "scalacheck"         % "1.14.0" % Test
-  )
 }

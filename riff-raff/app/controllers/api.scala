@@ -199,7 +199,7 @@ class Api(config: Config,
   }
 
   def listKeys = authAction { implicit request =>
-    datastore.getApiKeyList(None).fold(
+    datastore.getApiKeyList.fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch API keys")(config)),
       (ks: Iterable[ApiKey]) => Ok(views.html.api.list(config, menu)(request, ks))
     )

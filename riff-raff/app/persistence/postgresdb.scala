@@ -21,7 +21,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     }
   }
 
-  def getAuthorisationList(pagination: Option[deployment.PaginationView]): Either[Throwable, List[AuthorisationRecord]] = logExceptions(Some("Requesting list of authorisation objects")) {
+  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = logExceptions(Some("Requesting list of authorisation objects")) {
     DB readOnly { implicit session =>
       sql"SELECT content FROM auth".map(AuthorisationRecord(_)).list().apply()
     }
@@ -49,7 +49,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 
 
-  def getApiKeyList(pagination: Option[deployment.PaginationView]): Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
+  def getApiKeyList: Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
     DB readOnly { implicit session =>
       sql"SELECT content FROM apiKey".map(ApiKey(_)).list().apply()
     }

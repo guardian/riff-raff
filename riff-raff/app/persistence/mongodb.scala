@@ -102,9 +102,9 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       authCollection.findOneByID(email).flatMap(AuthorisationRecord.fromDBO(_))
     }
 
-  override def getAuthorisationList(pagination: Option[PaginationView] = None) = 
+  override def getAuthorisationList = 
     logExceptions(Some("Requesting list of authorisation objects")) {
-      pagination.foldLeft(authCollection.find().sort(MongoDBObject("email" -> 1)))(_ pagination _).flatMap(AuthorisationRecord.fromDBO(_)).toList
+      authCollection.find().sort(MongoDBObject("email" -> 1)).flatMap(AuthorisationRecord.fromDBO(_)).toList
     }
 
   override def deleteAuthorisation(email: String) =
@@ -118,9 +118,9 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       apiKeyCollection.insert(dbo)
     }
 
-  override def getApiKeyList(pagination: Option[PaginationView] = None) = 
+  override def getApiKeyList = 
     logExceptions(Some("Requesting list of API keys")) {
-      pagination.foldLeft(apiKeyCollection.find().sort(MongoDBObject("application" -> 1)))(_ pagination _).toIterable.flatMap( ApiKey.fromDBO(_) )
+      apiKeyCollection.find().sort(MongoDBObject("application" -> 1)).toIterable.flatMap( ApiKey.fromDBO(_) )
     }
 
   override def getApiKey(key: String) =
@@ -191,20 +191,6 @@ class MongoDatastore(config: Config, database: MongoDB) extends DataStore(config
       val criteria = MongoDBObject("deploy" -> uuid)
       deployLogCollection.find(criteria).toList.flatMap(LogDocument.fromDBO(_))
     }
-
-  val deployLogDateFrom = new DateTime("2019-02-18T00:00:00.000Z")
-  override def readAllLogs(pageSize: Int, startId: Option[ObjectId]): Either[Throwable, (Iterable[LogDocument], Option[ObjectId])] = Either.catchNonFatal {
-    val cursor = deployLogCollection.find(MongoDBObject(
-      "_id" -> MongoDBObject("$gt" -> startId.getOrElse(new MinKey()))
-    )).sort(MongoDBObject("_id" -> 1)).limit(pageSize).toIterable
-    (cursor.flatMap { LogDocument.fromDBO(_) }, cursor.lastOption.map(_.as[ObjectId]("_id")))
-  }
-
-  override def countLogsFromDate(): Int = {
-    deployLogCollection.count(MongoDBObject(
-      "time" -> MongoDBObject("$gte" -> deployLogDateFrom)
-    ))
-  }
 
   override def getDeployUUIDs(limit: Int = 0) = logAndSquashExceptions[List[SimpleDeployDetail]](None,Nil){
     val cursor = deployCollection.find(MongoDBObject(), MongoDBObject("_id" -> 1, "startTime" -> 1)).sort(MongoDBObject("startTime" -> -1))
