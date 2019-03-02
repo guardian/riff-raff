@@ -24,7 +24,7 @@ import magenta.Message._
 import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
-import persistence.DataStore
+import persistence.{DataStore, CollectionStats}
 import riffraff.BuildInfo
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
@@ -316,9 +316,10 @@ class DatastoreMetrics(config: Config, datastore: DataStore) {
     "Database requests",
     "outgoing requests to the database"
   )
-  def dataSize: Long = ???
-  def storageSize: Long = ???
-  def deployCollectionCount: Long = ???
+  val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  datastore.collectionStats }
+  def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
+  def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
+  def deployCollectionCount: Long = collectionStats().get("deploy").map(_.documentCount).getOrElse(0L)
   object PostgresDataSize extends GaugeMetric("postgres", "data_size", "PostgreSQL data size", "The size of the data held in postgres tables", () => dataSize)
   object PostgresStorageSize extends GaugeMetric("postgres", "storage_size", "PostgreSQL storage size", "The size of the storage used by the PostgreSQL tables", () => storageSize)
   object PostgresDeployCollectionCount extends GaugeMetric("postgres", "deploys_collection_count", "Deploys collection count", "The number of rows in the deploys table", () => deployCollectionCount)
@@ -341,6 +342,6 @@ class Metrics(config: Config, datastore: DataStore) {
     Seq(LoginCounter, FailedLoginCounter) ++
     //PlayRequestMetrics.asMetrics ++
     DeployMetrics.all ++
-    // new DatastoreMetrics(config, datastore).all ++
+    new DatastoreMetrics(config, datastore).all ++
     TaskMetrics.all
 }
