@@ -24,9 +24,9 @@ object CollectionStats extends SQLSyntaxSupport[CollectionStats] {
 
   def apply(rs: WrappedResultSet) =
     new CollectionStats {
-      def dataSize = rs.long(1)
-      def storageSize = rs.long(2)
-      def documentCount = rs.long(3)
+      val dataSize = rs.long(1)
+      val storageSize = rs.long(2)
+      val documentCount = rs.long(3)
     }
 }
 
