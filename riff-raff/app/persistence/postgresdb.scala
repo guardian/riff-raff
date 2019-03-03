@@ -12,13 +12,27 @@ import play.api.libs.json._
 import scalikejdbc._
 import utils.Json._
 
-trait CollectionStats {
-  def dataSize: Long
-  def storageSize: Long
-  def documentCount: Long
+object PostgresDatastore {
+  val collections = List("deploy", "deploylog", "auth", "apikey")
 }
 
 class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
+
+  private def getCollectionStats(tableName: String): CollectionStats = logExceptions(Some(s"Requestion table stats for $tableName")) {
+    DB readOnly { implicit session =>
+      sql"SELECT pg_table_size(${tableName}), pg_total_relation_size(${tableName}), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${tableName}) AS counts".map(CollectionStats(_)).single.apply()
+    }
+  } match {
+    case Left(t) =>
+      log.error(s"Unable to collect statistics for $tableName", t)
+      CollectionStats.Empty
+    case Right(stats) => stats.getOrElse(CollectionStats.Empty)
+  }
+
+  override def collectionStats: Map[String, CollectionStats] =
+    PostgresDatastore.collections.foldLeft(Map.empty[String, CollectionStats]) {
+      case (stats, tableName) => stats + (tableName -> getCollectionStats(tableName))
+    }
 
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {

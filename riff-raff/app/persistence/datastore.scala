@@ -6,7 +6,29 @@ import conf.{Config, DatastoreMetrics}
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import org.joda.time.DateTime
 import play.api.Logger
+import scalikejdbc._
 import utils.Retriable
+
+trait CollectionStats {
+  def dataSize: Long
+  def storageSize: Long
+  def documentCount: Long
+}
+
+object CollectionStats extends SQLSyntaxSupport[CollectionStats] {
+  val Empty = new CollectionStats {
+    val dataSize = 0L
+    val storageSize = 0L
+    val documentCount = 0L
+  }
+
+  def apply(rs: WrappedResultSet) =
+    new CollectionStats {
+      def dataSize = rs.long(1)
+      def storageSize = rs.long(2)
+      def documentCount = rs.long(3)
+    }
+}
 
 abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def log: Logger
