@@ -5,7 +5,6 @@ import java.util.UUID
 
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.AuthAction
-import com.mongodb.casbah.Imports._
 import conf.Config
 import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
 import magenta._
@@ -13,7 +12,7 @@ import magenta.deployment_type.DeploymentType
 import magenta.input.All
 import magenta.input.resolver.{Resolver => YamlResolver}
 import org.joda.time.{DateTime, LocalDate}
-import persistence.{DataStore, MongoFormat, MongoSerialisable}
+import persistence.DataStore
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.I18nSupport
@@ -22,7 +21,7 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, _}
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 import utils.Json._
 import utils.{ChangeFreeze, Graph, LogAndSquashBehaviour}
 
@@ -37,46 +36,12 @@ case class ApiKey(
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
 }
 
-object ApiKey extends MongoSerialisable[ApiKey] {
+object ApiKey extends SQLSyntaxSupport[ApiKey] {
   implicit def formats: Format[ApiKey] = Json.format[ApiKey]
 
   def apply(res: WrappedResultSet): ApiKey = Json.parse(res.string(1)).as[ApiKey]
 
-  implicit val keyFormat:MongoFormat[ApiKey] = new KeyMongoFormat
-  private class KeyMongoFormat extends MongoFormat[ApiKey] with Logging {
-    def toDBO(a: ApiKey) = {
-      val fields:List[(String,Any)] =
-        List(
-          "application" -> a.application,
-          "_id" -> a.key,
-          "issuedBy" -> a.issuedBy,
-          "created" -> a.created
-        ) ++ a.lastUsed.map("lastUsed" ->) ++
-          List(
-            "callCounters" -> a.callCounters.asDBObject
-          )
-      fields.toMap
-    }
-
-    def fromDBO(dbo: MongoDBObject) = Some(ApiKey(
-      application = dbo.as[String]("application"),
-      key = dbo.as[String]("_id"),
-      issuedBy = dbo.as[String]("issuedBy"),
-      created = dbo.as[DateTime]("created"),
-      lastUsed = dbo.getAs[DateTime]("lastUsed"),
-      callCounters = dbo.as[DBObject]("callCounters").map { entry =>
-        val key = entry._1
-        val counter = try {
-          entry._2.asInstanceOf[Long]
-        } catch {
-          case cce:ClassCastException =>
-            log.warn("Automatically marshalling an Int to a Long (you should only see this during unit tests)")
-            entry._2.asInstanceOf[Int].toLong
-        }
-        key -> counter
-      }.toMap
-    ))
-  }
+  override val tableName = "apikey"
 }
 
 object ApiKeyGenerator {
@@ -199,7 +164,7 @@ class Api(config: Config,
   }
 
   def listKeys = authAction { implicit request =>
-    datastore.getApiKeyList(None).fold(
+    datastore.getApiKeyList.fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch API keys")(config)),
       (ks: Iterable[ApiKey]) => Ok(views.html.api.list(config, menu)(request, ks))
     )

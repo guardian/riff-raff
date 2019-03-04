@@ -18,8 +18,7 @@ and you will find it easiest if you use a similar set of tools. Riff-Raff:
  - relies on artifacts and `riff-raff.yaml` files describing builds being in S3 buckets with the artifacts having paths of 
   the form `project-name/build-number`
  - uses the AWS SDK and [Prism](http://github.com/guardian/prism) to do resource discovery
- - stores configuration, history and logs in a MongoDB instance and a handful of DynamoDB tables (the eventual aim is
-   to ditch Mongo altogether)
+ - stores configuration, history and logs in a PostgreSQL database and a handful of DynamoDB tables (the eventual aim is to ditch DynamoDB altogether)
 
 Documentation
 -----
@@ -58,7 +57,7 @@ How do I run Riff-Raff locally if I want to hack on it?
 
 Assuming you have a reasonably recent version of Java installed, 
 
- * Create a basic configuration file at ~/.gu/riff-raff.conf (S3 and mongo config is probably the minimum)
+ * Create a basic configuration file at ~/.gu/riff-raff.conf (S3 and postgres config is probably the minimum)
  * Run the sbt script
  * enter `project riffraff` at the SBT prompt
  * enter `run` at the SBT prompt

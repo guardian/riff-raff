@@ -24,7 +24,7 @@ import magenta.Message._
 import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
-import persistence.{CollectionStats, DataStore}
+import persistence.{DataStore, CollectionStats}
 import riffraff.BuildInfo
 import utils.{ScheduledAgent, UnnaturalOrdering}
 
@@ -165,14 +165,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val timeoutSeconds = getIntOpt("lookup.timeoutSeconds").getOrElse(30)
   }
 
-  object mongo {
-    lazy val isConfigured = uri.isDefined
-    lazy val uri = getStringOpt("mongo.uri")
-    lazy val collectionPrefix = getStringOpt("mongo.collectionPrefix").getOrElse("")
-  }
-
   object postgres {
-    lazy val isEnabled = getBooleanOpt("postgres.enabled").getOrElse(false)
     lazy val url = getString("db.default.url")
     lazy val user = getString("db.default.user")
     lazy val password = getString("db.default.password")
@@ -326,11 +319,11 @@ class DatastoreMetrics(config: Config, datastore: DataStore) {
   val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  datastore.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
-  def deployCollectionCount: Long = collectionStats().get(s"${config.mongo.collectionPrefix}deployV2").map(_.documentCount).getOrElse(0L)
-  object MongoDataSize extends GaugeMetric("mongo", "data_size", "MongoDB data size", "The size of the data held in mongo collections", () => dataSize)
-  object MongoStorageSize extends GaugeMetric("mongo", "storage_size", "MongoDB storage size", "The size of the storage used by the MongoDB collections", () => storageSize)
-  object MongoDeployCollectionCount extends GaugeMetric("mongo", "deploys_collection_count", "Deploys collection count", "The number of documents in the deploys collection", () => deployCollectionCount)
-  val all = Seq(DatastoreRequest, MongoDataSize, MongoStorageSize, MongoDeployCollectionCount)
+  def deployCollectionCount: Long = collectionStats().get("deploy").map(_.documentCount).getOrElse(0L)
+  object PostgresDataSize extends GaugeMetric("postgres", "data_size", "PostgreSQL data size", "The size of the data held in postgres tables", () => dataSize)
+  object PostgresStorageSize extends GaugeMetric("postgres", "storage_size", "PostgreSQL storage size", "The size of the storage used by the PostgreSQL tables", () => storageSize)
+  object PostgresDeployCollectionCount extends GaugeMetric("postgres", "deploys_collection_count", "Deploys collection count", "The number of rows in the deploys table", () => deployCollectionCount)
+  val all = Seq(DatastoreRequest, PostgresDataSize, PostgresStorageSize, PostgresDeployCollectionCount)
 }
 
 object LoginCounter extends CountMetric("webapp",

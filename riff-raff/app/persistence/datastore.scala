@@ -4,10 +4,31 @@ import java.util.UUID
 
 import conf.{Config, DatastoreMetrics}
 import controllers.{ApiKey, AuthorisationRecord, Logging}
-import deployment.PaginationView
 import org.joda.time.DateTime
 import play.api.Logger
+import scalikejdbc._
 import utils.Retriable
+
+trait CollectionStats {
+  def dataSize: Long
+  def storageSize: Long
+  def documentCount: Long
+}
+
+object CollectionStats extends SQLSyntaxSupport[CollectionStats] {
+  val Empty = new CollectionStats {
+    val dataSize = 0L
+    val storageSize = 0L
+    val documentCount = 0L
+  }
+
+  def apply(rs: WrappedResultSet) =
+    new CollectionStats {
+      val dataSize = rs.long(1)
+      val storageSize = rs.long(2)
+      val documentCount = rs.long(3)
+    }
+}
 
 abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def log: Logger
@@ -32,12 +53,12 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def collectionStats: Map[String, CollectionStats] = Map.empty
 
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]]
-  def getAuthorisationList(pagination: Option[PaginationView] = None): Either[Throwable, List[AuthorisationRecord]]
+  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
 
   def createApiKey(newKey: ApiKey): Unit
-  def getApiKeyList(pagination: Option[PaginationView] = None): Either[Throwable, Iterable[ApiKey]]
+  def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
   def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
@@ -48,12 +69,12 @@ class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
   import NoOpDataStore._
 
   final def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = none
-  final def getAuthorisationList(pagination: Option[PaginationView] = None) = nil
+  final def getAuthorisationList = nil
   final def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = unit
   final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
 
   final def createApiKey(newKey: ApiKey): Unit = ()
-  final def getApiKeyList(pagination: Option[PaginationView] = None) = nil
+  final def getApiKeyList = nil
   final def getApiKey(key: String): Option[ApiKey] = None
   final def getAndUpdateApiKey(key: String, counter: Option[String] = None): Option[ApiKey] = None
   final def getApiKeyByApplication(application: String): Option[ApiKey] = None

@@ -2,19 +2,17 @@ package controllers
 
 import cats.data.EitherT
 import com.gu.googleauth._
-import com.mongodb.casbah.commons.MongoDBObject
 import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
 import org.joda.time.DateTime
-import persistence.{MongoFormat, MongoSerialisable}
-import persistence.{DataStore, MongoFormat, MongoSerialisable}
+import persistence.DataStore
 import play.api.data.Forms._
 import play.api.data._
 import play.api.i18n.I18nSupport
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 import utils.Json._
 import utils.LogAndSquashBehaviour
 
@@ -27,16 +25,12 @@ class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequ
 case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) {
   def contentBlob = (approvedBy, approvedDate)
 }
-object AuthorisationRecord extends MongoSerialisable[AuthorisationRecord] {
+object AuthorisationRecord extends SQLSyntaxSupport[ApiKey] {
   implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
 
   def apply(res: WrappedResultSet): AuthorisationRecord = Json.parse(res.string(1)).as[AuthorisationRecord]
 
-  implicit val authFormat:MongoFormat[AuthorisationRecord] = new AuthMongoFormat
-  private class AuthMongoFormat extends MongoFormat[AuthorisationRecord] {
-    def toDBO(a: AuthorisationRecord) = MongoDBObject("_id" -> a.email, "approvedBy" -> a.approvedBy, "approvedDate" -> a.approvedDate)
-    def fromDBO(dbo: MongoDBObject) = Some(AuthorisationRecord(dbo.as[String]("_id"), dbo.as[String]("approvedBy"), dbo.as[DateTime]("approvedDate")))
-  }
+  override val tableName = "auth"
 }
 
 trait AuthorisationValidator {
@@ -107,7 +101,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
   val authorisationForm = Form( "email" -> nonEmptyText )
 
   def authList = authAction { request =>
-    datastore.getAuthorisationList(None).map(_.sortBy(_.email)).fold(
+    datastore.getAuthorisationList.map(_.sortBy(_.email)).fold(
       (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")(config)),
       (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(config, menu)(request, as))
     )

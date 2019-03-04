@@ -51,7 +51,6 @@ object Dependencies {
     "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "play-googleauth" % "0.7.7",
     "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.12",
-    "org.mongodb" %% "casbah" % "3.1.1",
     "com.typesafe.akka" %% "akka-agent" % "2.5.17",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
@@ -78,11 +77,5 @@ object Dependencies {
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
-  )
-
-  lazy val migrationDeps = Seq(
-    "org.scalaz"        %% "scalaz-zio"         % "0.6.3",
-    "org.scalaz"        %% "scalaz-zio-interop-shared" % "0.6.3",
-    "org.scalacheck"    %% "scalacheck"         % "1.14.0" % Test
   )
 }

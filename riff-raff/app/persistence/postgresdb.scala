@@ -14,6 +14,25 @@ import utils.Json._
 
 class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
+  private def getCollectionStats[A](table: SQLSyntaxSupport[A]): CollectionStats = logExceptions(Some(s"Requestion table stats for ${table.tableName}")) {
+    DB readOnly { implicit session =>
+      SQL(s"SELECT pg_table_size('${table.tableName}'), pg_total_relation_size('${table.tableName}'), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table.tableName}) as counts limit 1").map(CollectionStats(_)).single.apply()
+    }
+  } match {
+    case Left(t) =>
+      log.error(s"Unable to collect statistics for ${table.tableName}", t)
+      CollectionStats.Empty
+    case Right(stats) => stats.getOrElse(CollectionStats.Empty)
+  }
+
+  override def collectionStats: Map[String, CollectionStats] =
+    Map(
+      DeployRecordDocument.tableName -> getCollectionStats(DeployRecordDocument), 
+      LogDocument.tableName -> getCollectionStats(LogDocument), 
+      AuthorisationRecord.tableName -> getCollectionStats(AuthorisationRecord), 
+      ApiKey.tableName -> getCollectionStats(ApiKey)
+    )
+
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {
     DB readOnly { implicit session =>
@@ -21,7 +40,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     }
   }
 
-  def getAuthorisationList(pagination: Option[deployment.PaginationView]): Either[Throwable, List[AuthorisationRecord]] = logExceptions(Some("Requesting list of authorisation objects")) {
+  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] = logExceptions(Some("Requesting list of authorisation objects")) {
     DB readOnly { implicit session =>
       sql"SELECT content FROM auth".map(AuthorisationRecord(_)).list().apply()
     }
@@ -49,7 +68,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 
 
-  def getApiKeyList(pagination: Option[deployment.PaginationView]): Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
+  def getApiKeyList: Either[Throwable, List[ApiKey]] = logExceptions(Some("Requesting list of API keys")) {
     DB readOnly { implicit session =>
       sql"SELECT content FROM apiKey".map(ApiKey(_)).list().apply()
     }
