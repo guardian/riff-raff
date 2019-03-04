@@ -16,7 +16,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   private def getCollectionStats[A](table: SQLSyntaxSupport[A]): CollectionStats = logExceptions(Some(s"Requestion table stats for ${table.tableName}")) {
     DB readOnly { implicit session =>
-      sql"SELECT pg_table_size(${table.tableName}), pg_total_relation_size(${table.tableName}), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table}) as counts".map(CollectionStats(_)).single.apply()
+      SQL("SELECT pg_table_size(${table.tableName}), pg_total_relation_size(${table.tableName}), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table.tableName}) as counts").map(CollectionStats(_)).single.apply()
     }
   } match {
     case Left(t) =>
