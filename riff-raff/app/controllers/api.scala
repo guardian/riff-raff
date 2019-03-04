@@ -21,7 +21,7 @@ import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc.{Action, _}
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 import utils.Json._
 import utils.{ChangeFreeze, Graph, LogAndSquashBehaviour}
 
@@ -36,10 +36,12 @@ case class ApiKey(
   lazy val totalCalls = callCounters.values.fold(0L){_+_}
 }
 
-object ApiKey {
+object ApiKey extends SQLSyntaxSupport[ApiKey] {
   implicit def formats: Format[ApiKey] = Json.format[ApiKey]
 
   def apply(res: WrappedResultSet): ApiKey = Json.parse(res.string(1)).as[ApiKey]
+
+  override val tableName = "apikey"
 }
 
 object ApiKeyGenerator {

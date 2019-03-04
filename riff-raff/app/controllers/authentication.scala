@@ -12,7 +12,7 @@ import play.api.i18n.I18nSupport
 import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 import utils.Json._
 import utils.LogAndSquashBehaviour
 
@@ -25,10 +25,12 @@ class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequ
 case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) {
   def contentBlob = (approvedBy, approvedDate)
 }
-object AuthorisationRecord {
+object AuthorisationRecord extends SQLSyntaxSupport[ApiKey] {
   implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
 
   def apply(res: WrappedResultSet): AuthorisationRecord = Json.parse(res.string(1)).as[AuthorisationRecord]
+
+  override val tableName = "auth"
 }
 
 trait AuthorisationValidator {

@@ -8,7 +8,7 @@ import magenta._
 import org.joda.time.DateTime
 import persistence.ParametersDocument._
 import play.api.libs.json._
-import scalikejdbc.WrappedResultSet
+import scalikejdbc._
 import utils.Json._
 
 case class DeployRecordDocument(uuid: UUID,
@@ -22,7 +22,7 @@ case class DeployRecordDocument(uuid: UUID,
                                 lastActivityTime: Option[DateTime] = None,
                                 hasWarnings: Option[Boolean] = None)
 
-object DeployRecordDocument {
+object DeployRecordDocument extends SQLSyntaxSupport[DeployRecordDocument] {
   implicit def formats: Format[DeployRecordDocument] = Json.format[DeployRecordDocument]
 
   def apply(res: WrappedResultSet): DeployRecordDocument = Json.parse(res.string(1)).as[DeployRecordDocument]
@@ -31,6 +31,7 @@ object DeployRecordDocument {
     DeployRecordDocument(UUID.fromString(uuid), Some(uuid), startTime, parameters, RunState.withName(status))
   }
 
+  override val tableName = "deploy"
 }
 
 sealed trait DeploymentSelectorDocument
@@ -202,7 +203,7 @@ case class LogDocument(
   time: DateTime
 )
 
-object LogDocument {
+object LogDocument extends SQLSyntaxSupport[LogDocument] {
   implicit def formats: Format[LogDocument] = Json.format[LogDocument]
 
   def apply(res: WrappedResultSet): LogDocument = Json.parse(res.string(1)).as[LogDocument]
@@ -218,6 +219,7 @@ object LogDocument {
     LogDocument(deploy, id, parent, messageDocument.asMessageDocument, time)
   }
 
+  override val tableName = "deploylog"
 }
 
 case class LogDocumentTree(documents: Seq[LogDocument]) {

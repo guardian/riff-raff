@@ -13,25 +13,26 @@ import scalikejdbc._
 import utils.Json._
 
 object PostgresDatastore {
-  val collections = List("deploy", "deploylog", "auth", "apikey")
+  val collections: List[SQLSyntaxSupport[_]] = List(DeployRecordDocument, LogDocument, AuthorisationRecord, ApiKey)
 }
 
 class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
-  private def getCollectionStats(tableName: String): CollectionStats = logExceptions(Some(s"Requestion table stats for $tableName")) {
+  private def getCollectionStats[A](table: SQLSyntaxSupport[A]): CollectionStats = logExceptions(Some(s"Requestion table stats for ${table.tableName}")) {
+    val counts = table.syntax("counts")
     DB readOnly { implicit session =>
-      sql"SELECT pg_table_size(${tableName}), pg_total_relation_size(${tableName}), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${tableName}) AS counts".map(CollectionStats(_)).single.apply()
+      sql"SELECT pg_table_size(${table.tableName}), pg_total_relation_size(${table.tableName}), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table.as(counts)})".map(CollectionStats(_)).single.apply()
     }
   } match {
     case Left(t) =>
-      log.error(s"Unable to collect statistics for $tableName", t)
+      log.error(s"Unable to collect statistics for ${table.tableName}", t)
       CollectionStats.Empty
     case Right(stats) => stats.getOrElse(CollectionStats.Empty)
   }
 
   override def collectionStats: Map[String, CollectionStats] =
     PostgresDatastore.collections.foldLeft(Map.empty[String, CollectionStats]) {
-      case (stats, tableName) => stats + (tableName -> getCollectionStats(tableName))
+      case (stats, table) => stats + (table.tableName -> getCollectionStats(table))
     }
 
   // Table: auth(email: String, content: jsonb)

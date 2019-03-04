@@ -49,9 +49,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   
   val config = new Config(context.initialConfiguration.underlying)
 
-  lazy val datastore: DataStore = {
-    new PostgresDatastoreOps(config).buildDatastore()
-  }
+  lazy val datastore: DataStore = new PostgresDatastoreOps(config).buildDatastore()
 
   val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(
