@@ -12,10 +12,6 @@ import play.api.libs.json._
 import scalikejdbc._
 import utils.Json._
 
-object PostgresDatastore {
-  val collections: List[SQLSyntaxSupport[_]] = List(DeployRecordDocument, LogDocument, AuthorisationRecord, ApiKey)
-}
-
 class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   private def getCollectionStats[A](table: SQLSyntaxSupport[A]): CollectionStats = logExceptions(Some(s"Requestion table stats for ${table.tableName}")) {
@@ -30,9 +26,12 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 
   override def collectionStats: Map[String, CollectionStats] =
-    PostgresDatastore.collections.foldLeft(Map.empty[String, CollectionStats]) {
-      case (stats, table) => stats + (table.tableName -> getCollectionStats(table))
-    }
+    Map(
+      DeployRecordDocument.tableName -> getCollectionStats(DeployRecordDocument), 
+      LogDocument.tableName -> getCollectionStats(LogDocument), 
+      AuthorisationRecord.tableName -> getCollectionStats(AuthorisationRecord), 
+      ApiKey.tableName -> getCollectionStats(ApiKey)
+    )
 
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {
