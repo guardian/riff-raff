@@ -142,7 +142,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     DB readOnly { implicit session =>
       val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
       val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")
-      sql"SELECT content FROM deploy $whereFilters ORDER BY (content->>'startTime')::TIMESTAMP DESC $paginationFilters".map(DeployRecordDocument(_)).list.apply()
+      sql"SELECT content FROM deploy $whereFilters ORDER BY f_starttime_timestamp(content->>'startTime') DESC $paginationFilters".map(DeployRecordDocument(_)).list.apply()
     }
   }
 
@@ -182,7 +182,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting completed deploys older than $dateTime"), List.empty[SimpleDeployDetail]) {
     DB readOnly { implicit session =>
-      sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'startTime')::TIMESTAMP < $dateTime::TIMESTAMP AND (content->>'summarised') IS NOT NULL"
+      sql"SELECT id, content->>'startTime' FROM deploy WHERE f_starttime_timestamp(content->>'startTime') < $dateTime::TIMESTAMP AND (content->>'summarised') IS NOT NULL"
         .map(SimpleDeployDetail(_)).list.apply()
     }
   }
@@ -208,11 +208,11 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
       val list =
         sql"""
              SELECT DISTINCT ON (1)
-                    content->'parameters'->>'stage', (content->>'startTime')::TIMESTAMP, id
+                    content->'parameters'->>'stage', f_starttime_timestamp(content->>'startTime'), id
              FROM   deploy
              WHERE content->'parameters'->>'projectName'=$projectName
                AND content->>'status'='Completed'
-               AND (content->>'startTime')::TIMESTAMP > $threshold::TIMESTAMP
+               AND f_starttime_timestamp(content->>'startTime') > $threshold::TIMESTAMP
              ORDER  BY 1, 2 DESC, 3;
            """.map(res => (res.string(1), UUID.fromString(res.string(3)))).list.apply()
 

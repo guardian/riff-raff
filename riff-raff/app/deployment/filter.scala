@@ -44,7 +44,7 @@ case class DeployFilter(
     status.map(s => sqls"content->>'status' = ${s.entryName}"),
     maxDaysAgo.map { days =>
       val dateTime = LocalDate.now.minusDays(days).toDateTimeAtCurrentTime
-      sqls"(content->>'startTime')::TIMESTAMP > $dateTime::TIMESTAMP"
+      sqls"f_starttime_timestamp(content->>'startTime') > $dateTime::TIMESTAMP"
     },
     hasWarnings.map(hw => sqls"content->>'hasWarnings' = ${hw.toString}")
   ).flatten
