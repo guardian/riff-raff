@@ -24,9 +24,9 @@ import magenta.Message._
 import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
-import persistence.{DataStore, CollectionStats}
+import persistence.{CollectionStats, DataStore}
 import riffraff.BuildInfo
-import utils.{ScheduledAgent, UnnaturalOrdering}
+import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -309,13 +309,14 @@ object TaskMetrics {
   val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
 }
 
+object DatastoreRequest extends TimingMetric(
+  "performance",
+  "database_requests",
+  "Database requests",
+  "outgoing requests to the database"
+)
+
 class DatastoreMetrics(config: Config, datastore: DataStore) {
-  object DatastoreRequest extends TimingMetric(
-    "performance",
-    "database_requests",
-    "Database requests",
-    "outgoing requests to the database"
-  )
   val collectionStats = ScheduledAgent(5 seconds, 5 minutes, Map.empty[String, CollectionStats]) { _ =>  datastore.collectionStats }
   def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
   def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
