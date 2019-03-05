@@ -10,14 +10,6 @@ import org.joda.time.{DateTime, Interval, LocalDate, LocalTime}
 object ScheduledAgent extends Lifecycle {
   val scheduleSystem = ActorSystem("scheduled-agent")
 
-  def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration)(block: => T): ScheduledAgent[T] = {
-    ScheduledAgent(initialDelay, frequency, block)(_ => block)
-  }
-
-  def apply[T](initialDelay: FiniteDuration, frequency: FiniteDuration, initialValue: T)(block: T => T): ScheduledAgent[T] = {
-    ScheduledAgent(initialValue, PeriodicScheduledAgentUpdate(block, initialDelay, frequency))
-  }
-
   def apply[T](initialValue: T, updates: ScheduledAgentUpdate[T]*): ScheduledAgent[T] = {
     new ScheduledAgent(scheduleSystem, initialValue, updates:_*)
   }
