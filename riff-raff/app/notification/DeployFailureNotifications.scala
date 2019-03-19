@@ -2,7 +2,7 @@ package notification
 
 import java.util.UUID
 
-import ci.TargetResolver
+import ci.{ContinuousDeployment, TargetResolver}
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
@@ -16,10 +16,10 @@ import schedule.ScheduledDeployer
 
 import scala.concurrent.ExecutionContext
 
-class ScheduledDeployFailureNotifications(config: Config,
-                                          deploymentTypes: Seq[DeploymentType],
-                                          targetResolver: TargetResolver)
-                                         (implicit ec: ExecutionContext)
+class DeployFailureNotifications(config: Config,
+                                 deploymentTypes: Seq[DeploymentType],
+                                 targetResolver: TargetResolver)
+                                (implicit ec: ExecutionContext)
   extends Lifecycle with Logging {
 
   lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
@@ -43,9 +43,9 @@ class ScheduledDeployFailureNotifications(config: Config,
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
-        val failureMessage = s"Your scheduled deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
         Anghammarad.notify(
-          subject = s"Scheduled deploy failed",
+          subject = s"${parameters.deployer.name} failed",
           message = failureMessage,
           sourceSystem = "riff-raff",
           channel = All,
@@ -60,10 +60,11 @@ class ScheduledDeployFailureNotifications(config: Config,
   }
 
   def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
+  def continuousDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ContinuousDeployment.deployer
 
   val messageSub = DeployReporter.messages.subscribe(message => {
     message.stack.top match {
-      case Fail(_, _) if scheduledDeploy(message.context.parameters) =>
+      case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
         failedDeployNotification(message.context.deployId, message.context.parameters)
       case _ =>
@@ -75,6 +76,4 @@ class ScheduledDeployFailureNotifications(config: Config,
   def shutdown() {
     messageSub.unsubscribe()
   }
-
-
 }
