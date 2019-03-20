@@ -12,7 +12,7 @@ deployments:
     app: riff-raff
     parameters:
       amiTags:
-        Recipe: xenial-java8-deploy-infrastructure
+        Recipe: bionic-java8-deploy-infrastructure
         AmigoStage: PROD
         BuiltBy: amigo
       amiEncrypted: true
