@@ -69,6 +69,7 @@ class ContinuousDeployment(config: Config,
 }
 
 object ContinuousDeployment extends Logging with Retriable {
+  val deployer = Deployer("Continuous Deployment")
 
   def getMatchesForSuccessfulBuilds(build: CIBuild, configs: Iterable[ContinuousDeploymentConfig]): Iterable[(ContinuousDeploymentConfig, CIBuild)] = {
     configs.flatMap { config =>
@@ -80,7 +81,7 @@ object ContinuousDeployment extends Logging with Retriable {
   def getDeployParams(configBuildTuple:(ContinuousDeploymentConfig, CIBuild)): DeployParameters = {
     val (config,build) = configBuildTuple
     DeployParameters(
-      Deployer("Continuous Deployment"),
+      deployer,
       build.toMagentaBuild,
       Stage(config.stage)
     )
