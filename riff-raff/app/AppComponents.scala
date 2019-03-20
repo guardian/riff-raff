@@ -12,7 +12,7 @@ import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
-import notification.{HooksClient, ScheduledDeployFailureNotifications}
+import notification.{HooksClient, DeployFailureNotifications}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.db.evolutions.EvolutionsComponents
@@ -111,7 +111,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
   val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes)
   val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
-  val scheduledDeployNotifier = new ScheduledDeployFailureNotifications(config, availableDeploymentTypes, targetResolver)
+  val scheduledDeployNotifier = new DeployFailureNotifications(config, availableDeploymentTypes, targetResolver)
 
   val authAction = new AuthAction[AnyContent](
     googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
