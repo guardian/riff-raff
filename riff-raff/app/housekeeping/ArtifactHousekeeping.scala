@@ -1,14 +1,13 @@
 package housekeeping
 
 import _root_.lifecycle.Lifecycle
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.model._
+import software.amazon.awssdk.services.s3.model._
 import conf.Config
 import controllers.Logging
 import deployment.{DeployFilter, Deployments, PaginationView}
-import housekeeping.ArtifactHousekeeping.pagedAwsRequest
 import magenta.RunState
 import org.joda.time.{DateTime, Duration, LocalTime}
+import software.amazon.awssdk.services.s3.S3Client
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 
 import scala.annotation.tailrec
@@ -25,27 +24,29 @@ object ArtifactHousekeeping {
     }
   }
 
-  def getProjectNames(client: AmazonS3, bucket: String): List[String] = {
+  def getProjectNames(client: S3Client, bucket: String): List[String] = {
     pagedAwsRequest(){ token =>
-      val request = new ListObjectsV2Request()
-        .withDelimiter("/")
-        .withBucketName(bucket)
-        .withContinuationToken(token.orNull)
+      val request = ListObjectsV2Request.builder()
+        .delimiter("/")
+        .bucket(bucket)
+        .continuationToken(token.orNull)
+        .build()
       val result = client.listObjectsV2(request)
-      result.getCommonPrefixes.asScala.toList.map(_.stripSuffix("/")) -> Option(result.getNextContinuationToken)
+      result.commonPrefixes.asScala.toList.map(_.prefix.stripSuffix("/")) -> Option(result.nextContinuationToken())
     }
   }
 
-  def getBuildIds(client: AmazonS3, bucket: String, projectName: String): List[String] = {
+  def getBuildIds(client: S3Client, bucket: String, projectName: String): List[String] = {
     val prefix = s"$projectName/"
     pagedAwsRequest(){ token =>
-      val request = new ListObjectsV2Request()
-        .withDelimiter("/")
-        .withBucketName(bucket)
-        .withPrefix(prefix)
-        .withContinuationToken(token.orNull)
+      val request = ListObjectsV2Request.builder()
+        .delimiter("/")
+        .bucket(bucket)
+        .prefix(prefix)
+        .continuationToken(token.orNull)
+        .build()
       val result = client.listObjectsV2(request)
-      result.getCommonPrefixes.asScala.toList.map(_.stripPrefix(prefix).stripSuffix("/")) -> Option(result.getNextContinuationToken)
+      result.commonPrefixes.asScala.toList.map(_.prefix.stripPrefix(prefix).stripSuffix("/")) -> Option(result.nextContinuationToken)
     }
   }
 
@@ -62,18 +63,19 @@ object ArtifactHousekeeping {
     }
   }
 
-  def getObjectsToTag(client: AmazonS3, artifactBucketName: String, projectName: String, buildId: String, now: DateTime, minimumAgeDays: Int): List[S3ObjectSummary] = {
+  def getObjectsToTag(client: S3Client, artifactBucketName: String, projectName: String, buildId: String, now: DateTime, minimumAgeDays: Int): List[S3Object] = {
     val objects = pagedAwsRequest() { token =>
-      val request = new ListObjectsV2Request()
-        .withBucketName(artifactBucketName)
-        .withPrefix(s"$projectName/$buildId/")
-        .withContinuationToken(token.orNull)
+      val request = ListObjectsV2Request.builder()
+        .bucket(artifactBucketName)
+        .prefix(s"$projectName/$buildId/")
+        .continuationToken(token.orNull)
+        .build()
       val result = client.listObjectsV2(request)
-      result.getObjectSummaries.asScala.toList -> Option(result.getNextContinuationToken)
+      result.contents.asScala.toList -> Option(result.nextContinuationToken)
     }
 
     objects.filter { obj =>
-      val age = new Duration(new DateTime(obj.getLastModified), now)
+      val age = new Duration(new DateTime(obj.lastModified.toEpochMilli), now)
       age.getStandardDays > minimumAgeDays
     }
   }
@@ -97,18 +99,21 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
     scheduledAgent = None
   }
 
-  def tagBuilds(client: AmazonS3, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
-    val tag = new Tag(config.housekeeping.tagOldArtifacts.tagKey, config.housekeeping.tagOldArtifacts.tagValue)
-    val taggingObj = new ObjectTagging(List(tag).asJava)
+  def tagBuilds(client: S3Client, bucket: String, projectName: String, buildsToTag: Set[String], now: DateTime): Int = {
+    val tag = Tag.builder()
+      .key(config.housekeeping.tagOldArtifacts.tagKey)
+      .value(config.housekeeping.tagOldArtifacts.tagValue)
+      .build()
+    val taggingObj = Tagging.builder.tagSet(List(tag).asJava).build()
 
     buildsToTag.foreach { buildId =>
       log.info(s"Tagging build ID $buildId")
       val objectsToTag = ArtifactHousekeeping.getObjectsToTag(client, bucket, projectName, buildId, now, config.housekeeping.tagOldArtifacts.minimumAgeDays)
 
       objectsToTag.foreach { obj =>
-        log.info(s"Tagging ${obj.getKey}")
-        val request = new SetObjectTaggingRequest(bucket, obj.getKey, taggingObj)
-        client.setObjectTagging(request)
+        log.info(s"Tagging ${obj.key}")
+        val request = PutObjectTaggingRequest.builder().bucket(bucket).key(obj.key).tagging(taggingObj).build()
+        client.putObjectTagging(request)
       }
       Thread.sleep(500)
     }

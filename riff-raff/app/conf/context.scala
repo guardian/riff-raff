@@ -3,15 +3,15 @@ package conf
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth._
-import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.regions.{Region, RegionUtils, Regions}
+import com.amazonaws.auth.{AWSCredentials => OldAWSCredentials, AWSCredentialsProvider => OldAWSCredentialsProvider, AWSCredentialsProviderChain => OldAWSCredentialsProviderChain, BasicAWSCredentials => OldBasicAWSCredentials, EnvironmentVariableCredentialsProvider => OldEnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider => OldInstanceProfileCredentialsProvider, SystemPropertiesCredentialsProvider => OldSystemPropertiesCredentialsProvider}
+import com.amazonaws.auth.profile.{ProfileCredentialsProvider => OldProfileCredentialsProvider}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
-import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
-import com.amazonaws.services.sns.AmazonSNSAsyncClientBuilder
-import com.amazonaws.util.EC2MetadataUtils
+import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => OldAmazonSNSAsyncClientBuilder}
+import software.amazon.awssdk.auth.credentials._
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
+import software.amazon.awssdk.services.ec2.Ec2Client
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
@@ -26,7 +26,10 @@ import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
 import persistence.{CollectionStats, DataStore}
 import riffraff.BuildInfo
+import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
+import software.amazon.awssdk.services.s3.S3Client
 import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
+import software.amazon.awssdk.regions.{Region => AWSRegion}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -52,21 +55,21 @@ class Config(configuration: TypesafeConfig) extends Logging {
   lazy val stage: String = {
     val theStage = Try(EC2MetadataUtils.getInstanceId) match {
       case Success(instanceId) if instanceId != null =>
-        val request = new DescribeTagsRequest().withFilters(
-          new Filter("resource-type").withValues("instance"),
-          new Filter("resource-id").withValues(instanceId)
-        )
-        val ec2Client = AmazonEC2ClientBuilder.standard()
-          .withCredentials(credentialsProviderChain(None, None))
-          .withRegion(Regions.getCurrentRegion.getName)
+        val request = DescribeTagsRequest.builder().filters(
+          Filter.builder().name("resource-type").values("instance").build(),
+          Filter.builder().name("resource-id").values(instanceId).build()
+        ).build()
+        val ec2Client = Ec2Client.builder()
+          .credentialsProvider(credentialsProviderChain(None, None))
+//          .region(Regions.getCurrentRegion.getName)
           .build()
         try {
           val describeTagsResult = ec2Client.describeTags(request)
-          describeTagsResult.getTags.asScala
-            .collectFirst{ case t if t.getKey == "Stage" => t.getValue }
+          describeTagsResult.tags.asScala
+            .collectFirst{ case t if t.key == "Stage" => t.value }
             .getOrException("Couldn't find a Stage tag on the Riff Raff instance")
         } finally {
-          ec2Client.shutdown()
+          ec2Client.close()
         }
       case _ => "DEV" // if we couldn't get an instance ID, we must be on a developer's machine
     }
@@ -101,8 +104,9 @@ class Config(configuration: TypesafeConfig) extends Logging {
   object scheduledDeployment {
     lazy val enabled = getBooleanOpt("scheduledDeployment.enabled").getOrElse(false)
     lazy val regionName = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
-    lazy val snsClient = AmazonSNSAsyncClientBuilder.standard()
-      .withCredentials(credentialsProviderChain(None, None))
+    // For compatibility reasons this need to use the old AWS SDK
+    lazy val snsClient = OldAmazonSNSAsyncClientBuilder.standard()
+      .withCredentials(oldCredentialsProviderChain(None, None))
       .withRegion(regionName)
       .build()
     lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
@@ -114,8 +118,9 @@ class Config(configuration: TypesafeConfig) extends Logging {
 
   object dynamoDb {
     lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
+    // Used by Scanamo which is not on the latest version of AWS SDK
     val client = AmazonDynamoDBAsyncClientBuilder.standard()
-      .withCredentials(credentialsProviderChain(None, None))
+      .withCredentials(oldCredentialsProviderChain(None, None))
       .withRegion(regionName)
       .withClientConfiguration(new ClientConfiguration())
       .build()
@@ -157,7 +162,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
     lazy val regionName = getStringOpt("logging.aws.region").getOrElse("eu-west-1")
-    lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+    lazy val credentialsProvider = oldCredentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {
@@ -183,9 +188,9 @@ class Config(configuration: TypesafeConfig) extends Logging {
       lazy val secretKey = getStringOpt("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
-        .withCredentials(credentialsProvider)
-        .withRegion(regionName)
+      implicit lazy val client: S3Client = S3Client.builder()
+        .credentialsProvider(credentialsProvider)
+        .region(AWSRegion.of(regionName))
         .build()
     }
   }
@@ -198,23 +203,23 @@ class Config(configuration: TypesafeConfig) extends Logging {
       lazy val secretKey = getStringOpt("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = getStringOpt("build.aws.region").getOrElse("eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
-        .withCredentials(credentialsProvider)
-        .withRegion(regionName)
+      implicit lazy val client: S3Client = S3Client.builder()
+        .credentialsProvider(credentialsProvider)
+        .region(AWSRegion.of(regionName))
         .build()
     }
   }
 
   object tag {
     object aws {
-      implicit lazy val bucketName = getStringOpt("tag.aws.bucketName")
-      lazy val accessKey = getStringOpt("tag.aws.accessKey")
-      lazy val secretKey = getStringOpt("tag.aws.secretKey")
-      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getStringOpt("tag.aws.region").getOrElse("eu-west-1")
-      implicit lazy val client: AmazonS3 = AmazonS3ClientBuilder.standard()
-        .withCredentials(credentialsProvider)
-        .withRegion(regionName)
+      implicit lazy val bucketName: Option[String] = getStringOpt("tag.aws.bucketName")
+      lazy val accessKey: Option[String] = getStringOpt("tag.aws.accessKey")
+      lazy val secretKey: Option[String] = getStringOpt("tag.aws.secretKey")
+      lazy val credentialsProvider: AwsCredentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val regionName: String = getStringOpt("tag.aws.region").getOrElse("eu-west-1")
+      implicit lazy val client: S3Client = S3Client.builder()
+        .credentialsProvider(credentialsProvider)
+        .region(AWSRegion.of(regionName))
         .build()
     }
   }
@@ -226,24 +231,36 @@ class Config(configuration: TypesafeConfig) extends Logging {
     }
   }
 
-  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChain = {
-    new AWSCredentialsProviderChain(
-      new AWSCredentialsProvider {
-        override def getCredentials: AWSCredentials = (for {
+  def oldCredentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): OldAWSCredentialsProviderChain = {
+    new OldAWSCredentialsProviderChain(
+      new OldAWSCredentialsProvider {
+        override def getCredentials: OldAWSCredentials = (for {
           key <- accessKey
           secret <- secretKey
-        } yield new BasicAWSCredentials(key, secret)).orNull
-
+        } yield new OldBasicAWSCredentials(key, secret)).orNull
         override def refresh(): Unit = {}
       },
-      new EnvironmentVariableCredentialsProvider,
-      new SystemPropertiesCredentialsProvider,
-      new ProfileCredentialsProvider("deployTools"),
-      InstanceProfileCredentialsProvider.getInstance()
+      new OldEnvironmentVariableCredentialsProvider,
+      new OldSystemPropertiesCredentialsProvider,
+      new OldProfileCredentialsProvider("deployTools"),
+      OldInstanceProfileCredentialsProvider.getInstance()
     )
   }
 
-  def awsRegion(name: String): Region = RegionUtils.getRegion(name)
+  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AwsCredentialsProvider = {
+    val allProviders: List[AwsCredentialsProvider] = List(
+      EnvironmentVariableCredentialsProvider.create(),
+      SystemPropertyCredentialsProvider.create(),
+      ProfileCredentialsProvider.create("deployTools"),
+      InstanceProfileCredentialsProvider.create()
+    )
+    val providers: List[AwsCredentialsProvider] = (for {
+      key <- accessKey
+      secret <- secretKey
+    } yield AwsBasicCredentials.create(key, secret)).fold(allProviders)(basicCreds => basicCreds.asInstanceOf[AwsCredentialsProvider] +: allProviders)
+
+    AwsCredentialsProviderChain.builder().credentialsProviders(providers.asJava).build()
+  }
 
   object urls {
     lazy val publicPrefix: String = getStringOpt("urls.publicPrefix").getOrElse("http://localhost:9000")

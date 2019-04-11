@@ -4,7 +4,6 @@ import java.util.UUID
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
-import com.amazonaws.services.s3.AmazonS3Client
 import magenta.artifact.S3YamlArtifact
 import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
@@ -12,6 +11,7 @@ import magenta.input.DeploymentKey
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
+import software.amazon.awssdk.services.s3.S3Client
 
 class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
@@ -35,7 +35,7 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
   }
 
 
-  implicit val artifactClient = mock[AmazonS3Client]
+  implicit val artifactClient: S3Client = mock[S3Client]
 
   "apply" should "create a preview" in {
     val artifact = S3YamlArtifact("test-bucket", "test-key")

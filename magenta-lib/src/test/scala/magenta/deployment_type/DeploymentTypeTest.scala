@@ -2,22 +2,21 @@ package magenta.deployment_type
 
 import java.util.UUID
 
-import com.amazonaws.services.s3.AmazonS3
 import magenta._
 import magenta.artifact.S3Path
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.fixtures._
 import magenta.tasks._
-import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
+import software.amazon.awssdk.services.s3.S3Client
 
 class DeploymentTypeTest extends FlatSpec with Matchers with Inside with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  implicit val artifactClient: AmazonS3 = null
+  implicit val artifactClient: S3Client = null
   val region = Region("eu-west-1")
   val deploymentTypes = Seq(S3, Lambda)
 
