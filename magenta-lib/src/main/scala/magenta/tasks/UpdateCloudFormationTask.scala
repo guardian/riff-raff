@@ -283,7 +283,7 @@ class CheckUpdateEventsTask(
       lastSeenEvent match {
         case None =>
           events.find(updateStart(stackName)) foreach (e => {
-            val age = new Duration(new DateTime(e.timestamp), new DateTime()).getStandardSeconds
+            val age = new Duration(new DateTime(e.timestamp.toEpochMilli), new DateTime()).getStandardSeconds
             if (age > 30) {
               reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
             } else {
