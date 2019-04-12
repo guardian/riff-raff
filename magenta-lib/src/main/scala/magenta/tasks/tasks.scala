@@ -11,7 +11,7 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.core.sync.{RequestBody => AWSRequestBody}
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, ObjectCannedACL, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.{CopyObjectRequest, GetObjectRequest, ObjectCannedACL, PutObjectRequest}
 
 import scala.util.control.NonFatal
 
@@ -69,12 +69,18 @@ case class S3Upload(
         case _ =>
       }
       retryOnException(S3.clientConfiguration) {
-        val getObjectRequest = GetObjectRequest.builder().bucket(req.source.bucket).key(req.source.key).build()
-        val inputStream = artifactClient.getObjectAsBytes(getObjectRequest).asByteArray()
-        val putRequest: PutObjectRequest = req.toAwsRequest
+//        val getObjectRequest = GetObjectRequest.builder().bucket(req.source.bucket).key(req.source.key).build()
+//        val inputStream = artifactClient.getObjectAsBytes(getObjectRequest).asByteArray()
+//        val putRequest: PutObjectRequest = req.toAwsRequest
+        val copyObjectRequest = CopyObjectRequest.builder()
+          .copySource(s"${req.source.bucket}/${req.source.key}")
+          .bucket(req.target.bucket)
+          .key(req.target.key)
+          .build()
         try {
-          val result = client.putObject(putRequest, AWSRequestBody.fromBytes(inputStream))
-          logger.debug(s"Put object ${putRequest.key}")
+//          val result = client.putObject(putRequest, AWSRequestBody.fromBytes(inputStream))
+          val result = client.copyObject(copyObjectRequest)
+          logger.debug(s"Copy object ${req.source.key} to ${req.target.key}")
           result
         } finally {
         }

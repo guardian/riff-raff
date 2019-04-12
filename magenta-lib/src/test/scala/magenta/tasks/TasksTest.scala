@@ -105,16 +105,12 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(MagentaS3Object(sourceBucket, sourceKey, 31)))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObjectAsBytes(GetObjectRequest.builder()
-      .bucket(sourceBucket)
-      .key(sourceKey).build())
-    ).thenReturn(mockGetObjectResponse())
-
-    val putObjectResult = PutObjectResponse.builder()
-      .sseCustomerKeyMD5("testMd5Sum")
-      .build()
-    when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
-
+    when(artifactClient.copyObject(CopyObjectRequest.builder()
+      .copySource(s"$sourceBucket/$sourceKey")
+      .bucket(targetBucket)
+      .key(targetKey)
+      .build())
+    ).thenReturn(mockCopyObjectResponse())
 
     val fileToUpload = new S3Path(sourceBucket, sourceKey)
     val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, artifactClient, clientFactory(s3Client))
@@ -130,8 +126,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     task.execute(reporter)
 
-    val request: ArgumentCaptor[PutObjectRequest] = ArgumentCaptor.forClass(classOf[PutObjectRequest])
-    verify(s3Client).putObject(request.capture(), any[RequestBody])
+    val request: ArgumentCaptor[CopyObjectRequest] = ArgumentCaptor.forClass(classOf[CopyObjectRequest])
+    verify(s3Client).copyObject(request.capture())
     verifyNoMoreInteractions(s3Client)
     request.getValue.key should be ("keyPrefix/the-jar.jar")
     request.getValue.bucket should be ("destination-bucket")
@@ -148,12 +144,10 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObjectAsBytes(any[GetObjectRequest])).thenReturn(mockGetObjectResponse())
+    when(artifactClient.copyObject(any[CopyObjectRequest])).thenReturn(mockCopyObjectResponse())
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val putObjectResult = PutObjectResponse.builder().sseCustomerKeyMD5("testMd5Sum").build()
-    when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
 
     task.execute(reporter)
@@ -164,7 +158,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     files should contain ((fileTwo, S3Path("bucket", "myStack/CODE/myApp/two.txt")))
     files should contain ((fileThree, S3Path("bucket", "myStack/CODE/myApp/sub/three.txt")))
 
-    verify(s3Client, times(3)).putObject(any[PutObjectRequest], any[RequestBody])
+    verify(s3Client, times(3)).copyObject(any[CopyObjectRequest])
 
     verifyNoMoreInteractions(s3Client)
   }
@@ -180,13 +174,10 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObjectAsBytes(any[GetObjectRequest]))
-      .thenReturn(mockGetObjectResponse())
+    when(artifactClient.copyObject(any[CopyObjectRequest]))
+      .thenReturn(mockCopyObjectResponse())
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
-    val putObjectResult = PutObjectResponse.builder().sseCustomerKeyMD5("testMd5Sum").build()
-    when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
 
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     task.execute(reporter)
@@ -198,7 +189,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     files should contain ((fileTwo, S3Path("bucket", "two.txt")))
     files should contain ((fileThree, S3Path("bucket", "sub/three.txt")))
 
-    verify(s3Client, times(3)).putObject(any[PutObjectRequest], any[RequestBody])
+    verify(s3Client, times(3)).copyObject(any[CopyObjectRequest])
 
     verifyNoMoreInteractions(s3Client)
   }
@@ -243,11 +234,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     ListObjectsV2Response.builder().contents(s3Objects:_*).build()
   }
 
-  def mockGetObjectResponse(): ResponseBytes[GetObjectResponse] = {
-    val stream = "Some content for this S3Object.".getBytes("UTF-8")
-    ResponseBytes.fromByteArray(
-      GetObjectResponse.builder().contentLength(31L).build(),
-      stream)
+  def mockCopyObjectResponse(): CopyObjectResponse = {
+    CopyObjectResponse.builder().build()
   }
 
   def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => S3Client = { (_, _, _) => client }
