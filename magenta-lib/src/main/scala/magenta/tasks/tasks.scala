@@ -61,7 +61,7 @@ case class S3Upload(
     val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
-    requests.zipWithIndex.foreach { case (req, index) =>
+    requests.zipWithIndex.par.foreach { case (req, index) =>
       logger.debug(s"Transferring ${requestToString(req.source, req)}")
       index match {
         case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
