@@ -102,7 +102,7 @@ class Api(config: Config,
       }
 
       jsonpCallback map { callback =>
-        Ok("%s(%s)" format (callback, responseObject.toString)).as("application/javascript")
+        Ok(s"$callback(${responseObject.toString})").as("application/javascript")
       } getOrElse {
         response \ "response" \ "status" match {
           case JsDefined(JsString("ok")) => Ok(responseObject)

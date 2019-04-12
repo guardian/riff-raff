@@ -12,4 +12,3 @@ addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.9.4")
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.6.1")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
-addSbtPlugin("com.github.cb372" % "sbt-explicit-dependencies" % "0.2.9")

@@ -56,13 +56,12 @@ object S3 extends AWS {
     region: Region, reporter: DeployReporter, deleteAfterDays: Option[Int] = None): String = {
     val accountNumber = STS.getAccountNumber(stsClient)
     val bucketName = s"$prefix-$accountNumber-${region.name}"
-    if (!s3Client.listBuckets.buckets.asScala.exists(b => b.name == bucketName)) {
+    if (!s3Client.listBuckets.buckets.asScala.exists(_.name == bucketName)) {
       reporter.info(s"Creating bucket for this account and region: $bucketName ${region.name}")
-      val createBucketRequest = region.name match {
-        case "us-east-1" => CreateBucketRequest.builder.bucket(bucketName).build() // this needs to be special cased as setting this explicitly blows up
-        case otherRegion => CreateBucketRequest.builder.bucket(bucketName).build() //TODO: is this pattern match needed?
-      }
+
+      val createBucketRequest = CreateBucketRequest.builder().bucket(bucketName).build()
       s3Client.createBucket(createBucketRequest)
+
       deleteAfterDays.foreach { days =>
         val daysString = s"$days day${if(days==1) "" else "s"}"
         reporter.info(s"Creating lifecycle rule on bucket that deletes objects after $daysString")
@@ -448,7 +447,7 @@ trait AWS extends Loggable {
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = AwsCredentialsProviderChain.builder().credentialsProviders(
     new AwsCredentialsProvider {
       override def resolveCredentials(): AwsCredentials = keyRing.apiCredentials.get("aws").map { credentials =>
-        AwsBasicCredentials.create(credentials.id,credentials.secret)
+        AwsBasicCredentials.create(credentials.id, credentials.secret)
       }.get
     },
     new AwsCredentialsProvider {
@@ -462,7 +461,6 @@ trait AWS extends Loggable {
       s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
     }
     override def shouldRetry(context: RetryPolicyContext): Boolean = {
-      //TODO: super.shouldRetry here?
       val willRetry = shouldRetry(context)
       if (willRetry) {
         logger.warn(s"AWS SDK retry ${context.retriesAttempted}: ${Option(context.originalRequest).map(_.getClass.getName)} threw ${exceptionInfo(context.exception)}")

@@ -82,7 +82,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
 
   def scheduleNext(update: DailyScheduledAgentUpdate[T]): Cancellable = {
     val delay = update.timeToNextExecution
-    log.debug("Scheduling %s to run next in %s" format (update, delay))
+    log.debug(s"Scheduling $update to run next in $delay")
     system.scheduler.scheduleOnce(delay) {
       queueUpdate(update)
       val newCancellable = scheduleNext(update)

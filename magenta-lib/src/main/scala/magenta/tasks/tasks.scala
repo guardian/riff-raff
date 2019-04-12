@@ -69,21 +69,14 @@ case class S3Upload(
         case _ =>
       }
       retryOnException(S3.clientConfiguration) {
-//        val getObjectRequest = GetObjectRequest.builder().bucket(req.source.bucket).key(req.source.key).build()
-//        val inputStream = artifactClient.getObjectAsBytes(getObjectRequest).asByteArray()
-//        val putRequest: PutObjectRequest = req.toAwsRequest
         val copyObjectRequest = CopyObjectRequest.builder()
           .copySource(s"${req.source.bucket}/${req.source.key}")
           .bucket(req.target.bucket)
           .key(req.target.key)
           .build()
-        try {
-//          val result = client.putObject(putRequest, AWSRequestBody.fromBytes(inputStream))
-          val result = client.copyObject(copyObjectRequest)
-          logger.debug(s"Copy object ${req.source.key} to ${req.target.key}")
-          result
-        } finally {
-        }
+        val result = client.copyObject(copyObjectRequest)
+        logger.debug(s"Copy object ${req.source.key} to ${req.target.key}")
+        result
       }
     }
     reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")

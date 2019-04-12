@@ -3,15 +3,10 @@ package conf
 import java.util.UUID
 
 import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth.{AWSCredentials => OldAWSCredentials, AWSCredentialsProvider => OldAWSCredentialsProvider, AWSCredentialsProviderChain => OldAWSCredentialsProviderChain, BasicAWSCredentials => OldBasicAWSCredentials, EnvironmentVariableCredentialsProvider => OldEnvironmentVariableCredentialsProvider, InstanceProfileCredentialsProvider => OldInstanceProfileCredentialsProvider, SystemPropertiesCredentialsProvider => OldSystemPropertiesCredentialsProvider}
-import com.amazonaws.auth.profile.{ProfileCredentialsProvider => OldProfileCredentialsProvider}
+import com.amazonaws.auth.profile.{ProfileCredentialsProvider => ProfileCredentialsProviderV1}
+import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsProvider => AWSCredentialsProviderV1, AWSCredentialsProviderChain => AWSCredentialsProviderChainV1, BasicAWSCredentials => BasicAWSCredentialsV1, EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1, InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1, SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => OldAmazonSNSAsyncClientBuilder}
-import software.amazon.awssdk.auth.credentials._
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
-import software.amazon.awssdk.services.ec2.Ec2Client
+import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
@@ -26,10 +21,13 @@ import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
 import persistence.{CollectionStats, DataStore}
 import riffraff.BuildInfo
+import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
+import software.amazon.awssdk.regions.{Region => AWSRegion}
+import software.amazon.awssdk.services.ec2.Ec2Client
+import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
 import software.amazon.awssdk.services.s3.S3Client
 import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
-import software.amazon.awssdk.regions.{Region => AWSRegion}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -105,8 +103,8 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val enabled = getBooleanOpt("scheduledDeployment.enabled").getOrElse(false)
     lazy val regionName = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
     // For compatibility reasons this need to use the old AWS SDK
-    lazy val snsClient = OldAmazonSNSAsyncClientBuilder.standard()
-      .withCredentials(oldCredentialsProviderChain(None, None))
+    lazy val snsClient = AmazonSNSAsyncClientBuilderV1.standard()
+      .withCredentials(credentialsProviderChainV1(None, None))
       .withRegion(regionName)
       .build()
     lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
@@ -120,7 +118,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
     // Used by Scanamo which is not on the latest version of AWS SDK
     val client = AmazonDynamoDBAsyncClientBuilder.standard()
-      .withCredentials(oldCredentialsProviderChain(None, None))
+      .withCredentials(credentialsProviderChainV1(None, None))
       .withRegion(regionName)
       .withClientConfiguration(new ClientConfiguration())
       .build()
@@ -162,7 +160,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
     lazy val regionName = getStringOpt("logging.aws.region").getOrElse("eu-west-1")
-    lazy val credentialsProvider = oldCredentialsProviderChain(accessKey, secretKey)
+    lazy val credentialsProvider = credentialsProviderChainV1(accessKey, secretKey)
   }
 
   object lookup {
@@ -231,19 +229,19 @@ class Config(configuration: TypesafeConfig) extends Logging {
     }
   }
 
-  def oldCredentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): OldAWSCredentialsProviderChain = {
-    new OldAWSCredentialsProviderChain(
-      new OldAWSCredentialsProvider {
-        override def getCredentials: OldAWSCredentials = (for {
+  def credentialsProviderChainV1(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChainV1 = {
+    new AWSCredentialsProviderChainV1(
+      new AWSCredentialsProviderV1 {
+        override def getCredentials: AWSCredentialsV1 = (for {
           key <- accessKey
           secret <- secretKey
-        } yield new OldBasicAWSCredentials(key, secret)).orNull
+        } yield new BasicAWSCredentialsV1(key, secret)).orNull
         override def refresh(): Unit = {}
       },
-      new OldEnvironmentVariableCredentialsProvider,
-      new OldSystemPropertiesCredentialsProvider,
-      new OldProfileCredentialsProvider("deployTools"),
-      OldInstanceProfileCredentialsProvider.getInstance()
+      new EnvironmentVariableCredentialsProviderV1,
+      new SystemPropertiesCredentialsProviderV1,
+      new ProfileCredentialsProviderV1("deployTools"),
+      InstanceProfileCredentialsProviderV1.getInstance()
     )
   }
 
