@@ -1,7 +1,7 @@
 package magenta
 package tasks
 
-import java.io.{ByteArrayInputStream, OutputStreamWriter}
+import java.io.OutputStreamWriter
 import java.net.ServerSocket
 import java.util.UUID
 
@@ -13,15 +13,11 @@ import org.mockito.ArgumentMatchers._
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import software.amazon.awssdk.awscore.DefaultAwsResponseMetadata
-import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.core.ResponseBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.sync.RequestBody
-import software.amazon.awssdk.http.AbortableInputStream
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
-
-import scala.collection.JavaConverters._
 
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
@@ -109,7 +105,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(MagentaS3Object(sourceBucket, sourceKey, 31)))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObject(GetObjectRequest.builder()
+    when(artifactClient.getObjectAsBytes(GetObjectRequest.builder()
       .bucket(sourceBucket)
       .key(sourceKey).build())
     ).thenReturn(mockGetObjectResponse())
@@ -152,8 +148,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObject(any[GetObjectRequest]))
-      .thenReturn(mockGetObjectResponse())
+    when(artifactClient.getObjectAsBytes(any[GetObjectRequest])).thenReturn(mockGetObjectResponse())
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
@@ -185,7 +180,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(artifactClient.getObject(any[GetObjectRequest])).thenReturn(mockGetObjectResponse())
+    when(artifactClient.getObjectAsBytes(any[GetObjectRequest]))
+      .thenReturn(mockGetObjectResponse())
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
@@ -247,11 +243,11 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     ListObjectsV2Response.builder().contents(s3Objects:_*).build()
   }
 
-  def mockGetObjectResponse(): ResponseInputStream[GetObjectResponse] = {
-    val stream = new ByteArrayInputStream("Some content for this S3Object.".getBytes("UTF-8"))
-    new ResponseInputStream[GetObjectResponse](
+  def mockGetObjectResponse(): ResponseBytes[GetObjectResponse] = {
+    val stream = "Some content for this S3Object.".getBytes("UTF-8")
+    ResponseBytes.fromByteArray(
       GetObjectResponse.builder().contentLength(31L).build(),
-      AbortableInputStream.create(stream))
+      stream)
   }
 
   def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => S3Client = { (_, _, _) => client }

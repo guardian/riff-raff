@@ -70,14 +70,13 @@ case class S3Upload(
       }
       retryOnException(S3.clientConfiguration) {
         val getObjectRequest = GetObjectRequest.builder().bucket(req.source.bucket).key(req.source.key).build()
-        val inputStream = artifactClient.getObject(getObjectRequest)
+        val inputStream = artifactClient.getObjectAsBytes(getObjectRequest).asByteArray()
         val putRequest: PutObjectRequest = req.toAwsRequest
         try {
-          val result = client.putObject(putRequest, AWSRequestBody.fromInputStream(inputStream, putRequest.contentLength()))
+          val result = client.putObject(putRequest, AWSRequestBody.fromBytes(inputStream))
           logger.debug(s"Put object ${putRequest.key}")
           result
         } finally {
-          inputStream.close()
         }
       }
     }
