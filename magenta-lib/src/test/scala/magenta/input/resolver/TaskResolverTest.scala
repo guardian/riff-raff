@@ -3,19 +3,19 @@ package magenta.input.resolver
 import java.util.UUID
 
 import cats.data.{NonEmptyList => NEL}
-import com.amazonaws.services.s3.AmazonS3Client
 import magenta.artifact.S3YamlArtifact
-import magenta.deployment_type.{Action, AutoScaling}
+import magenta.deployment_type.Action
 import magenta.fixtures._
 import magenta.input.Deployment
-import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Stack, Region, Stage, fixtures}
+import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stack, Stage, fixtures}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.JsString
+import software.amazon.awssdk.services.s3.S3Client
 
 class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with ValidatedValues {
-  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  implicit val artifactClient = mock[AmazonS3Client]
+  implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val artifactClient: S3Client = mock[S3Client]
 
   val deploymentTypes = List(StubDeploymentType(
     actionsMap = Map(
