@@ -2,41 +2,43 @@ package magenta.tasks
 
 import java.nio.ByteBuffer
 
-import cats.implicits._
+import com.amazonaws.{AmazonClientException, AmazonWebServiceRequest, ClientConfiguration}
+import com.amazonaws.auth.{AWSCredentialsProvider, AWSCredentialsProviderChain, BasicAWSCredentials}
+import com.amazonaws.regions.{Region => AwsRegion}
+import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
+import com.amazonaws.retry.PredefinedRetryPolicies.SDKDefaultRetryCondition
+import com.amazonaws.services.autoscaling.{AmazonAutoScaling, AmazonAutoScalingClientBuilder}
+import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
+import com.amazonaws.services.cloudformation.{AmazonCloudFormation, AmazonCloudFormationClientBuilder}
+import com.amazonaws.services.cloudformation.model.{Stack => AmazonStack, Tag => CfnTag, _}
+import com.amazonaws.services.ec2.{AmazonEC2, AmazonEC2ClientBuilder}
+import com.amazonaws.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
+import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancing => ClassicELB, AmazonElasticLoadBalancingClientBuilder => ClassicELBBuilder}
+import com.amazonaws.services.elasticloadbalancing.model.{Instance => ELBInstance, _}
+import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancing => ApplicationELB, AmazonElasticLoadBalancingClientBuilder => ApplicationELBBuilder}
+import com.amazonaws.services.elasticloadbalancingv2.model.{Tag => _, _}
+import com.amazonaws.services.lambda.{AWSLambda, AWSLambdaClientBuilder}
+import com.amazonaws.services.lambda.model.UpdateFunctionCodeRequest
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.amazonaws.services.s3.model.{BucketLifecycleConfiguration, CreateBucketRequest}
+import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule
+import com.amazonaws.services.securitytoken.{AWSSecurityTokenService, AWSSecurityTokenServiceClientBuilder}
+import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, Region, Stack, Stage}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain}
-import software.amazon.awssdk.core.SdkBytes
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
-import software.amazon.awssdk.core.retry.conditions.RetryCondition
-import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}
-import software.amazon.awssdk.services.autoscaling.AutoScalingClient
-import software.amazon.awssdk.services.autoscaling.model.{Instance => ASGInstance, _}
-import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{Stack => AmazonStack, Tag => CfnTag, _}
-import software.amazon.awssdk.services.ec2.Ec2Client
-import software.amazon.awssdk.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
-import software.amazon.awssdk.services.elasticloadbalancing.model.{DeregisterInstancesFromLoadBalancerRequest, DescribeInstanceHealthRequest, Instance => ELBInstance}
-import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancingClient => ClassicELB}
-import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DeregisterTargetsRequest, DescribeTargetHealthRequest, TargetDescription, TargetHealthStateEnum}
-import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELB}
-import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.UpdateFunctionCodeRequest
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model._
-import software.amazon.awssdk.services.sts.StsClient
-import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
+import magenta.{App, DeploymentPackage, DeployReporter, KeyRing, Region, Stack, Stage}
+
+import cats.implicits._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object S3 extends AWS {
-  def makeS3client(keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration): S3Client =
-    S3Client.builder()
-      .region(region.awsRegion)
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(config)
+  def makeS3client(keyRing: KeyRing, region: Region, config: ClientConfiguration = clientConfiguration): AmazonS3 =
+    AmazonS3ClientBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(config)
+      .withRegion(region.name)
       .build()
 
   /**
@@ -52,30 +54,28 @@ object S3 extends AWS {
     *
     * @return
     */
-  def accountSpecificBucket(prefix: String, s3Client: S3Client, stsClient: StsClient,
+  def accountSpecificBucket(prefix: String, s3Client: AmazonS3, stsClient: AWSSecurityTokenService,
     region: Region, reporter: DeployReporter, deleteAfterDays: Option[Int] = None): String = {
     val accountNumber = STS.getAccountNumber(stsClient)
     val bucketName = s"$prefix-$accountNumber-${region.name}"
-    if (!s3Client.listBuckets.buckets.asScala.exists(_.name == bucketName)) {
+    if (!s3Client.doesBucketExist(bucketName)) {
       reporter.info(s"Creating bucket for this account and region: $bucketName ${region.name}")
-
-      val createBucketRequest = CreateBucketRequest.builder().bucket(bucketName).build()
+      val createBucketRequest = region.name match {
+        case "us-east-1" => new CreateBucketRequest(bucketName) // this needs to be special cased as setting this explicitly blows up
+        case otherRegion => new CreateBucketRequest(bucketName, otherRegion)
+      }
       s3Client.createBucket(createBucketRequest)
-
       deleteAfterDays.foreach { days =>
         val daysString = s"$days day${if(days==1) "" else "s"}"
         reporter.info(s"Creating lifecycle rule on bucket that deletes objects after $daysString")
-        s3Client.putBucketLifecycleConfiguration(
-          PutBucketLifecycleConfigurationRequest.builder().bucket(bucketName).lifecycleConfiguration(
-            BucketLifecycleConfiguration.builder()
-              .rules(
-                LifecycleRule.builder()
-                  .id(s"Rule to delete objects after $daysString")
-                  .status(ExpirationStatus.ENABLED)
-                  .expiration(LifecycleExpiration.builder().days(days).build())
-                  .build())
-                .build())
-            .build()
+        s3Client.setBucketLifecycleConfiguration(
+          bucketName,
+          new BucketLifecycleConfiguration().withRules(
+            new Rule()
+              .withId(s"Rule to delete objects after $daysString")
+              .withStatus(BucketLifecycleConfiguration.ENABLED)
+              .withExpirationInDays(days)
+          )
         )
       }
     }
@@ -84,51 +84,55 @@ object S3 extends AWS {
 }
 
 object Lambda extends AWS {
-  def makeLambdaClient(keyRing: KeyRing, region: Region): LambdaClient =
-    LambdaClient.builder()
-    .credentialsProvider(provider(keyRing))
-    .overrideConfiguration(clientConfiguration)
-    .region(region.awsRegion)
+  def makeLambdaClient(keyRing: KeyRing, region: Region): AWSLambda =
+    AWSLambdaClientBuilder.standard()
+    .withCredentials(provider(keyRing))
+    .withClientConfiguration(clientConfiguration)
+    .withRegion(region.name)
     .build()
 
-  def lambdaUpdateFunctionCodeRequest(functionName: String, buffer: ByteBuffer): UpdateFunctionCodeRequest =
-    UpdateFunctionCodeRequest.builder().functionName(functionName).zipFile(SdkBytes.fromByteBuffer(buffer)).build()
+  def lambdaUpdateFunctionCodeRequest(functionName: String, buffer: ByteBuffer): UpdateFunctionCodeRequest = {
+    val request = new UpdateFunctionCodeRequest
+    request.withFunctionName(functionName)
+    request.withZipFile(buffer)
+    request
+  }
 
-  def lambdaUpdateFunctionCodeRequest(functionName: String, s3Bucket: String, s3Key: String): UpdateFunctionCodeRequest =
-    UpdateFunctionCodeRequest.builder()
-      .functionName(functionName)
-      .s3Bucket(s3Bucket)
-      .s3Key(s3Key)
-      .build()
+  def lambdaUpdateFunctionCodeRequest(functionName: String, s3Bucket: String, s3Key: String): UpdateFunctionCodeRequest = {
+    new UpdateFunctionCodeRequest()
+      .withFunctionName(functionName)
+      .withS3Bucket(s3Bucket)
+      .withS3Key(s3Key)
+  }
 }
 
 object ASG extends AWS {
-  def makeAsgClient(keyRing: KeyRing, region: Region): AutoScalingClient =
-    AutoScalingClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+  def makeAsgClient(keyRing: KeyRing, region: Region): AmazonAutoScaling =
+    AmazonAutoScalingClientBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
 
-  def desiredCapacity(name: String, capacity: Int, client: AutoScalingClient) =
+  def desiredCapacity(name: String, capacity: Int, client: AmazonAutoScaling) =
     client.setDesiredCapacity(
-      SetDesiredCapacityRequest.builder().autoScalingGroupName(name).desiredCapacity(capacity).build()
+      new SetDesiredCapacityRequest().withAutoScalingGroupName(name).withDesiredCapacity(capacity)
     )
 
-  def maxCapacity(name: String, capacity: Int, client: AutoScalingClient) =
+  def maxCapacity(name: String, capacity: Int, client: AmazonAutoScaling) =
     client.updateAutoScalingGroup(
-      UpdateAutoScalingGroupRequest.builder().autoScalingGroupName(name).maxSize(capacity).build()
-    )
+      new UpdateAutoScalingGroupRequest().withAutoScalingGroupName(name).withMaxSize(capacity))
 
   /**
     * Check status of all ELBs, or all instance states if there are no ELBs
     */
-  def isStabilized(asg: AutoScalingGroup, elbClient: ELB.Client): Either[String, Unit] = {
+  def isStabilized(asg: AutoScalingGroup, asgClient: AmazonAutoScaling,
+    elbClient: ELB.Client): Either[String, Unit] = {
 
     def matchCapacityAndState(states: List[String], desiredState: String, checkDescription: Option[String]): Either[String, Unit] = {
       val descriptionWithPrecedingSpace = checkDescription.map(d => s" $d").getOrElse("")
-      if (states.size != asg.desiredCapacity)
-        Left(s"Number of$descriptionWithPrecedingSpace instances (${states.size}) and ASG desired capacity (${asg.desiredCapacity}) don't match")
+      if (states.size != asg.getDesiredCapacity)
+        Left(s"Number of$descriptionWithPrecedingSpace instances (${states.size}) and ASG desired capacity (${asg.getDesiredCapacity}) don't match")
       else if (!states.forall(_ == desiredState))
         Left(s"Only ${states.count(_ == desiredState)} of ${states.size}$descriptionWithPrecedingSpace instances $desiredState")
       else
@@ -142,7 +146,7 @@ object ASG extends AWS {
 
     def checkTargetGroup(arn: String): Either[String, Unit] = {
       val elbHealth = ELB.targetInstancesHealth(arn, elbClient.application)
-      matchCapacityAndState(elbHealth, TargetHealthStateEnum.HEALTHY.toString, Some("V2 ELB"))
+      matchCapacityAndState(elbHealth, TargetHealthStateEnum.Healthy.toString, Some("V2 ELB"))
     }
 
     val classicElbNames = elbNames(asg)
@@ -154,57 +158,54 @@ object ASG extends AWS {
         _ <- targetGroupArns.map(checkTargetGroup).sequence
       } yield ()
     } else {
-      val instanceStates = asg.instances.asScala.toList.map(_.lifecycleStateAsString)
-      matchCapacityAndState(instanceStates, LifecycleState.IN_SERVICE.toString, None)
+      val instanceStates = asg.getInstances.asScala.toList.map(_.getLifecycleState)
+      matchCapacityAndState(instanceStates, LifecycleState.InService.toString, None)
     }
   }
 
-  def elbNames(asg: AutoScalingGroup): List[String] = asg.loadBalancerNames.asScala.toList
+  def elbNames(asg: AutoScalingGroup): List[String] = asg.getLoadBalancerNames.asScala.toList
 
-  def elbTargetArns(asg: AutoScalingGroup): List[String] = asg.targetGroupARNs.asScala.toList
+  def elbTargetArns(asg: AutoScalingGroup): List[String] = asg.getTargetGroupARNs.asScala.toList
 
-  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AutoScalingClient, elbClient: ELB.Client): TerminateInstanceInAutoScalingGroupResponse = {
+  def cull(asg: AutoScalingGroup, instance: ASGInstance, asgClient: AmazonAutoScaling, elbClient: ELB.Client) = {
     ELB.deregister(elbNames(asg), elbTargetArns(asg), instance, elbClient)
 
     asgClient.terminateInstanceInAutoScalingGroup(
-      TerminateInstanceInAutoScalingGroupRequest.builder()
-        .instanceId(instance.instanceId)
-        .shouldDecrementDesiredCapacity(true)
-        .build()
+      new TerminateInstanceInAutoScalingGroupRequest()
+        .withInstanceId(instance.getInstanceId).withShouldDecrementDesiredCapacity(true)
     )
   }
 
-  def refresh(asg: AutoScalingGroup, client: AutoScalingClient): AutoScalingGroup =
+  def refresh(asg: AutoScalingGroup, client: AmazonAutoScaling) =
     client.describeAutoScalingGroups(
-      DescribeAutoScalingGroupsRequest.builder().autoScalingGroupNames(asg.autoScalingGroupName()).build()
-    ).autoScalingGroups.asScala.head
+      new DescribeAutoScalingGroupsRequest().withAutoScalingGroupNames(asg.getAutoScalingGroupName)
+    ).getAutoScalingGroups.asScala.head
 
-  def suspendAlarmNotifications(name: String, client: AutoScalingClient): SuspendProcessesResponse =
-    client.suspendProcesses(
-      SuspendProcessesRequest.builder().autoScalingGroupName(name).scalingProcesses("AlarmNotification").build()
-    )
+  def suspendAlarmNotifications(name: String, client: AmazonAutoScaling) = client.suspendProcesses(
+    new SuspendProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
+  )
 
-  def resumeAlarmNotifications(name: String, client: AutoScalingClient): ResumeProcessesResponse =
-    client.resumeProcesses(
-      ResumeProcessesRequest.builder().autoScalingGroupName(name).scalingProcesses("AlarmNotification").build()
-    )
+  def resumeAlarmNotifications(name: String, client: AmazonAutoScaling) = client.resumeProcesses(
+    new ResumeProcessesRequest().withAutoScalingGroupName(name).withScalingProcesses("AlarmNotification")
+  )
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AmazonAutoScaling,
+    reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
-      def hasTag(key: String, value: String): Boolean = asg.tags.asScala.exists { tag =>
-        tag.key == key && tag.value == value
+      def hasTag(key: String, value: String) = asg.getTags.asScala exists { tag =>
+        tag.getKey == key && tag.getValue == value
       }
       def matchApp(app: App, stack: Stack): Boolean = hasTag("Stack", stack.name) && hasTag("App", app.name)
     }
 
     def listAutoScalingGroups(nextToken: Option[String] = None): List[AutoScalingGroup] = {
-      val request = DescribeAutoScalingGroupsRequest.builder()
-      nextToken.foreach(request.nextToken)
-      val result = client.describeAutoScalingGroups(request.build())
-      val autoScalingGroups = result.autoScalingGroups.asScala.toList
-      Option(result.nextToken) match {
+      val request = new DescribeAutoScalingGroupsRequest()
+      nextToken.foreach(request.setNextToken)
+      val result = client.describeAutoScalingGroups(request)
+      val autoScalingGroups = result.getAutoScalingGroups.asScala.toList
+      Option(result.getNextToken) match {
         case None => autoScalingGroups
         case token: Some[String] => autoScalingGroups ++ listAutoScalingGroups(token)
       }
@@ -221,10 +222,10 @@ object ASG extends AWS {
       case None =>
         reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
       case Some(ASGMatch(_, List(singleGroup))) =>
-        reporter.verbose(s"Using group ${singleGroup.autoScalingGroupName} (${singleGroup.autoScalingGroupARN})")
+        reporter.verbose(s"Using group ${singleGroup.getAutoScalingGroupName} (${singleGroup.getAutoScalingGroupARN})")
         singleGroup
       case Some(ASGMatch(app, groupList)) =>
-        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
+        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.getAutoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }
@@ -237,74 +238,67 @@ object ELB extends AWS {
     Client(classicClient(keyRing, region), applicationClient(keyRing, region))
 
   def classicClient(keyRing: KeyRing, region: Region): ClassicELB =
-    ClassicELB.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+    ClassicELBBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
 
   def applicationClient(keyRing: KeyRing, region: Region): ApplicationELB =
-    ApplicationELB.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+    ApplicationELBBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
 
   def targetInstancesHealth(targetARN: String, client: ApplicationELB): List[String] =
-    client.describeTargetHealth(DescribeTargetHealthRequest.builder().targetGroupArn(targetARN).build())
-      .targetHealthDescriptions.asScala.toList.map(_.targetHealth.state.toString)
+    client.describeTargetHealth(new DescribeTargetHealthRequest().withTargetGroupArn(targetARN))
+      .getTargetHealthDescriptions.asScala.toList.map(_.getTargetHealth.getState)
 
   def instanceHealth(elbName: String, client: ClassicELB): List[String] =
-    client.describeInstanceHealth(DescribeInstanceHealthRequest.builder().loadBalancerName(elbName).build())
-      .instanceStates.asScala.toList.map(_.state)
+    client.describeInstanceHealth(new DescribeInstanceHealthRequest(elbName))
+      .getInstanceStates.asScala.toList.map(_.getState)
 
   def deregister(elbName: List[String], elbTargetARN: List[String], instance: ASGInstance, client: Client) = {
     elbName.foreach(name =>
       client.classic.deregisterInstancesFromLoadBalancer(
-        DeregisterInstancesFromLoadBalancerRequest.builder()
-          .loadBalancerName(name)
-          .instances(ELBInstance.builder().instanceId(instance.instanceId).build())
-          .build()
-      ))
+        new DeregisterInstancesFromLoadBalancerRequest().withLoadBalancerName(name)
+          .withInstances(new ELBInstance().withInstanceId(instance.getInstanceId))))
     elbTargetARN.foreach(arn =>
       client.application.deregisterTargets(
-        DeregisterTargetsRequest.builder()
-          .targetGroupArn(arn)
-          .targets(TargetDescription.builder().id(instance.instanceId).build())
-          .build()
-      ))
+        new DeregisterTargetsRequest().withTargetGroupArn(arn)
+          .withTargets(new TargetDescription().withId(instance.getInstanceId))))
   }
 }
 
 object EC2 extends AWS {
-  def makeEc2Client(keyRing: KeyRing, region: Region): Ec2Client = {
-    Ec2Client.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+  def makeEc2Client(keyRing: KeyRing, region: Region): AmazonEC2 = {
+    AmazonEC2ClientBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
   }
 
-  def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client) {
-    val request = CreateTagsRequest.builder()
-      .resources(instances.map(_.instanceId).asJavaCollection)
-      .tags(EC2Tag.builder().key(key).value(value).build())
-        .build()
+  def setTag(instances: List[ASGInstance], key: String, value: String, client: AmazonEC2) {
+    val request = new CreateTagsRequest().
+      withResources(instances map { _.getInstanceId } asJavaCollection).
+      withTags(new EC2Tag(key, value))
 
     client.createTags(request)
   }
 
-  def hasTag(instance: ASGInstance, key: String, value: String, client: Ec2Client): Boolean = {
-    describe(instance, client).tags.asScala.exists { tag =>
-      tag.key == key && tag.value == value
+  def hasTag(instance: ASGInstance, key: String, value: String, client: AmazonEC2): Boolean = {
+    describe(instance, client).getTags.asScala exists { tag =>
+      tag.getKey == key && tag.getValue == value
     }
   }
 
-  def describe(instance: ASGInstance, client: Ec2Client) = client.describeInstances(
-    DescribeInstancesRequest.builder().instanceIds(instance.instanceId).build()
-  ).reservations.asScala.flatMap(_.instances.asScala).head
+  def describe(instance: ASGInstance, client: AmazonEC2) = client.describeInstances(
+    new DescribeInstancesRequest().withInstanceIds(instance.getInstanceId)
+  ).getReservations.asScala.flatMap(_.getInstances.asScala).head
 
-  def apply(instance: ASGInstance, client: Ec2Client) = describe(instance, client)
+  def apply(instance: ASGInstance, client: AmazonEC2) = describe(instance, client)
 }
 
 object CloudFormation extends AWS {
@@ -316,92 +310,93 @@ object CloudFormation extends AWS {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
-  def makeCfnClient(keyRing: KeyRing, region: Region): CloudFormationClient = {
-    CloudFormationClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+  val CAPABILITY_NAMED_IAM = "CAPABILITY_NAMED_IAM"
+
+  def makeCfnClient(keyRing: KeyRing, region: Region): AmazonCloudFormation = {
+    AmazonCloudFormationClientBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
   }
 
-  def validateTemplate(template: Template, client: CloudFormationClient) = {
+  def validateTemplate(template: Template, client: AmazonCloudFormation) = {
     val request = template match {
-      case TemplateBody(body) => ValidateTemplateRequest.builder().templateBody(body)
-      case TemplateUrl(url) => ValidateTemplateRequest.builder().templateURL(url)
+      case TemplateBody(body) => new ValidateTemplateRequest().withTemplateBody(body)
+      case TemplateUrl(url) => new ValidateTemplateRequest().withTemplateURL(url)
     }
-    client.validateTemplate(request.build())
+    client.validateTemplate(request)
   }
 
-  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: CloudFormationClient): UpdateStackResponse =
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: AmazonCloudFormation) =
     client.updateStack(
-      UpdateStackRequest.builder()
-        .stackName(name)
-        .capabilities(Capability.CAPABILITY_NAMED_IAM)
-        .usePreviousTemplate(true)
-        .parameters(
-          parameters.map {
-            case (k, SpecifiedValue(v)) => Parameter.builder().parameterKey(k).parameterValue(v).build()
-            case (k, UseExistingValue) => Parameter.builder().parameterKey(k).usePreviousValue(true).build()
-          }.toSeq: _*
+      new UpdateStackRequest()
+        .withStackName(name)
+        .withCapabilities(CAPABILITY_NAMED_IAM)
+        .withUsePreviousTemplate(true)
+        .withParameters(
+          parameters map {
+            case (k, SpecifiedValue(v)) => new Parameter().withParameterKey(k).withParameterValue(v)
+            case (k, UseExistingValue) => new Parameter().withParameterKey(k).withUsePreviousValue(true)
+          } toSeq: _*
         )
-        .build()
     )
 
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
-                      template: Template, parameters: Iterable[Parameter], client: CloudFormationClient): Unit = {
+                      template: Template, parameters: Iterable[Parameter], client: AmazonCloudFormation): Unit = {
 
-    val request = CreateChangeSetRequest.builder()
-      .changeSetName(name)
-      .changeSetType(tpe)
-      .stackName(stackName)
-      .capabilities(Capability.CAPABILITY_NAMED_IAM)
-      .parameters(parameters.toSeq.asJava)
+    val request = new CreateChangeSetRequest()
+      .withChangeSetName(name)
+      .withChangeSetType(tpe)
+      .withStackName(stackName)
+      .withCapabilities(CAPABILITY_NAMED_IAM)
+      .withParameters(parameters.toSeq.asJava)
 
     val tags: Iterable[CfnTag] = maybeTags
       .getOrElse(Map.empty)
-      .map  { case (key, value) => CfnTag.builder().key(key).value(value).build() }
+      .map  { case (key, value) => new CfnTag().withKey(key).withValue(value) }
 
-    request.tags(tags.toSeq: _*)
+    request.withTags(tags.toSeq: _*)
 
     val requestWithTemplate = template match {
-      case TemplateBody(body) => request.templateBody(body)
-      case TemplateUrl(url) => request.templateURL(url)
+      case TemplateBody(body) => request.withTemplateBody(body)
+      case TemplateUrl(url) => request.withTemplateURL(url)
     }
 
-    client.createChangeSet(requestWithTemplate.build())
+    client.createChangeSet(requestWithTemplate)
   }
 
-  def describeStack(name: String, client: CloudFormationClient) =
+  def describeStack(name: String, client: AmazonCloudFormation) =
     try {
       client.describeStacks(
-        DescribeStacksRequest.builder().stackName(name).build()
-      ).stacks.asScala.headOption
+        new DescribeStacksRequest().withStackName(name)
+      ).getStacks.asScala.headOption
     } catch {
-      case acfe: CloudFormationException
-        if acfe.awsErrorDetails.errorCode == "ValidationError" && acfe.awsErrorDetails.errorMessage.contains("does not exist") => None
+      case acfe:AmazonCloudFormationException
+        if acfe.getErrorCode == "ValidationError" && acfe.getErrorMessage.contains("does not exist") => None
     }
 
-  def describeStackEvents(name: String, client: CloudFormationClient) =
+  def describeStackEvents(name: String, client: AmazonCloudFormation) =
     client.describeStackEvents(
-      DescribeStackEventsRequest.builder().stackName(name).build()
+      new DescribeStackEventsRequest().withStackName(name)
     )
 
-  def findStackByTags(tags: Map[String, String], reporter: DeployReporter, client: CloudFormationClient): Option[AmazonStack] = {
+  def findStackByTags(tags: Map[String, String], reporter: DeployReporter, client: AmazonCloudFormation): Option[AmazonStack] = {
 
     def tagsMatch(stack: AmazonStack): Boolean =
-      tags.forall { case (key, value) => stack.tags.asScala.exists(t => t.key == key && t.value == value) }
+      tags.forall { case (key, value) => stack.getTags.asScala.exists(t => t.getKey == key && t.getValue == value) }
 
     @tailrec
     def recur(nextToken: Option[String] = None, existingStacks: List[AmazonStack] = Nil): List[AmazonStack] = {
-      val request = DescribeStacksRequest.builder().nextToken(nextToken.orNull).build()
+      val request = new DescribeStacksRequest().withNextToken(nextToken.orNull)
       val response = client.describeStacks(request)
 
-      val stacks = response.stacks.asScala.foldLeft(existingStacks) {
+      val stacks = response.getStacks.asScala.foldLeft(existingStacks) {
         case (agg, stack) if tagsMatch(stack) => stack :: agg
         case (agg, _) => agg
       }
 
-      Option(response.nextToken) match {
+      Option(response.getNextToken) match {
         case None => stacks
         case token => recur(token, stacks)
       }
@@ -409,82 +404,78 @@ object CloudFormation extends AWS {
 
     recur() match {
       case cfnStack :: Nil =>
-        reporter.verbose(s"Found stack ${cfnStack.stackName} (${cfnStack.stackId})")
+        reporter.verbose(s"Found stack ${cfnStack.getStackName} (${cfnStack.getStackId})")
         Some(cfnStack)
       case Nil =>
         None
       case multipleStacks =>
-        reporter.fail(s"More than one cloudformation stack match for $tags (matched ${multipleStacks.map(_.stackName).mkString(", ")}). Failing fast since this may be non-deterministic.")
+        reporter.fail(s"More than one cloudformation stack match for $tags (matched ${multipleStacks.map(_.getStackName).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }
 
 object STS extends AWS {
-  def makeSTSclient(keyRing: KeyRing, region: Region): StsClient = {
-    StsClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
-      .region(region.awsRegion)
+  def makeSTSclient(keyRing: KeyRing, region: Region): AWSSecurityTokenService = {
+    AWSSecurityTokenServiceClientBuilder.standard()
+      .withCredentials(provider(keyRing))
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(region.name)
       .build()
   }
 
-  def getAccountNumber(stsClient: StsClient): String = {
-    val callerIdentityResponse = stsClient.getCallerIdentity(GetCallerIdentityRequest.builder().build())
-    callerIdentityResponse.account
+  def getAccountNumber(stsClient: AWSSecurityTokenService): String = {
+    val callerIdentityResponse = stsClient.getCallerIdentity(new GetCallerIdentityRequest())
+    callerIdentityResponse.getAccount
   }
 }
 
 trait AWS extends Loggable {
-  lazy val accessKey: String = Option(System.getenv.get("aws_access_key")).getOrElse{
+  lazy val accessKey = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
-  lazy val secretAccessKey: String = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
+  lazy val secretAccessKey = Option(System.getenv.get("aws_secret_access_key")).getOrElse{
     sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
   }
 
-  lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
+  lazy val envCredentials = new BasicAWSCredentials(accessKey, secretAccessKey)
 
-  def provider(keyRing: KeyRing): AwsCredentialsProviderChain = AwsCredentialsProviderChain.builder().credentialsProviders(
-    new AwsCredentialsProvider {
-      override def resolveCredentials(): AwsCredentials = keyRing.apiCredentials.get("aws").map { credentials =>
-        AwsBasicCredentials.create(credentials.id, credentials.secret)
-      }.get
+  def provider(keyRing: KeyRing): AWSCredentialsProvider = new AWSCredentialsProviderChain(
+    new AWSCredentialsProvider {
+      def refresh() {}
+      def getCredentials = keyRing.apiCredentials.get("aws") map {
+          credentials => new BasicAWSCredentials(credentials.id,credentials.secret)
+      } get
     },
-    new AwsCredentialsProvider {
-      override def resolveCredentials(): AwsCredentials = envCredentials
+    new AWSCredentialsProvider {
+      def refresh() {}
+      def getCredentials = envCredentials
     }
-  ).build()
+  )
 
   /* A retry condition that logs errors */
-  class LoggingRetryCondition extends RetryCondition {
+  class LoggingRetryCondition extends SDKDefaultRetryCondition {
     private def exceptionInfo(e: Throwable): String = {
       s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
     }
-    override def shouldRetry(context: RetryPolicyContext): Boolean = {
-      val willRetry = shouldRetry(context)
+
+    override def shouldRetry(originalRequest: AmazonWebServiceRequest, exception: AmazonClientException, retriesAttempted: Int): Boolean = {
+      val willRetry = super.shouldRetry(originalRequest, exception, retriesAttempted)
       if (willRetry) {
-        logger.warn(s"AWS SDK retry ${context.retriesAttempted}: ${Option(context.originalRequest).map(_.getClass.getName)} threw ${exceptionInfo(context.exception)}")
+        logger.warn(s"AWS SDK retry $retriesAttempted: ${Option(originalRequest).map(_.getClass.getName)} threw ${exceptionInfo(exception)}")
       } else {
-        logger.warn(s"Encountered fatal exception during AWS API call", context.exception)
-        Option(context.exception.toBuilder.cause).foreach(t => logger.warn(s"Cause of fatal exception", t))
+        logger.warn(s"Encountered fatal exception during AWS API call", exception)
+        Option(exception.getCause).foreach(t => logger.warn(s"Cause of fatal exception", t))
       }
       willRetry
     }
   }
+  val clientConfiguration = new ClientConfiguration().
+    withRetryPolicy(new RetryPolicy(
+      new LoggingRetryCondition(),
+      PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
+      20,
+      false
+    ))
 
-  val clientConfiguration: ClientOverrideConfiguration =
-    ClientOverrideConfiguration.builder()
-      .retryPolicy(
-        RetryPolicy.builder()
-          .retryCondition(new LoggingRetryCondition())
-          .backoffStrategy(BackoffStrategy.defaultStrategy())
-          .numRetries(20)
-          .build()
-    ).build()
-
-  val clientConfigurationNoRetry: ClientOverrideConfiguration =
-    ClientOverrideConfiguration.builder()
-      .retryPolicy(
-        RetryPolicy.none()
-      ).build()
+  val clientConfigurationNoRetry = new ClientConfiguration().withRetryPolicy(PredefinedRetryPolicies.NO_RETRY_POLICY)
 }

@@ -2,10 +2,8 @@ package magenta
 
 import java.io.Closeable
 
+import com.amazonaws.{AmazonClientException, ClientConfiguration}
 import com.gu.management.Loggable
-import software.amazon.awssdk.awscore.exception.AwsServiceException
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}
 
 import scala.annotation.tailrec
 import scala.math.Ordering.OptionOrdering
@@ -46,22 +44,18 @@ object `package` extends Loggable {
   }
 
   @tailrec
-  def retryOnException[T](config: ClientOverrideConfiguration, currentAttempt: Int = 1)(f: => T): T = {
-    val policy: RetryPolicy = config.retryPolicy.get
-    val retries = policy.numRetries
+  def retryOnException[T](config: ClientConfiguration, currentAttempt: Int = 1)(f: => T): T = {
+    val policy = config.getRetryPolicy
+    val retries = policy.getMaxErrorRetry
 
-    // use the client config retry logic
-    def shouldRetryFor(ase: AwsServiceException): Boolean = {
-      val retryContext = RetryPolicyContext.builder().exception(ase).retriesAttempted(currentAttempt).build()
-      policy.retryCondition.shouldRetry(retryContext)
-    }
+    // use the client config retry logic - we pass in null for the request as no SDK implementations actually use it
+    def shouldRetryFor(ace: AmazonClientException) = policy.getRetryCondition.shouldRetry(null, ace, currentAttempt)
 
     Try(f) match {
       case Success(result) => result
-      case Failure(exception: AwsServiceException) if currentAttempt <= retries && shouldRetryFor(exception) =>
+      case Failure(exception:AmazonClientException) if currentAttempt <= retries && shouldRetryFor(exception) =>
         // use client config to calculate delay - pass in null for request as no SDK implementations actually use it
-        val retryContext = RetryPolicyContext.builder().exception(exception).retriesAttempted(currentAttempt).build()
-        val delay = policy.backoffStrategy.computeDelayBeforeNextRetry(retryContext).getSeconds
+        val delay = policy.getBackoffStrategy.delayBeforeNextRetry(null, exception, currentAttempt)
         logger.warn(s"Client exception encountered, retrying in ${delay}ms")
         Thread.sleep(delay)
         retryOnException(config, currentAttempt + 1)(f)

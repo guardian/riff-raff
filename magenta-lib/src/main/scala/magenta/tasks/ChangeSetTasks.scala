@@ -1,11 +1,10 @@
 package magenta.tasks
 
+import com.amazonaws.services.cloudformation.model._
+import com.amazonaws.services.s3.AmazonS3
 import magenta.artifact.S3Path
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
-import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
-import software.amazon.awssdk.services.cloudformation.model.{Change, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
-import software.amazon.awssdk.services.s3.S3Client
 
 import scala.collection.JavaConverters._
 import scala.util.{Success, Try}
@@ -15,7 +14,7 @@ class CreateChangeSetTask(
                            templatePath: S3Path,
                            stackLookup: CloudFormationStackMetadata,
                            val unresolvedParameters: CloudFormationParameters
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
@@ -48,7 +47,7 @@ class CheckChangeSetCreatedTask(
                                  region: Region,
                                  stackLookup: CloudFormationStackMetadata,
                                  override val duration: Long
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task with RepeatedPollingCheck {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task with RepeatedPollingCheck {
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     check(reporter, stopFlag) {
@@ -57,14 +56,16 @@ class CheckChangeSetCreatedTask(
       val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
-      val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+      val request = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
       val response = cfnClient.describeChangeSet(request)
 
-      shouldStopWaiting(response.status.toString, response.statusReason, response.changes.asScala, reporter)
+      shouldStopWaiting(response.getStatus, response.getStatusReason, response.getChanges.asScala, reporter)
     }
   }
 
   def shouldStopWaiting(status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = {
+    import ChangeSetStatus._
+
     Try(valueOf(status)) match {
       case Success(CREATE_COMPLETE) => true
       case Success(FAILED) if changes.isEmpty => true
@@ -84,24 +85,24 @@ class CheckChangeSetCreatedTask(
 class ExecuteChangeSetTask(
                             region: Region,
                             stackLookup: CloudFormationStackMetadata,
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
 
     val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
     val changeSetName = stackLookup.changeSetName
 
-    val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+    val describeRequest = new DescribeChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
     val describeResponse = cfnClient.describeChangeSet(describeRequest)
 
-    if(describeResponse.changes.isEmpty) {
+    if(describeResponse.getChanges.isEmpty) {
       reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
     } else {
-      describeResponse.changes.asScala.foreach { change =>
-        reporter.verbose(s"${change.`type`} - ${change.resourceChange}")
+      describeResponse.getChanges.asScala.foreach { change =>
+        reporter.verbose(s"${change.getType} - ${change.getResourceChange}")
       }
 
-      val request = ExecuteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+      val request = new ExecuteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
       cfnClient.executeChangeSet(request)
     }
   }
@@ -113,14 +114,14 @@ class ExecuteChangeSetTask(
 class DeleteChangeSetTask(
                            region: Region,
                            stackLookup: CloudFormationStackMetadata,
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
 
     val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
     val changeSetName = stackLookup.changeSetName
 
-    val request = DeleteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+    val request = new DeleteChangeSetRequest().withChangeSetName(changeSetName).withStackName(stackName)
     cfnClient.deleteChangeSet(request)
   }
 

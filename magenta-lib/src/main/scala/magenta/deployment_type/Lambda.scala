@@ -1,9 +1,10 @@
 package magenta.deployment_type
 
+import com.amazonaws.regions.{Region => AwsRegion, Regions => AwsRegions}
+import com.amazonaws.services.s3.AmazonS3
+import magenta.{DeploymentPackage, DeployParameters, DeployReporter, DeployTarget, KeyRing, Region, Stack}
 import magenta.artifact.S3Path
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack}
-import software.amazon.awssdk.services.s3.S3Client
 
 object Lambda extends DeploymentType  {
   val name = "aws-lambda"
@@ -96,7 +97,7 @@ object Lambda extends DeploymentType  {
       |Uploads the lambda code to S3.
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient: S3Client = resources.artifactClient
+    implicit val artifactClient: AmazonS3 = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
       val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
       S3Upload(
@@ -123,7 +124,7 @@ object Lambda extends DeploymentType  {
       |As a result you can bundle stage specific configuration into the respective files.
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient: S3Client = resources.artifactClient
+    implicit val artifactClient: AmazonS3 = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         val s3Key = makeS3Key(target.stack, target.parameters, pkg, lambda.fileName)
         UpdateS3Lambda(

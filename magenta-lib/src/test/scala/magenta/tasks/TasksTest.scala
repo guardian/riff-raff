@@ -1,50 +1,54 @@
 package magenta
 package tasks
 
-import java.io.OutputStreamWriter
+import java.io.{ByteArrayInputStream, OutputStreamWriter}
 import java.net.ServerSocket
+import java.util
 import java.util.UUID
 
+import com.amazonaws.ClientConfiguration
+import com.amazonaws.services.s3.model._
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import magenta.artifact.{S3Path, S3Object => MagentaS3Object}
 import magenta.deployment_type.param_reads.PatternValue
-import magenta.input.All
 import org.mockito.ArgumentCaptor
-import org.mockito.ArgumentMatchers._
+import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import software.amazon.awssdk.core.ResponseBytes
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.core.sync.RequestBody
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model._
+import magenta.Region
+import magenta.input.All
+
+import scala.collection.JavaConverters._
 
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
-  implicit val fakeKeyRing: KeyRing = KeyRing()
-  implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val fakeKeyRing = KeyRing()
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
   "PutRec" should "create an upload request with correct permissions" in {
     val putRec = PutReq(
-      source = MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
-      target = S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
-      cacheControl = None, contentType = None,
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
+      None, None,
       publicReadAcl = false
     )
 
-    val awsRequest = putRec.toAwsRequest
+    val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
+    val awsRequest = putRec.toAwsRequest(stream)
 
-    awsRequest.bucket should be ("artifact-bucket")
-    awsRequest.acl should be (null)
-    awsRequest.key should be ("foo/bar/the-jar.jar")
-    Option(awsRequest.cacheControl) should be (None)
-    awsRequest.contentType should be ("application/java-archive")
+    awsRequest.getBucketName should be ("artifact-bucket")
+    awsRequest.getCannedAcl should be (null)
+    awsRequest.getKey should be ("foo/bar/the-jar.jar")
+    awsRequest.getInputStream should be (stream)
+    Option(awsRequest.getMetadata.getCacheControl) should be (None)
+    awsRequest.getMetadata.getContentType should be ("application/octet-stream")
 
     val reqWithoutAcl = putRec.copy(publicReadAcl = true)
 
-    val awsRequestWithoutAcl = reqWithoutAcl.toAwsRequest
+    val awsRequestWithoutAcl = reqWithoutAcl.toAwsRequest(stream)
 
-    awsRequestWithoutAcl.acl should be (ObjectCannedACL.PUBLIC_READ)
+    awsRequestWithoutAcl.getCannedAcl should be (CannedAccessControlList.PublicRead)
   }
 
   it should "create an upload request with cache control and content type" in {
@@ -55,13 +59,15 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       publicReadAcl = false
     )
 
-    val awsRequest = putRec.toAwsRequest
+    val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
+    val awsRequest = putRec.toAwsRequest(stream)
 
-    awsRequest.bucket should be ("artifact-bucket")
-    awsRequest.acl should be (null)
-    awsRequest.key should be ("foo/bar/the-jar.jar")
-    Option(awsRequest.cacheControl) should be (Some("no-cache"))
-    Option(awsRequest.contentType) should be (Some("application/json"))
+    awsRequest.getBucketName should be ("artifact-bucket")
+    awsRequest.getCannedAcl should be (null)
+    awsRequest.getKey should be ("foo/bar/the-jar.jar")
+    awsRequest.getInputStream should be (stream)
+    Option(awsRequest.getMetadata.getCacheControl) should be (Some("no-cache"))
+    Option(awsRequest.getMetadata.getContentType) should be (Some("application/json"))
   }
 
   it should "use a default mime type from S3" in {
@@ -73,7 +79,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     )
     val putRecTwo = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
-      S3Path("artifact-bucket", "foo/bar/the-jar.abc"),
+      S3Path("artifact-bucket", "foo/bar/the-jar.xpi"),
       Some("no-cache"), None,
       publicReadAcl = false
     )
@@ -84,72 +90,75 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       publicReadAcl = false
     )
 
-    val awsRequestOne = putRecOne.toAwsRequest
-    val awsRequestTwo = putRecTwo.toAwsRequest
-    val awsRequestThree = putRecThree.toAwsRequest
+    val stream = new ByteArrayInputStream("bob".getBytes("UTF-8"))
+    val awsRequestOne = putRecOne.toAwsRequest(stream)
+    val awsRequestTwo = putRecTwo.toAwsRequest(stream)
+    val awsRequestThree = putRecThree.toAwsRequest(stream)
 
-    awsRequestOne.contentType should be ("text/css")
-    awsRequestTwo.contentType should be ("application/octet-stream")
-    awsRequestThree.contentType should be ("application/javascript")
+    awsRequestOne.getMetadata.getContentType should be ("text/css")
+    awsRequestTwo.getMetadata.getContentType should be ("application/octet-stream")
+    awsRequestThree.getMetadata.getContentType should be ("application/x-javascript")
   }
 
   "S3Upload" should "upload a single file to S3" in {
-    val artifactClient = mock[S3Client]
-    val s3Client = mock[S3Client]
-
-    val sourceBucket = "artifact-bucket"
-    val targetBucket = "destination-bucket"
-    val sourceKey = "foo/bar/the-jar.jar"
-    val targetKey = "keyPrefix/the-jar.jar"
-
-    val objectResult = mockListObjectsResponse(List(MagentaS3Object(sourceBucket, sourceKey, 31)))
+    val artifactClient = mock[AmazonS3Client]
+    val objectResult = mockListObjects(List(MagentaS3Object("artifact-bucket", "foo/bar/the-jar.jar", 31)))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
+    when(artifactClient.getObject("artifact-bucket", "foo/bar/the-jar.jar")).thenReturn(mockObject("Some content for this S3 object"))
 
-    when(artifactClient.copyObject(CopyObjectRequest.builder()
-      .copySource(s"$sourceBucket/$sourceKey")
-      .bucket(targetBucket)
-      .key(targetKey)
-      .build())
-    ).thenReturn(mockCopyObjectResponse())
+    val fileToUpload = new S3Path("artifact-bucket", "foo/bar/the-jar.jar")
+    val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
+    val task = new S3Upload(Region("eu-west-1"), "destination-bucket", Seq(fileToUpload -> "keyPrefix/the-jar.jar"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
 
-    val fileToUpload = new S3Path(sourceBucket, sourceKey)
-    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     val mappings = task.objectMappings
     mappings.size should be (1)
     val (source, target) = mappings.head
-    source.bucket should be (sourceBucket)
-    source.key should be (sourceKey)
+    source.bucket should be ("artifact-bucket")
+    source.key should be ("foo/bar/the-jar.jar")
     source.size should be (31)
 
-    target.bucket should be (targetBucket)
-    target.key should be (targetKey)
+    target.bucket should be ("destination-bucket")
+    target.key should be ("keyPrefix/the-jar.jar")
 
     task.execute(reporter)
 
-    val request: ArgumentCaptor[CopyObjectRequest] = ArgumentCaptor.forClass(classOf[CopyObjectRequest])
-    verify(s3Client).copyObject(request.capture())
+    val request = ArgumentCaptor.forClass(classOf[PutObjectRequest])
+    verify(s3Client).putObject(request.capture())
     verifyNoMoreInteractions(s3Client)
-    request.getValue.key should be ("keyPrefix/the-jar.jar")
-    request.getValue.bucket should be ("destination-bucket")
+    request.getValue.getKey should be ("keyPrefix/the-jar.jar")
+    request.getValue.getBucketName should be ("destination-bucket")
   }
 
   it should "upload a directory to S3" in {
-    val artifactClient = mock[S3Client]
-    val s3Client = mock[S3Client]
-
+    val artifactClient = mock[AmazonS3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
-
-    val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
+    val objectResult = mockListObjects(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
-
-    when(artifactClient.copyObject(any[CopyObjectRequest])).thenReturn(mockCopyObjectResponse())
+    when(artifactClient.getObject(any[String], any[String])).thenReturn(mockObject("Some content for this S3 object"))
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
+    val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
-
     task.execute(reporter)
 
     val files = task.objectMappings
@@ -158,27 +167,32 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     files should contain ((fileTwo, S3Path("bucket", "myStack/CODE/myApp/two.txt")))
     files should contain ((fileThree, S3Path("bucket", "myStack/CODE/myApp/sub/three.txt")))
 
-    verify(s3Client, times(3)).copyObject(any[CopyObjectRequest])
+    verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
     verifyNoMoreInteractions(s3Client)
   }
 
   it should "upload a directory to S3 with no prefix" in {
-    val artifactClient = mock[S3Client]
-    val s3Client = mock[S3Client]
 
+    val artifactClient = mock[AmazonS3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
-
-    val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
+    val objectResult = mockListObjects(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
-
-    when(artifactClient.copyObject(any[CopyObjectRequest]))
-      .thenReturn(mockCopyObjectResponse())
+    when(artifactClient.getObject(any[String], any[String])).thenReturn(mockObject("Some content for this S3 object"))
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
+    val s3Client = mock[AmazonS3Client]
+    val putObjectResult = {
+      val por = new PutObjectResult
+      por.setContentMd5("testMd5Sum")
+      val metadata = new ObjectMetadata()
+      metadata.setContentLength(300)
+      por.setMetadata(metadata)
+      por
+    }
+    when(s3Client.putObject(any[PutObjectRequest])).thenReturn(putObjectResult)
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     task.execute(reporter)
 
@@ -189,17 +203,17 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     files should contain ((fileTwo, S3Path("bucket", "two.txt")))
     files should contain ((fileThree, S3Path("bucket", "sub/three.txt")))
 
-    verify(s3Client, times(3)).copyObject(any[CopyObjectRequest])
+    verify(s3Client, times(3)).putObject(any(classOf[PutObjectRequest]))
 
     verifyNoMoreInteractions(s3Client)
   }
 
   it should "use different cache control" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = mock[AmazonS3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
-    val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
+    val objectResult = mockListObjects(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
@@ -212,10 +226,10 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "use overridden mime type" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = mock[AmazonS3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.test.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.test.xpi", 31)
-    val objectResult = mockListObjectsResponse(List(fileOne, fileTwo))
+    val objectResult = mockListObjects(List(fileOne, fileTwo))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")
@@ -226,19 +240,28 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     task.requests.find(_.source == fileTwo).get.contentType should be(Some("application/x-xpinstall"))
   }
 
-  def mockListObjectsResponse(objs: List[MagentaS3Object]): ListObjectsV2Response = {
-    val s3Objects = objs.map { obj =>
-      S3Object.builder().key(obj.key).size(obj.size).build()
+  def mockListObjects(objs: List[MagentaS3Object]) = {
+    val summaries = objs.map { obj =>
+      val summary = new S3ObjectSummary()
+      summary.setBucketName(obj.bucket)
+      summary.setKey(obj.key)
+      summary.setSize(obj.size)
+      summary
     }
-
-    ListObjectsV2Response.builder().contents(s3Objects:_*).build()
+    new ListObjectsV2Result() {
+      override def getObjectSummaries: util.List[S3ObjectSummary] = {
+        summaries.asJava
+      }
+    }
   }
 
-  def mockCopyObjectResponse(): CopyObjectResponse = {
-    CopyObjectResponse.builder().build()
+  def mockObject(content: String): S3Object = {
+    val mockedObject = new S3Object()
+    mockedObject.setObjectContent(new ByteArrayInputStream(content.getBytes("UTF-8")))
+    mockedObject
   }
-
-  def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => S3Client = { (_, _, _) => client }
+  
+  def clientFactory(client: AmazonS3): (KeyRing, Region, ClientConfiguration) => AmazonS3 = { (_, _, _) => client }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), All)
 }
@@ -250,7 +273,7 @@ class TestServer(port:Int = 9997) {
     val server = new ServerSocket(port)
     val socket = server.accept()
     val osw = new OutputStreamWriter(socket.getOutputStream)
-    osw.write("%s\r\n\r\n" format response)
+    osw.write("%s\r\n\r\n" format (response))
     osw.flush()
     socket.close()
     server.close()

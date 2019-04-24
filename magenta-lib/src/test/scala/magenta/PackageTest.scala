@@ -2,22 +2,19 @@ package magenta
 
 import java.io.IOException
 
+import com.amazonaws.{AmazonClientException, ClientConfiguration}
+import com.amazonaws.retry.{PredefinedRetryPolicies, RetryPolicy}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import software.amazon.awssdk.awscore.exception.AwsServiceException
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.core.retry.RetryPolicy
-import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
-import software.amazon.awssdk.core.retry.conditions.RetryCondition
 
 class PackageTest extends FlatSpec with Matchers with MockitoSugar {
-  val clientConfiguration: ClientOverrideConfiguration = ClientOverrideConfiguration.builder().
-    retryPolicy(RetryPolicy.builder()
-      .retryCondition(RetryCondition.defaultRetryCondition())
-      .backoffStrategy(BackoffStrategy.defaultStrategy())
-      .numRetries(3)
-      .throttlingBackoffStrategy(BackoffStrategy.none())
-    .build()).build()
+  val clientConfiguration = new ClientConfiguration().
+    withRetryPolicy(new RetryPolicy(
+      PredefinedRetryPolicies.DEFAULT_RETRY_CONDITION,
+      PredefinedRetryPolicies.DEFAULT_BACKOFF_STRATEGY,
+      3,
+      false
+    ))
 
   "retryOnException" should "work when no exception is thrown" in {
     var calls = 0
@@ -33,10 +30,10 @@ class PackageTest extends FlatSpec with Matchers with MockitoSugar {
 
   "retryOnException" should "work when an exception is thrown" in {
     var calls = 0
-    def block: String = {
+    def block:String = {
       calls += 1
       if (calls == 1)
-        throw AwsServiceException.builder().message("failure message").cause(new IOException("IO cause")).build()
+        throw new AmazonClientException("failure message", new IOException("IO cause"))
       else
         "banana"
     }
@@ -48,24 +45,24 @@ class PackageTest extends FlatSpec with Matchers with MockitoSugar {
 
   "retryOnException" should "throw an exception if it fails consistently" in {
     var calls = 0
-    def block: String = {
+    def block:String = {
       calls += 1
-      throw AwsServiceException.builder().message("failure message").cause(new IOException("IO cause")).build()
+      throw new AmazonClientException("failure message", new IOException("IO cause"))
     }
 
-    an [AwsServiceException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an [AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
 
-    calls should be(3)
+    calls should be(4)
   }
 
   "retryOnException" should "throw an exception immediately if not retryable" in {
     var calls = 0
-    def block: String = {
+    def block:String = {
       calls += 1
-      throw AwsServiceException.builder().message("failure message").build()
+      throw new AmazonClientException("failure message")
     }
 
-    an [AwsServiceException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an [AmazonClientException] should be thrownBy retryOnException(clientConfiguration)(block)
 
     calls should be(1)
   }

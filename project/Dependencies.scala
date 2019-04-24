@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.5.14"
+    val aws = "1.11.106"
     val guardianManagement = "5.41"
     val jackson = "2.9.8"
   }
@@ -15,7 +15,7 @@ object Dependencies {
     "org.typelevel" %% "cats-core" % "1.0.1",
     "com.kailuowang" %% "henkan-convert" % "0.2.10",
     "org.scalatest" %% "scalatest" % "3.0.3" % Test,
-    "org.mockito" % "mockito-core" % "2.27.0" % Test
+    "org.mockito" % "mockito-core" % "1.10.19" % Test
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
@@ -24,15 +24,15 @@ object Dependencies {
     "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
     "com.github.seratch.com.veact" %% "scala-ssh" % "0.8.0-1" exclude ("org.bouncycastle", "bcpkix-jdk15on"),
     "ch.qos.logback" % "logback-classic" % "1.2.0",
-    "software.amazon.awssdk" % "core" % Versions.aws,
-    "software.amazon.awssdk" % "autoscaling" % Versions.aws,
-    "software.amazon.awssdk" % "s3" % Versions.aws,
-    "software.amazon.awssdk" % "ec2" % Versions.aws,
-    "software.amazon.awssdk" % "elasticloadbalancing" % Versions.aws,
-    "software.amazon.awssdk" % "elasticloadbalancingv2" % Versions.aws,
-    "software.amazon.awssdk" % "lambda" % Versions.aws,
-    "software.amazon.awssdk" % "cloudformation" % Versions.aws,
-    "software.amazon.awssdk" % "sts" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-core" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-autoscaling" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-s3" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-ec2" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-elasticloadbalancing" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-elasticloadbalancingv2" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-lambda" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-cloudformation" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-sts" % Versions.aws,
     "com.gu" %% "management" % Versions.guardianManagement,
     "com.gu" %% "fastly-api-client" % "0.2.6",
     "com.ning" % "async-http-client" % "1.9.40", // we need this to solve vulnerabilities from fastly-api-client
@@ -56,8 +56,7 @@ object Dependencies {
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.2-P26-B3-RC2",
     "com.gu" %% "scanamo" % "1.0.0-M6",
-    "software.amazon.awssdk" % "dynamodb" % Versions.aws,
-    "software.amazon.awssdk" % "sns" % Versions.aws,
+    "com.amazonaws" % "aws-java-sdk-dynamodb" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.0",
     "com.gu" %% "anghammarad-client" % "1.1.3",
     "org.webjars" %% "webjars-play" % "2.7.0-1",

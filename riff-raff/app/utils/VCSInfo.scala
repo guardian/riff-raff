@@ -29,9 +29,9 @@ trait VCSInfo {
 
 case class GitHub(ciVcsUrl: String, revision: String, repo: String) extends VCSInfo {
   lazy val name = "GitHub"
-  lazy val baseUrl = new URI(s"https://github.com/$repo")
-  lazy val commitUrl = new URI(s"$baseUrl/commit/$revision")
-  lazy val treeUrl = new URI(s"$baseUrl/tree/$revision")
+  lazy val baseUrl = new URI("https://github.com/%s" format repo)
+  lazy val commitUrl = new URI("%s/commit/%s" format (baseUrl, revision))
+  lazy val treeUrl = new URI("%s/tree/%s" format (baseUrl, revision))
   lazy val headUrl = baseUrl
 }
 

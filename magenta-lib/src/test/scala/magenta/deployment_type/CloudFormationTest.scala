@@ -2,6 +2,8 @@ package magenta.deployment_type
 
 import java.util.UUID
 
+import com.amazonaws.services.cloudformation.model.{Change, ChangeSetType, Parameter}
+import com.amazonaws.services.s3.AmazonS3
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
@@ -10,15 +12,13 @@ import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
-import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
-import software.amazon.awssdk.services.s3.S3Client
 
 class CloudFormationTest extends FlatSpec with Matchers with Inside {
-  implicit val fakeKeyRing: KeyRing = KeyRing()
-  implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  implicit val artifactClient: S3Client = null
+  implicit val fakeKeyRing = KeyRing()
+  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val artifactClient: AmazonS3 = null
   val region = Region("eu-west-1")
-  val deploymentTypes: Seq[CloudFormation.type] = Seq(CloudFormation)
+  val deploymentTypes = Seq(CloudFormation)
   val app = App("app")
   val testStack = Stack("cfn")
   val cfnStackName = s"cfn-app-PROD"
@@ -106,7 +106,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   "CloudFormationParameters" should "substitute stack and stage parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false))
+      Seq(TemplateParameter("param1", false), TemplateParameter("Stack", false), TemplateParameter("Stage", false))
     val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
@@ -118,7 +118,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
+      Seq(TemplateParameter("param1", true), TemplateParameter("param3", false), TemplateParameter("Stage", false))
     val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
@@ -132,12 +132,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   it should "convert specified parameter" in {
     convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE, reporter) should
-      contain only Parameter.builder().parameterKey("key").parameterValue("value").build()
+      contain only new Parameter().withParameterKey("key").withParameterValue("value")
   }
 
   it should "use existing value" in {
     convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE, reporter) should
-      contain only Parameter.builder().parameterKey("key").usePreviousValue(true).build()
+      contain only new Parameter().withParameterKey("key").withUsePreviousValue(true)
   }
 
   it should "fail if using existing value on stack creation" in {
@@ -219,7 +219,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
 
     intercept[FailException] {
-      check.shouldStopWaiting("FAILED", "", List(Change.builder().build()), reporter)
+      check.shouldStopWaiting("FAILED", "", List(new Change()), reporter)
     }
   }
 

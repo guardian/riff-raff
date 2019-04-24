@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import cats.syntax.either._
 import ci.{Builds, S3Tag, TagClassification}
+import com.amazonaws.services.s3.model.GetObjectRequest
 import com.gu.googleauth.AuthAction
 import conf.Config
 import controllers.forms.{DeployParameterForm, UuidForm}
@@ -25,7 +26,6 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
-import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import utils.{ChangeFreeze, LogAndSquashBehaviour}
 
 class DeployController(config: Config,
@@ -280,10 +280,10 @@ class DeployController(config: Config,
   }
 
   def getArtifactFile(key: String) = AuthAction { implicit request =>
-    val getObjectRequest = GetObjectRequest.builder().bucket(config.artifact.aws.bucketName).key(key).build()
-    val stream = config.artifact.aws.client.getObject(getObjectRequest)
+    val s3doc = config.artifact.aws.client.getObject(new GetObjectRequest(config.artifact.aws.bucketName, key))
+    val stream = s3doc.getObjectContent
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
-    Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
+    Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(s3doc.getObjectMetadata.getContentType)
   }
 
 }

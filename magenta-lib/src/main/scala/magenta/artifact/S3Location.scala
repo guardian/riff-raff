@@ -1,9 +1,10 @@
 package magenta.artifact
 
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.model._
 import com.gu.management.Loggable
 import magenta.Build
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model._
+import play.api.libs.json.{JsonValidationError, JsPath}
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -17,33 +18,32 @@ trait S3Location {
   def relativeTo(path: S3Location): String = {
     key.stripPrefix(path.key).stripPrefix("/")
   }
-  def fetchContentAsString()(implicit client: S3Client): Either[S3Error, String] = S3Location.fetchContentAsString(this)
-  def listAll()(implicit client: S3Client): Seq[S3Object] = S3Location.listObjects(this)
+  def fetchContentAsString()(implicit client: AmazonS3) = S3Location.fetchContentAsString(this)
+  def listAll()(implicit client: AmazonS3) = S3Location.listObjects(this)
 }
 
 object S3Location extends Loggable {
-  def listAll(bucket: String)(implicit s3Client: S3Client): Seq[S3Object] = listObjects(bucket, None)
+  def listAll(bucket: String)(implicit s3Client: AmazonS3): Seq[S3Object] = listObjects(bucket, None)
 
-  def listObjects(location: S3Location)(implicit s3Client: S3Client): Seq[S3Object] =
+  def listObjects(location: S3Location)(implicit s3Client: AmazonS3): Seq[S3Object] =
     listObjects(location.bucket, Some(location.key))
 
   val maxKeysInBucketListing = 1000 // AWS won't return more than this, even if you set the parameter to a larger value
 
-  private def listObjects(bucket: String, prefix: Option[String])(implicit s3Client: S3Client): Seq[S3Object] = {
-    def request(continuationToken: Option[String]): ListObjectsV2Request = ListObjectsV2Request.builder()
-      .bucket(bucket)
-      .prefix(prefix.orNull)
-      .maxKeys(maxKeysInBucketListing)
-      .continuationToken(continuationToken.orNull)
-      .build()
+  private def listObjects(bucket: String, prefix: Option[String])(implicit s3Client: AmazonS3): Seq[S3Object] = {
+    def request(continuationToken: Option[String]) = new ListObjectsV2Request()
+      .withBucketName(bucket)
+      .withPrefix(prefix.orNull)
+      .withMaxKeys(maxKeysInBucketListing)
+      .withContinuationToken(continuationToken.orNull)
 
     @tailrec
-    def pageListings(acc: Seq[ListObjectsV2Response], previousListing: ListObjectsV2Response): Seq[ListObjectsV2Response] = {
+    def pageListings(acc: Seq[ListObjectsV2Result], previousListing: ListObjectsV2Result): Seq[ListObjectsV2Result] = {
       if (!previousListing.isTruncated) {
         acc
       } else {
         val listing = s3Client.listObjectsV2(
-          request(Some(previousListing.nextContinuationToken))
+          request(Some(previousListing.getNextContinuationToken))
         )
         pageListings(acc :+ listing, listing)
       }
@@ -52,15 +52,14 @@ object S3Location extends Loggable {
     val initialListing = s3Client.listObjectsV2(request(None))
     for {
       summaries <- pageListings(Seq(initialListing), initialListing)
-      summary <- summaries.contents.asScala
-    } yield S3Object(bucket, summary.key, summary.size)
+      summary <- summaries.getObjectSummaries.asScala
+    } yield S3Object(summary.getBucketName, summary.getKey, summary.getSize)
   }
 
-  def fetchContentAsString(location: S3Location)(implicit client: S3Client): Either[S3Error, String] = {
+  def fetchContentAsString(location: S3Location)(implicit client:AmazonS3): Either[S3Error, String] = {
     import cats.syntax.either._
-    val getObjRequest = GetObjectRequest.builder().bucket(location.bucket).key(location.key).build()
-    Either.catchNonFatal(client.getObjectAsBytes(getObjRequest).asUtf8String).leftMap {
-      case e: S3Exception if e.statusCode == 404 => EmptyS3Location(location)
+    Either.catchNonFatal(client.getObjectAsString(location.bucket, location.key)).leftMap {
+      case e: AmazonS3Exception if e.getStatusCode == 404 => EmptyS3Location(location)
       case e => UnknownS3Error(e)
     }
   }
