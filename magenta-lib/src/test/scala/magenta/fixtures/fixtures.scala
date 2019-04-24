@@ -7,7 +7,7 @@ import magenta.tasks.Task
 case class StubTask(description: String, region: Region, stack: Option[Stack] = None) extends Task {
 
   def execute(reporter: DeployReporter, stopFlag: => Boolean) { }
-  def verbose = s"stub($description)"
+  def verbose = "stub(%s)" format description
   def keyRing = KeyRing()
 }
 

@@ -1,16 +1,17 @@
 package housekeeping
 
+import java.util
 import java.util.UUID
 
+import com.amazonaws.services.s3.model.{ListObjectsV2Request, ListObjectsV2Result, S3ObjectSummary, SetObjectTaggingRequest}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import deployment._
 import magenta.{Build, DeployParameters, Deployer, RunState, Stage}
 import org.joda.time.{DateTime, DateTimeZone}
-import org.mockito.ArgumentMatchers.any
+import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
-import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{CommonPrefix, ListObjectsV2Request, ListObjectsV2Response, S3Object}
 
 import scala.collection.JavaConverters._
 
@@ -23,12 +24,20 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
 
   val housekeepingDate = new DateTime(2018, 6, 28, 0, 0, 0, DateTimeZone.UTC)
 
-  private def mockListObjectsV2Result(objectSummaries: List[ObjectSummary]): ListObjectsV2Response = {
-    val s3Objects: List[S3Object] = objectSummaries.map { obj =>
-      S3Object.builder().key(obj.key).lastModified(obj.lastModified.toDate.toInstant).build()
+  private def mockListObjectsV2Result(objectSummaries: List[ObjectSummary]): ListObjectsV2Result = {
+    val summaries: List[S3ObjectSummary] = objectSummaries.map { obj =>
+      val summary = new S3ObjectSummary()
+      summary.setKey(obj.key)
+      summary.setBucketName(obj.bucketName)
+      summary.setLastModified(obj.lastModified.toDate)
+      summary
     }
 
-    ListObjectsV2Response.builder().contents(s3Objects:_*).build()
+    new ListObjectsV2Result() {
+      override def getObjectSummaries: util.List[S3ObjectSummary] = {
+        summaries.asJava
+      }
+    }
   }
 
   private def fixtureRecord(date: DateTime, stageName: String, buildNumber: String): Record = DeployRecord(
@@ -51,13 +60,9 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
 
 
   "getProjectNames" should "make a single listObjectsV2 request and return the project names" in {
-    val artifactClientMock = mock[S3Client]
-    val listObjectsResult: ListObjectsV2Response = ListObjectsV2Response.builder()
-      .commonPrefixes(List(
-        CommonPrefix.builder().prefix("project-name-1/").build(),
-        CommonPrefix.builder().prefix("project-name-2/").build(),
-        CommonPrefix.builder().prefix("project-name-3/").build()).asJava
-      ).build()
+    val artifactClientMock: AmazonS3 = mock[AmazonS3Client]
+    val listObjectsResult: ListObjectsV2Result = new ListObjectsV2Result()
+    listObjectsResult.setCommonPrefixes(List("project-name-1/", "project-name-2/", "project-name-3/").asJava)
 
     when(artifactClientMock.listObjectsV2(any[ListObjectsV2Request])) thenReturn listObjectsResult
 
@@ -67,13 +72,9 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
   }
 
   "getBuildIds" should "make a single listObjectsV2 request and return the build IDs" in {
-    val artifactClientMock = mock[S3Client]
-    val listObjectsResult: ListObjectsV2Response = ListObjectsV2Response.builder()
-      .commonPrefixes(List(
-        CommonPrefix.builder().prefix("project-name/10/").build(),
-        CommonPrefix.builder().prefix("project-name/11/").build(),
-        CommonPrefix.builder().prefix("project-name/12/").build()).asJava
-      ).build()
+    val artifactClientMock: AmazonS3 = mock[AmazonS3Client]
+    val listObjectsResult: ListObjectsV2Result = new ListObjectsV2Result()
+    listObjectsResult.setCommonPrefixes(List("project-name/10/", "project-name/11/", "project-name/12/").asJava)
     when(artifactClientMock.listObjectsV2(any[ListObjectsV2Request])) thenReturn listObjectsResult
 
     val result = ArtifactHousekeeping.getBuildIds(artifactClientMock, "bucket-name", "project-name")
@@ -121,7 +122,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
   }
 
   "getObjectsToTag" should "only return objects that are older than the configured date" in {
-    val artifactClientMock = mock[S3Client]
+    val artifactClientMock: AmazonS3 = mock[AmazonS3Client]
 
     when(artifactClientMock.listObjectsV2(any[ListObjectsV2Request])) thenReturn mockListObjectsV2Result(
       List.tabulate(3)(n => ObjectSummary(s"object-x$n", "project-name", oldDate.plusDays(n))) ++
@@ -130,6 +131,6 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
 
     val result = ArtifactHousekeeping.getObjectsToTag(artifactClientMock, "bucket-name", "project-name", "12", housekeepingDate, 40)
     verify(artifactClientMock, times(1)).listObjectsV2(any[ListObjectsV2Request])
-    result.map(_.key) shouldEqual List("object-x0", "object-x1", "object-x2")
+    result.map(_.getKey) shouldEqual List("object-x0", "object-x1", "object-x2")
   }
 }

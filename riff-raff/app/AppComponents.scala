@@ -60,7 +60,7 @@ class AppComponents(context: Context) extends BuiltInComponentsFromContext(conte
       parameterName = config.auth.secretStateSupplierKeyName,
       ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
         .withRegion(config.auth.secretStateSupplierRegion)
-        .withCredentials(config.credentialsProviderChainV1(None, None))
+        .withCredentials(config.credentialsProviderChain(None, None))
         .build()
     )
   }

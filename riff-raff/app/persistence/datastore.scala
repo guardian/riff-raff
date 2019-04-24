@@ -43,7 +43,7 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
       Right(result)
     } catch {
       case t: Throwable =>
-        val error = s"Caught exception ${message.map(m => s"whilst $m").getOrElse("")}"
+        val error = "Caught exception%s" format message.map(" whilst %s" format _).getOrElse("")
         log.error(error, t)
         Left(t)
     }

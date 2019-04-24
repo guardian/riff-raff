@@ -124,7 +124,7 @@ trait Pagination extends QueryStringBuilder {
   implicit def call2AddQueryParams(call: Call) = new {
     def appendQueryParams(params: String): Call = {
       val sep = if (call.url.contains("?")) "&" else "?"
-      Call(call.method, s"${call.url}$sep$params")
+      Call(call.method, "%s%s%s" format (call.url, sep, params))
     }
   }
 
