@@ -48,7 +48,22 @@ trait CloudFormationDeploymentTypeParameters {
   val amiParametersToTags = Param[Map[CfnParam, TagCriteria]]("amiParametersToTags",
     optional = true,
     documentation =
-      """AMI cloudformation parameter names mapped to the set of tags that should be used to look up an AMI.
+      """Use when you need to update more than one AMI in a single CloudFormation stack. This takes AMI cloudformation
+        |parameter names mapped to the set of tags that should be used to look up an AMI.
+        |
+        |For example:
+        |```
+        |  amiParametersToTags:
+        |    standardAMI:
+        |      BuiltBy: amigo
+        |      Recipe: my-AMI-recipe
+        |    magicAMI:
+        |      BuiltBy: amigo
+        |      Recipe: my-more-magical-AMI-recipe
+        |```
+        |
+        |This updates both the `standardAMI` and `magicAMI` parameters in an CFN stack with the latest AMI that matches
+        |the provided tags.
       """.stripMargin
   )
 
