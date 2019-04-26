@@ -1,7 +1,7 @@
 import java.io.File
 
 import com.typesafe.config.ConfigFactory
-import conf.Config
+import conf.{Config, RDSIAM}
 import play.api.ApplicationLoader.Context
 import play.api.{Application, ApplicationLoader, Configuration, LoggerConfigurator}
 
