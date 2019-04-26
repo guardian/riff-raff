@@ -7,6 +7,9 @@ import com.amazonaws.auth.profile.{ProfileCredentialsProvider => ProfileCredenti
 import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsProvider => AWSCredentialsProviderV1, AWSCredentialsProviderChain => AWSCredentialsProviderChainV1, BasicAWSCredentials => BasicAWSCredentialsV1, EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1, InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1, SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
+import com.amazonaws.services.ec2.model.{DescribeTagsRequest, Filter}
+import com.amazonaws.services.rds.auth.{GetIamAuthTokenRequest, RdsIamAuthTokenGenerator}
+import com.amazonaws.util.EC2MetadataUtils
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
@@ -20,6 +23,7 @@ import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
 import persistence.{CollectionStats, DataStore}
+import play.api.Configuration
 import riffraff.BuildInfo
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
@@ -170,8 +174,18 @@ class Config(configuration: TypesafeConfig) extends Logging {
 
   object postgres {
     lazy val url = getString("db.default.url")
-    lazy val user = getString("db.default.user")
-    lazy val password = getString("db.default.password")
+    lazy val user =  getString("db.default.user")
+    lazy val password = getPassword
+
+    def getPassword: String = {
+      if (stage == "CODE" || stage =="PROD") {
+        lazy val hostname = getString("db.default.hostname")
+        val generator = RdsIamAuthTokenGenerator.builder().credentials(credentialsProviderChain()).region(artifact.aws.regionName).build()
+        generator.getAuthToken(GetIamAuthTokenRequest.builder.hostname(hostname).port(5432).userName(user).build())
+      } else {
+        getString("db.default.password")
+      }
+    }
   }
 
   object stages {

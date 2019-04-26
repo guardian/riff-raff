@@ -74,7 +74,8 @@ object Dependencies {
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.5.17" % Test,
-    "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test
+    "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test,
+    "com.amazonaws" % "aws-java-sdk-rds" % Versions.aws
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
