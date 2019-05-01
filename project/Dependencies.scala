@@ -35,7 +35,6 @@ object Dependencies {
     "com.amazonaws" % "aws-java-sdk-sts" % Versions.aws,
     "com.gu" %% "management" % Versions.guardianManagement,
     "com.gu" %% "fastly-api-client" % "0.2.6",
-    "com.ning" % "async-http-client" % "1.9.40", // we need this to solve vulnerabilities from fastly-api-client
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.7.2",
