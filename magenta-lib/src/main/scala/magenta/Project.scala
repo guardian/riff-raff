@@ -1,19 +1,19 @@
 package magenta
 
-import com.amazonaws.services.s3.AmazonS3
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.regions.{Region => AWSRegion}
 import magenta.input._
 import magenta.tasks.Task
 
 import scala.math.Ordering.OptionOrdering
 
-case class Host(
-                 name: String,
-                 app: App,
-                 stage: String = "NO_STAGE",
-                 stack: String,
-                 connectAs: Option[String] = None,
-                 tags: Map[String, String] = Map.empty)
-{
+case class Host(name: String,
+                app: App,
+                stage: String = "NO_STAGE",
+                stack: String,
+                connectAs: Option[String] = None,
+                tags: Map[String, String] = Map.empty) {
+
   def isValidForStack(s: Stack) = s.name == stack
 }
 
@@ -49,7 +49,7 @@ object HostList {
   implicit def hostListAsListOfHosts(hostList: HostList): Seq[Host] = hostList.hosts
 }
 
-case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: AmazonS3) {
+case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing = {
     val keyring = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
     reporter.verbose(s"Keyring for ${pkg.name} in ${target.stack.name}/${target.region.name}: $keyring")
@@ -73,13 +73,13 @@ case class Build(projectName:String, id:String)
 
 case class Stack(name: String) extends AnyVal
 
-case class Region(name: String) extends AnyVal
+case class Region(name: String) extends AnyVal {
+  def awsRegion: AWSRegion = AWSRegion.of(name)
+}
 
 case class Deployer(name: String)
 
-case class DeployParameters(
-                             deployer: Deployer,
-                             build: Build,
-                             stage: Stage,
-                             selector: DeploymentSelector = All
-                             )
+case class DeployParameters(deployer: Deployer,
+                            build: Build,
+                            stage: Stage,
+                            selector: DeploymentSelector = All)

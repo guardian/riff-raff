@@ -2,11 +2,12 @@ package magenta.tasks
 
 import java.util.concurrent.Executors
 
-import com.amazonaws.services.s3.AmazonS3
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
 import magenta.artifact.S3Path
 import play.api.libs.json.{JsString, Json}
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -21,7 +22,7 @@ object Vcl {
   implicit val reads = Json.reads[Vcl]
 }
 
-case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: AmazonS3) extends Task {
+case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
   implicit val ec = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
@@ -81,7 +82,11 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("vcl")) {
           val fileName = obj.relativeTo(s3Package)
-          val vcl = withResource(artifactClient.getObject(obj.bucket, obj.key).getObjectContent) { stream =>
+          val getObjectRequest = GetObjectRequest.builder()
+            .bucket(obj.bucket)
+            .key(obj.key)
+            .build()
+          val vcl = withResource(artifactClient.getObject(getObjectRequest)) { stream =>
             reporter.info(s"Uploading $fileName")
             scala.io.Source.fromInputStream(stream).mkString
           }

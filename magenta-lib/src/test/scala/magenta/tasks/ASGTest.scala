@@ -2,54 +2,58 @@ package magenta.tasks
 
 import java.util.UUID
 
-import com.amazonaws.services.autoscaling.AmazonAutoScalingClient
-import com.amazonaws.services.autoscaling.model.{Instance => ASGInstance, _}
-import com.amazonaws.services.elasticloadbalancing.{AmazonElasticLoadBalancingClient => ClassicELBClient}
-import com.amazonaws.services.elasticloadbalancingv2.{AmazonElasticLoadBalancingClient => ApplicationELBClient}
-import com.amazonaws.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResult, InstanceState, Instance => ELBInstance}
-import com.amazonaws.services.elasticloadbalancingv2.model.{TagDescription => _, _}
 import magenta.artifact.S3Path
-import magenta.deployment_type.DeploymentType
 import magenta.{App, KeyRing, Stage, _}
-import org.mockito.Matchers._
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
+import software.amazon.awssdk.services.autoscaling.AutoScalingClient
+import software.amazon.awssdk.services.autoscaling.model.{Instance => ASGInstance, _}
+import software.amazon.awssdk.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResponse, InstanceState}
+import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancingClient => ClassicELBClient}
+import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DescribeTargetHealthRequest, TargetHealthStateEnum, TagDescription => _, _}
+import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELBClient}
 
 import scala.collection.JavaConverters._
 
 class ASGTest extends FlatSpec with Matchers with MockitoSugar {
-  implicit val fakeKeyRing = KeyRing()
-  val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  val deploymentTypes = Nil
+  implicit val fakeKeyRing: KeyRing = KeyRing()
+  val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  val deploymentTypes: Nil.type = Nil
 
   private def mockClassicELBGroupHealth(classicELBClient: ClassicELBClient, state: String) = {
-    when (classicELBClient.describeInstanceHealth(
-      new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
-    )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState(state)))
+    when(classicELBClient.describeInstanceHealth(
+      DescribeInstanceHealthRequest.builder().loadBalancerName("elb").build()
+    )).thenReturn(DescribeInstanceHealthResponse.builder().instanceStates(
+      InstanceState.builder().state(state).build()
+    ).build())
   }
 
   private def mockTargetGroupHealth(appELBClient: ApplicationELBClient, state: TargetHealthStateEnum) = {
-    when (appELBClient.describeTargetHealth(
-      new DescribeTargetHealthRequest().withTargetGroupArn("elbTargetARN")
-    )).thenReturn(new DescribeTargetHealthResult().withTargetHealthDescriptions(
-      new TargetHealthDescription().withTargetHealth(new TargetHealth().withState(state))))
+    when(appELBClient.describeTargetHealth(
+      DescribeTargetHealthRequest.builder().targetGroupArn("elbTargetARN").build()
+    )).thenReturn(DescribeTargetHealthResponse.builder().targetHealthDescriptions(
+      TargetHealthDescription.builder().targetHealth(
+        TargetHealth.builder().state(state).build()
+      ).build()
+    ).build())
   }
 
   it should "find the matching auto-scaling group with Stack and App tags" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
+    val asgClientMock = mock[AutoScalingClient]
 
-    val desiredGroup: AutoScalingGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
+    val desiredGroup: AutoScalingGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
     when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
         desiredGroup,
-        AutoScalingGroup("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroup("Role" -> "example", "Stage" -> "TEST"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ).asJava)
+        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
+      ).asJava).build()
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
@@ -57,20 +61,20 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "fail if more than one ASG matches the Stack and App tags" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
+    val asgClientMock = mock[AutoScalingClient]
 
-    val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
+    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
 
     when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
         desiredGroup,
-        AutoScalingGroup("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroup("Role" -> "example", "Stage" -> "TEST"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "orangutang"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ).asJava)
+        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "orangutang"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
+      ).asJava).build()
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
@@ -81,127 +85,138 @@ class ASGTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
 
-    val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD").withDesiredCapacity(1)
+    val group = AutoScalingGroupWithTags("elb", "Role" -> "example", "Stage" -> "PROD").toBuilder.desiredCapacity(1).build()
 
     mockClassicELBGroupHealth(classicELBClient, "")
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe
       Left("Only 0 of 1 Classic ELB instances InService")
 
     mockClassicELBGroupHealth(classicELBClient, "InService")
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "wait for instances in an ELB target group to be healthy" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
 
-    val group = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
-      .withTargetGroupARNs("elbTargetARN")
-      .withDesiredCapacity(1)
+    val group = AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "PROD").toBuilder
+      .targetGroupARNs("elbTargetARN")
+      .desiredCapacity(1)
+      .build()
 
-    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Unhealthy)
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.UNHEALTHY)
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe
       Left("Only 0 of 1 V2 ELB instances healthy")
 
-    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Healthy)
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.HEALTHY)
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "wait for classic ELB and ELB target group to report as healthy" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
 
-    val group = AutoScalingGroup("elb", "Role" -> "example", "Stage" -> "PROD")
-      .withTargetGroupARNs("elbTargetARN")
-      .withDesiredCapacity(1)
+    val group = AutoScalingGroupWithTags("elb", "Role" -> "example", "Stage" -> "PROD").toBuilder
+      .targetGroupARNs("elbTargetARN")
+      .desiredCapacity(1)
+      .build()
 
-    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Unhealthy)
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.UNHEALTHY)
 
     mockClassicELBGroupHealth(classicELBClient, "")
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe
       Left("Only 0 of 1 Classic ELB instances InService")
 
     mockClassicELBGroupHealth(classicELBClient, "InService")
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe
       Left("Only 0 of 1 V2 ELB instances healthy")
 
-    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.Healthy)
+    mockTargetGroupHealth(appELBClient, TargetHealthStateEnum.HEALTHY)
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "just check ASG health for stability if there is no ELB" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
 
-    val group = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
-      .withDesiredCapacity(1).withInstances(new ASGInstance().withHealthStatus("Foobar"))
+    val group = AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "PROD").toBuilder
+      .desiredCapacity(1)
+      .instances(ASGInstance.builder().healthStatus("Foobar").build())
+      .build()
 
-    when (classicELBClient.describeInstanceHealth(
-      new DescribeInstanceHealthRequest().withLoadBalancerName("elb")
-    )).thenReturn(new DescribeInstanceHealthResult().withInstanceStates(new InstanceState().withState("")))
+    when(
+      classicELBClient.describeInstanceHealth(DescribeInstanceHealthRequest.builder()
+        .loadBalancerName("elb")
+        .build())
+    ).thenReturn(
+      DescribeInstanceHealthResponse.builder().instanceStates(
+        InstanceState.builder()
+          .state("")
+          .build())
+        .build()
+    )
 
-    ASG.isStabilized(group, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe
+    ASG.isStabilized(group, ELB.Client(classicELBClient, appELBClient)) shouldBe
       Left("Only 0 of 1 instances InService")
 
-    val updatedGroup = AutoScalingGroup("Role" -> "example", "Stage" -> "PROD")
-      .withDesiredCapacity(1).withInstances(new ASGInstance().withLifecycleState(LifecycleState.InService))
+    val updatedGroup = AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "PROD").toBuilder
+      .desiredCapacity(1)
+      .instances(ASGInstance.builder()
+        .lifecycleState(LifecycleState.IN_SERVICE)
+        .build())
+      .build()
 
-    ASG.isStabilized(updatedGroup, asgClientMock, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
+    ASG.isStabilized(updatedGroup, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
   }
 
   it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {
-    val asgClientMock = mock[AmazonAutoScalingClient]
+    val asgClientMock = mock[AutoScalingClient]
 
-    val firstRequest = new DescribeAutoScalingGroupsRequest
-    val secondRequest = new DescribeAutoScalingGroupsRequest().withNextToken("someToken")
+    val firstRequest = DescribeAutoScalingGroupsRequest.builder().build()
+    val secondRequest = DescribeAutoScalingGroupsRequest.builder().nextToken("someToken").build()
 
-    val desiredGroup = AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
+    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
     when (asgClientMock.describeAutoScalingGroups(firstRequest)) thenReturn
-      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
-        AutoScalingGroup("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroup("Role" -> "example", "Stage" -> "TEST")
-      ).asJava).withNextToken("someToken" +
-        "")
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
+        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST")
+      ).asJava).nextToken("someToken").build()
     when (asgClientMock.describeAutoScalingGroups(secondRequest)) thenReturn
-      new DescribeAutoScalingGroupsResult().withAutoScalingGroups(List(
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroup("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroup("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD"),
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD"),
         desiredGroup
-      ).asJava)
+      ).asJava).build()
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
     ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
   }
 
-  object AutoScalingGroup {
-    def apply(tags: (String, String)*) = {
+  object AutoScalingGroupWithTags {
+    def apply(tags: (String, String)*): AutoScalingGroup = {
       val awsTags = tags map {
-        case (key, value) => new TagDescription().withKey(key).withValue(value)
+        case (key, value) => TagDescription.builder().key(key).value(value).build()
       }
-      new AutoScalingGroup().withTags(awsTags.asJava)
+      AutoScalingGroup.builder().tags(awsTags.asJava).build()
     }
-    def apply(elbName: String, tags: (String, String)*) = {
+    def apply(elbName: String, tags: (String, String)*): AutoScalingGroup = {
       val awsTags = tags map {
-        case (key, value) => new TagDescription().withKey(key).withValue(value)
+        case (key, value) => TagDescription.builder().key(key).value(value).build()
       }
-      new AutoScalingGroup().withTags(awsTags.asJava).withLoadBalancerNames(elbName)
+      AutoScalingGroup.builder().tags(awsTags.asJava).loadBalancerNames(elbName).build()
     }
   }
 }
