@@ -455,13 +455,15 @@ trait AWS extends Loggable {
     }
   ).build()
 
+  private lazy val numberOfRetries = 20
+
   /* A retry condition that logs errors */
   class LoggingRetryCondition extends RetryCondition {
     private def exceptionInfo(e: Throwable): String = {
       s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
     }
     override def shouldRetry(context: RetryPolicyContext): Boolean = {
-      val willRetry = shouldRetry(context)
+      val willRetry = context.retriesAttempted() < numberOfRetries
       if (willRetry) {
         logger.warn(s"AWS SDK retry ${context.retriesAttempted}: ${Option(context.originalRequest).map(_.getClass.getName)} threw ${exceptionInfo(context.exception)}")
       } else {
@@ -478,7 +480,7 @@ trait AWS extends Loggable {
         RetryPolicy.builder()
           .retryCondition(new LoggingRetryCondition())
           .backoffStrategy(BackoffStrategy.defaultStrategy())
-          .numRetries(20)
+          .numRetries(numberOfRetries)
           .build()
     ).build()
 
