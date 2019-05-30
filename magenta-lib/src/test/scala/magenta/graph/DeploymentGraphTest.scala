@@ -1,15 +1,15 @@
 package magenta.graph
 
-import com.amazonaws.services.s3.AmazonS3Client
 import magenta.{Host, KeyRing, Region}
 import magenta.tasks.{ChangeSwitch, S3Upload, SayHello}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.mockito.MockitoSugar
 import magenta.fixtures._
+import software.amazon.awssdk.services.s3.S3Client
 
 class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
-  implicit val fakeKeyRing = KeyRing()
-  implicit val artifactClient = mock[AmazonS3Client]
+  implicit val fakeKeyRing: KeyRing = KeyRing()
+  implicit val artifactClient: S3Client = mock[S3Client]
 
   "DeploymentGraph" should "Convert a list of tasks to a graph" in {
     val graph = DeploymentGraph(threeSimpleTasks, "unnamed")

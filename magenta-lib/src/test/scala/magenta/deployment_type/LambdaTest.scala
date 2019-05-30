@@ -2,21 +2,21 @@ package magenta.deployment_type
 
 import java.util.UUID
 
-import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
-import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Stack, Region, fixtures}
+import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, fixtures}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
+import software.amazon.awssdk.services.s3.S3Client
 
 class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
-  implicit val fakeKeyRing = KeyRing()
-  implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  implicit val artifactClient: AmazonS3 = mock[AmazonS3Client]
+  implicit val fakeKeyRing: KeyRing = KeyRing()
+  implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  implicit val artifactClient: S3Client = mock[S3Client]
   val region = Region("eu-west-1")
-  val deploymentTypes = Seq(Lambda)
+  val deploymentTypes: Seq[Lambda.type] = Seq(Lambda)
 
   behavior of "Lambda deployment action uploadLambda"
 

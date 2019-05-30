@@ -11,10 +11,10 @@ class SummariseDeploysHousekeeping(config: Config, datastore: DataStore) extends
   lazy val housekeepingTime = new LocalTime(config.housekeeping.hour, config.housekeeping.minute)
 
   def summariseDeploys(): Int = {
-    log.info("Summarising deploys older than %d days" format maxAgeDays)
+    log.info(s"Summarising deploys older than $maxAgeDays days")
     val maxAgeThreshold = LocalDate.now().minusDays(maxAgeDays)
     val deploys = datastore.getCompleteDeploysOlderThan(maxAgeThreshold.toDateTimeAtStartOfDay)
-    log.info("Found %d deploys to summarise" format deploys.size)
+    log.info(s"Found ${deploys.size} deploys to summarise")
     deploys.foreach(detail => datastore.summariseDeploy(detail.uuid))
     log.info("Finished summarising")
     deploys.size

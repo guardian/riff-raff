@@ -2,16 +2,16 @@ package deployment
 
 import java.util.UUID
 
-import com.amazonaws.services.s3.AmazonS3Client
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
-import magenta.{App, Build, DeployContext, Deployer, DeployParameters, DeployReporter, Host, KeyRing, Region, Stage}
 import magenta.tasks._
+import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, Region, Stage}
 import org.joda.time.DateTime
 import org.scalatest.mockito.MockitoSugar
+import software.amazon.awssdk.services.s3.S3Client
 
 object Fixtures extends MockitoSugar {
-  implicit val fakeKeyRing = KeyRing()
-  implicit val artifactClient = mock[AmazonS3Client]
+  implicit val fakeKeyRing: KeyRing = KeyRing()
+  implicit val artifactClient: S3Client = mock[S3Client]
 
   private val host = Host("testHost", App("testApp"), "CODE", "testStack")
 

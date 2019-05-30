@@ -120,14 +120,17 @@ class Testing(config: Config,
       testForm.bindFromRequest().fold(
         errors => BadRequest(views.html.test.form(errors)(config, menu)),
         form => {
-          log.info("Form post: %s" format form.toString)
+          log.info(s"Form post: ${form.toString}")
           Redirect(routes.Testing.form)
         }
       )
     }
 
   def testcharset = authAction { implicit request =>
-    Ok("Raw string: %s\nParsed strings: \n%s" format (request.rawQueryString, request.queryString))
+    Ok(
+      s"""Raw string: ${request.rawQueryString}
+         |Parsed strings:
+         |${request.queryString}""".stripMargin)
   }
 
   def uuidList(limit:Int) = authAction { implicit request =>
@@ -176,15 +179,15 @@ class Testing(config: Config,
       form => {
         form.action match {
           case "summarise" =>
-            log.info("Summarising deploy with UUID %s" format form.uuid)
+            log.info(s"Summarising deploy with UUID ${form.uuid}")
             datastore.summariseDeploy(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           case "deleteV2" =>
-            log.info("Deleting deploy in V2 with UUID %s" format form.uuid)
+            log.info(s"Deleting deploy in V2 with UUID ${form.uuid}")
             datastore.deleteDeployLog(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
           case "addStringUUID" =>
-            log.info("Adding string UUID for %s" format form.uuid)
+            log.info(s"Adding string UUID for ${form.uuid}")
             datastore.addStringUUID(UUID.fromString(form.uuid))
             Redirect(routes.Testing.uuidList())
         }
