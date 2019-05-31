@@ -8,7 +8,6 @@ import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsPro
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
 import com.amazonaws.services.rds.auth.{GetIamAuthTokenRequest, RdsIamAuthTokenGenerator}
-import com.amazonaws.util.EC2MetadataUtils
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
@@ -177,7 +176,8 @@ class Config(configuration: TypesafeConfig) extends Logging {
 
     def getPassword: String = {
       if (stage == "CODE" || stage =="PROD") {
-        lazy val hostname = getString("db.default.hostname")
+        val hostname = getString("db.default.hostname")
+        logger.info(s"Fetching password for database $hostname, stage=$stage.")
         val generator = RdsIamAuthTokenGenerator.builder().credentials(credentialsProviderChainV1()).region(artifact.aws.regionName).build()
         generator.getAuthToken(GetIamAuthTokenRequest.builder.hostname(hostname).port(5432).userName(user).build())
       } else {
