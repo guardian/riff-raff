@@ -6,7 +6,6 @@ import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
 import akka.agent.Agent
 import cats.data.Validated.{Invalid, Valid}
-import com.amazonaws.services.s3.AmazonS3
 import conf.Config
 import controllers.Logging
 import deployment.Record
@@ -174,7 +173,7 @@ class DeployGroupRunner(
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import cats.syntax.either._
 
-      implicit val client: AmazonS3 = config.artifact.aws.client
+      implicit val client = config.artifact.aws.client
       val bucketName = config.artifact.aws.bucketName
 
       safeReporter.info("Reading riff-raff.yaml")
