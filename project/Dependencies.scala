@@ -74,7 +74,7 @@ object Dependencies {
     "com.whisk" %% "docker-testkit-impl-spotify" % "0.9.8" % "test",
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.5.17" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.5.21" % Test,
     "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test,
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
