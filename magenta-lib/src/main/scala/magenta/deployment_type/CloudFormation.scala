@@ -71,6 +71,12 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   val secondsToWaitForChangeSetCreation = Param("secondsToWaitForChangeSetCreation",
     "Number of seconds to wait for the change set to be created").default(15 * 60)
 
+  val autoDistBucketParameter = Param[CfnParam]("autoDistBucketParameter",
+    """The CloudFormation parameter name for the automatic distribution bucket name.
+      |Note that this is best used in conjuction with the `autoDistBucket` parameter on the `aws-lambda`
+      |deployment type.
+    """.stripMargin).default("DistBucket")
+
   val updateStack = Action("updateStack",
     """
       |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
@@ -88,6 +94,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val globalParams = templateParameters(pkg, target, reporter)
     val stageParams = templateStageParameters(pkg, target, reporter).lift.apply(target.parameters.stage.name).getOrElse(Map())
 
+    val autoDistBucketParam = autoDistBucketParameter(pkg, target, reporter)
+
     val userParams = globalParams ++ stageParams
     val amiLookupFn = getLatestAmi(pkg, target, reporter, resources.lookup)
 
@@ -99,7 +107,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
 
     val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage, target.region,
-      stackTags, userParams, amiParameterMap, amiLookupFn)
+      stackTags, userParams, amiParameterMap, autoDistBucketParam, amiLookupFn)
 
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
     val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)

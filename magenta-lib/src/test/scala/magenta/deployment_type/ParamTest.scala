@@ -5,7 +5,6 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta._
 import magenta.fixtures._
-import org.mockito.Matchers._
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}

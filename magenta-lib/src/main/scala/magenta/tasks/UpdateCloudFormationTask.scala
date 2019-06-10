@@ -1,5 +1,6 @@
 package magenta.tasks
 
+import magenta.deployment_type.AutoDistBucket
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags, TemplateParameter}
@@ -98,18 +99,25 @@ object CloudFormationStackMetadata {
 class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
                                val stackTags: Option[Map[String, String]], val userParameters: Map[String, String],
                                val amiParameterMap: Map[CfnParam, TagCriteria],
+                               val autoDistBucketParam: CfnParam,
                                latestImage: String => String => Map[String,String] => Option[String]) {
   import CloudFormationParameters._
 
-  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient): Iterable[Parameter] = {
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala
+  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient, s3Client: S3Client, stsClient: StsClient): Iterable[Parameter] = {
+    val templateParameters: Seq[TemplateParameter] = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala
       .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
     val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
       latestImage(accountNumber)(region.name)(tags).map(name -> _)
     }
 
-    val combined = combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    val resolvedAutoDistbucketParamters: Map[String, String] = if (templateParameters.exists(_.key == autoDistBucketParam)) {
+      Map(autoDistBucketParam -> S3.accountSpecificBucket(AutoDistBucket.BUCKET_PREFIX, s3Client, stsClient, region, reporter, None))
+    } else {
+      Map.empty
+    }
+
+    val combined = combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters ++ resolvedAutoDistbucketParamters)
     convertParameters(combined, changeSetType, reporter)
   }
 }

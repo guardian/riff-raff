@@ -81,6 +81,24 @@ object S3 extends AWS {
     }
     bucketName
   }
+
+  def resolveBucket(bucket: Bucket, s3Client: => S3Client, stsClient: => StsClient, reporter: => DeployReporter): String = {
+    bucket match {
+      case BucketByName(name) => name
+      case bucketByAuto: BucketByAuto =>
+        val resolvedBucket = bucketByAuto.resolve(s3Client, stsClient, reporter)
+        reporter.verbose(s"Resolved auto bucket to be $resolvedBucket")
+        resolvedBucket
+    }
+  }
+
+  trait Bucket
+  case class BucketByName(name: String) extends Bucket
+  case class BucketByAuto(prefix: String, region: Region) extends Bucket {
+    def resolve(s3Client: S3Client, stsClient: StsClient, reporter: DeployReporter): String = {
+      accountSpecificBucket(prefix, s3Client, stsClient, region, reporter)
+    }
+  }
 }
 
 object Lambda extends AWS {
@@ -429,7 +447,7 @@ object STS extends AWS {
   }
 
   def getAccountNumber(stsClient: StsClient): String = {
-    val callerIdentityResponse = stsClient.getCallerIdentity(GetCallerIdentityRequest.builder().build())
+    val callerIdentityResponse = stsClient.getCallerIdentity()
     callerIdentityResponse.account
   }
 }

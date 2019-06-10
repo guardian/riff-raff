@@ -5,11 +5,15 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
-import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, fixtures}
+import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, FailException, KeyRing, Region, Stack, fixtures}
 import org.scalatest.mockito.MockitoSugar
+import org.mockito.Mockito._
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.{Bucket, ListBucketsResponse}
+import software.amazon.awssdk.services.sts.StsClient
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse
 
 class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -74,6 +78,80 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
         region = defaultRegion
       )
     ))
+  }
+
+  it should "refuse to work if a bucket name is provided and autoDistBucket is true" in {
+    val dataWithoutStackOverride: Map[String, JsValue] = Map(
+      "bucket" -> JsString("lambda-bucket"),
+      "autoDistBucket" -> JsBoolean(true),
+      "functionNames" -> Json.arr("MyFunction-")
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val e = the [FailException] thrownBy {
+      Lambda.actionsMap(
+        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+        DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    }
+    e.message shouldBe "One and only one of the following must be set: the bucket parameter or autoDistBucket=true"
+  }
+
+  it should "refuse to work if bucket name is not provided and autoDistBucket is false" in {
+    val dataWithoutStackOverride: Map[String, JsValue] = Map(
+      "functionNames" -> Json.arr("MyFunction-")
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val e = the [FailException] thrownBy {
+      Lambda.actionsMap(
+        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+        DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    }
+    e.message shouldBe "One and only one of the following must be set: the bucket parameter or autoDistBucket=true"
+  }
+
+  it should "use an automatically generate bucket when autoDistBucket is true" in {
+    val dataWithoutStackOverride: Map[String, JsValue] = Map(
+      "autoDistBucket" -> JsBoolean(true),
+      "functionNames" -> Json.arr("MyFunction-")
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val s3Client = mock[S3Client]
+    val stsClient = mock[StsClient]
+    when(stsClient.getCallerIdentity()).thenReturn(GetCallerIdentityResponse.builder.account("123456789").build)
+    when(s3Client.listBuckets()).thenReturn(
+      ListBucketsResponse.builder.buckets(
+        Bucket.builder.name("bucket-1").build,
+        Bucket.builder.name(s"${AutoDistBucket.BUCKET_PREFIX}-123456789-${region.name}").build,
+        Bucket.builder.name("bucket-3").build
+      ).build
+    )
+    object LambdaTest extends Lambda {
+      override def makeS3(keyRing: KeyRing, region: Region): S3Client = s3Client
+      override def makeSTS(keyRing: KeyRing, region: Region): StsClient = stsClient
+    }
+
+    val tasks = LambdaTest.actionsMap("updateLambda")
+      .taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+        DeployTarget(parameters(PROD), Stack("some-stack"), region)
+      )
+
+    tasks shouldBe List(
+      UpdateS3Lambda(
+        functionName = "some-stackMyFunction-PROD",
+        s3Bucket = s"${AutoDistBucket.BUCKET_PREFIX}-123456789-${region.name}",
+        s3Key = "some-stack/PROD/lambda/lambda.zip",
+        region = defaultRegion
+      )
+    )
+
   }
 
 }

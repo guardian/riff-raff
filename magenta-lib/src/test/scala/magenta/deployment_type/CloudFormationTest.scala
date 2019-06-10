@@ -5,15 +5,21 @@ import java.util.UUID
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
-import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
+import magenta.tasks.CloudFormation.{SpecifiedValue, TemplateBody, UseExistingValue}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
+import org.scalatest.mockito.MockitoSugar
+import org.mockito.Mockito._
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
-import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
+import software.amazon.awssdk.services.cloudformation.CloudFormationClient
+import software.amazon.awssdk.services.cloudformation.model.{Stack => CfnStack, TemplateParameter => CfnTemplateParameter, _}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.{Bucket, ListBucketsResponse}
+import software.amazon.awssdk.services.sts.StsClient
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityResponse
 
-class CloudFormationTest extends FlatSpec with Matchers with Inside {
+class CloudFormationTest extends FlatSpec with Matchers with Inside with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
@@ -21,6 +27,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   val deploymentTypes: Seq[CloudFormation.type] = Seq(CloudFormation)
   val app = App("app")
   val testStack = Stack("cfn")
+  val testStage = Stage("PROD")
   val cfnStackName = s"cfn-app-PROD"
   def p(data: Map[String, JsValue]) = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
     deploymentTypes)
@@ -100,6 +107,18 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
     val (create: CreateChangeSetTask) :: _ = generateTasks(data)
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
+  }
+
+  it should "default autoDistBucketParameter to DistBucket" in {
+    val (create: CreateChangeSetTask) :: _ = generateTasks(Map.empty)
+    create.unresolvedParameters.autoDistBucketParam shouldBe "DistBucket"
+  }
+
+  it should "accept an autoDistBucketParameter parameter" in {
+    val data: Map[String, JsValue] = Map("autoDistBucketParameter" -> JsString("Bob"))
+
+    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    create.unresolvedParameters.autoDistBucketParam shouldBe "Bob"
   }
 
   import CloudFormationParameters.combineParameters
@@ -189,6 +208,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
     CloudFormationDeploymentTypeParameters.unencryptedTagFilter(Map("Bob" -> "bobbins", "Encrypted" -> "true")) shouldBe false
   }
 
+  it should ""
+
   import CloudFormationStackMetadata.getChangeSetType
 
   "CreateChangeSetTask" should "fail on create if createStackIfAbsent is false" in {
@@ -226,5 +247,46 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "continue on CREATE_IN_PROGRESS" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     check.shouldStopWaiting("CREATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
+  }
+
+  "CloudFormationParameters" should "ignore autoDistBucket parameter if not in the template" in {
+    val params = new CloudFormationParameters(testStack, testStage, region, None, Map.empty, Map.empty, "DistBucket", Map.empty)
+    val s3Client = mock[S3Client]
+    val stsClient = mock[StsClient]
+    val cfnClient = mock[CloudFormationClient]
+    when(cfnClient.validateTemplate(ValidateTemplateRequest.builder.templateBody("").build)).thenReturn(
+      ValidateTemplateResponse.builder.parameters(
+        CfnTemplateParameter.builder.parameterKey("AnotherKey").build
+      ).build
+    )
+    val resolvedParams = params.resolve(TemplateBody(""), "123456789", ChangeSetType.UPDATE, reporter, cfnClient, s3Client, stsClient)
+    resolvedParams shouldBe List(
+      Parameter.builder.parameterKey("AnotherKey").usePreviousValue(true).build
+    )
+    verifyZeroInteractions(s3Client, stsClient)
+  }
+
+  "CloudFormationParameters" should "use autoDistBucket parameter if in template" in {
+    val params = new CloudFormationParameters(testStack, testStage, region, None, Map.empty, Map.empty, "DistBucket", Map.empty)
+    val s3Client = mock[S3Client]
+    val stsClient = mock[StsClient]
+    when(stsClient.getCallerIdentity()).thenReturn(GetCallerIdentityResponse.builder.account("123456789").build)
+    when(s3Client.listBuckets()).thenReturn(
+      ListBucketsResponse.builder.buckets(
+        Bucket.builder.name("bucket-1").build,
+        Bucket.builder.name(s"${AutoDistBucket.BUCKET_PREFIX}-123456789-${region.name}").build,
+        Bucket.builder.name("bucket-3").build
+      ).build
+    )
+    val cfnClient = mock[CloudFormationClient]
+    when(cfnClient.validateTemplate(ValidateTemplateRequest.builder.templateBody("").build)).thenReturn(
+      ValidateTemplateResponse.builder.parameters(
+        CfnTemplateParameter.builder.parameterKey("DistBucket").build
+      ).build
+    )
+    val resolvedParams = params.resolve(TemplateBody(""), "123456789", ChangeSetType.UPDATE, reporter, cfnClient, s3Client, stsClient)
+    resolvedParams shouldBe List(
+      Parameter.builder.parameterKey("DistBucket").parameterValue(s"${AutoDistBucket.BUCKET_PREFIX}-123456789-${region.name}").build
+    )
   }
 }
