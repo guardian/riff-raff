@@ -9,7 +9,7 @@ import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, Parameter, StackEvent}
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.collection.JavaConverters._
@@ -185,8 +185,9 @@ object UpdateCloudFormationTask {
         .key(keyName)
         .build()
       s3Client.putObject(request, RequestBody.fromString(templateBody))
-      val url = s3Client.getObject(GetObjectRequest.builder().bucket(bucketName).key(keyName).build())
-      TemplateUrl(url.toString)
+      val url: String = s"https://$bucketName.s3-${region.name}.amazonaws.com/$keyName"
+      logger.info(s"Using template url $url to update the stack")
+      TemplateUrl(url)
     } else {
       TemplateBody(templateBody)
     }
