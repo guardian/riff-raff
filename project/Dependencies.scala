@@ -34,6 +34,7 @@ object Dependencies {
     "software.amazon.awssdk" % "lambda" % Versions.aws,
     "software.amazon.awssdk" % "cloudformation" % Versions.aws,
     "software.amazon.awssdk" % "sts" % Versions.aws,
+    "software.amazon.awssdk" % "ssm" % Versions.aws,
     "com.gu" %% "management" % Versions.guardianManagement,
     "com.gu" %% "fastly-api-client" % "0.4.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
