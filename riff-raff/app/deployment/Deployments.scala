@@ -66,7 +66,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
     library send { _ + (uuid -> Agent(record)) }
     documentStoreConverter.saveDeploy(record)
-    await(uuid)
+    await(uuid, 30 seconds)
   }
 
   def deployRecordFor(uuid: UUID, parameters: DeployParameters): DeployRecord = {
@@ -169,7 +169,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
       val record: Option[DeployRecord] =
         Await.result(
           allDeploys.get(uuid).traverse(_.future()),
-          10 seconds
+          30 seconds
         )
 
       record match {
@@ -219,7 +219,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
     }
   }
 
-  def await(uuid: UUID): Record = {
-    library()(uuid)()
+  def await(uuid: UUID, atMost: Duration): Record = {
+    Await.result(library.future.flatMap(_(uuid).future), atMost)
   }
 }
