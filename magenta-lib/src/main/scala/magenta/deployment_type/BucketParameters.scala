@@ -27,10 +27,13 @@ trait BucketParameters {
   def resolveBucket(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): Bucket = {
     val bucketSsmLookup = bucketSsmLookupParam(pkg, target, reporter)
     val maybeExplicitBucket = bucketParam.get(pkg)
-    (bucketSsmLookup, maybeExplicitBucket) match {
-      case (true, None) => BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
+    val bucket = (bucketSsmLookup, maybeExplicitBucket) match {
+      case (true, None) =>
+        BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
       case (false, Some(explicitBucket)) => BucketByName(explicitBucket)
       case _ => reporter.fail("One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true")
     }
+    reporter.verbose(s"Resolved artifact bucket as $bucket")
+    bucket
   }
 }
