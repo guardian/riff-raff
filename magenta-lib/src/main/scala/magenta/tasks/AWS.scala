@@ -458,12 +458,16 @@ trait AWS extends Loggable {
   private lazy val numberOfRetries = 20
 
   /* A retry condition that logs errors */
-  class LoggingRetryCondition extends RetryCondition {
+  class LoggingRetryCondition(retryCondition: RetryCondition) extends RetryCondition {
     private def exceptionInfo(e: Throwable): String = {
       s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
     }
+    private def localRules(context: RetryPolicyContext): Boolean = {
+      context.exception().getMessage.contains("Rate exceeded")
+    }
     override def shouldRetry(context: RetryPolicyContext): Boolean = {
-      val willRetry = context.retriesAttempted() < numberOfRetries
+      val underlyingRetry = retryCondition.shouldRetry(context)
+      val willRetry = underlyingRetry || localRules(context)
       if (willRetry) {
         logger.warn(s"AWS SDK retry ${context.retriesAttempted}: ${Option(context.originalRequest).map(_.getClass.getName)} threw ${exceptionInfo(context.exception)}")
       } else {
@@ -474,15 +478,18 @@ trait AWS extends Loggable {
     }
   }
 
-  val clientConfiguration: ClientOverrideConfiguration =
+  val clientConfiguration: ClientOverrideConfiguration = {
+    val retryPolicy = RetryPolicy.defaultRetryPolicy
     ClientOverrideConfiguration.builder()
       .retryPolicy(
         RetryPolicy.builder()
-          .retryCondition(new LoggingRetryCondition())
-          .backoffStrategy(BackoffStrategy.defaultStrategy())
+          .backoffStrategy(retryPolicy.backoffStrategy())
+          .throttlingBackoffStrategy(retryPolicy.throttlingBackoffStrategy())
+          .retryCondition(new LoggingRetryCondition(retryPolicy.retryCondition()))
           .numRetries(numberOfRetries)
           .build()
     ).build()
+  }
 
   val clientConfigurationNoRetry: ClientOverrideConfiguration =
     ClientOverrideConfiguration.builder()
