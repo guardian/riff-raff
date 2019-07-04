@@ -7,6 +7,7 @@ import com.amazonaws.auth.profile.{ProfileCredentialsProvider => ProfileCredenti
 import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsProvider => AWSCredentialsProviderV1, AWSCredentialsProviderChain => AWSCredentialsProviderChainV1, BasicAWSCredentials => BasicAWSCredentialsV1, EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1, InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1, SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
+import com.amazonaws.services.rds.auth.{GetIamAuthTokenRequest, RdsIamAuthTokenGenerator}
 import com.gu.management._
 import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
@@ -20,6 +21,7 @@ import magenta._
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.{DateTime, Days}
 import persistence.{CollectionStats, DataStore}
+import play.api.Configuration
 import riffraff.BuildInfo
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
@@ -59,7 +61,6 @@ class Config(configuration: TypesafeConfig) extends Logging {
         ).build()
         val ec2Client = Ec2Client.builder()
           .credentialsProvider(credentialsProviderChain(None, None))
-//          .region(Regions.getCurrentRegion.getName)
           .build()
         try {
           val describeTagsResult = ec2Client.describeTags(request)
@@ -170,8 +171,19 @@ class Config(configuration: TypesafeConfig) extends Logging {
 
   object postgres {
     lazy val url = getString("db.default.url")
-    lazy val user = getString("db.default.user")
-    lazy val password = getString("db.default.password")
+    lazy val user =  getString("db.default.user")
+    lazy val password = getPassword
+
+    def getPassword: String = {
+      if (stage == "CODE" || stage =="PROD") {
+        val hostname = getString("db.default.hostname")
+        logger.info(s"Fetching password for database $hostname, stage=$stage.")
+        val generator = RdsIamAuthTokenGenerator.builder().credentials(credentialsProviderChainV1()).region(artifact.aws.regionName).build()
+        generator.getAuthToken(GetIamAuthTokenRequest.builder.hostname(hostname).port(5432).userName(user).build())
+      } else {
+        getString("db.default.password")
+      }
+    }
   }
 
   object stages {
@@ -229,7 +241,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
     }
   }
 
-  def credentialsProviderChainV1(accessKey: Option[String], secretKey: Option[String]): AWSCredentialsProviderChainV1 = {
+  def credentialsProviderChainV1(accessKey: Option[String] = None, secretKey: Option[String] = None): AWSCredentialsProviderChainV1 = {
     new AWSCredentialsProviderChainV1(
       new AWSCredentialsProviderV1 {
         override def getCredentials: AWSCredentialsV1 = (for {
