@@ -134,7 +134,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
     val p = DeploymentPackage("myapp", app1, data, "aws-lambda", S3Path("artifact-bucket", "test/123"), deploymentTypes)
 
     Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), stack, region)) should be (
-      List(UpdateS3Lambda("myLambda", "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
+      List(UpdateS3Lambda(LambdaFunctionName("myLambda"), "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
       ))
   }
 
@@ -152,7 +152,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val thrown = the[FailException] thrownBy {
       Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient), DeployTarget(parameters(CODE), stack, region)) should be (
-        List(UpdateS3Lambda("myLambda", "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
+        List(UpdateS3Lambda(LambdaFunctionName("myLambda"), "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
         ))
     }
 
