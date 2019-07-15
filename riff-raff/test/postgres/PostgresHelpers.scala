@@ -1,7 +1,7 @@
 package postgres
 
 import conf.Config
-import persistence.PostgresDatastoreOps
+import persistence.{PasswordProvider, PostgresDatastoreOps}
 import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
 import play.api.Configuration
@@ -13,8 +13,12 @@ trait PostgresHelpers {
     "db.default.url" -> "jdbc:postgresql://localhost:44444/riffraff")
   ).underlying)
 
+  val passwordProvider = new PasswordProvider {
+    override def providePassword(): String = "riffraff"
+  }
+
   lazy val datastore = {
-    val db = new PostgresDatastoreOps(config).buildDatastore()
+    val db = new PostgresDatastoreOps(config, passwordProvider).buildDatastore()
     applyEvolutions
     db
   }
@@ -26,7 +30,7 @@ trait PostgresHelpers {
       name = "default",
       config = Map(
         "username" -> config.postgres.user,
-        "password" -> config.postgres.password
+        "password" -> passwordProvider.providePassword()
       )
     )
     Evolutions.applyEvolutions(db)

@@ -35,7 +35,7 @@ import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
-class AppComponents(context: Context, config: Config) extends BuiltInComponentsFromContext(context)
+class AppComponents(context: Context, config: Config, passwordProvider: PasswordProvider) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
   with AhcWSComponents
   with I18nComponents
@@ -47,7 +47,7 @@ class AppComponents(context: Context, config: Config) extends BuiltInComponentsF
   with HikariCPComponents
   with Logging {
 
-  lazy val datastore: DataStore = new PostgresDatastoreOps(config).buildDatastore()
+  lazy val datastore: DataStore = new PostgresDatastoreOps(config, passwordProvider).buildDatastore()
 
   val secretStateSupplier: SnapshotProvider = {
     new ParameterStore.SecretSupplier(

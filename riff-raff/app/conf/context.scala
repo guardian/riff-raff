@@ -172,18 +172,8 @@ class Config(configuration: TypesafeConfig) extends Logging {
   object postgres {
     lazy val url = getString("db.default.url")
     lazy val user =  getString("db.default.user")
-    lazy val password = getPassword
-
-    def getPassword: String = {
-      if (stage == "CODE" || stage =="PROD") {
-        val hostname = getString("db.default.hostname")
-        logger.info(s"Fetching password for database $hostname, stage=$stage.")
-        val generator = RdsIamAuthTokenGenerator.builder().credentials(credentialsProviderChainV1()).region(artifact.aws.regionName).build()
-        generator.getAuthToken(GetIamAuthTokenRequest.builder.hostname(hostname).port(5432).userName(user).build())
-      } else {
-        getString("db.default.password")
-      }
-    }
+    lazy val hostname = getString("db.default.hostname")
+    lazy val defaultPassword = getString("db.default.password")
   }
 
   object stages {

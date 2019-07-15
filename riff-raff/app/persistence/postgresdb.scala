@@ -1,11 +1,14 @@
 package persistence
 
+import java.sql.{Connection, DriverManager}
 import java.util.UUID
 
 import conf.Config
 import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
+import org.apache.commons.dbcp2.{ConnectionFactory, PoolableConnectionFactory, PoolingDataSource}
+import org.apache.commons.pool2.impl.GenericObjectPool
 import org.joda.time.{DateTime, Period}
 import play.api.libs.json
 import play.api.libs.json._
@@ -250,13 +253,16 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 }
 
-class PostgresDatastoreOps(config: Config) {
+class PostgresDatastoreOps(config: Config, passwordProvider: PasswordProvider) {
   def buildDatastore() = {
     Class.forName("org.postgresql.Driver")
 
-    // initalSize and maxSize need to be the same so that all connections remain open. If connections are closed and then
-    // reopned the authentication will fail as the IAM token we use will have expired
-    ConnectionPool.singleton(config.postgres.url, config.postgres.user, config.postgres.password, settings = ConnectionPoolSettings(initialSize = 8, maxSize = 8))
+    val connectionPoolDataSource = DynamicPasswordDataSourceConnectionPool(
+      url = config.postgres.url,
+      user = config.postgres.user,
+      passwordProvider = passwordProvider
+    )
+    ConnectionPool.singleton(connectionPoolDataSource)
 
     new PostgresDatastore(config)
   }
