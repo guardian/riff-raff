@@ -253,7 +253,10 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 class PostgresDatastoreOps(config: Config) {
   def buildDatastore() = {
     Class.forName("org.postgresql.Driver")
-    ConnectionPool.singleton(config.postgres.url, config.postgres.user, config.postgres.password)
+
+    // initalSize and maxSize need to be the same so that all connections remain open. If connections are closed and then
+    // reopned the authentication will fail as the IAM token we use will have expired
+    ConnectionPool.singleton(config.postgres.url, config.postgres.user, config.postgres.password, settings = ConnectionPoolSettings(initialSize = 8, maxSize = 8))
 
     new PostgresDatastore(config)
   }
