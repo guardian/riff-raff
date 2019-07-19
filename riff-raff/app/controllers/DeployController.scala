@@ -133,14 +133,14 @@ class DeployController(config: Config,
     Ok(Json.toJson(possibleProjects))
   }
 
-  def deployHistory(project: String, maybeStage: Option[String]) = AuthAction { request =>
+  def deployHistory(project: String, maybeStage: Option[String], isExactMatchProjectName: Option[Boolean]) = AuthAction { request =>
     if (project.trim.isEmpty) {
       Ok("")
     } else {
       val restrictions = maybeStage.toSeq.flatMap { stage =>
         RestrictionChecker.configsThatPreventDeployment(restrictionConfigDynamoRepository, project, stage, UserRequestSource(request.user))
       }
-      val filter = DeployFilter(projectName = Some(project), stage = maybeStage)
+      val filter = DeployFilter(projectName = Some(project), stage = maybeStage, isExactMatchProjectName = isExactMatchProjectName)
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(5)), fetchLogs = false).logAndSquashException(Nil).reverse
       Ok(views.html.deploy.deployHistory(project, maybeStage, records, restrictions))
     }

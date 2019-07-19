@@ -8,12 +8,22 @@
 
     <div class="clearfix"><p>&nbsp;</p></div>
 
+    <style type="text/css">
+        #projectInput_field > label::after {
+            content: '(exact match)';
+            display: inline-block;
+            font-style: italic;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+    </style>
+
     <div class="col-md-6">
     @b3.form(routes.DeployController.processForm, 'class -> "well") {
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
-            @b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md")
+            @b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
             @b3.text(deployForm("build"),  '_label -> "build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(
                 deployForm("stage"),

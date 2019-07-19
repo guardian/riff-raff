@@ -39,7 +39,7 @@ GET         /deployment/updates/:uuid                       controllers.DeployCo
 
 GET         /deployment/request/autoComplete/project        controllers.DeployController.autoCompleteProject(term:String)
 GET         /deployment/request/autoComplete/build          controllers.DeployController.autoCompleteBuild(project:String,term:String)
-GET         /deployment/request/history                     controllers.DeployController.deployHistory(project:String, stage:Option[String])
+GET         /deployment/request/history                     controllers.DeployController.deployHistory(project:String, stage:Option[String], isExactMatchProjectName:Option[Boolean])
 GET         /deployment/request/buildInfo                   controllers.DeployController.buildInfo(project: String, build: String)
 
 
