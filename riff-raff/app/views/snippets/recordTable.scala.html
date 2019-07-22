@@ -1,4 +1,4 @@
-@(records: List[deployment.Record], maybeFilter: Option[deployment.DeployFilterPagination] = None, allColumns: Boolean = true, lastColumnContent: Option[(String, Record => Html)] = None)
+@(records: List[deployment.Record], maybeFilter: Option[deployment.DeployFilterPagination] = None, allColumns: Boolean = true, lastColumnContent: Option[(String, Record => Html)] = None, popOutLink: Boolean = false)
 @import deployment._
 @import html.helper.magenta.htmlTooltip
 
@@ -35,7 +35,7 @@
             <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
             <td><span class="label label-default">@record.deployerName</span></td>
             @if(allColumns) {
-                <td><a href="@routes.DeployController.viewUUID(record.uuid.toString)" class="rowlink">@record.buildName</a></td>
+                <td>@record.buildName</td>
             }
             <td>@record.stage.name</td>
             <td>@record.buildId</td>
@@ -71,21 +71,23 @@
             </td>
 
             <td>
-                @htmlTooltip(placement="left"){
-                    @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
-                }{
-                @defining(record.state) { state =>
-                @state match {
-                case RunState.Completed => { <span class="label label-success">Completed in @Record.prettyPrintDuration(record.timeTaken)</span> }
-                case RunState.Failed => { <span class="label label-danger">Failed@if(Record.prettyPrintDuration(record.timeTaken).nonEmpty){ after @Record.prettyPrintDuration(record.timeTaken)}</span> }
-                case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
-                case _ => {
-                    <span class="label label-info">Running for @Record.prettyPrintDuration(record.timeTaken) (@record.completedPercentage%)</span>
-                }
-                }
-                }
-                    @if(record.hasWarnings) { <br/><span class="label label-reporter-warning">Warnings encountered</span> }
-                }
+                <a href="@routes.DeployController.viewUUID(record.uuid.toString)" @if(popOutLink){ target="_blank" } class="rowlink">
+                    @htmlTooltip(placement="left"){
+                        @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).getOrElse(Html(""))
+                    }{
+                    @defining(record.state) { state =>
+                    @state match {
+                    case RunState.Completed => { <span class="label label-success">Completed in @Record.prettyPrintDuration(record.timeTaken)</span> }
+                    case RunState.Failed => { <span class="label label-danger">Failed@if(Record.prettyPrintDuration(record.timeTaken).nonEmpty){ after @Record.prettyPrintDuration(record.timeTaken)}</span> }
+                    case RunState.NotRunning => { <span class="label label-default">Waiting</span> }
+                    case _ => {
+                        <span class="label label-info">Running for @Record.prettyPrintDuration(record.timeTaken) (@record.completedPercentage%)</span>
+                    }
+                    }
+                    }
+                        @if(record.hasWarnings) { <br/><span class="label label-reporter-warning">Warnings encountered</span> }
+                    }
+                </a>
             </td>
             @if(allColumns) {
                 <td class="rowlink-skip">
