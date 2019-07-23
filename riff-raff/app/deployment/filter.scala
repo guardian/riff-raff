@@ -18,6 +18,7 @@ trait QueryStringBuilder {
 
 case class DeployFilter(
   projectName: Option[String] = None,
+  isExactMatchProjectName: Option[Boolean] = None,
   stage: Option[String] = None,
   deployer: Option[String] = None,
   status: Option[RunState] = None,
@@ -27,6 +28,7 @@ case class DeployFilter(
   lazy val queryStringParams: List[(String, String)] = {
     Nil ++
       projectName.map("projectName" -> _.toString) ++
+      isExactMatchProjectName.map("isExactMatchProjectName" -> _.toString) ++
       stage.map("stage" -> _.toString) ++
       deployer.map("deployer" -> _.toString) ++
       status.map("status" -> _.toString) ++
@@ -36,7 +38,10 @@ case class DeployFilter(
 
   lazy val sqlParams: List[SQLSyntax] = List(
     projectName.map { pn =>
-      val likeString = s"%$pn%"
+      val likeString = isExactMatchProjectName match {
+        case Some(true) => pn
+        case _ => s"%$pn%"
+      }
       sqls"content->'parameters'->>'projectName' ilike $likeString"
     },
     stage.map(s => sqls"content->'parameters'->>'stage' = $s"),

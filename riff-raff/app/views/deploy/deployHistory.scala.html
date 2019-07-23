@@ -14,7 +14,7 @@
 }
 @if(records.nonEmpty) {
     <h4>Last deploys of <em>@projectName</em> @maybeStage.map{ stage => to @stage }</h4>
-    @snippets.recordTable(records, None, allColumns = false)
+    @snippets.recordTable(records, None, allColumns = false, popOutLink = true)
 } else {
     <div class="alert alert-danger" role="alert">
         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>

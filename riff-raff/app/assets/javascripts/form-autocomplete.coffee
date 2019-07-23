@@ -5,12 +5,14 @@ updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
 
 updateDeployInfo = () ->
-  selectedProject =$('#projectInput').val()
+  elemProjectInput = $('#projectInput')
+  isExactMatch = elemProjectInput.hasClass("project-exact-match")
+  selectedProject = elemProjectInput.val()
   selectedStage = $('#stage').val()
   url = if selectedStage == ''
-          jsRoutes.controllers.DeployController.deployHistory(selectedProject).url
+          jsRoutes.controllers.DeployController.deployHistory(selectedProject, undefined, isExactMatch).url
         else
-          jsRoutes.controllers.DeployController.deployHistory(selectedProject, selectedStage).url
+          jsRoutes.controllers.DeployController.deployHistory(selectedProject, selectedStage, isExactMatch).url
   $('#deploy-info').load(
     url,
     ->
