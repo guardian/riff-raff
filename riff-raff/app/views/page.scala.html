@@ -17,21 +17,21 @@
             padding: 9px 0;
         }
     </style>
-    <link href='@routes.Assets.at("lib/bootstrap/css/bootstrap.css")' rel="stylesheet">
-    <link href='@routes.Assets.at("lib/jasny-bootstrap/css/jasny-bootstrap.min.css")' rel="stylesheet">
-    <link href='@routes.Assets.at("stylesheets/magenta.css")' rel="stylesheet">
-    <link href='@routes.Assets.at("lib/jquery-ui/jquery-ui.min.css")' rel="stylesheet">
+    <link href='@routes.Assets.versioned("lib/bootstrap/css/bootstrap.css")' rel="stylesheet">
+    <link href='@routes.Assets.versioned("lib/jasny-bootstrap/css/jasny-bootstrap.min.css")' rel="stylesheet">
+    <link href='@routes.Assets.versioned("stylesheets/magenta.css")' rel="stylesheet">
+    <link href='@routes.Assets.versioned("lib/jquery-ui/jquery-ui.min.css")' rel="stylesheet">
 
-    <link rel="shortcut icon" type="image/png" href='@routes.Assets.at("images/favicon.png")'>
-    <script src='@routes.Assets.at("lib/jquery/jquery.min.js")'></script>
-    <script src='@routes.Assets.at("lib/jquery-ui/jquery-ui.min.js")'></script>
-    <script src='@routes.Assets.at("lib/momentjs/min/moment.min.js")'></script>
+    <link rel="shortcut icon" type="image/png" href='@routes.Assets.versioned("images/favicon.png")'>
+    <script src='@routes.Assets.versioned("lib/jquery/jquery.min.js")'></script>
+    <script src='@routes.Assets.versioned("lib/jquery-ui/jquery-ui.min.js")'></script>
+    <script src='@routes.Assets.versioned("lib/momentjs/min/moment.min.js")'></script>
     <!-- routes used in AJAX functions -->
     <script src='@routes.Application.javascriptRoutes'></script>
-    <script src='@routes.Assets.at("javascripts/tooltips.js")'></script>
+    <script src='@routes.Assets.versioned("javascripts/tooltips.js")'></script>
     <!-- page specific scripts -->
     @for(script <- scripts) {
-        <script src='@routes.Assets.at(s"javascripts/$script.js")'></script>
+        <script src='@routes.Assets.versioned(s"javascripts/$script.js")'></script>
     }
 </head>
 <body>
@@ -58,8 +58,8 @@
 <!-- Le javascript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script src='@routes.Assets.at("lib/bootstrap/js/bootstrap.min.js")'></script>
-<script src='@routes.Assets.at("lib/jasny-bootstrap/js/jasny-bootstrap.min.js")'></script>
+<script src='@routes.Assets.versioned("lib/bootstrap/js/bootstrap.min.js")'></script>
+<script src='@routes.Assets.versioned("lib/jasny-bootstrap/js/jasny-bootstrap.min.js")'></script>
 
 </body>
 </html>

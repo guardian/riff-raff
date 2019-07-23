@@ -3,10 +3,10 @@
 @import deployment.DeployFilterPagination
 
 @main("Deployment history", request, List("auto-refresh", "history-dropdown", "autorefresh-rowlink", "graph", "relative-time", "form-autocomplete")) {
-    <link href="@routes.Assets.at("stylesheets/rickshaw.css")" rel="stylesheet">
-    <link href='@routes.Assets.at("stylesheets/graph.css")' rel="stylesheet">
-    <script src='@routes.Assets.at("javascripts/d3.v2.min.js")'></script>
-    <script src='@routes.Assets.at("javascripts/rickshaw.js")'></script>
+    <link href="@routes.Assets.versioned("stylesheets/rickshaw.css")" rel="stylesheet">
+    <link href='@routes.Assets.versioned("stylesheets/graph.css")' rel="stylesheet">
+    <script src='@routes.Assets.versioned("javascripts/d3.v2.min.js")'></script>
+    <script src='@routes.Assets.versioned("javascripts/rickshaw.js")'></script>
     <script>
             $(function () { graph({
                 "container_id": 'deploy-chart',

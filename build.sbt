@@ -33,7 +33,7 @@ lazy val lib = project.in(file("magenta-lib"))
 
 lazy val riffraff = project.in(file("riff-raff"))
   .dependsOn(lib % "compile->compile;test->test")
-  .enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact)
+  .enablePlugins(PlayScala, SbtWeb, BuildInfoPlugin, RiffRaffArtifact)
   .settings(commonSettings)
   .settings(Seq(
     name := "riff-raff",
@@ -86,5 +86,7 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     fork in Test := false,
     
-    includeFilter in (Assets, LessKeys.less) := "*.less"
+    includeFilter in (Assets, LessKeys.less) := "*.less",
+
+    pipelineStages in Assets := Seq(digest)
   ))

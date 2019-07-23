@@ -1,6 +1,6 @@
 @(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], elapsed: Long)
 
-<p><img height="15" width="21" src="@routes.Assets.at("images/parrot-small.gif")"/>
+<p><img height="15" width="21" src="@routes.Assets.versioned("images/parrot-small.gif")"/>
     @elapsed match {
        case time if time < 10 => {
            Resolving tasks from your riff-raff.yaml file...
