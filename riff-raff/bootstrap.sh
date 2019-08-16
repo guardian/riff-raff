@@ -84,7 +84,7 @@ Description=${APP}
 
 [Service]
 WorkingDirectory=${HOME}
-ExecStart=${HOME}/${APP}/bin/${APP}
+ExecStart=${HOME}/${APP}/bin/${APP} -J -J -Xmx3072m
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 SuccessExitStatus=143
