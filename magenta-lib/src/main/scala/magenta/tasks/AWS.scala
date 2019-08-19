@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, Region, Stack, Stage, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -32,12 +32,12 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 object S3 extends AWS {
-  def makeS3client(keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration): S3Client =
-    S3Client.builder()
+  def withS3Client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration)(block: S3Client => T): T =
+    withResource[S3Client, T](S3Client.builder()
       .region(region.awsRegion)
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(config)
-      .build()
+      .build())(block)
 
   /**
     * Check (and if necessary create) that an S3 bucket exists for the account and region. Note that it is assumed that

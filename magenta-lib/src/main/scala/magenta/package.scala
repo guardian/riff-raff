@@ -1,7 +1,5 @@
 package magenta
 
-import java.io.Closeable
-
 import com.gu.management.Loggable
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -37,7 +35,7 @@ object `package` extends Loggable {
     }
   }
 
-  def withResource[C <: Closeable, T](resource: C)(f: C => T): T = {
+  def withResource[C <: AutoCloseable, T](resource: C)(f: C => T): T = {
     try {
       f(resource)
     } finally {

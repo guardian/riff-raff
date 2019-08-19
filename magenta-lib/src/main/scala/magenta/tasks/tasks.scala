@@ -24,8 +24,7 @@ case class S3Upload(
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing, artifactClient: S3Client,
-  clientFactory: (KeyRing, Region, ClientOverrideConfiguration) => S3Client = S3.makeS3client) extends Task with Loggable {
+)(implicit val keyRing: KeyRing, artifactClient: S3Client, val client: Option[S3Client] = None) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
@@ -59,7 +58,6 @@ case class S3Upload(
       reporter.fail(s"No files found to upload in $locationDescription")
     }
 
-    val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
 
     reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
     requests.zipWithIndex.par.foreach { case (req, index) =>
@@ -78,7 +76,11 @@ case class S3Upload(
         val requestBody = AWSRequestBody.fromBytes(inputStream)
 
         val putRequest: PutObjectRequest = req.toAwsRequest
-        val result = client.putObject(putRequest, requestBody)
+        val result = if (client.isDefined) {
+          client.get.putObject(putRequest, requestBody)
+        } else {
+          S3.withS3Client(keyRing, region, S3.clientConfigurationNoRetry){client => client.putObject(putRequest, requestBody)}
+        }
         logger.debug(s"Put object ${putRequest.key}: MD5: ${result.sseCustomerKeyMD5} Metadata: ${result.responseMetadata}")
         result
       }

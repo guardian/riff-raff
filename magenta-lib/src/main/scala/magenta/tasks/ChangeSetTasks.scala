@@ -19,7 +19,6 @@ class CreateChangeSetTask(
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
     val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
-    val s3Client = S3.makeS3client(keyRing, region)
     val stsClient = STS.makeSTSclient(keyRing, region)
     val accountNumber = STS.getAccountNumber(stsClient)
 
@@ -29,7 +28,7 @@ class CreateChangeSetTask(
 
     val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
 
-    val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
+    val template = S3.withS3Client(keyRing, region)(client => processTemplate(stackName, templateString, client, stsClient, region, reporter))
     val parameters = unresolvedParameters.resolve(template, accountNumber, changeSetType, reporter, cfnClient)
 
     reporter.info("Creating Cloudformation change set")
