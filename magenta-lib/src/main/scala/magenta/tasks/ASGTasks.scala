@@ -25,9 +25,10 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
 case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     if (asg.instances.asScala.nonEmpty) {
-      implicit val ec2Client: Ec2Client = EC2.makeEc2Client(keyRing, region)
-      reporter.verbose(s"Tagging ${asg.instances.asScala.toList.map(_.instanceId).mkString(", ")}")
-      EC2.setTag(asg.instances.asScala.toList, "Magenta", "Terminate", ec2Client)
+      EC2.withEc2Client(keyRing, region) { ec2Client =>
+        reporter.verbose(s"Tagging ${asg.instances.asScala.toList.map(_.instanceId).mkString(", ")}")
+        EC2.setTag(asg.instances.asScala.toList, "Magenta", "Terminate", ec2Client)
+      }
     } else {
       reporter.verbose(s"No instances to tag")
     }
@@ -92,19 +93,20 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
     with SlowRepeatedPollingCheck {
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    val elbClient = ELB.client(keyRing, region)
-    check(reporter, stopFlag) {
-      try {
-        ASG.isStabilized(ASG.refresh(asg, asgClient), elbClient) match {
-          case Left(reason) =>
-            reporter.verbose(reason)
+    ELB.withClient(keyRing, region) { elbClient =>
+      check(reporter, stopFlag) {
+        try {
+          ASG.isStabilized(ASG.refresh(asg, asgClient), elbClient) match {
+            case Left(reason) =>
+              reporter.verbose(reason)
+              false
+            case Right(()) => true
+          }
+        } catch {
+          case e: AwsServiceException if isRateExceeded(e) => {
+            reporter.info(e.getMessage)
             false
-          case Right(()) => true
-        }
-      } catch {
-        case e: AwsServiceException if isRateExceeded(e) => {
-          reporter.info(e.getMessage)
-          false
+          }
         }
       }
     }
@@ -118,17 +120,19 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
 
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    implicit val ec2Client: Ec2Client = EC2.makeEc2Client(keyRing, region)
-    implicit val elbClient: ELB.Client = ELB.client(keyRing, region)
-    val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
-    val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
-    try {
-      reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
-      orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
-    } catch {
-      case e: AwsServiceException if desiredSizeReset(e) =>
-        reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
-        throw new ASGResetException(s"Your ASG desired size may have been reset ${e.getMessage}", e)
+    EC2.withEc2Client(keyRing, region) { ec2Client =>
+      ELB.withClient(keyRing, region) { elbClient =>
+        val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
+        val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
+        try {
+          reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
+          orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
+        } catch {
+          case e: AwsServiceException if desiredSizeReset(e) =>
+            reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
+            throw new ASGResetException(s"Your ASG desired size may have been reset ${e.getMessage}", e)
+        }
+      }
     }
 
     def desiredSizeReset(e: AwsServiceException) = e.statusCode == 400 && e.awsErrorDetails().toString.contains("ValidationError")
@@ -166,9 +170,10 @@ trait ASGTask extends Task {
   def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient)
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val asgClient = ASG.makeAsgClient(keyRing, region)
-    val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, reporter)
-    execute(group, reporter, stopFlag, asgClient)
+    ASG.withAsgClient(keyRing, region) { asgClient =>
+      val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, reporter)
+      execute(group, reporter, stopFlag, asgClient)
+    }
   }
 
   def verbose = description
