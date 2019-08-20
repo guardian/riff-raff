@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Try
+import magenta.withResource
 
 object S3 extends AWS {
   def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration)(block: S3Client => T): T =
@@ -464,14 +465,6 @@ object STS extends AWS {
 }
 
 trait AWS extends Loggable {
-  def withResource[C <: AutoCloseable, T](resource: C)(f: C => T): T = {
-    try {
-      f(resource)
-    } finally {
-      resource.close()
-    }
-  }
-
   lazy val accessKey: String = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
