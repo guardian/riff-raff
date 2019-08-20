@@ -115,7 +115,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
 
     val fileToUpload = new S3Path(sourceBucket, sourceKey)
-    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, artifactClient)
+    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, artifactClient, Some(s3Client))
     val mappings = task.objectMappings
     mappings.size should be (1)
     val (source, target) = mappings.head
@@ -153,7 +153,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient)
+    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, Some(s3Client))
 
     task.execute(reporter)
 
@@ -186,7 +186,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient)
+    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, Some(s3Client))
     task.execute(reporter)
 
     val files = task.objectMappings
@@ -247,8 +247,6 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       GetObjectResponse.builder().contentLength(31L).build(),
       stream)
   }
-
-  def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => S3Client = { (_, _, _) => client }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), All)
 }
