@@ -186,7 +186,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, clientFactory(s3Client))
+     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     task.execute(reporter)
 
     val files = task.objectMappings
@@ -248,7 +248,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
       stream)
   }
 
-  def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => S3Client = { (_, _, _) => client }
+  def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration) => (S3Client => Unit) => Unit = { (_, _, _) => block => block(client) }
 
   val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), All)
 }

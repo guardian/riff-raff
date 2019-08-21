@@ -30,14 +30,16 @@ import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.util.Try
+import magenta.withResource
 
 object S3 extends AWS {
-  def makeS3client(keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration): S3Client =
-    S3Client.builder()
+  def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration)(block: S3Client => T): T =
+    withResource(S3Client.builder()
       .region(region.awsRegion)
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(config)
-      .build()
+      .build())(block)
 
   /**
     * Check (and if necessary create) that an S3 bucket exists for the account and region. Note that it is assumed that
@@ -84,12 +86,12 @@ object S3 extends AWS {
 }
 
 object Lambda extends AWS {
-  def makeLambdaClient(keyRing: KeyRing, region: Region): LambdaClient =
-    LambdaClient.builder()
+  def withLambdaClient[T](keyRing: KeyRing, region: Region)(block: LambdaClient => T): T =
+    withResource(LambdaClient.builder()
     .credentialsProvider(provider(keyRing))
     .overrideConfiguration(clientConfiguration)
     .region(region.awsRegion)
-    .build()
+    .build())(block)
 
   def lambdaUpdateFunctionCodeRequest(functionName: String, buffer: ByteBuffer): UpdateFunctionCodeRequest =
     UpdateFunctionCodeRequest.builder().functionName(functionName).zipFile(SdkBytes.fromByteBuffer(buffer)).build()
@@ -125,12 +127,12 @@ object Lambda extends AWS {
 }
 
 object ASG extends AWS {
-  def makeAsgClient(keyRing: KeyRing, region: Region): AutoScalingClient =
-    AutoScalingClient.builder()
+  def withAsgClient[T](keyRing: KeyRing, region: Region)(block: AutoScalingClient => T): T =
+    withResource(AutoScalingClient.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
       .region(region.awsRegion)
-      .build()
+      .build())(block)
 
   def desiredCapacity(name: String, capacity: Int, client: AutoScalingClient) =
     client.setDesiredCapacity(
@@ -253,19 +255,25 @@ object ASG extends AWS {
 
 object ELB extends AWS {
 
-  case class Client(classic: ClassicELB, application: ApplicationELB)
+  case class Client(classic: ClassicELB, application: ApplicationELB) extends AutoCloseable {
+    def close(): Unit = {
+      val classicClose = Try(classic.close())
+      val applicationClose = Try(application.close())
+      classicClose.flatMap(_ => applicationClose).get
+    }
+  }
 
-  def client(keyRing: KeyRing, region: Region): Client =
-    Client(classicClient(keyRing, region), applicationClient(keyRing, region))
+  def withClient[T](keyRing: KeyRing, region: Region)(block: Client => T): T =
+    withResource(Client(classicClient(keyRing, region), applicationClient(keyRing, region)))(block)
 
-  def classicClient(keyRing: KeyRing, region: Region): ClassicELB =
+  private def classicClient(keyRing: KeyRing, region: Region): ClassicELB =
     ClassicELB.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
       .region(region.awsRegion)
       .build()
 
-  def applicationClient(keyRing: KeyRing, region: Region): ApplicationELB =
+  private def applicationClient(keyRing: KeyRing, region: Region): ApplicationELB =
     ApplicationELB.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
@@ -299,12 +307,12 @@ object ELB extends AWS {
 }
 
 object EC2 extends AWS {
-  def makeEc2Client(keyRing: KeyRing, region: Region): Ec2Client = {
-    Ec2Client.builder()
+  def withEc2Client[T](keyRing: KeyRing, region: Region)(block: Ec2Client => T) = {
+    withResource(Ec2Client.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
       .region(region.awsRegion)
-      .build()
+      .build())(block)
   }
 
   def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client) {
@@ -338,12 +346,12 @@ object CloudFormation extends AWS {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
-  def makeCfnClient(keyRing: KeyRing, region: Region): CloudFormationClient = {
-    CloudFormationClient.builder()
+  def withCfnClient[T](keyRing: KeyRing, region: Region)(block: CloudFormationClient => T): T = {
+    withResource(CloudFormationClient.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
       .region(region.awsRegion)
-      .build()
+      .build())(block)
   }
 
   def validateTemplate(template: Template, client: CloudFormationClient) = {
@@ -442,12 +450,12 @@ object CloudFormation extends AWS {
 }
 
 object STS extends AWS {
-  def makeSTSclient(keyRing: KeyRing, region: Region): StsClient = {
-    StsClient.builder()
+  def withSTSclient[T](keyRing: KeyRing, region: Region)(block: StsClient => T): T = {
+    withResource(StsClient.builder()
       .credentialsProvider(provider(keyRing))
       .overrideConfiguration(clientConfiguration)
       .region(region.awsRegion)
-      .build()
+      .build())(block)
   }
 
   def getAccountNumber(stsClient: StsClient): String = {

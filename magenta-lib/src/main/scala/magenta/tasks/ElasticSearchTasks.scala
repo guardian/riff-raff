@@ -23,13 +23,14 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
     """.stripMargin
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    implicit val ec2Client: Ec2Client = EC2.makeEc2Client(keyRing, region)
-    val instance = EC2(asg.instances.asScala.headOption.getOrElse {
-      throw new IllegalArgumentException(s"Auto-scaling group: $asg had no instances")
-    }, ec2Client)
-    val node = ElasticSearchNode(instance.publicDnsName)
-    check(reporter, stopFlag) {
-      node.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
+    EC2.withEc2Client(keyRing, region) { ec2Client =>
+      val instance = EC2(asg.instances.asScala.headOption.getOrElse {
+        throw new IllegalArgumentException(s"Auto-scaling group: $asg had no instances")
+      }, ec2Client)
+      val node = ElasticSearchNode(instance.publicDnsName)
+      check(reporter, stopFlag) {
+        node.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
+      }
     }
   }
 }
@@ -39,28 +40,30 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
   extends ASGTask with RepeatedPollingCheck{
 
   override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    implicit val ec2Client: Ec2Client = EC2.makeEc2Client(keyRing, region)
-    implicit val elbClient: ELB.Client = ELB.client(keyRing, region)
-    val newNode = asg.instances.asScala.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
-    val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).publicDnsName)
+    EC2.withEc2Client(keyRing, region) { ec2Client =>
+      ELB.withClient(keyRing, region) { elbClient =>
+        val newNode = asg.instances.asScala.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
+        val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).publicDnsName)
 
-    def cullInstance(instance: Instance) {
-        val node = ElasticSearchNode(EC2(instance, ec2Client).publicDnsName)
-        check(reporter, stopFlag) {
-          newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
-        }
-        if (!stopFlag) {
-          node.shutdown()
+        def cullInstance(instance: Instance) {
+          val node = ElasticSearchNode(EC2(instance, ec2Client).publicDnsName)
           check(reporter, stopFlag) {
-            newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity - 1)
+            newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
           }
+          if (!stopFlag) {
+            node.shutdown()
+            check(reporter, stopFlag) {
+              newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity - 1)
+            }
+          }
+          if (!stopFlag) ASG.cull(asg, instance, asgClient, elbClient)
         }
-        if (!stopFlag) ASG.cull(asg, instance, asgClient, elbClient)
-    }
 
-    val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
-    val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
-    orderedInstancesToKill.foreach(cullInstance)
+        val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
+        val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
+        orderedInstancesToKill.foreach(cullInstance)
+      }
+    }
   }
 
   lazy val description = "Terminate instances with the termination tag for this deploy"

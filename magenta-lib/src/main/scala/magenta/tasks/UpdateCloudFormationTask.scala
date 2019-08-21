@@ -206,48 +206,48 @@ case class UpdateAmiCloudFormationParameterTask(
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
-    val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
-
-    val maybeCfStack = cloudFormationStackLookupStrategy match {
-      case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName, cfnClient)
-      case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
-    }
-
-    val cfStack = maybeCfStack.getOrElse{
-      reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
-    }
-
-    val existingParameters: Map[String, ParameterValue] = cfStack.parameters.asScala.map(_.parameterKey -> UseExistingValue).toMap
-
-    val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
-      if (!cfStack.parameters.asScala.exists(_.parameterKey == parameterName)) {
-        reporter.fail(s"stack ${cfStack.stackName} does not have an $parameterName parameter to update")
+    CloudFormation.withCfnClient(keyRing, region){ cfnClient =>
+      val maybeCfStack = cloudFormationStackLookupStrategy match {
+        case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName, cfnClient)
+        case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
       }
 
-      val currentAmi = cfStack.parameters.asScala.find(_.parameterKey == parameterName).get.parameterValue
-      val accountNumber = STS.getAccountNumber(STS.makeSTSclient(keyRing, region))
-      val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
-      maybeNewAmi match {
-        case Some(sameAmi) if currentAmi == sameAmi =>
-          reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
-          None
-        case Some(newAmi) =>
-          reporter.info(s"Resolved AMI for $parameterName: $newAmi")
-          Some(parameterName -> SpecifiedValue(newAmi))
-        case None =>
-          val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-          reporter.fail(s"Failed to resolve AMI for ${cfStack.stackName} parameter $parameterName with tags: $tagsStr")
+      val cfStack = maybeCfStack.getOrElse{
+        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
       }
-    }
 
-    if (resolvedAmiParameters.nonEmpty) {
-      val newParameters = existingParameters ++ resolvedAmiParameters
-      reporter.info(s"Updating cloudformation stack params: $newParameters")
-      updateWithRetry(reporter, stopFlag) {
-        CloudFormation.updateStackParams(cfStack.stackName, newParameters, cfnClient)
+      val existingParameters: Map[String, ParameterValue] = cfStack.parameters.asScala.map(_.parameterKey -> UseExistingValue).toMap
+
+      val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
+        if (!cfStack.parameters.asScala.exists(_.parameterKey == parameterName)) {
+          reporter.fail(s"stack ${cfStack.stackName} does not have an $parameterName parameter to update")
+        }
+
+        val currentAmi = cfStack.parameters.asScala.find(_.parameterKey == parameterName).get.parameterValue
+        val accountNumber = STS.withSTSclient(keyRing, region)(STS.getAccountNumber)
+        val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
+        maybeNewAmi match {
+          case Some(sameAmi) if currentAmi == sameAmi =>
+            reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
+            None
+          case Some(newAmi) =>
+            reporter.info(s"Resolved AMI for $parameterName: $newAmi")
+            Some(parameterName -> SpecifiedValue(newAmi))
+          case None =>
+            val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
+            reporter.fail(s"Failed to resolve AMI for ${cfStack.stackName} parameter $parameterName with tags: $tagsStr")
+        }
       }
-    } else {
-      reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
+
+      if (resolvedAmiParameters.nonEmpty) {
+        val newParameters = existingParameters ++ resolvedAmiParameters
+        reporter.info(s"Updating cloudformation stack params: $newParameters")
+        updateWithRetry(reporter, stopFlag) {
+          CloudFormation.updateStackParams(cfStack.stackName, newParameters, cfnClient)
+        }
+      } else {
+        reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
+      }
     }
   }
 
@@ -266,26 +266,26 @@ class CheckUpdateEventsTask(
   import UpdateCloudFormationTask._
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    val cfnClient = CloudFormation.makeCfnClient(keyRing, region)
+    CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
 
-    import StackEvent._
+      import StackEvent._
 
-    val stackName = stackLookupStrategy match {
-      case LookupByName(name) => name
-      case strategy @ LookupByTags(tags) =>
-        val stack = CloudFormation.findStackByTags(tags, reporter, cfnClient)
-          .getOrElse(reporter.fail(s"Could not find CloudFormation stack $strategy"))
-        stack.stackName
-    }
+      val stackName = stackLookupStrategy match {
+        case LookupByName(name) => name
+        case strategy@LookupByTags(tags) =>
+          val stack = CloudFormation.findStackByTags(tags, reporter, cfnClient)
+            .getOrElse(reporter.fail(s"Could not find CloudFormation stack $strategy"))
+          stack.stackName
+      }
 
-    @tailrec
-    def check(lastSeenEvent: Option[StackEvent]): Unit = {
-      val result = CloudFormation.describeStackEvents(stackName, cfnClient)
-      val events = result.stackEvents.asScala
+      @tailrec
+      def check(lastSeenEvent: Option[StackEvent]): Unit = {
+        val result = CloudFormation.describeStackEvents(stackName, cfnClient)
+        val events = result.stackEvents.asScala
 
-      lastSeenEvent match {
-        case None =>
-          events.find(updateStart(stackName)) match {
+        lastSeenEvent match {
+          case None =>
+            events.find(updateStart(stackName)) match {
             case None =>
               reporter.fail(s"No events found at all for stack $stackName")
             case Some(e) =>
@@ -296,21 +296,24 @@ class CheckUpdateEventsTask(
                 reportEvent(reporter, e)
                 check(Some(e))
               }
-          }
-        case Some(event) =>
-          val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
-          newEvents.reverse.foreach(reportEvent(reporter, _))
+            }
+          case Some(event) =>
+            val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
+            newEvents.reverse.foreach(reportEvent(reporter, _))
 
-          newEvents.filter(updateFailed).foreach(fail(reporter, _))
+            newEvents.filter(updateFailed).foreach(fail(reporter, _))
 
           val complete = newEvents.exists(updateComplete(stackName))
           if (!complete && !stopFlag) {
-            Thread.sleep(5000)
-            check(Some(newEvents.headOption.getOrElse(event)))
-          }
+              Thread.sleep(5000)
+              check(Some(newEvents.headOption.getOrElse(event)))
+            }
+
+        }
       }
+
+      check(None)
     }
-    check(None)
   }
 
   object StackEvent {

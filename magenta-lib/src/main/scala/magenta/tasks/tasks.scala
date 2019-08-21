@@ -25,7 +25,7 @@ case class S3Upload(
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10
 )(implicit val keyRing: KeyRing, artifactClient: S3Client,
-  clientFactory: (KeyRing, Region, ClientOverrideConfiguration) => S3Client = S3.makeS3client) extends Task with Loggable {
+  withClientFactory: (KeyRing, Region, ClientOverrideConfiguration) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
@@ -59,28 +59,30 @@ case class S3Upload(
       reporter.fail(s"No files found to upload in $locationDescription")
     }
 
-    val client = clientFactory(keyRing, region, S3.clientConfigurationNoRetry)
+    val withClient = withClientFactory(keyRing, region, S3.clientConfigurationNoRetry)
+    withClient { client =>
 
-    reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
-    requests.zipWithIndex.par.foreach { case (req, index) =>
-      logger.debug(s"Transferring ${requestToString(req.source, req)}")
-      index match {
-        case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
-        case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
-        case _ =>
-      }
-      retryOnException(S3.clientConfiguration) {
-        val copyObjectRequest = GetObjectRequest.builder()
-          .bucket(req.source.bucket)
-          .key(req.source.key)
-          .build()
-        val inputStream = artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
-        val requestBody = AWSRequestBody.fromBytes(inputStream)
+      reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
+      requests.zipWithIndex.par.foreach { case (req, index) =>
+        logger.debug(s"Transferring ${requestToString(req.source, req)}")
+        index match {
+          case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
+          case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
+          case _ =>
+        }
+        retryOnException(S3.clientConfiguration) {
+          val copyObjectRequest = GetObjectRequest.builder()
+            .bucket(req.source.bucket)
+            .key(req.source.key)
+            .build()
+          val inputStream = artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
+          val requestBody = AWSRequestBody.fromBytes(inputStream)
 
-        val putRequest: PutObjectRequest = req.toAwsRequest
-        val result = client.putObject(putRequest, requestBody)
-        logger.debug(s"Put object ${putRequest.key}: MD5: ${result.sseCustomerKeyMD5} Metadata: ${result.responseMetadata}")
-        result
+          val putRequest: PutObjectRequest = req.toAwsRequest
+          val result = client.putObject(putRequest, requestBody)
+          logger.debug(s"Put object ${putRequest.key}: MD5: ${result.sseCustomerKeyMD5} Metadata: ${result.responseMetadata}")
+          result
+        }
       }
     }
     reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
@@ -223,20 +225,20 @@ case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: Str
   def verbose: String = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    val client = Lambda.makeLambdaClient(keyRing, region)
+    Lambda.withLambdaClient(keyRing, region){ client =>
+      val functionName: String = function match {
+        case LambdaFunctionName(name) => name
+        case LambdaFunctionTags(tags) =>
+          val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
+          functionConfig.map(_.functionName).getOrElse{
+            reporter.fail(s"Failed to find any function with tags $tags")
+          }
+      }
 
-    val functionName: String = function match {
-      case LambdaFunctionName(name) => name
-      case LambdaFunctionTags(tags) =>
-        val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
-        functionConfig.map(_.functionName).getOrElse{
-          reporter.fail(s"Failed to find any function with tags $tags")
-        }
+      reporter.verbose(s"Starting update $function Lambda")
+      client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
+      reporter.verbose(s"Finished update $function Lambda")
     }
-
-    reporter.verbose(s"Starting update $function Lambda")
-    client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-    reporter.verbose(s"Finished update $function Lambda")
   }
 
 }
