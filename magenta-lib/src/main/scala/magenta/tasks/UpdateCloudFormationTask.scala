@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 /**
@@ -277,30 +278,36 @@ class CheckUpdateEventsTask(
         stack.stackName
     }
 
+    @tailrec
     def check(lastSeenEvent: Option[StackEvent]): Unit = {
       val result = CloudFormation.describeStackEvents(stackName, cfnClient)
       val events = result.stackEvents.asScala
 
       lastSeenEvent match {
         case None =>
-          events.find(updateStart(stackName)) foreach (e => {
-            val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
-            if (age > 30) {
-              reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
-            } else {
-              reportEvent(reporter, e)
-              check(Some(e))
-            }
-          })
+          events.find(updateStart(stackName)) match {
+            case None =>
+              reporter.fail(s"No events found at all for stack $stackName")
+            case Some(e) =>
+              val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
+              if (age > 30) {
+                reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+              } else {
+                reportEvent(reporter, e)
+                check(Some(e))
+              }
+          }
         case Some(event) =>
           val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
           newEvents.reverse.foreach(reportEvent(reporter, _))
 
-          if (!newEvents.exists(e => updateComplete(stackName)(e) || failed(e)) && !stopFlag) {
+          newEvents.filter(updateFailed).foreach(fail(reporter, _))
+
+          val complete = newEvents.exists(updateComplete(stackName))
+          if (!complete && !stopFlag) {
             Thread.sleep(5000)
             check(Some(newEvents.headOption.getOrElse(event)))
           }
-          newEvents.filter(failed).foreach(fail(reporter, _))
       }
     }
     check(None)
@@ -308,7 +315,7 @@ class CheckUpdateEventsTask(
 
   object StackEvent {
     def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
-      reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceType}")
+      reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatus}")
       if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
     }
     def isStackEvent(stackName: String)(e: StackEvent): Boolean =
@@ -318,7 +325,11 @@ class CheckUpdateEventsTask(
     def updateComplete(stackName: String)(e: StackEvent): Boolean =
       isStackEvent(stackName)(e) && (e.resourceStatus.toString == "UPDATE_COMPLETE" || e.resourceStatus.toString == "CREATE_COMPLETE")
 
-    def failed(e: StackEvent): Boolean = e.resourceStatus.toString.contains("FAILED") || e.resourceStatus.toString.contains("ROLLBACK")
+    def updateFailed(e: StackEvent): Boolean = {
+      val failed = e.resourceStatus.toString.contains("FAILED") || e.resourceStatus.toString.contains("ROLLBACK")
+      logger.debug(s"${e.resourceStatus} - failed = $failed")
+      failed
+    }
 
     def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
       s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatus}
