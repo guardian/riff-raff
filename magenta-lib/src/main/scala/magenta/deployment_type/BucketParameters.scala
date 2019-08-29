@@ -24,12 +24,12 @@ trait BucketParameters {
     """The SSM key used to lookup the bucket name for uploading distribution artifacts.""".stripMargin
   ).default("/account/services/artifact.bucket")
 
-  def resolveBucket(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): Bucket = {
+  def getTargetBucketFromConfig(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): Bucket = {
     val bucketSsmLookup = bucketSsmLookupParam(pkg, target, reporter)
     val maybeExplicitBucket = bucketParam.get(pkg)
+
     val bucket = (bucketSsmLookup, maybeExplicitBucket) match {
-      case (true, None) =>
-        BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
+      case (true, None) => BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
       case (false, Some(explicitBucket)) => BucketByName(explicitBucket)
       case _ => reporter.fail("One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true")
     }

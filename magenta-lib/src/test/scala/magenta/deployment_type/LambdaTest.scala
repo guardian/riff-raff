@@ -150,7 +150,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       GetParameterResponse.builder.parameter(Parameter.builder.value("bobbins").build).build
     )
     object LambdaTest extends Lambda {
-      override def makeSsm(keyRing: KeyRing, region: Region): SsmClient = ssmClient
+      override def withSsm[T](keyRing: KeyRing, region: Region): (SsmClient => T) => T = _(ssmClient)
     }
 
     val tasks = LambdaTest.actionsMap("updateLambda")

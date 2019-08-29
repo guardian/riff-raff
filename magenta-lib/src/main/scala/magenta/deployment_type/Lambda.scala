@@ -71,7 +71,7 @@ trait Lambda extends DeploymentType with BucketParameters {
   )
 
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
-    val bucket = resolveBucket(pkg, target, reporter)
+    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
 
     val stage = target.parameters.stage.name
 
@@ -109,7 +109,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName)).mkString("/")
   }
 
-  def makeSsm(keyRing: KeyRing, region: Region): SsmClient = SSM.makeSsmClient(keyRing, region)
+  def withSsm[T](keyRing: KeyRing, region: Region): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region)
 
   val uploadLambda = Action("uploadLambda",
     """
@@ -118,9 +118,9 @@ trait Lambda extends DeploymentType with BucketParameters {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-      val s3Bucket = S3Tasks.resolveBucket(
+      val s3Bucket = S3Tasks.getBucketName(
         lambda.s3Bucket,
-        makeSsm(keyRing, target.region),
+        withSsm(keyRing, target.region),
         resources.reporter
       )
       val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
@@ -150,9 +150,9 @@ trait Lambda extends DeploymentType with BucketParameters {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-        val s3Bucket = S3Tasks.resolveBucket(
+        val s3Bucket = S3Tasks.getBucketName(
           lambda.s3Bucket,
-          makeSsm(keyRing, target.region),
+          withSsm(keyRing, target.region),
           resources.reporter
         )
         val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
