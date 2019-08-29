@@ -29,14 +29,14 @@ import software.amazon.awssdk.regions.{Region => AWSRegion}
 import software.amazon.awssdk.services.ec2.Ec2Client
 import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
 import software.amazon.awssdk.services.s3.S3Client
-import utils.{PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
+import utils.{DateFormats, PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
-class Config(configuration: TypesafeConfig) extends Logging {
+class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging {
 
   private def getString(path: String): String = configuration.getString(path)
   private def getStringOpt(path: String): Option[String] = Try(configuration.getString(path)).toOption
@@ -267,6 +267,7 @@ class Config(configuration: TypesafeConfig) extends Logging {
   }
 
   val version:String = BuildInfo.buildNumber
+  val startTimeString:String = DateFormats.Short.print(startTime)
 
   override def toString: String = configuration.toString
 }

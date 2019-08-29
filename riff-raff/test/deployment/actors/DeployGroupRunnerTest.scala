@@ -10,6 +10,7 @@ import deployment.{Fixtures, Record}
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
 import magenta.tasks.Task
+import org.joda.time.DateTime
 import org.scalatest.{FlatSpecLike, Matchers}
 import play.api.Configuration
 
@@ -124,7 +125,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
 
   case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]]) extends DR
 
-  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying)
+  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying, DateTime.now)
 
   def createDeployRunner(): DRImpl = {
     val deployCoordinatorProbe = TestProbe()
