@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.gu.googleauth.AuthAction
 import conf.Config
-import deployment.{DeployFilter, DeployRecord, PaginationView}
+import deployment.{DeployFilter, DeployRecord, Deployments, PaginationView, Record}
 import housekeeping.ArtifactHousekeeping
 import magenta.ContextMessage._
 import magenta.Message._
@@ -44,7 +44,8 @@ class Testing(config: Config,
               documentStoreConverter: DocumentStoreConverter,
               authAction: AuthAction[AnyContent],
               val controllerComponents: ControllerComponents,
-              houseKeeping: ArtifactHousekeeping)(implicit val wsClient: WSClient)
+              houseKeeping: ArtifactHousekeeping,
+              deployments: Deployments)(implicit val wsClient: WSClient)
   extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
   import Testing._
 
@@ -199,6 +200,11 @@ class Testing(config: Config,
     val allDeploys = datastore.getDeployUUIDsWithoutStringUUIDs
     allDeploys.foreach(deploy => datastore.addStringUUID(deploy.uuid))
     Redirect(routes.Testing.uuidList())
+  }
+
+  def runningDeploys = authAction { implicit request =>
+    val activeBuilds: Iterable[Record] = deployments.getControllerDeploys.filterNot(_.isDone)
+    Ok(views.html.test.running(activeBuilds)(config, menu)(request))
   }
 
 }

@@ -119,6 +119,7 @@ GET         /testing/view/:uuid                             controllers.Testing.
 GET         /testing/addStringUUID                          controllers.Testing.transferAllUUIDs
 GET         /testing/testcharset                            controllers.Testing.testcharset
 GET         /testing/deployinfo                             controllers.Testing.hosts
+GET         /testing/running                                controllers.Testing.runningDeploys
 GET         /builds                                         controllers.DeployController.builds
 
 # Javascript routing
