@@ -1,11 +1,14 @@
 package magenta.deployment_type
 
 import magenta.artifact.S3Path
-import magenta.tasks.{S3Upload, UpdateS3Lambda}
+import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
 import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.ssm.SsmClient
 
-object Lambda extends DeploymentType  {
+object Lambda extends Lambda
+
+trait Lambda extends DeploymentType with BucketParameters {
   val name = "aws-lambda"
   val documentation =
     """
@@ -20,14 +23,6 @@ object Lambda extends DeploymentType  {
       |
       |
       """.stripMargin
-
-  val bucketParam = Param[String]("bucket",
-    documentation =
-      """
-        |Name of the S3 bucket where the lambda archive should be uploaded - if this is not specified then the zip file
-        |will be uploaded in the Lambda Update Function Code request
-      """.stripMargin
-  )
 
   val functionNamesParam = Param[List[String]]("functionNames",
     """One or more function names to update with the code from fileNameParam.
@@ -76,7 +71,7 @@ object Lambda extends DeploymentType  {
   )
 
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
-    val bucket = bucketParam(pkg, target, reporter)
+    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
 
     val stage = target.parameters.stage.name
 
@@ -114,6 +109,8 @@ object Lambda extends DeploymentType  {
     (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName)).mkString("/")
   }
 
+  def withSsm[T](keyRing: KeyRing, region: Region): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region)
+
   val uploadLambda = Action("uploadLambda",
     """
       |Uploads the lambda code to S3.
@@ -121,10 +118,15 @@ object Lambda extends DeploymentType  {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+      val s3Bucket = S3Tasks.getBucketName(
+        lambda.s3Bucket,
+        withSsm(keyRing, target.region),
+        resources.reporter
+      )
       val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
       S3Upload(
         lambda.region,
-        lambda.s3Bucket,
+        s3Bucket,
         Seq(S3Path(pkg.s3Package, lambda.fileName) -> s3Key)
       )
     }.distinct
@@ -148,10 +150,15 @@ object Lambda extends DeploymentType  {
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+        val s3Bucket = S3Tasks.getBucketName(
+          lambda.s3Bucket,
+          withSsm(keyRing, target.region),
+          resources.reporter
+        )
         val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
         UpdateS3Lambda(
           lambda.function,
-          lambda.s3Bucket,
+          s3Bucket,
           s3Key,
           lambda.region
         )
@@ -164,4 +171,4 @@ object Lambda extends DeploymentType  {
 sealed trait LambdaFunction
 case class LambdaFunctionName(name: String) extends LambdaFunction
 case class LambdaFunctionTags(tags: Map[String, String]) extends LambdaFunction
-case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: String)
+case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: S3Tasks.Bucket)

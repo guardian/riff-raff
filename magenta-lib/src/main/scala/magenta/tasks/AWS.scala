@@ -25,8 +25,9 @@ import software.amazon.awssdk.services.lambda.LambdaClient
 import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, ListFunctionsRequest, ListTagsRequest, UpdateFunctionCodeRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.ssm.SsmClient
+import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 import software.amazon.awssdk.services.sts.StsClient
-import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -83,6 +84,20 @@ object S3 extends AWS {
     }
     bucketName
   }
+
+  def getBucketName(bucket: Bucket, withSsmClient: => (SsmClient => String) => String, reporter: => DeployReporter): String = {
+    bucket match {
+      case BucketByName(name) => name
+      case BucketBySsmKey(ssmKey) =>
+        val resolvedBucket = withSsmClient { SSM.getParameter(_, ssmKey) }
+        reporter.verbose(s"Resolved bucket from SSM key $ssmKey to be $resolvedBucket")
+        resolvedBucket
+    }
+  }
+
+  sealed trait Bucket
+  case class BucketByName(name: String) extends Bucket
+  case class BucketBySsmKey(ssmKey: String) extends Bucket
 }
 
 object Lambda extends AWS {
@@ -459,8 +474,23 @@ object STS extends AWS {
   }
 
   def getAccountNumber(stsClient: StsClient): String = {
-    val callerIdentityResponse = stsClient.getCallerIdentity(GetCallerIdentityRequest.builder().build())
+    val callerIdentityResponse = stsClient.getCallerIdentity()
     callerIdentityResponse.account
+  }
+}
+
+object SSM extends AWS {
+  def withSsmClient[T](keyRing: KeyRing, region: Region)(block: SsmClient => T): T = {
+    withResource(SsmClient.builder()
+      .credentialsProvider(provider(keyRing))
+      .overrideConfiguration(clientConfiguration)
+      .region(region.awsRegion)
+      .build())(block)
+  }
+
+  def getParameter(ssmClient: SsmClient, key: String): String = {
+    val result = ssmClient.getParameter(GetParameterRequest.builder.name(key).build)
+    result.parameter.value
   }
 }
 
