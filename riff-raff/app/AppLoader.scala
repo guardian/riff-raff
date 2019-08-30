@@ -3,6 +3,7 @@ import java.time.Duration
 
 import com.typesafe.config.ConfigFactory
 import conf.Config
+import org.joda.time.{DateTime, DateTimeZone}
 import persistence.{CachingPasswordProvider, IAMPasswordProvider}
 import play.api.ApplicationLoader.Context
 import play.api.{Application, ApplicationLoader, Configuration, LoggerConfigurator}
@@ -19,7 +20,7 @@ class AppLoader extends ApplicationLoader {
     val combinedConfig =  context.initialConfiguration ++ Configuration(userConf)
 
     // create config object (including call to RDS to get an IAM auth token for the database)
-    val appConfig = new Config(combinedConfig.underlying)
+    val appConfig = new Config(combinedConfig.underlying, DateTime.now(DateTimeZone.forID("Europe/London")))
 
     // get JDBC passwords from IAM and cache them for 12 minutes. They are normally valid for 15 minutes
     val passwordProvider = new CachingPasswordProvider(new IAMPasswordProvider(appConfig), Duration.ofMinutes(12))

@@ -21,7 +21,7 @@ import scala.concurrent.duration._
 
 class PrismLookupTest extends FlatSpec with Matchers {
 
-  val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying)
+  val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying, DateTime.now)
 
   def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
     var mockRequest: Option[Request[AnyContent]] = None

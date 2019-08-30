@@ -1,6 +1,7 @@
 package postgres
 
 import conf.Config
+import org.joda.time.DateTime
 import persistence.{PasswordProvider, PostgresDatastoreOps}
 import play.api.db.Databases
 import play.api.db.evolutions.Evolutions
@@ -11,7 +12,7 @@ trait PostgresHelpers {
     "db.default.user" -> "riffraff",
     "db.default.password" -> "riffraff",
     "db.default.url" -> "jdbc:postgresql://localhost:44444/riffraff")
-  ).underlying)
+  ).underlying, DateTime.now)
 
   val passwordProvider = new PasswordProvider {
     override def providePassword(): String = "riffraff"

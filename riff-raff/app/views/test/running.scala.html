@@ -1,0 +1,28 @@
+@import conf.Config
+@import deployment.Record
+@import _root_.utils.DateFormats
+@(activeDeploys: Iterable[Record])(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
+
+@main("Running deploys", request) {
+    <h1>Running deploys (deploys that the server thinks are running)</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Start time</th>
+                <th>UUID</th>
+                <th>Build</th>
+                <th>Target</th>
+            </tr>
+        </thead>
+        <tbody>
+            @activeDeploys.map { deploy =>
+                <tr>
+                    <td>@{DateFormats.Medium.print(deploy.time)}</td>
+                    <td><a href="@routes.Testing.debugLogViewer(deploy.uuid.toString)">@{deploy.uuid}</a></td>
+                    <td>@{deploy.parameters.build.projectName} (@{deploy.parameters.build.id})</td>
+                    <td>@{deploy.parameters.stage}</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}(config, menu)

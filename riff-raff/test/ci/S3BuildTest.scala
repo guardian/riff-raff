@@ -7,7 +7,7 @@ import play.api.Configuration
 
 class S3BuildTest extends FunSuite with Matchers with EitherValues {
 
-  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying)
+  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying, DateTime.now)
 
   test("can parse build.json") {
     val json =
