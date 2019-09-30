@@ -48,7 +48,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
             None
         )">Reset selection</a>
     </div>
-    @for((key, deploymentTasks) <- taskGraph.toList) {
+    @for(((key, deploymentTasks), i) <- taskGraph.toList.zipWithIndex) {
         <div class="deployment-target" id="@DeploymentKey.asString(key)">
             <div class="panel panel-default">
                 <div class="panel-heading">
@@ -59,6 +59,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
                         <span>
                             @b3.checkbox(
                                 form("selectedKeys[]"),
+                                'id -> s"selectedKey_$i",
                                 'class -> "task-selection",
                                 'value -> DeploymentKey.asString(key),
                                 'checked -> checkedKeys.contains(key),
