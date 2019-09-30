@@ -30,6 +30,24 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
           }
       }
     }
+    <div class="actions">
+        @b3.submit(
+            'name -> "action",
+            'value -> "preview",
+            'class -> "btn btn-default"
+        ){Preview with selections}
+        @b3.submit(
+            'name -> "action",
+            'value -> "deploy",
+            'class -> "btn btn-primary"
+        ){Deploy}
+        <a class="btn btn-danger" href="@routes.PreviewController.preview(
+            form("project").value.get,
+            form("build").value.get,
+            form("stage").value.get,
+            None
+        )">Reset selection</a>
+    </div>
     @for((key, deploymentTasks) <- taskGraph.toList) {
         <div class="deployment-target" id="@DeploymentKey.asString(key)">
             <div class="panel panel-default">
@@ -44,7 +62,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
                                 'class -> "task-selection",
                                 'value -> DeploymentKey.asString(key),
                                 'checked -> checkedKeys.contains(key),
-                                '_label -> Html("Run tasks")
+                                '_text -> "Run tasks"
                             )
                         </span>
                     </div>
