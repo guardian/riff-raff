@@ -11,14 +11,19 @@ import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
-import magenta.{DeployParameters, DeployReporter}
+import magenta.tasks.STS
+import magenta.{DeployParameters, DeployReporter, Lookup, Region}
 import schedule.ScheduledDeployer
+import magenta.{App => MagentaApp, Stack => MagentaStack}
+import rx.lang.scala.Subscription
 
 import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success, Try}
 
 class DeployFailureNotifications(config: Config,
                                  deploymentTypes: Seq[DeploymentType],
-                                 targetResolver: TargetResolver)
+                                 targetResolver: TargetResolver,
+  lookup: Lookup)
                                 (implicit ec: ExecutionContext)
   extends Lifecycle with Logging {
 
@@ -31,19 +36,36 @@ class DeployFailureNotifications(config: Config,
     prefix + path.url
   }
 
+  def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters): Option[Target] = {
+    Try {
+      val keyring = lookup.keyRing(parameters.stage, MagentaApp(target.app), MagentaStack(target.stack))
+      STS.withSTSclient(keyring, Region(target.region)){ client =>
+            AwsAccount(STS.getAccountNumber(client))
+      }
+    } match {
+      case Success(value) =>
+        Some(value)
+      case Failure(exception) =>
+        log.error("Failed to fetch AWS account ID", exception)
+        None
+    }
+  }
+
   def failedDeployNotification(uuid: UUID, parameters: DeployParameters) = {
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
     } yield {
       TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        List(App(target.app), Stack(target.stack))
+        List(App(target.app), Stack(target.stack))++ getAwsAccountIdTarget(target, parameters).toList
       } ++ List(Stage(parameters.stage.name))
     }
 
+
     deriveAnghammaradTargets match {
       case Right(targets) =>
-        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+        log.info(s"Targets to notify: ${targets.toSet}")
+        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed. Targets: $targets"
         Anghammarad.notify(
           subject = s"${parameters.deployer.name} failed",
           message = failureMessage,
@@ -62,7 +84,7 @@ class DeployFailureNotifications(config: Config,
   def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
   def continuousDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ContinuousDeployment.deployer
 
-  val messageSub = DeployReporter.messages.subscribe(message => {
+  val messageSub: Subscription = DeployReporter.messages.subscribe(message => {
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
