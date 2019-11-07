@@ -23,3 +23,7 @@ Using Riff-Raff
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy
  - [AWS S3 bucket configuration for uploads](riffraff/s3buckets.md)
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
+
+Riff-Raff not picking up builds?
+---------------
+ - Usually, redeploying Riff-Raff fixes this; we use Riff-Raff itself to deploy itself 🎉. Be sure to check that no deploys are in progress first!
