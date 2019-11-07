@@ -26,4 +26,4 @@ Using Riff-Raff
 
 Riff-Raff not picking up builds?
 ---------------
- - Usually, redeploying Riff-Raff fixes this; we use Riff-Raff itself to deploy itself 🎉. Be sure to check that no deploys are in progress first!
+ - Usually, redeploying Riff-Raff fixes this; we use Riff-Raff itself to deploy itself 🎉. The deploy will complete immediately  but riffraff will only redeploy itself when there are no other running deploys. The last deploy time is shown in the bottom right of this page. 
