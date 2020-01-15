@@ -51,7 +51,7 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: UUID, parameters: DeployParameters) = {
+  def failedDeployNotification(uuid: UUID, parameters: DeployParameters): Unit = {
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
@@ -64,8 +64,8 @@ class DeployFailureNotifications(config: Config,
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
-        log.info(s"Targets to notify: ${targets.toSet}")
-        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed. Targets: $targets"
+        log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
+        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
         Anghammarad.notify(
           subject = s"${parameters.deployer.name} failed",
           message = failureMessage,
