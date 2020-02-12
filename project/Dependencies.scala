@@ -40,7 +40,8 @@ object Dependencies {
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.7.2",
-    "com.beachape" %% "enumeratum-play-json" % "1.5.16"
+    "com.beachape" %% "enumeratum-play-json" % "1.5.16",
+    "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev75-1.25.0"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
