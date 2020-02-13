@@ -2,17 +2,19 @@ import java.time.Duration
 
 import ci._
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
+import software.amazon.awssdk.services.ssm.{SsmClient, SsmClientBuilder}
 import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.ParameterStore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
-import conf.{Config, DeployMetrics}
+import conf.{Config, DeployMetrics, Secrets}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
-import notification.{HooksClient, DeployFailureNotifications}
+import magenta.tasks.AWS
+import notification.{DeployFailureNotifications, HooksClient}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.db.evolutions.EvolutionsComponents
@@ -30,6 +32,7 @@ import resources.PrismLookup
 import riffraff.RiffRaffManagementServer
 import router.Routes
 import schedule.DeployScheduler
+import software.amazon.awssdk.regions.Region
 import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -100,7 +103,16 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val menu = new Menu(config)
   val s3Tag = new S3Tag(config)
 
-  val prismLookup = new PrismLookup(config, wsClient)
+
+  val ssmClient = SsmClient.builder()
+    .credentialsProvider(config.credentialsProviderChain(None, None))
+    .overrideConfiguration(AWS.clientConfiguration)
+    .region(Region.of(config.credentials.regionName))
+    .build()
+
+  val secretProvider = new Secrets(config, ssmClient)
+  secretProvider.populate()
+  val prismLookup = new PrismLookup(config, wsClient, secretProvider)
   val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes)
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
