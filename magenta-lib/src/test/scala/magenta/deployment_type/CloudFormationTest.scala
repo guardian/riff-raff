@@ -104,22 +104,23 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   import CloudFormationParameters.combineParameters
 
-  "CloudFormationParameters" should "substitute stack and stage parameters" in {
+  "CloudFormationParameters" should "substitute stack, stage and build ID parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+      Seq(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
+    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "Stack" -> SpecifiedValue("cfn"),
-      "Stage" -> SpecifiedValue("PROD")
+      "Stage" -> SpecifiedValue("PROD"),
+      "BuildId" -> SpecifiedValue("543")
       ))
   }
 
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       Seq(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, templateParameters, Map("param1" -> "value1"))
+    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
