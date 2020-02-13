@@ -1,11 +1,14 @@
 package magenta.tasks
 
+import java.io.ByteArrayInputStream
+
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
 import com.google.api.services.deploymentmanager.model.{ConfigFile, Deployment, ImportFile, Operation, TargetConfiguration}
+import magenta.KeyRing
 
 import scala.collection.JavaConverters._
 
@@ -18,15 +21,13 @@ object GCP {
   )
 
   object credentials {
-    def getCredentials: GoogleCredential = {
-      new GoogleCredential.Builder()
-        .setTransport(httpTransport)
-        .setJsonFactory(jsonFactory)
-        .setServiceAccountScopes(saScopes.asJava)
-        .setServiceAccountId(billingPemEmail)
-        .setServiceAccountPrivateKeyFromPemFile(new java.io.File(serviceAccountPemFile))
-        .setServiceAccountUser(billingEmail)
-        .build()
+    def getCredentials(keyring: KeyRing): Option[GoogleCredential] = {
+      keyring.apiCredentials.get("gcp").map { credentials =>
+        val in = new ByteArrayInputStream(credentials.secret.getBytes)
+        GoogleCredential
+          .fromStream(in)
+          .createScoped(saScopes.asJava)
+      }
     }
   }
 
@@ -73,8 +74,8 @@ object GCP {
       }
     }
 
-    def pollOperation(client: DeploymentManager, operation: Operation) = {
-      client.operations.
+    def pollOperation(client: DeploymentManager, project: String, operation: Operation) = {
+      client.operations.get(project, operation.getClientOperationId)
     }
   }
 }
