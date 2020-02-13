@@ -59,7 +59,7 @@ case class S3Upload(
       reporter.fail(s"No files found to upload in $locationDescription")
     }
 
-    val withClient = withClientFactory(keyRing, region, S3.clientConfigurationNoRetry)
+    val withClient = withClientFactory(keyRing, region, AWS.clientConfigurationNoRetry)
     withClient { client =>
 
       reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
@@ -70,7 +70,7 @@ case class S3Upload(
           case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
           case _ =>
         }
-        retryOnException(S3.clientConfiguration) {
+        retryOnException(AWS.clientConfiguration) {
           val copyObjectRequest = GetObjectRequest.builder()
             .bucket(req.source.bucket)
             .key(req.source.key)

@@ -21,7 +21,7 @@ object Image {
   implicit val formats: OFormat[Image] = Json.format[Image]
 }
 
-class PrismLookup(config: Config, wsClient: WSClient) extends Lookup with Logging {
+class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProvider) extends Lookup with Logging {
 
   def keyRing(stage: Stage, app: App, stack: Stack): KeyRing = {
     val KeyPattern = """credentials:(.*)""".r
@@ -144,11 +144,6 @@ class PrismLookup(config: Config, wsClient: WSClient) extends Lookup with Loggin
   }
 
   def stages: Seq[String] = prism.get("/stages"){ json => (json \ "data" \ "stages").as[Seq[String]] }
-
-  val secretProvider = new SecretProvider {
-    def lookup(service: String, account: String): Option[String] =
-      config.credentials.lookupSecret(service, account)
-  }
 
   private def get(accountNumber: Option[String], region: String, tags: Map[String, String]): Seq[Image] = {
     val params: Seq[(String, String)] =

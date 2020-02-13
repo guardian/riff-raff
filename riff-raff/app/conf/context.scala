@@ -112,7 +112,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
   }
 
   object credentials {
-    def lookupSecret(service: String, id:String): Option[String] = getStringOpt(s"credentials.$service.$id")
+    lazy val regionName = getStringOpt("credentials.aws.region").getOrElse("eu-west-1")
+    lazy val paramPrefix = getStringOpt("credentials.paramPrefix").getOrElse(s"/$stage/deploy/riff-raff/credentials")
   }
 
   object dynamoDb {
