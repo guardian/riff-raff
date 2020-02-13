@@ -4,7 +4,7 @@ import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags, TemplateParameter}
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{Build, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
@@ -97,7 +97,7 @@ object CloudFormationStackMetadata {
   }
 }
 
-class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
+class CloudFormationParameters(stack: Stack, stage: Stage, build: Build, region: Region,
                                val stackTags: Option[Map[String, String]], val userParameters: Map[String, String],
                                val amiParameterMap: Map[CfnParam, TagCriteria],
                                latestImage: String => String => Map[String,String] => Option[String]) {
@@ -111,7 +111,7 @@ class CloudFormationParameters(stack: Stack, stage: Stage, region: Region,
       latestImage(accountNumber)(region.name)(tags).map(name -> _)
     }
 
-    val combined = combineParameters(stack, stage, templateParameters, userParameters ++ resolvedAmiParameters)
+    val combined = combineParameters(stack, stage, build, templateParameters, userParameters ++ resolvedAmiParameters)
     convertParameters(combined, changeSetType, reporter)
   }
 }
@@ -130,7 +130,7 @@ object CloudFormationParameters {
     }
   }
 
-  def combineParameters(stack: Stack, stage: Stage, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
+  def combineParameters(stack: Stack, stage: Stage, build: Build, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -141,7 +141,7 @@ object CloudFormationParameters {
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
     val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
 
-    addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name))
+    addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name, "BuildId" -> build.id))
   }
 }
 

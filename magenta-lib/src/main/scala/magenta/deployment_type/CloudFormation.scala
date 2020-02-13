@@ -15,6 +15,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   def documentation =
     """Update an AWS CloudFormation template by creating and executing a change set.
       |
+      |This type will populate the following parameters in a cloudformation template:
+      |  - Stage (e.g. `CODE` or `PROD`)
+      |  - Stack (e.g. `deploy` or `frontend`)
+      |  - BuildId (i.e. the number of the build such as `543`)
+      |
       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the
       |capacity to this number, even if scaling actions have triggered, changing the capacity, in the
@@ -98,8 +103,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
 
     val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
 
-    val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage, target.region,
-      stackTags, userParams, amiParameterMap, amiLookupFn)
+    val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage,
+      target.parameters.build, target.region, stackTags, userParams, amiParameterMap, amiLookupFn)
 
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
     val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
