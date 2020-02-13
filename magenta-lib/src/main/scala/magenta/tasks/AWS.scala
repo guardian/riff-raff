@@ -34,11 +34,11 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 import magenta.withResource
 
-object S3 extends AWS {
-  def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = clientConfiguration)(block: S3Client => T): T =
+object S3 {
+  def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = AWS.clientConfiguration)(block: S3Client => T): T =
     withResource(S3Client.builder()
       .region(region.awsRegion)
-      .credentialsProvider(provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing))
       .overrideConfiguration(config)
       .build())(block)
 
@@ -100,11 +100,11 @@ object S3 extends AWS {
   case class BucketBySsmKey(ssmKey: String) extends Bucket
 }
 
-object Lambda extends AWS {
+object Lambda {
   def withLambdaClient[T](keyRing: KeyRing, region: Region)(block: LambdaClient => T): T =
     withResource(LambdaClient.builder()
-    .credentialsProvider(provider(keyRing))
-    .overrideConfiguration(clientConfiguration)
+    .credentialsProvider(AWS.provider(keyRing))
+    .overrideConfiguration(AWS.clientConfiguration)
     .region(region.awsRegion)
     .build())(block)
 
@@ -141,11 +141,11 @@ object Lambda extends AWS {
   }
 }
 
-object ASG extends AWS {
+object ASG {
   def withAsgClient[T](keyRing: KeyRing, region: Region)(block: AutoScalingClient => T): T =
     withResource(AutoScalingClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
 
@@ -268,7 +268,7 @@ object ASG extends AWS {
   }
 }
 
-object ELB extends AWS {
+object ELB {
 
   case class Client(classic: ClassicELB, application: ApplicationELB) extends AutoCloseable {
     def close(): Unit = {
@@ -283,15 +283,15 @@ object ELB extends AWS {
 
   private def classicClient(keyRing: KeyRing, region: Region): ClassicELB =
     ClassicELB.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build()
 
   private def applicationClient(keyRing: KeyRing, region: Region): ApplicationELB =
     ApplicationELB.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build()
 
@@ -321,11 +321,11 @@ object ELB extends AWS {
   }
 }
 
-object EC2 extends AWS {
+object EC2 {
   def withEc2Client[T](keyRing: KeyRing, region: Region)(block: Ec2Client => T) = {
     withResource(Ec2Client.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
   }
@@ -352,7 +352,7 @@ object EC2 extends AWS {
   def apply(instance: ASGInstance, client: Ec2Client) = describe(instance, client)
 }
 
-object CloudFormation extends AWS {
+object CloudFormation {
   sealed trait ParameterValue
   case class SpecifiedValue(value: String) extends ParameterValue
   case object UseExistingValue extends ParameterValue
@@ -363,8 +363,8 @@ object CloudFormation extends AWS {
 
   def withCfnClient[T](keyRing: KeyRing, region: Region)(block: CloudFormationClient => T): T = {
     withResource(CloudFormationClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
   }
@@ -464,11 +464,11 @@ object CloudFormation extends AWS {
   }
 }
 
-object STS extends AWS {
+object STS {
   def withSTSclient[T](keyRing: KeyRing, region: Region)(block: StsClient => T): T = {
     withResource(StsClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
   }
@@ -479,11 +479,11 @@ object STS extends AWS {
   }
 }
 
-object SSM extends AWS {
+object SSM {
   def withSsmClient[T](keyRing: KeyRing, region: Region)(block: SsmClient => T): T = {
     withResource(SsmClient.builder()
-      .credentialsProvider(provider(keyRing))
-      .overrideConfiguration(clientConfiguration)
+      .credentialsProvider(AWS.provider(keyRing))
+      .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
   }
@@ -494,7 +494,7 @@ object SSM extends AWS {
   }
 }
 
-trait AWS extends Loggable {
+object AWS extends Loggable {
   lazy val accessKey: String = Option(System.getenv.get("aws_access_key")).getOrElse{
     sys.error("Cannot authenticate, 'aws_access_key' must be set as a system property")
   }
@@ -505,14 +505,10 @@ trait AWS extends Loggable {
   lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
 
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = AwsCredentialsProviderChain.builder().credentialsProviders(
-    new AwsCredentialsProvider {
-      override def resolveCredentials(): AwsCredentials = keyRing.apiCredentials.get("aws").map { credentials =>
-        AwsBasicCredentials.create(credentials.id, credentials.secret)
-      }.get
-    },
-    new AwsCredentialsProvider {
-      override def resolveCredentials(): AwsCredentials = envCredentials
-    }
+    () => keyRing.apiCredentials.get("aws").map { credentials =>
+      AwsBasicCredentials.create(credentials.id, credentials.secret)
+    }.get,
+    () => envCredentials
   ).build()
 
   private lazy val numberOfRetries = 20

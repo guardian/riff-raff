@@ -1,5 +1,6 @@
 package magenta.tasks
 
+import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags, TemplateParameter}
@@ -144,7 +145,7 @@ object CloudFormationParameters {
   }
 }
 
-object UpdateCloudFormationTask {
+object UpdateCloudFormationTask extends Loggable {
   case class TemplateParameter(key:String, default:Boolean)
 
   sealed trait CloudFormationStackLookupStrategy
@@ -261,7 +262,7 @@ case class UpdateAmiCloudFormationParameterTask(
 class CheckUpdateEventsTask(
   region: Region,
   stackLookupStrategy: CloudFormationStackLookupStrategy
-)(implicit val keyRing: KeyRing) extends Task {
+)(implicit val keyRing: KeyRing) extends Task with Loggable {
 
   import UpdateCloudFormationTask._
 
