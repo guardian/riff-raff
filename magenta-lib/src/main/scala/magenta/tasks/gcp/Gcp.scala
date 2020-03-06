@@ -2,7 +2,7 @@ package magenta.tasks.gcp
 
 import java.io.{ByteArrayInputStream, IOException}
 
-import akka.actor.ActorSystem
+import cats.syntax.either._
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
@@ -12,12 +12,12 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
-import magenta.KeyRing
+import magenta.tasks.gcp.GcpRetryHelper.Result
+import magenta.{DeployReporter, KeyRing}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future, blocking}
 
-object GcpApi {
+object Gcp {
   lazy val httpTransport: NetHttpTransport = GoogleNetHttpTransport.newTrustedTransport
   lazy val jsonFactory: JacksonFactory = JacksonFactory.getDefaultInstance
   val scopes: Seq[String] = Seq(
@@ -35,7 +35,7 @@ object GcpApi {
     }
   }
 
-  class GCPDeploymentManager(val actorSystem: ActorSystem) {
+  object DeploymentManagerApi {
 
     sealed trait DMOperation {
       val project: String
@@ -57,9 +57,9 @@ object GcpApi {
       }
     }
 
-    case class DeploymentBundle(config: String, deps: Map[String, String])
+    case class DeploymentBundle(configPath: String, config: String, deps: Map[String, String])
 
-    def client(creds: GoogleCredential) = {
+    def client(creds: GoogleCredential): DeploymentManager = {
       new DeploymentManager.Builder(httpTransport, jsonFactory, creds).build()
     }
 
@@ -78,26 +78,28 @@ object GcpApi {
       response.getDeployments.asScala.toList
     }
 
-    def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(implicit actorSystem: ActorSystem): Future[DMOperation] = {
-      implicit val ec: ExecutionContext = actorSystem.dispatcher
+    def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
       val content = new Deployment().setName(name).setTarget(target)
       api.retryWhen500orGoogleError(
-        () => client.deployments().insert(project, content).execute(),
+        reporter,
         s"Deploy Manager insert $project/$name"
-      ).map (DMOperation(_, project))
+      ){
+        client.deployments().insert(project, content).execute()
+      }.map (DMOperation(_, project))
     }
 
-    def update(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(implicit actorSystem: ActorSystem): Future[DMOperation] = {
-      implicit val ec: ExecutionContext = actorSystem.dispatcher
+    def update(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
       val content = new Deployment().setTarget(target)
       api.retryWhen500orGoogleError(
-        () => client.deployments().update(project, name, content).execute(),
+        reporter,
         s"Deploy Manager update $project/$name"
-      ).map (DMOperation(_, project))
+      ){
+        client.deployments().update(project, name, content).execute()
+      }.map (DMOperation(_, project))
     }
 
 //    def upsert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(implicit executionContext: ExecutionContext): Future[Operation] = {
@@ -108,26 +110,29 @@ object GcpApi {
 //      }
 //    }
 
-    def pollOperation(client: DeploymentManager, operation: DMOperation)(implicit actorSystem: ActorSystem) = {
-      implicit val ec: ExecutionContext = actorSystem.dispatcher
+    /* Given a DMOperation we can poll until an updated operation reaches a given state */
+    def operationStatus(client: DeploymentManager, operation: DMOperation)(reporter: DeployReporter): Result[DMOperation] = {
       api.retryWhen500orGoogleError(
-        () => client.operations.get(operation.project, operation.id).execute(),
-        s"Deploy Manager operation get ${operation.project}/${operation.id}"
-      ).map { DMOperation(_, operation.project)
-      }
+        reporter,
+        s"Deploy Manager operation get ${operation.project}/${operation.id}",
+      ){
+        client.operations.get(operation.project, operation.id).execute()
+      }.map(DMOperation(_, operation.project))
     }
   }
 
   object api {
-    def retryWhen500orGoogleError[T](op: () => T, failureMessage: String)(implicit actorSystem: ActorSystem): Future[T] = {
-      implicit val ec: ExecutionContext = actorSystem.dispatcher
-      GcpRetryHelper.retryableFutureToFuture(
+    def retryWhen500orGoogleError[T](reporter: DeployReporter, failureMessage: String)(op: => T): Result[T] = {
+      GcpRetryHelper.retryableToResult(
         GcpRetryHelper.retryExponentially(
+          reporter,
           when500orGoogleError,
           failureMessage
-        )(
-          () => Future(blocking(op()))
-        )
+        ) {
+          Either.catchNonFatal {
+            op
+          }
+        }
       )
     }
 
