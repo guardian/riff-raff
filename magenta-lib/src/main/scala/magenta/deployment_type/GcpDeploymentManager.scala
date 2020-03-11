@@ -43,7 +43,8 @@ object GcpDeploymentManager extends DeploymentType {
     documentation =
       """
         |The path of the config in the package
-        |""".stripMargin
+        |""".stripMargin,
+    optional = true // one of this or configPathByStage
   )
 
   val configPathByStageParam: Param[Map[String, String]] = Param[Map[String, String]](
@@ -57,7 +58,8 @@ object GcpDeploymentManager extends DeploymentType {
         |  PROD: config-file-prod.yaml
         |  CODE: config-file-code.yaml
         |```
-        |""".stripMargin
+        |""".stripMargin,
+    optional = true // one of this or configPath
   )
 
   val updateAction: Action = Action(
