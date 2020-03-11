@@ -1,0 +1,10 @@
+imports:
+  - path: dep.jinja
+
+resources:
+  - name: testing
+    type: dep.jinja
+    properties:
+      env: prod
+      banana: true
+      retentionInDays: 5
