@@ -237,7 +237,7 @@ class DeployController(config: Config,
       project -> deployments.getLastCompletedDeploys(project)
     }.filterNot(_._2.isEmpty))
     deploys.fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch deploys")(config)),
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch deploys")),
       (ds: List[(String,Map[String,deployment.Record])]) => Ok(views.html.deploy.dashboardContent(config)(ds))
     )
   }

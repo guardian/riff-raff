@@ -93,7 +93,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
   def profile = authAction { request =>
     val records = deployments.getDeploys(Some(DeployFilter(deployer=Some(request.user.fullName)))).map(_.reverse)
     records.fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch list of deploys")(config)),
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch list of deploys")),
       (as: List[Record]) => Ok(views.html.auth.profile(config, menu)(request, as))
     )
   }
@@ -102,7 +102,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
 
   def authList = authAction { request =>
     datastore.getAuthorisationList.map(_.sortBy(_.email)).fold(
-      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")(config)),
+      (t: Throwable) => InternalServerError(views.html.errorContent(t, "Could not fetch authorisation list")),
       (as: Seq[AuthorisationRecord]) => Ok(views.html.auth.list(config, menu)(request, as))
     )
   }

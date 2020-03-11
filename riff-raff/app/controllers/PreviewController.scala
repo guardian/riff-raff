@@ -15,6 +15,7 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 class PreviewController(config: Config,
                         menu: Menu,
@@ -61,6 +62,8 @@ class PreviewController(config: Config,
               Ok(views.html.preview.yaml.showTasks(taskGraph, form, deploymentKeys))
             case Invalid(errors) => Ok(views.html.validation.validationErrors(config, menu)(request, errors))
           }
+        }.recover {
+          case NonFatal(t) => Ok(views.html.errorContent(t, "Preview failed"))
         }
       case Some(result) =>
         Future.successful(Ok(views.html.preview.yaml.loading(request, result.duration.getStandardSeconds)))
