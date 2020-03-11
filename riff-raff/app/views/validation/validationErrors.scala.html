@@ -2,21 +2,21 @@
 @import conf.Config
 @(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], errors: ConfigErrors)
 
-@main("Validation errors", request) {
-    <div class="clearfix"><p>&nbsp;</p></div>
-    @for((context, errors) <- errors.errors.toList.groupBy(_.context)) {
-        <div class="panel panel-danger">
-            <div class="panel-heading">
-                <h3 class="panel-title"><span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span><span>Error in @context</span></h3>
-            </div>
-            <div class="panel-body">
-                <ul>
-                @errors.map { error =>
-                  <li>@error.message</li>
-                }
-                </ul>
-            </div>
+
+<div class="clearfix"><p>&nbsp;</p></div>
+@for((context, errors) <- errors.errors.toList.groupBy(_.context)) {
+    <div class="panel panel-danger">
+        <div class="panel-heading">
+            <h3 class="panel-title"><span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span><span>Error in @context</span></h3>
         </div>
-    }
-    <div class="clearfix"></div>
-}(config, menu)
+        <div class="panel-body">
+            <ul>
+            @errors.map { error =>
+              <li>@error.message</li>
+            }
+            </ul>
+        </div>
+    </div>
+}
+<div class="clearfix"></div>
+
