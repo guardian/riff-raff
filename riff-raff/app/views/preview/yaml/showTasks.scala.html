@@ -53,7 +53,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
                 <div class="panel-body">
                     <ul class="magenta-list task-list">
                     @deploymentTasks.tasks.map { task =>
-                        <li><span class="preview-task"><strong>@task.name</strong> @task.description</span></li>
+                        <li><span class="preview-task"><strong>@task.name</strong> @task.verbose</span></li>
                     }
                     </ul>
                 </div>

@@ -82,15 +82,15 @@ object GcpDeploymentManager extends DeploymentType {
       val maxWaitDuration = maxWaitParam(pkg, target, reporter).seconds
       val deploymentName = deploymentNameParam(pkg, target, reporter)
 
-      val configPathMap = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
-        case (maybeMap, Some(default)) => maybeMap.getOrElse(Map.empty).withDefaultValue(default)
-        case (maybeMap, None) => maybeMap.getOrElse(Map.empty)
+      val configPathLookup: PartialFunction[String, String] = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
+        case (Some(map), None) => map
+        case (None, Some(default)) => { case _ => default }
+        case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of configPathByStage or configPath must be provided")
       }
 
-      val configPath = configPathMap.getOrElse(
-        target.parameters.stage.name,
-        reporter.fail(s"No config path supplied for stage ${target.parameters.stage.name} in configPathByStage or configStage")
-      )
+      val configPath = configPathLookup.lift(target.parameters.stage.name).getOrElse {
+        reporter.fail(s"No config path supplied for stage ${target.parameters.stage.name} in configPathByStage or configPath")
+      }
 
       val maybeBundle = createDeploymentBundle(pkg.s3Package, configPath, reporter)
       val bundle = maybeBundle.fold(
@@ -122,7 +122,7 @@ object GcpDeploymentManager extends DeploymentType {
     for {
       yaml <- getFileContent(configFileLocation)
       json <- Either.catchNonFatal(RiffRaffYamlReader.yamlToJson(yaml)).leftMap(t => UnknownBundleError("Couldn't parse YAML config file", t))
-      dependencies = (json \ "dependencies").asOpt[List[String]].getOrElse(Nil)
+      dependencies = (json \ "imports" \\ "path").toList.flatMap(_.asOpt[String])
       dependenciesMap <- dependencies.traverse { dependency =>
         val s3Dep = S3Path(packageRoot, dependency)
         getFileContent(s3Dep).map (dependency ->)

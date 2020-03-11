@@ -8,9 +8,19 @@ import scala.concurrent.duration.FiniteDuration
 
 object DeploymentManagerTasks {
   def updateTask(project: String, name: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with SlowRepeatedPollingCheck {
+
+    override def name: String = "DeploymentManagerUpdate"
+
     override def keyRing: KeyRing = kr
     override def description: String = "Update a deployment manager deployment in GCP"
-    override def verbose: String = s"Update deployment $name in GCP project $project using ${bundle.configPath} and dependencies ${bundle.deps.keys.mkString(", ")}"
+    override def verbose: String = s"Update deployment $name in GCP project $project using ${bundle.configPath} and $dependencyDesc"
+    def dependencyDesc: String = {
+      bundle.deps.keys.toList match {
+        case Nil => "no dependencies"
+        case singleton :: Nil => s"dependency $singleton"
+        case multiple => s"dependencies ${multiple.mkString(", ")}"
+      }
+    }
 
     val untilFinished: DMOperation => Boolean = {
       case InProgress(_, _) => false
