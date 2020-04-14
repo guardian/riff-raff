@@ -4,5 +4,5 @@ deployments:
   test:
     type: gcp-deployment-manager
     parameters:
-      deploymentName: test
+      deploymentName: riffraff
       configPath: test.yaml
