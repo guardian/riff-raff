@@ -1,13 +1,13 @@
 package magenta.tasks.gcp
 
 import magenta.{DeployReporter, KeyRing}
-import magenta.tasks.{PollingCheck, SlowRepeatedPollingCheck, Task}
+import magenta.tasks.{PollingCheck, Task}
 import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
 
 import scala.concurrent.duration.FiniteDuration
 
 object DeploymentManagerTasks {
-  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with PollingCheck {
+  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration, upsert: Boolean)(implicit kr: KeyRing): Task = new Task with PollingCheck {
 
     override def name: String = "DeploymentManagerUpdate"
 
@@ -31,10 +31,21 @@ object DeploymentManagerTasks {
       val credentials = Gcp.credentials.getCredentials(keyRing).getOrElse(reporter.fail("Unable to build GCP credentials from keyring"))
       val client = Gcp.DeploymentManagerApi.client(credentials)
 
-      val deployment = Gcp.DeploymentManagerApi.get(client, project, deploymentName)
-      reporter.verbose(s"Fetched details for deployment ${deploymentName}; using fingerprint ${deployment.getFingerprint} for update")
+      val maybeDeployment = Gcp.DeploymentManagerApi.get(client, project, deploymentName)
 
-      val maybeOperation = Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle)(reporter)
+      val maybeOperation = maybeDeployment match {
+        case Some(deployment) =>
+          reporter.verbose(s"Fetched details for deployment ${deploymentName}; using fingerprint ${deployment.getFingerprint} for update")
+          Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle)(reporter)
+        case None =>
+          if (upsert) {
+            reporter.verbose(s"Deployment ${deploymentName} doesn't exist; inserting new deployment")
+            Gcp.DeploymentManagerApi.insert(client, project, deploymentName, bundle)(reporter)
+          } else {
+            reporter.fail(s"Deployment ${deploymentName} doesn't exist and upserting isn't enabled.")
+          }
+      }
+
       maybeOperation.fold(
         error => reporter.fail("DeployManager update operation failed", error),
         operation => {

@@ -6,3 +6,4 @@ deployments:
     parameters:
       deploymentName: riffraff
       configPath: test.yaml
+      upsert: true

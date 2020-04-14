@@ -16,6 +16,7 @@ import magenta.tasks.gcp.GcpRetryHelper.Result
 import magenta.{DeployReporter, KeyRing}
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object Gcp {
   lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport
@@ -79,8 +80,12 @@ object Gcp {
       response.getDeployments.asScala.toList
     }
 
-    def get(client: DeploymentManager, project: String, name: String): Deployment = {
-      client.deployments.get(project, name).execute()
+    def get(client: DeploymentManager, project: String, name: String): Option[Deployment] = {
+      Try {
+        Some(client.deployments.get(project, name).execute())
+      } recover {
+        case gjre: GoogleJsonResponseException if gjre.getDetails.getCode == 404 => None
+      } get
     }
 
     def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {

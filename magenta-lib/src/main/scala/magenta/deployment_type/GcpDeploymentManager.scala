@@ -62,6 +62,15 @@ object GcpDeploymentManager extends DeploymentType {
     optional = true // one of this or configPath
   )
 
+  val upsertParam: Param[Boolean] = Param[Boolean](
+    name = "upsert",
+    documentation =
+      """
+        |When true a deployment should be created if it doesn't already exist. When false a deployment will fail
+        |if it doesn't exist but still updated if it does exist.
+        |""".stripMargin
+  ).default(false)
+
   val updateAction: Action = Action(
     name = "update",
     documentation =
@@ -81,6 +90,7 @@ object GcpDeploymentManager extends DeploymentType {
 
       val maxWaitDuration = maxWaitParam(pkg, target, reporter).seconds
       val deploymentName = deploymentNameParam(pkg, target, reporter)
+      val upsert = upsertParam(pkg, target, reporter)
 
       val configPathLookup: PartialFunction[String, String] = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
         case (Some(map), None) => map
@@ -98,7 +108,7 @@ object GcpDeploymentManager extends DeploymentType {
         identity
       )
       List(
-        DeploymentManagerTasks.updateTask(projectName, deploymentName, bundle, maxWaitDuration)
+        DeploymentManagerTasks.updateTask(projectName, deploymentName, bundle, maxWaitDuration, upsert)
       )
     }
   }
