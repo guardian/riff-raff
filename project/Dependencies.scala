@@ -70,6 +70,7 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.16.0",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.3",
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.30",
     "org.scalikejdbc" %% "scalikejdbc" % "3.3.3",
     "org.postgresql" % "postgresql" % "42.2.5",
     "com.whisk" %% "docker-testkit-scalatest" % "0.9.8" % "test",

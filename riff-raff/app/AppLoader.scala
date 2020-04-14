@@ -3,17 +3,23 @@ import java.time.Duration
 
 import com.typesafe.config.ConfigFactory
 import conf.Config
+import controllers.Logging
 import org.joda.time.{DateTime, DateTimeZone}
+import org.slf4j.bridge.SLF4JBridgeHandler
 import persistence.{CachingPasswordProvider, IAMPasswordProvider}
 import play.api.ApplicationLoader.Context
 import play.api.{Application, ApplicationLoader, Configuration, LoggerConfigurator}
 
-class AppLoader extends ApplicationLoader {
+class AppLoader extends ApplicationLoader with Logging {
 
   override def load(context: Context): Application = {
     LoggerConfigurator(context.environment.classLoader).foreach {
       _.configure(context.environment)
     }
+
+    SLF4JBridgeHandler.removeHandlersForRootLogger()
+    SLF4JBridgeHandler.install()
+    log.info("Installed JUL log forwarding")
 
     // merge config from application.conf with ~/.gu/riff-raff.conf
     val userConf = ConfigFactory.parseFile(new File(s"${scala.util.Properties.userHome}/.gu/riff-raff.conf"))
