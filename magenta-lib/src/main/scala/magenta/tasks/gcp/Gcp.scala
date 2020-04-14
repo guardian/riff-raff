@@ -3,11 +3,11 @@ package magenta.tasks.gcp
 import java.io.{ByteArrayInputStream, IOException}
 
 import cats.syntax.either._
+import com.google.api.client.googleapis.apache.GoogleApacheHttpTransport
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.HttpResponseException
-import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.http.apache.ApacheHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
@@ -18,7 +18,7 @@ import magenta.{DeployReporter, KeyRing}
 import scala.collection.JavaConverters._
 
 object Gcp {
-  lazy val httpTransport: NetHttpTransport = GoogleNetHttpTransport.newTrustedTransport
+  lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport
   lazy val jsonFactory: JacksonFactory = JacksonFactory.getDefaultInstance
   val scopes: Seq[String] = Seq(
     DeploymentManagerScopes.CLOUD_PLATFORM
@@ -47,12 +47,13 @@ object Gcp {
 
     object DMOperation {
       def apply(operation: Operation, project: String): DMOperation = {
-        val id = operation.getClientOperationId
-        (Option(operation.getError.getErrors), operation.getStatus) match {
-          case (_, "PENDING") => InProgress(id, project)
-          case (_, "RUNNING") => InProgress(id, project)
-          case (Some(errors), "DONE") => Failure(id, project, errors.asScala.toList)
-          case (None, "DONE") => Success(id, project)
+        val operationName = operation.getName
+        (Option(operation.getError).flatMap(e => Option(e.getErrors)), operation.getStatus) match {
+          case (_, "PENDING") => InProgress(operationName, project)
+          case (_, "RUNNING") => InProgress(operationName, project)
+          case (Some(errors), "DONE") => Failure(operationName, project, errors.asScala.toList)
+          case (None, "DONE") => Success(operationName, project)
+          case (_, status) => throw new IllegalArgumentException(s"Unexpected deployment manager operation status $status")
         }
       }
     }
@@ -78,6 +79,10 @@ object Gcp {
       response.getDeployments.asScala.toList
     }
 
+    def get(client: DeploymentManager, project: String, name: String): Deployment = {
+      client.deployments.get(project, name).execute()
+    }
+
     def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
@@ -90,15 +95,19 @@ object Gcp {
       }.map (DMOperation(_, project))
     }
 
-    def update(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
+    def update(client: DeploymentManager, project: String, name: String, fingerprint: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
-      val content = new Deployment().setTarget(target)
+      val content = new Deployment().setName(name).setFingerprint(fingerprint).setTarget(target)
       api.retryWhen500orGoogleError(
         reporter,
         s"Deploy Manager update $project/$name"
       ){
-        client.deployments().update(project, name, content).execute()
+        client.deployments().update(project, name, content)
+          .setCreatePolicy("CREATE_OR_ACQUIRE")
+          .setDeletePolicy("DELETE")
+          .setPreview(false)
+          .execute()
       }.map (DMOperation(_, project))
     }
 

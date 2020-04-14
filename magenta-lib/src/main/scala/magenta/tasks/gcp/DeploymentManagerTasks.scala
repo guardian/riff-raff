@@ -7,13 +7,13 @@ import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
 import scala.concurrent.duration.FiniteDuration
 
 object DeploymentManagerTasks {
-  def updateTask(project: String, name: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with SlowRepeatedPollingCheck {
+  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with SlowRepeatedPollingCheck {
 
     override def name: String = "DeploymentManagerUpdate"
 
     override def keyRing: KeyRing = kr
     override def description: String = "Update a deployment manager deployment in GCP"
-    override def verbose: String = s"Update deployment $name in GCP project $project using ${bundle.configPath} and $dependencyDesc"
+    override def verbose: String = s"Update deployment '$deploymentName' in GCP project '$project' using ${bundle.configPath} and $dependencyDesc"
     def dependencyDesc: String = {
       bundle.deps.keys.toList match {
         case Nil => "no dependencies"
@@ -31,7 +31,10 @@ object DeploymentManagerTasks {
       val credentials = Gcp.credentials.getCredentials(keyRing).getOrElse(reporter.fail("Unable to build GCP credentials from keyring"))
       val client = Gcp.DeploymentManagerApi.client(credentials)
 
-      val maybeOperation = Gcp.DeploymentManagerApi.update(client, project, name, bundle)(reporter)
+      val deployment = Gcp.DeploymentManagerApi.get(client, project, deploymentName)
+      reporter.verbose(s"Fetched details for deployment ${deploymentName}; using fingerprint ${deployment.getFingerprint} for update")
+
+      val maybeOperation = Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle)(reporter)
       maybeOperation.fold(
         error => reporter.fail("DeployManager update operation failed", error),
         operation => {
