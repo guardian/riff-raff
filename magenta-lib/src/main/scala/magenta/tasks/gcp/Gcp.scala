@@ -88,7 +88,7 @@ object Gcp {
       } get
     }
 
-    def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
+    def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle, preview: Boolean)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
       val content = new Deployment().setName(name).setTarget(target)
@@ -96,11 +96,14 @@ object Gcp {
         reporter,
         s"Deploy Manager insert $project/$name"
       ){
-        client.deployments().insert(project, content).execute()
+        client.deployments().insert(project, content)
+          .setCreatePolicy("CREATE_OR_ACQUIRE")
+          .setPreview(preview)
+          .execute()
       }.map (DMOperation(_, project))
     }
 
-    def update(client: DeploymentManager, project: String, name: String, fingerprint: String, bundle: DeploymentBundle)(reporter: DeployReporter): Result[DMOperation] = {
+    def update(client: DeploymentManager, project: String, name: String, fingerprint: String, bundle: DeploymentBundle, preview: Boolean)(reporter: DeployReporter): Result[DMOperation] = {
       val target = toTargetConfiguration(bundle)
 
       val content = new Deployment().setName(name).setFingerprint(fingerprint).setTarget(target)
@@ -111,7 +114,7 @@ object Gcp {
         client.deployments().update(project, name, content)
           .setCreatePolicy("CREATE_OR_ACQUIRE")
           .setDeletePolicy("DELETE")
-          .setPreview(false)
+          .setPreview(preview)
           .execute()
       }.map (DMOperation(_, project))
     }

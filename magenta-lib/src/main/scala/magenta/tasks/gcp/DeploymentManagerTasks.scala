@@ -7,7 +7,7 @@ import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
 import scala.concurrent.duration.FiniteDuration
 
 object DeploymentManagerTasks {
-  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration, upsert: Boolean)(implicit kr: KeyRing): Task = new Task with PollingCheck {
+  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration, upsert: Boolean, preview: Boolean)(implicit kr: KeyRing): Task = new Task with PollingCheck {
 
     override def name: String = "DeploymentManagerUpdate"
 
@@ -36,11 +36,11 @@ object DeploymentManagerTasks {
       val maybeOperation = maybeDeployment match {
         case Some(deployment) =>
           reporter.verbose(s"Fetched details for deployment ${deploymentName}; using fingerprint ${deployment.getFingerprint} for update")
-          Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle)(reporter)
+          Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle, preview)(reporter)
         case None =>
           if (upsert) {
             reporter.verbose(s"Deployment ${deploymentName} doesn't exist; inserting new deployment")
-            Gcp.DeploymentManagerApi.insert(client, project, deploymentName, bundle)(reporter)
+            Gcp.DeploymentManagerApi.insert(client, project, deploymentName, bundle, preview)(reporter)
           } else {
             reporter.fail(s"Deployment ${deploymentName} doesn't exist and upserting isn't enabled.")
           }

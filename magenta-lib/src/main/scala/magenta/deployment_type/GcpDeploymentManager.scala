@@ -71,6 +71,14 @@ object GcpDeploymentManager extends DeploymentType {
         |""".stripMargin
   ).default(false)
 
+  val previewParam: Param[Boolean] = Param[Boolean](
+    name = "preview",
+    documentation =
+      """
+        |Pass through preview to any update or insert operation.
+        |""".stripMargin
+  ).default(false)
+
   val updateAction: Action = Action(
     name = "update",
     documentation =
@@ -91,6 +99,7 @@ object GcpDeploymentManager extends DeploymentType {
       val maxWaitDuration = maxWaitParam(pkg, target, reporter).seconds
       val deploymentName = deploymentNameParam(pkg, target, reporter)
       val upsert = upsertParam(pkg, target, reporter)
+      val preview = previewParam(pkg, target, reporter)
 
       val configPathLookup: PartialFunction[String, String] = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
         case (Some(map), None) => map
@@ -108,7 +117,7 @@ object GcpDeploymentManager extends DeploymentType {
         identity
       )
       List(
-        DeploymentManagerTasks.updateTask(projectName, deploymentName, bundle, maxWaitDuration, upsert)
+        DeploymentManagerTasks.updateTask(projectName, deploymentName, bundle, maxWaitDuration, upsert, preview)
       )
     }
   }
