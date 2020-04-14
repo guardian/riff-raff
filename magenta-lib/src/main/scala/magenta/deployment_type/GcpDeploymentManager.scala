@@ -74,8 +74,8 @@ object GcpDeploymentManager extends DeploymentType {
       implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
       val reporter: DeployReporter = resources.reporter
 
-      val projectName = resources.lookup.data.datum(GCP_PROJECT_NAME_PRISM_KEY, pkg.app, target.parameters.stage, target.stack).getOrElse{
-        reporter.fail(s"Couldn't lookup a valid gcp:project-name from ${resources.lookup.name} for ${pkg.app}, ${target.parameters.stage}, ${target.stack}")
+      val projectName: String = keyRing.apiCredentials.get("gcp").map(_.id).getOrElse{
+        reporter.fail(s"No GCP key on keyring so unable to find project name. Ensure there is a credentials:gcp entry in ${resources.lookup.name} for ${pkg.app}, ${target.parameters.stage}, ${target.stack}")
       }
       implicit val artifactClient: S3Client = resources.artifactClient
 
@@ -98,7 +98,7 @@ object GcpDeploymentManager extends DeploymentType {
         identity
       )
       List(
-        DeploymentManagerTasks.updateTask(projectName.value, deploymentName, bundle, maxWaitDuration)
+        DeploymentManagerTasks.updateTask(projectName, deploymentName, bundle, maxWaitDuration)
       )
     }
   }
