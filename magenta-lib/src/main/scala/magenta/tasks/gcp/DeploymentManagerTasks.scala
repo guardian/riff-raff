@@ -1,13 +1,13 @@
 package magenta.tasks.gcp
 
 import magenta.{DeployReporter, KeyRing}
-import magenta.tasks.{SlowRepeatedPollingCheck, Task}
+import magenta.tasks.{PollingCheck, SlowRepeatedPollingCheck, Task}
 import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
 
 import scala.concurrent.duration.FiniteDuration
 
 object DeploymentManagerTasks {
-  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with SlowRepeatedPollingCheck {
+  def updateTask(project: String, deploymentName: String, bundle: DeploymentBundle, maxWait: FiniteDuration)(implicit kr: KeyRing): Task = new Task with PollingCheck {
 
     override def name: String = "DeploymentManagerUpdate"
 
@@ -58,5 +58,7 @@ object DeploymentManagerTasks {
     }
 
     override def duration: Long = maxWait.toMillis
+
+    override def calculateSleepTime(currentAttempt: Int): Long = 5000
   }
 }
