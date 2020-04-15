@@ -101,14 +101,14 @@ object GcpDeploymentManager extends DeploymentType {
       val upsert = upsertParam(pkg, target, reporter)
       val preview = previewParam(pkg, target, reporter)
 
-      val configPathLookup: PartialFunction[String, String] = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
-        case (Some(map), None) => map
-        case (None, Some(default)) => { case _ => default }
+      val configPath: String = (configPathByStageParam.get(pkg), configPathParam.get(pkg)) match {
+        case (Some(map), None) =>
+          map.getOrElse(
+            target.parameters.stage.name,
+            reporter.fail(s"No config path supplied for stage ${target.parameters.stage.name} in configPathByStage")
+          )
+        case (None, Some(path)) => path
         case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of configPathByStage or configPath must be provided")
-      }
-
-      val configPath = configPathLookup.lift(target.parameters.stage.name).getOrElse {
-        reporter.fail(s"No config path supplied for stage ${target.parameters.stage.name} in configPathByStage or configPath")
       }
 
       val maybeBundle = createDeploymentBundle(pkg.s3Package, configPath, reporter)
