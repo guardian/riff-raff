@@ -12,6 +12,7 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
+import com.gu.management.Loggable
 import magenta.tasks.gcp.GcpRetryHelper.Result
 import magenta.{DeployReporter, KeyRing}
 
@@ -35,13 +36,13 @@ object Gcp {
     }
   }
 
-  object DeploymentManagerApi {
+  object DeploymentManagerApi extends Loggable {
 
     sealed trait DMOperation {
       val project: String
       val id: String
     }
-    case class InProgress(id: String, project: String) extends DMOperation
+    case class InProgress(id: String, project: String, progress: Integer) extends DMOperation
     case class Success(id: String, project: String) extends DMOperation
     case class Failure(id: String, project: String, error: List[Errors]) extends DMOperation
 
@@ -49,8 +50,8 @@ object Gcp {
       def apply(operation: Operation, project: String): DMOperation = {
         val operationName = operation.getName
         (Option(operation.getError).flatMap(e => Option(e.getErrors)), operation.getStatus) match {
-          case (_, "PENDING") => InProgress(operationName, project)
-          case (_, "RUNNING") => InProgress(operationName, project)
+          case (_, "PENDING") => InProgress(operationName, project, operation.getProgress)
+          case (_, "RUNNING") => InProgress(operationName, project, operation.getProgress)
           case (Some(errors), "DONE") => Failure(operationName, project, errors.asScala.toList)
           case (None, "DONE") => Success(operationName, project)
           case (_, status) => throw new IllegalArgumentException(s"Unexpected deployment manager operation status $status")

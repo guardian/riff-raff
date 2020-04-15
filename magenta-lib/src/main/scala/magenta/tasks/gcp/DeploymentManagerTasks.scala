@@ -16,24 +16,19 @@ object DeploymentManagerTasks {
 
     override def keyRing: KeyRing = kr
 
-    val operation: String = {
+    val operationDescription: String = {
       val u = if (upsert) "Upsert" else "Update"
       if (preview) s"Preview ${u.toLowerCase}" else u
     }
 
-    override def description: String = s"$operation deployment manager deployment '$deploymentName' in GCP '$project'"
-    override def verbose: String = s"$operation deployment manager deployment '$deploymentName' in GCP project '$project' using ${bundle.configPath} and $dependencyDesc"
+    override def description: String = s"$operationDescription deployment manager deployment '$deploymentName' in GCP '$project'"
+    override def verbose: String = s"$operationDescription deployment manager deployment '$deploymentName' in GCP project '$project' using ${bundle.configPath} and $dependencyDesc"
     def dependencyDesc: String = {
       bundle.deps.keys.toList match {
         case Nil => "no dependencies"
         case singleton :: Nil => s"dependency $singleton"
         case multiple => s"dependencies ${multiple.mkString(", ")}"
       }
-    }
-
-    val untilFinished: DMOperation => Boolean = {
-      case InProgress(_, _) => false
-      case _ => true
     }
 
     override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
@@ -74,7 +69,9 @@ object DeploymentManagerTasks {
                 reporter.verbose(s"Operation error: $error")
               }
               reporter.fail("Failed to successfully execute update, errors logged verbosely")
-            case _ => false // continue check
+            case InProgress(_, _, progress) =>
+              reporter.verbose(s"Operation progress $progress%")
+              false // continue check
           }
         )
       }
