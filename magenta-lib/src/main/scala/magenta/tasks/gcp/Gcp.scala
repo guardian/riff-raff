@@ -16,7 +16,6 @@ import magenta.tasks.gcp.GcpRetryHelper.Result
 import magenta.{DeployReporter, KeyRing}
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 object Gcp {
   lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport
@@ -73,19 +72,12 @@ object Gcp {
       new TargetConfiguration().setConfig(configFile).setImports(imports.toList.asJava)
     }
 
-    def list(client: DeploymentManager, project: String): List[Deployment] = {
-      val response = client.deployments.list(project).execute()
-      // TODO - this should do pagination of projects, for now fail fast
-      if (Option(response.getNextPageToken).nonEmpty) throw new IllegalStateException("We don't support paginated deployments and we've just got a response that has a second page")
-      response.getDeployments.asScala.toList
-    }
-
-    def get(client: DeploymentManager, project: String, name: String): Option[Deployment] = {
-      Try {
+    def get(client: DeploymentManager, project: String, name: String)(reporter: DeployReporter): Result[Option[Deployment]] = {
+      api.retryWhen500orGoogleError(reporter, "Deployment Manager get"){
         Some(client.deployments.get(project, name).execute())
       } recover {
         case gjre: GoogleJsonResponseException if gjre.getDetails.getCode == 404 => None
-      } get
+      }
     }
 
     def insert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle, preview: Boolean)(reporter: DeployReporter): Result[DMOperation] = {
@@ -119,14 +111,6 @@ object Gcp {
       }.map (DMOperation(_, project))
     }
 
-//    def upsert(client: DeploymentManager, project: String, name: String, bundle: DeploymentBundle)(implicit executionContext: ExecutionContext): Future[Operation] = {
-//      if (!list(client, project).exists(_.getName == name)) {
-//        insert(client, project, name, bundle)
-//      } else {
-//        update(client, project, name, bundle)
-//      }
-//    }
-
     /* Given a DMOperation we can poll until an updated operation reaches a given state */
     def operationStatus(client: DeploymentManager, operation: DMOperation)(reporter: DeployReporter): Result[DMOperation] = {
       api.retryWhen500orGoogleError(
@@ -158,7 +142,6 @@ object Gcp {
         case t: GoogleJsonResponseException => {
           ((t.getStatusCode == 403 || t.getStatusCode == 429) && t.getDetails.getErrors.asScala.head.getDomain.equalsIgnoreCase("usageLimits")) ||
             (t.getStatusCode == 400 && t.getDetails.getErrors.asScala.head.getReason.equalsIgnoreCase("invalid")) ||
-            t.getStatusCode == 404 ||
             t.getStatusCode/100 == 5
         }
         case t: HttpResponseException => t.getStatusCode/100 == 5
