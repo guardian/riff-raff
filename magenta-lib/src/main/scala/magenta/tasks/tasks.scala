@@ -39,11 +39,8 @@ case class S3Upload(
 
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
 
-  // A verbose description of this task. For command line tasks,
-  def verbose: String = s"$description using file mapping $paths"
-
   // end-user friendly description of this task
-  def description: String = s"Upload ${fileString(objectMappings.size)} to S3 bucket $bucket"
+  def description: String = s"Upload ${fileString(objectMappings.size)} to S3 bucket $bucket using file mapping $paths"
 
   def requestToString(source: S3Object, request: PutReq): String =
     s"s3://${source.bucket}/${source.key} to s3://${request.target.bucket}/${request.target.key} with "+
@@ -179,7 +176,6 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   }
 
   def description: String = "to " + host.name
-  def verbose: String = fullDescription
 }
 
 case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
@@ -212,8 +208,7 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
     }
   }
 
-  def verbose: String = s"$description using switchboard at $switchboardUrl"
-  def description: String = s"$switchName to $desiredStateName"
+  def description: String = s"$switchName to $desiredStateName using switchboard at $switchboardUrl"
 }
 
 object ChangeSwitch {
@@ -222,7 +217,6 @@ object ChangeSwitch {
 
 case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $function Lambda using S3 $s3Bucket:$s3Key"
-  def verbose: String = description
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     Lambda.withLambdaClient(keyRing, region){ client =>

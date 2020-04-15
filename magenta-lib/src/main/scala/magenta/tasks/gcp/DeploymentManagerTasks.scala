@@ -21,8 +21,7 @@ object DeploymentManagerTasks {
       if (preview) s"Preview ${u.toLowerCase}" else u
     }
 
-    override def description: String = s"$operationDescription deployment manager deployment '$deploymentName' in GCP '$project'"
-    override def verbose: String = s"$operationDescription deployment manager deployment '$deploymentName' in GCP project '$project' using ${bundle.configPath} and $dependencyDesc"
+    override def description: String = s"$operationDescription deployment manager deployment '$deploymentName' in GCP project '$project' using ${bundle.configPath} and $dependencyDesc"
     def dependencyDesc: String = {
       bundle.deps.keys.toList match {
         case Nil => "no dependencies"
@@ -59,7 +58,7 @@ object DeploymentManagerTasks {
 
     def pollOperation(client: DeploymentManager, operation: DMOperation)(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
       check(reporter, stopFlag) {
-        val maybeUpdatedOperation = Gcp.DeploymentManagerApi.operationStatus(client, operation)(reporter)
+        val maybeUpdatedOperation: Result[DMOperation] = Gcp.DeploymentManagerApi.operationStatus(client, operation)(reporter)
         maybeUpdatedOperation.fold(
           error => reporter.fail("DeployManager operation status failed", error),
           {

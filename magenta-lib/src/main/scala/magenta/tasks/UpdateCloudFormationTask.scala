@@ -256,7 +256,6 @@ case class UpdateAmiCloudFormationParameterTask(
     val components = amiParameterMap.map { case(name, tags) => s"$name to latest AMI with tags $tags"}.mkString(", ")
     s"Update $components in CloudFormation stack: $cloudFormationStackLookupStrategy"
   }
-  def verbose = description
 }
 
 class CheckUpdateEventsTask(
@@ -341,5 +340,4 @@ class CheckUpdateEventsTask(
   }
 
   def description = s"Checking events on update for stack $stackLookupStrategy"
-  def verbose = description
 }

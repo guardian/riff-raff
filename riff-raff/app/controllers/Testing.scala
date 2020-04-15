@@ -56,15 +56,11 @@ class Testing(config: Config,
     val testTask1 = new Task {
       override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
-      def verbose = "A particularly verbose task description that lists some stuff, innit"
-
       def keyRing = ???
     }
     val testTask2 = new Task {
       override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
-      def verbose = "A particularly verbose task description that lists some stuff, innit"
-
       def keyRing = ???
     }
 

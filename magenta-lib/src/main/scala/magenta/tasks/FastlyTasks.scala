@@ -122,8 +122,6 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
   }
 
   override def description: String = "Update configuration of Fastly edge-caching service"
-
-  override def verbose: String = description
 }
 
 object FastlyApiClientProvider {
