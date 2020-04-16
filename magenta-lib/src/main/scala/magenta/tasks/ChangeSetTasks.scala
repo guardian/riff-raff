@@ -44,7 +44,6 @@ class CreateChangeSetTask(
   }
 
   def description = s"Create change set ${stackLookup.changeSetName} for stack ${stackLookup.strategy} with ${templatePath.fileName}"
-  def verbose = description
 }
 
 class CheckChangeSetCreatedTask(
@@ -81,7 +80,6 @@ class CheckChangeSetCreatedTask(
   }
 
   def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
-  def verbose = description
 }
 
 class ExecuteChangeSetTask(
@@ -110,7 +108,6 @@ class ExecuteChangeSetTask(
   }
 
   def description = s"Execute change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
-  def verbose = description
 }
 
 class DeleteChangeSetTask(
@@ -128,5 +125,4 @@ class DeleteChangeSetTask(
   }
 
   def description = s"Delete change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
-  def verbose = description
 }

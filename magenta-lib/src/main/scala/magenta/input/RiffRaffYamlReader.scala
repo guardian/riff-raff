@@ -30,13 +30,7 @@ object RiffRaffYamlReader {
   }
 
   def fromString(yaml: String): Validated[ConfigErrors, RiffRaffDeployConfig] = {
-    // convert form YAML to JSON
-    val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
-    val jsonString = new ObjectMapper()
-      .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
-      .writeValueAsString(tree)
-
-    val json = Json.parse(jsonString)
+    val json = yamlToJson(yaml)
     Json.fromJson[RiffRaffDeployConfig](json) match {
       case JsSuccess(config, _) => Valid(config)
       case JsError(errors :: tail) =>
@@ -47,5 +41,14 @@ object RiffRaffYamlReader {
         }))
       case JsError(_) => `wtf?`
     }
+  }
+
+  def yamlToJson(yaml: String): JsValue = {
+    val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
+    val jsonString = new ObjectMapper()
+      .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
+      .writeValueAsString(tree)
+
+    Json.parse(jsonString)
   }
 }

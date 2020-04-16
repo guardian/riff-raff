@@ -43,7 +43,7 @@ class DeployTypeDocsTest extends FlatSpec with Matchers {
   it should "successfully generate documentation for the standard set of deployment types" in {
     // we can't easily check correctness, but we can check exceptions are not thrown
     val availableDeploymentTypes = Seq(
-      ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy
+      ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager
     )
     val result = DeployTypeDocs.generateDocs(availableDeploymentTypes)
     result.size shouldBe availableDeploymentTypes.size

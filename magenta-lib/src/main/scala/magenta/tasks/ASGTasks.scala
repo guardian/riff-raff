@@ -175,6 +175,4 @@ trait ASGTask extends Task {
       execute(group, reporter, stopFlag, asgClient)
     }
   }
-
-  def verbose = description
 }
