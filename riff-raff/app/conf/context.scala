@@ -60,7 +60,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
           Filter.builder().name("resource-id").values(instanceId).build()
         ).build()
         val ec2Client = Ec2Client.builder()
-          .credentialsProvider(credentialsProviderChain(None, None))
+          .credentialsProvider(awsCredentials.credentialsProviderChain(None, None))
           .build()
         try {
           val describeTagsResult = ec2Client.describeTags(request)
@@ -187,7 +187,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       implicit lazy val bucketName = getStringOpt("artifact.aws.bucketName").getOrException("Artifact bucket name not configured")
       lazy val accessKey = getStringOpt("artifact.aws.accessKey")
       lazy val secretKey = getStringOpt("artifact.aws.secretKey")
-      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val credentialsProvider = awsCredentials.credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
@@ -202,7 +202,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       implicit lazy val bucketName = getString("build.aws.bucketName")
       lazy val accessKey = getStringOpt("build.aws.accessKey")
       lazy val secretKey = getStringOpt("build.aws.secretKey")
-      lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val credentialsProvider = awsCredentials.credentialsProviderChain(accessKey, secretKey)
       lazy val regionName = getStringOpt("build.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
@@ -216,7 +216,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       implicit lazy val bucketName: Option[String] = getStringOpt("tag.aws.bucketName")
       lazy val accessKey: Option[String] = getStringOpt("tag.aws.accessKey")
       lazy val secretKey: Option[String] = getStringOpt("tag.aws.secretKey")
-      lazy val credentialsProvider: AwsCredentialsProvider = credentialsProviderChain(accessKey, secretKey)
+      lazy val credentialsProvider: AwsCredentialsProvider = awsCredentials.credentialsProviderChain(accessKey, secretKey)
       lazy val regionName: String = getStringOpt("tag.aws.region").getOrElse("eu-west-1")
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
@@ -248,21 +248,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     )
   }
 
-  def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AwsCredentialsProvider = {
-    val allProviders: List[AwsCredentialsProvider] = List(
-      EnvironmentVariableCredentialsProvider.create(),
-      SystemPropertyCredentialsProvider.create(),
-      ProfileCredentialsProvider.create("deployTools"),
-      InstanceProfileCredentialsProvider.create()
-    )
-    val providers: List[AwsCredentialsProvider] = (for {
-      key <- accessKey
-      secret <- secretKey
-    } yield AwsBasicCredentials.create(key, secret)).fold(allProviders)(basicCreds => basicCreds.asInstanceOf[AwsCredentialsProvider] +: allProviders)
-
-    AwsCredentialsProviderChain.builder().credentialsProviders(providers.asJava).build()
-  }
-
   object urls {
     lazy val publicPrefix: String = getStringOpt("urls.publicPrefix").getOrElse("http://localhost:9000")
   }
@@ -272,6 +257,24 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
   override def toString: String = configuration.toString
 }
+
+  object awsCredentials {
+    def credentialsProviderChain(accessKey: Option[String], secretKey: Option[String]): AwsCredentialsProvider = {
+      val allProviders: List[AwsCredentialsProvider] = List(
+        EnvironmentVariableCredentialsProvider.create(),
+        SystemPropertyCredentialsProvider.create(),
+        ProfileCredentialsProvider.create("deployTools"),
+        InstanceProfileCredentialsProvider.create()
+      )
+      val providers: List[AwsCredentialsProvider] = (for {
+        key <- accessKey
+        secret <- secretKey
+      } yield AwsBasicCredentials.create(key, secret)).fold(allProviders)(basicCreds => basicCreds.asInstanceOf[AwsCredentialsProvider] +: allProviders)
+
+      AwsCredentialsProviderChain.builder().credentialsProviders(providers.asJava).build()
+    }
+    lazy val credentialsProvider = credentialsProviderChain(None, None)
+  }
 
 class Management(config: Config, shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments, datastore: DataStore) {
   val applicationName = "riff-raff"

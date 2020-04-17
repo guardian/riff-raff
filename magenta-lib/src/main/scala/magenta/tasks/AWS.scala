@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import cats.implicits._
 import com.gu.management.Loggable
 import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, Region, Stack, Stage}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -28,11 +28,14 @@ import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.ssm.SsmClient
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 import software.amazon.awssdk.services.sts.StsClient
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Try
 import magenta.withResource
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 
 object S3 {
   def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = AWS.clientConfiguration)(block: S3Client => T): T =
@@ -504,12 +507,28 @@ object AWS extends Loggable {
 
   lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
 
-  def provider(keyRing: KeyRing): AwsCredentialsProviderChain = AwsCredentialsProviderChain.builder().credentialsProviders(
-    () => keyRing.apiCredentials.get("aws").map { credentials =>
-      AwsBasicCredentials.create(credentials.id, credentials.secret)
-    }.get,
-    () => envCredentials
-  ).build()
+  def getRoleCredentialsProvider(role: String): StsAssumeRoleCredentialsProvider = {
+    val req: AssumeRoleRequest = AssumeRoleRequest.builder
+      .roleArn(role)
+      .build()
+
+    val stsClient = StsClient.builder().credentialsProvider(awsCredentials).build()
+    StsAssumeRoleCredentialsProvider.builder()
+      .stsClient(stsClient)
+      .refreshRequest(req)
+      .build();
+  }
+
+  def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
+    val envProvider = () => envCredentials
+    val otherProviders: Option[Seq[Option[AwsCredentialsProvider]]] = keyRing.apiCredentials.get("aws").map { credentials =>
+      Seq(credentials.role.map(r => getRoleCredentialsProvider(r)),
+        Some(StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))))
+    }
+    val allProviders: Seq[AwsCredentialsProvider] = otherProviders.getOrElse(Seq()).flatten
+
+    AwsCredentialsProviderChain.builder().credentialsProviders(allProviders: _*).build()
+  }
 
   private lazy val numberOfRetries = 20
 
