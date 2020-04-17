@@ -29,7 +29,7 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
       case key@KeyPattern(service) =>
         data.datum(key, app, stage, stack).flatMap { data =>
           secretProvider.lookup(service, data.value).map { secret =>
-            service -> ApiCredentials(service, data.value, secret, data.comment, role)
+            service -> ApiCredentials(service, data.value, secret, data.comment, data.role)
           }
         }
       case _ => None
