@@ -51,7 +51,7 @@ object HostList {
 
 case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing = {
-    val keyring = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
+    val keyring: KeyRing = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
     reporter.verbose(s"Keyring for ${pkg.name} in ${target.stack.name}/${target.region.name}: $keyring")
     keyring
   }
