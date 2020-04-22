@@ -214,6 +214,14 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   it should "pass on FAILED if there are no changes to execute" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "No updates are to be performed.", List.empty, reporter) should be(true)
+    check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "The submitted information didn't contain changes. Submit different information to create a change set.", List.empty, reporter) should be(true)
+  }
+
+  it should "fail on a template error" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    intercept[FailException] {
+      check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "A different error about your template.", List.empty, reporter) should be(true)
+    }
   }
 
   it should "fail on FAILED" in {

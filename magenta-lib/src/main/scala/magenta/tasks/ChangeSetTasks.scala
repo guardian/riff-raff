@@ -66,11 +66,16 @@ class CheckChangeSetCreatedTask(
     }
   }
 
+  def isNoOpStatusReason(status: String): Boolean = {
+    status == "The submitted information didn't contain changes. Submit different information to create a change set." ||
+    status == "No updates are to be performed."
+  }
+
   def shouldStopWaiting(changeSetType: ChangeSetType, status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = {
     Try(valueOf(status)) match {
       case Success(CREATE_COMPLETE) => true
       // special case an empty change list when the status reason is no updates
-      case Success(FAILED) if changes.isEmpty && statusReason == "No updates are to be performed." =>
+      case Success(FAILED) if changes.isEmpty && isNoOpStatusReason(statusReason) =>
         reporter.info(s"Couldn't create change set as the stack is already up to date")
         true
       case Success(FAILED) => reporter.fail(statusReason)
