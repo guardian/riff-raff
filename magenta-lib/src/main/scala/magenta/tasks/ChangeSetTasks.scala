@@ -4,7 +4,7 @@ import magenta.artifact.S3Path
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
-import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import software.amazon.awssdk.services.cloudformation.model.{Change, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import software.amazon.awssdk.services.s3.S3Client
 
 import scala.collection.JavaConverters._
@@ -55,24 +55,21 @@ class CheckChangeSetCreatedTask(
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     check(reporter, stopFlag) {
       CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-        val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
+        val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
 
         val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
         val response = cfnClient.describeChangeSet(request)
 
-        shouldStopWaiting(changeSetType, response.status.toString, response.statusReason, response.changes.asScala, reporter)
+        shouldStopWaiting(response.status.toString, response.statusReason, response.changes.asScala, reporter)
       }
     }
   }
 
-  def shouldStopWaiting(changeSetType: ChangeSetType, status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = {
+  def shouldStopWaiting(status: String, statusReason: String, changes: Iterable[Change], reporter: DeployReporter): Boolean = {
     Try(valueOf(status)) match {
       case Success(CREATE_COMPLETE) => true
-      // special case an empty change list when the status reason is no updates
-      case Success(FAILED) if changes.isEmpty && statusReason == "No updates are to be performed." =>
-        reporter.info(s"Couldn't create change set as the stack is already up to date")
-        true
+      case Success(FAILED) if changes.isEmpty => true
       case Success(FAILED) => reporter.fail(statusReason)
       case Success(CREATE_IN_PROGRESS | CREATE_PENDING) =>
         reporter.verbose(status)
