@@ -208,24 +208,32 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   "CheckChangeSetCreatedTask" should "pass on CREATE_COMPLETE" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
-    check.shouldStopWaiting("CREATE_COMPLETE", "", List.empty, reporter) should be(true)
+    check.shouldStopWaiting(ChangeSetType.UPDATE, "CREATE_COMPLETE", "", List.empty, reporter) should be(true)
   }
 
   it should "pass on FAILED if there are no changes to execute" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
-    check.shouldStopWaiting("FAILED", "", List.empty, reporter) should be(true)
+    check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "No updates are to be performed.", List.empty, reporter) should be(true)
+    check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "The submitted information didn't contain changes. Submit different information to create a change set.", List.empty, reporter) should be(true)
+  }
+
+  it should "fail on a template error" in {
+    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    intercept[FailException] {
+      check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "A different error about your template.", List.empty, reporter) should be(true)
+    }
   }
 
   it should "fail on FAILED" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
 
     intercept[FailException] {
-      check.shouldStopWaiting("FAILED", "", List(Change.builder().build()), reporter)
+      check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "", List(Change.builder().build()), reporter)
     }
   }
 
   it should "continue on CREATE_IN_PROGRESS" in {
     val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
-    check.shouldStopWaiting("CREATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
+    check.shouldStopWaiting(ChangeSetType.UPDATE, "CREATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
   }
 }
