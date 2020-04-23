@@ -393,14 +393,14 @@ object CloudFormation {
     )
 
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
-                      template: Template, parameters: Iterable[Parameter], client: CloudFormationClient): Unit = {
+                      template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
 
     val request = CreateChangeSetRequest.builder()
       .changeSetName(name)
       .changeSetType(tpe)
       .stackName(stackName)
       .capabilities(Capability.CAPABILITY_NAMED_IAM)
-      .parameters(parameters.toSeq.asJava)
+      .parameters(parameters.asJava)
 
     val tags: Iterable[CfnTag] = maybeTags
       .getOrElse(Map.empty)
