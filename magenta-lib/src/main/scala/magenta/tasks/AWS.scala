@@ -507,22 +507,27 @@ object AWS extends Loggable {
 
   lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
 
-  def getRoleCredentialsProvider(role: String, riffRaffCredentialsProvider: AwsCredentialsProvider): StsAssumeRoleCredentialsProvider = {
-    val req: AssumeRoleRequest = AssumeRoleRequest.builder
-      .roleArn(role)
-      .build()
-
-    val stsClient = StsClient.builder().credentialsProvider(riffRaffCredentialsProvider).build()
-    StsAssumeRoleCredentialsProvider.builder()
-      .stsClient(stsClient)
-      .refreshRequest(req)
-      .build();
+  def getRoleCredentialsProvider(role: Option[String], riffRaffCredentialsProvider: Option[AwsCredentialsProvider]): Option[StsAssumeRoleCredentialsProvider] = {
+    for {
+      r <- role
+      rcp <- riffRaffCredentialsProvider
+    } yield {
+      logger.info(s"building sts client for role $r")
+      val req: AssumeRoleRequest = AssumeRoleRequest.builder
+        .roleArn(r)
+        .build()
+      val stsClient = StsClient.builder().credentialsProvider(rcp).build()
+      StsAssumeRoleCredentialsProvider.builder()
+        .stsClient(stsClient)
+        .refreshRequest(req)
+        .build();
+    }
   }
 
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
     val envProvider = () => envCredentials
     val otherProviders: Option[Seq[Option[AwsCredentialsProvider]]] = keyRing.apiCredentials.get("aws").map { credentials =>
-      Seq(credentials.role.map(r => getRoleCredentialsProvider(r, keyRing.riffRaffCredentialsProvider)),
+      Seq(getRoleCredentialsProvider(credentials.role, keyRing.riffRaffCredentialsProvider),
         Some(StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))))
     }
     val allProviders: Seq[AwsCredentialsProvider] = otherProviders.getOrElse(Seq()).flatten
