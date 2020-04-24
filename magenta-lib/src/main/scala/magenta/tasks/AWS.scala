@@ -525,6 +525,7 @@ object AWS extends Loggable {
   }
 
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
+    logger.info(s"keychain debug ${keyRing.apiCredentials.get("aws")}")
     val envProvider = () => envCredentials
     val otherProviders: Option[Seq[Option[AwsCredentialsProvider]]] = keyRing.apiCredentials.get("aws").map { credentials =>
       Seq(getRoleCredentialsProvider(credentials.role, keyRing.riffRaffCredentialsProvider),
