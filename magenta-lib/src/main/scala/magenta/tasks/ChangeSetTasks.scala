@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import magenta.artifact.S3Path
+import magenta.tasks.CloudFormationParameters.TemplateParameter
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
@@ -30,7 +31,10 @@ class CreateChangeSetTask(
           val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
 
           val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
-          val parameters = CloudFormationParameters.resolve(unresolvedParameters, template, accountNumber, changeSetType, reporter, cfnClient)
+          val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
+            .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
+
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, reporter, templateParameters)
 
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")

@@ -6,6 +6,7 @@ import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
+import magenta.tasks.CloudFormationParameters.TemplateParameter
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{FlatSpec, Inside, Matchers}

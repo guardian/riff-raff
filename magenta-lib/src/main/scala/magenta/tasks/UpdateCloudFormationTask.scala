@@ -3,7 +3,7 @@ package magenta.tasks
 import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
-import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags, TemplateParameter}
+import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
 import magenta.{Build, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
@@ -104,15 +104,14 @@ case class CloudFormationParameters(target: DeployTarget,
                                     latestImage: String => String => Map[String,String] => Option[String])
 
 object CloudFormationParameters {
+  case class TemplateParameter(key:String, default:Boolean)
+
   def resolve(cfnParameters: CloudFormationParameters,
-              template: Template,
               accountNumber: String,
               changeSetType: ChangeSetType,
               reporter: DeployReporter,
-              cfnClient: CloudFormationClient
+              templateParameters: List[TemplateParameter],
              ): List[Parameter] = {
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
-      .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
     val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
       cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
@@ -161,8 +160,6 @@ object CloudFormationParameters {
 }
 
 object UpdateCloudFormationTask extends Loggable {
-  case class TemplateParameter(key:String, default:Boolean)
-
   sealed trait CloudFormationStackLookupStrategy
   case class LookupByName(cloudFormationStackName: String) extends CloudFormationStackLookupStrategy {
     override def toString = s"called $cloudFormationStackName"
