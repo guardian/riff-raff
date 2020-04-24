@@ -30,7 +30,7 @@ class CreateChangeSetTask(
           val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
 
           val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
-          val parameters = unresolvedParameters.resolve(template, accountNumber, changeSetType, reporter, cfnClient)
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, template, accountNumber, changeSetType, reporter, cfnClient)
 
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")

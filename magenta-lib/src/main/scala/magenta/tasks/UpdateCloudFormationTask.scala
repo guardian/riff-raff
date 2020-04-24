@@ -97,26 +97,41 @@ object CloudFormationStackMetadata {
   }
 }
 
-class CloudFormationParameters(stack: Stack, stage: Stage, build: Build, region: Region,
-                               val stackTags: Option[Map[String, String]], val userParameters: Map[String, String],
-                               val amiParameterMap: Map[CfnParam, TagCriteria],
-                               latestImage: String => String => Map[String,String] => Option[String]) {
-  import CloudFormationParameters._
-
-  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient): List[Parameter] = {
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala
-      .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
-
-    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      latestImage(accountNumber)(region.name)(tags).map(name -> _)
-    }
-
-    val combined = combineParameters(stack, stage, build, templateParameters, userParameters ++ resolvedAmiParameters)
-    convertParameters(combined, changeSetType, reporter)
-  }
-}
+case class CloudFormationParameters(target: DeployTarget,
+                                    stackTags: Option[Map[String, String]],
+                                    userParameters: Map[String, String],
+                                    amiParameterMap: Map[CfnParam, TagCriteria],
+                                    latestImage: String => String => Map[String,String] => Option[String])
 
 object CloudFormationParameters {
+  def resolve(cfnParameters: CloudFormationParameters,
+              template: Template,
+              accountNumber: String,
+              changeSetType: ChangeSetType,
+              reporter: DeployReporter,
+              cfnClient: CloudFormationClient
+             ): List[Parameter] = {
+    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
+      .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
+
+    val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
+      cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
+    }
+
+    val deploymentParameters = Map(
+      "Stage" -> cfnParameters.target.parameters.stage.name,
+      "Stack" -> cfnParameters.target.stack.name,
+      "BuildId" -> cfnParameters.target.parameters.build.id
+    )
+
+    val combined = combineParameters(
+      deployParameters = deploymentParameters,
+      templateParameters = templateParameters,
+      specifiedParameters = cfnParameters.userParameters ++ resolvedAmiParameters
+    )
+    convertParameters(combined, changeSetType, reporter)
+  }
+
   def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): List[Parameter] = {
     parameters.toList map {
       case (k, SpecifiedValue(v)) =>
@@ -130,7 +145,7 @@ object CloudFormationParameters {
     }
   }
 
-  def combineParameters(stack: Stack, stage: Stage, build: Build, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
+  def combineParameters(deployParameters: Map[String, String], templateParameters: List[TemplateParameter], specifiedParameters: Map[String, String]): Map[String, ParameterValue] = {
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -139,9 +154,9 @@ object CloudFormationParameters {
     }
 
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-    val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
+    val userAndDefaultParams = requiredParams ++ specifiedParameters.mapValues(SpecifiedValue.apply)
 
-    addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name, "BuildId" -> build.id))
+    addParametersIfInTemplate(userAndDefaultParams)(deployParameters.toSeq)
   }
 }
 

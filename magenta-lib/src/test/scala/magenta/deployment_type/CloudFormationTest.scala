@@ -104,10 +104,11 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   import CloudFormationParameters.combineParameters
 
-  "CloudFormationParameters" should "substitute stack, stage and build ID parameters" in {
+  "CloudFormationParameters combineParameters" should "substitute stack, stage and build ID parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
+      List(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -119,8 +120,9 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
+      List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
     combined should be(Map(
       "param1" -> SpecifiedValue("value1"),
