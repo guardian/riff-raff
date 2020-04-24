@@ -103,7 +103,7 @@ class CloudFormationParameters(stack: Stack, stage: Stage, build: Build, region:
                                latestImage: String => String => Map[String,String] => Option[String]) {
   import CloudFormationParameters._
 
-  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient): Iterable[Parameter] = {
+  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient): List[Parameter] = {
     val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala
       .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
@@ -117,8 +117,8 @@ class CloudFormationParameters(stack: Stack, stage: Stage, build: Build, region:
 }
 
 object CloudFormationParameters {
-  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): Iterable[Parameter] = {
-    parameters map {
+  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): List[Parameter] = {
+    parameters.toList map {
       case (k, SpecifiedValue(v)) =>
         Parameter.builder().parameterKey(k).parameterValue(v).build()
 
