@@ -38,13 +38,14 @@ class CreateChangeSetTask(
             reporter.fail(_),
             identity
           )
+          val awsParameters = CloudFormationParameters.convertInputParametersToAws(parameters)
 
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")
           reporter.info(s"Change set name: ${stackLookup.changeSetName}")
-          reporter.info(s"Parameters: $parameters")
+          reporter.info(s"Parameters: $awsParameters")
 
-          CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, parameters, cfnClient)
+          CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
       }
     }

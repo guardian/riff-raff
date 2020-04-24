@@ -6,7 +6,7 @@ import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
-import magenta.tasks.CloudFormationParameters.TemplateParameter
+import magenta.tasks.CloudFormationParameters.{InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{EitherValues, FlatSpec, Inside, Matchers}
@@ -134,14 +134,14 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
   import CloudFormationParameters.convertParameters
 
-  it should "convert specified parameter" in {
+  "CloudFormationParameters convertParameters" should "convert specified parameter" in {
     convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE).right.value should
-      contain only Parameter.builder().parameterKey("key").parameterValue("value").build()
+      contain only InputParameter("key", "value")
   }
 
   it should "use existing value" in {
     convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE).right.value should
-      contain only Parameter.builder().parameterKey("key").usePreviousValue(true).build()
+      contain only InputParameter.usePreviousValue("key")
   }
 
   it should "fail if using existing value on stack creation" in {

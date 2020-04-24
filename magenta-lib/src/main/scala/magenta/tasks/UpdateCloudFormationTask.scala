@@ -109,12 +109,20 @@ case class CloudFormationParameters(target: DeployTarget,
 
 object CloudFormationParameters {
   case class TemplateParameter(key:String, default:Boolean)
+  case class InputParameter(key:String, value:Option[String], usePreviousValue:Boolean)
+  object InputParameter {
+    def apply(key:String, value:String): InputParameter = InputParameter(key, Some(value), usePreviousValue = false)
+    def usePreviousValue(key:String): InputParameter = InputParameter(key, None, usePreviousValue = true)
+    def toAWS(p: InputParameter): Parameter = Parameter.builder().parameterKey(p.key).parameterValue(p.value.orNull).usePreviousValue(p.usePreviousValue).build()
+  }
+
+  def convertInputParametersToAws(params: List[InputParameter]): List[Parameter] = params.map(InputParameter.toAWS)
 
   def resolve(cfnParameters: CloudFormationParameters,
               accountNumber: String,
               changeSetType: ChangeSetType,
               templateParameters: List[TemplateParameter],
-             ): Either[String, List[Parameter]] = {
+             ): Either[String, List[InputParameter]] = {
 
     val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
       cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
@@ -134,16 +142,16 @@ object CloudFormationParameters {
     convertParameters(combined, changeSetType)
   }
 
-  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[Parameter]] = {
+  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[InputParameter]] = {
     parameters.toList.traverse {
       case (k, SpecifiedValue(v)) =>
-        Right(Parameter.builder().parameterKey(k).parameterValue(v).build())
+        Right(InputParameter(k, v))
 
       case (k, UseExistingValue) if tpe == ChangeSetType.CREATE =>
         Left(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
 
       case (k, UseExistingValue) =>
-        Right(Parameter.builder().parameterKey(k).usePreviousValue(true).build())
+        Right(InputParameter.usePreviousValue(k))
     }
   }
 
