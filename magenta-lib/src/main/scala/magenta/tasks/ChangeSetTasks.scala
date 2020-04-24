@@ -28,13 +28,13 @@ class CreateChangeSetTask(
             reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
           )
 
-          val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
+          val (stackName, changeSetType, existingParameters) = stackLookup.lookup(reporter, cfnClient)
 
           val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
           val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
             .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
-          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters).fold(
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters, existingParameters).fold(
             reporter.fail(_),
             identity
           )
@@ -63,7 +63,7 @@ class CheckChangeSetCreatedTask(
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     check(reporter, stopFlag) {
       CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-        val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
+        val (stackName, changeSetType, _) = stackLookup.lookup(reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
 
         val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
@@ -104,7 +104,7 @@ class ExecuteChangeSetTask(
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
@@ -132,7 +132,7 @@ class DeleteChangeSetTask(
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val request = DeleteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()

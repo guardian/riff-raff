@@ -62,17 +62,19 @@ trait RetryCloudFormationUpdate {
 
 class CloudFormationStackMetadata(val strategy: CloudFormationStackLookupStrategy, val changeSetName: String, createStackIfAbsent: Boolean) {
   import CloudFormationStackMetadata._
+  import CloudFormationParameters.ExistingParameter
 
-  def lookup(reporter: DeployReporter, cfnClient: CloudFormationClient): (String, ChangeSetType) = {
+  def lookup(reporter: DeployReporter, cfnClient: CloudFormationClient): (String, ChangeSetType, List[ExistingParameter]) = {
     val existingStack = strategy match {
       case LookupByName(name) => CloudFormation.describeStack(name, cfnClient)
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
     val stackName = existingStack.map(_.stackName).getOrElse(getNewStackName(strategy))
+    val stackParameters = existingStack.toList.flatMap(_.parameters.asScala).map(p => ExistingParameter(p.parameterKey, p.parameterValue, Option(p.resolvedValue) ))
     val changeSetType = getChangeSetType(stackName, existingStack.nonEmpty, createStackIfAbsent, reporter)
 
-    (stackName, changeSetType)
+    (stackName, changeSetType, stackParameters)
   }
 }
 
@@ -109,6 +111,7 @@ case class CloudFormationParameters(target: DeployTarget,
 
 object CloudFormationParameters {
   case class TemplateParameter(key:String, default:Boolean)
+  case class ExistingParameter(key:String, value:String, resolved:Option[String])
   case class InputParameter(key:String, value:Option[String], usePreviousValue:Boolean)
   object InputParameter {
     def apply(key:String, value:String): InputParameter = InputParameter(key, Some(value), usePreviousValue = false)
@@ -122,6 +125,7 @@ object CloudFormationParameters {
               accountNumber: String,
               changeSetType: ChangeSetType,
               templateParameters: List[TemplateParameter],
+              existingParameters: List[ExistingParameter]
              ): Either[String, List[InputParameter]] = {
 
     val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
@@ -139,7 +143,7 @@ object CloudFormationParameters {
       templateParameters = templateParameters,
       specifiedParameters = cfnParameters.userParameters ++ resolvedAmiParameters
     )
-    convertParameters(combined, changeSetType)
+    combined.flatMap(convertParameters(_, changeSetType))
   }
 
   def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[InputParameter]] = {
@@ -155,7 +159,18 @@ object CloudFormationParameters {
     }
   }
 
-  def combineParameters(deployParameters: Map[String, String], templateParameters: List[TemplateParameter], specifiedParameters: Map[String, String]): Map[String, ParameterValue] = {
+  /**
+    * @param deployParameters Optional parameter values that can be filled in if the template has matching parameters
+    * @param templateParameters Parameters in the template that will be applied
+    * @param specifiedParameters These are parameters specified by the user (either explicitly or via an AMI lookup) - they MUST be included in the list
+    * @return Set of parameters as they should be provided to the cloudformation template change set
+    */
+  def combineParameters(
+                        deployParameters: Map[String, String],
+                        templateParameters: List[TemplateParameter],
+                        specifiedParameters: Map[String, String]
+                       ): Either[String, Map[String, ParameterValue]] = {
+
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -166,7 +181,7 @@ object CloudFormationParameters {
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
     val userAndDefaultParams = requiredParams ++ specifiedParameters.mapValues(SpecifiedValue.apply)
 
-    addParametersIfInTemplate(userAndDefaultParams)(deployParameters.toSeq)
+    Right(addParametersIfInTemplate(userAndDefaultParams)(deployParameters.toSeq))
   }
 }
 

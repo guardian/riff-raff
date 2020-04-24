@@ -111,7 +111,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
     val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
-    combined should be(Map(
+    combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "Stack" -> SpecifiedValue("cfn"),
       "Stage" -> SpecifiedValue("PROD"),
@@ -125,7 +125,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
     val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
-    combined should be(Map(
+    combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "param3" -> UseExistingValue,
       "Stage" -> SpecifiedValue(PROD.name)
