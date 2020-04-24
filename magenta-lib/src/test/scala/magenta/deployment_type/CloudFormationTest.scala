@@ -9,12 +9,12 @@ import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.CloudFormationParameters.TemplateParameter
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
-import org.scalatest.{FlatSpec, Inside, Matchers}
+import org.scalatest.{EitherValues, FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
 import software.amazon.awssdk.services.s3.S3Client
 
-class CloudFormationTest extends FlatSpec with Matchers with Inside {
+class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
@@ -135,19 +135,17 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
   import CloudFormationParameters.convertParameters
 
   it should "convert specified parameter" in {
-    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE, reporter) should
+    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE).right.value should
       contain only Parameter.builder().parameterKey("key").parameterValue("value").build()
   }
 
   it should "use existing value" in {
-    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE, reporter) should
+    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE).right.value should
       contain only Parameter.builder().parameterKey("key").usePreviousValue(true).build()
   }
 
   it should "fail if using existing value on stack creation" in {
-    intercept[FailException] {
-      convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE, reporter)
-    }
+    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE).left.value
   }
 
   "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {

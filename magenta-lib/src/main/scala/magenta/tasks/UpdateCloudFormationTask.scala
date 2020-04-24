@@ -12,6 +12,10 @@ import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, Clou
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
+import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.either._
+import cats.syntax.traverse._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -109,9 +113,8 @@ object CloudFormationParameters {
   def resolve(cfnParameters: CloudFormationParameters,
               accountNumber: String,
               changeSetType: ChangeSetType,
-              reporter: DeployReporter,
               templateParameters: List[TemplateParameter],
-             ): List[Parameter] = {
+             ): Either[String, List[Parameter]] = {
 
     val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
       cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
@@ -128,19 +131,19 @@ object CloudFormationParameters {
       templateParameters = templateParameters,
       specifiedParameters = cfnParameters.userParameters ++ resolvedAmiParameters
     )
-    convertParameters(combined, changeSetType, reporter)
+    convertParameters(combined, changeSetType)
   }
 
-  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): List[Parameter] = {
-    parameters.toList map {
+  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[Parameter]] = {
+    parameters.toList.traverse {
       case (k, SpecifiedValue(v)) =>
-        Parameter.builder().parameterKey(k).parameterValue(v).build()
+        Right(Parameter.builder().parameterKey(k).parameterValue(v).build())
 
       case (k, UseExistingValue) if tpe == ChangeSetType.CREATE =>
-        reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+        Left(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
 
       case (k, UseExistingValue) =>
-        Parameter.builder().parameterKey(k).usePreviousValue(true).build()
+        Right(Parameter.builder().parameterKey(k).usePreviousValue(true).build())
     }
   }
 

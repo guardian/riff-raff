@@ -34,7 +34,10 @@ class CreateChangeSetTask(
           val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
             .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
-          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, reporter, templateParameters)
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters).fold(
+            reporter.fail(_),
+            identity
+          )
 
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")
