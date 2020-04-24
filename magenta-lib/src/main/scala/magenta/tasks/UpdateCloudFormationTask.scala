@@ -123,7 +123,6 @@ object CloudFormationParameters {
 
   def resolve(cfnParameters: CloudFormationParameters,
               accountNumber: String,
-              changeSetType: ChangeSetType,
               templateParameters: List[TemplateParameter],
               existingParameters: List[ExistingParameter]
              ): Either[String, List[InputParameter]] = {
@@ -140,48 +139,70 @@ object CloudFormationParameters {
 
     val combined = combineParameters(
       deployParameters = deploymentParameters,
+      existingParameters = existingParameters,
       templateParameters = templateParameters,
       specifiedParameters = cfnParameters.userParameters ++ resolvedAmiParameters
     )
-    combined.flatMap(convertParameters(_, changeSetType))
+    combined.map(convertParameters)
   }
 
-  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[InputParameter]] = {
-    parameters.toList.traverse {
-      case (k, SpecifiedValue(v)) =>
-        Right(InputParameter(k, v))
-
-      case (k, UseExistingValue) if tpe == ChangeSetType.CREATE =>
-        Left(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
-
-      case (k, UseExistingValue) =>
-        Right(InputParameter.usePreviousValue(k))
+  def convertParameters(parameters: Map[String, ParameterValue]): List[InputParameter] = {
+    parameters.toList map {
+      case (k, SpecifiedValue(v)) => InputParameter(k, v)
+      case (k, UseExistingValue) => InputParameter.usePreviousValue(k)
     }
   }
 
   /**
     * @param deployParameters Optional parameter values that can be filled in if the template has matching parameters
+    * @param existingParameters Parameters on the existing stack (if any)
     * @param templateParameters Parameters in the template that will be applied
     * @param specifiedParameters These are parameters specified by the user (either explicitly or via an AMI lookup) - they MUST be included in the list
     * @return Set of parameters as they should be provided to the cloudformation template change set
     */
   def combineParameters(
                         deployParameters: Map[String, String],
+                        existingParameters: List[ExistingParameter],
                         templateParameters: List[TemplateParameter],
                         specifiedParameters: Map[String, String]
                        ): Either[String, Map[String, ParameterValue]] = {
 
-    def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
-      nameValues.foldLeft(params) {
-        case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
-        case (completeParams, _) => completeParams
-      }
+    // Start with the complete list of keys that must be found or have default values
+    val allRequiredParamNames = templateParameters.map(_.key).toSet
+    // use existing value for all values in the existing parameter list
+    val existingParametersMap: Map[String, ParameterValue] = existingParameters.map(ep => ep.key -> UseExistingValue).toMap
+    // Convert the full list of specified parameters
+    val specifiedParametersMap: Map[String, ParameterValue] = specifiedParameters.mapValues(SpecifiedValue.apply)
+    // Get the deployment parameters that are present in the template
+    val deployParametersInTemplate: Map[String, ParameterValue] = deployParameters
+      .collect { case (key, value) if allRequiredParamNames.contains(key) => key -> SpecifiedValue(value) }
+    // Now combine them all together in increasing priority
+    val parametersToProvide = existingParametersMap ++ specifiedParametersMap ++ deployParametersInTemplate
+
+    // Next we need to check we have all the parameters we need and none that we don't recognise
+
+    // Get the parameters that have defaults in the template
+    val parametersWithTemplateDefaults = templateParameters.filter(_.default).map(_.key).toSet
+    // Compute the set of parameters that we will neither provide nor have default values
+    val missingParams = allRequiredParamNames -- parametersToProvide.keySet -- parametersWithTemplateDefaults
+
+    // And the set of parameters that we think we should provide but don't exist
+    val unknownParams = parametersToProvide.keySet -- allRequiredParamNames
+
+    if (missingParams.nonEmpty) {
+      Left(
+        s"""Missing parameters for ${missingParams.toList.sorted.mkString(", ")}: all new parameters without a
+           |default must be set when creating or updating stacks. Subsequent updates reuse existing parameters
+           |where possible.""".stripMargin)
+    } else if (unknownParams.nonEmpty) {
+      Left(
+        s"""User specified parameters that are not in template: ${unknownParams.toList.sorted.mkString(", ")}.
+           | Ensure that you are not specifying a parameter directly or as an AMI parameter.
+           |""".stripMargin
+      )
+    } else {
+      Right(parametersToProvide)
     }
-
-    val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-    val userAndDefaultParams = requiredParams ++ specifiedParameters.mapValues(SpecifiedValue.apply)
-
-    Right(addParametersIfInTemplate(userAndDefaultParams)(deployParameters.toSeq))
   }
 }
 

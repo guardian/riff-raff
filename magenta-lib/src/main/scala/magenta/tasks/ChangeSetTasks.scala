@@ -34,7 +34,7 @@ class CreateChangeSetTask(
           val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
             .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
-          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters, existingParameters).fold(
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, templateParameters, existingParameters).fold(
             reporter.fail(_),
             identity
           )
