@@ -4,7 +4,7 @@ import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
-import magenta.{Build, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
@@ -12,10 +12,6 @@ import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, Clou
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
-import cats.instances.either._
-import cats.instances.list._
-import cats.syntax.either._
-import cats.syntax.traverse._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
