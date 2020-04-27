@@ -43,7 +43,11 @@ class CreateChangeSetTask(
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")
           reporter.info(s"Change set name: ${stackLookup.changeSetName}")
-          reporter.info(s"Parameters: $awsParameters")
+          val parametersString = awsParameters.map { param =>
+            val v = if (param.usePreviousValue) "PreviousValue" else s"""Value: "${param.parameterValue}""""
+            s"${param.parameterKey} -> $v"
+          }.mkString("; ")
+          reporter.info(s"Parameters: $parametersString")
 
           CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
