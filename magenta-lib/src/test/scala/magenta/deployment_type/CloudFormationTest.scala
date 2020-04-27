@@ -6,14 +6,15 @@ import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
+import magenta.tasks.CloudFormationParameters.{InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
-import org.scalatest.{FlatSpec, Inside, Matchers}
+import org.scalatest.{EitherValues, FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
 import software.amazon.awssdk.services.s3.S3Client
 
-class CloudFormationTest extends FlatSpec with Matchers with Inside {
+class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
@@ -104,12 +105,13 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   import CloudFormationParameters.combineParameters
 
-  "CloudFormationParameters" should "substitute stack, stage and build ID parameters" in {
+  "CloudFormationParameters combineParameters" should "substitute stack, stage and build ID parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
+      List(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
-    combined should be(Map(
+    combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "Stack" -> SpecifiedValue("cfn"),
       "Stage" -> SpecifiedValue("PROD"),
@@ -119,10 +121,11 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
-      Seq(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
-    val combined = combineParameters(Stack("cfn"), PROD, Build("projectX", "543"), templateParameters, Map("param1" -> "value1"))
+      List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
 
-    combined should be(Map(
+    combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
       "param3" -> UseExistingValue,
       "Stage" -> SpecifiedValue(PROD.name)
@@ -131,20 +134,18 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside {
 
   import CloudFormationParameters.convertParameters
 
-  it should "convert specified parameter" in {
-    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE, reporter) should
-      contain only Parameter.builder().parameterKey("key").parameterValue("value").build()
+  "CloudFormationParameters convertParameters" should "convert specified parameter" in {
+    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE).right.value should
+      contain only InputParameter("key", "value")
   }
 
   it should "use existing value" in {
-    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE, reporter) should
-      contain only Parameter.builder().parameterKey("key").usePreviousValue(true).build()
+    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE).right.value should
+      contain only InputParameter.usePreviousValue("key")
   }
 
   it should "fail if using existing value on stack creation" in {
-    intercept[FailException] {
-      convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE, reporter)
-    }
+    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE).left.value
   }
 
   "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {

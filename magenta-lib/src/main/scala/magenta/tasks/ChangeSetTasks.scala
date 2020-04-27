@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import magenta.artifact.S3Path
+import magenta.tasks.CloudFormationParameters.TemplateParameter
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
@@ -27,17 +28,28 @@ class CreateChangeSetTask(
             reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
           )
 
-          val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
+          val (stackName, changeSetType, existingParameters) = stackLookup.lookup(reporter, cfnClient)
 
           val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
-          val parameters = unresolvedParameters.resolve(template, accountNumber, changeSetType, reporter, cfnClient)
+          val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
+            .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
+
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters, existingParameters).fold(
+            reporter.fail(_),
+            identity
+          )
+          val awsParameters = CloudFormationParameters.convertInputParametersToAws(parameters)
 
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")
           reporter.info(s"Change set name: ${stackLookup.changeSetName}")
-          reporter.info(s"Parameters: $parameters")
+          val parametersString = awsParameters.map { param =>
+            val v = if (param.usePreviousValue) "PreviousValue" else s"""Value: "${param.parameterValue}""""
+            s"${param.parameterKey} -> $v"
+          }.mkString("; ")
+          reporter.info(s"Parameters: $parametersString")
 
-          CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, parameters, cfnClient)
+          CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
       }
     }
@@ -55,7 +67,7 @@ class CheckChangeSetCreatedTask(
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     check(reporter, stopFlag) {
       CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-        val (stackName, changeSetType) = stackLookup.lookup(reporter, cfnClient)
+        val (stackName, changeSetType, _) = stackLookup.lookup(reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
 
         val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
@@ -96,7 +108,7 @@ class ExecuteChangeSetTask(
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
@@ -124,7 +136,7 @@ class DeleteChangeSetTask(
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
   override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _) = stackLookup.lookup(reporter, cfnClient)
+      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val request = DeleteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()

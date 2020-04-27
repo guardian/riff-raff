@@ -103,8 +103,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
 
     val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
 
-    val unresolvedParameters = new CloudFormationParameters(target.stack, target.parameters.stage,
-      target.parameters.build, target.region, stackTags, userParams, amiParameterMap, amiLookupFn)
+    val unresolvedParameters = new CloudFormationParameters(target, stackTags, userParams, amiParameterMap, amiLookupFn)
 
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
     val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)

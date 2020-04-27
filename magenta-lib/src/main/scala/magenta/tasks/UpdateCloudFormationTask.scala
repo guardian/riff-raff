@@ -3,7 +3,7 @@ package magenta.tasks
 import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
-import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags, TemplateParameter}
+import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
 import magenta.{Build, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
@@ -12,6 +12,10 @@ import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, Clou
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
+import cats.instances.either._
+import cats.instances.list._
+import cats.syntax.either._
+import cats.syntax.traverse._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -58,17 +62,19 @@ trait RetryCloudFormationUpdate {
 
 class CloudFormationStackMetadata(val strategy: CloudFormationStackLookupStrategy, val changeSetName: String, createStackIfAbsent: Boolean) {
   import CloudFormationStackMetadata._
+  import CloudFormationParameters.ExistingParameter
 
-  def lookup(reporter: DeployReporter, cfnClient: CloudFormationClient): (String, ChangeSetType) = {
+  def lookup(reporter: DeployReporter, cfnClient: CloudFormationClient): (String, ChangeSetType, List[ExistingParameter]) = {
     val existingStack = strategy match {
       case LookupByName(name) => CloudFormation.describeStack(name, cfnClient)
       case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
     }
 
     val stackName = existingStack.map(_.stackName).getOrElse(getNewStackName(strategy))
+    val stackParameters = existingStack.toList.flatMap(_.parameters.asScala).map(p => ExistingParameter(p.parameterKey, p.parameterValue, Option(p.resolvedValue) ))
     val changeSetType = getChangeSetType(stackName, existingStack.nonEmpty, createStackIfAbsent, reporter)
 
-    (stackName, changeSetType)
+    (stackName, changeSetType, stackParameters)
   }
 }
 
@@ -97,40 +103,74 @@ object CloudFormationStackMetadata {
   }
 }
 
-class CloudFormationParameters(stack: Stack, stage: Stage, build: Build, region: Region,
-                               val stackTags: Option[Map[String, String]], val userParameters: Map[String, String],
-                               val amiParameterMap: Map[CfnParam, TagCriteria],
-                               latestImage: String => String => Map[String,String] => Option[String]) {
-  import CloudFormationParameters._
-
-  def resolve(template: Template, accountNumber: String, changeSetType: ChangeSetType, reporter: DeployReporter, cfnClient: CloudFormationClient): Iterable[Parameter] = {
-    val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala
-      .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
-
-    val resolvedAmiParameters: Map[String, String] = amiParameterMap.flatMap { case (name, tags) =>
-      latestImage(accountNumber)(region.name)(tags).map(name -> _)
-    }
-
-    val combined = combineParameters(stack, stage, build, templateParameters, userParameters ++ resolvedAmiParameters)
-    convertParameters(combined, changeSetType, reporter)
-  }
-}
+case class CloudFormationParameters(target: DeployTarget,
+                                    stackTags: Option[Map[String, String]],
+                                    userParameters: Map[String, String],
+                                    amiParameterMap: Map[CfnParam, TagCriteria],
+                                    latestImage: String => String => Map[String,String] => Option[String])
 
 object CloudFormationParameters {
-  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType, reporter: DeployReporter): Iterable[Parameter] = {
-    parameters map {
+  case class TemplateParameter(key:String, default:Boolean)
+  case class ExistingParameter(key:String, value:String, resolved:Option[String])
+  case class InputParameter(key:String, value:Option[String], usePreviousValue:Boolean)
+  object InputParameter {
+    def apply(key:String, value:String): InputParameter = InputParameter(key, Some(value), usePreviousValue = false)
+    def usePreviousValue(key:String): InputParameter = InputParameter(key, None, usePreviousValue = true)
+    def toAWS(p: InputParameter): Parameter = Parameter.builder().parameterKey(p.key).parameterValue(p.value.orNull).usePreviousValue(p.usePreviousValue).build()
+  }
+
+  def convertInputParametersToAws(params: List[InputParameter]): List[Parameter] = params.map(InputParameter.toAWS)
+
+  def resolve(cfnParameters: CloudFormationParameters,
+              accountNumber: String,
+              changeSetType: ChangeSetType,
+              templateParameters: List[TemplateParameter],
+              existingParameters: List[ExistingParameter]
+             ): Either[String, List[InputParameter]] = {
+
+    val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
+      cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
+    }
+
+    val deploymentParameters = Map(
+      "Stage" -> cfnParameters.target.parameters.stage.name,
+      "Stack" -> cfnParameters.target.stack.name,
+      "BuildId" -> cfnParameters.target.parameters.build.id
+    )
+
+    val combined = combineParameters(
+      deployParameters = deploymentParameters,
+      templateParameters = templateParameters,
+      specifiedParameters = cfnParameters.userParameters ++ resolvedAmiParameters
+    )
+    combined.flatMap(convertParameters(_, changeSetType))
+  }
+
+  def convertParameters(parameters: Map[String, ParameterValue], tpe: ChangeSetType): Either[String, List[InputParameter]] = {
+    parameters.toList.traverse {
       case (k, SpecifiedValue(v)) =>
-        Parameter.builder().parameterKey(k).parameterValue(v).build()
+        Right(InputParameter(k, v))
 
       case (k, UseExistingValue) if tpe == ChangeSetType.CREATE =>
-        reporter.fail(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
+        Left(s"Missing parameter value for parameter $k: all must be specified when creating a stack. Subsequent updates will reuse existing parameter values where possible.")
 
       case (k, UseExistingValue) =>
-        Parameter.builder().parameterKey(k).usePreviousValue(true).build()
+        Right(InputParameter.usePreviousValue(k))
     }
   }
 
-  def combineParameters(stack: Stack, stage: Stage, build: Build, templateParameters: Seq[TemplateParameter], parameters: Map[String, String]): Map[String, ParameterValue] = {
+  /**
+    * @param deployParameters Optional parameter values that can be filled in if the template has matching parameters
+    * @param templateParameters Parameters in the template that will be applied
+    * @param specifiedParameters These are parameters specified by the user (either explicitly or via an AMI lookup) - they MUST be included in the list
+    * @return Set of parameters as they should be provided to the cloudformation template change set
+    */
+  def combineParameters(
+                        deployParameters: Map[String, String],
+                        templateParameters: List[TemplateParameter],
+                        specifiedParameters: Map[String, String]
+                       ): Either[String, Map[String, ParameterValue]] = {
+
     def addParametersIfInTemplate(params: Map[String, ParameterValue])(nameValues: Iterable[(String, String)]): Map[String, ParameterValue] = {
       nameValues.foldLeft(params) {
         case (completeParams, (name, value)) if templateParameters.exists(_.key == name) => completeParams + (name -> SpecifiedValue(value))
@@ -139,15 +179,13 @@ object CloudFormationParameters {
     }
 
     val requiredParams: Map[String, ParameterValue] = templateParameters.filterNot(_.default).map(_.key -> UseExistingValue).toMap
-    val userAndDefaultParams = requiredParams ++ parameters.mapValues(SpecifiedValue.apply)
+    val userAndDefaultParams = requiredParams ++ specifiedParameters.mapValues(SpecifiedValue.apply)
 
-    addParametersIfInTemplate(userAndDefaultParams)(Seq("Stage" -> stage.name, "Stack" -> stack.name, "BuildId" -> build.id))
+    Right(addParametersIfInTemplate(userAndDefaultParams)(deployParameters.toSeq))
   }
 }
 
 object UpdateCloudFormationTask extends Loggable {
-  case class TemplateParameter(key:String, default:Boolean)
-
   sealed trait CloudFormationStackLookupStrategy
   case class LookupByName(cloudFormationStackName: String) extends CloudFormationStackLookupStrategy {
     override def toString = s"called $cloudFormationStackName"
