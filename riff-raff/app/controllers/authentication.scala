@@ -115,7 +115,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
     authorisationForm.bindFromRequest().fold(
       errors => BadRequest(views.html.auth.form(config, menu)(errors)),
       email => {
-        val auth = AuthorisationRecord(email.toLowerCase, request.user.fullName, new DateTime())
+        val auth = AuthorisationRecord(email.toLowerCase.trim, request.user.fullName, new DateTime())
         datastore.setAuthorisation(auth)
         Redirect(routes.Login.authList())
       }
