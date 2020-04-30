@@ -23,6 +23,7 @@ import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.utils.UriEncoding
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
@@ -280,7 +281,11 @@ class DeployController(config: Config,
   }
 
   def getArtifactFile(key: String) = AuthAction { implicit request =>
-    val getObjectRequest = GetObjectRequest.builder().bucket(config.artifact.aws.bucketName).key(key).build()
+    val getObjectRequest = GetObjectRequest.builder()
+      .bucket(config.artifact.aws.bucketName)
+      .key(UriEncoding.decodePathSegment(key, "utf-8"))
+      .build()
+    
     val stream = config.artifact.aws.client.getObject(getObjectRequest)
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
