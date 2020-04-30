@@ -1,6 +1,6 @@
 package controllers
 
-import java.net.URLEncoder
+import java.net.{URLDecoder, URLEncoder}
 import java.util.UUID
 
 import akka.stream.scaladsl.{Source, StreamConverters}
@@ -283,9 +283,9 @@ class DeployController(config: Config,
   def getArtifactFile(key: String) = AuthAction { implicit request =>
     val getObjectRequest = GetObjectRequest.builder()
       .bucket(config.artifact.aws.bucketName)
-      .key(UriEncoding.decodePathSegment(key, "utf-8"))
+      .key(URLDecoder.decode(key, "utf-8"))
       .build()
-    
+
     val stream = config.artifact.aws.client.getObject(getObjectRequest)
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
