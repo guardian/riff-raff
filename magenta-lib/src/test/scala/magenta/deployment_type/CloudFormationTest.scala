@@ -6,7 +6,7 @@ import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
-import magenta.tasks.CloudFormationParameters.{InputParameter, TemplateParameter}
+import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{EitherValues, FlatSpec, Inside, Matchers}
@@ -106,10 +106,10 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   import CloudFormationParameters.combineParameters
 
   "CloudFormationParameters combineParameters" should "substitute stack, stage and build ID parameters" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
     val templateParameters =
       List(TemplateParameter("param1", default = false), TemplateParameter("Stack", default = false), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
-    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
-    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
+    val combined = combineParameters(deployParameters, Nil, templateParameters, Map("param1" -> "value1"))
 
     combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -119,11 +119,118 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
       ))
   }
 
+  it should "fail when params with no default are found when creating a new stack" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val templateParameters =
+      List(TemplateParameter("param1", default = false), TemplateParameter("param2", default = false))
+    val combined = combineParameters(deployParameters, Nil, templateParameters, Map.empty)
+
+    combined.left.value should startWith("Missing parameters for param1, param2:")
+  }
+
+  it should "use existing values instead of defaults when updating a stack with no new parameters" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "monkey", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = true), TemplateParameter("param2", default = true))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map.empty)
+
+    combined.right.value should be(Map(
+      "param1" -> UseExistingValue,
+      "param2" -> UseExistingValue,
+    ))
+  }
+
+  it should "allow default values when updating a stack with new parameters" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "cheese", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = true), TemplateParameter("param2", default = false), TemplateParameter("param3", default = true))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map.empty)
+
+    combined.right.value should be(Map(
+      "param1" -> UseExistingValue,
+      "param2" -> UseExistingValue,
+    ))
+  }
+
+  it should "support new parameters with no default when the user directly supplies values" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "cheese", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = true), TemplateParameter("param2", default = false), TemplateParameter("param3", default = false))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map("param3" -> "user-provided"))
+
+    combined.right.value should be(Map(
+      "param1" -> UseExistingValue,
+      "param2" -> UseExistingValue,
+      "param3" -> SpecifiedValue("user-provided")
+    ))
+  }
+
+  it should "always specify parameters when the user directly supplies values" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "cheese", None), ExistingParameter("param3", "something-else", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = true), TemplateParameter("param2", default = false), TemplateParameter("param3", default = false))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map("param3" -> "user-provided"))
+
+    combined.right.value should be(Map(
+      "param1" -> UseExistingValue,
+      "param2" -> UseExistingValue,
+      "param3" -> SpecifiedValue("user-provided")
+    ))
+  }
+
+  it should "always specify parameters when the template contains deploy parameters" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("Stack", "cfn", None), ExistingParameter("Stage", "CODE", None), ExistingParameter("BuildId", "540", None))
+    val templateParameters =
+      List(TemplateParameter("Stack", default = true), TemplateParameter("Stage", default = false), TemplateParameter("BuildId", default = false))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map.empty)
+
+    combined.right.value should be(Map(
+      "Stack" -> SpecifiedValue("cfn"),
+      "Stage" -> SpecifiedValue("PROD"),
+      "BuildId" -> SpecifiedValue("543")
+    ))
+  }
+
+  it should "fail when there are new parameters in the template that don't have default values" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "monkey", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = false), TemplateParameter("param2", default = false), TemplateParameter("param3", default = false))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map.empty)
+
+    combined.left.value should startWith("Missing parameters for param3:")
+  }
+
+  it should "fail when the user provides parameters that are not in the template" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "monkey", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = false), TemplateParameter("param2", default = false))
+    val userParameters = Map("missing-param" -> "useless-value")
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, userParameters)
+
+    combined.left.value should startWith("User specified parameters that are not in template: missing-param")
+  }
+
   it should "default required parameters to use existing parameters" in {
     val templateParameters =
       List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = false))
+    val existingParameters =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param3", "monkey", None), ExistingParameter("Stage", "BOB", None))
     val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
-    val combined = combineParameters(deployParameters, templateParameters, Map("param1" -> "value1"))
+    val combined = combineParameters(deployParameters, existingParameters, templateParameters, Map("param1" -> "value1"))
 
     combined.right.value should be(Map(
       "param1" -> SpecifiedValue("value1"),
@@ -135,17 +242,87 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   import CloudFormationParameters.convertParameters
 
   "CloudFormationParameters convertParameters" should "convert specified parameter" in {
-    convertParameters(Map("key" -> SpecifiedValue("value")), ChangeSetType.UPDATE).right.value should
+    convertParameters(Map("key" -> SpecifiedValue("value"))) should
       contain only InputParameter("key", "value")
   }
 
-  it should "use existing value" in {
-    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.UPDATE).right.value should
+  it should "convert existing values" in {
+    convertParameters(Map("key" -> UseExistingValue)) should
       contain only InputParameter.usePreviousValue("key")
   }
 
-  it should "fail if using existing value on stack creation" in {
-    convertParameters(Map("key" -> UseExistingValue), ChangeSetType.CREATE).left.value
+  import CloudFormationParameters.resolve
+
+  "CloudFormationParameters resolve" should "use default params when creating a new stack" in {
+    val cfp = new CloudFormationParameters(
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
+    )
+
+    val params = resolve(cfp, "0123456789",
+      List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = true), TemplateParameter("Stage", default = true)),
+      Nil
+    )
+
+    params.right.value shouldBe List(InputParameter("Stage","PROD"))
+  }
+
+  it should "use existing values instead of defaults when updating a stack with no new parameters" in {
+    val cfp = new CloudFormationParameters(
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
+    )
+
+    val params = resolve(cfp, "0123456789",
+      List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = true)),
+      List(ExistingParameter("param1", "value1", None), ExistingParameter("param3", "value3", None), ExistingParameter("Stage", "BOB", None))
+    )
+
+    params.right.value should contain theSameElementsAs(List(InputParameter("Stage", "PROD"), InputParameter.usePreviousValue("param3"), InputParameter.usePreviousValue("param1")))
+  }
+
+  it should "allow default values when updating a stack with new parameters" in {
+    val cfp = new CloudFormationParameters(
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
+    )
+
+    val params = resolve(cfp, "0123456789",
+      List(TemplateParameter("param1", default = true), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = true)),
+      List(ExistingParameter("param3", "value3", None), ExistingParameter("Stage", "PROD", None))
+    )
+
+    params.right.value should contain theSameElementsAs(List(InputParameter("Stage", "PROD"), InputParameter.usePreviousValue("param3")))
+  }
+
+  it should "support new parameters with no default when the user directly supplies values" in {
+    val userParameters = Map("param1" -> "user-value")
+
+    val cfp = new CloudFormationParameters(
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      None, userParameters, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
+    )
+
+    val params = resolve(cfp, "0123456789",
+      List(TemplateParameter("param1", default = false), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = true)),
+      List(ExistingParameter("param3", "value3", None), ExistingParameter("Stage", "PROD", None))
+    )
+
+    params.right.value should contain theSameElementsAs(List(InputParameter("Stage", "PROD"), InputParameter.usePreviousValue("param3"), InputParameter("param1", "user-value")))
+  }
+
+  it should "fail when there are new parameters in the template that don't have default values" in {
+    val cfp = new CloudFormationParameters(
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
+    )
+
+    val params = resolve(cfp, "0123456789",
+      List(TemplateParameter("param1", default = false), TemplateParameter("param3", default = false), TemplateParameter("Stage", default = true)),
+      List(ExistingParameter("param3", "value3", None), ExistingParameter("Stage", "PROD", None))
+    )
+
+    params.left.value should startWith("Missing parameters for param1:")
   }
 
   "CloudFormationStackLookupStrategy" should "correctly create a LookupByName from deploy parameters" in {

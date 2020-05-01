@@ -1,7 +1,7 @@
 package magenta.tasks
 
 import magenta.artifact.S3Path
-import magenta.tasks.CloudFormationParameters.TemplateParameter
+import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
@@ -34,7 +34,7 @@ class CreateChangeSetTask(
           val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
             .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
-          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, changeSetType, templateParameters, existingParameters).fold(
+          val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, templateParameters, existingParameters).fold(
             reporter.fail(_),
             identity
           )
@@ -43,15 +43,35 @@ class CreateChangeSetTask(
           reporter.info("Creating Cloudformation change set")
           reporter.info(s"Stack name: $stackName")
           reporter.info(s"Change set name: ${stackLookup.changeSetName}")
+
           val parametersString = awsParameters.map { param =>
             val v = if (param.usePreviousValue) "PreviousValue" else s"""Value: "${param.parameterValue}""""
             s"${param.parameterKey} -> $v"
           }.mkString("; ")
           reporter.info(s"Parameters: $parametersString")
 
+          changedParamValues(existingParameters, parameters).foreach { change =>
+            reporter.info(change)
+          }
+
           CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
       }
+    }
+  }
+
+  def changedParamValues(existingParams: List[ExistingParameter], newParams: List[InputParameter]): List[String] = {
+    val keys = (existingParams.map(_.key) ::: newParams.map(_.key)).sorted.distinct
+    val pairs = keys.map { key =>
+      (key, existingParams.find(_.key == key), newParams.find(_.key == key))
+    }
+    pairs.flatMap {
+      case (key, Some(_), None) => Some(s"Parameter $key has been removed")
+      case (key, None, Some(_)) => Some(s"Parameter $key has been added")
+      case (key, Some(ExistingParameter(_, present, _)), Some(InputParameter(_, Some(future), false)))
+        if future != present && present != "****" =>
+          Some(s"Parameter $key has changed from $present to $future")
+      case _ => None
     }
   }
 
