@@ -239,6 +239,20 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     ))
   }
 
+  it should "allow parameters to be removed from the template" in {
+    val deployParameters = Map("Stack" -> "cfn", "Stage" -> "PROD", "BuildId" -> "543")
+    val existingParameter =
+      List(ExistingParameter("param1", "monkey", None), ExistingParameter("param2", "monkey", None), ExistingParameter("param3", "old-param", None))
+    val templateParameters =
+      List(TemplateParameter("param1", default = false), TemplateParameter("param2", default = false))
+    val combined = combineParameters(deployParameters, existingParameter, templateParameters, Map.empty)
+
+    combined.right.value shouldBe Map(
+      "param1" -> UseExistingValue,
+      "param2" -> UseExistingValue,
+    )
+  }
+
   import CloudFormationParameters.convertParameters
 
   "CloudFormationParameters convertParameters" should "convert specified parameter" in {

@@ -165,8 +165,10 @@ object CloudFormationParameters {
 
     // Start with the complete list of keys that must be found or have default values
     val allRequiredParamNames = templateParameters.map(_.key).toSet
-    // use existing value for all values in the existing parameter list
-    val existingParametersMap: Map[String, ParameterValue] = existingParameters.map(ep => ep.key -> UseExistingValue).toMap
+    // use existing value for all template values in the existing parameter list
+    val existingParametersMap: Map[String, ParameterValue] = existingParameters
+      .collect { case ExistingParameter(key, _, _) if allRequiredParamNames.contains(key) => key -> UseExistingValue }
+      .toMap
     // Convert the full list of specified parameters
     val specifiedParametersMap: Map[String, ParameterValue] = specifiedParameters.mapValues(SpecifiedValue.apply)
     // Get the deployment parameters that are present in the template
