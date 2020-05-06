@@ -41,7 +41,7 @@ class TargetController(config: Config,
     val maybeTargetId = targetDynamoRepository.get(targetKey, projectName)
     maybeTargetId.map { targetId =>
       // find recent deploys of this project / stage
-      val filter = DeployFilter(projectName = Some(s"^${targetId.projectName}$$"), stage = Some(stage))
+      val filter = DeployFilter(projectName = Some(targetId.projectName), stage = Some(stage))
       val records = deployments.getDeploys(Some(filter), PaginationView(pageSize = Some(20))).logAndSquashException(Nil).reverse
       Ok(views.html.deployTarget.selectVersion(config, menu)(targetId, stage, records, request))
     }.getOrElse(NotFound(s"No target found for $targetKey and $projectName"))
