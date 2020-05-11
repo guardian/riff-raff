@@ -118,7 +118,7 @@ object Lambda {
       .s3Key(s3Key)
       .build()
 
-  def findFunctionByTags(tags: Map[String, String], reporter: DeployReporter, client: LambdaClient): Option[FunctionConfiguration] = {
+  def findFunctionsByTags(tags: Map[String, String], reporter: DeployReporter, client: LambdaClient): List[FunctionConfiguration] = {
 
     def tagsMatch(function: FunctionConfiguration): Boolean = {
       val tagResponse = client.listTags(ListTagsRequest.builder().resource(function.functionArn).build())
@@ -127,17 +127,7 @@ object Lambda {
     }
 
     val response = client.listFunctionsPaginator()
-    val matchingConfigurations = response.functions().asScala.filter(tagsMatch).toList
-
-    matchingConfigurations match {
-      case functionConfiguration :: Nil =>
-        reporter.verbose(s"Found function ${functionConfiguration.functionName} (${functionConfiguration.functionArn})")
-        Some(functionConfiguration)
-      case Nil =>
-        None
-      case multiple =>
-        reporter.fail(s"More than one function matched for $tags (matched ${multiple.map(_.functionName).mkString(", ")}). Failing fast since this may be non-deterministic.")
-    }
+    response.functions().asScala.filter(tagsMatch).toList
   }
 }
 

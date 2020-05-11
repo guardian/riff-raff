@@ -220,18 +220,23 @@ case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: Str
 
   override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
     Lambda.withLambdaClient(keyRing, region){ client =>
-      val functionName: String = function match {
-        case LambdaFunctionName(name) => name
+      val functionNames: List[String] = function match {
+        case LambdaFunctionName(name) => List(name)
         case LambdaFunctionTags(tags) =>
-          val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
-          functionConfig.map(_.functionName).getOrElse{
+          val functionConfigs = Lambda.findFunctionsByTags(tags, reporter, client)
+
+          if(functionConfigs.isEmpty) {
             reporter.fail(s"Failed to find any function with tags $tags")
           }
+
+          functionConfigs.map(_.functionName())
       }
 
-      reporter.verbose(s"Starting update $function Lambda")
-      client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-      reporter.verbose(s"Finished update $function Lambda")
+      functionNames.foreach { functionName =>
+        reporter.verbose(s"Starting update $functionName")
+        client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
+        reporter.verbose(s"Finished update $functionName")
+      }
     }
   }
 
