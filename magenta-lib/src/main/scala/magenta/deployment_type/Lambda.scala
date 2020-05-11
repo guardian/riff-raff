@@ -31,7 +31,7 @@ trait Lambda extends DeploymentType with BucketParameters {
   )
 
   val lookupByTags = Param[Boolean]("lookupByTags",
-    """When true, this will lookup the function to deploy to by using the Stack, Stage and App tags on a function.
+    """When true, this will lookup the functions to deploy to by using the Stack, Stage and App tags.
       |The values looked up come from the `stacks` and `app` in the riff-raff.yaml and the stage deployed to.
     """.stripMargin
   ).default(false)
