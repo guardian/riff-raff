@@ -526,18 +526,20 @@ object AWS extends Loggable {
   }
 
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
-    logger.info(s"keychain debug ${keyRing.apiCredentials.get("aws-roles")}")
-    val envProvider = () => envCredentials
     val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").flatMap { credentials =>
       getRoleCredentialsProvider(credentials.id, keyRing.riffRaffCredentialsProvider)
     }
     val credentialProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
         StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
     }
-    //TODO: reinsert credentialProvider into the Seq below
-    val allProviders: Seq[AwsCredentialsProvider] = Seq(roleProvider).flatten
-
-    AwsCredentialsProviderChain.builder().credentialsProviders(allProviders: _*).build()
+    val Provider: Option[AwsCredentialsProvider] = if (roleProvider.isDefined) {
+      logger.info("using role provider")
+      roleProvider
+    } else {
+      logger.info("using static credentials provider")
+      credentialProvider
+    }
+    AwsCredentialsProviderChain.builder().credentialsProviders(Provider.get, () => envCredentials).build()
   }
 
   private lazy val numberOfRetries = 20

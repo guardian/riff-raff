@@ -24,14 +24,10 @@ object Image {
 class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProvider) extends Lookup with Logging {
 
   def keyRing(stage: Stage, app: App, stack: Stack): KeyRing = {
-    log.info(s"fetching keyring for stage: $stage, app: $app, stack: $stack")
-
     val KeyPattern = """credentials:(.*)""".r
-    log.info(s"data.keys: ${data.keys}")
     val apiCredentials = data.keys flatMap {
       case key@KeyPattern(service) =>
         data.datum(key, app, stage, stack).flatMap { data =>
-          log.info(s"data: $data")
           if(service == "aws-roles") {
             Some(service -> ApiCredentials(service, data.value, " ", data.comment))
           } else {
@@ -41,7 +37,6 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
         }
       case _ => None
     }
-    println(apiCredentials)
     KeyRing(apiCredentials.distinct.toMap, Some(conf.awsCredentials.credentialsProvider))
   }
 
