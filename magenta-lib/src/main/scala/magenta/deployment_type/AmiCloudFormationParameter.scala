@@ -49,7 +49,6 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
   ){ (pkg, resources, target) => {
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       val reporter = resources.reporter
-
       val amiParameterMap: Map[CfnParam, TagCriteria] = getAmiParameterMap(pkg, target, reporter)
       val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
 

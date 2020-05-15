@@ -32,10 +32,13 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
       case key@KeyPattern(service) =>
         data.datum(key, app, stage, stack).flatMap { data =>
           log.info(s"data: $data")
-          // TODO: refactor map to case/match statement
-          secretProvider.lookup(service, data.value).map { secret =>
-            service -> ApiCredentials(service, data.value, secret, data.comment, data.role)}
+          if(service == "aws-roles") {
+            Some(service -> ApiCredentials(service, data.value, " ", data.comment))
+          } else {
+            secretProvider.lookup(service, data.value).map { secret =>
+              service -> ApiCredentials(service, data.value, secret, data.comment)}
           }
+        }
       case _ => None
     }
     println(apiCredentials)

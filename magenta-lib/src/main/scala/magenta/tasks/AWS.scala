@@ -32,7 +32,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{Random, Try}
 import magenta.withResource
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
@@ -512,7 +512,9 @@ object AWS extends Loggable {
       rcp <- riffRaffCredentialsProvider
     } yield {
       logger.info(s"building sts client for role $role")
+      val randomString = new Random().alphanumeric.take(10).mkString
       val req: AssumeRoleRequest = AssumeRoleRequest.builder
+        .roleSessionName(s"riffraff-session-$randomString")
         .roleArn(role)
         .build()
       val stsClient = StsClient.builder().credentialsProvider(rcp).build()
@@ -526,11 +528,14 @@ object AWS extends Loggable {
   def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
     logger.info(s"keychain debug ${keyRing.apiCredentials.get("aws-roles")}")
     val envProvider = () => envCredentials
-    val otherProviders: Option[Seq[Option[AwsCredentialsProvider]]] = keyRing.apiCredentials.get("aws-roles").map { credentials =>
-      Seq(getRoleCredentialsProvider(credentials.id, keyRing.riffRaffCredentialsProvider),
-        Some(StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))))
+    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").flatMap { credentials =>
+      getRoleCredentialsProvider(credentials.id, keyRing.riffRaffCredentialsProvider)
     }
-    val allProviders: Seq[AwsCredentialsProvider] = otherProviders.getOrElse(Seq()).flatten
+    val credentialProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
+        StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
+    }
+    //TODO: reinsert credentialProvider into the Seq below
+    val allProviders: Seq[AwsCredentialsProvider] = Seq(roleProvider).flatten
 
     AwsCredentialsProviderChain.builder().credentialsProviders(allProviders: _*).build()
   }
