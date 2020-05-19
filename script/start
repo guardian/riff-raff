@@ -2,5 +2,18 @@
 
 set -e
 
+for arg in "$@"; do
+  if [ "$arg" == "--debug" ]; then
+    IS_DEBUG=true
+    shift
+  fi
+done
+
 docker-compose up -d
-./sbt "project riffraff" "run"
+
+if [ "$IS_DEBUG" == true ] ; then
+  ./sbt-debug "project riffraff" "run"
+else
+  ./sbt "project riffraff" "run"
+fi
+

@@ -58,8 +58,8 @@ How do I run Riff-Raff locally if I want to hack on it?
 Assuming you have a reasonably recent version of Java installed, 
 
  * Create a basic configuration file at ~/.gu/riff-raff.conf (S3 and postgres config is probably the minimum)
- * Run `./script/start` from the project root
- * visit http://localhost:9000/
+ * Run `./script/start` from the project root (add `--debug` to attach a remote debugger on port 9999)
+ * Visit http://localhost:9000/
  * Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/properties 
 
 
