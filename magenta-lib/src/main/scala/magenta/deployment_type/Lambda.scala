@@ -127,7 +127,8 @@ trait Lambda extends DeploymentType with BucketParameters {
       S3Upload(
         lambda.region,
         s3Bucket,
-        Seq(S3Path(pkg.s3Package, lambda.fileName) -> s3Key)
+        Seq(S3Path(pkg.s3Package, lambda.fileName) -> s3Key),
+        resources
       )
     }.distinct
   }

@@ -54,9 +54,9 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val app = App("app")
 
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), deploymentTypes)
-
-    AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should matchPattern {
-      case List(S3Upload(_,_,_,_,_,false,_)) =>
+    val resource = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
+    AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, resource, DeployTarget(parameters(), stack, region)) should matchPattern {
+      case List(S3Upload(_,_,_,resource,_,_,false,_)) =>
     }
   }
 

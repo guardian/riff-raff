@@ -49,7 +49,8 @@ object SelfDeploy extends DeploymentType {
       S3Upload(
         target.region,
         bucket(pkg, target, reporter),
-        paths = Seq(pkg.s3Package -> prefix)
+        paths = Seq(pkg.s3Package -> prefix),
+        resources
       )
     )
   }

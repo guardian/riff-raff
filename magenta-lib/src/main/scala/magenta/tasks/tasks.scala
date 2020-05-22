@@ -21,11 +21,12 @@ case class S3Upload(
   region: Region,
   bucket: String,
   paths: Seq[(S3Location, String)],
+  resources: DeploymentResources,
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
-  detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing, resources: DeploymentResources,
+  detailedLoggingThreshold: Int = 10,
+)(implicit val keyRing: KeyRing,
   withClientFactory: (KeyRing, Region, ClientOverrideConfiguration, DeploymentResources) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {

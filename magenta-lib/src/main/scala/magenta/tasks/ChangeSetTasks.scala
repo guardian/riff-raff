@@ -3,7 +3,7 @@ package magenta.tasks
 import magenta.artifact.S3Path
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
-import magenta.{DeployReporter, KeyRing, Region}
+import magenta.{DeployReporter, DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import software.amazon.awssdk.services.s3.S3Client
@@ -19,43 +19,43 @@ class CreateChangeSetTask(
                            val unresolvedParameters: CloudFormationParameters
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean, stsClient: StsClient) = if (!stopFlag) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean ) = if (!stopFlag) {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      S3.withS3client(keyRing, region, stsClient = stsClient) { s3Client =>
+      S3.withS3client(keyRing, region, resources = resources) { s3Client =>
         STS.withSTSclient(keyRing, region) { stsClient =>
           val accountNumber = STS.getAccountNumber(stsClient)
 
           val templateString = templatePath.fetchContentAsString.right.getOrElse(
-            reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
+            resources.reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
           )
 
-          val (stackName, changeSetType, existingParameters) = stackLookup.lookup(reporter, cfnClient)
+          val (stackName, changeSetType, existingParameters) = stackLookup.lookup(resources.reporter, cfnClient)
 
-          val template = processTemplate(stackName, templateString, s3Client, stsClient, region, reporter)
+          val template = processTemplate(stackName, templateString, s3Client, stsClient, region, resources.reporter)
           val templateParameters = CloudFormation.validateTemplate(template, cfnClient).parameters.asScala.toList
             .map(tp => TemplateParameter(tp.parameterKey, Option(tp.defaultValue).isDefined))
 
           val parameters = CloudFormationParameters.resolve(unresolvedParameters, accountNumber, templateParameters, existingParameters).fold(
-            reporter.fail(_),
+            resources.reporter.fail(_),
             identity
           )
           val awsParameters = CloudFormationParameters.convertInputParametersToAws(parameters)
 
-          reporter.info("Creating Cloudformation change set")
-          reporter.info(s"Stack name: $stackName")
-          reporter.info(s"Change set name: ${stackLookup.changeSetName}")
+          resources.reporter.info("Creating Cloudformation change set")
+          resources.reporter.info(s"Stack name: $stackName")
+          resources.reporter.info(s"Change set name: ${stackLookup.changeSetName}")
 
           val parametersString = awsParameters.map { param =>
             val v = if (param.usePreviousValue) "PreviousValue" else s"""Value: "${param.parameterValue}""""
             s"${param.parameterKey} -> $v"
           }.mkString("; ")
-          reporter.info(s"Parameters: $parametersString")
+          resources.reporter.info(s"Parameters: $parametersString")
 
           changedParamValues(existingParameters, parameters).foreach { change =>
-            reporter.info(change)
+            resources.reporter.info(change)
           }
 
-          CloudFormation.createChangeSet(reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
+          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
       }
     }

@@ -1,6 +1,6 @@
 package magenta.graph
 
-import magenta.{Host, KeyRing, Region}
+import magenta.{DeploymentResources, Host, KeyRing, Region}
 import magenta.tasks.{ChangeSwitch, S3Upload, SayHello}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.mockito.MockitoSugar
@@ -20,7 +20,7 @@ class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   val threeSimpleTasks = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq(), mock[DeploymentResources]),
     SayHello(Host("testHost", app1, CODE.name, stack.name)),
     ChangeSwitch(Host("testHost", app1, CODE.name, stack.name), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )

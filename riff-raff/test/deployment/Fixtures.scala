@@ -4,10 +4,11 @@ import java.util.UUID
 
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.tasks._
-import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, Host, KeyRing, Region, Stage}
+import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, DeploymentResources, Host, KeyRing, Region, Stage}
 import org.joda.time.DateTime
 import org.scalatest.mockito.MockitoSugar
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 object Fixtures extends MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -16,13 +17,13 @@ object Fixtures extends MockitoSugar {
   private val host = Host("testHost", App("testApp"), "CODE", "testStack")
 
   val threeSimpleTasks: List[Task] = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq(),  mock[DeploymentResources]),
     SayHello(host),
     ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
   val twoTasks = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
+    S3Upload(Region("eu-west-1"), "test-bucket", mock[DeploymentResources]),
     ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 

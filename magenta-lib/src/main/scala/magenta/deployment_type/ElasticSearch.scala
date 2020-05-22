@@ -65,6 +65,7 @@ object ElasticSearch extends DeploymentType {
         target.region,
         bucket(pkg, target, reporter),
         Seq(pkg.s3Package -> prefix),
+        resources,
         publicReadAcl = publicReadAcl(pkg, target, reporter)
       )
     )

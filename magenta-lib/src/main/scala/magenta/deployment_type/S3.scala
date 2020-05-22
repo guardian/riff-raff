@@ -138,6 +138,7 @@ object S3 extends DeploymentType {
           target.region,
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
+          resources,
           cacheControlPatterns = cacheControl(pkg, target, reporter),
           extensionToMimeType = mimeTypes(pkg, target, reporter),
           publicReadAcl = publicReadAcl(pkg, target, reporter)

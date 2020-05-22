@@ -40,6 +40,7 @@ class DeployGroupRunner(
   val id = record.uuid
 
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+  val rootResources = DeploymentResources(rootReporter, prismLookup, config.artifact.aws.client, config.credentials.stsClient)
   var rootContextClosed = false
 
   var deployContext: Option[DeployContext] = None
@@ -222,7 +223,7 @@ class DeployGroupRunner(
           val actorName = nextActorName()
           log.debug(s"$id:Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
-          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
+          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootResources, new DateTime())
           markExecuting(tasks)
         }
       }
