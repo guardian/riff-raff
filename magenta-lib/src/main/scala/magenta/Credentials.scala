@@ -3,7 +3,7 @@ package magenta
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 
 
-case class KeyRing(apiCredentials: Map[String, ApiCredentials] = Map.empty, riffRaffCredentialsProvider: Option[AwsCredentialsProvider] = None) {
+case class KeyRing(apiCredentials: Map[String, ApiCredentials] = Map.empty) {
   override def toString = apiCredentials.values.toList.mkString(", ")
 }
 

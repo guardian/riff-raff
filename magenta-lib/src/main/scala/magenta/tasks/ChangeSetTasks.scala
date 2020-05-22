@@ -20,9 +20,9 @@ class CreateChangeSetTask(
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean ) = if (!stopFlag) {
-    CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       S3.withS3client(keyRing, region, resources = resources) { s3Client =>
-        STS.withSTSclient(keyRing, region) { stsClient =>
+        STS.withSTSclient(keyRing, region, resources) { stsClient =>
           val accountNumber = STS.getAccountNumber(stsClient)
 
           val templateString = templatePath.fetchContentAsString.right.getOrElse(
@@ -85,16 +85,16 @@ class CheckChangeSetCreatedTask(
                                  override val duration: Long
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task with RepeatedPollingCheck {
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    check(reporter, stopFlag) {
-      CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-        val (stackName, changeSetType, _) = stackLookup.lookup(reporter, cfnClient)
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    check(resources.reporter, stopFlag) {
+      CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+        val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
 
         val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
         val response = cfnClient.describeChangeSet(request)
 
-        shouldStopWaiting(changeSetType, response.status.toString, response.statusReason, response.changes.asScala, reporter)
+        shouldStopWaiting(changeSetType, response.status.toString, response.statusReason, response.changes.asScala, resources.reporter)
       }
     }
   }
@@ -127,19 +127,19 @@ class ExecuteChangeSetTask(
                             region: Region,
                             stackLookup: CloudFormationStackMetadata,
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
       val describeResponse = cfnClient.describeChangeSet(describeRequest)
 
       if (describeResponse.changes.isEmpty) {
-        reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
+        resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
       } else {
         describeResponse.changes.asScala.foreach { change =>
-          reporter.verbose(s"${change.`type`} - ${change.resourceChange}")
+          resources.reporter.verbose(s"${change.`type`} - ${change.resourceChange}")
         }
 
         val request = ExecuteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
@@ -155,9 +155,9 @@ class DeleteChangeSetTask(
                            region: Region,
                            stackLookup: CloudFormationStackMetadata,
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(reporter, cfnClient)
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val request = DeleteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()

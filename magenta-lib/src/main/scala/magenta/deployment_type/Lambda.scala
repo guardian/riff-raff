@@ -2,7 +2,7 @@ package magenta.deployment_type
 
 import magenta.artifact.S3Path
 import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack}
+import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
@@ -109,7 +109,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName)).mkString("/")
   }
 
-  def withSsm[T](keyRing: KeyRing, region: Region): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region)
+  def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
 
   val uploadLambda = Action("uploadLambda",
     """
@@ -120,7 +120,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
       val s3Bucket = S3Tasks.getBucketName(
         lambda.s3Bucket,
-        withSsm(keyRing, target.region),
+        withSsm(keyRing, target.region, resources),
         resources.reporter
       )
       val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
@@ -153,7 +153,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         val s3Bucket = S3Tasks.getBucketName(
           lambda.s3Bucket,
-          withSsm(keyRing, target.region),
+          withSsm(keyRing, target.region, resources),
           resources.reporter
         )
         val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)

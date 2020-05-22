@@ -1,5 +1,7 @@
 package magenta
 
+import java.util.UUID
+
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.regions.{Region => AWSRegion}
 import magenta.input._
@@ -58,6 +60,13 @@ case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifac
     keyring
   }
 }
+
+case class StsDeploymentResources(deployId: UUID, stsClient: StsClient)
+object StsDeploymentResources {
+  def fromDeploymentResources(resources: DeploymentResources): StsDeploymentResources =
+    StsDeploymentResources(resources.reporter.messageContext.deployId, resources.stsClient)
+}
+
 
 case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Region)
 

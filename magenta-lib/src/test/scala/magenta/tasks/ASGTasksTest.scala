@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetD
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  val resources = mock[DeploymentResources].copy(reporter = reporter)
   val deploymentTypes: Seq[StubDeploymentType] = Seq(stubDeploymentType(name = "testDeploymentType", actionNames = Seq("testAction")))
 
   it should "double the size of the autoscaling group" in {
@@ -29,7 +30,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val task = DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
-    task.execute(asg, reporter, stopFlag = false, asgClientMock)
+    task.execute(asg, resources, stopFlag = false, asgClientMock)
 
     verify(asgClientMock).setDesiredCapacity(
       SetDesiredCapacityRequest.builder().autoScalingGroupName("test").desiredCapacity(6).build()
@@ -51,7 +52,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val task = CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
-    val thrown = intercept[FailException](task.execute(asg, reporter, stopFlag = false, asgClientMock))
+    val thrown = intercept[FailException](task.execute(asg, resources, stopFlag = false, asgClientMock))
 
     thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
   }

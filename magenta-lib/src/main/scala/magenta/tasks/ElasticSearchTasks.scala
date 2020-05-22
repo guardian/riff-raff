@@ -22,13 +22,13 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
       |Requires access to port 9200 on cluster members.
     """.stripMargin
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    EC2.withEc2Client(keyRing, region) { ec2Client =>
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+    EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       val instance = EC2(asg.instances.asScala.headOption.getOrElse {
         throw new IllegalArgumentException(s"Auto-scaling group: $asg had no instances")
       }, ec2Client)
       val node = ElasticSearchNode(instance.publicDnsName)
-      check(reporter, stopFlag) {
+      check(resources.reporter, stopFlag) {
         node.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
       }
     }
@@ -39,20 +39,20 @@ case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, 
                                                        (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    EC2.withEc2Client(keyRing, region) { ec2Client =>
-      ELB.withClient(keyRing, region) { elbClient =>
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+    EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
+      ELB.withClient(keyRing, region, resources) { elbClient =>
         val newNode = asg.instances.asScala.filterNot(EC2.hasTag(_, "Magenta", "Terminate", ec2Client)).head
         val newESNode = ElasticSearchNode(EC2(newNode, ec2Client).publicDnsName)
 
         def cullInstance(instance: Instance) {
           val node = ElasticSearchNode(EC2(instance, ec2Client).publicDnsName)
-          check(reporter, stopFlag) {
+          check(resources.reporter, stopFlag) {
             newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity)
           }
           if (!stopFlag) {
             node.shutdown()
-            check(reporter, stopFlag) {
+            check(resources.reporter, stopFlag) {
               newESNode.inHealthyClusterOfSize(ASG.refresh(asg, asgClient).desiredCapacity - 1)
             }
           }

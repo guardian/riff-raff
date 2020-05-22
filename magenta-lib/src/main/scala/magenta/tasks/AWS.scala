@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, withResource}
+import magenta.{App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -144,9 +144,9 @@ object Lambda {
 }
 
 object ASG {
-  def withAsgClient[T](keyRing: KeyRing, region: Region)(block: AutoScalingClient => T): T =
+  def withAsgClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: AutoScalingClient => T): T =
     withResource(AutoScalingClient.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
@@ -280,19 +280,19 @@ object ELB {
     }
   }
 
-  def withClient[T](keyRing: KeyRing, region: Region)(block: Client => T): T =
-    withResource(Client(classicClient(keyRing, region), applicationClient(keyRing, region)))(block)
+  def withClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: Client => T): T =
+    withResource(Client(classicClient(keyRing, region, resources), applicationClient(keyRing, region, resources)))(block)
 
-  private def classicClient(keyRing: KeyRing, region: Region): ClassicELB =
+  private def classicClient(keyRing: KeyRing, region: Region, resources: DeploymentResources): ClassicELB =
     ClassicELB.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build()
 
-  private def applicationClient(keyRing: KeyRing, region: Region): ApplicationELB =
+  private def applicationClient(keyRing: KeyRing, region: Region, resources: DeploymentResources): ApplicationELB =
     ApplicationELB.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build()
@@ -324,9 +324,9 @@ object ELB {
 }
 
 object EC2 {
-  def withEc2Client[T](keyRing: KeyRing, region: Region)(block: Ec2Client => T) = {
+  def withEc2Client[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: Ec2Client => T) = {
     withResource(Ec2Client.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
@@ -363,9 +363,9 @@ object CloudFormation {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
-  def withCfnClient[T](keyRing: KeyRing, region: Region)(block: CloudFormationClient => T): T = {
+  def withCfnClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: CloudFormationClient => T): T = {
     withResource(CloudFormationClient.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
@@ -467,12 +467,16 @@ object CloudFormation {
 }
 
 object STS {
-  def withSTSclient[T](keyRing: KeyRing, region: Region)(block: StsClient => T): T = {
+  def withSTSclient[T](keyRing: KeyRing, region: Region, resources: StsDeploymentResources)(block: StsClient => T): T = {
     withResource(StsClient.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
+  }
+
+  def withSTSclient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: StsClient => T): T = {
+    withSTSclient(keyRing, region, StsDeploymentResources.fromDeploymentResources(resources))(block)
   }
 
   def getAccountNumber(stsClient: StsClient): String = {
@@ -482,9 +486,9 @@ object STS {
 }
 
 object SSM {
-  def withSsmClient[T](keyRing: KeyRing, region: Region)(block: SsmClient => T): T = {
+  def withSsmClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: SsmClient => T): T = {
     withResource(SsmClient.builder()
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(AWS.clientConfiguration)
       .region(region.awsRegion)
       .build())(block)
@@ -504,12 +508,10 @@ object AWS extends Loggable {
     sys.error("Cannot authenticate, aws_secret_access_key' must be set as a system property")
   }
 
-  lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
-
-  def getRoleCredentialsProvider(role: String, resources: DeploymentResources): StsAssumeRoleCredentialsProvider = {
+  def getRoleCredentialsProvider(role: String, resources: StsDeploymentResources): StsAssumeRoleCredentialsProvider = {
       logger.info(s"building sts client for role $role")
       val req: AssumeRoleRequest = AssumeRoleRequest.builder
-        .roleSessionName(s"riffraff-session-${resources.reporter.messageContext.deployId}")
+        .roleSessionName(s"riffraff-session-${resources.deployId}")
         .roleArn(role)
         .build()
       StsAssumeRoleCredentialsProvider.builder()
@@ -518,21 +520,26 @@ object AWS extends Loggable {
         .build();
   }
 
-  def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = {
-    val roleProvider: AwsCredentialsProvider = keyRing.apiCredentials.get("aws-roles").flatMap { credentials =>
+  def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = provider(keyRing, StsDeploymentResources.fromDeploymentResources(resources))
+
+  def provider(keyRing: KeyRing, resources: StsDeploymentResources): AwsCredentialsProviderChain = {
+    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").map { credentials =>
       getRoleCredentialsProvider(credentials.id, resources)
     }
     val credentialProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
         StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
     }
-    val Provider: Option[AwsCredentialsProvider] = if (roleProvider.isDefined) {
-      logger.info("using role provider")
-      roleProvider
-    } else {
-      logger.info("using static credentials provider")
-      credentialProvider
+
+    (roleProvider, credentialProvider) match {
+      case (Some(rp), _) =>
+        logger.info("using role provider")
+        AwsCredentialsProviderChain.builder().credentialsProviders(rp).build()
+      case (_, Some(scp)) =>
+        logger.info("using static credentials provider")
+        AwsCredentialsProviderChain.builder().credentialsProviders(scp).build()
+      case _ => throw new IllegalArgumentException(s"Could not find credentials provider")
     }
-    AwsCredentialsProviderChain.builder().credentialsProviders(Provider.get, () => envCredentials).build()
+
   }
 
   private lazy val numberOfRetries = 20

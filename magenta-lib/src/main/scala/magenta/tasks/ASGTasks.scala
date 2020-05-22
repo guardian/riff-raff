@@ -23,14 +23,14 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
 }
 
 case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     if (asg.instances.asScala.nonEmpty) {
-      EC2.withEc2Client(keyRing, region) { ec2Client =>
-        reporter.verbose(s"Tagging ${asg.instances.asScala.toList.map(_.instanceId).mkString(", ")}")
+      EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
+        resources.reporter.verbose(s"Tagging ${asg.instances.asScala.toList.map(_.instanceId).mkString(", ")}")
         EC2.setTag(asg.instances.asScala.toList, "Magenta", "Terminate", ec2Client)
       }
     } else {
-      reporter.verbose(s"No instances to tag")
+      resources.reporter.verbose(s"No instances to tag")
     }
   }
 
@@ -38,7 +38,7 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
 }
 
 case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val instances = asg.instances.asScala.toList
     val instancesInService = instances.filter(_.lifecycleState == LifecycleState.IN_SERVICE)
     if (instancesInService.nonEmpty) {
@@ -50,7 +50,7 @@ case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: 
         .build()
       asgClient.setInstanceProtection(request)
     } else {
-      reporter.verbose(s"No instances to protect")
+      resources.reporter.verbose(s"No instances to protect")
     }
   }
 
@@ -59,9 +59,9 @@ case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: 
 
 case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val targetCapacity = asg.desiredCapacity * 2
-    reporter.verbose(s"Doubling capacity to $targetCapacity")
+    resources.reporter.verbose(s"Doubling capacity to $targetCapacity")
     ASG.desiredCapacity(asg.autoScalingGroupName, targetCapacity, asgClient)
   }
 
@@ -69,9 +69,9 @@ case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region
 }
 
 sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends ASGTask {
-  def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
+  def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     if (asg.desiredCapacity == 0 && asg.instances.isEmpty)
-      reporter.verbose("Skipping pause as there are no instances and desired capacity is zero")
+      resources.reporter.verbose("Skipping pause as there are no instances and desired capacity is zero")
     else
       Thread.sleep(durationMillis)
   }
@@ -92,19 +92,19 @@ case class TerminationGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, 
 case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    ELB.withClient(keyRing, region) { elbClient =>
-      check(reporter, stopFlag) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+    ELB.withClient(keyRing, region, resources) { elbClient =>
+      check(resources.reporter, stopFlag) {
         try {
           ASG.isStabilized(ASG.refresh(asg, asgClient), elbClient) match {
             case Left(reason) =>
-              reporter.verbose(reason)
+              resources.reporter.verbose(reason)
               false
             case Right(()) => true
           }
         } catch {
           case e: AwsServiceException if isRateExceeded(e) => {
-            reporter.info(e.getMessage)
+            resources.reporter.info(e.getMessage)
             false
           }
         }
@@ -119,17 +119,17 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
 }
 
 case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
-    EC2.withEc2Client(keyRing, region) { ec2Client =>
-      ELB.withClient(keyRing, region) { elbClient =>
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+    EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
+      ELB.withClient(keyRing, region, resources) { elbClient =>
         val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
         val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
         try {
-          reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
+          resources.reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
           orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))
         } catch {
           case e: AwsServiceException if desiredSizeReset(e) =>
-            reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
+            resources.reporter.warning("Your ASG desired size may have been reset. This may be because two parts of the deploy are attempting to modify a cloudformation stack simultaneously. Please check that appropriate dependencies are included in riff-raff.yaml, or ensure desiredSize isn't set in the Cloudformation.")
             throw new ASGResetException(s"Your ASG desired size may have been reset ${e.getMessage}", e)
         }
       }
@@ -143,7 +143,7 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
 
 case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.suspendAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
@@ -152,7 +152,7 @@ case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack
 
 case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.resumeAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
@@ -167,12 +167,12 @@ trait ASGTask extends Task {
   def stage: Stage
   def stack: Stack
 
-  def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient)
+  def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient)
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    ASG.withAsgClient(keyRing, region) { asgClient =>
-      val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, reporter)
-      execute(group, reporter, stopFlag, asgClient)
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+    ASG.withAsgClient(keyRing, region, resources) { asgClient =>
+      val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, resources.reporter)
+      execute(group, resources, stopFlag, asgClient)
     }
   }
 }

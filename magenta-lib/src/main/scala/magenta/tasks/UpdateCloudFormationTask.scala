@@ -4,7 +4,7 @@ import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
@@ -263,48 +263,48 @@ case class UpdateAmiCloudFormationParameterTask(
 
   import UpdateCloudFormationTask._
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
-    CloudFormation.withCfnClient(keyRing, region){ cfnClient =>
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) = if (!stopFlag) {
+    CloudFormation.withCfnClient(keyRing, region, resources){ cfnClient =>
       val maybeCfStack = cloudFormationStackLookupStrategy match {
         case LookupByName(cloudFormationStackName) => CloudFormation.describeStack(cloudFormationStackName, cfnClient)
-        case LookupByTags(tags) => CloudFormation.findStackByTags(tags, reporter, cfnClient)
+        case LookupByTags(tags) => CloudFormation.findStackByTags(tags, resources.reporter, cfnClient)
       }
 
       val cfStack = maybeCfStack.getOrElse{
-        reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
+        resources.reporter.fail(s"Could not find CloudFormation stack $cloudFormationStackLookupStrategy")
       }
 
       val existingParameters: Map[String, ParameterValue] = cfStack.parameters.asScala.map(_.parameterKey -> UseExistingValue).toMap
 
       val resolvedAmiParameters: Map[String, ParameterValue] = amiParameterMap.flatMap { case(parameterName, amiTags) =>
         if (!cfStack.parameters.asScala.exists(_.parameterKey == parameterName)) {
-          reporter.fail(s"stack ${cfStack.stackName} does not have an $parameterName parameter to update")
+          resources.reporter.fail(s"stack ${cfStack.stackName} does not have an $parameterName parameter to update")
         }
 
         val currentAmi = cfStack.parameters.asScala.find(_.parameterKey == parameterName).get.parameterValue
-        val accountNumber = STS.withSTSclient(keyRing, region)(STS.getAccountNumber)
+        val accountNumber = STS.withSTSclient(keyRing, region, resources)(STS.getAccountNumber)
         val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
         maybeNewAmi match {
           case Some(sameAmi) if currentAmi == sameAmi =>
-            reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
+            resources.reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
             None
           case Some(newAmi) =>
-            reporter.info(s"Resolved AMI for $parameterName: $newAmi")
+            resources.reporter.info(s"Resolved AMI for $parameterName: $newAmi")
             Some(parameterName -> SpecifiedValue(newAmi))
           case None =>
             val tagsStr = amiTags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-            reporter.fail(s"Failed to resolve AMI for ${cfStack.stackName} parameter $parameterName with tags: $tagsStr")
+            resources.reporter.fail(s"Failed to resolve AMI for ${cfStack.stackName} parameter $parameterName with tags: $tagsStr")
         }
       }
 
       if (resolvedAmiParameters.nonEmpty) {
         val newParameters = existingParameters ++ resolvedAmiParameters
-        reporter.info(s"Updating cloudformation stack params: $newParameters")
-        updateWithRetry(reporter, stopFlag) {
+        resources.reporter.info(s"Updating cloudformation stack params: $newParameters")
+        updateWithRetry(resources.reporter, stopFlag) {
           CloudFormation.updateStackParams(cfStack.stackName, newParameters, cfnClient)
         }
       } else {
-        reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
+        resources.reporter.info(s"All AMIs the same as current AMIs. No update to perform.")
       }
     }
   }
@@ -322,16 +322,16 @@ class CheckUpdateEventsTask(
 
   import UpdateCloudFormationTask._
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
 
       import StackEvent._
 
       val stackName = stackLookupStrategy match {
         case LookupByName(name) => name
         case strategy@LookupByTags(tags) =>
-          val stack = CloudFormation.findStackByTags(tags, reporter, cfnClient)
-            .getOrElse(reporter.fail(s"Could not find CloudFormation stack $strategy"))
+          val stack = CloudFormation.findStackByTags(tags, resources.reporter, cfnClient)
+            .getOrElse(resources.reporter.fail(s"Could not find CloudFormation stack $strategy"))
           stack.stackName
       }
 
@@ -344,21 +344,21 @@ class CheckUpdateEventsTask(
           case None =>
             events.find(updateStart(stackName)) match {
             case None =>
-              reporter.fail(s"No events found at all for stack $stackName")
+              resources.reporter.fail(s"No events found at all for stack $stackName")
             case Some(e) =>
               val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
               if (age > 30) {
-                reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+                resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
               } else {
-                reportEvent(reporter, e)
+                reportEvent(resources.reporter, e)
                 check(Some(e))
               }
             }
           case Some(event) =>
             val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
-            newEvents.reverse.foreach(reportEvent(reporter, _))
+            newEvents.reverse.foreach(reportEvent(resources.reporter, _))
 
-            newEvents.filter(updateFailed).foreach(fail(reporter, _))
+            newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
 
           val complete = newEvents.exists(updateComplete(stackName))
           if (!complete && !stopFlag) {
