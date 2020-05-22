@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.core.sync.{RequestBody => AWSRequestBody}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectRequest, ObjectCannedACL, PutObjectRequest}
+import software.amazon.awssdk.services.sts.StsClient
 
 import scala.util.control.NonFatal
 
@@ -24,8 +25,8 @@ case class S3Upload(
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10
-)(implicit val keyRing: KeyRing, artifactClient: S3Client,
-  withClientFactory: (KeyRing, Region, ClientOverrideConfiguration) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
+)(implicit val keyRing: KeyRing, resources: DeploymentResources,
+  withClientFactory: (KeyRing, Region, ClientOverrideConfiguration, DeploymentResources) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
@@ -56,7 +57,7 @@ case class S3Upload(
       reporter.fail(s"No files found to upload in $locationDescription")
     }
 
-    val withClient = withClientFactory(keyRing, region, AWS.clientConfigurationNoRetry)
+    val withClient = withClientFactory(keyRing, region, AWS.clientConfigurationNoRetry, resources)
     withClient { client =>
 
       reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
@@ -72,7 +73,7 @@ case class S3Upload(
             .bucket(req.source.bucket)
             .key(req.source.key)
             .build()
-          val inputStream = artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
+          val inputStream = resources.artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
           val requestBody = AWSRequestBody.fromBytes(inputStream)
 
           val putRequest: PutObjectRequest = req.toAwsRequest
@@ -93,7 +94,7 @@ case class S3Upload(
     else s"$key/$fileName"
 
   private def resolveMappings(path: S3Location, targetKey: String, targetBucket: String): Seq[(S3Object, S3Path)] = {
-    path.listAll()(artifactClient).map { obj =>
+    path.listAll()(resources.artifactClient).map { obj =>
       obj -> S3Path(targetBucket, subDirectoryPrefix(targetKey, obj.relativeTo(path)))
     }
   }

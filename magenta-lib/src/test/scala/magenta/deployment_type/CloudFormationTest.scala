@@ -18,6 +18,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
+  implicit val stsClient: StsClient = null
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[CloudFormation.type] = Seq(CloudFormation)
   val app = App("app")
@@ -27,7 +28,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     deploymentTypes)
 
   private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false))) = {
-    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient)
+    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
     CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(), testStack, region))
   }
 

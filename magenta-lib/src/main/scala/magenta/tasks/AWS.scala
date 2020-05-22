@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, KeyRing, Region, Stack, Stage}
+import magenta.{App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -33,15 +33,14 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.{Random, Try}
-import magenta.withResource
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 
 object S3 {
-  def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = AWS.clientConfiguration)(block: S3Client => T): T =
+  def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = AWS.clientConfiguration, resources: DeploymentResources)(block: S3Client => T): T =
     withResource(S3Client.builder()
       .region(region.awsRegion)
-      .credentialsProvider(AWS.provider(keyRing))
+      .credentialsProvider(AWS.provider(keyRing, resources))
       .overrideConfiguration(config)
       .build())(block)
 
@@ -507,27 +506,21 @@ object AWS extends Loggable {
 
   lazy val envCredentials: AwsBasicCredentials = AwsBasicCredentials.create(accessKey, secretAccessKey)
 
-  def getRoleCredentialsProvider(role: String, riffRaffCredentialsProvider: Option[AwsCredentialsProvider]): Option[StsAssumeRoleCredentialsProvider] = {
-    for {
-      rcp <- riffRaffCredentialsProvider
-    } yield {
+  def getRoleCredentialsProvider(role: String, resources: DeploymentResources): StsAssumeRoleCredentialsProvider = {
       logger.info(s"building sts client for role $role")
-      val randomString = new Random().alphanumeric.take(10).mkString
       val req: AssumeRoleRequest = AssumeRoleRequest.builder
-        .roleSessionName(s"riffraff-session-$randomString")
+        .roleSessionName(s"riffraff-session-${resources.reporter.messageContext.deployId}")
         .roleArn(role)
         .build()
-      val stsClient = StsClient.builder().credentialsProvider(rcp).build()
       StsAssumeRoleCredentialsProvider.builder()
-        .stsClient(stsClient)
+        .stsClient(resources.stsClient)
         .refreshRequest(req)
         .build();
-    }
   }
 
-  def provider(keyRing: KeyRing): AwsCredentialsProviderChain = {
-    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").flatMap { credentials =>
-      getRoleCredentialsProvider(credentials.id, keyRing.riffRaffCredentialsProvider)
+  def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = {
+    val roleProvider: AwsCredentialsProvider = keyRing.apiCredentials.get("aws-roles").flatMap { credentials =>
+      getRoleCredentialsProvider(credentials.id, resources)
     }
     val credentialProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
         StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))

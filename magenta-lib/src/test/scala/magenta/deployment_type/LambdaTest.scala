@@ -14,11 +14,13 @@ import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, GetParameterResponse, Parameter}
+import software.amazon.awssdk.services.sts.StsClient
 
 class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = mock[S3Client]
+  implicit val stsClient: StsClient = mock[StsClient]
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[Lambda.type] = Seq(Lambda)
 
@@ -37,7 +39,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
-    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("test"), region))
+    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       S3Upload(
         Region("eu-west-1"),
@@ -48,7 +50,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("test"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionName("MyFunction-PROD"),
@@ -69,7 +71,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionName("some-stackMyFunction-PROD"),
@@ -90,7 +92,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),
@@ -113,7 +115,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
 
     val e = the [FailException] thrownBy {
       Lambda.actionsMap(
-        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
     e.message shouldBe "One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true"
@@ -129,7 +131,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
 
     val e = the [FailException] thrownBy {
       Lambda.actionsMap(
-        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+        "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
     e.message shouldBe "One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true"
@@ -154,7 +156,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     }
 
     val tasks = LambdaTest.actionsMap("updateLambda")
-      .taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient),
+      .taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient),
         DeployTarget(parameters(PROD), Stack("some-stack"), region)
       )
 
@@ -180,7 +182,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),

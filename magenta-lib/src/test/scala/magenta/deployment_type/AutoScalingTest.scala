@@ -14,6 +14,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
+  implicit val stsClient: StsClient = null
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[AutoScaling.type] = Seq(AutoScaling)
 
@@ -27,7 +28,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should be (List(
       WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),
@@ -54,7 +55,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
 
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), deploymentTypes)
 
-    AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region)) should matchPattern {
+    AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should matchPattern {
       case List(S3Upload(_,_,_,_,_,false,_)) =>
     }
   }
@@ -73,7 +74,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient), DeployTarget(parameters(), stack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should be (List(
       WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),

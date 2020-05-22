@@ -12,6 +12,7 @@ import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentRes
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
@@ -47,9 +48,10 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
         |  testDeployment:
         |    type: stub-package-type
       """.stripMargin
+    implicit val stsClient: StsClient = mock[StsClient]
     val parameters = DeployParameters(Deployer("test user"), Build("testProject", "1"), Stage("TEST"))
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
-    val resources = DeploymentResources(reporter, stubLookup(), artifactClient)
+    val resources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient)
     val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))
 
     val deploymentTuple = (

@@ -31,7 +31,7 @@ class PreviewCoordinator(config: Config, prismLookup: PrismLookup, deploymentTyp
     val previewId = UUID.randomUUID()
     logger.info(s"Starting preview for $previewId")
     val muteLogger = DeployReporter.rootReporterFor(previewId, parameters, publishMessages = false)
-    val resources = DeploymentResources(muteLogger, prismLookup, config.artifact.aws.client)
+    val resources = DeploymentResources(muteLogger, prismLookup, config.artifact.aws.client, config.credentials.stsClient)
     val artifact = S3YamlArtifact.apply(parameters.build, config.artifact.aws.bucketName)
     val maybeConfig = artifact.deployObject.fetchContentAsString()(resources.artifactClient)
 

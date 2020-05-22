@@ -7,6 +7,7 @@ import magenta.{DeployReporter, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 import scala.collection.JavaConverters._
 import scala.util.{Success, Try}
@@ -18,9 +19,9 @@ class CreateChangeSetTask(
                            val unresolvedParameters: CloudFormationParameters
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) = if (!stopFlag) {
+  override def execute(reporter: DeployReporter, stopFlag: => Boolean, stsClient: StsClient) = if (!stopFlag) {
     CloudFormation.withCfnClient(keyRing, region) { cfnClient =>
-      S3.withS3client(keyRing, region) { s3Client =>
+      S3.withS3client(keyRing, region, stsClient = stsClient) { s3Client =>
         STS.withSTSclient(keyRing, region) { stsClient =>
           val accountNumber = STS.getAccountNumber(stsClient)
 

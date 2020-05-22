@@ -4,6 +4,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.regions.{Region => AWSRegion}
 import magenta.input._
 import magenta.tasks.Task
+import software.amazon.awssdk.services.sts.StsClient
 
 import scala.math.Ordering.OptionOrdering
 
@@ -50,7 +51,7 @@ object HostList {
   implicit def hostListAsListOfHosts(hostList: HostList): Seq[Host] = hostList.hosts
 }
 
-case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client) {
+case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client, stsClient: StsClient) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing = {
     val keyring: KeyRing = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
     reporter.verbose(s"Keyring for ${pkg.name} in ${target.stack.name}/${target.region.name}: $keyring")
