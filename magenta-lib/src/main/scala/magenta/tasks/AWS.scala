@@ -103,9 +103,9 @@ object S3 {
 }
 
 object Lambda {
-  def withLambdaClient[T](keyRing: KeyRing, region: Region)(block: LambdaClient => T): T =
+  def withLambdaClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: LambdaClient => T): T =
     withResource(LambdaClient.builder()
-    .credentialsProvider(AWS.provider(keyRing))
+    .credentialsProvider(AWS.provider(keyRing, resources))
     .overrideConfiguration(AWS.clientConfiguration)
     .region(region.awsRegion)
     .build())(block)

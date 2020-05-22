@@ -220,20 +220,20 @@ object ChangeSwitch {
 case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $function Lambda using S3 $s3Bucket:$s3Key"
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    Lambda.withLambdaClient(keyRing, region){ client =>
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+    Lambda.withLambdaClient(keyRing, region, resources){ client =>
       val functionName: String = function match {
         case LambdaFunctionName(name) => name
         case LambdaFunctionTags(tags) =>
-          val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
+          val functionConfig = Lambda.findFunctionByTags(tags, resources.reporter, client)
           functionConfig.map(_.functionName).getOrElse{
-            reporter.fail(s"Failed to find any function with tags $tags")
+            resources.reporter.fail(s"Failed to find any function with tags $tags")
           }
       }
 
-      reporter.verbose(s"Starting update $function Lambda")
+      resources.reporter.verbose(s"Starting update $function Lambda")
       client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-      reporter.verbose(s"Finished update $function Lambda")
+      resources.reporter.verbose(s"Finished update $function Lambda")
     }
   }
 
