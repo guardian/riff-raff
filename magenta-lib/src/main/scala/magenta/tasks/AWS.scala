@@ -532,10 +532,10 @@ object AWS extends Loggable {
 
     (roleProvider, staticProvider) match {
       case (Some(rp), _) =>
-        logger.info("using role provider")
+        logger.info(s"using role provider for deploy id: ${resources.deployId}")
         AwsCredentialsProviderChain.builder().credentialsProviders(rp).build()
       case (_, Some(sp)) =>
-        logger.info("using static credentials provider")
+        logger.info(s"using static credentials provider for deploy id: ${resources.deployId}")
         AwsCredentialsProviderChain.builder().credentialsProviders(sp).build()
       case _ => throw new IllegalArgumentException(s"Could not find credentials provider")
     }
