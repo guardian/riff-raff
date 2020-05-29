@@ -37,7 +37,7 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
         }
       case _ => None
     }
-    KeyRing(apiCredentials.distinct.toMap, Some(conf.awsCredentials.credentialsProvider))
+    KeyRing(apiCredentials.distinct.toMap)
   }
 
   object prism extends Logging {

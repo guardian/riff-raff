@@ -526,17 +526,17 @@ object AWS extends Loggable {
     val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").map { credentials =>
       getRoleCredentialsProvider(credentials.id, resources)
     }
-    val credentialProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
+    val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
         StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
     }
 
-    (roleProvider, credentialProvider) match {
+    (roleProvider, staticProvider) match {
       case (Some(rp), _) =>
         logger.info("using role provider")
         AwsCredentialsProviderChain.builder().credentialsProviders(rp).build()
-      case (_, Some(scp)) =>
+      case (_, Some(sp)) =>
         logger.info("using static credentials provider")
-        AwsCredentialsProviderChain.builder().credentialsProviders(scp).build()
+        AwsCredentialsProviderChain.builder().credentialsProviders(sp).build()
       case _ => throw new IllegalArgumentException(s"Could not find credentials provider")
     }
 

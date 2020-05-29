@@ -9,11 +9,11 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 import scala.collection.JavaConverters._
 
 case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, reporter: DeployReporter, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val doubleCapacity = asg.desiredCapacity * 2
-    reporter.verbose(s"ASG desired = ${asg.desiredCapacity}; ASG max = ${asg.maxSize}; Target = $doubleCapacity")
+    resources.reporter.verbose(s"ASG desired = ${asg.desiredCapacity}; ASG max = ${asg.maxSize}; Target = $doubleCapacity")
     if (asg.maxSize < doubleCapacity) {
-      reporter.fail(
+      resources.reporter.fail(
         s"Autoscaling group does not have the capacity to deploy current max = ${asg.maxSize} - desired max = $doubleCapacity"
       )
     }

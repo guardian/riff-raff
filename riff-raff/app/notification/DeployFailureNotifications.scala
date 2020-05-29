@@ -11,8 +11,8 @@ import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
-import magenta.tasks.{RoleProviderResources, STS}
-import magenta.{DeployParameters, DeployReporter, DeploymentResources, Lookup, Region, App => MagentaApp, Stack => MagentaStack}
+import magenta.tasks.STS
+import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
 import schedule.ScheduledDeployer
 import rx.lang.scala.Subscription
 
@@ -38,7 +38,7 @@ class DeployFailureNotifications(config: Config,
   def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
     Try {
       val keyring = lookup.keyRing(parameters.stage, MagentaApp(target.app), MagentaStack(target.stack))
-      STS.withSTSclient(keyring, Region(target.region), RoleProviderResources(uuid, config.credentials.stsClient)){ client =>
+      STS.withSTSclient(keyring, Region(target.region), StsDeploymentResources(uuid, config.credentials.stsClient)){ client =>
             AwsAccount(STS.getAccountNumber(client))
       }
     } match {
