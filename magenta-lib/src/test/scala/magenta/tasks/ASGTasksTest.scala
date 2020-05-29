@@ -10,11 +10,12 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  val resources = mock[DeploymentResources].copy(reporter = reporter)
   val deploymentTypes: Seq[StubDeploymentType] = Seq(stubDeploymentType(name = "testDeploymentType", actionNames = Seq("testAction")))
 
   it should "double the size of the autoscaling group" in {
@@ -29,7 +30,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
       deploymentTypes)
 
     val task = DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
-
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
     task.execute(asg, resources, stopFlag = false, asgClientMock)
 
     verify(asgClientMock).setDesiredCapacity(
@@ -51,6 +52,8 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
       deploymentTypes)
 
     val task = CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
+
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
 
     val thrown = intercept[FailException](task.execute(asg, resources, stopFlag = false, asgClientMock))
 

@@ -18,11 +18,13 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.sts.StsClient
 
 
 class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
-  val resources = mock[DeploymentResources].copy(reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters()))
+  val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+//  val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
 
 
   "PutRec" should "create an upload request with correct permissions" in {
@@ -95,7 +97,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   "S3Upload" should "upload a single file to S3" in {
-    val resources = mock[DeploymentResources]
+    val artifactClient = mock[S3Client]
     val s3Client = mock[S3Client]
 
     val sourceBucket = "artifact-bucket"
@@ -104,9 +106,9 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val targetKey = "keyPrefix/the-jar.jar"
 
     val objectResult = mockListObjectsResponse(List(MagentaS3Object(sourceBucket, sourceKey, 31)))
-    when(resources.artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
+    when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
-    when(resources.artifactClient.getObjectAsBytes(GetObjectRequest.builder()
+    when(artifactClient.getObjectAsBytes(GetObjectRequest.builder()
       .bucket(sourceBucket)
       .key(sourceKey)
         .build())
@@ -116,7 +118,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
 
     val fileToUpload = new S3Path(sourceBucket, sourceKey)
-    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, s3Client, clientFactory(s3Client))
+    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, artifactClient, clientFactory(s3Client))
     val mappings = task.objectMappings
     mappings.size should be (1)
     val (source, target) = mappings.head
@@ -126,6 +128,8 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     target.bucket should be (targetBucket)
     target.key should be (targetKey)
+
+    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient])
 
     task.execute(resources)
 
@@ -155,7 +159,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
-
+    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient])
     task.execute(resources)
 
     val files = task.objectMappings
@@ -188,6 +192,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
      val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  clientFactory(s3Client))
+    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient])
     task.execute(resources)
 
     val files = task.objectMappings

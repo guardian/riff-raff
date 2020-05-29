@@ -15,7 +15,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
-  implicit val stsClient: StsClient = null
+  val stsClient: StsClient = null
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[AutoScaling.type] = Seq(AutoScaling)
 
