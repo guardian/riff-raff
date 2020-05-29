@@ -116,7 +116,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     when(s3Client.putObject(any[PutObjectRequest], any[RequestBody])).thenReturn(putObjectResult)
 
     val fileToUpload = new S3Path(sourceBucket, sourceKey)
-    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey), mock[DeploymentResources])(fakeKeyRing, clientFactory(s3Client))
+    val task = S3Upload(Region("eu-west-1"), targetBucket, Seq(fileToUpload -> targetKey))(fakeKeyRing, s3Client, clientFactory(s3Client))
     val mappings = task.objectMappings
     mappings.size should be (1)
     val (source, target) = mappings.head
@@ -154,7 +154,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"), mock[DeploymentResources])(fakeKeyRing, clientFactory(s3Client))
+    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, clientFactory(s3Client))
 
     task.execute(resources)
 
@@ -187,7 +187,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""), resources)(fakeKeyRing,  clientFactory(s3Client))
+     val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  clientFactory(s3Client))
     task.execute(resources)
 
     val files = task.objectMappings
@@ -212,7 +212,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "keyPrefix"), mock[DeploymentResources], cacheControlPatterns = patternValues)(fakeKeyRing)
+    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
 
     task.requests.find(_.source == fileOne).get.cacheControl should be(Some("no-cache"))
     task.requests.find(_.source == fileTwo).get.cacheControl should be(Some("no-cache"))
@@ -228,7 +228,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val mimeTypes = Map("xpi" -> "application/x-xpinstall")
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""), mock[DeploymentResources], extensionToMimeType = mimeTypes)(fakeKeyRing)
+    val task = new S3Upload(Region("eu-west-1"), "bucket", Seq(packageRoot -> ""), extensionToMimeType = mimeTypes)(fakeKeyRing, artifactClient)
 
     task.requests.find(_.source == fileOne).get.contentType should be(None)
     task.requests.find(_.source == fileTwo).get.contentType should be(Some("application/x-xpinstall"))

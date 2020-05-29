@@ -12,6 +12,7 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Inside, Matchers}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 class DeploymentTypeTest extends FlatSpec with Matchers with Inside with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()

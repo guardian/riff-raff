@@ -17,13 +17,13 @@ object Fixtures extends MockitoSugar {
   private val host = Host("testHost", App("testApp"), "CODE", "testStack")
 
   val threeSimpleTasks: List[Task] = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", Seq(),  mock[DeploymentResources]),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(host),
     ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 
   val twoTasks = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", mock[DeploymentResources]),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )
 

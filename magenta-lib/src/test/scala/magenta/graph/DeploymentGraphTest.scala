@@ -20,7 +20,7 @@ class DeploymentGraphTest extends FlatSpec with Matchers with MockitoSugar {
   }
 
   val threeSimpleTasks = List(
-    S3Upload(Region("eu-west-1"), "test-bucket", Seq(), mock[DeploymentResources]),
+    S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(Host("testHost", app1, CODE.name, stack.name)),
     ChangeSwitch(Host("testHost", app1, CODE.name, stack.name), "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
   )

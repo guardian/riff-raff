@@ -9,6 +9,7 @@ import magenta.tasks._
 import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -56,7 +57,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), deploymentTypes)
     val resource = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
     AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, resource, DeployTarget(parameters(), stack, region)) should matchPattern {
-      case List(S3Upload(_,_,_,resource,_,_,false,_)) =>
+      case List(S3Upload(_,_,_,_,_,false,_)) =>
     }
   }
 

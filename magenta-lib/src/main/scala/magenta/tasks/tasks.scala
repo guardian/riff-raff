@@ -21,12 +21,11 @@ case class S3Upload(
   region: Region,
   bucket: String,
   paths: Seq[(S3Location, String)],
-  resources: DeploymentResources,
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10,
-)(implicit val keyRing: KeyRing,
+)(implicit val keyRing: KeyRing, artifactClient: S3Client,
   withClientFactory: (KeyRing, Region, ClientOverrideConfiguration, DeploymentResources) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {
@@ -95,7 +94,7 @@ case class S3Upload(
     else s"$key/$fileName"
 
   private def resolveMappings(path: S3Location, targetKey: String, targetBucket: String): Seq[(S3Object, S3Path)] = {
-    path.listAll()(resources.artifactClient).map { obj =>
+    path.listAll()(artifactClient).map { obj =>
       obj -> S3Path(targetBucket, subDirectoryPrefix(targetKey, obj.relativeTo(path)))
     }
   }

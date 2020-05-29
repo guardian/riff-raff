@@ -39,14 +39,13 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
   val defaultRegion = Region("eu-west-1")
 
   it should "produce an S3 upload task" in {
-    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(PROD), Stack("test"), region)
-    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, )
+    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
+    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, resources, DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       S3Upload(
         Region("eu-west-1"),
         bucket = "lambda-bucket",
         paths = Seq(S3Path("artifact-bucket", "test/123/lambda/test-file.zip") -> s"test/PROD/lambda/test-file.zip"),
-        resources
       )
     ))
   }
@@ -154,7 +153,7 @@ class LambdaTest extends FlatSpec with Matchers with MockitoSugar {
       GetParameterResponse.builder.parameter(Parameter.builder.value("bobbins").build).build
     )
     object LambdaTest extends Lambda {
-      override def withSsm[T](keyRing: KeyRing, region: Region): (SsmClient => T) => T = _(ssmClient)
+      override def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = _(ssmClient)
     }
 
     val tasks = LambdaTest.actionsMap("updateLambda")
