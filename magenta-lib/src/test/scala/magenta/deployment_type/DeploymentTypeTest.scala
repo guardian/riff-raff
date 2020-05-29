@@ -115,7 +115,7 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
 
-    val lookup = stubLookup(List(Host("the_host", app1, stage=CODE.name, stack.name)), Map("s3-path-prefix" -> Seq(Datum(stack.name, app1.name, CODE.name, "testing/2016/05/brexit-companion", None, None))))
+    val lookup = stubLookup(List(Host("the_host", app1, stage=CODE.name, stack.name)), Map("s3-path-prefix" -> Seq(Datum(stack.name, app1.name, CODE.name, "testing/2016/05/brexit-companion", None))))
 
     inside(S3.actionsMap("uploadStaticFiles").taskGenerator(p, DeploymentResources(reporter, lookup, artifactClient, stsClient), DeployTarget(parameters(CODE), stack, region)).head) {
       case upload: S3Upload => upload.paths should be(Seq(sourceS3Package -> "testing/2016/05/brexit-companion"))

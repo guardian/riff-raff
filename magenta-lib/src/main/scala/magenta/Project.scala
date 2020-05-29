@@ -25,8 +25,7 @@ case class Datum(
   app: String,
   stage: String,
   value: String,
-  comment: Option[String],
-  role: Option[String]
+  comment: Option[String]
 )
 
 case class HostList(hosts: Seq[Host]) {
