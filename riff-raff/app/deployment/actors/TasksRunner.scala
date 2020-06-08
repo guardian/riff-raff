@@ -18,14 +18,14 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
   log.debug(s"New tasks runner created with path ${self.path}")
 
   def receive = {
-    case RunDeployment(uuid, tasks, rootResources, queueTime) =>
+    case RunDeployment(uuid, tasks, deploymentResources, queueTime) =>
 
       def stopFlagAsker: Boolean = {
         stopFlagAgent().contains(uuid)
       }
 
       try{
-        rootResources.reporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
+        deploymentResources.reporter.infoContext(s"Deploying ${tasks.name}"){ deployReporter =>
           try {
             tasks.tasks.zipWithIndex.foreach { case (task, index) =>
               val taskId = s"${tasks.name}/$index"
@@ -37,7 +37,7 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
                   log.debug(s"Running task $taskId")
                   deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
                   deployReporter.taskContext(task) { taskReporter =>
-                    task.execute(rootResources, stopFlagAsker)
+                    task.execute(deploymentResources.copy(reporter = taskReporter), stopFlagAsker)
                   }
                 } finally {
                   deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())

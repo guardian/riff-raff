@@ -5,7 +5,7 @@ import magenta.deployment_type.CloudFormationDeploymentTypeParameters
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import play.api
-import play.api.libs.json.Json
+import play.api.libs.json.{JsString, Json}
 import play.api.libs.ws.WSClient
 import play.api.{Configuration, mvc}
 import play.api.mvc._
@@ -14,7 +14,8 @@ import play.api.routing.sird._
 import play.api.test.WsTestClient
 import play.core.server.Server
 import resources.{Image, PrismLookup}
-import magenta.SecretProvider
+import magenta.{ApiCredentials, App, KeyRing, SecretProvider, Stack, Stage}
+import play.api.mvc.Handler.Stage
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
@@ -41,12 +42,59 @@ class PrismLookupTest extends FlatSpec with Matchers {
           )
         ))
       }
+      case GET(p"/data/keys") => Action { request =>
+        mockRequest = Some(request)
+        Ok(Json.obj(
+          "data" -> Json.obj(
+            "keys" -> Json.arr(
+              JsString("credentials:aws"), JsString("credentials:aws-role")
+            )
+          )
+        ))
+      }
+      case GET(p"/data/lookup/credentials:aws?app=amigo&stack=deploy&stage=PROD") => Action { request =>
+        mockRequest = Some(request)
+        Ok(Json.obj(
+          "data" -> Json.obj(
+            "stack" -> JsString("deploy"),
+            "app" -> JsString(".*"),
+            "stage" -> JsString(".*"),
+            "value" -> JsString("access key"),
+            "comment" -> JsString("comment")
+            )
+          )
+        )
+      }
+      case GET(p"/data/lookup/credentials:aws-role?app=amigo&stack=deploy&stage=PROD") => Action { request =>
+        mockRequest = Some(request)
+        Ok(Json.obj(
+          "data" -> Json.obj(
+            "stack" -> JsString("deploy"),
+            "app" -> JsString(".*"),
+            "stage" -> JsString(".*"),
+            "value" -> JsString("role ARN"),
+            "comment" -> JsString("comment")
+          )
+        )
+        )
+      }
     } { implicit port =>
       WsTestClient.withClient { client =>
         block(client)
       }
     }
     (result, mockRequest)
+  }
+
+  "Keyring" should "correctly generate keyring" in {
+    withPrismClient(List()) { client =>
+      val lookup = new PrismLookup(config, client, secretProvider)
+      val result = lookup.keyRing(stage = Stage("PROD"), app = App("amigo"), stack = Stack("deploy"))
+      result shouldBe KeyRing(apiCredentials = Map(
+        "aws" -> ApiCredentials(service = "aws", id = "access key", secret = "", comment = Some("comment")),
+        "aws-role" -> ApiCredentials(service = "aws-role", id = "role ARN", secret = "no secret", comment = Some("comment"))
+      ))
+    }
   }
 
   "PrismLookup" should "return latest image" in {

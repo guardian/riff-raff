@@ -127,18 +127,19 @@ object AutoScaling  extends DeploymentType {
   ){ (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
+    val reporter = resources.reporter
     val prefix = S3Upload.prefixGenerator(
-      stack = if (prefixStack(pkg, target, resources.reporter)) Some(target.stack) else None,
-      stage = if (prefixStage(pkg, target, resources.reporter)) Some(target.parameters.stage) else None,
-      packageName = if (prefixPackage(pkg, target, resources.reporter
+      stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
+      stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
+      packageName = if (prefixPackage(pkg, target, reporter
       )) Some(pkg.name) else None
     )
     List(
       S3Upload(
         target.region,
-        bucket(pkg, target, resources.reporter),
+        bucket(pkg, target, reporter),
         Seq(pkg.s3Package -> prefix),
-        publicReadAcl = publicReadAcl(pkg, target, resources.reporter)
+        publicReadAcl = publicReadAcl(pkg, target, reporter)
       )
     )
   }

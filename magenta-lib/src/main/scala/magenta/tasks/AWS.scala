@@ -523,7 +523,7 @@ object AWS extends Loggable {
   def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = provider(keyRing, StsDeploymentResources.fromDeploymentResources(resources))
 
   def provider(keyRing: KeyRing, resources: StsDeploymentResources): AwsCredentialsProviderChain = {
-    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-roles").map { credentials =>
+    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-role").map { credentials =>
       getRoleCredentialsProvider(credentials.id, resources)
     }
     val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
