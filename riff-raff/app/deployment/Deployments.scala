@@ -196,6 +196,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): Either[Throwable, List[Record]] = {
     require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
+    println("getting deploys", filter)
     getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).map(_.sortWith{ _.time.getMillis < _.time.getMillis })
   }
 

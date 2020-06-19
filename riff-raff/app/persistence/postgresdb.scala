@@ -142,6 +142,8 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   }
 
   override def getDeploys(filter: Option[DeployFilter], pagination: PaginationView): Either[Throwable, List[DeployRecordDocument]] = logExceptions(Some(s"Requesting list of deploys using filters $filter")) {
+    println("DB ADCES STIME ")
+    filter.foreach(f => println(f))
     DB readOnly { implicit session =>
       val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
       val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")

@@ -93,6 +93,8 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
 
   def init() {
     scheduledAgent = Some(ScheduledAgent(0, update))
+
+    housekeepArtifacts(new DateTime())
   }
   def shutdown() {
     scheduledAgent.foreach(_.shutdown())
@@ -121,28 +123,32 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
   }
 
   def housekeepArtifacts(now: DateTime): Int = {
-    if (config.housekeeping.tagOldArtifacts.enabled) {
+    if (true || config.housekeeping.tagOldArtifacts.enabled) {
       log.info("Running housekeeping")
       val projectNames = ArtifactHousekeeping.getProjectNames(s3Client, artifactBucketName)
       val taggedBuilds = projectNames.map { name =>
         log.info(s"Housekeeping project '$name'")
         val buildIdsForProject = ArtifactHousekeeping.getBuildIds(s3Client, artifactBucketName, name).toSet
+        println("buildids", buildIdsForProject)
         ArtifactHousekeeping.getBuildIdsToKeep(deployments, name, config.housekeeping.tagOldArtifacts.numberToScan, config.housekeeping.tagOldArtifacts.numberToKeep) match {
           case Left(_) =>
             log.warn(s"Failed to get list of builds to keep for project $name - not housekeeping this project")
             0
           case Right(buildIdsToKeep) if buildIdsToKeep.nonEmpty =>
-            val buildIdsToKeepSet = buildIdsToKeep.toSet
-            log.info(s"Keeping ${buildIdsToKeepSet.size} builds of $name (${buildIdsToKeepSet.toList.sorted})")
-            val missingBuilds = buildIdsToKeepSet -- buildIdsForProject
-            if (missingBuilds.nonEmpty) {
-              log.error("Some builds we wanted to keep were not found, possible something is awry. Skipping tagging.")
-              0
-            } else {
-              val buildsToTag = buildIdsForProject -- buildIdsToKeepSet
-              tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
-            }
+            println("nonempty")
+//            val buildIdsToKeepSet = buildIdsToKeep.toSet
+//            log.info(s"Keeping ${buildIdsToKeepSet.size} builds of $name (${buildIdsToKeepSet.toList.sorted})")
+//            val missingBuilds = buildIdsToKeepSet -- buildIdsForProject
+//            if (missingBuilds.nonEmpty) {
+//              log.error("Some builds we wanted to keep were not found, possible something is awry. Skipping tagging.")
+//              0
+//            } else {
+//              val buildsToTag = buildIdsForProject -- buildIdsToKeepSet
+//              tagBuilds(s3Client, artifactBucketName, name, buildsToTag, now)
+//            }
+            0
           case Right(_) =>
+            println("empty")
             log.error(s"List of builds to keep for project $name was empty, possible something is awry. Skipping tagging.")
             0
         }
