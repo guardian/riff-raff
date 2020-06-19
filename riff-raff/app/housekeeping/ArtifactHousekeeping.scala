@@ -53,7 +53,7 @@ object ArtifactHousekeeping {
   def getBuildIdsToKeep(deployments: Deployments, projectName: String, numberToScan: Int, numberToKeep: Int): Either[Throwable, List[String]] = {
     for {
       deployList <- deployments.getDeploys(
-        filter = Some(DeployFilter(projectName = Some(s"^$projectName$$"), status = Some(RunState.Completed))),
+        filter = Some(DeployFilter(projectName = Some(s"$projectName"), isExactMatchProjectName = Some(true), status = Some(RunState.Completed))),
         pagination = PaginationView(pageSize = Some(numberToScan))
       )
     } yield {
