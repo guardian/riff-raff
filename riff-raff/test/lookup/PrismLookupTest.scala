@@ -15,7 +15,6 @@ import play.api.test.WsTestClient
 import play.core.server.Server
 import resources.{Image, PrismLookup}
 import magenta.{ApiCredentials, App, KeyRing, SecretProvider, Stack, Stage}
-import play.api.mvc.Handler.Stage
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
@@ -24,7 +23,7 @@ class PrismLookupTest extends FlatSpec with Matchers {
 
   val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying, DateTime.now)
   val secretProvider = new SecretProvider {
-    override def lookup(service: String, account: String): Option[String] = None
+    override def lookup(service: String, account: String): Option[String] = Some("")
   }
 
   def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
@@ -52,33 +51,34 @@ class PrismLookupTest extends FlatSpec with Matchers {
           )
         ))
       }
-      case GET(p"/data/lookup/credentials:aws?app=amigo&stack=deploy&stage=PROD") => Action { request =>
+      case GET(url) => Action { request =>
         mockRequest = Some(request)
-        Ok(Json.obj(
-          "data" -> Json.obj(
-            "stack" -> JsString("deploy"),
-            "app" -> JsString(".*"),
-            "stage" -> JsString(".*"),
-            "value" -> JsString("access key"),
-            "comment" -> JsString("comment")
-            )
-          )
-        )
+         if (url.toString().contains("role")) {
+           Ok(Json.obj(
+             "data" -> Json.obj(
+               "stack" -> JsString("deploy"),
+               "app" -> JsString(".*"),
+               "stage" -> JsString(".*"),
+               "value" -> JsString("role ARN"),
+               "comment" -> JsString("comment")
+             )
+           )
+           )
+         } else {
+           Ok(Json.obj(
+             "data" -> Json.obj(
+               "stack" -> JsString("deploy"),
+               "app" -> JsString(".*"),
+               "stage" -> JsString(".*"),
+               "value" -> JsString("access key"),
+               "comment" -> JsString("comment")
+             )
+           )
+           )
+         }
       }
-      case GET(p"/data/lookup/credentials:aws-role?app=amigo&stack=deploy&stage=PROD") => Action { request =>
-        mockRequest = Some(request)
-        Ok(Json.obj(
-          "data" -> Json.obj(
-            "stack" -> JsString("deploy"),
-            "app" -> JsString(".*"),
-            "stage" -> JsString(".*"),
-            "value" -> JsString("role ARN"),
-            "comment" -> JsString("comment")
-          )
-        )
-        )
-      }
-    } { implicit port =>
+    }
+    { implicit port =>
       WsTestClient.withClient { client =>
         block(client)
       }
@@ -86,14 +86,14 @@ class PrismLookupTest extends FlatSpec with Matchers {
     (result, mockRequest)
   }
 
+
   "Keyring" should "correctly generate keyring" in {
     withPrismClient(List()) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
       val result = lookup.keyRing(stage = Stage("PROD"), app = App("amigo"), stack = Stack("deploy"))
-      result shouldBe KeyRing(apiCredentials = Map(
-        "aws" -> ApiCredentials(service = "aws", id = "access key", secret = "", comment = Some("comment")),
-        "aws-role" -> ApiCredentials(service = "aws-role", id = "role ARN", secret = "no secret", comment = Some("comment"))
-      ))
+      result.apiCredentials("aws").id shouldBe "access key"
+      result.apiCredentials("aws-role").id shouldBe "role ARN"
+      result.apiCredentials("aws-role").secret shouldBe "no secret"
     }
   }
 
