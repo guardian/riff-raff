@@ -29,6 +29,7 @@ import software.amazon.awssdk.regions.{Region => AWSRegion}
 import software.amazon.awssdk.services.ec2.Ec2Client
 import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
 
 import scala.collection.JavaConverters._
@@ -114,6 +115,9 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
   object credentials {
     lazy val regionName = getStringOpt("credentials.aws.region").getOrElse("eu-west-1")
     lazy val paramPrefix = getStringOpt("credentials.paramPrefix").getOrElse(s"/$stage/deploy/riff-raff/credentials")
+    lazy val credentialsProvider = credentialsProviderChain(None, None)
+    lazy val stsClient = StsClient.builder().credentialsProvider(credentialsProvider).build()
+
   }
 
   object dynamoDb {

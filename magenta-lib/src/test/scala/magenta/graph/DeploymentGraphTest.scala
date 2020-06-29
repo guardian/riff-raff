@@ -1,6 +1,6 @@
 package magenta.graph
 
-import magenta.{Host, KeyRing, Region}
+import magenta.{DeploymentResources, Host, KeyRing, Region}
 import magenta.tasks.{ChangeSwitch, S3Upload, SayHello}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.mockito.MockitoSugar

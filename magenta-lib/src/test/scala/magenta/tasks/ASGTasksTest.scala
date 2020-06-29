@@ -10,6 +10,8 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.sts.StsClient
 
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -28,8 +30,8 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
       deploymentTypes)
 
     val task = DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
-
-    task.execute(asg, reporter, stopFlag = false, asgClientMock)
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
+    task.execute(asg, resources, stopFlag = false, asgClientMock)
 
     verify(asgClientMock).setDesiredCapacity(
       SetDesiredCapacityRequest.builder().autoScalingGroupName("test").desiredCapacity(6).build()
@@ -51,7 +53,9 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val task = CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
-    val thrown = intercept[FailException](task.execute(asg, reporter, stopFlag = false, asgClientMock))
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
+
+    val thrown = intercept[FailException](task.execute(asg, resources, stopFlag = false, asgClientMock))
 
     thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
   }

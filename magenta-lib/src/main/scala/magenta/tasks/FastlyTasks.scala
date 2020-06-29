@@ -29,17 +29,17 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
   // No, I'm not happy about this, but it gets things working until we can make a larger change
   def block[T](f: => Future[T]) = Await.result(f, 1.minute)
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     FastlyApiClientProvider.get(keyRing).foreach { client =>
-      val activeVersionNumber = getActiveVersionNumber(client, reporter, stopFlag)
-      val nextVersionNumber = clone(activeVersionNumber, client, reporter, stopFlag)
+      val activeVersionNumber = getActiveVersionNumber(client, resources.reporter, stopFlag)
+      val nextVersionNumber = clone(activeVersionNumber, client, resources.reporter, stopFlag)
 
-      deleteAllVclFilesFrom(nextVersionNumber, client, reporter, stopFlag)
+      deleteAllVclFilesFrom(nextVersionNumber, client, resources.reporter, stopFlag)
 
-      uploadNewVclFilesTo(nextVersionNumber, s3Package, client, reporter, stopFlag)
-      activateVersion(nextVersionNumber, client, reporter, stopFlag)
+      uploadNewVclFilesTo(nextVersionNumber, s3Package, client, resources.reporter, stopFlag)
+      activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
 
-      reporter.info(s"Fastly version $nextVersionNumber is now active")
+      resources.reporter.info(s"Fastly version $nextVersionNumber is now active")
     }
   }
 

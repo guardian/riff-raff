@@ -1,6 +1,5 @@
 package magenta
 
-
 case class KeyRing(apiCredentials: Map[String, ApiCredentials] = Map.empty) {
   override def toString = apiCredentials.values.toList.mkString(", ")
 }

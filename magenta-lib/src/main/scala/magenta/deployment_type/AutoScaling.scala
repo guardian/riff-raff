@@ -131,7 +131,8 @@ object AutoScaling  extends DeploymentType {
     val prefix = S3Upload.prefixGenerator(
       stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
       stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
-      packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
+      packageName = if (prefixPackage(pkg, target, reporter
+      )) Some(pkg.name) else None
     )
     List(
       S3Upload(

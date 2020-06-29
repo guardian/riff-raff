@@ -12,9 +12,8 @@ import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import magenta.tasks.STS
-import magenta.{DeployParameters, DeployReporter, Lookup, Region}
+import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
 import schedule.ScheduledDeployer
-import magenta.{App => MagentaApp, Stack => MagentaStack}
 import rx.lang.scala.Subscription
 
 import scala.concurrent.ExecutionContext
@@ -36,10 +35,10 @@ class DeployFailureNotifications(config: Config,
     prefix + path.url
   }
 
-  def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters): Option[Target] = {
+  def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
     Try {
       val keyring = lookup.keyRing(parameters.stage, MagentaApp(target.app), MagentaStack(target.stack))
-      STS.withSTSclient(keyring, Region(target.region)){ client =>
+      STS.withSTSclient(keyring, Region(target.region), StsDeploymentResources(uuid, config.credentials.stsClient)){ client =>
             AwsAccount(STS.getAccountNumber(client))
       }
     } match {
@@ -57,7 +56,7 @@ class DeployFailureNotifications(config: Config,
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
     } yield {
       TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        List(App(target.app), Stack(target.stack))++ getAwsAccountIdTarget(target, parameters).toList
+        List(App(target.app), Stack(target.stack))++ getAwsAccountIdTarget(target, parameters, uuid).toList
       } ++ List(Stage(parameters.stage.name))
     }
 

@@ -2,7 +2,7 @@ package magenta.tasks.gcp
 
 import com.google.api.services.deploymentmanager.DeploymentManager
 import com.google.api.services.deploymentmanager.model.Deployment
-import magenta.{DeployReporter, KeyRing}
+import magenta.{DeployReporter, DeploymentResources, KeyRing}
 import magenta.tasks.{PollingCheck, Task}
 import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
 import magenta.tasks.gcp.GcpRetryHelper.Result
@@ -30,16 +30,16 @@ object DeploymentManagerTasks {
       }
     }
 
-    override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-      val credentials = Gcp.credentials.getCredentials(keyRing).getOrElse(reporter.fail("Unable to build GCP credentials from keyring"))
+    override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+      val credentials = Gcp.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
       val client = Gcp.DeploymentManagerApi.client(credentials)
 
       val result = for {
-        maybeDeployment <- Gcp.DeploymentManagerApi.get(client, project, deploymentName)(reporter)
-        operation <- runOperation(client, maybeDeployment)(reporter)
-      } yield pollOperation(client, operation)(reporter, stopFlag)
+        maybeDeployment <- Gcp.DeploymentManagerApi.get(client, project, deploymentName)(resources.reporter)
+        operation <- runOperation(client, maybeDeployment)(resources.reporter)
+      } yield pollOperation(client, operation)(resources.reporter, stopFlag)
 
-      result.left.foreach(error => reporter.fail("DeployManager update operation failed", error))
+      result.left.foreach(error => resources.reporter.fail("DeployManager update operation failed", error))
     }
 
     def runOperation(client: DeploymentManager, maybeDeployment: Option[Deployment])(reporter: DeployReporter): Result[DMOperation] = {

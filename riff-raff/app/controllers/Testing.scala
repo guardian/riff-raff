@@ -54,12 +54,12 @@ class Testing(config: Config,
     val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), All)
 
     val testTask1 = new Task {
-      override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
+      override def execute(resources: DeploymentResources, stopFlag: => Boolean) {}
       def description = "Test task that does stuff, the first time"
       def keyRing = ???
     }
     val testTask2 = new Task {
-      override def execute(reporter: DeployReporter, stopFlag: => Boolean) {}
+      override def execute(resources: DeploymentResources, stopFlag: => Boolean) {}
       def description = "Test task that does stuff"
       def keyRing = ???
     }

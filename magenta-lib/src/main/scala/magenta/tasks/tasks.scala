@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.core.sync.{RequestBody => AWSRequestBody}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{GetObjectRequest, ObjectCannedACL, PutObjectRequest}
+import software.amazon.awssdk.services.sts.StsClient
 
 import scala.util.control.NonFatal
 
@@ -23,9 +24,9 @@ case class S3Upload(
   cacheControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
-  detailedLoggingThreshold: Int = 10
+  detailedLoggingThreshold: Int = 10,
 )(implicit val keyRing: KeyRing, artifactClient: S3Client,
-  withClientFactory: (KeyRing, Region, ClientOverrideConfiguration) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
+  withClientFactory: (KeyRing, Region, ClientOverrideConfiguration, DeploymentResources) => (S3Client => Unit) => Unit = S3.withS3client[Unit]) extends Task with Loggable {
 
   lazy val objectMappings: Seq[(S3Object, S3Path)] = paths flatMap {
     case (file, targetKey) => resolveMappings(file, targetKey, bucket)
@@ -47,24 +48,24 @@ case class S3Upload(
       s"CacheControl:${request.cacheControl} ContentType:${request.contentType} PublicRead:${request.publicReadAcl}"
 
   // execute this task (should throw on failure)
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     if (totalSize == 0) {
       val locationDescription = paths.map {
         case (path: S3Path, _) => path.show()
         case (location, _) => location.toString
       }.mkString("\n")
-      reporter.fail(s"No files found to upload in $locationDescription")
+      resources.reporter.fail(s"No files found to upload in $locationDescription")
     }
 
-    val withClient = withClientFactory(keyRing, region, AWS.clientConfigurationNoRetry)
+    val withClient = withClientFactory(keyRing, region, AWS.clientConfigurationNoRetry, resources)
     withClient { client =>
 
-      reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
+      resources.reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
       requests.zipWithIndex.par.foreach { case (req, index) =>
         logger.debug(s"Transferring ${requestToString(req.source, req)}")
         index match {
-          case x if x < 10 => reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
-          case 10 => reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
+          case x if x < 10 => resources.reporter.verbose(s"Transferring ${requestToString(req.source, req)}")
+          case 10 => resources.reporter.verbose(s"Not logging details for the remaining ${fileString(objectMappings.size - 10)}")
           case _ =>
         }
         retryOnException(AWS.clientConfiguration) {
@@ -72,7 +73,7 @@ case class S3Upload(
             .bucket(req.source.bucket)
             .key(req.source.key)
             .build()
-          val inputStream = artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
+          val inputStream = resources.artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
           val requestBody = AWSRequestBody.fromBytes(inputStream)
 
           val putRequest: PutObjectRequest = req.toAwsRequest
@@ -82,7 +83,7 @@ case class S3Upload(
         }
       }
     }
-    reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
+    resources.reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
   }
 
   private def subDirectoryPrefix(key: String, fileName: String): String =
@@ -171,8 +172,8 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    reporter.info("Hello to " + host.name + "!")
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+    resources.reporter.info("Hello to " + host.name + "!")
   }
 
   def description: String = "to " + host.name
@@ -183,8 +184,8 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
   val switchboardUrl = s"$protocol://${host.name}:$port$path"
 
   // execute this task (should throw on failure)
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
-    reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    resources.reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
 
     val request = new Request.Builder()
       .url(
@@ -195,16 +196,16 @@ case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, sw
       .build()
 
     try {
-      reporter.verbose(s"Changing switch with request: $request")
+      resources.reporter.verbose(s"Changing switch with request: $request")
       val result = ChangeSwitch.client.newCall(request).execute()
       if (result.code() != 200) {
-        reporter.fail(
+        resources.reporter.fail(
           s"Couldn't set $switchName to $desiredState, status was ${result.code}:\n${result.body().string()}")
       }
       result.body().close()
     } catch {
       case NonFatal(t) =>
-        reporter.fail(s"Couldn't set $switchName to $desiredState", t)
+        resources.reporter.fail(s"Couldn't set $switchName to $desiredState", t)
     }
   }
 
@@ -218,20 +219,20 @@ object ChangeSwitch {
 case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $function Lambda using S3 $s3Bucket:$s3Key"
 
-  override def execute(reporter: DeployReporter, stopFlag: => Boolean) {
-    Lambda.withLambdaClient(keyRing, region){ client =>
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+    Lambda.withLambdaClient(keyRing, region, resources){ client =>
       val functionName: String = function match {
         case LambdaFunctionName(name) => name
         case LambdaFunctionTags(tags) =>
-          val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
+          val functionConfig = Lambda.findFunctionByTags(tags, resources.reporter, client)
           functionConfig.map(_.functionName).getOrElse{
-            reporter.fail(s"Failed to find any function with tags $tags")
+            resources.reporter.fail(s"Failed to find any function with tags $tags")
           }
       }
 
-      reporter.verbose(s"Starting update $function Lambda")
+      resources.reporter.verbose(s"Starting update $function Lambda")
       client.updateFunctionCode(Lambda.lambdaUpdateFunctionCodeRequest(functionName, s3Bucket, s3Key))
-      reporter.verbose(s"Finished update $function Lambda")
+      resources.reporter.verbose(s"Finished update $function Lambda")
     }
   }
 

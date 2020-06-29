@@ -40,6 +40,7 @@ class DeployGroupRunner(
   val id = record.uuid
 
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
+  val rootResources = DeploymentResources(rootReporter, prismLookup, config.artifact.aws.client, config.credentials.stsClient)
   var rootContextClosed = false
 
   var deployContext: Option[DeployContext] = None
@@ -173,14 +174,15 @@ class DeployGroupRunner(
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import cats.syntax.either._
 
-      implicit val client = config.artifact.aws.client
+      implicit val s3Client = config.artifact.aws.client
+      val stsClient = config.credentials.stsClient
       val bucketName = config.artifact.aws.bucketName
 
       safeReporter.info("Reading riff-raff.yaml")
-      val resources = DeploymentResources(safeReporter, prismLookup, client)
+      val resources = DeploymentResources(safeReporter, prismLookup, s3Client, stsClient)
 
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
-      val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(client)
+      val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(s3Client)
 
       val context = riffRaffYamlString.map { yaml =>
         val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
@@ -221,7 +223,7 @@ class DeployGroupRunner(
           val actorName = nextActorName()
           log.debug(s"$id:Running next set of tasks (${tasks.name}/$index) on actor $actorName")
           val deploymentRunner = context.watch(deploymentRunnerFactory(context, actorName))
-          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootReporter, new DateTime())
+          deploymentRunner ! TasksRunner.RunDeployment(record.uuid, tasks, rootResources, new DateTime())
           markExecuting(tasks)
         }
       }
