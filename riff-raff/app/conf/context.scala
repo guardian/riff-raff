@@ -116,8 +116,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val regionName = getStringOpt("credentials.aws.region").getOrElse("eu-west-1")
     lazy val paramPrefix = getStringOpt("credentials.paramPrefix").getOrElse(s"/$stage/deploy/riff-raff/credentials")
     lazy val credentialsProvider = credentialsProviderChain(None, None)
-    lazy val stsClient = StsClient.builder().credentialsProvider(credentialsProvider).build()
-
+    lazy val stsClient = StsClient.builder().region(AWSRegion.of(regionName)).credentialsProvider(credentialsProvider).build()
   }
 
   object dynamoDb {
