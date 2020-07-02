@@ -395,9 +395,13 @@ object CloudFormation {
         .build()
     )
 
-  def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
-                      template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
-
+  def createChangeSetRequest(name: String,
+                             tpe: ChangeSetType,
+                             stackName: String,
+                             maybeTags: Option[Map[String, String]],
+                             template: Template,
+                             parameters: List[Parameter]
+                            ): CreateChangeSetRequest = {
     val maybeCfnTags: Option[util.List[CfnTag]] = maybeTags.map { tags =>
       tags.map { case (key, value) => CfnTag.builder().key(key).value(value).build() }.toSeq.asJava
     }
@@ -415,7 +419,15 @@ object CloudFormation {
       case TemplateUrl(url) => request.templateURL(url)
     }
 
-    client.createChangeSet(requestWithTemplate.build())
+    requestWithTemplate.build()
+  }
+
+  def createChangeSet(name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
+                      template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
+
+    val request = createChangeSetRequest(name, tpe, stackName, maybeTags, template, parameters)
+
+    client.createChangeSet(request)
   }
 
   def describeStack(name: String, client: CloudFormationClient) =
