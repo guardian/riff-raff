@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -523,11 +523,11 @@ object AWS extends Loggable {
   def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = provider(keyRing, StsDeploymentResources.fromDeploymentResources(resources))
 
   def provider(keyRing: KeyRing, resources: StsDeploymentResources): AwsCredentialsProviderChain = {
-    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-role").map { credentials =>
+    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-role").collect { case credentials: ApiRoleCredentials =>
       getRoleCredentialsProvider(credentials.id, resources)
     }
-    val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
-        StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
+    val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").collect { case credentials: ApiStaticCredentials =>
+      StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
     }
 
     (roleProvider, staticProvider) match {
@@ -539,7 +539,6 @@ object AWS extends Loggable {
         AwsCredentialsProviderChain.builder().credentialsProviders(sp).build()
       case _ => throw new IllegalArgumentException(s"Could not find credentials provider")
     }
-
   }
 
   private lazy val numberOfRetries = 20

@@ -14,7 +14,7 @@ import play.api.routing.sird._
 import play.api.test.WsTestClient
 import play.core.server.Server
 import resources.{Image, PrismLookup}
-import magenta.{ApiCredentials, App, KeyRing, SecretProvider, Stack, Stage}
+import magenta.{ApiCredentials, ApiRoleCredentials, ApiStaticCredentials, App, KeyRing, SecretProvider, Stack, Stage}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
@@ -91,9 +91,12 @@ class PrismLookupTest extends FlatSpec with Matchers {
     withPrismClient(List()) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
       val result = lookup.keyRing(stage = Stage("PROD"), app = App("amigo"), stack = Stack("deploy"))
-      result.apiCredentials("aws").id shouldBe "access key"
-      result.apiCredentials("aws-role").id shouldBe "role ARN"
-      result.apiCredentials("aws-role").secret shouldBe "no secret"
+      val awsCreds = result.apiCredentials("aws")
+      awsCreds shouldBe a[ApiStaticCredentials]
+      awsCreds.id shouldBe "access key"
+      val roleCreds = result.apiCredentials("aws-role")
+      roleCreds shouldBe a[ApiRoleCredentials]
+      roleCreds.id shouldBe "role ARN"
     }
   }
 
