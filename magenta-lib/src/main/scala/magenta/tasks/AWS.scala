@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import java.nio.ByteBuffer
+import java.util
 
 import cats.implicits._
 import com.gu.management.Loggable
@@ -397,18 +398,17 @@ object CloudFormation {
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
                       template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
 
+    val maybeCfnTags: Option[util.List[CfnTag]] = maybeTags.map { tags =>
+      tags.map { case (key, value) => CfnTag.builder().key(key).value(value).build() }.toSeq.asJava
+    }
+
     val request = CreateChangeSetRequest.builder()
       .changeSetName(name)
       .changeSetType(tpe)
       .stackName(stackName)
       .capabilities(Capability.CAPABILITY_NAMED_IAM)
       .parameters(parameters.asJava)
-
-    val tags: Iterable[CfnTag] = maybeTags
-      .getOrElse(Map.empty)
-      .map  { case (key, value) => CfnTag.builder().key(key).value(value).build() }
-
-    request.tags(tags.toSeq: _*)
+      .tags(maybeCfnTags.orNull)
 
     val requestWithTemplate = template match {
       case TemplateBody(body) => request.templateBody(body)
