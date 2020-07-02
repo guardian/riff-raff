@@ -363,6 +363,12 @@ object CloudFormation {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
+  def getExecutionRole(keyRing: KeyRing): Option[String] = {
+    keyRing.apiCredentials
+      .get("aws-cfn-role")
+      .collect{ case ApiRoleCredentials(_, role, _) => role }
+  }
+
   def withCfnClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: CloudFormationClient => T): T = {
     withResource(CloudFormationClient.builder()
       .credentialsProvider(AWS.provider(keyRing, resources))
@@ -379,7 +385,7 @@ object CloudFormation {
     client.validateTemplate(request.build())
   }
 
-  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: CloudFormationClient): UpdateStackResponse =
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue], maybeRole: Option[String], client: CloudFormationClient): UpdateStackResponse =
     client.updateStack(
       UpdateStackRequest.builder()
         .stackName(name)
@@ -391,11 +397,12 @@ object CloudFormation {
             case (k, UseExistingValue) => Parameter.builder().parameterKey(k).usePreviousValue(true).build()
           }.toSeq: _*
         )
+        .roleARN(maybeRole.orNull)
         .build()
     )
 
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
-                      template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
+                      template: Template, parameters: List[Parameter], maybeRole: Option[String], client: CloudFormationClient): Unit = {
 
     val request = CreateChangeSetRequest.builder()
       .changeSetName(name)
@@ -403,6 +410,7 @@ object CloudFormation {
       .stackName(stackName)
       .capabilities(Capability.CAPABILITY_NAMED_IAM)
       .parameters(parameters.asJava)
+      .roleARN(maybeRole.orNull)
 
     val tags: Iterable[CfnTag] = maybeTags
       .getOrElse(Map.empty)
