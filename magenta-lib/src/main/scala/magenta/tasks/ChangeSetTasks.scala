@@ -55,7 +55,7 @@ class CreateChangeSetTask(
             resources.reporter.info(change)
           }
 
-          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
+          CloudFormation.createChangeSet(stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
         }
       }
     }
