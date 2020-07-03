@@ -8,7 +8,7 @@ To make a project deployable with riff-raff it needs:
  - The two files above along with any assets uploaded into riff-raff's S3 artifact buckets
 
 Both the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact) or
-[node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artefact) plugins will create the 
+[node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artifact) plugins will create the
 `build.json` for you and help you to upload the files to the S3 buckets correctly.
 
 Using SBT
