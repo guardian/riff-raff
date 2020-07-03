@@ -4,8 +4,8 @@ The build.json file
 The type ahead of the project name and build number and also the continuous deployment feature is powered by the
 `build.json` files that are created for each project.
 
-This file is normally created by the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact) 
-or [node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artefact) plugin.
+This file is normally created by the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact)
+or [node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artifact) plugin.
 
 ```json
 {  
