@@ -62,7 +62,8 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
     } else {
       val filter = DeployFilter(
         projectName = Some(projectName),
-        stage = Some(stage)
+        stage = Some(stage),
+        isExactMatchProjectName = Some(true)
       )
       val pagination = PaginationView().withPageSize(Some(1))
 
