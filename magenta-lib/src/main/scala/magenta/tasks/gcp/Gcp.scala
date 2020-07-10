@@ -14,7 +14,7 @@ import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
 import com.gu.management.Loggable
 import magenta.tasks.gcp.GcpRetryHelper.Result
-import magenta.{DeployReporter, KeyRing}
+import magenta.{ApiStaticCredentials, DeployReporter, KeyRing}
 
 import scala.collection.JavaConverters._
 
@@ -27,7 +27,7 @@ object Gcp {
 
   object credentials {
     def getCredentials(keyring: KeyRing): Option[GoogleCredential] = {
-      keyring.apiCredentials.get("gcp").map { credentials =>
+      keyring.apiCredentials.get("gcp").collect { case credentials: ApiStaticCredentials =>
         val in = new ByteArrayInputStream(credentials.secret.getBytes)
         GoogleCredential
           .fromStream(in)

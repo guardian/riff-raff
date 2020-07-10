@@ -3,7 +3,7 @@ package magenta.tasks
 import magenta.artifact.S3Path
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
-import magenta.{DeployReporter, DeploymentResources, KeyRing, Region}
+import magenta.{ApiRoleCredentials, DeployReporter, DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
 import software.amazon.awssdk.services.s3.S3Client
@@ -55,7 +55,10 @@ class CreateChangeSetTask(
             resources.reporter.info(change)
           }
 
-          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, cfnClient)
+          val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
+          maybeExecutionRole.foreach(role => resources.reporter.verbose(s"Using execution role $role"))
+
+          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, maybeExecutionRole, cfnClient)
         }
       }
     }

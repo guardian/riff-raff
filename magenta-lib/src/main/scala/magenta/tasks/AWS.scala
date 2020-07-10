@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.{App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -363,6 +363,12 @@ object CloudFormation {
   case class TemplateBody(body: String) extends Template
   case class TemplateUrl(url: String) extends Template
 
+  def getExecutionRole(keyRing: KeyRing): Option[String] = {
+    keyRing.apiCredentials
+      .get("aws-cfn-role")
+      .collect{ case ApiRoleCredentials(_, role, _) => role }
+  }
+
   def withCfnClient[T](keyRing: KeyRing, region: Region, resources: DeploymentResources)(block: CloudFormationClient => T): T = {
     withResource(CloudFormationClient.builder()
       .credentialsProvider(AWS.provider(keyRing, resources))
@@ -379,7 +385,7 @@ object CloudFormation {
     client.validateTemplate(request.build())
   }
 
-  def updateStackParams(name: String, parameters: Map[String, ParameterValue], client: CloudFormationClient): UpdateStackResponse =
+  def updateStackParams(name: String, parameters: Map[String, ParameterValue], maybeRole: Option[String], client: CloudFormationClient): UpdateStackResponse =
     client.updateStack(
       UpdateStackRequest.builder()
         .stackName(name)
@@ -391,11 +397,12 @@ object CloudFormation {
             case (k, UseExistingValue) => Parameter.builder().parameterKey(k).usePreviousValue(true).build()
           }.toSeq: _*
         )
+        .roleARN(maybeRole.orNull)
         .build()
     )
 
   def createChangeSet(reporter: DeployReporter, name: String, tpe: ChangeSetType, stackName: String, maybeTags: Option[Map[String, String]],
-                      template: Template, parameters: List[Parameter], client: CloudFormationClient): Unit = {
+                      template: Template, parameters: List[Parameter], maybeRole: Option[String], client: CloudFormationClient): Unit = {
 
     val request = CreateChangeSetRequest.builder()
       .changeSetName(name)
@@ -403,6 +410,7 @@ object CloudFormation {
       .stackName(stackName)
       .capabilities(Capability.CAPABILITY_NAMED_IAM)
       .parameters(parameters.asJava)
+      .roleARN(maybeRole.orNull)
 
     val tags: Iterable[CfnTag] = maybeTags
       .getOrElse(Map.empty)
@@ -523,11 +531,11 @@ object AWS extends Loggable {
   def provider(keyRing: KeyRing, resources: DeploymentResources): AwsCredentialsProviderChain = provider(keyRing, StsDeploymentResources.fromDeploymentResources(resources))
 
   def provider(keyRing: KeyRing, resources: StsDeploymentResources): AwsCredentialsProviderChain = {
-    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-role").map { credentials =>
+    val roleProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws-role").collect { case credentials: ApiRoleCredentials =>
       getRoleCredentialsProvider(credentials.id, resources)
     }
-    val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").map { credentials =>
-        StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
+    val staticProvider: Option[AwsCredentialsProvider] = keyRing.apiCredentials.get("aws").collect { case credentials: ApiStaticCredentials =>
+      StaticCredentialsProvider.create(AwsBasicCredentials.create(credentials.id, credentials.secret))
     }
 
     (roleProvider, staticProvider) match {
@@ -539,7 +547,6 @@ object AWS extends Loggable {
         AwsCredentialsProviderChain.builder().credentialsProviders(sp).build()
       case _ => throw new IllegalArgumentException(s"Could not find credentials provider")
     }
-
   }
 
   private lazy val numberOfRetries = 20

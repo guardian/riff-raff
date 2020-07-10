@@ -300,8 +300,10 @@ case class UpdateAmiCloudFormationParameterTask(
       if (resolvedAmiParameters.nonEmpty) {
         val newParameters = existingParameters ++ resolvedAmiParameters
         resources.reporter.info(s"Updating cloudformation stack params: $newParameters")
+        val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
+        maybeExecutionRole.foreach(role => resources.reporter.verbose(s"Using execution role $role"))
         updateWithRetry(resources.reporter, stopFlag) {
-          CloudFormation.updateStackParams(cfStack.stackName, newParameters, cfnClient)
+          CloudFormation.updateStackParams(cfStack.stackName, newParameters, maybeExecutionRole, cfnClient)
         }
       } else {
         resources.reporter.info(s"All AMIs the same as current AMIs. No update to perform.")

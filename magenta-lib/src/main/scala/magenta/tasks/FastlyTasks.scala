@@ -125,21 +125,11 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
 }
 
 object FastlyApiClientProvider {
-
-  private var fastlyApiClients = Map[String, FastlyApiClient]()
-
   def get(keyRing: KeyRing): Option[FastlyApiClient] = {
-
-    keyRing.apiCredentials.get("fastly").map { credentials =>
+    keyRing.apiCredentials.get("fastly").collect { case credentials: ApiStaticCredentials =>
         val serviceId = credentials.id
         val apiKey = credentials.secret
-
-        if (fastlyApiClients.get(serviceId).isEmpty) {
-          this.fastlyApiClients += (serviceId -> new FastlyApiClient(apiKey, serviceId))
-        }
-        return fastlyApiClients.get(serviceId)
+        new FastlyApiClient(apiKey, serviceId)
     }
-
-    None
   }
 }
