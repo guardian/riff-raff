@@ -14,7 +14,7 @@ import housekeeping.ArtifactHousekeeping
 import lifecycle.ShutdownWhenInactive
 import magenta.deployment_type._
 import magenta.tasks.AWS
-import notification.{DeployFailureNotifications, HooksClient}
+import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.db.evolutions.EvolutionsComponents
@@ -154,6 +154,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     builds,
     targetResolver,
     DeployMetrics,
+    new GrafanaAnnotationLogger,
     hooksClient,
     new SummariseDeploysHousekeeping(config, datastore),
     continuousDeployment,
