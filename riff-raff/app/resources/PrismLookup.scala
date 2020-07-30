@@ -159,6 +159,11 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
     }
   }
   def getLatestAmi(accountNumber: Option[String], tagFilter: Map[String, String] => Boolean)(region: String)(tags: Map[String, String]): Option[String] =
-    get(accountNumber, region, tags).filter(image => tagFilter(image.tags)).sortBy(-_.creationDate.getMillis).headOption.map(_.imageId)
+    get(accountNumber, region, tags)
+      .filter(image => tagFilter(image.tags))
+      .filter(image => image.creationDate.isBefore(1596013200000L)) // drop anything after Wednesday 29th 9AM UTC
+      .sortBy(-_.creationDate.getMillis)
+      .headOption
+      .map(_.imageId)
 
 }
