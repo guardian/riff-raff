@@ -123,9 +123,10 @@ object CloudFormationParameters {
               existingParameters: List[ExistingParameter]
              ): Either[String, List[InputParameter]] = {
 
-    val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
-      cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
-    }
+//    val resolvedAmiParameters: Map[String, String] = cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
+//      cfnParameters.latestImage(accountNumber)(cfnParameters.target.region.name)(tags).map(name -> _)
+//    }
+    val resolvedAmiParameters: Map[String, String] = Map.empty
 
     val deploymentParameters = Map(
       "Stage" -> cfnParameters.target.parameters.stage.name,
@@ -282,8 +283,8 @@ case class UpdateAmiCloudFormationParameterTask(
         }
 
         val currentAmi = cfStack.parameters.asScala.find(_.parameterKey == parameterName).get.parameterValue
-        val accountNumber = STS.withSTSclient(keyRing, region, resources)(STS.getAccountNumber)
-        val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
+        //val accountNumber = STS.withSTSclient(keyRing, region, resources)(STS.getAccountNumber)
+        val maybeNewAmi: Option[String] = Some(currentAmi) //latestImage(accountNumber)(region.name)(amiTags)
         maybeNewAmi match {
           case Some(sameAmi) if currentAmi == sameAmi =>
             resources.reporter.info(s"Current AMI is the same as the resolved AMI for $parameterName ($sameAmi)")
