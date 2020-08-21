@@ -129,6 +129,7 @@ class DeployGroupRunner(
   def receive = {
     case Start =>
       try {
+        warnDeprecatedBranch()
         self ! ContextCreated(createContext)
         self ! StartDeployment
       } catch {
@@ -170,6 +171,12 @@ class DeployGroupRunner(
       log.warn(s"Received terminate from ${actor.path}")
   }
 
+  private def warnDeprecatedBranch(): Unit = {
+    val maybeBranch: Option[String] = record.metaData.get("branch")
+    if (maybeBranch.contains("master"))
+      rootReporter.warning("branch name 'master' is not inclusive, please rename - see https://docs.google.com/document/d/1nqC5Uk6n3y7S79m1yiG6oqT8NtXWpDcsS-uLI_RK7Mg/edit#")
+  }
+
   private def createContext: DeployContext = {
     DeployReporter.withFailureHandling(rootReporter) { implicit safeReporter =>
       import cats.syntax.either._
@@ -201,7 +208,7 @@ class DeployGroupRunner(
 
       if (DeploymentGraph.toTaskList(c.tasks).isEmpty)
         safeReporter.fail("No tasks were found to execute. Ensure the app(s) are in the list supported by this stage/host.")
-      
+
       c
     }
   }
