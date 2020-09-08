@@ -10,14 +10,17 @@ import com.gu.management.DefaultSwitch
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta._
+import net.logstash.logback.marker.Markers.appendEntries
 import org.joda.time.DateTime
 import persistence.{DocumentStoreConverter, RestrictionConfigDynamoRepository}
+import play.api.MarkerContext
 import restrictions.RestrictionChecker
 import rx.lang.scala.{Observable, Subject, Subscription}
 import utils.VCSInfo
 
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext}
 import scala.util.control.NonFatal
 
 class Deployments(deploymentEngine: DeploymentEngine,
@@ -60,10 +63,11 @@ class Deployments(deploymentEngine: DeploymentEngine,
   def getStopFlag(uuid: UUID): Boolean = deploymentEngine.getDeployStopFlag(uuid)
 
   def create(params: DeployParameters): Record = {
-    log.info(s"Creating deploy record for $params")
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
+    val mc = MarkerContext(appendEntries(record.metaData.asJava))
+    log.info(s"Creating deploy record for $params")(mc)
     library send { _ + (uuid -> Agent(record)) }
     documentStoreConverter.saveDeploy(record)
     await(uuid, 30 seconds)
@@ -162,9 +166,9 @@ class Deployments(deploymentEngine: DeploymentEngine,
   def cleanup(uuid: UUID) {
     log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
-      import cats.syntax.traverse._
       import cats.instances.future._
       import cats.instances.option._
+      import cats.syntax.traverse._
 
       val record: Option[DeployRecord] =
         Await.result(
