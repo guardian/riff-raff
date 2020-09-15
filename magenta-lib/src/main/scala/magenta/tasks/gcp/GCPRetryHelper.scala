@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 /**
   * Borrowed from https://github.com/broadinstitute
   */
-object GcpRetryHelper extends Loggable {
+object GCPRetryHelper extends Loggable {
 
   def log(reporter: DeployReporter, message: String, t: Throwable): Unit = {
     logger.info(message, t)

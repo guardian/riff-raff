@@ -13,12 +13,11 @@ import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
 import com.gu.management.Loggable
-import magenta.tasks.gcp.GcpRetryHelper.Result
-import magenta.{ApiStaticCredentials, DeployReporter, KeyRing}
-
+import magenta.tasks.gcp.GCPRetryHelper.Result
+import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing}
 import scala.collection.JavaConverters._
 
-object Gcp {
+object GCP {
   lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport
   lazy val jsonFactory: JacksonFactory = JacksonFactory.getDefaultInstance
   val scopes: Seq[String] = Seq(
@@ -125,8 +124,8 @@ object Gcp {
 
   object api {
     def retryWhen500orGoogleError[T](reporter: DeployReporter, failureMessage: String)(op: => T): Result[T] = {
-      GcpRetryHelper.retryableToResult(
-        GcpRetryHelper.retryExponentially(
+      GCPRetryHelper.retryableToResult(
+        GCPRetryHelper.retryExponentially(
           reporter,
           when500orGoogleError,
           failureMessage

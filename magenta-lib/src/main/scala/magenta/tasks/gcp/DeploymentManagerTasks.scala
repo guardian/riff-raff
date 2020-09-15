@@ -4,8 +4,8 @@ import com.google.api.services.deploymentmanager.DeploymentManager
 import com.google.api.services.deploymentmanager.model.Deployment
 import magenta.{DeployReporter, DeploymentResources, KeyRing}
 import magenta.tasks.{PollingCheck, Task}
-import magenta.tasks.gcp.Gcp.DeploymentManagerApi._
-import magenta.tasks.gcp.GcpRetryHelper.Result
+import magenta.tasks.gcp.GCP.DeploymentManagerApi._
+import magenta.tasks.gcp.GCPRetryHelper.Result
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -31,11 +31,11 @@ object DeploymentManagerTasks {
     }
 
     override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
-      val credentials = Gcp.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
-      val client = Gcp.DeploymentManagerApi.client(credentials)
+      val credentials = GCP.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
+      val client = GCP.DeploymentManagerApi.client(credentials)
 
       val result = for {
-        maybeDeployment <- Gcp.DeploymentManagerApi.get(client, project, deploymentName)(resources.reporter)
+        maybeDeployment <- GCP.DeploymentManagerApi.get(client, project, deploymentName)(resources.reporter)
         operation <- runOperation(client, maybeDeployment)(resources.reporter)
       } yield pollOperation(client, operation)(resources.reporter, stopFlag)
 
@@ -46,19 +46,19 @@ object DeploymentManagerTasks {
       maybeDeployment.fold{
         if (upsert) {
           reporter.verbose(s"Deployment ${deploymentName} doesn't exist; inserting new deployment")
-          Gcp.DeploymentManagerApi.insert(client, project, deploymentName, bundle, preview)(reporter)
+          GCP.DeploymentManagerApi.insert(client, project, deploymentName, bundle, preview)(reporter)
         } else {
           reporter.fail(s"Deployment ${deploymentName} doesn't exist and upserting isn't enabled.")
         }
       }{ deployment =>
         reporter.verbose(s"Fetched details for deployment ${deploymentName}; using fingerprint ${deployment.getFingerprint} for update")
-        Gcp.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle, preview)(reporter)
+        GCP.DeploymentManagerApi.update(client, project, deploymentName, deployment.getFingerprint, bundle, preview)(reporter)
       }
     }
 
     def pollOperation(client: DeploymentManager, operation: DMOperation)(reporter: DeployReporter, stopFlag: => Boolean): Unit = {
       check(reporter, stopFlag) {
-        val maybeUpdatedOperation: Result[DMOperation] = Gcp.DeploymentManagerApi.operationStatus(client, operation)(reporter)
+        val maybeUpdatedOperation: Result[DMOperation] = GCP.DeploymentManagerApi.operationStatus(client, operation)(reporter)
         maybeUpdatedOperation.fold(
           error => reporter.fail("DeployManager operation status failed", error),
           {
