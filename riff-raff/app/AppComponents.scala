@@ -89,7 +89,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   )
 
   val availableDeploymentTypes = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager
+    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
   )
 
   val documentStoreConverter = new DocumentStoreConverter(datastore)

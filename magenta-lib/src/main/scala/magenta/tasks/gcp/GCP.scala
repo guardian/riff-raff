@@ -9,6 +9,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.HttpResponseException
 import com.google.api.client.http.apache.ApacheHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.services.storage.Storage
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
@@ -122,6 +123,12 @@ object GCP {
     }
   }
 
+  object StorageApi extends Loggable {
+    def client(credentials: GoogleCredential): Storage = {
+      new Storage.Builder(httpTransport, jsonFactory, credentials).build()
+    }
+  }
+
   object api {
     def retryWhen500orGoogleError[T](reporter: DeployReporter, failureMessage: String)(op: => T): Result[T] = {
       GCPRetryHelper.retryableToResult(
@@ -152,3 +159,12 @@ object GCP {
   }
 }
 
+object GCS {
+  def withGCSClient[T](keyRing: KeyRing, resources: DeploymentResources)(block: Storage => T): T = block(GCP.StorageApi.client(
+    credentials = GCP.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
+  ))
+}
+
+case class GCSPath(bucket: String, key: String) {
+  def show(): String = s"Bucket: '$bucket', Key: '$key'"
+}
