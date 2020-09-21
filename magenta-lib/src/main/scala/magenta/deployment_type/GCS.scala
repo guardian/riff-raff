@@ -24,12 +24,18 @@ object GCS extends DeploymentType {
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "GCS bucket to upload package files to (see also `bucketResource`)", optional = true)
-  val bucketResource = Param[String]("bucketResource",
-    """Deploy Info resource key to use to look up the GCS bucket to which the package files should be uploaded.
-      |
-      |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
-      |regardless of the target stage.
-    """.stripMargin,
+  val bucketByStage: Param[Map[String, String]] = Param[Map[String, String]](
+    name = "bucketByStage",
+    documentation =
+      """
+        |A dict of stages to buckets in the package. When the current stage is found in here the bucket
+        |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists.
+        |```
+        |bucketByStage:
+        |  PROD: prod-bucket
+        |  CODE: code-bucket
+        |```
+        |""".stripMargin,
     optional = true
   )
 
@@ -119,11 +125,13 @@ object GCS extends DeploymentType {
     implicit val artifactClient = resources.artifactClient
     val reporter = resources.reporter
 
-    assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
-    val bucketName = bucket.get(pkg) getOrElse {
-      val data = resourceLookupFor(bucketResource)
-      assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.app} in ${target.parameters.stage.name})")
-      data.get.value
+    val bucketName: String = (bucketByStage.get(pkg), bucket.get(pkg)) match {
+      case (Some(map), None)                 => map.getOrElse(
+                                                  target.parameters.stage.name,
+                                                  reporter.fail(s"No bucket supplied for stage ${target.parameters.stage.name} in bucketByStage")
+                                                )
+      case (None, Some(bucket))              => bucket
+      case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of bucketByStage or bucket must be provided")
     }
 
     val maybeDatum = resourceLookupFor(pathPrefixResource)
