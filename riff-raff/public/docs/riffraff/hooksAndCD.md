@@ -5,7 +5,7 @@ Continuous Integration and Deployment
 You want to continuously deploy your project into production. A typical pipeline (for feature branch style development)
  might be:
 
- - a developer merges a new feature to ~`master`~ `main`
+ - a developer merges a new feature to the default branch
  - the build server creates a new deployable build
  - Riff-Raff deploys the new build to a development environment
  - a set of automated integration tests run against the development environment
@@ -35,7 +35,7 @@ A continuous deployment configuration is designed to watch for new builds and re
  events. You can currently set up a configuration that reacts to a successful build. When the matching event occurs,
  Riff-Raff will start a deploy automatically to the specified environment.
 
-In either case, the configuration can be set to filter by VCS branch (e.g. only builds of the ~`master`~ `main` branch trigger
+In either case, the configuration can be set to filter by VCS branch (e.g. only builds of the default branch trigger
  a new deploy - allowing work on other branches to be safely ignored).
 
 Deploys triggered by Continuous Deployment will have a deployer name of `Continuous Deployment`, but in any other
