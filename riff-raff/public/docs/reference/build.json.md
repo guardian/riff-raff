@@ -49,7 +49,7 @@ _Required:_ Yes.
 ### branch
 
 The name of the VCS branch. This is displayed in the type ahead and also in the audit trail. Supplying this makes it 
-easy to identify in Riff-Raff whether a build is from master or another un-merged branch. It can also be used as a
+easy to identify in Riff-Raff whether a build is from the default branch or not. It can also be used as a
 condition for triggering continuous deployments.
 
 _Required:_ Yes.
