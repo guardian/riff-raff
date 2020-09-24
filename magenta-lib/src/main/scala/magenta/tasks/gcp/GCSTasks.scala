@@ -1,6 +1,5 @@
 package magenta.tasks.gcp
 
-import java.io.File
 import java.math.BigInteger
 import java.net.URLConnection
 import java.util.Arrays
@@ -9,22 +8,18 @@ import com.google.api.client.http.InputStreamContent
 import com.google.api.services.storage.Storage
 import com.google.api.services.storage.model.{ObjectAccessControl, StorageObject}
 import com.gu.management.Loggable
-import magenta.{DeploymentResources, KeyRing, Region, Stack, Stage}
+import magenta.{DeploymentResources, KeyRing, Stack, Stage}
 import magenta.artifact.{S3Location, S3Object, S3Path}
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.tasks.Task
-import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 case class GCSUpload(
-  region: Region,
   bucket: String,
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
-  extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
-  detailedLoggingThreshold: Int = 10,
 )(implicit val keyRing: KeyRing, artifactClient: S3Client,
   withClientFactory: (KeyRing, DeploymentResources) => (Storage => Unit) => Unit = GCS.withGCSClient[Unit]) extends Task with Loggable {
 
@@ -37,11 +32,10 @@ case class GCSUpload(
   lazy val totalSize: Long = objectMappings.map{ case (source, _) => source.size }.sum
 
   lazy val transfers: Seq[StorageObjectTransfer] = objectMappings.map { case (source, target) =>
-    val storageObject = new StorageObject()
-    storageObject.setBucket(bucket)
-    storageObject.setName(target.key)
-    storageObject.setSize(BigInteger.valueOf(source.size))
-    storageObject.setContentType(URLConnection.guessContentTypeFromName(target.key))
+    val storageObject = new StorageObject().setBucket(bucket)
+                                           .setName(target.key)
+                                           .setSize(BigInteger.valueOf(source.size))
+                                           .setContentType(URLConnection.guessContentTypeFromName(target.key))
 
     cacheControlLookup(target.key) match {
       case Some(cacheControl) => storageObject.setCacheControl(cacheControl)
@@ -118,10 +112,6 @@ case class StorageObjectTransfer(source: S3Object, target: StorageObject) {
 }
 
 object GCSUpload {
-  private val mimeTypes = Mimetype.getInstance()
-
-  def awsMimeTypeLookup(fileName: String): String = mimeTypes.getMimetype(new File(fileName))
-
   def prefixGenerator(stack:Option[Stack] = None, stage:Option[Stage] = None, packageName:Option[String] = None): String = {
     (stack.map(_.name) :: stage.map(_.name) :: packageName :: Nil).flatten.mkString("/")
   }

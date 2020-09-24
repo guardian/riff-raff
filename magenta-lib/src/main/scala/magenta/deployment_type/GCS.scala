@@ -143,12 +143,10 @@ object GCS extends DeploymentType {
       ))
       List(
         GCSUpload(
-          target.region,
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg, target, reporter),
-          extensionToMimeType = mimeTypes(pkg, target, reporter),
-          publicReadAcl = publicReadAcl(pkg, target, reporter)
+          publicReadAcl = publicReadAcl(pkg, target, reporter),
         )
       )
     }
