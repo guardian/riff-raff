@@ -66,7 +66,12 @@ class Deployments(deploymentEngine: DeploymentEngine,
     val uuid = java.util.UUID.randomUUID()
     val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
-    val mc = MarkerContext(appendEntries(record.metaData.asJava))
+
+    // information for creating a master to main progress dashboard
+    val markers = Map(
+      "branch" -> record.metaData.getOrElse("branch", "unknown")
+    )
+    val mc = MarkerContext(appendEntries(markers.asJava))
     log.info(s"Creating deploy record for $params")(mc)
     library send { _ + (uuid -> Agent(record)) }
     documentStoreConverter.saveDeploy(record)
