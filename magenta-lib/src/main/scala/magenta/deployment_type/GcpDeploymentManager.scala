@@ -7,7 +7,7 @@ import cats.syntax.traverse._
 import magenta.artifact.{EmptyS3Location, S3Location, S3Path, UnknownS3Error}
 import magenta.input.RiffRaffYamlReader
 import magenta.tasks.gcp.DeploymentManagerTasks
-import magenta.tasks.gcp.Gcp.DeploymentManagerApi.DeploymentBundle
+import magenta.tasks.gcp.GCP.DeploymentManagerApi.DeploymentBundle
 import magenta.{DeployReporter, KeyRing}
 import software.amazon.awssdk.services.s3.S3Client
 
