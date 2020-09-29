@@ -78,22 +78,6 @@ object GCS extends DeploymentType {
     """.stripMargin
   )
 
-  val mimeTypes = Param[Map[String,String]]("mimeTypes",
-    """
-      |A map of file extension to MIME type.
-      |
-      |When a file is uploaded with a file extension that is in this map, the Content-Type header will be set to the
-      |MIME type provided.
-      |
-      |The example below adds the MIME type for Firefox plugins so that they install correctly rather than opening in
-      |the browser.
-      |
-      |    "mimeTypes": {
-      |      "xpi": "application/x-xpinstall"
-      |    }
-    """.stripMargin
-  ).default(Map.empty)
-
   val uploadStaticFiles = Action(
     name = "uploadStaticFiles",
     documentation =
