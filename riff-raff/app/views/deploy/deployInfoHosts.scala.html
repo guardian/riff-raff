@@ -14,7 +14,7 @@
         }
     } else {
 
-        @snippets.tabbable(lookup.stages.filter(hosts.contains), pushParam="stage"){ stage =>
+        @snippets.tabbable(lookup.stages.filter(hosts.contains), pushParam="stage", activeTab = request.getQueryString("stage")){ stage =>
             <table class="table table-condensed">
                 <thead><tr>
                     <th>Stack</th>

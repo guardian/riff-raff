@@ -9,7 +9,7 @@
         @if(data.keys.isEmpty) {
             <div class="alert">No data available in lookup service</div>
         } else {
-            @snippets.tabbable(data.keys.toSeq.sorted, pushParam = "key"){ key =>
+            @snippets.tabbable(data.keys.toSeq.sorted, pushParam = "key", activeTab = request.getQueryString("key")){ key =>
                 <table class="table">
                 <thead><tr>
                     <th>Stack</th>
