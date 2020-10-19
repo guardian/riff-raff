@@ -30,7 +30,9 @@
         <div class="graph-legend"></div>
     </div>
 
-    <div class="content" data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
-        <p>Loading...</p>
+    <div data-ajax-refresh="@{routes.DeployController.historyContent()}?@request.rawQueryString" data-ajax-interval="60000">
+        <p class="loading">Loading...</p>
+        <div class="alert alert-danger error" style="display:none"><strong>An error occurred whilst fetching the most recent deployment history</strong></div>
+        <div class="content"></div>
     </div>
 }(config, menu)

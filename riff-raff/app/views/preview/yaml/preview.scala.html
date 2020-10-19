@@ -47,9 +47,10 @@
 
     <div class="clearfix"></div>
 
-    <div class="content"
-      data-ajax-refresh="@routes.PreviewController.showTasks(previewId: String)">
-        @views.html.preview.yaml.loading(request, 0L)
+    <div data-ajax-refresh="@routes.PreviewController.showTasks(previewId: String)">
+@*         Loading is not included here as the api endpoint shows a loader every time it is polled until a final result is returned *@
+        <div class="alert alert-danger error" style="display:none"><strong>An error occurred whilst fetching the preview</strong></div>
+        <div class="content">@views.html.preview.yaml.loading(request, 0L)</div>
     </div>
 
 }(config, menu)

@@ -34,12 +34,23 @@ enableRefresh = (interval=1000) ->
       $('[data-ajax-refresh]').each ->
         if $(".ajax-refresh-disabled").length == 0
           divBottomWasInView = bottomInView($(this).get(-1))
-          $(this).load(
+          wrapper = $(this)
+          loading = wrapper.find(".loading")
+          err = wrapper.find(".error")
+
+          loading.show()
+
+          $(this).find(".content").load(
             $(this).data("ajax-refresh"),
-            ->
-              callbackList.fire()
-              if divBottomWasInView && $(this).data("ajax-autoscroll") == true
-                scrollToBottom($(this).get(-1))
+            (response, status) ->
+              loading.hide()
+              if status == "success"
+                err.hide()
+                callbackList.fire()
+                if divBottomWasInView && wrapper.data("ajax-autoscroll") == true
+                  scrollToBottom(wrapper.get(-1))
+              else
+                err.show()
           )
 
     intervalId = setInterval reload, interval

@@ -5,7 +5,9 @@
     <h2>Dashboard</h2>
     <hr/>
 
-    <div class="content" data-ajax-refresh="@{routes.DeployController.dashboardContent(projects, search)}" data-ajax-interval="60000">
-        <p><img height="15" width="21" src="@routes.Assets.versioned("images/parrot-small.gif")"/> Analysing history...</p>
+    <div data-ajax-refresh="@{routes.DeployController.dashboardContent(projects, search)}" data-ajax-interval="60000">
+        <p class="loading"><img height="15" width="21" src="@routes.Assets.versioned("images/parrot-small.gif")"/> Analysing history...</p>
+        <div class="alert alert-danger error" style="display:none"><strong>An error occurred whilst fetching the latest dashboard information</strong></div>
+        <div class="content"></div>
     </div>
 }(config, menu)
