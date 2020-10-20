@@ -96,7 +96,6 @@
     @stopDeployButton(record, stopFlag)
 
     <div data-ajax-refresh="@routes.DeployController.updatesUUID(record.uuid.toString)" data-ajax-interval="1000" data-ajax-autoscroll="@{!record.isDone}">
-        <p class="loading">Loading...</p>
         <div class="alert alert-danger error" style="display:none"><strong>An error occurred whilst fetching the most recent update</strong></div>
         <div class="content"></div>
     </div>
