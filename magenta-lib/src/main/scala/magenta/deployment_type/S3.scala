@@ -34,7 +34,11 @@ object S3 extends DeploymentType {
   )
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
-    "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
+    """
+      |Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!) Note that the
+      |AWS default S3 bucket setting is to block all public access, which doesn't play nicely with `publicReadAcl`
+      |when set to true. If public access to the bucket is restricted then you should set `publicReadAcl` to `false`.
+    """.stripMargin
   ).default(true)
 
   val cacheControl = Param[List[PatternValue]]("cacheControl",
