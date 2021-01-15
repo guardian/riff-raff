@@ -35,16 +35,32 @@ class DeployFailureNotifications(config: Config,
     prefix + path.url
   }
 
+  def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
+    Try {
+      val keyring = lookup.keyRing(parameters.stage, MagentaApp(target.app), MagentaStack(target.stack))
+      STS.withSTSclient(keyring, Region(target.region), StsDeploymentResources(uuid, config.credentials.stsClient)){ client =>
+        AwsAccount(STS.getAccountNumber(client))
+      }
+    } match {
+      case Success(value) =>
+        Some(value)
+      case Failure(exception) =>
+        log.error("Failed to fetch AWS account ID", exception)
+        None
+    }
+  }
+
   def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters): Unit = {
+
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
     } yield {
       TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        List(App(target.app), Stack(target.stack))
-      } ++ List(Stage(parameters.stage.name))
+        val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
+        List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+      }
     }
-
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
