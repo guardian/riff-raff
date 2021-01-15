@@ -34,9 +34,10 @@ class DeployJob extends Job with Logging {
           case Left(error) =>
             val schedulerContext = context.getScheduler.getContext
             val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
-
-            log.warn(error.message)
-            scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
+            log.info(s"Scheduled deploy failed to start due to $error. Deploy parameters were ${extractDeployParameters(record)}")
+            // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
+            // we can uncomment the next line to enable these notifications
+            // scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
           case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
         }
     }
