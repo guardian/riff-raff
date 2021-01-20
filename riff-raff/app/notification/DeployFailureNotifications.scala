@@ -31,7 +31,7 @@ class DeployFailureNotifications(config: Config,
   lazy private val prefix = config.urls.publicPrefix
 
   def url(uuid: UUID): String = {
-    val path = routes.DeployController.viewUUID(uuid.toString,true)
+    val path = routes.DeployController.viewUUID(uuid.toString, verbose = true)
     prefix + path.url
   }
 
@@ -39,7 +39,7 @@ class DeployFailureNotifications(config: Config,
     Try {
       val keyring = lookup.keyRing(parameters.stage, MagentaApp(target.app), MagentaStack(target.stack))
       STS.withSTSclient(keyring, Region(target.region), StsDeploymentResources(uuid, config.credentials.stsClient)){ client =>
-            AwsAccount(STS.getAccountNumber(client))
+        AwsAccount(STS.getAccountNumber(client))
       }
     } match {
       case Success(value) =>
@@ -50,16 +50,17 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: UUID, parameters: DeployParameters): Unit = {
+  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters): Unit = {
+
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)
       deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
     } yield {
       TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        List(App(target.app), Stack(target.stack))++ getAwsAccountIdTarget(target, parameters, uuid).toList
-      } ++ List(Stage(parameters.stage.name))
+        val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
+        List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+      }
     }
-
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
@@ -71,7 +72,8 @@ class DeployFailureNotifications(config: Config,
           sourceSystem = "riff-raff",
           channel = All,
           target = targets,
-          actions = List(Action("View failed deploy", url(uuid))),
+          // TODO: Figure out the correct action for scheduled deploys that don't start
+          actions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil),
           topicArn = anghammaradTopicARN,
           client = snsClient
         ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for $uuid", ex) }
@@ -87,7 +89,7 @@ class DeployFailureNotifications(config: Config,
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        failedDeployNotification(message.context.deployId, message.context.parameters)
+        failedDeployNotification(Some(message.context.deployId), message.context.parameters)
       case _ =>
     }
   })

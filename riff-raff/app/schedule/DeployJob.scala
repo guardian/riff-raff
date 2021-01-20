@@ -3,7 +3,9 @@ package schedule
 import controllers.Logging
 import deployment._
 import magenta.{DeployParameters, RunState}
+import notification.DeployFailureNotifications
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
+import schedule.DeployJob.extractDeployParameters
 import schedule.DeployScheduler.JobDataKeys
 import utils.LogAndSquashBehaviour
 
@@ -20,17 +22,25 @@ class DeployJob extends Job with Logging {
     val stage = getAs[String](JobDataKeys.Stage)
     val scheduledDeploymentEnabled = getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
 
-    val result = for {
-      record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
-      uuid <- deployments.deploy(params, ScheduleRequestSource)
-    } yield uuid
-    result match {
-      case Left(error) => {
-        // TODO: send an Anghammarad notification to inform a team that their scheduled deploy didn't start
-        log.warn(error.message)
-      }
-      case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
+    DeployJob.getLastDeploy(deployments, projectName, stage) match {
+      case Left(error) =>
+        log.warn(s"Scheduled deploy failed to start. The last deploy could not be retrieved due to ${error.message}.")
+      case Right(record) =>
+        val result = for {
+          params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
+          uuid <- deployments.deploy(params, ScheduleRequestSource)
+        } yield uuid
+
+        result match {
+          case Left(error) =>
+            val schedulerContext = context.getScheduler.getContext
+            val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
+            log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
+            // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
+            // we can uncomment the next line to enable these notifications
+            // scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
+          case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
+        }
     }
   }
 }
@@ -40,11 +50,7 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
-        val params = DeployParameters(
-          ScheduledDeployer.deployer,
-          lastDeploy.parameters.build,
-          lastDeploy.stage
-        )
+        val params = extractDeployParameters(lastDeploy)
         if (scheduledDeploysEnabled) {
           Right(params)
         } else {
@@ -53,6 +59,14 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
       case otherState =>
         Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
     }
+  }
+
+  private def extractDeployParameters(lastDeploy: Record) = {
+    DeployParameters(
+      ScheduledDeployer.deployer,
+      lastDeploy.parameters.build,
+      lastDeploy.stage
+    )
   }
 
   @tailrec

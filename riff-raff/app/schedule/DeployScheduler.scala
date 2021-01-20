@@ -5,6 +5,7 @@ import java.util.{TimeZone, UUID}
 import conf.Config
 import controllers.Logging
 import deployment.Deployments
+import notification.DeployFailureNotifications
 import org.quartz.CronScheduleBuilder._
 import org.quartz.JobBuilder._
 import org.quartz.TriggerBuilder._
@@ -12,7 +13,7 @@ import org.quartz.impl.StdSchedulerFactory
 import org.quartz.{JobDataMap, JobKey, TriggerKey}
 import schedule.DeployScheduler.JobDataKeys
 
-class DeployScheduler(config: Config, deployments: Deployments) extends Logging {
+class DeployScheduler(config: Config, deployments: Deployments, scheduledDeployNotifier: DeployFailureNotifications) extends Logging {
 
   private val scheduler = StdSchedulerFactory.getDefaultScheduler
 
@@ -37,6 +38,9 @@ class DeployScheduler(config: Config, deployments: Deployments) extends Logging 
         .withIdentity(jobKey(id))
         .usingJobData(buildJobDataMap(scheduleConfig))
         .build()
+
+      scheduler.getContext.put("scheduledDeployNotifier", scheduledDeployNotifier)
+
       val trigger = newTrigger()
         .withIdentity(triggerKey(id))
         .withSchedule(

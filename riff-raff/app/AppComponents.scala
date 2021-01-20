@@ -132,7 +132,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     new HstsFilter()(executionContext)
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
-  val deployScheduler = new DeployScheduler(config, deployments)
+  val deployScheduler = new DeployScheduler(config, deployments, scheduledDeployNotifier)
   log.info("Starting deployment scheduler")
   deployScheduler.start()
   applicationLifecycle.addStopHook { () =>
