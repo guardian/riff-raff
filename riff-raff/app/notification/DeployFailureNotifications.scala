@@ -7,6 +7,7 @@ import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
 import controllers.{Logging, routes}
+import deployment.ScheduledDeployError
 import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
@@ -50,7 +51,7 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters): Unit = {
+  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters, scheduledDeployError: Option[ScheduledDeployError] = None): Unit = {
 
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)

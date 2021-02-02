@@ -1,7 +1,6 @@
 package deployment
 
 import java.util.UUID
-
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
 import magenta.ContextMessage._
@@ -17,7 +16,12 @@ case object ContinuousDeploymentRequestSource extends RequestSource
 case class ApiRequestSource(key: ApiKey) extends RequestSource
 case object ScheduleRequestSource extends RequestSource
 
-case class Error(message: String) extends AnyVal
+sealed trait ScheduledDeployError
+case object NoDeploysFoundForStage extends ScheduledDeployError
+case object SkippedDueToPreviousFailure extends ScheduledDeployError
+case object SkippedDueToPreviousWaitingDeploy extends ScheduledDeployError
+
+case class Error(message: String, scheduledDeployError: Option[ScheduledDeployError] = None)
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"

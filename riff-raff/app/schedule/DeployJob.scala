@@ -38,7 +38,7 @@ class DeployJob extends Job with Logging {
             log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
             // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
             // we can uncomment the next line to enable these notifications
-            // scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
+            scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
           case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
         }
     }
@@ -48,6 +48,7 @@ class DeployJob extends Job with Logging {
 object DeployJob extends Logging with LogAndSquashBehaviour {
 
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
+    def defaultError(state: RunState): Error = Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $state")
     lastDeploy.state match {
       case RunState.Completed =>
         val params = extractDeployParameters(lastDeploy)
@@ -56,8 +57,12 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
         } else {
           Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
         }
+      case RunState.Failed =>
+        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousFailure)))
+      case RunState.NotRunning =>
+        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousWaitingDeploy)))
       case otherState =>
-        Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
+        Left(defaultError(otherState))
     }
   }
 
@@ -72,7 +77,7 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
   @tailrec
   private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[Error, Record] = {
     if (attempts == 0) {
-      Left(Error(s"Didn't find any deploys for $projectName / $stage"))
+      Left(Error(s"Didn't find any deploys for $projectName / $stage", Some(NoDeploysFoundForStage)))
     } else {
       val filter = DeployFilter(
         projectName = Some(projectName),
