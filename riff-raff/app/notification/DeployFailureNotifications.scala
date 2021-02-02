@@ -69,19 +69,33 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters, error: Option[Error] = None): Unit = {
+  def failedDeployNotification(uuid: Option[UUID], maybeParameters: Option[DeployParameters], error: Option[Error] = None): Unit = {
 
-    val deriveAnghammaradTargets = for {
-      yaml <- targetResolver.fetchYaml(parameters.build)
-      deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
-    } yield {
-      TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
-        List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+    val deriveAnghammaradTargets = maybeParameters match {
+      case Some(parameters) => for {
+        yaml <- targetResolver.fetchYaml(parameters.build)
+        deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
+      } yield {
+        TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
+          val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
+          List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+        }
       }
+      case None => Right(List(App("riff-raff"), Stack("deploy")))
     }
 
-    val defaultNotificationMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+    val scheduledDeployFailedToStart = error.flatMap(_.scheduledDeployError).isDefined
+    val (subject, notificationMessage) = maybeParameters match {
+      case Some(parameters) =>
+        val subject = if (scheduledDeployFailedToStart) s"${parameters.deployer.name} failed to start" else s"${parameters.deployer.name} failed"
+        val message = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+        (subject, message)
+      case None =>
+        val subject = "Scheduled deployment failed to start"
+        val message = "Your scheduled deploy didn't start because RiffRaff has never deployed this project to the specified stage before."
+        (subject, message)
+    }
+
     val defaultNotificationActions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil)
 
     val scheduledDeployFailedMessageWithActions = for {
@@ -92,20 +106,18 @@ class DeployFailureNotifications(config: Config,
     }
 
     val messageWithActions = scheduledDeployFailedMessageWithActions.getOrElse(
-      MessageWithActions(defaultNotificationMessage, defaultNotificationActions)
+      MessageWithActions(notificationMessage, defaultNotificationActions)
     )
 
     deriveAnghammaradTargets match {
       case Right(targets) =>
         log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
-        val scheduledDeployFailedToStart = error.flatMap(_.scheduledDeployError).isDefined
-        val subject = if (scheduledDeployFailedToStart) s"${parameters.deployer.name} failed to start" else s"${parameters.deployer.name} failed"
         Anghammarad.notify(
           subject = subject,
           message = messageWithActions.message,
           sourceSystem = "riff-raff",
           channel = All,
-          target = targets,
+          target = targets, // TODO: Make this dynamically set to the most appropriate target based on reason for failure
           actions = messageWithActions.actions,
           topicArn = anghammaradTopicARN,
           client = snsClient
@@ -122,7 +134,7 @@ class DeployFailureNotifications(config: Config,
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        failedDeployNotification(Some(message.context.deployId), message.context.parameters)
+        failedDeployNotification(Some(message.context.deployId), Some(message.context.parameters))
       case _ =>
     }
   })

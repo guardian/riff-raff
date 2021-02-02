@@ -22,9 +22,13 @@ class DeployJob extends Job with Logging {
     val stage = getAs[String](JobDataKeys.Stage)
     val scheduledDeploymentEnabled = getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
 
+    val schedulerContext = context.getScheduler.getContext
+    val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
+
     DeployJob.getLastDeploy(deployments, projectName, stage) match {
       case Left(error) =>
         log.warn(s"Scheduled deploy failed to start. The last deploy could not be retrieved due to ${error.message}.")
+        scheduledDeployNotifier.failedDeployNotification(None, None, Some(error))
       case Right(record) =>
         val result = for {
           params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
@@ -33,12 +37,10 @@ class DeployJob extends Job with Logging {
 
         result match {
           case Left(error) =>
-            val schedulerContext = context.getScheduler.getContext
-            val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
             log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
             // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
             // we can uncomment the next line to enable these notifications
-            scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record), Some(error))
+            scheduledDeployNotifier.failedDeployNotification(None, Some(extractDeployParameters(record)), Some(error))
           case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
         }
     }
