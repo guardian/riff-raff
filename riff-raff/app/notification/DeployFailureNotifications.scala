@@ -1,13 +1,13 @@
 package notification
 
 import java.util.UUID
-
 import ci.{ContinuousDeployment, TargetResolver}
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
 import controllers.{Logging, routes}
-import deployment.ScheduledDeployError
+import deployment.Error
+import deployment.{NoDeploysFoundForStage, ScheduledDeployError, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
 import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
@@ -51,7 +51,25 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters, scheduledDeployError: Option[ScheduledDeployError] = None): Unit = {
+  case class MessageWithActions(message: String, actions: List[Action])
+
+  def scheduledDeployNotificationDetails(scheduledDeployError: ScheduledDeployError, errorMessage: String): MessageWithActions = {
+    val deployManually = Action("Deploy project manually", "https://riffraff.gutools.co.uk/deployment/request")
+    scheduledDeployError match {
+      case SkippedDueToPreviousFailure =>
+        val message = s"Your scheduled deploy didn't start because the most recent deploy was in a bad state: $errorMessage}"
+        MessageWithActions(message, List(deployManually))
+      case SkippedDueToPreviousWaitingDeploy =>
+        val message = s"A scheduled deploy failed to start as a previous deploy was stuck: $errorMessage"
+        MessageWithActions(message, List())
+      case NoDeploysFoundForStage =>
+        val message = s"Your scheduled deploy didn't start because RiffRaff has never deployed your project to the specified stage before: $errorMessage"
+        val scheduledDeployConfig = Action("Check scheduled deploy configuration", "https://riffraff.gutools.co.uk/deployment/schedule")
+        MessageWithActions(message, List(deployManually, scheduledDeployConfig))
+    }
+  }
+
+  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters, error: Option[Error] = None): Unit = {
 
     val deriveAnghammaradTargets = for {
       yaml <- targetResolver.fetchYaml(parameters.build)
@@ -63,18 +81,32 @@ class DeployFailureNotifications(config: Config,
       }
     }
 
+    val defaultNotificationMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+    val defaultNotificationActions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil)
+
+    val scheduledDeployFailedMessageWithActions = for {
+      error <- error
+      scheduledDeployError <- error.scheduledDeployError
+    } yield {
+      scheduledDeployNotificationDetails(scheduledDeployError, error.message)
+    }
+
+    val messageWithActions = scheduledDeployFailedMessageWithActions.getOrElse(
+      MessageWithActions(defaultNotificationMessage, defaultNotificationActions)
+    )
+
     deriveAnghammaradTargets match {
       case Right(targets) =>
         log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
-        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
+        val scheduledDeployFailedToStart = error.flatMap(_.scheduledDeployError).isDefined
+        val subject = if (scheduledDeployFailedToStart) s"${parameters.deployer.name} failed to start" else s"${parameters.deployer.name} failed"
         Anghammarad.notify(
-          subject = s"${parameters.deployer.name} failed",
-          message = failureMessage,
+          subject = subject,
+          message = messageWithActions.message,
           sourceSystem = "riff-raff",
           channel = All,
           target = targets,
-          // TODO: Figure out the correct action for scheduled deploys that don't start
-          actions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil),
+          actions = messageWithActions.actions,
           topicArn = anghammaradTopicARN,
           client = snsClient
         ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for $uuid", ex) }

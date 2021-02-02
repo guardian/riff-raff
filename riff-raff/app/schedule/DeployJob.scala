@@ -38,7 +38,7 @@ class DeployJob extends Job with Logging {
             log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
             // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
             // we can uncomment the next line to enable these notifications
-            scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
+            scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record), Some(error))
           case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
         }
     }
