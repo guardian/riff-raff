@@ -57,7 +57,7 @@ class DeployFailureNotifications(config: Config,
     val deployManually = Action("Deploy project manually", "https://riffraff.gutools.co.uk/deployment/request")
     scheduledDeployError match {
       case SkippedDueToPreviousFailure =>
-        val message = s"Your scheduled deploy didn't start because the most recent deploy was in a bad state: $errorMessage}"
+        val message = s"Your scheduled deploy didn't start because the most recent deploy was in a bad state: $errorMessage"
         MessageWithActions(message, List(deployManually))
       case SkippedDueToPreviousWaitingDeploy =>
         val message = s"A scheduled deploy failed to start as a previous deploy was stuck: $errorMessage"
