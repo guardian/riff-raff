@@ -117,7 +117,7 @@ class DeployFailureNotifications(config: Config,
           message = messageWithActions.message,
           sourceSystem = "riff-raff",
           channel = All,
-          target = targets, // TODO: Make this dynamically set to the most appropriate target based on reason for failure
+          target = targets,
           actions = messageWithActions.actions,
           topicArn = anghammaradTopicARN,
           client = snsClient
