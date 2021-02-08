@@ -25,22 +25,17 @@ class DeployJob extends Job with Logging {
     val schedulerContext = context.getScheduler.getContext
     val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
 
-    DeployJob.getLastDeploy(deployments, projectName, stage) match {
-      case Left(error) =>
-        log.warn(s"Scheduled deploy failed to start. The last deploy could not be retrieved due to ${error.message}.")
-        scheduledDeployNotifier.failedDeployNotification(None, None, Some(error))
-      case Right(record) =>
-        val result = for {
-          params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
-          uuid <- deployments.deploy(params, ScheduleRequestSource)
-        } yield uuid
+    val attemptToStartDeploy = for {
+      record <- DeployJob.getLastDeploy(deployments, projectName, stage)
+      params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
+      uuid <- deployments.deploy(params, ScheduleRequestSource)
+    } yield uuid
 
-        result match {
-          case Left(error) =>
-            log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
-            scheduledDeployNotifier.failedDeployNotification(None, Some(extractDeployParameters(record)), Some(error))
-          case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
-        }
+    attemptToStartDeploy match {
+      case Left(error) =>
+        scheduledDeployNotifier.deployUnstartedNotification(error)
+      case Right(uuid) =>
+        log.info(s"Started scheduled deploy $uuid")
     }
   }
 }
@@ -58,9 +53,9 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
           Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
         }
       case RunState.Failed =>
-        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousFailure)))
+        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousFailure(lastDeploy))))
       case RunState.NotRunning =>
-        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousWaitingDeploy)))
+        Left(defaultError(RunState.Failed).copy(scheduledDeployError = Some(SkippedDueToPreviousWaitingDeploy(lastDeploy))))
       case otherState =>
         Left(defaultError(otherState))
     }
@@ -77,7 +72,7 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
   @tailrec
   private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[Error, Record] = {
     if (attempts == 0) {
-      Left(Error(s"Didn't find any deploys for $projectName / $stage", Some(NoDeploysFoundForStage)))
+      Left(Error(s"Didn't find any deploys for $projectName / $stage", Some(NoDeploysFoundForStage(projectName, stage))))
     } else {
       val filter = DeployFilter(
         projectName = Some(projectName),

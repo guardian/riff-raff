@@ -17,9 +17,9 @@ case class ApiRequestSource(key: ApiKey) extends RequestSource
 case object ScheduleRequestSource extends RequestSource
 
 sealed trait ScheduledDeployError
-case object NoDeploysFoundForStage extends ScheduledDeployError
-case object SkippedDueToPreviousFailure extends ScheduledDeployError
-case object SkippedDueToPreviousWaitingDeploy extends ScheduledDeployError
+case class NoDeploysFoundForStage(projectName: String, stage: String) extends ScheduledDeployError
+case class SkippedDueToPreviousFailure(failedDeployRecord: Record) extends ScheduledDeployError
+case class SkippedDueToPreviousWaitingDeploy(stuckDeployRecord: Record) extends ScheduledDeployError
 
 case class Error(message: String, scheduledDeployError: Option[ScheduledDeployError] = None)
 

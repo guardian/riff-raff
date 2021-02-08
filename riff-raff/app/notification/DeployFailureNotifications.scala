@@ -30,8 +30,12 @@ class DeployFailureNotifications(config: Config,
   lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
   lazy private val snsClient = config.scheduledDeployment.snsClient
   lazy private val prefix = config.urls.publicPrefix
+  lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
 
-  def url(uuid: UUID): String = {
+  case class NotificationContents(subject: String, message: String, actions: List[Action])
+  case class NotificationContentsWithTargets(notificationContents: NotificationContents, targets: List[Target])
+
+  def problematicDeployUrl(uuid: UUID): String = {
     val path = routes.DeployController.viewUUID(uuid.toString, verbose = true)
     prefix + path.url
   }
@@ -51,28 +55,9 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  case class MessageWithActions(message: String, actions: List[Action])
-
-  def scheduledDeployNotificationDetails(scheduledDeployError: ScheduledDeployError, errorMessage: String): MessageWithActions = {
-    val deployManually = Action("Deploy project manually", "https://riffraff.gutools.co.uk/deployment/request")
-    scheduledDeployError match {
-      case SkippedDueToPreviousFailure =>
-        val message = s"Your scheduled deploy didn't start because the most recent deploy was in a bad state: $errorMessage"
-        MessageWithActions(message, List(deployManually))
-      case SkippedDueToPreviousWaitingDeploy =>
-        val message = s"A scheduled deploy failed to start as a previous deploy was stuck: $errorMessage"
-        MessageWithActions(message, List())
-      case NoDeploysFoundForStage =>
-        val message = s"Your scheduled deploy didn't start because RiffRaff has never deployed your project to the specified stage before: $errorMessage"
-        val scheduledDeployConfig = Action("Check scheduled deploy configuration", "https://riffraff.gutools.co.uk/deployment/schedule")
-        MessageWithActions(message, List(deployManually, scheduledDeployConfig))
-    }
-  }
-
-  def failedDeployNotification(uuid: Option[UUID], maybeParameters: Option[DeployParameters], error: Option[Error] = None): Unit = {
-
-    val deriveAnghammaradTargets = maybeParameters match {
-      case Some(parameters) => for {
+  def getTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = {
+    val attemptToDeriveTargets = maybeParameters.map { parameters =>
+       for {
         yaml <- targetResolver.fetchYaml(parameters.build)
         deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
       } yield {
@@ -81,50 +66,68 @@ class DeployFailureNotifications(config: Config,
           List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
         }
       }
-      case None => Right(List(App("riff-raff"), Stack("deploy")))
     }
-
-    val scheduledDeployFailedToStart = error.flatMap(_.scheduledDeployError).isDefined
-    val (subject, notificationMessage) = maybeParameters match {
-      case Some(parameters) =>
-        val subject = if (scheduledDeployFailedToStart) s"${parameters.deployer.name} failed to start" else s"${parameters.deployer.name} failed"
-        val message = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
-        (subject, message)
-      case None =>
-        val subject = "Scheduled deployment failed to start"
-        val message = "Your scheduled deploy didn't start because RiffRaff has never deployed this project to the specified stage before."
-        (subject, message)
+    attemptToDeriveTargets match {
+      case Some(Right(targets)) => targets
+      case _ => riffRaffTargets
     }
+  }
 
-    val defaultNotificationActions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil)
+  def notifyViaAnghammarad(notificationContents: NotificationContents, targets: List[Target]) = {
+    log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
+    Anghammarad.notify(
+      subject = notificationContents.subject,
+      message = notificationContents.message,
+      sourceSystem = "riff-raff",
+      channel = All,
+      target = targets,
+      actions = notificationContents.actions,
+      topicArn = anghammaradTopicARN,
+      client = snsClient
+    ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
+  }
 
-    val scheduledDeployFailedMessageWithActions = for {
-      error <- error
-      scheduledDeployError <- error.scheduledDeployError
-    } yield {
-      scheduledDeployNotificationDetails(scheduledDeployError, error.message)
+  def notificationContentsWithTargets(scheduledDeployError: ScheduledDeployError): NotificationContentsWithTargets = {
+    val subject = "Scheduled deployment failed to start"
+    def viewProblematicDeploy(uuid: UUID, status: String) = Action(s"View $status deploy", problematicDeployUrl(uuid))
+    val deployManually = Action("Deploy project manually", prefix + routes.DeployController.deploy().url)
+    scheduledDeployError match {
+      case SkippedDueToPreviousFailure(record) =>
+        val message = s"Your scheduled deploy didn't start because the most recent deploy failed"
+        val contents = NotificationContents(subject, message, List(deployManually, viewProblematicDeploy(record.uuid, "failed")))
+        NotificationContentsWithTargets(contents, getTargets(None, Some(record.parameters)))
+      case SkippedDueToPreviousWaitingDeploy(record) =>
+        val message = s"A scheduled deploy failed to start as a previous deploy was stuck"
+        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "waiting")))
+        NotificationContentsWithTargets(contents, riffRaffTargets)
+      case NoDeploysFoundForStage(projectName, stage) =>
+        val message = s"Scheduled deploy didn't start because RiffRaff has never deployed $projectName to $stage before. " +
+          "Please inform the owner of this schedule as it's likely that they have made a configuration error"
+        val scheduledDeployConfig = Action("View scheduled deploy configuration", "https://riffraff.gutools.co.uk/deployment/schedule")
+        val contents = NotificationContents(subject, message, List(deployManually, scheduledDeployConfig))
+        NotificationContentsWithTargets(contents, riffRaffTargets)
     }
+  }
 
-    val messageWithActions = scheduledDeployFailedMessageWithActions.getOrElse(
-      MessageWithActions(notificationMessage, defaultNotificationActions)
+  def deployUnstartedNotification(error: Error): Unit = {
+    error.scheduledDeployError.map { failedToStartReason =>
+      val contentsWithTargets = notificationContentsWithTargets(failedToStartReason)
+      notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
+    }.getOrElse {
+      log.warn("Scheduled deploy failed to start but notification was not sent...")
+    }
+  }
+
+  def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
+
+    val notificationContents = NotificationContents(
+      subject = s"${parameters.deployer.name} failed",
+      message = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed.",
+      actions = List(Action("View failed deploy", problematicDeployUrl(uuid)))
     )
 
-    deriveAnghammaradTargets match {
-      case Right(targets) =>
-        log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
-        Anghammarad.notify(
-          subject = subject,
-          message = messageWithActions.message,
-          sourceSystem = "riff-raff",
-          channel = All,
-          target = targets,
-          actions = messageWithActions.actions,
-          topicArn = anghammaradTopicARN,
-          client = snsClient
-        ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for $uuid", ex) }
-      case Left(_) =>
-        log.error(s"Failed to derive targets required to notify about failed scheduled deploy: $uuid")
-    }
+    notifyViaAnghammarad(notificationContents, targets)
+
   }
 
   def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
@@ -134,7 +137,8 @@ class DeployFailureNotifications(config: Config,
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        failedDeployNotification(Some(message.context.deployId), Some(message.context.parameters))
+        val targets = getTargets(Some(message.context.deployId), Some(message.context.parameters))
+        deployFailedNotification(message.context.deployId, message.context.parameters, targets)
       case _ =>
     }
   })
