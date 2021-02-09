@@ -88,23 +88,23 @@ class DeployFailureNotifications(config: Config,
   }
 
   def notificationContentsWithTargets(scheduledDeployError: ScheduledDeployError): NotificationContentsWithTargets = {
-    val subject = "Scheduled deployment failed to start"
+    val subject = "Scheduled deploy failed to start"
     def viewProblematicDeploy(uuid: UUID, status: String) = Action(s"View $status deploy", problematicDeployUrl(uuid))
-    val deployManually = Action("Deploy project manually", prefix + routes.DeployController.deploy().url)
     scheduledDeployError match {
       case SkippedDueToPreviousFailure(record) =>
-        val message = s"Your scheduled deploy didn't start because the most recent deploy failed"
-        val contents = NotificationContents(subject, message, List(deployManually, viewProblematicDeploy(record.uuid, "failed")))
+        val message = s"A scheduled deploy of ${record.parameters.build.projectName} to ${record.parameters.stage} didn't start because the most recent deploy failed."
+        val redeployAction = Action("Redeploy manually", prefix + routes.DeployController.deployAgainUuid(record.uuid.toString).url)
+        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "failed"), redeployAction))
         NotificationContentsWithTargets(contents, getTargets(None, Some(record.parameters)))
       case SkippedDueToPreviousWaitingDeploy(record) =>
-        val message = s"A scheduled deploy failed to start as a previous deploy was stuck"
+        val message = s"A scheduled deploy of ${record.parameters.build.projectName} to ${record.parameters.stage} failed to start as a previous deploy was still waiting to be deployed."
         val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "waiting")))
         NotificationContentsWithTargets(contents, riffRaffTargets)
       case NoDeploysFoundForStage(projectName, stage) =>
-        val message = s"Scheduled deploy didn't start because RiffRaff has never deployed $projectName to $stage before. " +
-          "Please inform the owner of this schedule as it's likely that they have made a configuration error"
-        val scheduledDeployConfig = Action("View scheduled deploy configuration", "https://riffraff.gutools.co.uk/deployment/schedule")
-        val contents = NotificationContents(subject, message, List(deployManually, scheduledDeployConfig))
+        val message = s"A scheduled deploy didn't start because RiffRaff has never deployed $projectName to $stage before. " +
+          "Please inform the owner of this schedule as it's likely that they have made a configuration error."
+        val scheduledDeployConfig = Action("View scheduled deploy configuration", prefix + routes.ScheduleController.list())
+        val contents = NotificationContents(subject, message, List(scheduledDeployConfig))
         NotificationContentsWithTargets(contents, riffRaffTargets)
     }
   }

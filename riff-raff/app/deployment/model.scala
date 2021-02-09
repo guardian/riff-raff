@@ -19,7 +19,7 @@ case object ScheduleRequestSource extends RequestSource
 sealed trait ScheduledDeployError
 case class NoDeploysFoundForStage(projectName: String, stage: String) extends ScheduledDeployError
 case class SkippedDueToPreviousFailure(failedDeployRecord: Record) extends ScheduledDeployError
-case class SkippedDueToPreviousWaitingDeploy(stuckDeployRecord: Record) extends ScheduledDeployError
+case class SkippedDueToPreviousWaitingDeploy(waitingDeployRecord: Record) extends ScheduledDeployError
 
 case class Error(message: String, scheduledDeployError: Option[ScheduledDeployError] = None)
 
