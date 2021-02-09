@@ -5,15 +5,15 @@ import ci.{ContinuousDeployment, TargetResolver}
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
-import controllers.{Logging, routes}
+import controllers.Logging
 import deployment.Error
-import deployment.{NoDeploysFoundForStage, ScheduledDeployError, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
 import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import magenta.tasks.STS
 import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
+import notification.FailureNotificationContents._
 import schedule.ScheduledDeployer
 import rx.lang.scala.Subscription
 
@@ -31,14 +31,6 @@ class DeployFailureNotifications(config: Config,
   lazy private val snsClient = config.scheduledDeployment.snsClient
   lazy private val prefix = config.urls.publicPrefix
   lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
-
-  case class NotificationContents(subject: String, message: String, actions: List[Action])
-  case class NotificationContentsWithTargets(notificationContents: NotificationContents, targets: List[Target])
-
-  def problematicDeployUrl(uuid: UUID): String = {
-    val path = routes.DeployController.viewUUID(uuid.toString, verbose = true)
-    prefix + path.url
-  }
 
   def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
     Try {
@@ -87,31 +79,9 @@ class DeployFailureNotifications(config: Config,
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
   }
 
-  def notificationContentsWithTargets(scheduledDeployError: ScheduledDeployError): NotificationContentsWithTargets = {
-    val subject = "Scheduled deploy failed to start"
-    def viewProblematicDeploy(uuid: UUID, status: String) = Action(s"View $status deploy", problematicDeployUrl(uuid))
-    scheduledDeployError match {
-      case SkippedDueToPreviousFailure(record) =>
-        val message = s"A scheduled deploy of ${record.parameters.build.projectName} to ${record.parameters.stage} didn't start because the most recent deploy failed."
-        val redeployAction = Action("Redeploy manually", prefix + routes.DeployController.deployAgainUuid(record.uuid.toString).url)
-        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "failed"), redeployAction))
-        NotificationContentsWithTargets(contents, getTargets(None, Some(record.parameters)))
-      case SkippedDueToPreviousWaitingDeploy(record) =>
-        val message = s"A scheduled deploy of ${record.parameters.build.projectName} to ${record.parameters.stage} failed to start as a previous deploy was still waiting to be deployed."
-        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "waiting")))
-        NotificationContentsWithTargets(contents, riffRaffTargets)
-      case NoDeploysFoundForStage(projectName, stage) =>
-        val message = s"A scheduled deploy didn't start because RiffRaff has never deployed $projectName to $stage before. " +
-          "Please inform the owner of this schedule as it's likely that they have made a configuration error."
-        val scheduledDeployConfig = Action("View scheduled deploy configuration", prefix + routes.ScheduleController.list())
-        val contents = NotificationContents(subject, message, List(scheduledDeployConfig))
-        NotificationContentsWithTargets(contents, riffRaffTargets)
-    }
-  }
-
   def deployUnstartedNotification(error: Error): Unit = {
     error.scheduledDeployError.map { failedToStartReason =>
-      val contentsWithTargets = notificationContentsWithTargets(failedToStartReason)
+      val contentsWithTargets = deployUnstartedNotificationContents(failedToStartReason, prefix, getTargets, riffRaffTargets)
       notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
     }.getOrElse {
       log.warn("Scheduled deploy failed to start but notification was not sent...")
@@ -119,15 +89,8 @@ class DeployFailureNotifications(config: Config,
   }
 
   def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
-
-    val notificationContents = NotificationContents(
-      subject = s"${parameters.deployer.name} failed",
-      message = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed.",
-      actions = List(Action("View failed deploy", problematicDeployUrl(uuid)))
-    )
-
+    val notificationContents = deployFailedNotificationContents(uuid, parameters, prefix)
     notifyViaAnghammarad(notificationContents, targets)
-
   }
 
   def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
