@@ -66,7 +66,7 @@ class Restrictions(config: Config,
               request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
             restrictionConfigDynamoRepository.setRestriction(newConfig)
             Redirect(routes.Restrictions.list())
-          case Left(Error(reason, _)) =>
+          case Left(Error(reason)) =>
             Forbidden(s"Not possible to update this restriction: $reason")
         }
       }
@@ -92,7 +92,7 @@ class Restrictions(config: Config,
       case Right(_) =>
         restrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
         Redirect(routes.Restrictions.list())
-      case Left(Error(reason, _)) =>
+      case Left(Error(reason)) =>
         Forbidden(s"Not possible to delete this restriction: $reason")
     }
   }

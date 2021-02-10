@@ -2,7 +2,7 @@ package notification
 
 import com.gu.anghammarad.models.{Action, Target}
 import controllers.routes
-import deployment.{NoDeploysFoundForStage, ScheduledDeployError, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
+import deployment.{NoDeploysFoundForStage, ScheduledDeployNotificationError, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
 import magenta.DeployParameters
 
 import java.util.UUID
@@ -37,23 +37,19 @@ object FailureNotificationContents {
     )
   }
 
-  def deployUnstartedNotificationContents(scheduledDeployError: ScheduledDeployError, urlPrefix: String, teamTargetsSearch: (Option[UUID], Option[DeployParameters]) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
+  def deployUnstartedNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, urlPrefix: String, teamTargetsSearch: (Option[UUID], Option[DeployParameters]) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
     val subject = "Scheduled Deployment failed to start"
     scheduledDeployError match {
       case SkippedDueToPreviousFailure(record) =>
-        val message = s"Scheduled Deployment for ${record.parameters.build.projectName} to ${record.parameters.stage.name} didn't start because the most recent deploy failed."
         val redeployAction = Action("Redeploy manually", deployAgainUrl(urlPrefix, record.uuid))
-        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "failed", urlPrefix), redeployAction))
+        val contents = NotificationContents(subject, scheduledDeployError.message, List(viewProblematicDeploy(record.uuid, "failed", urlPrefix), redeployAction))
         NotificationContentsWithTargets(contents, teamTargetsSearch(Some(record.uuid), Some(record.parameters)))
       case SkippedDueToPreviousWaitingDeploy(record) =>
-        val message = s"Scheduled Deployment for ${record.parameters.build.projectName} to ${record.parameters.stage.name} failed to start as a previous deploy was still waiting to be deployed."
-        val contents = NotificationContents(subject, message, List(viewProblematicDeploy(record.uuid, "waiting", urlPrefix)))
+        val contents = NotificationContents(subject, scheduledDeployError.message, List(viewProblematicDeploy(record.uuid, "waiting", urlPrefix)))
         NotificationContentsWithTargets(contents, riffRaffTargets)
-      case NoDeploysFoundForStage(projectName, stage) =>
-        val message = s"A scheduled deploy didn't start because Riff-Raff has never deployed $projectName to $stage before. " +
-          "Please inform the owner of this schedule as it's likely that they have made a configuration error."
+      case NoDeploysFoundForStage(_, _) =>
         val scheduledDeployConfig = Action("View Scheduled Deployment configuration", scheduledDeployConfigUrl(urlPrefix))
-        val contents = NotificationContents(subject, message, List(scheduledDeployConfig))
+        val contents = NotificationContents(subject, scheduledDeployError.message, List(scheduledDeployConfig))
         NotificationContentsWithTargets(contents, riffRaffTargets)
     }
   }

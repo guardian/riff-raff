@@ -6,7 +6,7 @@ import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
 import controllers.Logging
-import deployment.Error
+import deployment.ScheduledDeployNotificationError
 import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
@@ -79,13 +79,9 @@ class DeployFailureNotifications(config: Config,
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
   }
 
-  def deployUnstartedNotification(error: Error): Unit = {
-    error.scheduledDeployError.map { failedToStartReason =>
-      val contentsWithTargets = deployUnstartedNotificationContents(failedToStartReason, prefix, getTargets, riffRaffTargets)
-      notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
-    }.getOrElse {
-      log.warn("Scheduled deploy failed to start but notification was not sent...")
-    }
+  def deployUnstartedNotification(error: ScheduledDeployNotificationError): Unit = {
+    val contentsWithTargets = deployUnstartedNotificationContents(error, prefix, getTargets, riffRaffTargets)
+    notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
   }
 
   def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {

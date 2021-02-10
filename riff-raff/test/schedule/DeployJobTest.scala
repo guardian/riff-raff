@@ -26,9 +26,7 @@ class DeployJobTest extends FlatSpec with Matchers with EitherValues {
       DeployParameters(Deployer("Bob"), Build("testProject", "1"), Stage("TEST")),
       recordState = Some(RunState.Failed)
     )
-    val expectedScheduledDeployError = SkippedDueToPreviousFailure(record)
-    DeployJob.createDeployParameters(record, true) shouldBe
-      Left(Error("Skipping scheduled deploy as deploy record 7fa2ee0a-8d90-4f7e-a38b-185f36fbc5aa has status Failed", Some(expectedScheduledDeployError)))
+    DeployJob.createDeployParameters(record, true) shouldBe Left(SkippedDueToPreviousFailure(record))
   }
 
   it should "produce an error if scheduled deploys are disabled" in {
