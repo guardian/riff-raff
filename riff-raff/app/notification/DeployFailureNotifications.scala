@@ -13,7 +13,7 @@ import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import magenta.tasks.STS
 import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
-import notification.FailureNotificationContents._
+import notification.FailureNotificationContents.NotificationContents
 import schedule.ScheduledDeployer
 import rx.lang.scala.Subscription
 
@@ -80,12 +80,12 @@ class DeployFailureNotifications(config: Config,
   }
 
   def deployUnstartedNotification(error: ScheduledDeployNotificationError): Unit = {
-    val contentsWithTargets = deployUnstartedNotificationContents(error, prefix, getTargets, riffRaffTargets)
+    val contentsWithTargets = FailureNotificationContents.deployUnstartedNotificationContents(error, prefix, getTargets, riffRaffTargets)
     notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
   }
 
   def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
-    val notificationContents = deployFailedNotificationContents(uuid, parameters, prefix)
+    val notificationContents = FailureNotificationContents.deployFailedNotificationContents(uuid, parameters, prefix)
     notifyViaAnghammarad(notificationContents, targets)
   }
 
