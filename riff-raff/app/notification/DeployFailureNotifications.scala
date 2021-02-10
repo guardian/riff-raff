@@ -13,7 +13,6 @@ import magenta.deployment_type.DeploymentType
 import magenta.input.resolver.Resolver
 import magenta.tasks.STS
 import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
-import notification.FailureNotificationContents.NotificationContents
 import schedule.ScheduledDeployer
 import rx.lang.scala.Subscription
 
@@ -31,6 +30,7 @@ class DeployFailureNotifications(config: Config,
   lazy private val snsClient = config.scheduledDeployment.snsClient
   lazy private val prefix = config.urls.publicPrefix
   lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
+  lazy private val failureNotificationContents = new FailureNotificationContents(prefix)
 
   def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
     Try {
@@ -78,12 +78,12 @@ class DeployFailureNotifications(config: Config,
   }
 
   def deployUnstartedNotification(error: ScheduledDeployNotificationError): Unit = {
-    val contentsWithTargets = FailureNotificationContents.deployUnstartedNotificationContents(error, prefix, getTargets, riffRaffTargets)
+    val contentsWithTargets = failureNotificationContents.deployUnstartedNotificationContents(error, getTargets, riffRaffTargets)
     notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
   }
 
   def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
-    val notificationContents = FailureNotificationContents.deployFailedNotificationContents(uuid, parameters, prefix)
+    val notificationContents = failureNotificationContents.deployFailedNotificationContents(uuid, parameters)
     notifyViaAnghammarad(notificationContents, targets)
   }
 
