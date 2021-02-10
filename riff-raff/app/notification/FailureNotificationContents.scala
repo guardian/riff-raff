@@ -37,13 +37,13 @@ object FailureNotificationContents {
     )
   }
 
-  def deployUnstartedNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, urlPrefix: String, teamTargetsSearch: (Option[UUID], Option[DeployParameters]) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
+  def deployUnstartedNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, urlPrefix: String, teamTargetsSearch: (UUID, DeployParameters) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
     val subject = "Scheduled Deployment failed to start"
     scheduledDeployError match {
       case SkippedDueToPreviousFailure(record) =>
         val redeployAction = Action("Redeploy manually", deployAgainUrl(urlPrefix, record.uuid))
         val contents = NotificationContents(subject, scheduledDeployError.message, List(viewProblematicDeploy(record.uuid, "failed", urlPrefix), redeployAction))
-        NotificationContentsWithTargets(contents, teamTargetsSearch(Some(record.uuid), Some(record.parameters)))
+        NotificationContentsWithTargets(contents, teamTargetsSearch(record.uuid, record.parameters))
       case SkippedDueToPreviousWaitingDeploy(record) =>
         val contents = NotificationContents(subject, scheduledDeployError.message, List(viewProblematicDeploy(record.uuid, "waiting", urlPrefix)))
         NotificationContentsWithTargets(contents, riffRaffTargets)

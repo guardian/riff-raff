@@ -47,21 +47,19 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def getTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = {
-    val attemptToDeriveTargets = maybeParameters.map { parameters =>
-       for {
+  def getTargets(uuid: UUID, parameters: DeployParameters): List[Target] = {
+    val attemptToDeriveTargets = for {
         yaml <- targetResolver.fetchYaml(parameters.build)
         deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
       } yield {
         TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-          val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
+          val maybeAccountId = getAwsAccountIdTarget(target, parameters, uuid).toList
           List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
         }
       }
-    }
     attemptToDeriveTargets match {
-      case Some(Right(targets)) => targets
-      case _ => riffRaffTargets
+      case Right(targets) => targets
+      case Left(_) => riffRaffTargets
     }
   }
 
@@ -96,7 +94,7 @@ class DeployFailureNotifications(config: Config,
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        val targets = getTargets(Some(message.context.deployId), Some(message.context.parameters))
+        val targets = getTargets(message.context.deployId, message.context.parameters)
         deployFailedNotification(message.context.deployId, message.context.parameters, targets)
       case _ =>
     }

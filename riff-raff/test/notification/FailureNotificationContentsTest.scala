@@ -29,7 +29,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
       buildId = "123",
       stage = "PROD"
     )
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousFailure(record)
     val expectedContents = NotificationContents(
       subject = "Scheduled Deployment failed to start",
@@ -49,7 +49,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
       buildId = "123",
       stage = "PROD"
     )
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousWaitingDeploy(record)
     val expectedContents = NotificationContents(
       subject = "Scheduled Deployment failed to start",
@@ -61,7 +61,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
   }
 
   test("should produce sensible notification contents for a Scheduled Deployment which fails to start due to a configuration issue") {
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = NoDeploysFoundForStage("testProject", "PROD")
     val expectedContents = NotificationContents(
       subject = "Scheduled Deployment failed to start",
@@ -74,7 +74,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
 
   test("should use team-based targets for a Scheduled Deployment which fails to start due to previous failed deploy") {
     val record = Fixtures.createRecord()
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousFailure(record)
     val expectedTargets = List(Stack("another-team-stack"))
     val result = deployUnstartedNotificationContents(error, "http://localhost:9000", fakeGetTargets, List(Stack("deploy")))
@@ -83,7 +83,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
 
   test("should use Riff-Raff maintainer targets for a Scheduled Deployment which fails to start due to previous waiting deploy") {
     val record = Fixtures.createRecord()
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousWaitingDeploy(record)
     val expectedTargets = List(Stack("deploy"))
     val result = deployUnstartedNotificationContents(error, "http://localhost:9000", fakeGetTargets, List(Stack("deploy")))
@@ -92,7 +92,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
 
   test("should use Riff-Raff maintainer targets for a Scheduled Deployment which fails to start due to a configuration issue") {
     val record = Fixtures.createRecord()
-    def fakeGetTargets(uuid: Option[UUID], maybeParameters: Option[DeployParameters]): List[Target] = List(Stack("another-team-stack"))
+    def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = NoDeploysFoundForStage("project", "PROD")
     val expectedTargets = List(Stack("deploy"))
     val result = deployUnstartedNotificationContents(error, "http://localhost:9000", fakeGetTargets, List(Stack("deploy")))
