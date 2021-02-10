@@ -45,7 +45,6 @@ class DeployJob extends Job with Logging {
 object DeployJob extends Logging with LogAndSquashBehaviour {
 
   def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[RiffRaffError, DeployParameters] = {
-    def defaultError(state: RunState): Error = Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $state")
     lastDeploy.state match {
       case RunState.Completed =>
         val params = extractDeployParameters(lastDeploy)
@@ -59,7 +58,7 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
       case RunState.NotRunning =>
         Left(SkippedDueToPreviousWaitingDeploy(lastDeploy))
       case otherState =>
-        Left(defaultError(otherState))
+        Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
     }
   }
 
