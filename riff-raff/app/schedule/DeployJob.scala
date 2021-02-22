@@ -22,32 +22,29 @@ class DeployJob extends Job with Logging {
     val stage = getAs[String](JobDataKeys.Stage)
     val scheduledDeploymentEnabled = getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
 
-    DeployJob.getLastDeploy(deployments, projectName, stage) match {
-      case Left(error) =>
-        log.warn(s"Scheduled deploy failed to start. The last deploy could not be retrieved due to ${error.message}.")
-      case Right(record) =>
-        val result = for {
-          params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
-          uuid <- deployments.deploy(params, ScheduleRequestSource)
-        } yield uuid
+    val schedulerContext = context.getScheduler.getContext
+    val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
 
-        result match {
-          case Left(error) =>
-            val schedulerContext = context.getScheduler.getContext
-            val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
-            log.info(s"Scheduled deploy failed to start due to ${error.message}. Deploy parameters were ${extractDeployParameters(record)}")
-            // Once we understand some common reasons for failing to start deploys and the actions needed to resolve the problems
-            // we can uncomment the next line to enable these notifications
-            // scheduledDeployNotifier.failedDeployNotification(None, extractDeployParameters(record))
-          case Right(uuid) => log.info(s"Started scheduled deploy $uuid")
-        }
+    val attemptToStartDeploy = for {
+      record <- DeployJob.getLastDeploy(deployments, projectName, stage)
+      params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
+      uuid <- deployments.deploy(params, ScheduleRequestSource)
+    } yield uuid
+
+    attemptToStartDeploy match {
+      case Left(error: ScheduledDeployNotificationError) =>
+        scheduledDeployNotifier.scheduledDeployFailureNotification(error)
+      case Left(anotherError) =>
+        log.warn(s"Scheduled deploy failed to start due to $anotherError. A notification will not be sent...")
+      case Right(uuid) =>
+        log.info(s"Started scheduled deploy $uuid")
     }
   }
 }
 
 object DeployJob extends Logging with LogAndSquashBehaviour {
 
-  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[Error, DeployParameters] = {
+  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[RiffRaffError, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = extractDeployParameters(lastDeploy)
@@ -56,6 +53,10 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
         } else {
           Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
         }
+      case RunState.Failed =>
+        Left(SkippedDueToPreviousFailure(lastDeploy))
+      case RunState.NotRunning =>
+        Left(SkippedDueToPreviousWaitingDeploy(lastDeploy))
       case otherState =>
         Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
     }
@@ -70,9 +71,9 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
   }
 
   @tailrec
-  private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[Error, Record] = {
+  private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[ScheduledDeployNotificationError, Record] = {
     if (attempts == 0) {
-      Left(Error(s"Didn't find any deploys for $projectName / $stage"))
+      Left(NoDeploysFoundForStage(projectName, stage))
     } else {
       val filter = DeployFilter(
         projectName = Some(projectName),

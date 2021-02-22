@@ -1,7 +1,6 @@
 package deployment
 
 import java.util.UUID
-
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
 import magenta.ContextMessage._
@@ -17,7 +16,23 @@ case object ContinuousDeploymentRequestSource extends RequestSource
 case class ApiRequestSource(key: ApiKey) extends RequestSource
 case object ScheduleRequestSource extends RequestSource
 
-case class Error(message: String) extends AnyVal
+sealed trait RiffRaffError {
+  val message: String
+}
+
+case class Error(message: String) extends RiffRaffError
+
+sealed trait ScheduledDeployNotificationError extends RiffRaffError
+case class NoDeploysFoundForStage(projectName: String, stage: String) extends ScheduledDeployNotificationError {
+  val message = s"A scheduled deploy didn't start because Riff-Raff has never deployed $projectName to $stage before. " +
+    "Please inform the owner of this schedule as it's likely that they have made a configuration error."
+}
+case class SkippedDueToPreviousFailure(failedDeployRecord: Record) extends ScheduledDeployNotificationError {
+  val message = s"Scheduled Deployment for ${failedDeployRecord.parameters.build.projectName} to ${failedDeployRecord.parameters.stage.name} didn't start because the most recent deploy failed."
+}
+case class SkippedDueToPreviousWaitingDeploy(waitingDeployRecord: Record) extends ScheduledDeployNotificationError {
+  val message = s"Scheduled Deployment for ${waitingDeployRecord.parameters.build.projectName} to ${waitingDeployRecord.parameters.stage.name} failed to start as a previous deploy was still waiting to be deployed."
+}
 
 object Record {
   val RIFFRAFF_HOSTNAME = "riffraff-hostname"

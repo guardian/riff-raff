@@ -1,12 +1,12 @@
 package notification
 
 import java.util.UUID
-
 import ci.{ContinuousDeployment, TargetResolver}
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
 import conf.Config
-import controllers.{Logging, routes}
+import controllers.Logging
+import deployment.ScheduledDeployNotificationError
 import lifecycle.Lifecycle
 import magenta.Message.Fail
 import magenta.deployment_type.DeploymentType
@@ -29,11 +29,8 @@ class DeployFailureNotifications(config: Config,
   lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
   lazy private val snsClient = config.scheduledDeployment.snsClient
   lazy private val prefix = config.urls.publicPrefix
-
-  def url(uuid: UUID): String = {
-    val path = routes.DeployController.viewUUID(uuid.toString, verbose = true)
-    prefix + path.url
-  }
+  lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
+  lazy private val failureNotificationContents = new FailureNotificationContents(prefix)
 
   def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
     Try {
@@ -50,36 +47,44 @@ class DeployFailureNotifications(config: Config,
     }
   }
 
-  def failedDeployNotification(uuid: Option[UUID], parameters: DeployParameters): Unit = {
-
-    val deriveAnghammaradTargets = for {
-      yaml <- targetResolver.fetchYaml(parameters.build)
-      deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
-    } yield {
-      TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-        val maybeAccountId = uuid.flatMap(uuid => getAwsAccountIdTarget(target, parameters, uuid)).toList
-        List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+  def getTargets(uuid: UUID, parameters: DeployParameters): List[Target] = {
+    val attemptToDeriveTargets = for {
+        yaml <- targetResolver.fetchYaml(parameters.build)
+        deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
+      } yield {
+        TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
+          val maybeAccountId = getAwsAccountIdTarget(target, parameters, uuid).toList
+          List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
+        }
       }
+    attemptToDeriveTargets match {
+      case Right(targets) => targets
+      case Left(_) => riffRaffTargets
     }
+  }
 
-    deriveAnghammaradTargets match {
-      case Right(targets) =>
-        log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
-        val failureMessage = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed."
-        Anghammarad.notify(
-          subject = s"${parameters.deployer.name} failed",
-          message = failureMessage,
-          sourceSystem = "riff-raff",
-          channel = All,
-          target = targets,
-          // TODO: Figure out the correct action for scheduled deploys that don't start
-          actions = uuid.map(id => List(Action("View failed deploy", url(id)))).getOrElse(Nil),
-          topicArn = anghammaradTopicARN,
-          client = snsClient
-        ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad) for $uuid", ex) }
-      case Left(_) =>
-        log.error(s"Failed to derive targets required to notify about failed scheduled deploy: $uuid")
-    }
+  def notifyViaAnghammarad(notificationContents: NotificationContents, targets: List[Target]) = {
+    log.info(s"Sending anghammarad notification with targets: ${targets.toSet}")
+    Anghammarad.notify(
+      subject = notificationContents.subject,
+      message = notificationContents.message,
+      sourceSystem = "riff-raff",
+      channel = All,
+      target = targets,
+      actions = notificationContents.actions,
+      topicArn = anghammaradTopicARN,
+      client = snsClient
+    ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
+  }
+
+  def scheduledDeployFailureNotification(error: ScheduledDeployNotificationError): Unit = {
+    val contentsWithTargets = failureNotificationContents.scheduledDeployFailureNotificationContents(error, getTargets, riffRaffTargets)
+    notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
+  }
+
+  def midDeployFailureNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
+    val notificationContents = failureNotificationContents.midDeployFailureNotificationContents(uuid, parameters)
+    notifyViaAnghammarad(notificationContents, targets)
   }
 
   def scheduledDeploy(deployParameters: DeployParameters): Boolean = deployParameters.deployer == ScheduledDeployer.deployer
@@ -89,7 +94,8 @@ class DeployFailureNotifications(config: Config,
     message.stack.top match {
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
-        failedDeployNotification(Some(message.context.deployId), message.context.parameters)
+        val targets = getTargets(message.context.deployId, message.context.parameters)
+        midDeployFailureNotification(message.context.deployId, message.context.parameters, targets)
       case _ =>
     }
   })

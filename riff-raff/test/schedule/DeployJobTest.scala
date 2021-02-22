@@ -1,9 +1,8 @@
 package schedule
 
 import java.util.UUID
-
-import deployment.{DeployRecord, Error}
-import magenta.{Build, Deployer, DeployParameters, RunState, Stage}
+import deployment.{DeployRecord, Error, SkippedDueToPreviousFailure}
+import magenta.{Build, DeployParameters, Deployer, RunState, Stage}
 import org.joda.time.DateTime
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
@@ -27,8 +26,7 @@ class DeployJobTest extends FlatSpec with Matchers with EitherValues {
       DeployParameters(Deployer("Bob"), Build("testProject", "1"), Stage("TEST")),
       recordState = Some(RunState.Failed)
     )
-    DeployJob.createDeployParameters(record, true) shouldBe
-      Left(Error("Skipping scheduled deploy as deploy record 7fa2ee0a-8d90-4f7e-a38b-185f36fbc5aa has status Failed"))
+    DeployJob.createDeployParameters(record, true) shouldBe Left(SkippedDueToPreviousFailure(record))
   }
 
   it should "produce an error if scheduled deploys are disabled" in {
