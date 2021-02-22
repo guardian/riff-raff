@@ -77,13 +77,13 @@ class DeployFailureNotifications(config: Config,
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
   }
 
-  def deployUnstartedNotification(error: ScheduledDeployNotificationError): Unit = {
-    val contentsWithTargets = failureNotificationContents.deployUnstartedNotificationContents(error, getTargets, riffRaffTargets)
+  def scheduledDeployFailureNotification(error: ScheduledDeployNotificationError): Unit = {
+    val contentsWithTargets = failureNotificationContents.scheduledDeployFailureNotificationContents(error, getTargets, riffRaffTargets)
     notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
   }
 
-  def deployFailedNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
-    val notificationContents = failureNotificationContents.deployFailedNotificationContents(uuid, parameters)
+  def midDeployFailureNotification(uuid: UUID, parameters: DeployParameters, targets: List[Target]): Unit = {
+    val notificationContents = failureNotificationContents.midDeployFailureNotificationContents(uuid, parameters)
     notifyViaAnghammarad(notificationContents, targets)
   }
 
@@ -95,7 +95,7 @@ class DeployFailureNotifications(config: Config,
       case Fail(_, _) if scheduledDeploy(message.context.parameters) || continuousDeploy(message.context.parameters) =>
         log.info(s"Attempting to send notification via Anghammarad")
         val targets = getTargets(message.context.deployId, message.context.parameters)
-        deployFailedNotification(message.context.deployId, message.context.parameters, targets)
+        midDeployFailureNotification(message.context.deployId, message.context.parameters, targets)
       case _ =>
     }
   })

@@ -19,7 +19,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
       message = "Continuous Deployment for project (build 123) to stage PROD failed.",
       actions = List(Action("View failed deploy", s"http://localhost:9000/deployment/view/$uuid?verbose=true"))
     )
-    val result = failureNotificationContents.deployFailedNotificationContents(uuid, parameters)
+    val result = failureNotificationContents.midDeployFailureNotificationContents(uuid, parameters)
     result shouldBe expected
   }
 
@@ -40,7 +40,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
         Action("Redeploy manually", s"http://localhost:9000/deployment/deployAgain/${record.uuid}")
       ),
     )
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.notificationContents shouldBe expectedContents
   }
 
@@ -58,7 +58,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
       message = "Scheduled Deployment for testProject to PROD failed to start as a previous deploy was still waiting to be deployed.",
       actions = List(Action("View waiting deploy", s"http://localhost:9000/deployment/view/${record.uuid}?verbose=true")),
     )
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.notificationContents shouldBe expectedContents
   }
 
@@ -71,7 +71,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
       message = "A scheduled deploy didn't start because Riff-Raff has never deployed testProject to PROD before. Please inform the owner of this schedule as it's likely that they have made a configuration error.",
       actions = List(Action("View Scheduled Deployment configuration", s"http://localhost:9000/deployment/schedule"))
     )
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.notificationContents shouldBe expectedContents
   }
 
@@ -81,7 +81,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
     def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousFailure(record)
     val expectedTargets = List(Stack("another-team-stack"))
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.targets shouldBe expectedTargets
   }
 
@@ -91,7 +91,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
     def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = SkippedDueToPreviousWaitingDeploy(record)
     val expectedTargets = List(Stack("deploy"))
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.targets shouldBe expectedTargets
   }
 
@@ -101,7 +101,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
     def fakeGetTargets(uuid: UUID, parameters: DeployParameters): List[Target] = List(Stack("another-team-stack"))
     val error = NoDeploysFoundForStage("project", "PROD")
     val expectedTargets = List(Stack("deploy"))
-    val result = failureNotificationContents.deployUnstartedNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
+    val result = failureNotificationContents.scheduledDeployFailureNotificationContents(error, fakeGetTargets, List(Stack("deploy")))
     result.targets shouldBe expectedTargets
   }
 

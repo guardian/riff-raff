@@ -33,7 +33,7 @@ class DeployJob extends Job with Logging {
 
     attemptToStartDeploy match {
       case Left(error: ScheduledDeployNotificationError) =>
-        scheduledDeployNotifier.deployUnstartedNotification(error)
+        scheduledDeployNotifier.scheduledDeployFailureNotification(error)
       case Left(anotherError) =>
         log.warn(s"Scheduled deploy failed to start due to $anotherError. A notification will not be sent...")
       case Right(uuid) =>

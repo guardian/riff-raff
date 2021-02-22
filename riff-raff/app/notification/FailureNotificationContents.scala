@@ -29,7 +29,7 @@ class FailureNotificationContents(prefix: String) {
 
   def viewProblematicDeploy(uuid: UUID, status: String) = Action(s"View $status deploy", problematicDeployUrl(uuid))
 
-  def deployFailedNotificationContents(uuid: UUID, parameters: DeployParameters): NotificationContents = {
+  def midDeployFailureNotificationContents(uuid: UUID, parameters: DeployParameters): NotificationContents = {
     NotificationContents(
       subject = s"${parameters.deployer.name} failed",
       message = s"${parameters.deployer.name} for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name} failed.",
@@ -37,7 +37,7 @@ class FailureNotificationContents(prefix: String) {
     )
   }
 
-  def deployUnstartedNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, teamTargetsSearch: (UUID, DeployParameters) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
+  def scheduledDeployFailureNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, teamTargetsSearch: (UUID, DeployParameters) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
     val subject = "Scheduled Deployment failed to start"
     scheduledDeployError match {
       case SkippedDueToPreviousFailure(record) =>
