@@ -13,45 +13,6 @@ object AutoScaling  extends DeploymentType {
       |
       | - upload a new application artifact to an S3 bucket (from which new instances download their application)
       | - scale up, wait for the new instances to become healthy and then scale back down
-      |
-      |The set of AWS permissions needed to let RiffRaff do an autoscaling deploy are:
-      |
-      |    {
-      |      "Statement": [
-      |        {
-      |          "Action": [
-      |            "autoscaling:DescribeAutoScalingGroups",
-      |            "autoscaling:DescribeAutoScalingInstances",
-      |            "autoscaling:DescribeTags",
-      |            "autoscaling:SuspendProcesses",
-      |            "autoscaling:ResumeProcesses",
-      |            "autoscaling:SetDesiredCapacity",
-      |            "autoscaling:TerminateInstanceInAutoScalingGroup",
-      |            "ec2:CreateTags",
-      |            "ec2:DescribeInstances",
-      |            "elasticloadbalancing:DescribeInstanceHealth",
-      |            "elasticloadbalancing:DescribeTargetHealth",
-      |            "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
-      |            "elasticloadbalancing:DeregisterTargets"
-      |          ],
-      |          "Effect": "Allow",
-      |          "Resource": [
-      |            "*"
-      |          ]
-      |        },
-      |        {
-      |          "Action": [
-      |            "s3:*"
-      |          ],
-      |          "Effect": "Allow",
-      |          "Resource": [
-      |            "arn:aws:s3:::*"
-      |          ]
-      |        }
-      |      ]
-      |    }
-      |
-      |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
   val bucket = Param[String]("bucket",
