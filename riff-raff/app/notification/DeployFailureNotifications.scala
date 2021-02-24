@@ -59,7 +59,9 @@ class DeployFailureNotifications(config: Config,
       }
     attemptToDeriveTargets match {
       case Right(targets) => targets
-      case Left(_) => riffRaffTargets
+      case Left(error) =>
+        log.warn(s"Failed to identify notification targets for ${parameters.build.projectName} due to $error")
+        riffRaffTargets
     }
   }
 
