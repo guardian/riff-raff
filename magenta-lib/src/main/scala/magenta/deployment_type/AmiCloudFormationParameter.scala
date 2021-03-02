@@ -12,33 +12,6 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
       |on the provided CloudFormation stack.
       |
       |You will need to add this as a dependency to your autoscaling deploy in your riff-raff.yaml to guard against race conditions.
-      |
-      |The set of AWS permissions needed to let RiffRaff do an AMI updates are:
-      |
-      |    {
-      |      "Statement": [
-      |        {
-      |          "Action": [
-      |             "cloudformation:DescribeStacks",
-      |             "cloudformation:UpdateStack",
-      |             "cloudformation:DescribeStackEvents",
-      |             "ec2:DescribeSecurityGroups",
-      |             "iam:PassRole",
-      |             "autoscaling:CreateLaunchConfiguration",
-      |             "autoscaling:UpdateAutoScalingGroup",
-      |             "autoscaling:DescribeLaunchConfigurations",
-      |             "autoscaling:DescribeScalingActivities",
-      |             "autoscaling:DeleteLaunchConfiguration"
-      |          ],
-      |          "Effect": "Allow",
-      |          "Resource": [
-      |            "*"
-      |          ]
-      |        }
-      |      ]
-      |    }
-      |
-      |You'll need to add this to the Riff-Raff IAM account used for your project.
     """.stripMargin
 
   val update = Action("update",
