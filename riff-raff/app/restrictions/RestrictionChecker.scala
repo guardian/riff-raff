@@ -1,7 +1,7 @@
 package restrictions
 
 import com.gu.googleauth.UserIdentity
-import deployment.{ContinuousDeploymentRequestSource, Error, RequestSource, UserRequestSource}
+import deployment.{ContinuousDeploymentRequestSource, Error, RequestSource, ScheduleRequestSource, UserRequestSource}
 
 object RestrictionChecker {
   /** Method that checks whether the supplied config is editable by the supplied source and reports and error reason if
@@ -32,7 +32,7 @@ object RestrictionChecker {
 
   def sourceMatches(config: RestrictionConfig, source: RequestSource): Boolean = {
     source match {
-      case ContinuousDeploymentRequestSource => config.continuousDeployment
+      case ContinuousDeploymentRequestSource | ScheduleRequestSource => config.continuousDeployment
       case UserRequestSource(identity) => config.whitelist.contains(identity.email)
       case _ => false
     }

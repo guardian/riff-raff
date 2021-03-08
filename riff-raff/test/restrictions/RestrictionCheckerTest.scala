@@ -1,10 +1,9 @@
 package restrictions
 
 import java.util.UUID
-
 import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
-import deployment.{ApiRequestSource, ContinuousDeploymentRequestSource, Error, UserRequestSource}
+import deployment.{ApiRequestSource, ContinuousDeploymentRequestSource, Error, ScheduleRequestSource, UserRequestSource}
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -124,6 +123,18 @@ class RestrictionCheckerTest extends FlatSpec with Matchers {
   it should "not match when a CD and CD is not permitted" in {
     RestrictionChecker.sourceMatches(
       config.copy(continuousDeployment=false), ContinuousDeploymentRequestSource
+    ) shouldBe false
+  }
+
+  it should "match when a scheduled deploy and CD is permitted" in {
+    RestrictionChecker.sourceMatches(
+      config.copy(continuousDeployment=true), ScheduleRequestSource
+    ) shouldBe true
+  }
+
+  it should "not match when a scheduled deploy and CD is not permitted" in {
+    RestrictionChecker.sourceMatches(
+      config.copy(continuousDeployment=false), ScheduleRequestSource
     ) shouldBe false
   }
 
