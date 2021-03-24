@@ -78,7 +78,7 @@ object S3 extends DeploymentType {
 
   val surrogateControl = Param[List[PatternValue]]("surrogateControl",
     """
-      |Same as cacheControl, but for setting the surrogate-cache, which is used by Fastly.
+      |Same as cacheControl, but for setting the surrogate-control cache header, which is used by Fastly.
     """.stripMargin
   ).default(Nil)
 
