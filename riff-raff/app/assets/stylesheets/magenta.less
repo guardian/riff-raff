@@ -20,13 +20,6 @@ tr.rowlink td {
 tr.rowlink td.nolink {
   cursor: auto;
 }
-.table tbody tr.rowlink:hover td {
-  background-color: #cfcfcf;
-
-  @media(prefers-color-scheme: dark) {
-    color: black;
-  }
-}
 a.rowlink {
   color: inherit;
   font: inherit;
@@ -38,6 +31,14 @@ a.rowlink {
 
 table.table-auto-width {
   width: auto;
+}
+
+.table tbody tr:hover {
+  background-color: #cfcfcf;
+
+  @media(prefers-color-scheme: dark) {
+    color: black;
+  }
 }
 
 .tooltip-inner {
