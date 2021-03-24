@@ -33,7 +33,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val putRec = PutReq(
       source = MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       target = S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
-      cacheControl = None, contentType = None,
+      cacheControl = None, surrogateControl = None, contentType = None,
       publicReadAcl = false
     )
 
@@ -56,7 +56,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val putRec = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
-      Some("no-cache"), Some("application/json"),
+      Some("no-cache"), None, Some("application/json"),
       publicReadAcl = false
     )
 
@@ -73,19 +73,19 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
     val putRecOne = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.css", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.css"),
-      Some("no-cache"), None,
+      Some("no-cache"), None, None,
       publicReadAcl = false
     )
     val putRecTwo = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.abc"),
-      Some("no-cache"), None,
+      Some("no-cache"), None, None,
       publicReadAcl = false
     )
     val putRecThree = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.js", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.js"),
-      Some("no-cache"), None,
+      Some("no-cache"), None, None,
       publicReadAcl = false
     )
 

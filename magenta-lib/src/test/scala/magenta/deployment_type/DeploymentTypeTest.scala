@@ -23,8 +23,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
   val deploymentTypes = Seq(S3, Lambda)
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 9
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","mimeTypes"))
+    S3.params should have size 10
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","surrogateControl","mimeTypes"))
   }
 
   private val sourceS3Package = S3Path("artifact-bucket", "test/123/static-files")
@@ -72,7 +72,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
 
     val data: Map[String, JsValue] = Map(
       "bucket" -> JsString("bucket-1234"),
-      "cacheControl" -> JsString("no-cache")
+      "cacheControl" -> JsString("no-cache"),
+      "surrogateControl" -> JsString("max-age=3600")
     )
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
@@ -82,7 +83,8 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
         Region("eu-west-1"),
         "bucket-1234",
         Seq(sourceS3Package -> "test-stack/CODE/myapp"),
-        List(PatternValue(".*", "no-cache")),
+        cacheControlPatterns = List(PatternValue(".*", "no-cache")),
+        surrogateControlPatterns = List(PatternValue(".*", "max-age=3600")),
         publicReadAcl = true
       ))
     )

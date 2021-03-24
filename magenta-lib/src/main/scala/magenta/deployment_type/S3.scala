@@ -76,7 +76,7 @@ object S3 extends DeploymentType {
     """.stripMargin
   )
 
-  val surrogateCacheControl = Param[List[PatternValue]]("surrogateCacheControl",
+  val surrogateControl = Param[List[PatternValue]]("surrogateControl",
     """
       |Same as cacheControl, but for setting the surrogate-cache, which is used by Fastly.
     """.stripMargin
@@ -149,7 +149,7 @@ object S3 extends DeploymentType {
           bucket = bucketName,
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg, target, reporter),
-          surrogateCacheControlPatterns = surrogateCacheControl(pkg, target, reporter),
+          surrogateControlPatterns = surrogateControl(pkg, target, reporter),
           extensionToMimeType = mimeTypes(pkg, target, reporter),
           publicReadAcl = publicReadAcl(pkg, target, reporter)
         )

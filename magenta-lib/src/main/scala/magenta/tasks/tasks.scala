@@ -21,7 +21,7 @@ case class S3Upload(
   bucket: String,
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
-  surrogateCacheControlPatterns: List[PatternValue] = Nil,
+  surrogateControlPatterns: List[PatternValue] = Nil,
   extensionToMimeType: Map[String,String] = Map.empty,
   publicReadAcl: Boolean = false,
   detailedLoggingThreshold: Int = 10,
@@ -35,7 +35,7 @@ case class S3Upload(
   lazy val totalSize: Long = objectMappings.map{ case (source, _) => source.size }.sum
 
   lazy val requests: Seq[PutReq] = objectMappings.map { case (source, target) =>
-    PutReq(source, target, cacheControlLookup(target.key), surrogateCacheControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
+    PutReq(source, target, cacheControlLookup(target.key), surrogateControlLookup(target.key), contentTypeLookup(target.key), publicReadAcl)
   }
 
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
@@ -101,7 +101,7 @@ case class S3Upload(
 
   private def contentTypeLookup(fileName: String) = fileExtension(fileName).flatMap(extensionToMimeType.get)
   private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
-  private def surrogateCacheControlLookup(fileName:String) = surrogateCacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
+  private def surrogateControlLookup(fileName:String) = surrogateControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
   private def fileExtension(fileName: String) = fileName.split('.').drop(1).lastOption
 }
 
@@ -117,13 +117,13 @@ object S3Upload {
     prefixGenerator(Some(stack), Some(stage), Some(packageName))
 }
 
-case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], surrogateCacheControl: Option[String], contentType: Option[String], publicReadAcl: Boolean) {
+case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String], surrogateControl: Option[String], contentType: Option[String], publicReadAcl: Boolean) {
   import collection.JavaConverters._
 
   type ReqModifier = PutObjectRequest.Builder => PutObjectRequest.Builder
   private val setCacheControl: ReqModifier = r => cacheControl.map(cc => r.cacheControl(cc)).getOrElse(r)
-  private val setSurrogateCacheControl: ReqModifier = r => surrogateCacheControl.map(scc =>
-    r.metadata(Map[String,String]("surrogate-control", scc).asJava)
+  private val setsurrogateControl: ReqModifier = r => surrogateControl.map(scc =>
+    r.metadata(Map[String,String]("surrogate-control" -> scc).asJava)
   ).getOrElse(r)
 
   def toAwsRequest: PutObjectRequest = {
@@ -132,7 +132,7 @@ case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String]
       .key(target.key)
       .contentType(contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key)))
       .contentLength(source.size)
-    val reqWithCacheControl = (setCacheControl andThen setSurrogateCacheControl)(req)
+    val reqWithCacheControl = (setCacheControl andThen setsurrogateControl)(req)
     if (publicReadAcl) reqWithCacheControl.acl(ObjectCannedACL.PUBLIC_READ).build() else reqWithCacheControl.build()
   }
 }
