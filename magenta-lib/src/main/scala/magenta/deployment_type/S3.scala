@@ -80,7 +80,7 @@ object S3 extends DeploymentType {
     """
       |Same as cacheControl, but for setting the surrogate-cache, which is used by Fastly.
     """.stripMargin
-  )
+  ).default(Nil)
 
   val mimeTypes = Param[Map[String,String]]("mimeTypes",
     """
