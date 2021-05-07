@@ -44,6 +44,25 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     tasks(4) shouldBe a[DeleteChangeSetTask]
   }
 
+  it should "generate stack policy tasks in the correct order when manageStackPolicy is true" in {
+    val data: Map[String, JsValue] = Map(
+      "manageStackPolicy" -> JsBoolean(true),
+    )
+
+    val tasks = generateTasks(data)
+    tasks should have size(7)
+
+    tasks(0) shouldBe a[SetStackPolicyTask]
+    tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.DENY_REPLACE_DELETE_POLICY
+    tasks(1) shouldBe a[CreateChangeSetTask]
+    tasks(2) shouldBe a[CheckChangeSetCreatedTask]
+    tasks(3) shouldBe a[ExecuteChangeSetTask]
+    tasks(4) shouldBe a[CheckUpdateEventsTask]
+    tasks(5) shouldBe a[DeleteChangeSetTask]
+    tasks(6) shouldBe a[SetStackPolicyTask]
+    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
+  }
+
   it should "ignore amiTags when amiParametersToTags and amiTags are provided" in {
     val data: Map[String, JsValue] = Map(
       "amiTags" -> Json.obj("myApp" -> JsString("fakeApp")),

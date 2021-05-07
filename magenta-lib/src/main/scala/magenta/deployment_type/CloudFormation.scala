@@ -9,6 +9,7 @@ import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
 
+//noinspection TypeAnnotation
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
   val name = "cloud-formation"
@@ -64,6 +65,22 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   val secondsToWaitForChangeSetCreation = Param("secondsToWaitForChangeSetCreation",
     "Number of seconds to wait for the change set to be created").default(15 * 60)
 
+  val manageStackPolicyParam = Param[Boolean]("manageStackPolicy",
+    s"""Allow RiffRaff to manage stack update policies on your behalf.
+      |
+      |When `true` RiffRaff will apply a restrictive stack policy to the stack before updating which prevents
+      |CloudFormation carrying our destructive operations on certain resource types. At the end of an update the stack
+      |policy will be updated again to allow all operations to be carried out (the same as having no policy, but
+      |it is not possible to delete a stack policy).
+      |
+      |The two stack policies are show below.
+      |
+      |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY)}
+      |
+      |${StackPolicy.toMarkdown(StackPolicy.ALLOW_ALL_POLICY)}
+      |""".stripMargin
+  ).default(false)
+
   val updateStack = Action("updateStack",
     """
       |Apply the specified template to a cloudformation stack. This action runs an asynchronous update task and then
@@ -96,7 +113,9 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
     val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
 
-    List(
+    val manageStackPolicy = manageStackPolicyParam(pkg, target, reporter)
+
+    val tasks: List[Task] = List(
       new CreateChangeSetTask(
         target.region,
         templatePath = S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
@@ -121,6 +140,19 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         stackLookup
       )
     )
+
+    // wrap the task list with policy updates if enabled
+    if (manageStackPolicy) {
+      new SetStackPolicyTask(
+        target.region,
+        stackLookup,
+        StackPolicy.DENY_REPLACE_DELETE_POLICY
+      ) :: tasks ::: List(new SetStackPolicyTask(
+        target.region,
+        stackLookup,
+        StackPolicy.ALLOW_ALL_POLICY
+      ))
+    } else tasks
   }
   }
 
