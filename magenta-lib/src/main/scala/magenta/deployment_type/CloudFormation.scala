@@ -65,6 +65,8 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   val secondsToWaitForChangeSetCreation = Param("secondsToWaitForChangeSetCreation",
     "Number of seconds to wait for the change set to be created").default(15 * 60)
 
+  val manageStackPolicyDefault = false
+  val manageStackPolicyLookupKey = "cloudformation:manage-stack-policy"
   val manageStackPolicyParam = Param[Boolean]("manageStackPolicy",
     s"""Allow RiffRaff to manage stack update policies on your behalf.
       |
@@ -73,13 +75,18 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |policy will be updated again to allow all operations to be carried out (the same as having no policy, but
       |it is not possible to delete a stack policy).
       |
+      |This can also be set via the `$manageStackPolicyLookupKey` lookup key which can be used to control this setting
+      |across a larger number of projects. This setting overrides this and if neither exist the default is
+      |$manageStackPolicyDefault.
+      |
       |The two stack policies are show below.
       |
       |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY)}
       |
       |${StackPolicy.toMarkdown(StackPolicy.ALLOW_ALL_POLICY)}
-      |""".stripMargin
-  ).default(false)
+      |""".stripMargin,
+    optional = true
+  )
 
   val updateStack = Action("updateStack",
     """
@@ -113,7 +120,15 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
     val createNewStack = createStackIfAbsent(pkg, target, reporter)
     val stackLookup = new CloudFormationStackMetadata(cloudFormationStackLookupStrategy, changeSetName, createNewStack)
 
-    val manageStackPolicy = manageStackPolicyParam(pkg, target, reporter)
+    def getManageStackPolicyFromLookup: Option[Boolean] = {
+      val lookupManageStackPolicyDatum = resources.lookup.data.datum(manageStackPolicyLookupKey, pkg.app, target.parameters.stage, target.stack)
+      lookupManageStackPolicyDatum.map(_.value).map("true".equalsIgnoreCase)
+    }
+
+    val manageStackPolicy: Boolean =
+      manageStackPolicyParam.get(pkg)
+        .orElse(getManageStackPolicyFromLookup)
+        .getOrElse(manageStackPolicyDefault)
 
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
