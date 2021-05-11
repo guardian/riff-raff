@@ -1,6 +1,6 @@
 package magenta.tasks
 import magenta.{DeploymentResources, KeyRing, Region}
-import software.amazon.awssdk.services.cloudformation.model.SetStackPolicyRequest
+import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, SetStackPolicyRequest}
 
 case class StackPolicy(name: String, body: String)
 
@@ -89,14 +89,20 @@ class SetStackPolicyTask(
                           )(implicit val keyRing: KeyRing) extends Task {
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      resources.reporter.info(s"Setting update policy for stack $stackName to ${stackPolicy.name}")
-      cfnClient.setStackPolicy(
-        SetStackPolicyRequest.builder
-          .stackName(stackName)
-          .stackPolicyBody(stackPolicy.body)
-          .build()
-      )
+      val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
+
+      changeSetType match {
+        case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")
+        case _ => {
+          resources.reporter.info(s"Setting update policy for stack $stackName to ${stackPolicy.name}")
+          cfnClient.setStackPolicy(
+            SetStackPolicyRequest.builder
+              .stackName(stackName)
+              .stackPolicyBody(stackPolicy.body)
+              .build()
+          )
+        }
+      }
     }
   }
 
