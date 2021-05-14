@@ -92,6 +92,8 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
   )
 
+  val ioExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("io-context")
+
   val documentStoreConverter = new DocumentStoreConverter(datastore)
   val targetDynamoRepository = new TargetDynamoRepository(config)
   val restrictionConfigDynamoRepository = new RestrictionConfigDynamoRepository(config)
@@ -113,13 +115,13 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val secretProvider = new Secrets(config, ssmClient)
   secretProvider.populate()
   val prismLookup = new PrismLookup(config, wsClient, secretProvider)
-  val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes)
+  val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes, ioExecutionContext)
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
   val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)
   val deployments = new Deployments(deploymentEngine, builds, documentStoreConverter, restrictionConfigDynamoRepository)
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
-  val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes)
+  val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes, ioExecutionContext)
   val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
   val scheduledDeployNotifier = new DeployFailureNotifications(config, availableDeploymentTypes, targetResolver, prismLookup)
 

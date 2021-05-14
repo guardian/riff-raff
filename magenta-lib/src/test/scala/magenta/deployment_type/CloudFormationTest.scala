@@ -16,6 +16,8 @@ import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetTy
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.concurrent.ExecutionContext.global
+
 class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
@@ -30,7 +32,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     deploymentTypes)
 
   private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false)), updateStrategy: Strategy = MostlyHarmless) = {
-    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
+    val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global)
     CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
   }
 

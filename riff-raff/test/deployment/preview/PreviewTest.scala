@@ -14,6 +14,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.concurrent.ExecutionContext.global
+
 class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
   def invalid(error: String): Validated[NEL[String], Int] = Invalid(NEL.of(error))
@@ -51,7 +53,7 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
     implicit val stsClient: StsClient = mock[StsClient]
     val parameters = DeployParameters(Deployer("test user"), Build("testProject", "1"), Stage("TEST"), updateStrategy = MostlyHarmless)
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
-    val resources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient)
+    val resources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global)
     val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))
 
     val deploymentTuple = (

@@ -14,6 +14,8 @@ import play.api.libs.json.JsString
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.concurrent.ExecutionContext.global
+
 class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with ValidatedValues {
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = mock[S3Client]
@@ -35,7 +37,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region"),
         NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
-      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
+      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = deploymentTypes,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
@@ -52,7 +54,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region-one", "region-two"),
         NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
-      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
+      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = deploymentTypes,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
@@ -70,7 +72,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
   "resolve" should "produce an error when the deployment type isn't found" in {
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
-      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
+      deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = Nil,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")

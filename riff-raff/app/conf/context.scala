@@ -228,12 +228,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     }
   }
 
-  object deprecation {
-    def pauseSeconds: Option[Int] = {
-      val days = Days.daysBetween(new DateTime(2017,5,22,0,0,0), new DateTime()).getDays
-      if (days > 0) Some(math.min(60, days)) else None
-    }
-  }
 
   def credentialsProviderChainV1(accessKey: Option[String] = None, secretKey: Option[String] = None): AWSCredentialsProviderChainV1 = {
     new AWSCredentialsProviderChainV1(

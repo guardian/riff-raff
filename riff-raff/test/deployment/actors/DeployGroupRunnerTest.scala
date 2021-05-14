@@ -1,15 +1,12 @@
 package deployment.actors
 
 import java.util.UUID
-
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import conf.Config
 import deployment.{Fixtures, Record}
-import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
-import magenta.tasks.Task
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpecLike, Matchers}
 import play.api.Configuration
@@ -135,7 +132,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val record = createRecord()
     val ref = system.actorOf(
       Props(new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes, None)),
+        prismLookup = null, deploymentTypes, global)),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
@@ -152,7 +149,7 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val record = createRecord()
     val ref = TestActorRef(
       new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes, None),
+        prismLookup = null, deploymentTypes, global),
       name=s"DeployGroupRunner-${record.uuid.toString}"
     )
     DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)

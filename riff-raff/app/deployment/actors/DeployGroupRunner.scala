@@ -17,6 +17,7 @@ import magenta.{DeployContext, DeployReporter, DeployStoppedException, Deploymen
 import org.joda.time.DateTime
 import resources.PrismLookup
 
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 class DeployGroupRunner(
@@ -27,7 +28,7 @@ class DeployGroupRunner(
   stopFlagAgent: Agent[Map[UUID, String]],
   prismLookup: PrismLookup,
   deploymentTypes: Seq[DeploymentType],
-  deprecatedPause: Option[Int]
+  ioExecutionContext: ExecutionContext
 ) extends Actor with Logging {
   import DeployGroupRunner._
 
@@ -40,7 +41,7 @@ class DeployGroupRunner(
   val id = record.uuid
 
   val rootReporter = DeployReporter.startDeployContext(DeployReporter.rootReporterFor(record.uuid, record.parameters))
-  val rootResources = DeploymentResources(rootReporter, prismLookup, config.artifact.aws.client, config.credentials.stsClient)
+  val rootResources = DeploymentResources(rootReporter, prismLookup, config.artifact.aws.client, config.credentials.stsClient, ioExecutionContext)
   var rootContextClosed = false
 
   var deployContext: Option[DeployContext] = None
@@ -186,7 +187,7 @@ class DeployGroupRunner(
       val bucketName = config.artifact.aws.bucketName
 
       safeReporter.info("Reading riff-raff.yaml")
-      val resources = DeploymentResources(safeReporter, prismLookup, s3Client, stsClient)
+      val resources = DeploymentResources(safeReporter, prismLookup, s3Client, stsClient, ioExecutionContext)
 
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(s3Client)

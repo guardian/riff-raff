@@ -12,8 +12,9 @@ import magenta.deployment_type.DeploymentType
 import resources.PrismLookup
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
 
-class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType]) extends Logging {
+class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], ioExecutionContext: ExecutionContext) extends Logging {
 
   private val concurrentDeploys = config.concurrency.maxDeploys
 
@@ -41,7 +42,7 @@ class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes
   private lazy val deployRunnerFactory = (context: ActorRefFactory, record: Record, deployCoordinator: ActorRef) =>
     context.actorOf(
       props = Props(
-        new DeployGroupRunner(config, record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, config.deprecation.pauseSeconds)
+        new DeployGroupRunner(config, record, deployCoordinator, deploymentRunnerFactory, stopFlagAgent, prismLookup, deploymentTypes, ioExecutionContext)
       ).withDispatcher("akka.deploy-dispatcher"),
       name = s"deployGroupRunner-${record.uuid.toString}"
     )
