@@ -1,11 +1,11 @@
 package magenta
 
 import java.util.UUID
-
 import magenta.ContextMessage._
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 import magenta.Message._
+import magenta.Strategy.MostlyHarmless
 
 class ReportingTest extends FlatSpec with Matchers {
 
@@ -86,7 +86,7 @@ class ReportingTest extends FlatSpec with Matchers {
 
     tree.size should be (4)
 
-    tree.render.mkString(", ") should be (""":Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),All)) [Completed], 1:Info($ echo hello) [Completed], 1.1:CommandOutput(hello) [NotRunning], 1.2:Verbose(return value 0) [NotRunning]""")
+    tree.render.mkString(", ") should be (""":Deploy(DeployParameters(Deployer(Test reports),Build(test-project,1),Stage(CODE),All,MostlyHarmless)) [Completed], 1:Info($ echo hello) [Completed], 1.1:CommandOutput(hello) [NotRunning], 1.2:Verbose(return value 0) [NotRunning]""")
   }
 
   it should "know it has failed" in {
@@ -129,7 +129,7 @@ class ReportingTest extends FlatSpec with Matchers {
     DeployReportTree( MessageState(startMessage, failMessage, testTime, id), trees.toList )
   }
 
-  val parameters = DeployParameters(Deployer("Test reports"),Build("test-project","1"),Stage("CODE"))
+  val parameters = DeployParameters(Deployer("Test reports"),Build("test-project","1"),Stage("CODE"), updateStrategy = MostlyHarmless)
 
   val deploy = Deploy(parameters)
   val startDeploy = StartContext(deploy)

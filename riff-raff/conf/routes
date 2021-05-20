@@ -17,7 +17,7 @@ GET         /configuration/validation                       controllers.Applicat
 POST        /configuration/validation                       controllers.Application.validateConfiguration
 
 # Preview endpoints
-GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String,deployments:Option[String])
+GET         /preview/yaml                                   controllers.PreviewController.preview(project:String,build:String,stage:String,deployments:Option[String],updateStrategy:magenta.Strategy)
 GET         /preview/yaml/showTasks                         controllers.PreviewController.showTasks(previewId:String)
 
 # Deployment pages

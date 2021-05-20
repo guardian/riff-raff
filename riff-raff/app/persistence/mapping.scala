@@ -48,7 +48,8 @@ object RecordConverter {
         case All => AllDocument
         case DeploymentKeysSelector(ids) =>
           DeploymentKeysSelectorDocument(ids.map(_.to[DeploymentKeyDocument]()))
-      }
+      },
+      updateStrategy = sourceParams.updateStrategy
     )
     RecordConverter(record.uuid, record.time, params, record.state, record.messages)
   }
@@ -64,7 +65,8 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
       case AllDocument => All
       case DeploymentKeysSelectorDocument(keys) =>
         DeploymentKeysSelector(keys.map(_.to[DeploymentKey]()))
-    }
+    },
+    deploy.parameters.updateStrategy
   )
 
   lazy val deployRecord =

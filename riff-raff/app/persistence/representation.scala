@@ -62,7 +62,8 @@ case class ParametersDocument(
   buildId: String,
   stage: String,
   tags: Map[String,String],
-  selector: DeploymentSelectorDocument
+  selector: DeploymentSelectorDocument,
+  updateStrategy: Strategy
 )
 
 object ParametersDocument {

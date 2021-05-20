@@ -7,7 +7,7 @@ How-to
  - [Fix a failed deploy](howto/fix-a-failed-deploy.md) - riff-raff fails fast, here are the basic steps
    for fixing an auto-scaling deploy
  - [Configure a project](howto/configure-a-project.md) - how to set up a project so it can be deployed by Riff-Raff
- 
+
 Reference
 ---------
 
@@ -17,6 +17,7 @@ Reference
 Using Riff-Raff
 ---------------
 
+ - [Update Strategies](riffraff/update-strategy.md) - what is an update strategy and how to choose one
  - [API](riffraff/api.md) - how to use the API and a description of the endpoints available
  - [Continuous Integration and Deployment](riffraff/hooksAndCD.md) - guide to the Riff-Raff hooks available to make continuous
  deployment easy

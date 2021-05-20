@@ -1,5 +1,7 @@
 @import conf.Config
 @import utils.ChangeFreeze
+@import magenta.Strategy
+@import magenta.Strategy.MostlyHarmless
 @(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
@@ -33,6 +35,14 @@
                 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
                 'id -> "stage",
                 'class -> "form-control"
+            )
+            @b3.select(
+                deployForm("updateStrategy"),
+                helper.options(Strategy.values.map(v => v.entryName -> v.userDescription):_*),
+                '_label -> Html(s"""update strategy (<a href="${routes.Application.documentation("riffraff/update-strategy.md")}">what's this?</a>)"""),
+                'value -> deployForm("updateStrategy").value.getOrElse(Strategy.MostlyHarmless.entryName),
+                '_error -> deployForm.globalError.map(_.withMessage("Please select an update strategy")),
+                'id -> "updateStrategy"
             )
 
             <div class="actions">

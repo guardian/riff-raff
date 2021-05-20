@@ -1,7 +1,8 @@
 package deployment
 
-import java.util.UUID
+import magenta.Strategy.MostlyHarmless
 
+import java.util.UUID
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.tasks._
 import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, DeploymentResources, Host, KeyRing, Region, Stage}
@@ -49,7 +50,8 @@ object Fixtures extends MockitoSugar {
     uuid,
     DeployParameters(Deployer(deployer),
       Build(projectName, buildId),
-      Stage(stage)
+      Stage(stage),
+      updateStrategy = MostlyHarmless
     )
   )
 

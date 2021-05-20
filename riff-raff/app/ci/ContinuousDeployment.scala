@@ -4,6 +4,7 @@ import conf.Config
 import controllers.Logging
 import deployment.{ContinuousDeploymentRequestSource, Deployments}
 import lifecycle.Lifecycle
+import magenta.Strategy.MostlyHarmless
 import magenta.{DeployParameters, Deployer, Stage}
 import persistence.ContinuousDeploymentConfigRepository
 import rx.lang.scala.{Observable, Subscription}
@@ -83,7 +84,8 @@ object ContinuousDeployment extends Logging with Retriable {
     DeployParameters(
       deployer,
       build.toMagentaBuild,
-      Stage(config.stage)
+      Stage(config.stage),
+      updateStrategy = MostlyHarmless
     )
   }
 }

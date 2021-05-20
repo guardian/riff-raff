@@ -57,7 +57,8 @@ class DeployController(config: Config,
         val parameters = DeployParameters(Deployer(request.user.fullName),
           Build(form.project, form.build.toString),
           Stage(form.stage),
-          selector = form.makeSelector
+          selector = form.makeSelector,
+          updateStrategy = form.updateStrategy
         )
 
         form.action match {
@@ -67,7 +68,7 @@ class DeployController(config: Config,
               case DeploymentKeysSelector(keys) => Some(DeploymentKey.asString(keys))
             }
             Redirect(routes.PreviewController.preview(
-              parameters.build.projectName, parameters.build.id, parameters.stage.name, maybeKeys)
+              parameters.build.projectName, parameters.build.id, parameters.stage.name, maybeKeys, parameters.updateStrategy)
             )
           case "deploy" =>
             val uuid = deployments.deploy(parameters, requestSource = UserRequestSource(request.user)).valueOr{ error =>
@@ -192,7 +193,7 @@ class DeployController(config: Config,
       case All => Nil
     }
 
-    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name, "deploy", keys, None)
+    val params = DeployParameterForm(record.buildName, record.buildId, record.stage.name, "deploy", keys, None, record.parameters.updateStrategy)
 
     val fields = DeployParameterForm.form.fill(params).data
 

@@ -1,8 +1,8 @@
 package test
 
 import java.util.UUID
-
 import controllers.ApiKey
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
@@ -34,7 +34,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument, updateStrategy = MostlyHarmless),
         RunState.Completed
       )
     )

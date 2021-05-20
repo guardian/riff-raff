@@ -6,8 +6,9 @@ import magenta._
 import magenta.DeployParameters
 import magenta.Deployer
 import magenta.Stage
-import java.util.UUID
+import magenta.Strategy.MostlyHarmless
 
+import java.util.UUID
 import scala.util.{Failure, Success}
 
 class ContinuousDeploymentTest extends FlatSpec with Matchers {
@@ -16,7 +17,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
     params.size should be(1)
     params should be(Set(
-      DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy", "71"), Stage("PROD"))
+      DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy", "71"), Stage("PROD"), updateStrategy = MostlyHarmless)
     ))
   }
 
@@ -27,7 +28,7 @@ class ContinuousDeploymentTest extends FlatSpec with Matchers {
 
   it should "take account of branch" in {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(td2B392, contDeployBranchConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet
-    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy2", "392"), Stage("QA"))))
+    params should be(Set(DeployParameters(Deployer("Continuous Deployment"), Build("tools::deploy2", "392"), Stage("QA"), updateStrategy = MostlyHarmless)))
   }
 
   /* Test types */

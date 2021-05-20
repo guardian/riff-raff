@@ -1,7 +1,8 @@
 package magenta.deployment_type
 
-import java.util.UUID
+import magenta.Strategy.MostlyHarmless
 
+import java.util.UUID
 import magenta._
 import magenta.artifact.S3Path
 import magenta.deployment_type.param_reads.PatternValue
@@ -163,5 +164,5 @@ class DeploymentTypeTest extends FlatSpec with Matchers with Inside with Mockito
     thrown.getMessage should equal ("Function not defined for stage CODE")
   }
 
-  def parameters(stage: Stage) = DeployParameters(Deployer("tester"), Build("project", "version"), stage)
+  def parameters(stage: Stage) = DeployParameters(Deployer("tester"), Build("project", "version"), stage, updateStrategy = MostlyHarmless)
 }

@@ -1,7 +1,8 @@
 package magenta.deployment_type
 
-import java.util.UUID
+import magenta.Strategy.{Dangerous, MostlyHarmless}
 
+import java.util.UUID
 import magenta._
 import magenta.artifact.S3Path
 import magenta.fixtures._
@@ -28,9 +29,9 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   def p(data: Map[String, JsValue]) = DeploymentPackage("app", app, data, "cloud-formation", S3Path("artifact-bucket", "test/123"),
     deploymentTypes)
 
-  private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false))) = {
+  private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false)), updateStrategy: Strategy = MostlyHarmless) = {
     val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
-    CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(), testStack, region))
+    CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
   }
 
   it should "generate the tasks in the correct order" in {
@@ -54,6 +55,25 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
     tasks(0) shouldBe a[SetStackPolicyTask]
     tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.DENY_REPLACE_DELETE_POLICY
+    tasks(1) shouldBe a[CreateChangeSetTask]
+    tasks(2) shouldBe a[CheckChangeSetCreatedTask]
+    tasks(3) shouldBe a[ExecuteChangeSetTask]
+    tasks(4) shouldBe a[CheckUpdateEventsTask]
+    tasks(5) shouldBe a[DeleteChangeSetTask]
+    tasks(6) shouldBe a[SetStackPolicyTask]
+    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
+  }
+
+  it should "generate stack policy tasks in the correct order when manageStackPolicy is true and update strategy is Dangerous" in {
+    val data: Map[String, JsValue] = Map(
+      "manageStackPolicy" -> JsBoolean(true),
+    )
+
+    val tasks = generateTasks(data, updateStrategy = Dangerous)
+    tasks should have size(7)
+
+    tasks(0) shouldBe a[SetStackPolicyTask]
+    tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
     tasks(1) shouldBe a[CreateChangeSetTask]
     tasks(2) shouldBe a[CheckChangeSetCreatedTask]
     tasks(3) shouldBe a[ExecuteChangeSetTask]
@@ -290,7 +310,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
   "CloudFormationParameters resolve" should "use default params when creating a new stack" in {
     val cfp = new CloudFormationParameters(
-      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD"), updateStrategy = MostlyHarmless), Stack("deploy"), Region("eu-west-1")),
       None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
@@ -304,7 +324,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
   it should "use existing values instead of defaults when updating a stack with no new parameters" in {
     val cfp = new CloudFormationParameters(
-      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD"), updateStrategy = MostlyHarmless), Stack("deploy"), Region("eu-west-1")),
       None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
@@ -318,7 +338,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
   it should "allow default values when updating a stack with new parameters" in {
     val cfp = new CloudFormationParameters(
-      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD"), updateStrategy = MostlyHarmless), Stack("deploy"), Region("eu-west-1")),
       None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
@@ -334,7 +354,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     val userParameters = Map("param1" -> "user-value")
 
     val cfp = new CloudFormationParameters(
-      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD"), updateStrategy = MostlyHarmless), Stack("deploy"), Region("eu-west-1")),
       None, userParameters, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
@@ -348,7 +368,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
 
   it should "fail when there are new parameters in the template that don't have default values" in {
     val cfp = new CloudFormationParameters(
-      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD")), Stack("deploy"), Region("eu-west-1")),
+      DeployTarget(DeployParameters(Deployer("TestMan"), Build("test", "1"), Stage("PROD"), updateStrategy = MostlyHarmless), Stack("deploy"), Region("eu-west-1")),
       None, Map.empty, Map.empty, (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 

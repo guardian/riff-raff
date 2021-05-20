@@ -1,13 +1,15 @@
 package magenta
 
-import java.util.UUID
+import enumeratum.{Enum, EnumEntry, PlayJsonEnum}
 
+import java.util.UUID
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.regions.{Region => AWSRegion}
 import magenta.input._
 import magenta.tasks.Task
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.collection.immutable
 import scala.math.Ordering.OptionOrdering
 
 case class Host(name: String,
@@ -89,7 +91,24 @@ case class Region(name: String) extends AnyVal {
 
 case class Deployer(name: String)
 
+sealed trait Strategy extends EnumEntry {
+  def description: String
+  def userDescription: String
+}
+object Strategy extends Enum[Strategy] with PlayJsonEnum[Strategy] {
+  val values: immutable.IndexedSeq[Strategy] = findValues
+  case object MostlyHarmless extends Strategy {
+    val description = "Avoids destructive deployment operations"
+    val userDescription = s"$entryName (default): $description"
+  }
+  case object Dangerous extends Strategy {
+    val description = "Allows all deployment operations even if destructive"
+    val userDescription = s"$entryName (USE WITH CARE 💣): $description"
+  }
+}
+
 case class DeployParameters(deployer: Deployer,
                             build: Build,
                             stage: Stage,
-                            selector: DeploymentSelector = All)
+                            selector: DeploymentSelector = All,
+                            updateStrategy: Strategy)

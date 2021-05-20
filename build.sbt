@@ -1,5 +1,7 @@
 import Dependencies._
 import Helpers._
+import play.sbt.routes.RoutesKeys
+import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
 
 val commonSettings = Seq(
   organization := "com.gu",
@@ -44,6 +46,8 @@ lazy val riffraff = project.in(file("riff-raff"))
       "views.html.helper.magenta._",
       "com.gu.googleauth.AuthenticatedRequest"
     ),
+
+    RoutesKeys.routesImport += "utils.PathBindables._",
 
     buildInfoKeys := Seq[BuildInfoKey](
       name, version, scalaVersion, sbtVersion,
