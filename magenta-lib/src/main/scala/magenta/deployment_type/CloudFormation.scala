@@ -1,8 +1,9 @@
 package magenta.deployment_type
 
+import magenta.Strategy.{MostlyHarmless, Dangerous}
+
 import java.net.URLEncoder
 import java.util.UUID
-
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
@@ -161,7 +162,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       new SetStackPolicyTask(
         target.region,
         stackLookup,
-        StackPolicy.DENY_REPLACE_DELETE_POLICY
+        // check the update strategy and set policy accordingly
+        target.parameters.updateStrategy match {
+          case MostlyHarmless => StackPolicy.DENY_REPLACE_DELETE_POLICY
+          case Dangerous => StackPolicy.ALLOW_ALL_POLICY
+        }
       ) :: tasks ::: List(new SetStackPolicyTask(
         target.region,
         stackLookup,

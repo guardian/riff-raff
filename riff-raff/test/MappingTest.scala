@@ -1,9 +1,9 @@
 package test
 
 import java.util.UUID
-
 import controllers.Logging
 import magenta.Message.Info
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.input.{DeploymentKey, DeploymentKeysSelector}
 import org.scalatest.{FlatSpec, Matchers}
@@ -18,7 +18,7 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument),
+        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument, Some(MostlyHarmless)),
         RunState.Completed
       )
     )
@@ -91,7 +91,8 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "test",
         "TEST",
         Map.empty,
-        AllDocument
+        AllDocument,
+        None
       ),
       RunState.Completed
     )
@@ -114,7 +115,8 @@ class MappingTest extends FlatSpec with Matchers with Utilities with Persistence
         "test",
         "TEST",
         Map.empty,
-        AllDocument
+        AllDocument,
+        None
       ),
       RunState.Completed
     )

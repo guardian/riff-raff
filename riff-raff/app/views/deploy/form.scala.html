@@ -1,10 +1,12 @@
 @import conf.Config
 @import utils.ChangeFreeze
+@import magenta.Strategy
+@import magenta.Strategy.MostlyHarmless
 @(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
-@main("Deploy request", request, List("form-autocomplete")) {
+@main("Deploy request", request, List("form-autocomplete", "collapsing")) {
 
     <div class="clearfix"><p>&nbsp;</p></div>
 
@@ -23,17 +25,39 @@
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
-            @b3.text(deployForm("project"), '_label -> "project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
-            @b3.text(deployForm("build"),  '_label -> "build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
+            @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
+            @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(
                 deployForm("stage"),
                 helper.options(prismLookup.stages.toList),
                 '_default -> "--- Choose a stage ---",
-                '_label -> "stage",
+                '_label -> "Stage",
                 '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
                 'id -> "stage",
                 'class -> "form-control"
             )
+
+            <div class="form-group">
+                <span class="display-inline" role="button" data-toggle="collapse" href="#advanced" aria-expanded="false" aria-controls="advanced">
+                    <span id="advanced-icon" class="glyphicon glyphicon-chevron-right"></span>
+                    <span>Advanced settings</span>
+                </span>
+
+                <div id="advanced" class="collapse collapsing-node">
+                    <div class="alert alert-danger">Here be dragons! 🐉 Please ensure you read
+                        <a href="@routes.Application.documentation("riffraff/advanced-settings.md")">about these settings</a>
+                        or speak to someone in DevX before trying to use them.
+                    </div>
+                    @b3.select(
+                        deployForm("updateStrategy"),
+                        helper.options(Strategy.values.map(v => v.entryName -> v.userDescription):_*),
+                        '_label -> "Update strategy",
+                        'value -> deployForm("updateStrategy").value.getOrElse(Strategy.MostlyHarmless.entryName),
+                        '_error -> deployForm.globalError.map(_.withMessage("Please select an update strategy")),
+                        'id -> "updateStrategy"
+                    )
+                </div>
+            </div>
 
             <div class="actions">
                 <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>

@@ -1,8 +1,8 @@
 package notification
 
 import java.util.UUID
-
 import magenta.RunState
+import magenta.Strategy.MostlyHarmless
 import org.joda.time.DateTime
 import org.scalatest.{FunSuite, Matchers}
 import persistence.AllDocument
@@ -66,7 +66,8 @@ class HookTemplateTest extends FunSuite with Matchers {
     buildId = "a123",
     stage = "PROD",
     tags = Map("foo" -> "bar"),
-    AllDocument
+    AllDocument,
+    None
   )
   val uuid = UUID.randomUUID()
   val record = DeployRecordDocument(uuid, Some(uuid.toString), DateTime.now(), paramsDoc, RunState.Completed)

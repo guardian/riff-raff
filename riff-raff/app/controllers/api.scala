@@ -2,11 +2,11 @@ package controllers
 
 import java.security.SecureRandom
 import java.util.UUID
-
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.AuthAction
 import conf.Config
 import deployment.{ApiRequestSource, DeployFilter, Deployments, Record}
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.deployment_type.DeploymentType
 import magenta.input.All
@@ -280,7 +280,8 @@ class Api(config: Config,
         val params = DeployParameters(
           Deployer(request.fullName),
           Build(project, build),
-          Stage(stage)
+          Stage(stage),
+          updateStrategy = MostlyHarmless
         )
         assert(!changeFreeze.frozen(stage), s"Deployment to $stage is frozen (API disabled, use the web interface if you need to deploy): ${changeFreeze.message}")
 

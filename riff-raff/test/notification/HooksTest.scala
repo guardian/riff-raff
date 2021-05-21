@@ -1,7 +1,8 @@
 package notification
 
-import java.util.UUID
+import magenta.Strategy.MostlyHarmless
 
+import java.util.UUID
 import magenta._
 import org.joda.time.DateTime
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -64,7 +65,8 @@ class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
       "23",
       "TEST",
       Map("vcsRevision" -> "9110598b83a908d7882ac4e3cd4b643d7d8bc54e", "riffraff-domain" -> "10-252-94-200"),
-      AllDocument
+      AllDocument,
+      None
     ),
     RunState.Completed
   )

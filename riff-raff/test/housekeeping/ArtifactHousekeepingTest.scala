@@ -1,8 +1,8 @@
 package housekeeping
 
 import java.util.UUID
-
 import deployment._
+import magenta.Strategy.MostlyHarmless
 import magenta.{Build, DeployParameters, Deployer, RunState, Stage}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.ArgumentMatchers.any
@@ -34,7 +34,7 @@ class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar 
   private def fixtureRecord(date: DateTime, stageName: String, buildNumber: String): Record = DeployRecord(
     date,
     UUID.fromString("7fa2ee0a-8d90-4f7e-a38b-185f36fbc5aa"),
-    DeployParameters(Deployer("anon"), Build("testProject", buildNumber), Stage(stageName)),
+    DeployParameters(Deployer("anon"), Build("testProject", buildNumber), Stage(stageName), updateStrategy = MostlyHarmless),
     recordState = Some(RunState.Completed)
   )
 

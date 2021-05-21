@@ -1,13 +1,13 @@
 package controllers
 
 import java.util.UUID
-
 import com.gu.googleauth.AuthAction
 import conf.Config
 import deployment.{DeployFilter, DeployRecord, Deployments, PaginationView, Record}
 import housekeeping.ArtifactHousekeeping
 import magenta.ContextMessage._
 import magenta.Message._
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.input.All
 import magenta.tasks.Task
@@ -51,7 +51,7 @@ class Testing(config: Config,
 
   def reportTestPartial(take: Int, verbose: Boolean) = Action { implicit request =>
     val logUUID = UUID.randomUUID()
-    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), All)
+    val parameters = DeployParameters(Deployer("Simon Hildrew"), Build("tools::deploy", "131"), Stage("DEV"), All, updateStrategy = MostlyHarmless)
 
     val testTask1 = new Task {
       override def execute(resources: DeploymentResources, stopFlag: => Boolean) {}

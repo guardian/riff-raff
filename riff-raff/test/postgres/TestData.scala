@@ -1,9 +1,9 @@
 package postgres
 
 import java.util.UUID
-
 import controllers.{ApiKey, AuthorisationRecord}
 import magenta.RunState
+import magenta.Strategy.MostlyHarmless
 import org.joda.time.DateTime
 import persistence.{AllDocument, DeployRecordDocument, LogDocument, MessageDocument, ParametersDocument}
 
@@ -39,7 +39,8 @@ object TestData {
         buildId = s"id-$uuid",
         stage = "TEST",
         tags = Map.empty,
-        selector = AllDocument
+        selector = AllDocument,
+        updateStrategy = None
       ),
       status = RunState.Completed,
       summarised = Some(true),

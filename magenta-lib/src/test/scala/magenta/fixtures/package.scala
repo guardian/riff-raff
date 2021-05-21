@@ -1,5 +1,6 @@
 package magenta
 
+import magenta.Strategy.MostlyHarmless
 import magenta.deployment_type._
 import org.joda.time.DateTime
 
@@ -41,11 +42,12 @@ package object fixtures {
   def testParams() = DeployParameters(
     Deployer("default deployer"),
     Build("default project", "default version"),
-    Stage("test stage")
+    Stage("test stage"),
+    updateStrategy = MostlyHarmless
   )
 
-  def parameters(stage: Stage = PROD, version: String = "version") =
-    DeployParameters(Deployer("tester"), Build("project", version), stage)
+  def parameters(stage: Stage = PROD, version: String = "version", updateStrategy: Strategy = MostlyHarmless) =
+    DeployParameters(Deployer("tester"), Build("project", version), stage, updateStrategy = updateStrategy)
 
   def stubLookup(hostsSeq: Seq[Host] = Nil, resourceData: Map[String, Seq[Datum]] = Map.empty): Lookup = {
     new Lookup {

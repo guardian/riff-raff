@@ -8,6 +8,7 @@ object Dependencies {
     val guardianManagement = "5.41"
     val jackson = "2.9.8"
     val awsRds = "1.11.563"
+    val enumeratumPlay = "1.5.15"
   }
 
   val commonDeps = Seq(
@@ -40,7 +41,7 @@ object Dependencies {
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.7.2",
-    "com.beachape" %% "enumeratum-play-json" % "1.5.16",
+    "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev75-1.25.0",
     "com.google.apis" % "google-api-services-storage" % "v1-rev171-1.25.0"
   ).map((m: ModuleID) =>
@@ -74,6 +75,7 @@ object Dependencies {
     "org.slf4j" % "jul-to-slf4j" % "1.7.30",
     "org.scalikejdbc" %% "scalikejdbc" % "3.3.3",
     "org.postgresql" % "postgresql" % "42.2.5",
+    "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     "com.whisk" %% "docker-testkit-scalatest" % "0.9.8" % "test",
     "com.whisk" %% "docker-testkit-impl-spotify" % "0.9.8" % "test",
     filters,

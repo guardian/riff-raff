@@ -1,12 +1,13 @@
 package magenta
 
 import org.scalatest.{FlatSpec, Matchers}
-import java.util.UUID
 
+import java.util.UUID
 import magenta.ContextMessage._
 
 import collection.mutable.ListBuffer
 import magenta.Message._
+import magenta.Strategy.MostlyHarmless
 
 class ReporterTest extends FlatSpec with Matchers {
 
@@ -18,7 +19,7 @@ class ReporterTest extends FlatSpec with Matchers {
 
   def getRandomReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
 
-  val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"))
+  val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"), updateStrategy = MostlyHarmless)
 
   it should "send messagewrappers to message sinks" in {
     val reporter = getRandomReporter

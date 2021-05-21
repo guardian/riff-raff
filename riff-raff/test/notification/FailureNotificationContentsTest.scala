@@ -3,6 +3,7 @@ package notification
 import ci.ContinuousDeployment
 import com.gu.anghammarad.models.{Action, Stack, Target}
 import deployment.{Fixtures, NoDeploysFoundForStage, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
+import magenta.Strategy.MostlyHarmless
 import magenta.{Build, DeployParameters, Stage}
 import org.scalatest.{FunSuite, Matchers}
 
@@ -13,7 +14,7 @@ class FailureNotificationContentsTest extends FunSuite with Matchers {
   test("should produce sensible notification contents for a failed Continuous Deployment") {
     val failureNotificationContents = new FailureNotificationContents("http://localhost:9000")
     val uuid = UUID.randomUUID()
-    val parameters = DeployParameters(ContinuousDeployment.deployer, Build("project", "123"), Stage("PROD"))
+    val parameters = DeployParameters(ContinuousDeployment.deployer, Build("project", "123"), Stage("PROD"), updateStrategy = MostlyHarmless)
     val expected = NotificationContents(
       subject = "Continuous Deployment failed",
       message = "Continuous Deployment for project (build 123) to stage PROD failed.",

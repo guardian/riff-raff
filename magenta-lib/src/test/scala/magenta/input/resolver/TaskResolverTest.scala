@@ -1,8 +1,8 @@
 package magenta.input.resolver
 
 import java.util.UUID
-
 import cats.data.{NonEmptyList => NEL}
+import magenta.Strategy.MostlyHarmless
 import magenta.artifact.S3YamlArtifact
 import magenta.deployment_type.Action
 import magenta.fixtures._
@@ -36,7 +36,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region"),
         NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
-      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
+      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = deploymentTypes,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
     )
@@ -53,7 +53,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region-one", "region-two"),
         NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
-      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
+      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = deploymentTypes,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
     )
@@ -71,7 +71,7 @@ class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with Val
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient),
-      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD")),
+      parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = Nil,
       artifact = S3YamlArtifact("artifact-bucket", "/path/to/test-project/1")
     )

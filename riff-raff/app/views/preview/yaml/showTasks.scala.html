@@ -5,15 +5,17 @@
 We use checkedKeys here separately from the form as Play! forms do not deal well with repeated checkboxes. We could try
 to make it fit in the Play idea of forms but it's far from trivial. Be warned!
 *@
+@import magenta.Strategy.MostlyHarmless
 @(taskGraph: magenta.graph.Graph[(magenta.input.DeploymentKey, magenta.graph.DeploymentTasks)],
         form: Form[forms.DeployParameterForm], checkedKeys: List[magenta.input.DeploymentKey])(
  implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 
 @b3.formCSRF(routes.DeployController.processForm) {
     @b3.hiddens(
-        "project" -> form("project").value.get,
-        "build" -> form("build").value.get,
-        "stage" -> form("stage").value.get
+        "project" -> form.value.map(_.project).get,
+        "build" -> form.value.map(_.build).get,
+        "stage" -> form.value.map(_.stage).get,
+        "updateStrategy" -> form.value.map(_.updateStrategy).getOrElse(MostlyHarmless)
     )
     @defining(form("totalKeyCount").value){ maybeCount =>
       @maybeCount match {
@@ -21,10 +23,11 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
           case None => {
               <div class="alert alert-info">
                   This preview shows only the subset of deployment tasks that would be executed. To see all tasks, <a href="@routes.PreviewController.preview(
-                      form("project").value.get,
-                      form("build").value.get,
-                      form("stage").value.get,
-                      None
+                      form.value.map(_.project).get,
+                      form.value.map(_.build).get,
+                      form.value.map(_.stage).get,
+                      None,
+                      form.value.map(_.updateStrategy).getOrElse(MostlyHarmless)
                   )">reset your selections</a>.
               </div>
           }
@@ -42,10 +45,11 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
             'class -> "btn btn-primary"
         ){Deploy}
         <a class="btn btn-danger" href="@routes.PreviewController.preview(
-            form("project").value.get,
-            form("build").value.get,
-            form("stage").value.get,
-            None
+            form.value.map(_.project).get,
+            form.value.map(_.build).get,
+            form.value.map(_.stage).get,
+            None,
+            form.value.map(_.updateStrategy).getOrElse(MostlyHarmless)
         )">Reset selection</a>
     </div>
     @for(((key, deploymentTasks), i) <- taskGraph.toList.zipWithIndex) {
@@ -114,10 +118,11 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
             'class -> "btn btn-primary"
         ){Deploy}
         <a class="btn btn-danger" href="@routes.PreviewController.preview(
-            form("project").value.get,
-            form("build").value.get,
-            form("stage").value.get,
-            None
+            form.value.map(_.project).get,
+            form.value.map(_.build).get,
+            form.value.map(_.stage).get,
+            None,
+            form.value.map(_.updateStrategy).getOrElse(MostlyHarmless)
         )">Reset selection</a>
     </div>
 }

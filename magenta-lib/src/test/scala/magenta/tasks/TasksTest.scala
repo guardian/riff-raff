@@ -4,10 +4,10 @@ package tasks
 import java.io.OutputStreamWriter
 import java.net.ServerSocket
 import java.util.UUID
-
 import com.google.api.client.http.AbstractInputStreamContent
 import com.google.api.services.storage.Storage
 import com.google.api.services.storage.model.StorageObject
+import magenta.Strategy.MostlyHarmless
 import magenta.artifact.{S3Path, S3Object => MagentaS3Object}
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.input.All
@@ -404,7 +404,7 @@ class TasksTest extends FlatSpec with Matchers with MockitoSugar {
   def clientFactory(client: S3Client): (KeyRing, Region, ClientOverrideConfiguration, DeploymentResources) => (S3Client => Unit) => Unit = { (_, _, _, _) => block => block(client) }
   def storageClientFactory(client: Storage): (KeyRing, DeploymentResources) => (Storage => Unit) => Unit = { (_, _) => block => block(client) }
 
-  val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), All)
+  val parameters = DeployParameters(Deployer("tester"), Build("Project","1"), Stage("CODE"), All, updateStrategy = MostlyHarmless)
 }
 
 

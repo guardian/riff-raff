@@ -1,9 +1,9 @@
 package deployment.preview
 
 import java.util.UUID
-
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
+import magenta.Strategy.MostlyHarmless
 import magenta.artifact.S3YamlArtifact
 import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
@@ -49,7 +49,7 @@ class PreviewTest extends FlatSpec with Matchers with ValidatedValues with Mocki
         |    type: stub-package-type
       """.stripMargin
     implicit val stsClient: StsClient = mock[StsClient]
-    val parameters = DeployParameters(Deployer("test user"), Build("testProject", "1"), Stage("TEST"))
+    val parameters = DeployParameters(Deployer("test user"), Build("testProject", "1"), Stage("TEST"), updateStrategy = MostlyHarmless)
     val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
     val resources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient)
     val preview = Preview(artifact, config, parameters, resources, Seq(stubDeploymentType(Seq("testAction"))))

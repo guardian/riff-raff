@@ -1,11 +1,11 @@
 package test
 
 import java.util.UUID
-
 import deployment.DeployRecord
 import gnieh.diffson.playJson._
 import magenta.ContextMessage._
 import magenta.Message._
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.input.All
 import org.joda.time.DateTime
@@ -19,7 +19,7 @@ trait Utilities {
 trait PersistenceTestInstances {
   val testTime = new DateTime()
   lazy val testUUID = UUID.fromString("90013e69-8afc-4ba2-80a8-d7b063183d13")
-  lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), selector = All)
+  lazy val parameters = DeployParameters(Deployer("Tester"), Build("test-project", "1"), Stage("CODE"), selector = All, updateStrategy = MostlyHarmless)
   lazy val testRecord = DeployRecord(testTime, testUUID, parameters, Map("branch"->"master"), messageWrappers)
   lazy val testDocument = RecordConverter(testRecord).deployDocument
 
@@ -27,7 +27,7 @@ trait PersistenceTestInstances {
     val time = new DateTime(2012,11,8,17,20,0)
     val uuid = UUID.fromString("39320f5b-7837-4f47-85f7-bc2d780e19f6")
     val parameters = DeployParameters(
-      Deployer("Tester"), Build("test::project", "1"), Stage("TEST"), selector = All)
+      Deployer("Tester"), Build("test::project", "1"), Stage("TEST"), selector = All, updateStrategy = MostlyHarmless)
     DeployRecord(time, uuid, parameters, Map("branch"->"test"), messageWrappers)
   }
 

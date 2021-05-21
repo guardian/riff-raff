@@ -2,6 +2,7 @@ package schedule
 
 import controllers.Logging
 import deployment._
+import magenta.Strategy.MostlyHarmless
 import magenta.{DeployParameters, RunState}
 import notification.DeployFailureNotifications
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
@@ -66,7 +67,8 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
     DeployParameters(
       ScheduledDeployer.deployer,
       lastDeploy.parameters.build,
-      lastDeploy.stage
+      lastDeploy.stage,
+      updateStrategy = MostlyHarmless
     )
   }
 
