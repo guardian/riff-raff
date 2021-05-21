@@ -36,8 +36,12 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
   }
 
-  it should "generate the tasks in the correct order" in {
-    val tasks = generateTasks()
+  it should "generate the tasks in the correct order when manageStackPolicy is false" in {
+    val data: Map[String, JsValue] = Map(
+      "manageStackPolicy" -> JsBoolean(false),
+    )
+
+    val tasks = generateTasks(data)
     tasks should have size(5)
 
     tasks(0) shouldBe a[CreateChangeSetTask]
@@ -47,12 +51,8 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
     tasks(4) shouldBe a[DeleteChangeSetTask]
   }
 
-  it should "generate stack policy tasks in the correct order when manageStackPolicy is true" in {
-    val data: Map[String, JsValue] = Map(
-      "manageStackPolicy" -> JsBoolean(true),
-    )
-
-    val tasks = generateTasks(data)
+  it should "generate stack policy tasks in the correct order when manageStackPolicy is true (default)" in {
+    val tasks = generateTasks()
     tasks should have size(7)
 
     tasks(0) shouldBe a[SetStackPolicyTask]
@@ -93,7 +93,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
         "RouterAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp1" -> "fakeApp1"), "RouterAMI" -> Map("myApp2" -> "fakeApp2")))
   }
@@ -105,7 +105,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
         "myAMI" -> Json.obj("myApp2" -> JsString("fakeApp2"))
     ))
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
     create.unresolvedParameters.amiParameterMap should be(Map(
       "AMI" -> Map("myApp1" -> "fakeApp1"),
@@ -119,7 +119,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
       "amiTags" -> Json.obj("myApp" -> JsString("fakeApp"))
     )
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
 
     create.unresolvedParameters.amiParameterMap should be(Map("myAMI" -> Map("myApp" -> "fakeApp")))
   }
@@ -128,21 +128,21 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   it should "respect the defaults for amiTags and amiParameter" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")))
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp")))
   }
 
   it should "add an implicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp")), "amiEncrypted" -> JsBoolean(true))
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "true")))
   }
 
   it should "allow an explicit Encrypted tag when amiEncrypted is true" in {
     val data: Map[String, JsValue] = Map("amiTags" -> Json.obj("myApp" -> JsString("fakeApp"), "Encrypted" -> JsString("monkey")), "amiEncrypted" -> JsBoolean(true))
 
-    val (create: CreateChangeSetTask) :: _ = generateTasks(data)
+    val _ :: (create: CreateChangeSetTask) :: _ = generateTasks(data)
     create.unresolvedParameters.amiParameterMap should be(Map("AMI" -> Map("myApp" -> "fakeApp", "Encrypted" -> "monkey")))
   }
 
@@ -442,25 +442,25 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   }
 
   "CheckChangeSetCreatedTask" should "pass on CREATE_COMPLETE" in {
-    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    val _ :: _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     check.shouldStopWaiting(ChangeSetType.UPDATE, "CREATE_COMPLETE", "", List.empty, reporter) should be(true)
   }
 
   it should "pass on FAILED if there are no changes to execute" in {
-    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    val _ :: _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "No updates are to be performed.", List.empty, reporter) should be(true)
     check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "The submitted information didn't contain changes. Submit different information to create a change set.", List.empty, reporter) should be(true)
   }
 
   it should "fail on a template error" in {
-    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    val _ :: _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     intercept[FailException] {
       check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "A different error about your template.", List.empty, reporter) should be(true)
     }
   }
 
   it should "fail on FAILED" in {
-    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    val _ :: _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
 
     intercept[FailException] {
       check.shouldStopWaiting(ChangeSetType.UPDATE, "FAILED", "", List(Change.builder().build()), reporter)
@@ -468,7 +468,7 @@ class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherV
   }
 
   it should "continue on CREATE_IN_PROGRESS" in {
-    val _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
+    val _ :: _ :: (check: CheckChangeSetCreatedTask) :: _ = generateTasks()
     check.shouldStopWaiting(ChangeSetType.UPDATE, "CREATE_IN_PROGRESS", "", List.empty, reporter) should be(false)
   }
 }

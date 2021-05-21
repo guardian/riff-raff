@@ -66,7 +66,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   val secondsToWaitForChangeSetCreation = Param("secondsToWaitForChangeSetCreation",
     "Number of seconds to wait for the change set to be created").default(15 * 60)
 
-  val manageStackPolicyDefault = false
+  val manageStackPolicyDefault = true
   val manageStackPolicyLookupKey = "cloudformation:manage-stack-policy"
   val manageStackPolicyParam = Param[Boolean]("manageStackPolicy",
     s"""Allow RiffRaff to manage stack update policies on your behalf.
