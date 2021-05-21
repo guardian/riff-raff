@@ -12,10 +12,10 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
 
 @b3.formCSRF(routes.DeployController.processForm) {
     @b3.hiddens(
-        "project" -> form("project").value.get,
-        "build" -> form("build").value.get,
-        "stage" -> form("stage").value.get,
-        "updateStrategy" -> form("updateStrategy").value.get
+        "project" -> form.value.map(_.project).get,
+        "build" -> form.value.map(_.build).get,
+        "stage" -> form.value.map(_.stage).get,
+        "updateStrategy" -> form.value.map(_.updateStrategy).getOrElse(MostlyHarmless)
     )
     @defining(form("totalKeyCount").value){ maybeCount =>
       @maybeCount match {
