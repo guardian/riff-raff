@@ -13,6 +13,7 @@ setupCallbacks = ->
 
 
 $ ->
+  setupCallbacks()
   if (window.autoRefresh)
     window.autoRefresh.postRefresh ->
       setupCallbacks()

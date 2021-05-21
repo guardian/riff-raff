@@ -1,7 +1,11 @@
-Update Strategy
-===============
+Advanced settings
+=================
 
-The `updateStrategy` parameter controls the risk appetite of a given deploy. The aim is to reduce incidents resulting from unintentional changes such as deleting a stateful resource like a DynamoDB table or a resource like a load balancer that has a DNS entry pointed to it.
+There are some advanced settings that won't normally be required but can be used in specific circumstances. 
+
+## Update Strategy
+
+The update strategy parameter controls the risk appetite of a given deploy. The aim is to reduce incidents resulting from unintentional changes such as deleting a stateful resource like a DynamoDB table or a resource like a load balancer that has a DNS entry pointed to it.
 
 **Note: At the time of writing this is only observed for some deploys under some circumstances.**
 
