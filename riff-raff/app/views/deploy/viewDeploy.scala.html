@@ -30,6 +30,8 @@
                 <small>This deploy started at @record.time.toString(DateFormats.Short) on @hostname</small>
             }
 
+            <p>The update strategy for this deploy @if(record.isRunning) {is} else {was} @record.parameters.updateStrategy.entryName</p>
+
             @for(vcs <- record.vcsInfo) {
                 <p>
                     The commit for this deploy @if(record.isRunning) {is} else {was}
