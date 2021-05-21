@@ -1,7 +1,6 @@
 package persistence
 
 import java.util.UUID
-
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.traverse._
@@ -9,6 +8,7 @@ import controllers.{Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, DeployRecord, PaginationView}
 import henkan.convert.Syntax._
 import magenta.ContextMessage._
+import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.DateTime
@@ -49,7 +49,7 @@ object RecordConverter {
         case DeploymentKeysSelector(ids) =>
           DeploymentKeysSelectorDocument(ids.map(_.to[DeploymentKeyDocument]()))
       },
-      updateStrategy = sourceParams.updateStrategy
+      updateStrategy = Some(sourceParams.updateStrategy)
     )
     RecordConverter(record.uuid, record.time, params, record.state, record.messages)
   }
@@ -66,7 +66,7 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
       case DeploymentKeysSelectorDocument(keys) =>
         DeploymentKeysSelector(keys.map(_.to[DeploymentKey]()))
     },
-    deploy.parameters.updateStrategy
+    deploy.parameters.updateStrategy.getOrElse(MostlyHarmless)
   )
 
   lazy val deployRecord =

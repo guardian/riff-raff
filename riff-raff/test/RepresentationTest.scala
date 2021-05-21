@@ -34,7 +34,7 @@ class RepresentationTest extends FlatSpec with Matchers with Utilities with Pers
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument, updateStrategy = MostlyHarmless),
+        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument, updateStrategy = Some(MostlyHarmless)),
         RunState.Completed
       )
     )

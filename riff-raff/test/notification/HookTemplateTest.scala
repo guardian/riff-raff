@@ -67,7 +67,7 @@ class HookTemplateTest extends FunSuite with Matchers {
     stage = "PROD",
     tags = Map("foo" -> "bar"),
     AllDocument,
-    MostlyHarmless
+    None
   )
   val uuid = UUID.randomUUID()
   val record = DeployRecordDocument(uuid, Some(uuid.toString), DateTime.now(), paramsDoc, RunState.Completed)

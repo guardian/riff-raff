@@ -63,7 +63,7 @@ case class ParametersDocument(
   stage: String,
   tags: Map[String,String],
   selector: DeploymentSelectorDocument,
-  updateStrategy: Strategy
+  updateStrategy: Option[Strategy]
 )
 
 object ParametersDocument {

@@ -40,7 +40,7 @@ object TestData {
         stage = "TEST",
         tags = Map.empty,
         selector = AllDocument,
-        updateStrategy = MostlyHarmless
+        updateStrategy = None
       ),
       status = RunState.Completed,
       summarised = Some(true),
