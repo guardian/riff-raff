@@ -1,19 +1,22 @@
 package magenta
 package tasks
 
-import java.io.File
-
+import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
 import com.gu.management.Loggable
 import magenta.artifact._
 import magenta.deployment_type.{LambdaFunction, LambdaFunctionName, LambdaFunctionTags}
 import magenta.deployment_type.param_reads.PatternValue
-import okhttp3._
+import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
-import software.amazon.awssdk.core.sync.{RequestBody => AWSRequestBody}
+import software.amazon.awssdk.core.sync.{ResponseTransformer, RequestBody => AWSRequestBody}
+import software.amazon.awssdk.http.ContentStreamProvider
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{GetObjectRequest, ObjectCannedACL, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.{GetObjectRequest, GetObjectResponse, HeadObjectRequest, ObjectCannedACL, PutObjectRequest}
 
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
 
 case class S3Upload(
@@ -69,17 +72,33 @@ case class S3Upload(
           case _ =>
         }
         retryOnException(AWS.clientConfiguration) {
-          val copyObjectRequest = GetObjectRequest.builder()
+          val getObjectRequest = GetObjectRequest.builder()
             .bucket(req.source.bucket)
             .key(req.source.key)
             .build()
-          val inputStream = resources.artifactClient.getObjectAsBytes(copyObjectRequest).asByteArray()
-          val requestBody = AWSRequestBody.fromBytes(inputStream)
+
+          val os = new PipedOutputStream()
+          val is = new PipedInputStream(os, 1024*1024)
+
+          val transformer: ResponseTransformer[GetObjectResponse, GetObjectResponse] = ResponseTransformer.toOutputStream(os)
+          val response: Future[GetObjectResponse] = Future {
+            try {
+              resources.artifactClient.getObject(getObjectRequest, transformer)
+            } finally {
+              os.close()
+            }
+          }(resources.ioExecutionContext)
 
           val putRequest: PutObjectRequest = req.toAwsRequest
-          val result = client.putObject(putRequest, requestBody)
+          val result = try {
+            client.putObject(putRequest, AWSRequestBody.fromContentProvider(() => is, req.source.size, req.mimeType))
+          } finally {
+            is.close()
+          }
+
+          Await.result(response, 5 minutes)
+
           logger.debug(s"Put object ${putRequest.key}: MD5: ${result.sseCustomerKeyMD5} Metadata: ${result.responseMetadata}")
-          result
         }
       }
     }
@@ -126,11 +145,13 @@ case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String]
     r.metadata(Map[String,String]("surrogate-control" -> scc).asJava)
   ).getOrElse(r)
 
+  val mimeType: String = contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key))
+
   def toAwsRequest: PutObjectRequest = {
     val req = PutObjectRequest.builder()
       .bucket(target.bucket)
       .key(target.key)
-      .contentType(contentType.getOrElse(S3Upload.awsMimeTypeLookup(target.key)))
+      .contentType(mimeType)
       .contentLength(source.size)
     val reqWithCacheControl = (setCacheControl andThen setsurrogateControl)(req)
     if (publicReadAcl) reqWithCacheControl.acl(ObjectCannedACL.PUBLIC_READ).build() else reqWithCacheControl.build()

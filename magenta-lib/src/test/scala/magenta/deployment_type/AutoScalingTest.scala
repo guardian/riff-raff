@@ -1,7 +1,6 @@
 package magenta
 
 import java.util.UUID
-
 import magenta.artifact.S3Path
 import magenta.deployment_type.AutoScaling
 import magenta.fixtures._
@@ -10,6 +9,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
+
+import scala.concurrent.ExecutionContext.global
 
 class AutoScalingTest extends FlatSpec with Matchers {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -29,7 +30,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region)) should be (List(
       WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),
@@ -55,7 +56,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val app = App("app")
 
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"), deploymentTypes)
-    val resource = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient)
+    val resource = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global)
     AutoScaling.actionsMap("uploadArtifacts").taskGenerator(p, resource, DeployTarget(parameters(), stack, region)) should matchPattern {
       case List(S3Upload(_,_,_,_,_,_,false,_)) =>
     }
@@ -75,7 +76,7 @@ class AutoScalingTest extends FlatSpec with Matchers {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient), DeployTarget(parameters(), stack, region)) should be (List(
+    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region)) should be (List(
       WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
       CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
       SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),

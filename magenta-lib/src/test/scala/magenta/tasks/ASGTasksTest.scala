@@ -1,7 +1,6 @@
 package magenta.tasks
 
 import java.util.UUID
-
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.{KeyRing, Stage, _}
@@ -12,6 +11,8 @@ import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
+
+import scala.concurrent.ExecutionContext.global
 
 class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -30,7 +31,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
       deploymentTypes)
 
     val task = DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
-    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
     task.execute(asg, resources, stopFlag = false, asgClientMock)
 
     verify(asgClientMock).setDesiredCapacity(
@@ -53,7 +54,7 @@ class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
 
     val task = CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
 
-    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient])
+    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
 
     val thrown = intercept[FailException](task.execute(asg, resources, stopFlag = false, asgClientMock))
 
