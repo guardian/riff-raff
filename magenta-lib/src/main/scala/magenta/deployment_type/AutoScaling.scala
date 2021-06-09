@@ -63,21 +63,24 @@ object AutoScaling  extends DeploymentType {
     val reporter = resources.reporter
     val parameters = target.parameters
     val stack = target.stack
+    val asgName: String = ASG.withAsgClient(keyRing, target.region, resources) { asgClient =>
+      ASG.groupForAppAndStage(pkg, parameters.stage, stack, asgClient, resources.reporter).autoScalingGroupName()
+    }
     List(
-      WaitForStabilization(pkg, parameters.stage, stack, 5 * 60 * 1000, target.region),
-      CheckGroupSize(pkg, parameters.stage, stack, target.region),
-      SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
-      TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
-      ProtectCurrentInstances(pkg, parameters.stage, stack, target.region),
-      DoubleSize(pkg, parameters.stage, stack, target.region),
-      HealthcheckGrace(pkg, parameters.stage, stack, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      WarmupGrace(pkg, parameters.stage, stack, target.region, warmupGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      CullInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
-      TerminationGrace(pkg, parameters.stage, stack, target.region, terminationGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
+      WaitForStabilization(asgName, 5 * 60 * 1000, target.region),
+      CheckGroupSize(asgName, target.region),
+      SuspendAlarmNotifications(asgName, target.region),
+      TagCurrentInstancesWithTerminationTag(asgName, target.region),
+      ProtectCurrentInstances(asgName, target.region),
+      DoubleSize(asgName, target.region),
+      HealthcheckGrace(asgName, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
+      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      WarmupGrace(asgName, target.region, warmupGrace(pkg, target, reporter) * 1000),
+      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      CullInstancesWithTerminationTag(asgName, target.region),
+      TerminationGrace(asgName, target.region, terminationGrace(pkg, target, reporter) * 1000),
+      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      ResumeAlarmNotifications(asgName, target.region)
     )
   }
 
