@@ -1,9 +1,17 @@
 package magenta.deployment_type
 
+import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing}
 import magenta.tasks._
-import java.io.File
 
-object AutoScaling  extends DeploymentType {
+object AutoScalingGroupLookup {
+  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, resources: DeploymentResources, pkg: DeploymentPackage) = {
+    ASG.withAsgClient[String](keyRing, target.region, resources) { asgClient =>
+      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, asgClient, resources.reporter).autoScalingGroupName()
+    }
+  }
+}
+
+object AutoScaling extends DeploymentType {
   val name = "autoscaling"
   val documentation =
     """
@@ -61,11 +69,7 @@ object AutoScaling  extends DeploymentType {
   ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    val parameters = target.parameters
-    val stack = target.stack
-    val asgName: String = ASG.withAsgClient(keyRing, target.region, resources) { asgClient =>
-      ASG.groupForAppAndStage(pkg, parameters.stage, stack, asgClient, resources.reporter).autoScalingGroupName()
-    }
+    val asgName: String = AutoScalingGroupLookup.getTargetAsgName(keyRing, target, resources, pkg)
     List(
       WaitForStabilization(asgName, 5 * 60 * 1000, target.region),
       CheckGroupSize(asgName, target.region),

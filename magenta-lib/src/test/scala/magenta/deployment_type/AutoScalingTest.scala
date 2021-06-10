@@ -2,7 +2,7 @@ package magenta
 
 import java.util.UUID
 import magenta.artifact.S3Path
-import magenta.deployment_type.AutoScaling
+import magenta.deployment_type.{AutoScaling, AutoScalingGroupLookup}
 import magenta.fixtures._
 import magenta.tasks._
 import org.mockito.ArgumentMatchersSugar
@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar {
+class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with ArgumentMatchersSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
@@ -33,22 +33,27 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region)) should be (List(
-      WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
-      CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
-      SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),
-      TagCurrentInstancesWithTerminationTag(p, PROD, stack, Region("eu-west-1")),
-      ProtectCurrentInstances(p, PROD, stack, Region("eu-west-1")),
-      DoubleSize(p, PROD, stack, Region("eu-west-1")),
-      HealthcheckGrace(p, PROD, stack, Region("eu-west-1"), 20000),
-      WaitForStabilization(p, PROD, stack, 15 * 60 * 1000, Region("eu-west-1")),
-      WarmupGrace(p, PROD, stack, Region("eu-west-1"), 1000),
-      WaitForStabilization(p, PROD, stack, 15 * 60 * 1000, Region("eu-west-1")),
-      CullInstancesWithTerminationTag(p, PROD, stack, Region("eu-west-1")),
-      TerminationGrace(p, PROD, stack, Region("eu-west-1"), 10000),
-      WaitForStabilization(p, PROD, stack, 15 * 60 * 1000, Region("eu-west-1")),
-      ResumeAlarmNotifications(p, PROD, stack, Region("eu-west-1"))
-    ))
+    withObjectMocked[AutoScalingGroupLookup.type] {
+      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *)) thenAnswer "test"
+      val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
+      val expected = List(
+        WaitForStabilization("test", 5 * 60 * 1000, Region("eu-west-1")),
+        CheckGroupSize("test", Region("eu-west-1")),
+        SuspendAlarmNotifications("test", Region("eu-west-1")),
+        TagCurrentInstancesWithTerminationTag("test", Region("eu-west-1")),
+        ProtectCurrentInstances("test", Region("eu-west-1")),
+        DoubleSize("test", Region("eu-west-1")),
+        HealthcheckGrace("test", Region("eu-west-1"), 20000),
+        WaitForStabilization("test", 15 * 60 * 1000, Region("eu-west-1")),
+        WarmupGrace("test", Region("eu-west-1"), 1000),
+        WaitForStabilization("test", 15 * 60 * 1000, Region("eu-west-1")),
+        CullInstancesWithTerminationTag("test", Region("eu-west-1")),
+        TerminationGrace("test", Region("eu-west-1"), 10000),
+        WaitForStabilization("test", 15 * 60 * 1000, Region("eu-west-1")),
+        ResumeAlarmNotifications("test", Region("eu-west-1"))
+      )
+      actual shouldBe expected
+    }
   }
 
   it should "default publicReadAcl to false when a new style package" in {
@@ -79,21 +84,26 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
       deploymentTypes)
 
-    AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region)) should be (List(
-      WaitForStabilization(p, PROD, stack, 5 * 60 * 1000, Region("eu-west-1")),
-      CheckGroupSize(p, PROD, stack, Region("eu-west-1")),
-      SuspendAlarmNotifications(p, PROD, stack, Region("eu-west-1")),
-      TagCurrentInstancesWithTerminationTag(p, PROD, stack, Region("eu-west-1")),
-      ProtectCurrentInstances(p, PROD, stack, Region("eu-west-1")),
-      DoubleSize(p, PROD, stack, Region("eu-west-1")),
-      HealthcheckGrace(p, PROD, stack, Region("eu-west-1"), 30000),
-      WaitForStabilization(p, PROD, stack, 3 * 60 * 1000, Region("eu-west-1")),
-      WarmupGrace(p, PROD, stack, Region("eu-west-1"), 20000),
-      WaitForStabilization(p, PROD, stack, 3 * 60 * 1000, Region("eu-west-1")),
-      CullInstancesWithTerminationTag(p, PROD, stack, Region("eu-west-1")),
-      TerminationGrace(p, PROD, stack, Region("eu-west-1"), 11000),
-      WaitForStabilization(p, PROD, stack, 3 * 60 * 1000, Region("eu-west-1")),
-      ResumeAlarmNotifications(p, PROD, stack, Region("eu-west-1"))
-    ))
+    withObjectMocked[AutoScalingGroupLookup.type] {
+      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *)) thenAnswer "test"
+      val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
+      val expected = List(
+        WaitForStabilization("test", 5 * 60 * 1000, Region("eu-west-1")),
+        CheckGroupSize("test", Region("eu-west-1")),
+        SuspendAlarmNotifications("test", Region("eu-west-1")),
+        TagCurrentInstancesWithTerminationTag("test", Region("eu-west-1")),
+        ProtectCurrentInstances("test", Region("eu-west-1")),
+        DoubleSize("test", Region("eu-west-1")),
+        HealthcheckGrace("test", Region("eu-west-1"), 30000),
+        WaitForStabilization("test", 3 * 60 * 1000, Region("eu-west-1")),
+        WarmupGrace("test", Region("eu-west-1"), 20000),
+        WaitForStabilization("test", 3 * 60 * 1000, Region("eu-west-1")),
+        CullInstancesWithTerminationTag("test", Region("eu-west-1")),
+        TerminationGrace("test", Region("eu-west-1"), 11000),
+        WaitForStabilization("test", 3 * 60 * 1000, Region("eu-west-1")),
+        ResumeAlarmNotifications("test", Region("eu-west-1"))
+      )
+      actual shouldBe expected
+    }
   }
 }
