@@ -5,13 +5,15 @@ import magenta.Strategy.MostlyHarmless
 import java.util.UUID
 import magenta._
 import org.joda.time.DateTime
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import persistence.AllDocument
 import persistence.{DeployRecordDocument, ParametersDocument}
 import play.api.libs.ws.WSAuthScheme
 import play.api.test.WsTestClient
 
-class HooksTest extends FlatSpec with Matchers with BeforeAndAfterAll {
+class HooksTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   it should "create an authenticated request" in {
     WsTestClient.withClient { implicit ws =>

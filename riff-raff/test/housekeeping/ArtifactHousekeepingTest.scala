@@ -6,15 +6,15 @@ import magenta.Strategy.MostlyHarmless
 import magenta.{Build, DeployParameters, Deployer, RunState, Stage}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{CommonPrefix, ListObjectsV2Request, ListObjectsV2Response, S3Object}
 
 import scala.collection.JavaConverters._
 
-class ArtifactHousekeepingTest extends FlatSpec with Matchers with MockitoSugar {
+class ArtifactHousekeepingTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   case class ObjectSummary(key: String, bucketName: String, lastModified: DateTime)
 

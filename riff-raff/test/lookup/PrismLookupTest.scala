@@ -3,7 +3,8 @@ package lookup
 import conf.Config
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api
 import play.api.libs.json.{JsString, Json}
 import play.api.libs.ws.WSClient
@@ -19,7 +20,7 @@ import magenta.{ApiCredentials, ApiRoleCredentials, ApiStaticCredentials, App, K
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 
-class PrismLookupTest extends FlatSpec with Matchers {
+class PrismLookupTest extends AnyFlatSpec with Matchers {
 
   val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying, DateTime.now)
   val secretProvider = new SecretProvider {

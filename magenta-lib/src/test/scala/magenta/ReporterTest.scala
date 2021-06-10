@@ -1,15 +1,15 @@
 package magenta
 
-import org.scalatest.{FlatSpec, Matchers}
-
 import java.util.UUID
 import magenta.ContextMessage._
 
 import collection.mutable.ListBuffer
 import magenta.Message._
 import magenta.Strategy.MostlyHarmless
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class ReporterTest extends FlatSpec with Matchers {
+class ReporterTest extends AnyFlatSpec with Matchers {
 
   def getWrapperBuffer(uuid: UUID): ListBuffer[MessageWrapper] = {
     val wrappers = ListBuffer.empty[MessageWrapper]

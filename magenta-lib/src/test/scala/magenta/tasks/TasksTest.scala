@@ -12,14 +12,12 @@ import magenta.artifact.{S3Path, S3Object => MagentaS3Object}
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.input.All
 import magenta.tasks.gcp.{GCSPath, GCSUpload}
-import org.mockito.ArgumentCaptor
+import org.mockito.{ArgumentCaptor, ArgumentMatchers, MockitoSugar}
 import org.mockito.ArgumentMatchers._
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.core.ResponseBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.sync.{RequestBody, ResponseTransformer}
@@ -35,7 +33,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 
 
-class TasksTest extends FlatSpec with Matchers with MockitoSugar {
+class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 

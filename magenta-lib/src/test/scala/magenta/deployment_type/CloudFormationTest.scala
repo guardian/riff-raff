@@ -10,7 +10,9 @@ import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
-import org.scalatest.{EitherValues, FlatSpec, Inside, Matchers}
+import org.scalatest.{EitherValues, Inside}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
 import software.amazon.awssdk.services.s3.S3Client
@@ -18,7 +20,7 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class CloudFormationTest extends FlatSpec with Matchers with Inside with EitherValues {
+class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null

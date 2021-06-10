@@ -3,11 +3,12 @@ package magenta
 import java.util.UUID
 import magenta.ContextMessage._
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import magenta.Message._
 import magenta.Strategy.MostlyHarmless
 
-class ReportingTest extends FlatSpec with Matchers {
+class ReportingTest extends AnyFlatSpec with Matchers {
 
   "Deploy Report" should "build an empty report from an empty list" in {
     val time = new DateTime()

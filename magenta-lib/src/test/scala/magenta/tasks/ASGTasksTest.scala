@@ -4,9 +4,9 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.{KeyRing, Stage, _}
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
 import software.amazon.awssdk.services.s3.S3Client
@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class ASGTasksTest extends FlatSpec with Matchers with MockitoSugar {
+class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   val deploymentTypes: Seq[StubDeploymentType] = Seq(stubDeploymentType(name = "testDeploymentType", actionNames = Seq("testAction")))

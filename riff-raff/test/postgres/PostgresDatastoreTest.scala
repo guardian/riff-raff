@@ -6,13 +6,14 @@ import deployment.{DeployFilter, PaginationView}
 import magenta.RunState.ChildRunning
 import magenta.{TaskDetail, ThrowableDetail}
 import org.joda.time.DateTime
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
 import postgres.TestData._
 import scalikejdbc._
 import utils.DockerPostgresService
 
-class PostgresDatastoreTest extends FreeSpec with Matchers with DockerTestKit with DockerPostgresService with PostgresHelpers {
+class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit with DockerPostgresService with PostgresHelpers {
   "ApiKey table" - {
     def withFixture(test: => Any)= {
       try test

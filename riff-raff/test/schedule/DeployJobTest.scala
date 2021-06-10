@@ -5,9 +5,11 @@ import deployment.{DeployRecord, Error, SkippedDueToPreviousFailure}
 import magenta.Strategy.MostlyHarmless
 import magenta.{Build, DeployParameters, Deployer, RunState, Stage}
 import org.joda.time.DateTime
-import org.scalatest.{EitherValues, FlatSpec, Matchers}
+import org.scalatest.EitherValues
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DeployJobTest extends FlatSpec with Matchers with EitherValues {
+class DeployJobTest extends AnyFlatSpec with Matchers with EitherValues {
   val uuid = UUID.fromString("7fa2ee0a-8d90-4f7e-a38b-185f36fbc5aa")
   "createDeployParameters" should "return params if valid" in {
     val record = new DeployRecord(

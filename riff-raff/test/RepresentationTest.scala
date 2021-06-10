@@ -5,10 +5,11 @@ import controllers.ApiKey
 import magenta.Strategy.MostlyHarmless
 import magenta._
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import persistence._
 
-class RepresentationTest extends FlatSpec with Matchers with Utilities with PersistenceTestInstances {
+class RepresentationTest extends AnyFlatSpec with Matchers with Utilities with PersistenceTestInstances {
 
   "MessageDocument" should "convert from log messages to documents" in {
     deploy.asMessageDocument should be(DeployDocument)

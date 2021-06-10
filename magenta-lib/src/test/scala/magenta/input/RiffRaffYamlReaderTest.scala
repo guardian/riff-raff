@@ -1,10 +1,11 @@
 package magenta.input
 
 import magenta.fixtures.ValidatedValues
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsNumber, JsString, Json}
 
-class RiffRaffYamlReaderTest extends FlatSpec with Matchers with ValidatedValues {
+class RiffRaffYamlReaderTest extends AnyFlatSpec with Matchers with ValidatedValues {
   "RiffRaffYamlReader" should "read a minimal file" in {
     val yaml =
       """

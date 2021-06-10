@@ -1,9 +1,10 @@
 package docs
 
 import magenta.deployment_type._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DeployTypeDocsTest extends FlatSpec with Matchers {
+class DeployTypeDocsTest extends AnyFlatSpec with Matchers {
   "generateDocs" should "generate documentation for our fake deployment type" in {
     val testDeploymentType = new DeploymentType {
       val action = Action("myAction", "some docs for my action")((_, _, _) => Nil)

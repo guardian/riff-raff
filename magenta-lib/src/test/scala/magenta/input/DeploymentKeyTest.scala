@@ -1,8 +1,9 @@
 package magenta.input
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DeploymentKeyTest extends FlatSpec with Matchers {
+class DeploymentKeyTest extends AnyFlatSpec with Matchers {
   "DeploymentKey" should "serialise and deserialise a key to and from a string" in {
     val key = DeploymentKey("name", "action", "stack", "region")
     val string = DeploymentKey.asString(key)

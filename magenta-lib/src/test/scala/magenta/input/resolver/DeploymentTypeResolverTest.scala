@@ -4,10 +4,11 @@ import cats.data.{NonEmptyList => NEL}
 import magenta.deployment_type.Param
 import magenta.fixtures._
 import magenta.input.{ConfigError, Deployment}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.JsNumber
 
-class DeploymentTypeResolverTest extends FlatSpec with Matchers with ValidatedValues {
+class DeploymentTypeResolverTest extends AnyFlatSpec with Matchers with ValidatedValues {
   val deployment = PartiallyResolvedDeployment("bob", "stub-package-type", NEL.of("stack"), NEL.of("eu-west-1"), actions=None, "bob", "bob", Nil, Map.empty)
   val deploymentTypes = List(stubDeploymentType(Seq("upload", "deploy")))
 

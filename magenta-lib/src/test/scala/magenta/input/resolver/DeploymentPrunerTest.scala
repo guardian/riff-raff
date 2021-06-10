@@ -2,9 +2,10 @@ package magenta.input.resolver
 
 import cats.data.{NonEmptyList => NEL}
 import magenta.input.{Deployment, DeploymentKey}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DeploymentPrunerTest extends FlatSpec with Matchers {
+class DeploymentPrunerTest extends AnyFlatSpec with Matchers {
   import DeploymentPruner._
   val testDeployment = Deployment("testName", "testType", NEL.of("testStack"), NEL.of("testRegion"),
     NEL.of("testAction"), "testName", "testName", Nil, Map.empty)

@@ -9,15 +9,17 @@ import magenta.deployment_type.param_reads.PatternValue
 import magenta.fixtures._
 import magenta.tasks._
 import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Inside, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.Inside
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class DeploymentTypeTest extends FlatSpec with Matchers with Inside with MockitoSugar {
+class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with MockitoSugar {
   implicit val fakeKeyRing = KeyRing()
   implicit val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null

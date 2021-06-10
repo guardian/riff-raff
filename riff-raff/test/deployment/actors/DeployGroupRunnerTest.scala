@@ -8,12 +8,13 @@ import conf.Config
 import deployment.{Fixtures, Record}
 import magenta.graph.{DeploymentTasks, Graph, ValueNode}
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpecLike, Matchers}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import play.api.Configuration
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with FlatSpecLike with Matchers {
+class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with AnyFlatSpecLike with Matchers {
   import Fixtures._
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()

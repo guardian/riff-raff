@@ -4,13 +4,14 @@ import java.util.UUID
 import magenta.RunState
 import magenta.Strategy.MostlyHarmless
 import org.joda.time.DateTime
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import persistence.AllDocument
 import persistence.{DeployRecordDocument, ParametersDocument}
 
 import scala.util.{Success, Try}
 
-class HookTemplateTest extends FunSuite with Matchers {
+class HookTemplateTest extends AnyFunSuite with Matchers {
   test("HookTemplate should leave unparameterised template as is") {
     val template = new HookTemplate("foo", record)
     val res: Try[String] = template.Template.run()
