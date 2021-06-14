@@ -37,17 +37,16 @@ object ElasticSearch extends DeploymentType {
   ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    val parameters = target.parameters
-    val stack = target.stack
+    val asgName: String = AutoScalingGroupLookup.getTargetAsgName(keyRing, target, resources, pkg)
     List(
-      CheckGroupSize(pkg, parameters.stage, stack, target.region),
-      WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      SuspendAlarmNotifications(pkg, parameters.stage, stack, target.region),
-      TagCurrentInstancesWithTerminationTag(pkg, parameters.stage, stack, target.region),
-      DoubleSize(pkg, parameters.stage, stack, target.region),
-      WaitForElasticSearchClusterGreen(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      CullElasticSearchInstancesWithTerminationTag(pkg, parameters.stage, stack, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      ResumeAlarmNotifications(pkg, parameters.stage, stack, target.region)
+      CheckGroupSize(asgName, target.region),
+      WaitForElasticSearchClusterGreen(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      SuspendAlarmNotifications(asgName, target.region),
+      TagCurrentInstancesWithTerminationTag(asgName, target.region),
+      DoubleSize(asgName, target.region),
+      WaitForElasticSearchClusterGreen(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      CullElasticSearchInstancesWithTerminationTag(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+      ResumeAlarmNotifications(asgName, target.region)
     )
   }
 
