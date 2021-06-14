@@ -5,14 +5,17 @@ import magenta.artifact.S3Path
 import magenta.deployment_type.AutoScaling
 import magenta.fixtures._
 import magenta.tasks._
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.ArgumentMatchersSugar
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class AutoScalingTest extends FlatSpec with Matchers {
+class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null

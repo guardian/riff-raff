@@ -1,12 +1,13 @@
 package magenta.tasks
 import java.util.UUID
 
-import magenta.{ApiStaticCredentials, ApiRoleCredentials, KeyRing, StsDeploymentResources}
-import org.scalatest.{FlatSpec, Matchers}
-import org.scalatest.mockito.MockitoSugar
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, KeyRing, StsDeploymentResources}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.sts.StsClient
 
-class AWSTest extends FlatSpec with Matchers with MockitoSugar {
+class AWSTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   val stsClient = mock[StsClient]
 

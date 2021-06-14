@@ -5,9 +5,9 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.{App, KeyRing, Stage, _}
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{Instance => ASGInstance, _}
 import software.amazon.awssdk.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResponse, InstanceState}
@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalanc
 
 import scala.collection.JavaConverters._
 
-class ASGTest extends FlatSpec with Matchers with MockitoSugar {
+class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   val deploymentTypes: Nil.type = Nil

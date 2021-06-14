@@ -8,15 +8,16 @@ import magenta.deployment_type.Action
 import magenta.fixtures._
 import magenta.input.Deployment
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stack, Stage, fixtures}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.JsString
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class TaskResolverTest extends FlatSpec with Matchers with MockitoSugar with ValidatedValues {
+class TaskResolverTest extends AnyFlatSpec with Matchers with MockitoSugar with ValidatedValues {
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = mock[S3Client]
   implicit val stsClient: StsClient = mock[StsClient]

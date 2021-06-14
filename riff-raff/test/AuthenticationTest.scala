@@ -1,12 +1,12 @@
 package test
 
 import com.gu.googleauth.UserIdentity
-import com.gu.googleauth.UserIdentity
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import controllers.{AuthorisationValidator, AuthorisationRecord}
 import org.joda.time.DateTime
 
-class AuthenticationTest extends FlatSpec with Matchers {
+class AuthenticationTest extends AnyFlatSpec with Matchers {
   "AuthorisationValidator" should "allow any domain when not configured" in {
     val validator = new AuthorisationValidator {
       def emailDomainWhitelist = Nil

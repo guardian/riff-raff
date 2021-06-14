@@ -1,9 +1,11 @@
 package magenta.deployment_type.param_reads
 
-import org.scalatest.{FlatSpec, Inside, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.Inside
 import play.api.libs.json._
 
-class PatternValueTest extends FlatSpec with Matchers with Inside {
+class PatternValueTest extends AnyFlatSpec with Matchers with Inside {
   "PatternValue" should "parse a JsString to a single item PatternValue list" in {
     val json = JsString("application/json")
     val pv = json.as[List[PatternValue]]

@@ -1,6 +1,7 @@
 package ci
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.joda.time.DateTime
 import magenta._
 import magenta.DeployParameters
@@ -11,7 +12,7 @@ import magenta.Strategy.MostlyHarmless
 import java.util.UUID
 import scala.util.{Failure, Success}
 
-class ContinuousDeploymentTest extends FlatSpec with Matchers {
+class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
 
   "Continuous Deployment" should "create deploy parameters for a set of builds" in {
     val params = ContinuousDeployment.getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs).map(ContinuousDeployment.getDeployParams(_)).toSet

@@ -5,11 +5,12 @@ import com.gu.anghammarad.models.{Action, Stack, Target}
 import deployment.{Fixtures, NoDeploysFoundForStage, SkippedDueToPreviousFailure, SkippedDueToPreviousWaitingDeploy}
 import magenta.Strategy.MostlyHarmless
 import magenta.{Build, DeployParameters, Stage}
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
 
-class FailureNotificationContentsTest extends FunSuite with Matchers {
+class FailureNotificationContentsTest extends AnyFunSuite with Matchers {
 
   test("should produce sensible notification contents for a failed Continuous Deployment") {
     val failureNotificationContents = new FailureNotificationContents("http://localhost:9000")

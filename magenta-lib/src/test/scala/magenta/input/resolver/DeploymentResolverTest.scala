@@ -3,10 +3,11 @@ package magenta.input.resolver
 import cats.data.{NonEmptyList => NEL}
 import magenta.fixtures.ValidatedValues
 import magenta.input.{ConfigError, Deployment, RiffRaffYamlReader}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNumber, JsString}
 
-class DeploymentResolverTest extends FlatSpec with Matchers with ValidatedValues {
+class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
     val yamlString =
       """

@@ -5,9 +5,10 @@ import com.gu.googleauth.UserIdentity
 import controllers.ApiKey
 import deployment.{ApiRequestSource, ContinuousDeploymentRequestSource, Error, ScheduleRequestSource, UserRequestSource}
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class RestrictionCheckerTest extends FlatSpec with Matchers {
+class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
 
   val config = makeConfig("", "")
   val configs: Seq[RestrictionConfig] = Seq(

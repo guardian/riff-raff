@@ -3,9 +3,10 @@ package magenta.input.resolver
 import cats.data.{NonEmptyList => NEL}
 import magenta.graph.{EndNode, Graph, StartNode, ValueNode}
 import magenta.input.Deployment
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DeploymentGraphActionFlatteningTest extends FlatSpec with Matchers {
+class DeploymentGraphActionFlatteningTest extends AnyFlatSpec with Matchers {
   "flattenActions" should "flatten out the actions in a deployment graph" in {
     val deployment =
       Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), NEL.of("action1", "action2"), "bob", "bob", Nil, Map.empty)

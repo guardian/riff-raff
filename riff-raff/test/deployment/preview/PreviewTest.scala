@@ -9,14 +9,15 @@ import magenta.fixtures.{ValidatedValues, _}
 import magenta.graph.{DeploymentTasks, EndNode, Graph, StartNode, ValueNode}
 import magenta.input.DeploymentKey
 import magenta.{Build, DeployParameters, DeployReporter, Deployer, DeploymentResources, Region, Stage}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class PreviewTest extends FlatSpec with Matchers with ValidatedValues with MockitoSugar {
+class PreviewTest extends AnyFlatSpec with Matchers with ValidatedValues with MockitoSugar {
   def valid(n: Int): Validated[NEL[String], Int] = Valid(n)
   def invalid(error: String): Validated[NEL[String], Int] = Invalid(NEL.of(error))
 

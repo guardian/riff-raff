@@ -7,8 +7,10 @@ import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
 import deployment.{Fixtures, Record}
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -21,7 +23,7 @@ object DeployCoordinatorTest {
 }
 
 class DeployCoordinatorTest extends TestKit(ActorSystem("DeployCoordinatorTest", DeployCoordinatorTest.testConfig))
-  with FlatSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar {
+  with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with MockitoSugar {
 
   import Fixtures._
 

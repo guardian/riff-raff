@@ -7,7 +7,7 @@ import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.tasks._
 import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, DeploymentResources, Host, KeyRing, Region, Stage}
 import org.joda.time.DateTime
-import org.scalatest.mockito.MockitoSugar
+import org.mockito.MockitoSugar
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 

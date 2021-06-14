@@ -2,10 +2,12 @@ package ci
 
 import conf.Config
 import org.joda.time.DateTime
-import org.scalatest.{EitherValues, FunSuite, Matchers}
+import org.scalatest.EitherValues
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import play.api.Configuration
 
-class S3BuildTest extends FunSuite with Matchers with EitherValues {
+class S3BuildTest extends AnyFunSuite with Matchers with EitherValues {
 
   val config = new Config(configuration = Configuration(("test.config", "abc")).underlying, DateTime.now)
 

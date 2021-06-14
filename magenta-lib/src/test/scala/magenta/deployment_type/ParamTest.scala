@@ -5,10 +5,9 @@ import java.util.UUID
 import magenta.artifact.S3Path
 import magenta._
 import magenta.fixtures._
-import org.mockito.Matchers._
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.mockito.MockitoSugar
 import play.api.libs.json.JsString
 
 import scala.collection.mutable
@@ -18,7 +17,7 @@ class TestRegister extends ParamRegister {
   def add(param: Param[_]) = paramsList += param.name -> param
 }
 
-class ParamTest extends FlatSpec with Matchers with MockitoSugar {
+class ParamTest extends AnyFlatSpec with Matchers with MockitoSugar {
   val target = DeployTarget(fixtures.parameters(), Stack("testStack"), Region("testRegion"))
   val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), target.parameters)
   val deploymentTypes = Seq(stubDeploymentType(name="testDeploymentType", actionNames = Seq("testAction")))

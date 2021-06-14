@@ -1,9 +1,10 @@
 package utils
 
-import org.scalatest.{Matchers, FunSuite}
+import org.scalatest.matchers.should.Matchers
 import org.joda.time.LocalDate
+import org.scalatest.funsuite.AnyFunSuite
 
-class GraphTest extends FunSuite with Matchers {
+class GraphTest extends AnyFunSuite with Matchers {
   test("should add zeros for missing days") {
     val statsWithMissingDays = List(
       new LocalDate(2013, 5, 1) -> 4,
