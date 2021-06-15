@@ -89,7 +89,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   )
 
   val availableDeploymentTypes = Seq(
-    ElasticSearch, S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
+    S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
   )
 
   val ioExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("io-context")
