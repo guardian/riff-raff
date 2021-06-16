@@ -9,7 +9,7 @@ import org.mockito.ArgumentMatchersSugar
 import org.mockito.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.libs.json.{JsNumber, JsString, JsValue}
+import play.api.libs.json.{JsBoolean, JsNumber, JsString, JsValue}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
@@ -55,6 +55,54 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
       actual shouldBe expected
     }
   }
+
+  "auto-scaling with cdkMigrationInProgress=true" should "have a deploy action which updates two ASGs" in {
+    val data: Map[String, JsValue] = Map(
+      "bucket" -> JsString("asg-bucket"),
+      "cdkMigrationInProgress" -> JsBoolean(true)
+    )
+
+    val app = App("app")
+
+    val p = DeploymentPackage("app", app, data, "autoscaling", S3Path("artifact-bucket", "test/123/app"),
+      deploymentTypes)
+
+    withObjectMocked[AutoScalingGroupLookup.type] {
+      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *, *)).thenReturn("testOldCfnAsg", "testNewCdkAsg")
+      val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
+      val expected = List(
+        WaitForStabilization("testOldCfnAsg", 5 * 60 * 1000, Region("eu-west-1")),
+        CheckGroupSize("testOldCfnAsg", Region("eu-west-1")),
+        SuspendAlarmNotifications("testOldCfnAsg", Region("eu-west-1")),
+        TagCurrentInstancesWithTerminationTag("testOldCfnAsg", Region("eu-west-1")),
+        ProtectCurrentInstances("testOldCfnAsg", Region("eu-west-1")),
+        DoubleSize("testOldCfnAsg", Region("eu-west-1")),
+        HealthcheckGrace("testOldCfnAsg", Region("eu-west-1"), 20000),
+        WaitForStabilization("testOldCfnAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        WarmupGrace("testOldCfnAsg", Region("eu-west-1"), 1000),
+        WaitForStabilization("testOldCfnAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        CullInstancesWithTerminationTag("testOldCfnAsg", Region("eu-west-1")),
+        TerminationGrace("testOldCfnAsg", Region("eu-west-1"), 10000),
+        WaitForStabilization("testOldCfnAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        ResumeAlarmNotifications("testOldCfnAsg", Region("eu-west-1")),
+        WaitForStabilization("testNewCdkAsg", 5 * 60 * 1000, Region("eu-west-1")),
+        CheckGroupSize("testNewCdkAsg", Region("eu-west-1")),
+        SuspendAlarmNotifications("testNewCdkAsg", Region("eu-west-1")),
+        TagCurrentInstancesWithTerminationTag("testNewCdkAsg", Region("eu-west-1")),
+        ProtectCurrentInstances("testNewCdkAsg", Region("eu-west-1")),
+        DoubleSize("testNewCdkAsg", Region("eu-west-1")),
+        HealthcheckGrace("testNewCdkAsg", Region("eu-west-1"), 20000),
+        WaitForStabilization("testNewCdkAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        WarmupGrace("testNewCdkAsg", Region("eu-west-1"), 1000),
+        WaitForStabilization("testNewCdkAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        CullInstancesWithTerminationTag("testNewCdkAsg", Region("eu-west-1")),
+        TerminationGrace("testNewCdkAsg", Region("eu-west-1"), 10000),
+        WaitForStabilization("testNewCdkAsg", 15 * 60 * 1000, Region("eu-west-1")),
+        ResumeAlarmNotifications("testNewCdkAsg", Region("eu-west-1"))
+      )
+      actual shouldBe expected
+    }
+}
 
   it should "default publicReadAcl to false when a new style package" in {
     val data: Map[String, JsValue] = Map(
