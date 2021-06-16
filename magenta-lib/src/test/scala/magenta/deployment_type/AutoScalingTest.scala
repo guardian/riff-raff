@@ -34,7 +34,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
       deploymentTypes)
 
     withObjectMocked[AutoScalingGroupLookup.type] {
-      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *)) thenAnswer "test"
+      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *, *)) thenAnswer "test"
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
         WaitForStabilization("test", 5 * 60 * 1000, Region("eu-west-1")),
@@ -85,7 +85,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
       deploymentTypes)
 
     withObjectMocked[AutoScalingGroupLookup.type] {
-      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *)) thenAnswer "test"
+      when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *, *)) thenAnswer "test"
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
         WaitForStabilization("test", 5 * 60 * 1000, Region("eu-west-1")),

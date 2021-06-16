@@ -37,7 +37,7 @@ object ElasticSearch extends DeploymentType {
   ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    val asgName: String = AutoScalingGroupLookup.getTargetAsgName(keyRing, target, resources, pkg)
+    val asgName: String = AutoScalingGroupLookup.getTargetAsgName(keyRing, target, None, resources, pkg)
     List(
       CheckGroupSize(asgName, target.region),
       WaitForElasticSearchClusterGreen(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),

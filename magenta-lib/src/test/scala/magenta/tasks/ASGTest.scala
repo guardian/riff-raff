@@ -57,7 +57,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
   }
 
   it should "fail if more than one ASG matches the Stack and App tags" in {
@@ -80,7 +80,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       S3Path("artifact-bucket", "project/123/example"))
 
     a [FailException] should be thrownBy {
-      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
     }
   }
 
@@ -202,7 +202,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
   }
 
   object AutoScalingGroupWithTags {

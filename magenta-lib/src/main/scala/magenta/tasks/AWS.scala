@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
+import magenta.deployment_type.{CdkTagRequirements, MustBePresent, MustNotBePresent}
 import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
@@ -240,14 +241,24 @@ object ASG {
     autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
   }
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, cdkTagRequirements: Option[CdkTagRequirements], client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
       def hasTag(key: String, value: String): Boolean = asg.tags.asScala.exists { tag =>
         tag.key == key && tag.value == value
       }
-      def matchApp(app: App, stack: Stack): Boolean = hasTag("Stack", stack.name) && hasTag("App", app.name)
+      def meetsCdkTagRequirements(cdkTagRequirements: Option[CdkTagRequirements]) = {
+        val cdkTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "cdk" } //FIXME
+        cdkTagRequirements match {
+          case Some(MustBePresent) => cdkTagIsPresent
+          case Some(MustNotBePresent) => !cdkTagIsPresent
+          case None => true
+        }
+      }
+      def hasExactTagRequirements(app: App, stack: Stack, cdkTagRequirements: Option[CdkTagRequirements]): Boolean = {
+        hasTag("Stack", stack.name) && hasTag("App", app.name) && meetsCdkTagRequirements(cdkTagRequirements)
+      }
     }
 
     def listAutoScalingGroups(nextToken: Option[String] = None): List[AutoScalingGroup] = {
@@ -264,7 +275,7 @@ object ASG {
     val groups = listAutoScalingGroups()
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
     val appToMatchingGroups = {
-      val matches = filteredByStage.filter(_.matchApp(pkg.app, stack))
+      val matches = filteredByStage.filter(_.hasExactTagRequirements(pkg.app, stack, cdkTagRequirements))
       if (matches.isEmpty) None else Some(ASGMatch(pkg.app, matches))
     }
 

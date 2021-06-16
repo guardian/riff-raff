@@ -3,10 +3,14 @@ package magenta.deployment_type
 import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing}
 import magenta.tasks._
 
+sealed trait CdkTagRequirements
+case object MustBePresent extends CdkTagRequirements
+case object MustNotBePresent extends CdkTagRequirements
+
 object AutoScalingGroupLookup {
-  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, resources: DeploymentResources, pkg: DeploymentPackage) = {
+  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, cdkTagRequirements: Option[CdkTagRequirements], resources: DeploymentResources, pkg: DeploymentPackage) = {
     ASG.withAsgClient[String](keyRing, target.region, resources) { asgClient =>
-      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, asgClient, resources.reporter).autoScalingGroupName()
+      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, cdkTagRequirements, asgClient, resources.reporter).autoScalingGroupName()
     }
   }
 }
@@ -53,6 +57,10 @@ object AutoScaling extends DeploymentType {
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
   ).default(false)
 
+  val cdkMigrationInProgress = Param[Boolean]("cdkMigrationInProgress",
+    "When this is set to true, Riff-Raff will search for two autoscaling groups and deploy to them both"
+  ).default(false)
+
   val deploy = Action("deploy",
     """
       |Carries out the update of instances in an autoscaling group. We carry out the following tasks:
@@ -69,23 +77,33 @@ object AutoScaling extends DeploymentType {
   ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    val asgName: String = AutoScalingGroupLookup.getTargetAsgName(keyRing, target, resources, pkg)
-    List(
-      WaitForStabilization(asgName, 5 * 60 * 1000, target.region),
-      CheckGroupSize(asgName, target.region),
-      SuspendAlarmNotifications(asgName, target.region),
-      TagCurrentInstancesWithTerminationTag(asgName, target.region),
-      ProtectCurrentInstances(asgName, target.region),
-      DoubleSize(asgName, target.region),
-      HealthcheckGrace(asgName, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      WarmupGrace(asgName, target.region, warmupGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      CullInstancesWithTerminationTag(asgName, target.region),
-      TerminationGrace(asgName, target.region, terminationGrace(pkg, target, reporter) * 1000),
-      WaitForStabilization(asgName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-      ResumeAlarmNotifications(asgName, target.region)
-    )
+    def tasksPerAutoScalingGroup(autoScalingGroupName: String): List[ASGTask] = {
+      List(
+        WaitForStabilization(autoScalingGroupName, 5 * 60 * 1000, target.region),
+        CheckGroupSize(autoScalingGroupName, target.region),
+        SuspendAlarmNotifications(autoScalingGroupName, target.region),
+        TagCurrentInstancesWithTerminationTag(autoScalingGroupName, target.region),
+        ProtectCurrentInstances(autoScalingGroupName, target.region),
+        DoubleSize(autoScalingGroupName, target.region),
+        HealthcheckGrace(autoScalingGroupName, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        WarmupGrace(autoScalingGroupName, target.region, warmupGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        CullInstancesWithTerminationTag(autoScalingGroupName, target.region),
+        TerminationGrace(autoScalingGroupName, target.region, terminationGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        ResumeAlarmNotifications(autoScalingGroupName, target.region)
+      )
+    }
+    val groupsToUpdate: List[String] = if (cdkMigrationInProgress(pkg, target, reporter)) {
+      List(
+        AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustNotBePresent), resources, pkg),
+        AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustBePresent), resources, pkg)
+      )
+    } else {
+      List(AutoScalingGroupLookup.getTargetAsgName(keyRing, target, None, resources, pkg))
+    }
+    groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }
 
   val uploadArtifacts = Action("uploadArtifacts",
