@@ -230,6 +230,16 @@ object ASG {
       ResumeProcessesRequest.builder().autoScalingGroupName(name).scalingProcesses("AlarmNotification").build()
     )
 
+  def getGroupByName(name: String, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+    val request = DescribeAutoScalingGroupsRequest.builder()
+      .autoScalingGroupNames(name)
+      .maxRecords(1)
+      .build()
+    val autoScalingGroups = client.describeAutoScalingGroups(request).autoScalingGroups().asScala.toList
+    // We've asked for one record and the name must be unique per Region per account
+    autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
+  }
+
   def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 

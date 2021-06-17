@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 
 import scala.collection.JavaConverters._
 
-case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
+case class WaitForElasticSearchClusterGreen(asgName: String, duration: Long, region: Region)
                                            (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck {
 
@@ -35,7 +35,7 @@ case class WaitForElasticSearchClusterGreen(pkg: DeploymentPackage, stage: Stage
   }
 }
 
-case class CullElasticSearchInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)
+case class CullElasticSearchInstancesWithTerminationTag(asgName: String, duration: Long, region: Region)
                                                        (implicit val keyRing: KeyRing)
   extends ASGTask with RepeatedPollingCheck{
 

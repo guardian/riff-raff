@@ -30,7 +30,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
       deploymentTypes)
 
-    val task = DoubleSize(p, Stage("PROD"), stack, Region("eu-west-1"))
+    val task = DoubleSize("test", Region("eu-west-1"))
     val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
     task.execute(asg, resources, stopFlag = false, asgClientMock)
 
@@ -52,7 +52,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
       deploymentTypes)
 
-    val task = CheckGroupSize(p, Stage("PROD"), stack, Region("eu-west-1"))
+    val task = CheckGroupSize("test", Region("eu-west-1"))
 
     val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
 

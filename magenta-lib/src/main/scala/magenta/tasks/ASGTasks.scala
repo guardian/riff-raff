@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import magenta.{KeyRing, Stage, _}
+import magenta.{KeyRing, _}
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, LifecycleState, SetInstanceProtectionRequest}
@@ -8,7 +8,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 
 import scala.collection.JavaConverters._
 
-case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class CheckGroupSize(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val doubleCapacity = asg.desiredCapacity * 2
     resources.reporter.verbose(s"ASG desired = ${asg.desiredCapacity}; ASG max = ${asg.maxSize}; Target = $doubleCapacity")
@@ -22,7 +22,7 @@ case class CheckGroupSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, re
   lazy val description = "Checking there is enough capacity to deploy"
 }
 
-case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class TagCurrentInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     if (asg.instances.asScala.nonEmpty) {
       EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
@@ -37,7 +37,7 @@ case class TagCurrentInstancesWithTerminationTag(pkg: DeploymentPackage, stage: 
   lazy val description = "Tag existing instances of the auto-scaling group for termination"
 }
 
-case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class ProtectCurrentInstances(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val instances = asg.instances.asScala.toList
     val instancesInService = instances.filter(_.lifecycleState == LifecycleState.IN_SERVICE)
@@ -57,7 +57,7 @@ case class ProtectCurrentInstances(pkg: DeploymentPackage, stage: Stage, stack: 
   lazy val description = "Protect existing instances against scale in events"
 }
 
-case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class DoubleSize(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val targetCapacity = asg.desiredCapacity * 2
@@ -65,7 +65,7 @@ case class DoubleSize(pkg: DeploymentPackage, stage: Stage, stack: Stack, region
     ASG.desiredCapacity(asg.autoScalingGroupName, targetCapacity, asgClient)
   }
 
-  lazy val description = s"Double the size of the auto-scaling group in $stage, $stack for app ${pkg.app}"
+  lazy val description = s"Double the size of the auto-scaling group called $asgName"
 }
 
 sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -77,19 +77,19 @@ sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing)
   }
 }
 
-case class HealthcheckGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class HealthcheckGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class WarmupGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class WarmupGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
 }
 
-case class TerminationGrace(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class TerminationGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Stack, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
+case class WaitForStabilization(asgName: String, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
@@ -118,7 +118,7 @@ case class WaitForStabilization(pkg: DeploymentPackage, stage: Stage, stack: Sta
   lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
 }
 
-case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class CullInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       ELB.withClient(keyRing, region, resources) { elbClient =>
@@ -141,7 +141,7 @@ case class CullInstancesWithTerminationTag(pkg: DeploymentPackage, stage: Stage,
   lazy val description = "Terminate instances with the termination tag for this deploy"
 }
 
-case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class SuspendAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.suspendAlarmNotifications(asg.autoScalingGroupName, asgClient)
@@ -150,7 +150,7 @@ case class SuspendAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack
   lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
 }
 
-case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack: Stack, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class ResumeAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.resumeAlarmNotifications(asg.autoScalingGroupName, asgClient)
@@ -162,16 +162,14 @@ case class ResumeAlarmNotifications(pkg: DeploymentPackage, stage: Stage, stack:
 class ASGResetException(message: String, throwable: Throwable) extends Throwable(message, throwable)
 
 trait ASGTask extends Task {
+  def asgName: String
   def region: Region
-  def pkg: DeploymentPackage
-  def stage: Stage
-  def stack: Stack
 
   def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient)
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     ASG.withAsgClient(keyRing, region, resources) { asgClient =>
-      val group = ASG.groupForAppAndStage(pkg, stage, stack, asgClient, resources.reporter)
+      val group = ASG.getGroupByName(asgName, asgClient, resources.reporter)
       execute(group, resources, stopFlag, asgClient)
     }
   }
