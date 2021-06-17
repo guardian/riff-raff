@@ -88,7 +88,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
   it should "identify a single ASG based on Stack & App tags and MustBePresent cdkTagRequirements" in {
     val asgClientMock = mock[AutoScalingClient]
 
-    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:cdk:version" -> "19.0.0")
+    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:cdk:pattern-name" -> "GuPlayApp")
 
     when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
       DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
@@ -111,7 +111,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
         desiredGroup,
         // This should be ignored due to presence of cdk tag
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:cdk:version" -> "19.0.0"),
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:cdk:pattern-name" -> "GuPlayApp"),
       ).asJava).build()
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,

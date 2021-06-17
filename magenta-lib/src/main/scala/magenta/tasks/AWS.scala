@@ -249,7 +249,7 @@ object ASG {
         tag.key == key && tag.value == value
       }
       def meetsCdkTagRequirements(cdkTagRequirements: Option[CdkTagRequirements]) = {
-        val cdkTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:cdk:version" }
+        val cdkTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:cdk:pattern-name" }
         cdkTagRequirements match {
           case Some(MustBePresent) => cdkTagIsPresent
           case Some(MustNotBePresent) => !cdkTagIsPresent
