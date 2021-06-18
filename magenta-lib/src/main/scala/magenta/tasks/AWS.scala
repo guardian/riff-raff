@@ -248,6 +248,8 @@ object ASG {
       def hasTag(key: String, value: String): Boolean = asg.tags.asScala.exists { tag =>
         tag.key == key && tag.value == value
       }
+
+      // See https://github.com/guardian/riff-raff/pull/632 for more details
       def meetsCdkTagRequirements(cdkTagRequirements: Option[CdkTagRequirements]) = {
         val cdkTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:cdk:pattern-name" }
         cdkTagRequirements match {
