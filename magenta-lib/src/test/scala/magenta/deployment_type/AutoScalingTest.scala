@@ -71,6 +71,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
       when(AutoScalingGroupLookup.getTargetAsgName(*, *, *, *, *)).thenReturn("testOldCfnAsg", "testNewCdkAsg")
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
+        // All tasks for testOldCfnAsg
         WaitForStabilization("testOldCfnAsg", 5 * 60 * 1000, Region("eu-west-1")),
         CheckGroupSize("testOldCfnAsg", Region("eu-west-1")),
         SuspendAlarmNotifications("testOldCfnAsg", Region("eu-west-1")),
@@ -85,6 +86,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
         TerminationGrace("testOldCfnAsg", Region("eu-west-1"), 10000),
         WaitForStabilization("testOldCfnAsg", 15 * 60 * 1000, Region("eu-west-1")),
         ResumeAlarmNotifications("testOldCfnAsg", Region("eu-west-1")),
+        // All tasks for testNewCdkAsg
         WaitForStabilization("testNewCdkAsg", 5 * 60 * 1000, Region("eu-west-1")),
         CheckGroupSize("testNewCdkAsg", Region("eu-west-1")),
         SuspendAlarmNotifications("testNewCdkAsg", Region("eu-west-1")),
