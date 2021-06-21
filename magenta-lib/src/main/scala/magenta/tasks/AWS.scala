@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import cats.implicits._
 import com.gu.management.Loggable
-import magenta.deployment_type.{CdkTagRequirements, MustBePresent, MustNotBePresent}
+import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
 import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
@@ -241,7 +241,7 @@ object ASG {
     autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
   }
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, cdkTagRequirements: Option[CdkTagRequirements], client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, migrationTagRequirements: Option[MigrationTagRequirements], client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
@@ -250,16 +250,16 @@ object ASG {
       }
 
       // See https://github.com/guardian/riff-raff/pull/632 for more details
-      def meetsCdkTagRequirements(cdkTagRequirements: Option[CdkTagRequirements]) = {
-        val cdkTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:cdk:pattern-name" }
-        cdkTagRequirements match {
-          case Some(MustBePresent) => cdkTagIsPresent
-          case Some(MustNotBePresent) => !cdkTagIsPresent
+      def meetsMigrationTagRequirements(migrationTagRequirements: Option[MigrationTagRequirements]) = {
+        val migrationTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:riffraff:new-asg" }
+        migrationTagRequirements match {
+          case Some(MustBePresent) => migrationTagIsPresent
+          case Some(MustNotBePresent) => !migrationTagIsPresent
           case None => true
         }
       }
-      def hasExactTagRequirements(app: App, stack: Stack, cdkTagRequirements: Option[CdkTagRequirements]): Boolean = {
-        hasTag("Stack", stack.name) && hasTag("App", app.name) && meetsCdkTagRequirements(cdkTagRequirements)
+      def hasExactTagRequirements(app: App, stack: Stack, migrationTagRequirements: Option[MigrationTagRequirements]): Boolean = {
+        hasTag("Stack", stack.name) && hasTag("App", app.name) && meetsMigrationTagRequirements(migrationTagRequirements)
       }
     }
 
@@ -277,7 +277,7 @@ object ASG {
     val groups = listAutoScalingGroups()
     val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
     val appToMatchingGroups = {
-      val matches = filteredByStage.filter(_.hasExactTagRequirements(pkg.app, stack, cdkTagRequirements))
+      val matches = filteredByStage.filter(_.hasExactTagRequirements(pkg.app, stack, migrationTagRequirements))
       if (matches.isEmpty) None else Some(ASGMatch(pkg.app, matches))
     }
 

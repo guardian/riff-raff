@@ -3,14 +3,14 @@ package magenta.deployment_type
 import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing}
 import magenta.tasks._
 
-sealed trait CdkTagRequirements
-case object MustBePresent extends CdkTagRequirements
-case object MustNotBePresent extends CdkTagRequirements
+sealed trait MigrationTagRequirements
+case object MustBePresent extends MigrationTagRequirements
+case object MustNotBePresent extends MigrationTagRequirements
 
 object AutoScalingGroupLookup {
-  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, cdkTagRequirements: Option[CdkTagRequirements], resources: DeploymentResources, pkg: DeploymentPackage) = {
+  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: Option[MigrationTagRequirements], resources: DeploymentResources, pkg: DeploymentPackage) = {
     ASG.withAsgClient[String](keyRing, target.region, resources) { asgClient =>
-      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, cdkTagRequirements, asgClient, resources.reporter).autoScalingGroupName()
+      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, migrationTagRequirements, asgClient, resources.reporter).autoScalingGroupName()
     }
   }
 }
@@ -57,7 +57,7 @@ object AutoScaling extends DeploymentType {
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
   ).default(false)
 
-  val cdkMigrationInProgress = Param[Boolean]("cdkMigrationInProgress",
+  val asgMigrationInProgress = Param[Boolean]("asgMigrationInProgress",
     "When this is set to true, Riff-Raff will search for two autoscaling groups and deploy to them both"
   ).default(false)
 
@@ -95,7 +95,7 @@ object AutoScaling extends DeploymentType {
         ResumeAlarmNotifications(autoScalingGroupName, target.region)
       )
     }
-    val groupsToUpdate: List[String] = if (cdkMigrationInProgress(pkg, target, reporter)) {
+    val groupsToUpdate: List[String] = if (asgMigrationInProgress(pkg, target, reporter)) {
       List(
         AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustNotBePresent), resources, pkg),
         AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustBePresent), resources, pkg)

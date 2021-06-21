@@ -56,10 +56,10 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
     }
   }
 
-  "auto-scaling with cdkMigrationInProgress=true" should "have a deploy action which updates two ASGs" in {
+  "auto-scaling with asgMigrationInProgress=true" should "have a deploy action which updates two ASGs" in {
     val data: Map[String, JsValue] = Map(
       "bucket" -> JsString("asg-bucket"),
-      "cdkMigrationInProgress" -> JsBoolean(true)
+      "asgMigrationInProgress" -> JsBoolean(true)
     )
 
     val app = App("app")
