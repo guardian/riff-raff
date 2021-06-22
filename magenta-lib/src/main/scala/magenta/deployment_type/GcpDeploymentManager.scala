@@ -140,7 +140,7 @@ object GcpDeploymentManager extends DeploymentType {
     val configFileLocation = S3Path(packageRoot, configFile)
     for {
       yaml <- getFileContent(configFileLocation)
-      json <- Either.catchNonFatal(RiffRaffYamlReader.yamlToJson(yaml)).leftMap(t => UnknownBundleError("Couldn't parse YAML config file", t))
+      json <- RiffRaffYamlReader.yamlToJson(yaml).toEither.leftMap(t => UnknownBundleError("Couldn't parse YAML config file", t))
       dependencies = (json \ "imports" \\ "path").toList.flatMap(_.asOpt[String])
       dependenciesMap <- dependencies.traverse { dependency =>
         val s3Dep = S3Path(packageRoot, dependency)

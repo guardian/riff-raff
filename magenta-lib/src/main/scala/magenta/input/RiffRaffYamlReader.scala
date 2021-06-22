@@ -8,6 +8,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import magenta._
 import play.api.libs.json._
 
+import scala.util.{Failure, Success, Try}
+
 object RiffRaffYamlReader {
   implicit def readObjectAsList[V](implicit fmtv: Reads[V]) = new Reads[List[(String, V)]] {
     // copied from the map implementation in play.api.libs.json.Reads but builds an ordered
@@ -30,20 +32,24 @@ object RiffRaffYamlReader {
   }
 
   def fromString(yaml: String): Validated[ConfigErrors, RiffRaffDeployConfig] = {
-    val json = yamlToJson(yaml)
-    Json.fromJson[RiffRaffDeployConfig](json) match {
-      case JsSuccess(config, _) => Valid(config)
-      case JsError(errors :: tail) =>
-        val nelErrors = NEL(errors, tail)
-        Invalid(ConfigErrors(nelErrors.map{ case (path, validationErrors) =>
-          val pathName = if (path.path.isEmpty) "YAML" else path.toString
-          ConfigError(s"Parsing $pathName", validationErrors.map(ve => ve.message).mkString(", "))
-        }))
-      case JsError(_) => `wtf?`
+    yamlToJson(yaml) match {
+      case Success(json) => Json.fromJson[RiffRaffDeployConfig](json) match {
+        case JsSuccess(config, _) => Valid(config)
+        case JsError(errors :: tail) =>
+          val nelErrors = NEL(errors, tail)
+          Invalid(ConfigErrors(nelErrors.map{ case (path, validationErrors) =>
+            val pathName = if (path.path.isEmpty) "YAML" else path.toString
+            ConfigError(s"Parsing $pathName", validationErrors.map(ve => ve.message).mkString(", "))
+          }))
+        case JsError(_) => `wtf?`
+      }
+      case Failure(exception) =>
+        val error = ConfigError("Converting YAML to JSON", exception.getMessage)
+        Invalid(ConfigErrors(error))
     }
   }
 
-  def yamlToJson(yaml: String): JsValue = {
+  def yamlToJson(yaml: String): Try[JsValue] = Try {
     val tree = new ObjectMapper(new YAMLFactory()).readTree(yaml)
     val jsonString = new ObjectMapper()
       .writer(new DefaultPrettyPrinter().withoutSpacesInObjectEntries())
