@@ -401,11 +401,10 @@ case class UpdateS3Lambda(
 
 }
 
-case class InvokeLambda()(implicit val keyRing: KeyRing) extends Task {
+case class InvokeLambda(artifactsPath: S3Path)(implicit val keyRing: KeyRing) extends Task {
   def description = "Task that invokes a lambda."
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean){
-    resources.reporter.verbose(s"Doing some verbose stuff")
-    resources.reporter.info(s"Some helpful information")
+    resources.reporter.info(s"Path is $artifactsPath")
   }
 }
