@@ -16,13 +16,14 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
+
+class LambdaDeployTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = mock[S3Client]
   implicit val stsClient: StsClient = mock[StsClient]
   val region = Region("eu-west-1")
-  val deploymentTypes: Seq[Lambda.type] = Seq(Lambda)
+  val deploymentTypes: Seq[LambdaDeploy.type] = Seq(LambdaDeploy)
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -40,7 +41,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   it should "produce an S3 upload task" in {
     val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global)
-    val tasks = Lambda.actionsMap("uploadLambda").taskGenerator(pkg, resources, DeployTarget(parameters(PROD), Stack("test"), region))
+    val tasks = LambdaDeploy.actionsMap("uploadLambda").taskGenerator(pkg, resources, DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       S3Upload(
         Region("eu-west-1"),
@@ -51,7 +52,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("test"), region))
+    val tasks = LambdaDeploy.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("test"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionName("MyFunction-PROD"),
@@ -72,7 +73,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = LambdaDeploy.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionName("some-stackMyFunction-PROD"),
@@ -93,7 +94,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = LambdaDeploy.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),
@@ -115,7 +116,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
     val e = the [FailException] thrownBy {
-      Lambda.actionsMap(
+      LambdaDeploy.actionsMap(
         "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
@@ -131,7 +132,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
     val e = the [FailException] thrownBy {
-      Lambda.actionsMap(
+      LambdaDeploy.actionsMap(
         "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
@@ -152,11 +153,11 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     when(ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))).thenReturn(
       GetParameterResponse.builder.parameter(Parameter.builder.value("bobbins").build).build
     )
-    object LambdaTest extends Lambda {
+    object LambdaDeployTest extends LambdaDeploy {
       override def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = _(ssmClient)
     }
 
-    val tasks = LambdaTest.actionsMap("updateLambda")
+    val tasks = LambdaDeployTest.actionsMap("updateLambda")
       .taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
         DeployTarget(parameters(PROD), Stack("some-stack"), region)
       )
@@ -183,7 +184,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithLookupByTags, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
-    val tasks = Lambda.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
+    val tasks = LambdaDeploy.actionsMap("updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(PROD), Stack("some-stack"), region))
     tasks should be (List(
       UpdateS3Lambda(
         function = LambdaFunctionTags(Map("Stack" -> "some-stack", "Stage" -> "PROD", "App" -> "lambda")),

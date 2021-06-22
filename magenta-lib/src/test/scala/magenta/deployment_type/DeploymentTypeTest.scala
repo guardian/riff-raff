@@ -25,7 +25,7 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
   implicit val artifactClient: S3Client = null
   implicit val stsClient: StsClient = null
   val region = Region("eu-west-1")
-  val deploymentTypes = Seq(S3, Lambda)
+  val deploymentTypes = Seq(S3, LambdaDeploy)
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size 10
@@ -142,7 +142,7 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
 
     val p = DeploymentPackage("myapp", app1, data, "aws-lambda", S3Path("artifact-bucket", "test/123"), deploymentTypes)
 
-    Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient, stsClient, global), DeployTarget(parameters(CODE), stack, region)) should be (
+    LambdaDeploy.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient, stsClient, global), DeployTarget(parameters(CODE), stack, region)) should be (
       List(UpdateS3Lambda(LambdaFunctionName("myLambda"), "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
       ))
   }
@@ -160,7 +160,7 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
     val p = DeploymentPackage("myapp", app1, badData, "aws-lambda", S3Path("artifact-bucket", "test/123"), deploymentTypes)
 
     val thrown = the[FailException] thrownBy {
-      Lambda.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient, stsClient, global), DeployTarget(parameters(CODE), stack, region)) should be (
+      LambdaDeploy.actionsMap("updateLambda").taskGenerator(p, DeploymentResources(reporter, lookupSingleHost, artifactClient, stsClient, global), DeployTarget(parameters(CODE), stack, region)) should be (
         List(UpdateS3Lambda(LambdaFunctionName("myLambda"), "artifact-bucket", "test-stack/CODE/the_role/lambda.zip", defaultRegion)
         ))
     }
