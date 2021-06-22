@@ -12,7 +12,7 @@ trait LambdaInvoke extends DeploymentType with BucketParameters {
 
   override def defaultActions: List[Action] = List(Action("invoke","Do nothing"){
     (pkg, resources, target) => {
-      List(InvokeLambda()(keyRing = resources.assembleKeyring(target, pkg)))
+      List(InvokeLambda(artifactsPath = pkg.s3Package)(keyRing = resources.assembleKeyring(target, pkg)))
     }
   })
 }
