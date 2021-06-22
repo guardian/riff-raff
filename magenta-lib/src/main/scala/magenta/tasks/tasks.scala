@@ -406,5 +406,8 @@ case class InvokeLambda(artifactsPath: S3Path)(implicit val keyRing: KeyRing) ex
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean){
     resources.reporter.info(s"Path is $artifactsPath")
+    S3Location.listObjects(artifactsPath)(resources.artifactClient).foreach(s3object => resources.reporter.verbose(s3object.toString))
+    // TODO: Read contents of each file`
+    // TODO THEN: build JSON payload (Map of file name to array of bytes)
   }
 }
