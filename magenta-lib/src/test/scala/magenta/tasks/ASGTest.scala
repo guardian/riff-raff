@@ -3,6 +3,7 @@ package magenta.tasks
 import java.util.UUID
 
 import magenta.artifact.S3Path
+import magenta.deployment_type.{MustBePresent, MustNotBePresent}
 import magenta.{App, KeyRing, Stage, _}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
@@ -57,10 +58,10 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
   }
 
-  it should "fail if more than one ASG matches the Stack and App tags" in {
+  it should "fail if more than one ASG matches the Stack and App tags (unless MigrationTagRequirements are specified)" in {
     val asgClientMock = mock[AutoScalingClient]
 
     val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
@@ -80,8 +81,42 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       S3Path("artifact-bucket", "project/123/example"))
 
     a [FailException] should be thrownBy {
-      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
     }
+  }
+
+  it should "identify a single ASG based on Stack & App tags and MustBePresent MigrationTagRequirements" in {
+    val asgClientMock = mock[AutoScalingClient]
+
+    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:riffraff:new-asg" -> "true")
+
+    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
+        desiredGroup,
+        // This should be ignored due to lack of migration tag
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey"),
+      ).asJava).build()
+
+    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"))
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustBePresent), asgClientMock, reporter) should be (desiredGroup)
+  }
+
+  it should "identify a single ASG based on Stack & App tags and MustNotBePresent MigrationTagRequirements" in {
+    val asgClientMock = mock[AutoScalingClient]
+
+    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
+
+    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
+      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
+        desiredGroup,
+        // This should be ignored due to presence of migration tag
+        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:riffraff:new-asg" -> "true"),
+      ).asJava).build()
+
+    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
+      S3Path("artifact-bucket", "project/123/example"))
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustNotBePresent), asgClientMock, reporter) should be (desiredGroup)
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {
@@ -202,7 +237,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), asgClientMock, reporter) should be (desiredGroup)
+    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
   }
 
   object AutoScalingGroupWithTags {
