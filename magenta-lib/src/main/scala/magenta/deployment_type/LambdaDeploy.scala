@@ -15,9 +15,9 @@ import magenta.{
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
-object Lambda extends Lambda
+object LambdaDeploy extends LambdaDeploy
 
-trait Lambda extends DeploymentType with BucketParameters {
+trait LambdaDeploy extends DeploymentType with BucketParameters {
   val name = "aws-lambda"
   val documentation =
     """

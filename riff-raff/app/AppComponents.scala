@@ -125,7 +125,7 @@ class AppComponents(
     AutoScaling,
     Fastly,
     new CloudFormation(DefaultBuildTags),
-    Lambda,
+    LambdaDeploy,
     AmiCloudFormationParameter,
     SelfDeploy,
     GcpDeploymentManager,

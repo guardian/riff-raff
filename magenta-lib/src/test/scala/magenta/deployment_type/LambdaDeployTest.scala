@@ -32,14 +32,15 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
+
+class LambdaDeployTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter =
     DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = mock[S3Client]
   implicit val stsClient: StsClient = mock[StsClient]
   val region = Region("eu-west-1")
-  val deploymentTypes: Seq[Lambda.type] = Seq(Lambda)
+  val deploymentTypes: Seq[LambdaDeploy.type] = Seq(LambdaDeploy)
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -69,7 +70,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       stsClient,
       global
     )
-    val tasks = Lambda
+    val tasks = LambdaDeploy
       .actionsMap("uploadLambda")
       .taskGenerator(
         pkg,
@@ -93,7 +94,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "produce a lambda update task" in {
-    val tasks = Lambda
+    val tasks = LambdaDeploy
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,
@@ -134,7 +135,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val tasks = Lambda
+    val tasks = LambdaDeploy
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,
@@ -175,7 +176,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val tasks = Lambda
+    val tasks = LambdaDeploy
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,
@@ -220,7 +221,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     )
 
     val e = the[FailException] thrownBy {
-      Lambda
+      LambdaDeploy
         .actionsMap("updateLambda")
         .taskGenerator(
           pkg,
@@ -260,7 +261,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       SsmException.builder.message("Boom!").build()
     )
 
-    object LambdaTest extends Lambda {
+    object LambdaDeployTest extends LambdaDeploy {
       override def withSsm[T](
           keyRing: KeyRing,
           region: Region,
@@ -269,7 +270,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     }
 
     val e = the[FailException] thrownBy {
-      LambdaTest
+      LambdaDeployTest
         .actionsMap("updateLambda")
         .taskGenerator(
           pkg,
@@ -311,7 +312,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
         .parameter(Parameter.builder.value("bobbins").build)
         .build
     )
-    object LambdaTest extends Lambda {
+    object LambdaDeployTest extends LambdaDeploy {
       override def withSsm[T](
           keyRing: KeyRing,
           region: Region,
@@ -319,7 +320,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       ): (SsmClient => T) => T = _(ssmClient)
     }
 
-    val tasks = LambdaTest
+    val tasks = LambdaDeployTest
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,
@@ -368,7 +369,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
         .parameter(Parameter.builder.value("bobbins").build)
         .build
     )
-    object LambdaTest extends Lambda {
+    object LambdaDeployTest extends LambdaDeploy {
       override def withSsm[T](
           keyRing: KeyRing,
           region: Region,
@@ -376,7 +377,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       ): (SsmClient => T) => T = _(ssmClient)
     }
 
-    val tasks = LambdaTest
+    val tasks = LambdaDeployTest
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,
@@ -418,7 +419,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val tasks = Lambda
+    val tasks = LambdaDeploy
       .actionsMap("updateLambda")
       .taskGenerator(
         pkg,

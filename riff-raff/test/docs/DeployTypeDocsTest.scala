@@ -86,7 +86,7 @@ class DeployTypeDocsTest extends AnyFlatSpec with Matchers {
       AutoScaling,
       Fastly,
       new CloudFormation(EmptyBuildTags),
-      Lambda,
+      LambdaDeploy,
       AmiCloudFormationParameter,
       SelfDeploy,
       GcpDeploymentManager

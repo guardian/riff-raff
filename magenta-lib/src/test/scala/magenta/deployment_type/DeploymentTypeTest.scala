@@ -30,7 +30,7 @@ class DeploymentTypeTest
   implicit val artifactClient: S3Client = null
   implicit val stsClient: StsClient = null
   val region = Region("eu-west-1")
-  val deploymentTypes = Seq(S3, Lambda)
+  val deploymentTypes = Seq(S3, LambdaDeploy)
 
   "Deployment types" should "automatically register params in the params Seq" in {
     S3.params should have size 11
@@ -299,7 +299,7 @@ class DeploymentTypeTest
       deploymentTypes
     )
 
-    Lambda
+    LambdaDeploy
       .actionsMap("updateLambda")
       .taskGenerator(
         p,
@@ -343,7 +343,7 @@ class DeploymentTypeTest
     )
 
     val thrown = the[FailException] thrownBy {
-      Lambda
+      LambdaDeploy
         .actionsMap("updateLambda")
         .taskGenerator(
           p,
