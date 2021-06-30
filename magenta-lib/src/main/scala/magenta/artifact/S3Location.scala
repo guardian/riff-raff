@@ -4,6 +4,7 @@ import magenta.{Build, Loggable}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 
+import java.nio.charset.StandardCharsets
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
@@ -70,9 +71,9 @@ object S3Location extends Loggable {
     } yield S3Object(bucket, summary.key, summary.size)
   }
 
-  def fetchContentAsString(
+  def fetchContentAsBytes(
       location: S3Location
-  )(implicit client: S3Client): Either[S3Error, String] = {
+  )(implicit client: S3Client): Either[S3Error, Array[Byte]] = {
     import cats.syntax.either._
     val getObjRequest = GetObjectRequest
       .builder()
@@ -80,11 +81,15 @@ object S3Location extends Loggable {
       .key(location.key)
       .build()
     Either
-      .catchNonFatal(client.getObjectAsBytes(getObjRequest).asUtf8String)
+      .catchNonFatal(client.getObjectAsBytes(getObjRequest).asByteArray())
       .leftMap {
         case e: S3Exception if e.statusCode == 404 => EmptyS3Location(location)
         case e                                     => UnknownS3Error(e)
       }
+  }
+
+  def fetchContentAsString(location: S3Location)(implicit client: S3Client): Either[S3Error, String] = {
+    fetchContentAsBytes(location).map(bytes => new String(bytes, StandardCharsets.UTF_8))
   }
 }
 
