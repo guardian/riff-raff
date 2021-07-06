@@ -7,6 +7,7 @@ import magenta.artifact._
 import magenta.deployment_type.{LambdaFunction, LambdaFunctionName, LambdaFunctionTags}
 import magenta.deployment_type.param_reads.PatternValue
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
+import play.api.libs.json.Json
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.core.sync.{ResponseTransformer, RequestBody => AWSRequestBody}
@@ -266,4 +267,21 @@ case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: Str
     }
   }
 
+}
+
+case class InvokeLambda(artifactsPath: S3Path)(implicit val keyRing: KeyRing) extends Task {
+  def description = "Task that invokes a lambda."
+
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean){
+    implicit val s3client: S3Client = resources.artifactClient
+    // TODO: take a parameter to determine whether to read files as bytes or strings
+    val artifactFileNameToContentMap = S3Location.listObjects(artifactsPath).map(s3object => {
+      S3Location.fetchContentAsString(s3object).map(_.take(50)).fold(
+        error => resources.reporter.fail(error.toString),
+        content => s3object.fileName -> content
+      )
+    }).toMap
+    val lambdaPayload = Json.toJson(artifactFileNameToContentMap)
+    resources.reporter.info(lambdaPayload.toString())
+  }
 }
