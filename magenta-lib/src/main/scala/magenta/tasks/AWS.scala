@@ -1,7 +1,6 @@
 package magenta.tasks
 
 import java.nio.ByteBuffer
-
 import cats.implicits._
 import com.gu.management.Loggable
 import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
@@ -23,7 +22,7 @@ import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancin
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DeregisterTargetsRequest, DescribeTargetHealthRequest, TargetDescription, TargetHealthStateEnum}
 import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELB}
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, ListFunctionsRequest, ListTagsRequest, UpdateFunctionCodeRequest}
+import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, InvokeRequest, ListFunctionsRequest, ListTagsRequest, LogType, UpdateFunctionCodeRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.ssm.SsmClient
@@ -119,6 +118,13 @@ object Lambda {
       .functionName(functionName)
       .s3Bucket(s3Bucket)
       .s3Key(s3Key)
+      .build()
+
+  def lambdaInvokeRequest(functionName: String, payloadBytes: Array[Byte]): InvokeRequest =
+    InvokeRequest.builder()
+      .functionName(functionName)
+      .payload(SdkBytes.fromByteArray(payloadBytes))
+      .logType(LogType.TAIL)
       .build()
 
   def findFunctionByTags(tags: Map[String, String], reporter: DeployReporter, client: LambdaClient): Option[FunctionConfiguration] = {

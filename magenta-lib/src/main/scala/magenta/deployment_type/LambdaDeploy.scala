@@ -69,7 +69,7 @@ trait LambdaDeploy extends DeploymentType with BucketParameters {
       """.stripMargin,
     optional = true
   )
-
+  // TODO: Introduce parent trait for LambdaDeploy and LambdaInvoke to inherit from which holds shared behaviour such as this function
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
     val bucket = getTargetBucketFromConfig(pkg, target, reporter)
 
