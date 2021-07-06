@@ -1,7 +1,6 @@
 package magenta.deployment_type
 
 import magenta.tasks.InvokeLambda
-import magenta.KeyRing
 
 object LambdaInvoke extends LambdaInvoke
 
@@ -12,7 +11,15 @@ trait LambdaInvoke extends DeploymentType with BucketParameters {
 
   override def defaultActions: List[Action] = List(Action("invoke","Do nothing"){
     (pkg, resources, target) => {
-      List(InvokeLambda(artifactsPath = pkg.s3Package)(keyRing = resources.assembleKeyring(target, pkg)))
+      List(
+        InvokeLambda(
+          function = ???,
+          artifactsPath = pkg.s3Package,
+          region = ???
+        )(
+          keyRing = resources.assembleKeyring(target, pkg)
+        )
+      )
     }
   })
 }

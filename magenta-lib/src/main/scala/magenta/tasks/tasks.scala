@@ -402,10 +402,10 @@ case class UpdateS3Lambda(
 
 }
 
-case class InvokeLambda(artifactsPath: S3Path)(implicit val keyRing: KeyRing) extends Task {
+case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = "Task that invokes a lambda."
 
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean){
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     implicit val s3client: S3Client = resources.artifactClient
     // TODO: take a parameter to determine whether to read files as bytes or strings
     val artifactFileNameToContentMap = S3Location.listObjects(artifactsPath).map(s3object => {
@@ -414,7 +414,22 @@ case class InvokeLambda(artifactsPath: S3Path)(implicit val keyRing: KeyRing) ex
         content => s3object.fileName -> content
       )
     }).toMap
+
     val lambdaPayload = Json.toJson(artifactFileNameToContentMap)
     resources.reporter.info(lambdaPayload.toString())
+    Lambda.withLambdaClient(keyRing, region, resources) { client =>
+
+      // FIXME: Move this into LambdaFunction trait to avoid repetition with UpdateS3Lambda
+      val functionName: String = function match {
+        case LambdaFunctionName(name) => name
+        case LambdaFunctionTags(tags) =>
+          val functionConfig = Lambda.findFunctionByTags(tags, resources.reporter, client)
+          functionConfig.map(_.functionName).getOrElse{
+            resources.reporter.fail(s"Failed to find any function with tags $tags")
+          }
+      }
+
+      client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
+    }
   }
 }

@@ -71,11 +71,7 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.{
   ElasticLoadBalancingV2Client => ApplicationELB
 }
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.{
-  FunctionConfiguration,
-  ListFunctionsRequest,
-  ListTagsRequest,
-  UpdateFunctionCodeRequest
+import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, InvokeRequest, ListFunctionsRequest, ListTagsRequest, LogType, UpdateFunctionCodeRequest
 }
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
@@ -244,6 +240,13 @@ object Lambda {
       .functionName(functionName)
       .s3Bucket(s3Bucket)
       .s3Key(s3Key)
+      .build()
+
+  def lambdaInvokeRequest(functionName: String, payloadBytes: Array[Byte]): InvokeRequest =
+    InvokeRequest.builder()
+      .functionName(functionName)
+      .payload(SdkBytes.fromByteArray(payloadBytes))
+      .logType(LogType.TAIL)
       .build()
 
   def findFunctionByTags(
