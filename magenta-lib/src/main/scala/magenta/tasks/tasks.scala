@@ -409,13 +409,13 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
     implicit val s3client: S3Client = resources.artifactClient
     // TODO: take a parameter to determine whether to read files as bytes or strings
     val artifactFileNameToContentMap = S3Location.listObjects(artifactsPath).map(s3object => {
-      S3Location.fetchContentAsString(s3object).map(_.take(50)).fold(
+      S3Location.fetchContentAsString(s3object).fold(
         error => resources.reporter.fail(error.toString),
         content => s3object.fileName -> content
       )
     }).toMap
 
-    val lambdaPayload = Json.toJson(artifactFileNameToContentMap)
+    val lambdaPayload = Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
     resources.reporter.info(lambdaPayload.toString())
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
 
