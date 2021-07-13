@@ -4,7 +4,9 @@ import magenta.tasks.InvokeLambda
 
 object LambdaInvoke extends LambdaInvoke
 
-trait LambdaInvoke extends DeploymentType with BucketParameters {
+trait LambdaInvoke extends LambdaDeploymentType {
+  override val functionNamesParamDescriptionSuffix = "invoke"
+
   val name = "aws-invoke-lambda"
 
   override def documentation: String = "Invokes Lambda"

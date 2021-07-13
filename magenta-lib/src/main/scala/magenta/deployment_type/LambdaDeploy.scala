@@ -1,6 +1,7 @@
 package magenta.deployment_type
 
 import magenta.artifact.S3Path
+import magenta.tasks.S3.Bucket
 import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
 import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack}
 import software.amazon.awssdk.services.s3.S3Client
@@ -8,7 +9,7 @@ import software.amazon.awssdk.services.ssm.SsmClient
 
 object LambdaDeploy extends LambdaDeploy
 
-trait LambdaDeploy extends DeploymentType with BucketParameters {
+trait LambdaDeploy extends LambdaDeploymentType {
   val name = "aws-lambda"
   val documentation =
     """
@@ -24,71 +25,35 @@ trait LambdaDeploy extends DeploymentType with BucketParameters {
       |
       """.stripMargin
 
-  val functionNamesParam = Param[List[String]]("functionNames",
-    """One or more function names to update with the code from fileNameParam.
-      |Each function name will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE""".stripMargin,
-    optional = true
-  )
-
-  val lookupByTags = Param[Boolean]("lookupByTags",
-    """When true, this will lookup the function to deploy to by using the Stack, Stage and App tags on a function.
-      |The values looked up come from the `stacks` and `app` in the riff-raff.yaml and the stage deployed to.
-    """.stripMargin
-  ).default(false)
-
-  val prefixStackParam = Param[Boolean]("prefixStack",
-    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(true)
-
-  val prefixStackToKeyParam = Param[Boolean]("prefixStackToKey",
-    documentation = "Whether to prefix `package` to the S3 location"
-  ).default(true)
-
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
-  val functionsParam = Param[Map[String, Map[String, String]]]("functions",
-    documentation =
-      """
-        |In order for this to work, magenta must have credentials that are able to perform `lambda:UpdateFunctionCode`
-        |on the specified resources.
-        |
-        |Map of Stage to Lambda functions. `name` is the Lambda `FunctionName`. The `filename` field is optional and if
-        |not specified defaults to `lambda.zip`
-        |e.g.
-        |
-        |        "functions": {
-        |          "CODE": {
-        |           "name": "myLambda-CODE",
-        |           "filename": "myLambda-CODE.zip",
-        |          },
-        |          "PROD": {
-        |           "name": "myLambda-PROD",
-        |           "filename": "myLambda-PROD.zip",
-        |          }
-        |        }
-      """.stripMargin,
-    optional = true
-  )
+  override val functionNamesParamDescriptionSuffix = "update with the code from fileNameParam"
+
+  def buildUpdateLambdaFunction(stackNamePrefix: String, stage: String, name: String, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
+    UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, getTargetBucketFromConfig(pkg, target, reporter))
+
+  def buildUpdateLambdaFunction(functionName: String, functionDefinition: Map[String, String], pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
+    UpdateLambdaFunction(LambdaFunctionName(functionName), fileName = functionDefinition.getOrElse("filename", "lambda.zip"), target.region, getTargetBucketFromConfig(pkg, target, reporter))
+
   // TODO: Introduce parent trait for LambdaDeploy and LambdaInvoke to inherit from which holds shared behaviour such as this function
   def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
-    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
-
     val stage = target.parameters.stage.name
 
     (functionNamesParam.get(pkg), functionsParam.get(pkg), lookupByTags(pkg, target, reporter), prefixStackParam(pkg, target, reporter)) match {
       // the lambdas are a simple hardcoded list of function names
       case (Some(functionNames), None, false, prefixStack) =>
         val stackNamePrefix = if (prefixStack) target.stack.name else ""
-        for {
-          name <- functionNames
-        } yield UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, bucket)
+        functionNames.map { name =>
+          buildUpdateLambdaFunction(stackNamePrefix, stage, name, pkg, target, reporter)
+        }
 
       // the list of lambdas are provided in a map from stage to lambda name and filename
       case (None, Some(functionsMap), false, _) =>
         val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
         val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
-        val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        List(UpdateLambdaFunction(LambdaFunctionName(functionName), fileName, target.region, bucket))
+
+        List(buildUpdateLambdaFunction(functionName, functionDefinition, pkg, target, reporter))
 
       // the lambda to update is discovered from Stack, App and Stage tags
       case (None, None, true, _) =>
