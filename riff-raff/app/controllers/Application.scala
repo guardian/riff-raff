@@ -49,7 +49,7 @@ class Menu(config: Config) {
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
       SingleMenuItem("Hooks", routes.HooksController.list()),
-      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = config.auth.whitelist.useDatabase),
+      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = config.auth.allowList.useDatabase),
       SingleMenuItem("API keys", routes.Api.listKeys()),
       SingleMenuItem("Restrictions", routes.Restrictions.list()),
       SingleMenuItem("Schedules", routes.ScheduleController.list())

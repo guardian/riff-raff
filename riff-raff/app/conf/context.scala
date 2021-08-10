@@ -79,7 +79,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
   object auth {
     lazy val domains: List[String] = getStringList("auth.domains")
-    object whitelist {
+    object allowList {
       lazy val useDatabase: Boolean = getBooleanOpt("auth.whitelist.useDatabase").getOrElse(false)
       lazy val addresses: List[String] = getStringList("auth.whitelist.addresses")
     }

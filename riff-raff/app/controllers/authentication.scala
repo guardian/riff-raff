@@ -34,14 +34,14 @@ object AuthorisationRecord extends SQLSyntaxSupport[ApiKey] {
 }
 
 trait AuthorisationValidator {
-  def emailDomainWhitelist: List[String]
-  def emailWhitelistEnabled: Boolean
-  def emailWhitelistContains(email:String): Boolean
+  def emailDomainAllowList: List[String]
+  def emailAllowListEnabled: Boolean
+  def emailAllowListContains(email:String): Boolean
   def isAuthorised(id: UserIdentity) = authorisationError(id).isEmpty
   def authorisationError(id: UserIdentity): Option[String] = {
-    if (emailDomainWhitelist.nonEmpty && !emailDomainWhitelist.contains(id.emailDomain)) {
-      Some(s"The e-mail address domain you used to login to Riff-Raff (${id.email}) is not in the configured whitelist.  Please try again with another account or contact the Riff-Raff administrator.")
-    } else if (emailWhitelistEnabled && !emailWhitelistContains(id.email)) {
+    if (emailDomainAllowList.nonEmpty && !emailDomainAllowList.contains(id.emailDomain)) {
+      Some(s"The e-mail address domain you used to login to Riff-Raff (${id.email}) is not in the configured allowlist.  Please try again with another account or contact the Riff-Raff administrator.")
+    } else if (emailAllowListEnabled && !emailAllowListContains(id.email)) {
       Some(s"The e-mail address you used to login to Riff-Raff (${id.email}) is not authorised.  Please try again with another account, ask a colleague to add your address or contact the Riff-Raff administrator.")
     } else {
       None
@@ -54,12 +54,12 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
   extends BaseController with Logging with LoginSupport with I18nSupport with LogAndSquashBehaviour {
 
   val validator = new AuthorisationValidator {
-    def emailDomainWhitelist = config.auth.domains
-    def emailWhitelistEnabled = config.auth.whitelist.useDatabase || config.auth.whitelist.addresses.nonEmpty
-    def emailWhitelistContains(email: String) = {
+    def emailDomainAllowList = config.auth.domains
+    def emailAllowListEnabled = config.auth.allowList.useDatabase || config.auth.allowList.addresses.nonEmpty
+    def emailAllowListContains(email: String) = {
       val lowerCaseEmail = email.toLowerCase
-      config.auth.whitelist.addresses.contains(lowerCaseEmail) ||
-        (config.auth.whitelist.useDatabase && datastore.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
+      config.auth.allowList.addresses.contains(lowerCaseEmail) ||
+        (config.auth.allowList.useDatabase && datastore.getAuthorisation(lowerCaseEmail).exists(_.isDefined))
     }
   }
 
