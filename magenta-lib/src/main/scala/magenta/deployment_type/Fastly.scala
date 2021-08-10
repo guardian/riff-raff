@@ -6,7 +6,7 @@ object Fastly  extends DeploymentType {
   val name = "fastly"
   val documentation =
     """
-      |Deploy a new set of VCL configuration files to the [fastly](http://www.fastly.com/) CDN via the fastly API.
+      |Deploy a new set of VCL configuration files to the [fastly](https://www.fastly.com/) CDN via the fastly API.
     """.stripMargin
 
   val deploy = Action("deploy",
