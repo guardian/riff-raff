@@ -2,7 +2,6 @@ package controllers
 
 import java.net.{URLDecoder, URLEncoder}
 import java.util.UUID
-
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import cats.syntax.either._
@@ -27,7 +26,7 @@ import play.utils.UriEncoding
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import utils.{ChangeFreeze, LogAndSquashBehaviour}
+import utils.{ChangeFreeze, Favourites, LogAndSquashBehaviour}
 
 class DeployController(config: Config,
                        menu: Menu,
@@ -44,7 +43,8 @@ class DeployController(config: Config,
   extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   def deploy = AuthAction { implicit request =>
-    Ok(views.html.deploy.form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup))
+    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
+    Ok(views.html.deploy.form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup, favourites))
   }
 
   def processForm = AuthAction { implicit request =>
@@ -290,6 +290,24 @@ class DeployController(config: Config,
     val stream = config.artifact.aws.client.getObject(getObjectRequest)
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
+  }
+
+  def favourite(project: String) = AuthAction { implicit request =>
+    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
+    val newFavourites = Favourites.toggleFavourite(project, favourites)
+    logger.info(s"Favourite: $project. Current: $favourites")
+    Redirect(routes.DeployController.deploy())
+      .withCookies(Favourites.toCookie(newFavourites))
+//    (for {
+//      submission <- request.body.asFormUrlEncoded
+//      projectSubmission <- submission.get("project")
+//      project <- projectSubmission.headOption
+
+
+//    } yield {
+//      Redirect(routes.DeployController.deploy())
+//        .withCookies(Favourites.toCookie(newFavourites))
+//    }) getOrElse Redirect(routes.DeployController.deploy())
   }
 
 }

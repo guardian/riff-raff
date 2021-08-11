@@ -2,7 +2,7 @@
 @import utils.ChangeFreeze
 @import magenta.Strategy
 @import magenta.Strategy.MostlyHarmless
-@(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup, favourites: List[String] = Nil)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
@@ -25,7 +25,13 @@
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
+            <div>
+                Favourites:
+                @favourites.mkString(" ")
+            </div>
+
             @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
+            <button id="favourite-button">Favourite</button>
             @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(
                 deployForm("stage"),

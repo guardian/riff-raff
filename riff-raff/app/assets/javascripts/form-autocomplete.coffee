@@ -9,6 +9,7 @@ updateDeployInfo = () ->
   isExactMatch = elemProjectInput.hasClass("project-exact-match")
   selectedProject = elemProjectInput.val()
   selectedStage = $('#stage').val()
+
   url = if selectedStage == ''
           jsRoutes.controllers.DeployController.deployHistory(selectedProject, undefined, isExactMatch).url
         else
