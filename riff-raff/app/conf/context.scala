@@ -80,18 +80,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
   object auth {
     lazy val domains: List[String] = getStringList("auth.domains")
     object allowList {
-      lazy val useDatabase: Boolean = {
-        // TODO remove reading of legacy config
-        val newConfig = getBooleanOpt("auth.allowlist.useDatabase")
-        val legacyConfig = getBooleanOpt("auth.whitelist.useDatabase").getOrElse(false)
-        newConfig.getOrElse(legacyConfig)
-      }
-      lazy val addresses: List[String] = {
-        // TODO remove reading of legacy config
-        val newConfig = getStringList("auth.allowlist.addresses")
-        val legacyConfig = getStringList("auth.whitelist.addresses")
-        if (newConfig.nonEmpty) newConfig else legacyConfig
-      }
+      lazy val useDatabase: Boolean = getBooleanOpt("auth.whitelist.useDatabase").getOrElse(false)
+      lazy val addresses: List[String] = getStringList("auth.whitelist.addresses")
     }
 
     lazy val clientId: String = getStringOpt("auth.clientId").getOrException("No client ID configured")
