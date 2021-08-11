@@ -54,12 +54,14 @@
                 <label class="control-label">Favourites</label>
                 <div id="favourites-list">
                     @favourites.map { fav =>
-                        <button class="select-favourite-project-button btn btn-default" value="@{
-                            fav
-                        }">@fav</button>
-                        <button class="delete-favourite-project-button btn btn-xs btn-danger" value="@{
-                            fav
-                        }"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i></button>
+                        <div>
+                            <button class="select-favourite-project-button btn btn-default" value="@{
+                                fav
+                            }">@fav</button>
+                            <button class="delete-favourite-project-button btn btn-xs btn-danger" value="@{
+                                fav
+                            }"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i></button>
+                        </div>
                     }
                 </div>
             }
