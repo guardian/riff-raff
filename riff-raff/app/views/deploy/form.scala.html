@@ -6,7 +6,7 @@
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
-@main("Deploy request", request, List("form-autocomplete", "collapsing")) {
+@main("Deploy request", request, List("form-autocomplete", "collapsing", "favourite")) {
 
     <div class="clearfix"><p>&nbsp;</p></div>
 
@@ -18,6 +18,31 @@
             font-weight: normal;
             margin-left: 5px;
         }
+        #favourites-list {
+            margin-bottom: 15px;
+        }
+        .favourite-project {
+            margin-top: 3px;
+            padding: 3px 6px;
+        }
+        .glyphicon-star {
+            margin-left: 1px;
+        }
+        .project-container {
+            display: flex;
+        }
+        #projectInput_field {
+            flex: 1;
+            margin-right: 5px;
+        }
+        #favourite-button {
+            top: 29px;
+            position: relative;
+            height: 100%;
+        }
+        .favourite-project-delete {
+            margin-top: 3px;
+        }
     </style>
 
     <div class="col-md-6">
@@ -25,13 +50,24 @@
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
-            <div>
-                Favourites:
-                @favourites.mkString(" ")
-            </div>
+            @if(favourites.nonEmpty) {
+                <label class="control-label">Favourites</label>
+                <div id="favourites-list">
+                    @favourites.map { fav =>
+                        <button class="favourite-project btn btn-default" value="@{
+                            fav
+                        }">@fav</button>
+                        <button class="favourite-project-delete btn btn-xs btn-danger" value="@{
+                            fav
+                        }"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i></button>
+                    }
+                </div>
+            }
 
-            @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
-            <button id="favourite-button">Favourite</button>
+            <div class="project-container">
+                @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
+                <button id="favourite-button"><i class="glyphicon glyphicon-star"></i></button>
+            </div>
             @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(
                 deployForm("stage"),

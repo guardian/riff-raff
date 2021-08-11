@@ -296,7 +296,7 @@ class DeployController(config: Config,
     val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
     val newFavourites = Favourites.toggleFavourite(project, favourites)
     logger.info(s"Favourite: $project. Current: $favourites")
-    Redirect(routes.DeployController.deploy())
+    Ok("ok")
       .withCookies(Favourites.toCookie(newFavourites))
 //    (for {
 //      submission <- request.body.asFormUrlEncoded

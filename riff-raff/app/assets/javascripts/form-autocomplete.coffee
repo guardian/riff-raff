@@ -60,7 +60,14 @@ $ ->
       $(e.target).autocomplete("search")
 
   $('#stage').change ->
-    console.log('selected a stage')
+    updateDeployInfo()
+
+  $('.favourite-project').click (e) ->
+    e.preventDefault()
+    project = e.target.value
+
+    elemProjectInput = $('#projectInput')
+    elemProjectInput.val(project)
     updateDeployInfo()
 
   updateDeployInfo()

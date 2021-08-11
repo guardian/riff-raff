@@ -214,7 +214,8 @@ class Application(config: Config,
         routes.javascript.DeployController.buildInfo,
         routes.javascript.DeployController.viewUUID,
         routes.javascript.DeployController.deployAgainUuid,
-        routes.javascript.DeployController.deployConfig
+        routes.javascript.DeployController.deployConfig,
+        routes.javascript.DeployController.favourite
       )
     }.as("text/javascript")
   }

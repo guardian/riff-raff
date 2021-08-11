@@ -10,7 +10,6 @@ import play.api.mvc.Cookie
 object Favourites {
   def fromCookie(cookie: Cookie): List[String] = {
     try {
-      PlayJson.parse("")
       PlayJson.parse(Base64.getDecoder.decode(cookie.value)).validate[List[String]].fold(
         { a =>
           println("Could not parse favourites cookie")
