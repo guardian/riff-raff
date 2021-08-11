@@ -21,7 +21,7 @@
         #favourites-list {
             margin-bottom: 15px;
         }
-        .favourite-project {
+        .select-favourite-project-button {
             margin-top: 3px;
             padding: 3px 6px;
         }
@@ -35,12 +35,12 @@
             flex: 1;
             margin-right: 5px;
         }
-        #favourite-button {
+        #add-favourite-project-button {
             top: 29px;
             position: relative;
             height: 100%;
         }
-        .favourite-project-delete {
+        .delete-favourite-project-button {
             margin-top: 3px;
         }
     </style>
@@ -54,10 +54,10 @@
                 <label class="control-label">Favourites</label>
                 <div id="favourites-list">
                     @favourites.map { fav =>
-                        <button class="favourite-project btn btn-default" value="@{
+                        <button class="select-favourite-project-button btn btn-default" value="@{
                             fav
                         }">@fav</button>
-                        <button class="favourite-project-delete btn btn-xs btn-danger" value="@{
+                        <button class="delete-favourite-project-button btn btn-xs btn-danger" value="@{
                             fav
                         }"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i></button>
                     }
@@ -66,7 +66,7 @@
 
             <div class="project-container">
                 @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
-                <button id="favourite-button"><i class="glyphicon glyphicon-star"></i></button>
+                <button id="add-favourite-project-button"><i class="glyphicon glyphicon-star"></i></button>
             </div>
             @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(

@@ -62,7 +62,7 @@ $ ->
   $('#stage').change ->
     updateDeployInfo()
 
-  $('.favourite-project').click (e) ->
+  $('.select-favourite-project-button').click (e) ->
     e.preventDefault()
     project = e.target.value
 

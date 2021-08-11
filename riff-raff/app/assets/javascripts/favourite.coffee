@@ -10,7 +10,7 @@ updateFavourite = (project) ->
       location.reload();
 
 $ ->
-  $('#favourite-button').click (e) ->
+  $('#add-favourite-project-button').click (e) ->
     e.preventDefault()
 
     elemProjectInput = $('#projectInput')
@@ -18,7 +18,7 @@ $ ->
 
     updateFavourite(selectedProject)
 
-  $('.favourite-project-delete').click (e) ->
+  $('.delete-favourite-project-button').click (e) ->
     e.preventDefault()
     selectedProject = e.target.parentElement.value
     updateFavourite(selectedProject)
