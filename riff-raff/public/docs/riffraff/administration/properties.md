@@ -30,8 +30,8 @@ Authentication is designed to use Google's OAuth2 support. You'll need a Client 
  - `auth.redirectUrl` - the URL that Google will redirect back to, by default this is worked out from the `url.publicPrefix` so probably doesn't need to be specified
  - `auth.domain` - if specified then then OAuth login will be restricted to this domain
  - `auth.domains` - white list of e-mail address domains to allow access, empty for all
- - `auth.whitelist.addresses` - white list of e-mail addresses to allow access, empty for all
- - `auth.whitelist.useDatabase` - enable database module and in app configuration of e-mail whitelist
+ - `auth.allowlist.addresses` - white list of e-mail addresses to allow access, empty for all
+ - `auth.allowlist.useDatabase` - enable database module and in app configuration of e-mail allowlist
 
 credentials
 -----------

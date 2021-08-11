@@ -13,7 +13,7 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
   val config = makeConfig("", "")
   val configs: Seq[RestrictionConfig] = Seq(
     makeConfig("testProject1", "PROD"),
-    makeConfig("testProject1", "CODE", cd=true, whitelist = Seq("test.user@example.com")),
+    makeConfig("testProject1", "CODE", cd=true, allowlist = Seq("test.user@example.com")),
     makeConfig("testProject2", ".*")
   )
 
@@ -85,7 +85,7 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
     restrictions.size shouldBe 0
   }
 
-  it should "return the matching config for a prevented stage with a non-whitelisted user" in {
+  it should "return the matching config for a prevented stage with a non-allowlisted user" in {
     val restrictions = RestrictionChecker.configsThatPreventDeployment(
       testRestrictions, "testProject1", "CODE", UserRequestSource(makeUser("bad.user@example.com"))
     )
@@ -93,7 +93,7 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
     restrictions should contain(configs(1))
   }
 
-  it should "return no configs for a prevented stage with a whitelisted user" in {
+  it should "return no configs for a prevented stage with a allowlisted user" in {
     val restrictions = RestrictionChecker.configsThatPreventDeployment(
       testRestrictions, "testProject1", "CODE", UserRequestSource(makeUser("test.user@example.com"))
     )
@@ -145,16 +145,16 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
     ) shouldBe false
   }
 
-  it should "match when a user request and user is present in whitelist" in {
+  it should "match when a user request and user is present in allowlist" in {
     RestrictionChecker.sourceMatches(
-      config.copy(whitelist = Seq("user1@example.com", "test.user@example.com", "user3@example.com")),
+      config.copy(allowlist = Seq("user1@example.com", "test.user@example.com", "user3@example.com")),
       UserRequestSource(makeUser("test.user@example.com"))
     ) shouldBe true
   }
 
-  it should "not match when a user request and user is not present in whitelist" in {
+  it should "not match when a user request and user is not present in allowlist" in {
     RestrictionChecker.sourceMatches(
-      config.copy(whitelist = Seq("user1@example.com", "user3@example.com")),
+      config.copy(allowlist = Seq("user1@example.com", "user3@example.com")),
       UserRequestSource(makeUser("test.user@example.com"))
     ) shouldBe false
   }
@@ -182,9 +182,9 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
     RestrictionChecker.stageMatches("PROD.*", "ZEBRA-PROD") shouldBe false
   }
 
-  def makeConfig(projectName: String, stage: String, whitelist: Seq[String] = Seq.empty, cd: Boolean = false,
+  def makeConfig(projectName: String, stage: String, allowlist: Seq[String] = Seq.empty, cd: Boolean = false,
     creator:String = "", editingLocked: Boolean = false) =
-  RestrictionConfig(UUID.randomUUID, projectName, stage, new DateTime(), creator, creator, editingLocked, whitelist, cd, "")
+  RestrictionConfig(UUID.randomUUID, projectName, stage, new DateTime(), creator, creator, editingLocked, allowlist, cd, "")
   def makeUser(email: String) = UserIdentity("1234", email, "Test", "User", 123344567845L, None)
 
 }

@@ -7,7 +7,7 @@ case class RestrictionForm(
   projectName: String,
   stage: String,
   editingLocked: Boolean,
-  whitelist: Seq[String],
+  allowlist: Seq[String],
   continuousDeployment: Boolean,
   note: String
 )

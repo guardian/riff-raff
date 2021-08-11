@@ -33,7 +33,7 @@ object RestrictionChecker {
   def sourceMatches(config: RestrictionConfig, source: RequestSource): Boolean = {
     source match {
       case ContinuousDeploymentRequestSource | ScheduleRequestSource => config.continuousDeployment
-      case UserRequestSource(identity) => config.whitelist.contains(identity.email)
+      case UserRequestSource(identity) => config.allowlist.contains(identity.email)
       case _ => false
     }
   }

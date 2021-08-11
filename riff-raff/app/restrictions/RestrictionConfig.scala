@@ -14,7 +14,7 @@ import org.joda.time.DateTime
   * @param fullName The user that last updated this
   * @param email The authed email of the user that last updated this
   * @param editingLocked Whether editing of this record should be locked to the user that created it
-  * @param whitelist A whitelist of users that can deploy
+  * @param allowlist An allowlist of users that can deploy
   * @param continuousDeployment Whether continuous deploys can start this deploy
   * @param note Note explaining why thie restriction is in place
   */
@@ -26,7 +26,7 @@ case class RestrictionConfig(
   fullName: String,
   email: String,
   editingLocked: Boolean,
-  whitelist: Seq[String],
+  allowlist: Seq[String],
   continuousDeployment: Boolean,
   note: String
 )

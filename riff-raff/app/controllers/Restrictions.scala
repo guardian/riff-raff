@@ -30,14 +30,14 @@ class Restrictions(config: Config,
       "projectName" -> nonEmptyText,
       "stage" -> nonEmptyText,
       "editingLocked" -> boolean,
-      "whitelist" -> optional(text),
+      "allowlist" -> optional(text),
       "continuousDeployment" -> boolean,
       "note" -> nonEmptyText
-    )((id, projectName, stage, editingLocked, whitelist, cdPermitted, note) =>
+    )((id, projectName, stage, editingLocked, allowlist, cdPermitted, note) =>
       RestrictionForm(id, projectName, stage, editingLocked,
-        whitelist.map(_.split('\n').map(_.trim).toSeq.filter(_.nonEmpty)).getOrElse(Seq.empty), cdPermitted, note)
+        allowlist.map(_.split('\n').map(_.trim).toSeq.filter(_.nonEmpty)).getOrElse(Seq.empty), cdPermitted, note)
     )(f =>
-      Some((f.id, f.projectName, f.stage, f.editingLocked, Some(f.whitelist.mkString("\n")),
+      Some((f.id, f.projectName, f.stage, f.editingLocked, Some(f.allowlist.mkString("\n")),
         f.continuousDeployment,  f.note))
     ).verifying(
       "Stage is invalid - should be a valid regular expression or contain no special values",
@@ -63,7 +63,7 @@ class Restrictions(config: Config,
         RestrictionChecker.isEditable(restrictionConfigDynamoRepository.getRestriction(f.id), request.user, config.auth.superusers) match {
           case Right(_) =>
             val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
-              request.user.email, f.editingLocked, f.whitelist, f.continuousDeployment, f.note)
+              request.user.email, f.editingLocked, f.allowlist, f.continuousDeployment, f.note)
             restrictionConfigDynamoRepository.setRestriction(newConfig)
             Redirect(routes.Restrictions.list())
           case Left(Error(reason)) =>
@@ -76,7 +76,7 @@ class Restrictions(config: Config,
   def edit(id: String) = authAction { implicit request =>
     restrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)).map{ rc =>
       val form = restrictionsForm.fill(
-        RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.whitelist, rc.continuousDeployment, rc.note)
+        RestrictionForm(rc.id, rc.projectName, rc.stage, rc.editingLocked, rc.allowlist, rc.continuousDeployment, rc.note)
       )
       val cannotSave = RestrictionChecker.isEditable(Some(rc), request.user, config.auth.superusers).isLeft
 
