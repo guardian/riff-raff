@@ -16,7 +16,8 @@ $ ->
     elemProjectInput = $('#projectInput')
     selectedProject = elemProjectInput.val()
 
-    updateFavourite(selectedProject)
+    if selectedProject?
+      updateFavourite(selectedProject)
 
   $('.delete-favourite-project-button').click (e) ->
     e.preventDefault()
