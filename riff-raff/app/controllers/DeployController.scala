@@ -292,9 +292,16 @@ class DeployController(config: Config,
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
   }
 
-  def favourite(project: String) = AuthAction { implicit request =>
+  def addFavourite(project: String) = AuthAction { implicit request =>
     val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
-    val newFavourites = Favourites.toggleFavourite(project, favourites)
+    val newFavourites = favourites :+ project
+    logger.info(s"Favourite: $project. Current: $favourites")
+    Ok("ok").withCookies(Favourites.toCookie(newFavourites))
+  }
+
+  def deleteFavourite(project: String) = AuthAction { implicit request =>
+    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
+    val newFavourites = favourites.filter(fav => fav != project)
     logger.info(s"Favourite: $project. Current: $favourites")
     Ok("ok").withCookies(Favourites.toCookie(newFavourites))
   }

@@ -215,7 +215,8 @@ class Application(config: Config,
         routes.javascript.DeployController.viewUUID,
         routes.javascript.DeployController.deployAgainUuid,
         routes.javascript.DeployController.deployConfig,
-        routes.javascript.DeployController.favourite
+        routes.javascript.DeployController.addFavourite,
+        routes.javascript.DeployController.deleteFavourite
       )
     }.as("text/javascript")
   }

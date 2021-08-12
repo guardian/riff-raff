@@ -1,5 +1,10 @@
-updateFavourite = (project) ->
-  endpoint = jsRoutes.controllers.DeployController.favourite(project)
+updateFavourite = (project, add) ->
+  endpoint =
+    if add
+      jsRoutes.controllers.DeployController.addFavourite(project)
+    else
+      jsRoutes.controllers.DeployController.deleteFavourite(project)
+
   csrfTokenValue = $('input[name="csrfToken"]').val()
   $.ajax
     url: endpoint.url
@@ -17,9 +22,9 @@ $ ->
     selectedProject = elemProjectInput.val()
 
     if selectedProject?
-      updateFavourite(selectedProject)
+      updateFavourite(selectedProject, true)
 
   $('.delete-favourite-project-button').click (e) ->
     e.preventDefault()
     selectedProject = e.target.parentElement.value
-    updateFavourite(selectedProject)
+    updateFavourite(selectedProject, false)

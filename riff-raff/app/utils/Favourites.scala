@@ -32,12 +32,4 @@ object Favourites {
     val value = Base64.getEncoder.encodeToString(PlayJson.stringify(PlayJson.toJson(favourites)).getBytes("UTF-8"))
     Cookie("favourites", value, maxAge = Some(86400 * 365), path = "/", secure = true, httpOnly = true)
   }
-
-  /**
-    * Adds favourite if it does not exist, removes if it does
-    */
-  def toggleFavourite(account: String, favourites: List[String]): List[String] = {
-    if (favourites.contains(account)) favourites.filterNot(_ == account)
-    else favourites :+ account
-  }
 }
