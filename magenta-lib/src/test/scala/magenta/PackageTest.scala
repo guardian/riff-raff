@@ -55,7 +55,14 @@ class PackageTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     an [AwsServiceException] should be thrownBy retryOnException(clientConfiguration)(block)
 
-    calls should be(3)
+    /*
+    numRetries is set to 3 in `clientConfiguration`
+    1 initial attempt + 3 retries = 4
+
+    Note, when using v2.5.14 of the AWS SDK this was 3.
+    I couldn't work out why it differs in v2.17.15 and the above explanation is an attempt to rationalise it 😅.
+     */
+    calls should be(4)
   }
 
   "retryOnException" should "throw an exception immediately if not retryable" in {
