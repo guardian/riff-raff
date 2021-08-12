@@ -26,5 +26,6 @@ $ ->
 
   $('.delete-favourite-project-button').click (e) ->
     e.preventDefault()
-    selectedProject = e.target.parentElement.value
-    updateFavourite(selectedProject, false)
+    selectedProject = e.currentTarget.value
+    if selectedProject?
+      updateFavourite(selectedProject, false)
