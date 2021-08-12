@@ -295,14 +295,12 @@ class DeployController(config: Config,
   def addFavourite(project: String) = AuthAction { implicit request =>
     val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
     val newFavourites = favourites :+ project
-    logger.info(s"Favourite: $project. Current: $favourites")
     Ok("ok").withCookies(Favourites.toCookie(newFavourites))
   }
 
   def deleteFavourite(project: String) = AuthAction { implicit request =>
     val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
     val newFavourites = favourites.filter(fav => fav != project)
-    logger.info(s"Favourite: $project. Current: $favourites")
     Ok("ok").withCookies(Favourites.toCookie(newFavourites))
   }
 
