@@ -2,11 +2,11 @@
 @import utils.ChangeFreeze
 @import magenta.Strategy
 @import magenta.Strategy.MostlyHarmless
-@(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup, favourites: List[String] = Nil)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
+@(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import b3.vertical.fieldConstructor
 @import helper.CSRF
 
-@main("Deploy request", request, List("form-autocomplete", "collapsing", "favourite")) {
+@main("Deploy request", request, List("form-autocomplete", "collapsing")) {
 
     <div class="clearfix"><p>&nbsp;</p></div>
 
@@ -50,6 +50,9 @@
             margin-top: 3px;
             margin-left: -3px;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 
     <div class="col-md-6">
@@ -57,21 +60,11 @@
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
-            @if(favourites.nonEmpty) {
+
+            <div id="favourites-container" class="hidden">
                 <label class="control-label">Favourites</label>
-                <div id="favourites-list">
-                    @favourites.map { fav =>
-                        <div class="favourite">
-                            <button class="select-favourite-project-button btn btn-default" value="@{
-                                fav
-                            }">@fav</button>
-                            <button class="delete-favourite-project-button btn btn-xs btn-danger" value="@{
-                                fav
-                            }"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i></button>
-                        </div>
-                    }
-                </div>
-            }
+                <div id="favourites-list"></div>
+            </div>
 
             <div class="project-container">
                 @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")

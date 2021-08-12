@@ -50,9 +50,6 @@ GET         /deployment/request/deployConfig                controllers.DeployCo
 GET         /deployment/request/deployFiles                 controllers.DeployController.deployFiles(projectName:String, id:String)
 GET         /deployment/request/artifactFile/*key           controllers.DeployController.getArtifactFile(key:String)
 
-POST        /deployment/favourite/:project                  controllers.DeployController.addFavourite(project:String)
-DELETE      /deployment/favourite/:project                  controllers.DeployController.deleteFavourite(project:String)
-
 # Continuous deployment
 GET         /deployment/continuous                          controllers.ContinuousDeployController.list
 GET         /deployment/continuous/new                      controllers.ContinuousDeployController.form

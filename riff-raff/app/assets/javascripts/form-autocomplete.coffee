@@ -21,6 +21,62 @@ updateDeployInfo = () ->
       $("[rel='tooltip']").tooltip()
   )
 
+addFavourite = (project) ->
+  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  newFavourites =
+    if favourites?
+      favourites.push(project)
+      favourites
+    else
+      [project]
+  localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
+  renderFavourites()
+
+deleteFavourite = (project) ->
+  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  newFavourites =
+    if favourites?
+      favourites.filter (fav) -> fav != project
+    else
+      []
+  localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
+  renderFavourites()
+
+setupFavouriteHandlers = () ->
+  $('.delete-favourite-project-button').click (e) ->
+    e.preventDefault()
+    selectedProject = e.currentTarget.value
+    if selectedProject?
+      deleteFavourite(selectedProject)
+
+  $('.select-favourite-project-button').click (e) ->
+    e.preventDefault()
+    project = e.target.value
+
+    elemProjectInput = $('#projectInput')
+    elemProjectInput.val(project)
+    updateDeployInfo()
+
+renderFavourites = () ->
+  container = $('#favourites-container')
+  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  if favourites? && favourites.length > 0
+    container.removeClass('hidden')
+    list = $('#favourites-list', container)
+    list.empty()
+    favourites.forEach (fav) ->
+      list.append("
+          <div class=\"favourite\">
+            <button class=\"select-favourite-project-button btn btn-default\" value=\"#{fav}\">#{fav}</button>
+            <button class=\"delete-favourite-project-button btn btn-xs btn-danger\" value=\"#{fav}\">
+              <i class=\"glyphicon glyphicon-trash glyphicon glyphicon-white\"></i>
+            </button>
+          </div>
+      ")
+    setupFavouriteHandlers()
+  else
+    container.addClass('hidden')
+
 $ ->
   $('#projectInput').each ->
     input = $(this)
@@ -62,14 +118,17 @@ $ ->
   $('#stage').change ->
     updateDeployInfo()
 
-  $('.select-favourite-project-button').click (e) ->
+  updateDeployInfo()
+
+  $('#add-favourite-project-button').click (e) ->
     e.preventDefault()
-    project = e.target.value
 
     elemProjectInput = $('#projectInput')
-    elemProjectInput.val(project)
-    updateDeployInfo()
+    selectedProject = elemProjectInput.val()
 
-  updateDeployInfo()
+    if selectedProject?
+      addFavourite(selectedProject)
+
+  renderFavourites()
 
   console.log('initialised')

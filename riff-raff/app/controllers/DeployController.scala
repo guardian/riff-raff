@@ -26,7 +26,7 @@ import play.utils.UriEncoding
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import utils.{ChangeFreeze, Favourites, LogAndSquashBehaviour}
+import utils.{ChangeFreeze, LogAndSquashBehaviour}
 
 class DeployController(config: Config,
                        menu: Menu,
@@ -43,8 +43,7 @@ class DeployController(config: Config,
   extends BaseController with Logging with I18nSupport with LogAndSquashBehaviour {
 
   def deploy = AuthAction { implicit request =>
-    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
-    Ok(views.html.deploy.form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup, favourites))
+    Ok(views.html.deploy.form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup))
   }
 
   def processForm = AuthAction { implicit request =>
@@ -290,18 +289,6 @@ class DeployController(config: Config,
     val stream = config.artifact.aws.client.getObject(getObjectRequest)
     val source: Source[ByteString, _] = StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some(""))).as(stream.response.contentType)
-  }
-
-  def addFavourite(project: String) = AuthAction { implicit request =>
-    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
-    val newFavourites = favourites :+ project
-    Ok("ok").withCookies(Favourites.toCookie(newFavourites))
-  }
-
-  def deleteFavourite(project: String) = AuthAction { implicit request =>
-    val favourites = Favourites.fromCookie(request.cookies.get("favourites"))
-    val newFavourites = favourites.filter(fav => fav != project)
-    Ok("ok").withCookies(Favourites.toCookie(newFavourites))
   }
 
 }
