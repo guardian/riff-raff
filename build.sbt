@@ -51,8 +51,8 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     buildInfoKeys := Seq[BuildInfoKey](
       name, version, scalaVersion, sbtVersion,
-      sbtbuildinfo.BuildInfoKey.constant("gitCommitId", System.getProperty("build.vcs.number", "DEV").dequote.trim),
-      sbtbuildinfo.BuildInfoKey.constant("buildNumber", System.getProperty("build.number", "DEV").dequote.trim)
+      BuildInfoKey.constant("gitCommitId", riffRaffBuildInfo.value.revision),
+      BuildInfoKey.constant("buildNumber", riffRaffBuildInfo.value.buildIdentifier)
     ),
     buildInfoOptions += BuildInfoOption.BuildTime,
     buildInfoPackage := "riffraff",
