@@ -20,6 +20,12 @@
         }
         #favourites-list {
             margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .favourite {
+            display: flex;
+            margin-right: 8px;
         }
         .select-favourite-project-button {
             margin-top: 3px;
@@ -42,6 +48,7 @@
         }
         .delete-favourite-project-button {
             margin-top: 3px;
+            margin-left: -3px;
         }
     </style>
 
@@ -54,7 +61,7 @@
                 <label class="control-label">Favourites</label>
                 <div id="favourites-list">
                     @favourites.map { fav =>
-                        <div>
+                        <div class="favourite">
                             <button class="select-favourite-project-button btn btn-default" value="@{
                                 fav
                             }">@fav</button>
