@@ -2,7 +2,6 @@ package controllers
 
 import java.net.{URLDecoder, URLEncoder}
 import java.util.UUID
-
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.util.ByteString
 import cats.syntax.either._
