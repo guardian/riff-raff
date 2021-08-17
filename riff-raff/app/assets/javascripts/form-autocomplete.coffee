@@ -67,8 +67,8 @@ renderFavourites = () ->
     favourites.forEach (fav) ->
       list.append("
           <div class=\"favourite\">
-            <button class=\"select-favourite-project-button btn btn-default\" value=\"#{fav}\">#{fav}</button>
-            <button class=\"delete-favourite-project-button btn btn-xs btn-danger\" value=\"#{fav}\">
+            <button class=\"select-favourite-project-button btn btn-default\" value=\"#{fav}\" aria-label=\"Use favourite: #{fav}\" title=\"Use favourite: #{fav}\">#{fav}</button>
+            <button class=\"delete-favourite-project-button btn btn-xs btn-danger\" value=\"#{fav}\" aria-label=\"Delete favourite: #{fav}\" title=\"Delete favourite: #{fav}\">
               <i class=\"glyphicon glyphicon-trash glyphicon glyphicon-white\"></i>
             </button>
           </div>
