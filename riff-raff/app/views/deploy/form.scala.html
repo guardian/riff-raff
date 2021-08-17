@@ -68,7 +68,7 @@
 
             <div class="project-container">
                 @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
-                <button id="add-favourite-project-button"><i class="glyphicon glyphicon-star"></i></button>
+                <button id="add-favourite-project-button" aria-label="Add to favourites"><i class="glyphicon glyphicon-star"></i></button>
             </div>
             @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
             @b3.select(
