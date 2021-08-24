@@ -11,7 +11,7 @@ object LambdaDeploy extends LambdaDeploy
 
 case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: S3Tasks.Bucket) extends LambdaTaskPrecursor
 
-trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] {
+trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with BucketParameters {
   val name = "aws-lambda"
   val documentation =
     """
@@ -30,7 +30,7 @@ trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] {
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
-  override val functionNamesParamDescriptionSuffix = "update with the code from fileNameParam"
+  override def functionNamesParamDescriptionSuffix = "update with the code from fileNameParam"
 
   def buildLambdaTaskPrecursor(stackNamePrefix: String, stage: String, name: String, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
     UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, getTargetBucketFromConfig(pkg, target, reporter))

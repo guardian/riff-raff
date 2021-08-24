@@ -4,7 +4,7 @@ import magenta.tasks.SSM
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.ssm.SsmClient
 
-trait LambdaDeploymentType[LAMBDA_TASK_PRECURSOR <: LambdaTaskPrecursor] extends DeploymentType with BucketParameters  {
+trait LambdaDeploymentType[LAMBDA_TASK_PRECURSOR <: LambdaTaskPrecursor] extends DeploymentType {
   def functionNamesParamDescriptionSuffix: String
   val functionNamesParam = Param[List[String]]("functionNames",
     s"""One or more function names to $functionNamesParamDescriptionSuffix.

@@ -2,12 +2,14 @@ package magenta
 package tasks
 
 import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
+import java.util.Base64
+import java.nio.charset.StandardCharsets
 import magenta.artifact._
 import magenta.deployment_type.{
   LambdaFunction,
   LambdaFunctionName,
   LambdaFunctionTags
-}
+, LambdaInvoke}
 import magenta.deployment_type.param_reads.PatternValue
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
 import play.api.libs.json.Json
@@ -407,7 +409,6 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     implicit val s3client: S3Client = resources.artifactClient
-    // TODO: take a parameter to determine whether to read files as bytes or strings
     val artifactFileNameToContentMap = S3Location.listObjects(artifactsPath).map(s3object => {
       S3Location.fetchContentAsString(s3object).fold(
         error => resources.reporter.fail(error.toString),
@@ -416,7 +417,7 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
     }).toMap
 
     val lambdaPayload = Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
-    resources.reporter.info(lambdaPayload.toString())
+    resources.reporter.verbose(lambdaPayload.toString()) // TODO: Can this be wrapped in some heading/section?
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
 
       // FIXME: Move this into LambdaFunction trait to avoid repetition with UpdateS3Lambda
@@ -428,8 +429,15 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
             resources.reporter.fail(s"Failed to find any function with tags $tags")
           }
       }
-
-      client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
+      if (functionName.startsWith(LambdaInvoke.lambdaFunctionNamePrefix)) {
+        resources.reporter.verbose(s"Invoking $function Lambda")
+        val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
+        val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
+        resources.reporter.info(new String(logResultByteArray, StandardCharsets.UTF_8)) //TODO: Split log string on line breaks, and call reporter.info for each line (also improve what the Lambda logs)
+        resources.reporter.verbose(s"Finished invoking $function Lambda")
+      } else {
+        resources.reporter.fail(s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'.")
+      }
     }
   }
 }

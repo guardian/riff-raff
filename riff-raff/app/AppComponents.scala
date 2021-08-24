@@ -126,7 +126,7 @@ class AppComponents(
     Fastly,
     new CloudFormation(DefaultBuildTags),
     LambdaDeploy,
-    LambdaInvoke,
+    BrazePublish,
     AmiCloudFormationParameter,
     SelfDeploy,
     GcpDeploymentManager,
