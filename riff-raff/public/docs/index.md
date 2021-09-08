@@ -24,6 +24,7 @@ Using Riff-Raff
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy
  - [AWS S3 bucket configuration for uploads](riffraff/s3buckets.md)
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
+ - [Restrictions](riffraff/restrictions.md) - how to restrict deployments
 
 Riff-Raff not picking up builds?
 ---------------
