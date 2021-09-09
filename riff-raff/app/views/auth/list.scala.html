@@ -28,19 +28,12 @@
                         <td>@auth.email</td>
                         <td><span class="label label-default">@auth.approvedBy</span></td>
                         <td>
-                            @(
-                                if(auth.isSuperuser(config)) {
-                                    <span>
-                                        <i class="glyphicon glyphicon-ok"></i>
-                                        Yes
-                                    </span>
-                                } else {
-                                    <span>
-                                        <i class="glyphicon glyphicon-remove"></i>
-                                        No
-                                    </span>
-                                }
-                            )
+                            @(if(auth.isSuperuser(config)) {
+                                <span>
+                                    <i class="glyphicon glyphicon-ok"></i>
+                                    Yes
+                                </span>
+                            })
                         </td>
                         <td>
                         @helper.form(routes.Login.authDelete(), 'class -> "modal-form") {
