@@ -168,7 +168,7 @@ class Application(config: Config,
             }
 
             resource match {
-              case "magenta-lib/types" =>
+              case "magenta-lib/types" | "magenta-lib/types.md" =>
                 val sections = DeployTypeDocs.generateDocs(deploymentTypes).map { case (dt, docs) =>
                   val typeDocumentation = views.html.documentation.deploymentTypeSnippet(docs)
                   (dt.name, typeDocumentation)
