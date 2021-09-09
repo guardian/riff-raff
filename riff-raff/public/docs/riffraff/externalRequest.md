@@ -19,6 +19,6 @@ The parameters available are:
  - `action` - this can be `preview` or `deploy`
 
 For example, to do a preview of a deploy of riff-raff in CODE you might write:
-    `http://riff-raff/deployment/externalRequest?project=tools%3A%3Adeploy&build=333&stage=CODE&action=preview`
+    `https://riff-raff/deployment/externalRequest?project=tools%3A%3Adeploy&build=333&stage=CODE&action=preview`
 
 Note that you should generally URL encode your parameters.

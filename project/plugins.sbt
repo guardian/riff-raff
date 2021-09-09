@@ -1,4 +1,4 @@
-resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
+resolvers += "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/"
 
 // keep in sync with the play version in Dependencies
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.25")

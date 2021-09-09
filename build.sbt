@@ -57,7 +57,7 @@ lazy val riffraff = project.in(file("riff-raff"))
     buildInfoOptions += BuildInfoOption.BuildTime,
     buildInfoPackage := "riffraff",
 
-    resolvers += "Brian Clapper Bintray" at "http://dl.bintray.com/bmc/maven",
+    resolvers += "Brian Clapper Bintray" at "https://dl.bintray.com/bmc/maven",
     libraryDependencies ++= riffRaffDeps,
 
     javaOptions in Universal ++= Seq(
@@ -69,7 +69,7 @@ lazy val riffraff = project.in(file("riff-raff"))
       "-J-XX:+PrintGCDateStamps",
       s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
     ),
-    
+
     packageName in Universal := normalizedName.value,
     topLevelDirectory in Universal := Some(normalizedName.value),
     riffRaffPackageType := (packageZipTarball in Universal).value,
@@ -89,7 +89,7 @@ lazy val riffraff = project.in(file("riff-raff"))
     },
 
     fork in Test := false,
-    
+
     includeFilter in (Assets, LessKeys.less) := "*.less",
 
     pipelineStages in Assets := Seq(digest)

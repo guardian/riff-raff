@@ -64,4 +64,4 @@ In the S3 AWS console you can do this by selecting properties for the bucket and
     }
 
 In order for this to work, the riff-raff user also has an IAM policy that allows it to put objects into any bucket - see
- [amazon's docs](http://docs.amazonwebservices.com/IAM/latest/UserGuide/Delegation.html) for more information.
+ [amazon's docs](https://docs.amazonwebservices.com/IAM/latest/UserGuide/Delegation.html) for more information.
