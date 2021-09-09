@@ -47,7 +47,7 @@ object VCSInfo extends Logging {
 
   val GitHubProtocol = """git://github\.com/(.*)\.git""".r
   val GitHubUser = """git@github\.com:(.*)\.git""".r
-  val GitHubWeb = """https://github\.com/(.*)""".r
+  val GitHubWeb = """https://github\.com/(.*?)(?:.git)?$""".r
 
   def apply(ciVcsUrl: String, revision: String): Option[VCSInfo] = {
     log.debug("url:%s revision:%s" format(ciVcsUrl, revision))
