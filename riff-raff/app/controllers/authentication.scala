@@ -24,6 +24,8 @@ class ApiRequest[A](val apiKey: ApiKey, request: Request[A]) extends WrappedRequ
 
 case class AuthorisationRecord(email: String, approvedBy: String, approvedDate: DateTime) {
   def contentBlob = (approvedBy, approvedDate)
+
+  def isSuperuser(config: Config) = config.auth.superusers.contains(email)
 }
 object AuthorisationRecord extends SQLSyntaxSupport[ApiKey] {
   implicit val formats: Format[AuthorisationRecord] = Json.format[AuthorisationRecord]
