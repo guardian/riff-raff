@@ -17,13 +17,14 @@ Reference
 Using Riff-Raff
 ---------------
 
- - [Advanced deploymeny settings](riffraff/advanced-settings.md) - what is an update strategy and how to choose one
+ - [Advanced deployment settings](riffraff/advanced-settings.md) - what is an update strategy and how to choose one
  - [API](riffraff/api.md) - how to use the API and a description of the endpoints available
  - [Continuous Integration and Deployment](riffraff/hooksAndCD.md) - guide to the Riff-Raff hooks available to make continuous
  deployment easy
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy
  - [AWS S3 bucket configuration for uploads](riffraff/s3buckets.md)
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
+ - [Restrictions](riffraff/restrictions.md) - how to restrict deployments
 
 Riff-Raff not picking up builds?
 ---------------
