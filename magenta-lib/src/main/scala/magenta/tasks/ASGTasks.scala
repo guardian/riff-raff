@@ -19,7 +19,7 @@ case class CheckGroupSize(asgName: String, region: Region)(implicit val keyRing:
     }
   }
 
-  lazy val description = "Checking there is enough capacity to deploy"
+  lazy val description = s"Checking there is enough capacity in ASG $asgName to deploy"
 }
 
 case class TagCurrentInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -34,7 +34,7 @@ case class TagCurrentInstancesWithTerminationTag(asgName: String, region: Region
     }
   }
 
-  lazy val description = "Tag existing instances of the auto-scaling group for termination"
+  lazy val description = s"Tag existing instances of the auto-scaling group $asgName for termination"
 }
 
 case class ProtectCurrentInstances(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -54,7 +54,7 @@ case class ProtectCurrentInstances(asgName: String, region: Region)(implicit val
     }
   }
 
-  lazy val description = "Protect existing instances against scale in events"
+  lazy val description = s"Protect existing instances in group $asgName against scale in events"
 }
 
 case class DoubleSize(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -115,7 +115,7 @@ case class WaitForStabilization(asgName: String, duration: Long, region: Region)
     def isRateExceeded(e: AwsServiceException) = e.statusCode == 400 && e.isThrottlingException
   }
 
-  lazy val description: String = "Check the desired number of hosts in both the ASG and ELB are up and that the number of hosts match"
+  lazy val description: String = s"Check the desired number of hosts in both the ASG ($asgName) and ELB are up and that the number of hosts match"
 }
 
 case class CullInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -138,7 +138,7 @@ case class CullInstancesWithTerminationTag(asgName: String, region: Region)(impl
     def desiredSizeReset(e: AwsServiceException) = e.statusCode == 400 && e.awsErrorDetails().toString.contains("ValidationError")
   }
 
-  lazy val description = "Terminate instances with the termination tag for this deploy"
+  lazy val description = s"Terminate instances in $asgName with the termination tag for this deploy"
 }
 
 case class SuspendAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -147,7 +147,7 @@ case class SuspendAlarmNotifications(asgName: String, region: Region)(implicit v
     ASG.suspendAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
-  lazy val description = "Suspending Alarm Notifications - group will no longer scale on any configured alarms"
+  lazy val description = s"Suspending Alarm Notifications - $asgName will no longer scale on any configured alarms"
 }
 
 case class ResumeAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
@@ -156,7 +156,7 @@ case class ResumeAlarmNotifications(asgName: String, region: Region)(implicit va
     ASG.resumeAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
-  lazy val description = "Resuming Alarm Notifications - group will scale on any configured alarms"
+  lazy val description = s"Resuming Alarm Notifications - $asgName will scale on any configured alarms"
 }
 
 class ASGResetException(message: String, throwable: Throwable) extends Throwable(message, throwable)
@@ -170,6 +170,7 @@ trait ASGTask extends Task {
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     ASG.withAsgClient(keyRing, region, resources) { asgClient =>
       val group = ASG.getGroupByName(asgName, asgClient, resources.reporter)
+      resources.reporter.verbose(s"Using group $asgName (${group.autoScalingGroupARN})")
       execute(group, resources, stopFlag, asgClient)
     }
   }
