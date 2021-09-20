@@ -231,21 +231,16 @@ object ASG {
       ResumeProcessesRequest.builder().autoScalingGroupName(name).scalingProcesses("AlarmNotification").build()
     )
 
-  def getGroupByName(name: String, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
-    val request = DescribeAutoScalingGroupsRequest.builder()
-      .autoScalingGroupNames(name)
-      .maxRecords(1)
-      .build()
-    val autoScalingGroups = client.describeAutoScalingGroups(request).autoScalingGroups().asScala.toList
-    // We've asked for one record and the name must be unique per Region per account
-    autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
-  }
+  trait TagRequirement
+  case class TagMatch(key: String, value: String) extends TagRequirement
+  case class TagExists(key: String) extends TagRequirement
+  case class TagAbsent(key: String) extends TagRequirement
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, migrationTagRequirements: Option[MigrationTagRequirements], client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
-    trait TagRequirement
-    case class TagMatch(key: String, value: String) extends TagRequirement
-    case class TagExists(key: String) extends TagRequirement
-    case class TagAbsent(key: String) extends TagRequirement
+  case class AutoScalingGroupInfo(asg: AutoScalingGroup, tagRequirements: List[TagRequirement])
+
+  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack,
+                          migrationTagRequirements: Option[MigrationTagRequirements], client: AutoScalingClient,
+                          reporter: DeployReporter): AutoScalingGroupInfo = {
 
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
@@ -279,8 +274,7 @@ object ASG {
       case Nil =>
         reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
       case List(singleGroup) =>
-        reporter.verbose(s"Looked up group matching tags $tagRequirements; identified ${singleGroup.autoScalingGroupARN}")
-        singleGroup
+        AutoScalingGroupInfo(singleGroup, tagRequirements)
       case groupList =>
         reporter.fail(s"More than one autoscaling group match for $tagRequirements (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }

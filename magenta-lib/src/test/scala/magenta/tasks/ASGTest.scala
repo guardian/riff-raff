@@ -65,7 +65,8 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
+    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter)
+    info.asg shouldBe desiredGroup
   }
 
   it should "fail if more than one ASG matches the Stack and App tags (unless MigrationTagRequirements are specified)" in {
@@ -89,7 +90,8 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       S3Path("artifact-bucket", "project/123/example"))
 
     a [FailException] should be thrownBy {
-      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
+      val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter)
+      info.asg shouldBe desiredGroup
     }
   }
 
@@ -108,7 +110,8 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustBePresent), asgClientMock, reporter) should be (desiredGroup)
+    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustBePresent), asgClientMock, reporter)
+    info.asg shouldBe desiredGroup
   }
 
   it should "identify a single ASG based on Stack & App tags and MustNotBePresent MigrationTagRequirements" in {
@@ -126,7 +129,8 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
       S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustNotBePresent), asgClientMock, reporter) should be (desiredGroup)
+    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustNotBePresent), asgClientMock, reporter)
+    info.asg shouldBe desiredGroup
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {

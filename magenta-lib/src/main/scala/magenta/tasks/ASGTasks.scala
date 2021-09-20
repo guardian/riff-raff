@@ -1,5 +1,6 @@
 package magenta.tasks
 
+import magenta.tasks.ASG.AutoScalingGroupInfo
 import magenta.{KeyRing, _}
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
@@ -8,7 +9,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 
 import scala.collection.JavaConverters._
 
-case class CheckGroupSize(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class CheckGroupSize(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val doubleCapacity = asg.desiredCapacity * 2
     resources.reporter.verbose(s"ASG desired = ${asg.desiredCapacity}; ASG max = ${asg.maxSize}; Target = $doubleCapacity")
@@ -22,7 +23,7 @@ case class CheckGroupSize(asgName: String, region: Region)(implicit val keyRing:
   lazy val description = s"Checking there is enough capacity in ASG $asgName to deploy"
 }
 
-case class TagCurrentInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class TagCurrentInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     if (asg.instances.asScala.nonEmpty) {
       EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
@@ -37,7 +38,7 @@ case class TagCurrentInstancesWithTerminationTag(asgName: String, region: Region
   lazy val description = s"Tag existing instances of the auto-scaling group $asgName for termination"
 }
 
-case class ProtectCurrentInstances(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class ProtectCurrentInstances(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val instances = asg.instances.asScala.toList
     val instancesInService = instances.filter(_.lifecycleState == LifecycleState.IN_SERVICE)
@@ -57,7 +58,7 @@ case class ProtectCurrentInstances(asgName: String, region: Region)(implicit val
   lazy val description = s"Protect existing instances in group $asgName against scale in events"
 }
 
-case class DoubleSize(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class DoubleSize(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     val targetCapacity = asg.desiredCapacity * 2
@@ -77,19 +78,19 @@ sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing)
   }
 }
 
-case class HealthcheckGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class HealthcheckGrace(info: AutoScalingGroupInfo, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class WarmupGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class WarmupGrace(info: AutoScalingGroupInfo, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
 }
 
-case class TerminationGrace(asgName: String, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
+case class TerminationGrace(info: AutoScalingGroupInfo, region: Region, durationMillis: Long)(implicit keyRing: KeyRing) extends Pause(durationMillis) {
   def description: String = s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
 }
 
-case class WaitForStabilization(asgName: String, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
+case class WaitForStabilization(info: AutoScalingGroupInfo, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
@@ -118,7 +119,7 @@ case class WaitForStabilization(asgName: String, duration: Long, region: Region)
   lazy val description: String = s"Check the desired number of hosts in both the ASG ($asgName) and ELB are up and that the number of hosts match"
 }
 
-case class CullInstancesWithTerminationTag(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class CullInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       ELB.withClient(keyRing, region, resources) { elbClient =>
@@ -141,7 +142,7 @@ case class CullInstancesWithTerminationTag(asgName: String, region: Region)(impl
   lazy val description = s"Terminate instances in $asgName with the termination tag for this deploy"
 }
 
-case class SuspendAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class SuspendAlarmNotifications(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.suspendAlarmNotifications(asg.autoScalingGroupName, asgClient)
@@ -150,7 +151,7 @@ case class SuspendAlarmNotifications(asgName: String, region: Region)(implicit v
   lazy val description = s"Suspending Alarm Notifications - $asgName will no longer scale on any configured alarms"
 }
 
-case class ResumeAlarmNotifications(asgName: String, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
+case class ResumeAlarmNotifications(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     ASG.resumeAlarmNotifications(asg.autoScalingGroupName, asgClient)
@@ -162,16 +163,16 @@ case class ResumeAlarmNotifications(asgName: String, region: Region)(implicit va
 class ASGResetException(message: String, throwable: Throwable) extends Throwable(message, throwable)
 
 trait ASGTask extends Task {
-  def asgName: String
+  def info: AutoScalingGroupInfo
+  def asgName: String = info.asg.autoScalingGroupName
   def region: Region
 
   def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient)
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     ASG.withAsgClient(keyRing, region, resources) { asgClient =>
-      val group = ASG.getGroupByName(asgName, asgClient, resources.reporter)
-      resources.reporter.verbose(s"Using group $asgName (${group.autoScalingGroupARN})")
-      execute(group, resources, stopFlag, asgClient)
+      resources.reporter.verbose(s"Looked up group matching tags ${info.tagRequirements}; identified ${info.asg.autoScalingGroupARN}")
+      execute(info.asg, resources, stopFlag, asgClient)
     }
   }
 }
