@@ -1,11 +1,11 @@
 package magenta.deployment_type
 
-import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, fixtures}
+import magenta.{App, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, fixtures}
 
 import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.fixtures._
-import magenta.tasks.ASG.{AutoScalingGroupInfo, TagMatch}
+import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch}
 import magenta.tasks._
 import org.mockito.ArgumentMatchersSugar
 import org.mockito.MockitoSugar
@@ -32,6 +32,35 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
       .maxSize(10)
       .build()
     AutoScalingGroupInfo(asg, List(TagMatch("App", name)))
+  }
+
+  "AutoScalingGroupLookup.getTagRequirements" should "return the right tags for a basic app" in {
+    val tagReqs = AutoScalingGroupLookup.getTagRequirements(Stage("testStage"), Stack("testStack"), App("testApp"), NoMigration)
+    tagReqs.toSet shouldBe Set(
+      TagMatch("Stage", "testStage"),
+      TagMatch("Stack", "testStack"),
+      TagMatch("App", "testApp")
+    )
+  }
+
+  it should "return a TagExists when migration is MustBePresent" in {
+    val tagReqs = AutoScalingGroupLookup.getTagRequirements(Stage("testStage"), Stack("testStack"), App("testApp"), MustBePresent)
+    tagReqs.toSet shouldBe Set(
+      TagMatch("Stage", "testStage"),
+      TagMatch("Stack", "testStack"),
+      TagMatch("App", "testApp"),
+      TagExists("gu:riffraff:new-asg")
+    )
+  }
+
+  it should "return a TagExists when migration is MustNotBePresent" in {
+    val tagReqs = AutoScalingGroupLookup.getTagRequirements(Stage("testStage"), Stack("testStack"), App("testApp"), MustNotBePresent)
+    tagReqs.toSet shouldBe Set(
+      TagMatch("Stage", "testStage"),
+      TagMatch("Stack", "testStack"),
+      TagMatch("App", "testApp"),
+      TagAbsent("gu:riffraff:new-asg")
+    )
   }
 
   "auto-scaling with ELB package type" should "have a deploy action" in {

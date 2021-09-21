@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import magenta.tasks.ASG.AutoScalingGroupInfo
+import magenta.deployment_type.AutoScalingGroupInfo
 import magenta.{KeyRing, _}
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient

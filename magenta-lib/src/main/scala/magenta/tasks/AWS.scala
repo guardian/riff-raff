@@ -236,11 +236,8 @@ object ASG {
   case class TagExists(key: String) extends TagRequirement
   case class TagAbsent(key: String) extends TagRequirement
 
-  case class AutoScalingGroupInfo(asg: AutoScalingGroup, tagRequirements: List[TagRequirement])
-
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack,
-                          migrationTagRequirements: Option[MigrationTagRequirements], client: AutoScalingClient,
-                          reporter: DeployReporter): AutoScalingGroupInfo = {
+  def groupWithTags(tagRequirements: List[TagRequirement], client: AutoScalingClient,
+                          reporter: DeployReporter): AutoScalingGroup = {
 
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
@@ -260,21 +257,12 @@ object ASG {
 
     val groups = listAutoScalingGroups()
 
-    val tagRequirements = List(
-      TagMatch("Stage", stage.name),
-      TagMatch("Stack", stack.name),
-      TagMatch("App", pkg.app.name)
-    ) ++ migrationTagRequirements.map {
-      case MustBePresent => TagExists("gu:riffraff:new-asg")
-      case MustNotBePresent => TagAbsent("gu:riffraff:new-asg")
-    }
-
     val matches = groups.filter(hasExactTagRequirements(_, tagRequirements))
     matches match {
       case Nil =>
-        reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
+        reporter.fail(s"No autoscaling group found with tags $tagRequirements")
       case List(singleGroup) =>
-        AutoScalingGroupInfo(singleGroup, tagRequirements)
+        singleGroup
       case groupList =>
         reporter.fail(s"More than one autoscaling group match for $tagRequirements (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }

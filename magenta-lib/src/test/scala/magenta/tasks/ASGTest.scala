@@ -1,9 +1,9 @@
 package magenta.tasks
 
 import java.util.UUID
-
 import magenta.artifact.S3Path
 import magenta.deployment_type.{MustBePresent, MustNotBePresent}
+import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch}
 import magenta.{App, KeyRing, Stage, _}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
@@ -63,10 +63,13 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ).asJava)
     when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter)
-    info.asg shouldBe desiredGroup
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "fail if more than one ASG matches the Stack and App tags (unless MigrationTagRequirements are specified)" in {
@@ -86,12 +89,15 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ).asJava)
     when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+    )
 
     a [FailException] should be thrownBy {
-      val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter)
-      info.asg shouldBe desiredGroup
+      val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+      group shouldBe desiredGroup
     }
   }
 
@@ -108,10 +114,14 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ).asJava)
     when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustBePresent), asgClientMock, reporter)
-    info.asg shouldBe desiredGroup
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+      TagExists("gu:riffraff:new-asg")
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "identify a single ASG based on Stack & App tags and MustNotBePresent MigrationTagRequirements" in {
@@ -127,10 +137,14 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ).asJava)
     when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    val info = ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustNotBePresent), asgClientMock, reporter)
-    info.asg shouldBe desiredGroup
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+      TagAbsent("gu:riffraff:new-asg")
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {

@@ -1,18 +1,37 @@
 package magenta.deployment_type
 
-import magenta.tasks.ASG.{AutoScalingGroupInfo, TagRequirement}
-import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing}
+import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch, TagRequirement}
+import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Stack, Stage, App}
 import magenta.tasks._
 import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
 
 sealed trait MigrationTagRequirements
+case object NoMigration extends MigrationTagRequirements
 case object MustBePresent extends MigrationTagRequirements
 case object MustNotBePresent extends MigrationTagRequirements
 
+case class AutoScalingGroupInfo(asg: AutoScalingGroup, tagRequirements: List[TagRequirement])
+
 object AutoScalingGroupLookup {
-  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: Option[MigrationTagRequirements], resources: DeploymentResources, pkg: DeploymentPackage) = {
+  def getTagRequirements(stage: Stage, stack: Stack, app: App,
+                         migrationTagRequirements: MigrationTagRequirements): List[TagRequirement] = {
+    val migrationRequirement: Option[TagRequirement] = migrationTagRequirements match {
+      case NoMigration => None
+      case MustBePresent => Some(TagExists("gu:riffraff:new-asg"))
+      case MustNotBePresent => Some(TagAbsent("gu:riffraff:new-asg"))
+    }
+    List(
+      TagMatch("Stage", stage.name),
+      TagMatch("Stack", stack.name),
+      TagMatch("App", app.name)
+    ) ++ migrationRequirement
+  }
+
+  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements,
+                   resources: DeploymentResources, pkg: DeploymentPackage): AutoScalingGroupInfo = {
     ASG.withAsgClient[AutoScalingGroupInfo](keyRing, target.region, resources) { asgClient =>
-      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, migrationTagRequirements, asgClient, resources.reporter)
+      val tagRequirements = getTagRequirements(target.parameters.stage, target.stack, pkg.app, migrationTagRequirements)
+      AutoScalingGroupInfo(ASG.groupWithTags(tagRequirements, asgClient, resources.reporter), tagRequirements)
     }
   }
 }
@@ -99,11 +118,11 @@ object AutoScaling extends DeploymentType {
     }
     val groupsToUpdate: List[AutoScalingGroupInfo] = if (asgMigrationInProgress(pkg, target, reporter)) {
       List(
-        AutoScalingGroupLookup.getTargetAsg(keyRing, target, Some(MustNotBePresent), resources, pkg),
-        AutoScalingGroupLookup.getTargetAsg(keyRing, target, Some(MustBePresent), resources, pkg)
+        AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustNotBePresent, resources, pkg),
+        AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustBePresent, resources, pkg)
       )
     } else {
-      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, None, resources, pkg))
+      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg))
     }
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }

@@ -2,8 +2,8 @@ package magenta.tasks
 
 import java.util.UUID
 import magenta.artifact.S3Path
+import magenta.deployment_type.AutoScalingGroupInfo
 import magenta.fixtures._
-import magenta.tasks.ASG.AutoScalingGroupInfo
 import magenta.{KeyRing, Stage, _}
 import org.mockito.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
