@@ -1,16 +1,37 @@
 package magenta.deployment_type
 
-import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing}
+import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch, TagRequirement}
+import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Stack, Stage, App}
 import magenta.tasks._
+import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
 
 sealed trait MigrationTagRequirements
+case object NoMigration extends MigrationTagRequirements
 case object MustBePresent extends MigrationTagRequirements
 case object MustNotBePresent extends MigrationTagRequirements
 
+case class AutoScalingGroupInfo(asg: AutoScalingGroup, tagRequirements: List[TagRequirement])
+
 object AutoScalingGroupLookup {
-  def getTargetAsgName(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: Option[MigrationTagRequirements], resources: DeploymentResources, pkg: DeploymentPackage) = {
-    ASG.withAsgClient[String](keyRing, target.region, resources) { asgClient =>
-      ASG.groupForAppAndStage(pkg, target.parameters.stage, target.stack, migrationTagRequirements, asgClient, resources.reporter).autoScalingGroupName()
+  def getTagRequirements(stage: Stage, stack: Stack, app: App,
+                         migrationTagRequirements: MigrationTagRequirements): List[TagRequirement] = {
+    val migrationRequirement: Option[TagRequirement] = migrationTagRequirements match {
+      case NoMigration => None
+      case MustBePresent => Some(TagExists("gu:riffraff:new-asg"))
+      case MustNotBePresent => Some(TagAbsent("gu:riffraff:new-asg"))
+    }
+    List(
+      TagMatch("Stage", stage.name),
+      TagMatch("Stack", stack.name),
+      TagMatch("App", app.name)
+    ) ++ migrationRequirement
+  }
+
+  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements,
+                   resources: DeploymentResources, pkg: DeploymentPackage): AutoScalingGroupInfo = {
+    ASG.withAsgClient[AutoScalingGroupInfo](keyRing, target.region, resources) { asgClient =>
+      val tagRequirements = getTagRequirements(target.parameters.stage, target.stack, pkg.app, migrationTagRequirements)
+      AutoScalingGroupInfo(ASG.groupWithTags(tagRequirements, asgClient, resources.reporter), tagRequirements)
     }
   }
 }
@@ -77,31 +98,31 @@ object AutoScaling extends DeploymentType {
   ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
-    def tasksPerAutoScalingGroup(autoScalingGroupName: String): List[ASGTask] = {
+    def tasksPerAutoScalingGroup(autoScalingGroup: AutoScalingGroupInfo): List[ASGTask] = {
       List(
-        WaitForStabilization(autoScalingGroupName, 5 * 60 * 1000, target.region),
-        CheckGroupSize(autoScalingGroupName, target.region),
-        SuspendAlarmNotifications(autoScalingGroupName, target.region),
-        TagCurrentInstancesWithTerminationTag(autoScalingGroupName, target.region),
-        ProtectCurrentInstances(autoScalingGroupName, target.region),
-        DoubleSize(autoScalingGroupName, target.region),
-        HealthcheckGrace(autoScalingGroupName, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
-        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-        WarmupGrace(autoScalingGroupName, target.region, warmupGrace(pkg, target, reporter) * 1000),
-        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-        CullInstancesWithTerminationTag(autoScalingGroupName, target.region),
-        TerminationGrace(autoScalingGroupName, target.region, terminationGrace(pkg, target, reporter) * 1000),
-        WaitForStabilization(autoScalingGroupName, secondsToWait(pkg, target, reporter) * 1000, target.region),
-        ResumeAlarmNotifications(autoScalingGroupName, target.region)
+        WaitForStabilization(autoScalingGroup, 5 * 60 * 1000, target.region),
+        CheckGroupSize(autoScalingGroup, target.region),
+        SuspendAlarmNotifications(autoScalingGroup, target.region),
+        TagCurrentInstancesWithTerminationTag(autoScalingGroup, target.region),
+        ProtectCurrentInstances(autoScalingGroup, target.region),
+        DoubleSize(autoScalingGroup, target.region),
+        HealthcheckGrace(autoScalingGroup, target.region, healthcheckGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroup, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        WarmupGrace(autoScalingGroup, target.region, warmupGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroup, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        CullInstancesWithTerminationTag(autoScalingGroup, target.region),
+        TerminationGrace(autoScalingGroup, target.region, terminationGrace(pkg, target, reporter) * 1000),
+        WaitForStabilization(autoScalingGroup, secondsToWait(pkg, target, reporter) * 1000, target.region),
+        ResumeAlarmNotifications(autoScalingGroup, target.region)
       )
     }
-    val groupsToUpdate: List[String] = if (asgMigrationInProgress(pkg, target, reporter)) {
+    val groupsToUpdate: List[AutoScalingGroupInfo] = if (asgMigrationInProgress(pkg, target, reporter)) {
       List(
-        AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustNotBePresent), resources, pkg),
-        AutoScalingGroupLookup.getTargetAsgName(keyRing, target, Some(MustBePresent), resources, pkg)
+        AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustNotBePresent, resources, pkg),
+        AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustBePresent, resources, pkg)
       )
     } else {
-      List(AutoScalingGroupLookup.getTargetAsgName(keyRing, target, None, resources, pkg))
+      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg))
     }
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }

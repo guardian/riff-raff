@@ -1,16 +1,18 @@
 package magenta.tasks
 
 import java.util.UUID
-
 import magenta.artifact.S3Path
 import magenta.deployment_type.{MustBePresent, MustNotBePresent}
+import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch}
 import magenta.{App, KeyRing, Stage, _}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import software.amazon.awssdk.core.pagination.sync.SdkIterable
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{Instance => ASGInstance, _}
+import software.amazon.awssdk.services.autoscaling.paginators.DescribeAutoScalingGroupsIterable
 import software.amazon.awssdk.services.elasticloadbalancing.model.{DescribeInstanceHealthRequest, DescribeInstanceHealthResponse, InstanceState}
 import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancingClient => ClassicELBClient}
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DescribeTargetHealthRequest, TargetHealthStateEnum, TagDescription => _, _}
@@ -41,82 +43,108 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ).build())
   }
 
+  private def toSdkIterable[T](thing: java.lang.Iterable[T]): SdkIterable[T] = {
+    () => thing.iterator()
+  }
+
   it should "find the matching auto-scaling group with Stack and App tags" in {
     val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
 
     val desiredGroup: AutoScalingGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
 
-    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        desiredGroup,
-        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ).asJava).build()
+    when (asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(List(
+      desiredGroup,
+      AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
+      AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+      AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
+    ).asJava)
+    when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "fail if more than one ASG matches the Stack and App tags (unless MigrationTagRequirements are specified)" in {
     val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
 
     val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
 
-    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        desiredGroup,
-        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "orangutang"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
-      ).asJava).build()
+    when (asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(List(
+      desiredGroup,
+      AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
+      AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST"),
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "orangutang"),
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
+      AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD")
+    ).asJava)
+    when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+    )
 
     a [FailException] should be thrownBy {
-      ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
+      val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+      group shouldBe desiredGroup
     }
   }
 
   it should "identify a single ASG based on Stack & App tags and MustBePresent MigrationTagRequirements" in {
     val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
 
     val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:riffraff:new-asg" -> "true")
 
-    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        desiredGroup,
-        // This should be ignored due to lack of migration tag
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey"),
-      ).asJava).build()
+    when (asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(List(
+      desiredGroup,
+      // This should be ignored due to lack of migration tag
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey"),
+    ).asJava)
+    when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustBePresent), asgClientMock, reporter) should be (desiredGroup)
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+      TagExists("gu:riffraff:new-asg")
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "identify a single ASG based on Stack & App tags and MustNotBePresent MigrationTagRequirements" in {
     val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
 
     val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey")
 
-    when (asgClientMock.describeAutoScalingGroups(any[DescribeAutoScalingGroupsRequest])) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        desiredGroup,
-        // This should be ignored due to presence of migration tag
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:riffraff:new-asg" -> "true"),
-      ).asJava).build()
+    when (asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(List(
+      desiredGroup,
+      // This should be ignored due to presence of migration tag
+      AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD", "Role" -> "monkey", "gu:riffraff:new-asg" -> "true"),
+    ).asJava)
+    when (asgClientMock.describeAutoScalingGroupsPaginator()) thenReturn asgDescribeIterableMock
 
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), Some(MustNotBePresent), asgClientMock, reporter) should be (desiredGroup)
+    val tags = List(
+      TagMatch("Stage", "PROD"),
+      TagMatch("Stack", "contentapi"),
+      TagMatch("App", "logcabin"),
+      TagAbsent("gu:riffraff:new-asg")
+    )
+    val group = ASG.groupWithTags(tags, asgClientMock, reporter)
+    group shouldBe desiredGroup
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {
@@ -212,32 +240,6 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .build()
 
     ASG.isStabilized(updatedGroup, ELB.Client(classicELBClient, appELBClient)) shouldBe Right(())
-  }
-
-  it should "find the first matching auto-scaling group with Stack and App tags, on the second page of results" in {
-    val asgClientMock = mock[AutoScalingClient]
-
-    val firstRequest = DescribeAutoScalingGroupsRequest.builder().build()
-    val secondRequest = DescribeAutoScalingGroupsRequest.builder().nextToken("someToken").build()
-
-    val desiredGroup = AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "PROD")
-
-    when (asgClientMock.describeAutoScalingGroups(firstRequest)) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        AutoScalingGroupWithTags("Role" -> "other", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Role" -> "example", "Stage" -> "TEST")
-      ).asJava).nextToken("someToken").build()
-    when (asgClientMock.describeAutoScalingGroups(secondRequest)) thenReturn
-      DescribeAutoScalingGroupsResponse.builder().autoScalingGroups(List(
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "logcabin", "Stage" -> "TEST"),
-        AutoScalingGroupWithTags("Stack" -> "contentapi", "App" -> "elasticsearch", "Stage" -> "PROD"),
-        AutoScalingGroupWithTags("Stack" -> "monkey", "App" -> "logcabin", "Stage" -> "PROD"),
-        desiredGroup
-      ).asJava).build()
-
-    val p = DeploymentPackage("example", App("logcabin"), Map.empty, deploymentType = null,
-      S3Path("artifact-bucket", "project/123/example"))
-    ASG.groupForAppAndStage(p, Stage("PROD"), Stack("contentapi"), None, asgClientMock, reporter) should be (desiredGroup)
   }
 
   object AutoScalingGroupWithTags {

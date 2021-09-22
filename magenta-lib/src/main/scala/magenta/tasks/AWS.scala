@@ -231,64 +231,40 @@ object ASG {
       ResumeProcessesRequest.builder().autoScalingGroupName(name).scalingProcesses("AlarmNotification").build()
     )
 
-  def getGroupByName(name: String, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
-    val request = DescribeAutoScalingGroupsRequest.builder()
-      .autoScalingGroupNames(name)
-      .maxRecords(1)
-      .build()
-    val autoScalingGroups = client.describeAutoScalingGroups(request).autoScalingGroups().asScala.toList
-    // We've asked for one record and the name must be unique per Region per account
-    autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
-  }
+  trait TagRequirement
+  case class TagMatch(key: String, value: String) extends TagRequirement
+  case class TagExists(key: String) extends TagRequirement
+  case class TagAbsent(key: String) extends TagRequirement
 
-  def groupForAppAndStage(pkg: DeploymentPackage, stage: Stage, stack: Stack, migrationTagRequirements: Option[MigrationTagRequirements], client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+  def groupWithTags(tagRequirements: List[TagRequirement], client: AutoScalingClient,
+                          reporter: DeployReporter): AutoScalingGroup = {
+
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
-    implicit class RichAutoscalingGroup(asg: AutoScalingGroup) {
-      def hasTag(key: String, value: String): Boolean = asg.tags.asScala.exists { tag =>
-        tag.key == key && tag.value == value
-      }
-
-      // See https://github.com/guardian/riff-raff/pull/632 for more details
-      def meetsMigrationTagRequirements(migrationTagRequirements: Option[MigrationTagRequirements]) = {
-        val migrationTagIsPresent: Boolean = asg.tags.asScala.exists { tag => tag.key == "gu:riffraff:new-asg" }
-        migrationTagRequirements match {
-          case Some(MustBePresent) => migrationTagIsPresent
-          case Some(MustNotBePresent) => !migrationTagIsPresent
-          case None => true
-        }
-      }
-      def hasExactTagRequirements(app: App, stack: Stack, migrationTagRequirements: Option[MigrationTagRequirements]): Boolean = {
-        hasTag("Stack", stack.name) && hasTag("App", app.name) && meetsMigrationTagRequirements(migrationTagRequirements)
+    def hasExactTagRequirements(asg: AutoScalingGroup, requirements: List[TagRequirement]): Boolean = {
+      val tags = asg.tags.asScala
+      requirements.forall{
+        case TagMatch(key, value) => tags.exists(t => t.key == key && t.value == value)
+        case TagExists(key) => tags.exists(_.key == key)
+        case TagAbsent(key) => tags.forall(_.key != key)
       }
     }
 
-    def listAutoScalingGroups(nextToken: Option[String] = None): List[AutoScalingGroup] = {
-      val request = DescribeAutoScalingGroupsRequest.builder()
-      nextToken.foreach(request.nextToken)
-      val result = client.describeAutoScalingGroups(request.build())
-      val autoScalingGroups = result.autoScalingGroups.asScala.toList
-      Option(result.nextToken) match {
-        case None => autoScalingGroups
-        case token: Some[String] => autoScalingGroups ++ listAutoScalingGroups(token)
-      }
+    def listAutoScalingGroups(): List[AutoScalingGroup] = {
+      val result = client.describeAutoScalingGroupsPaginator()
+      result.autoScalingGroups.asScala.toList
     }
 
     val groups = listAutoScalingGroups()
-    val filteredByStage = groups filter { _.hasTag("Stage", stage.name) }
-    val appToMatchingGroups = {
-      val matches = filteredByStage.filter(_.hasExactTagRequirements(pkg.app, stack, migrationTagRequirements))
-      if (matches.isEmpty) None else Some(ASGMatch(pkg.app, matches))
-    }
 
-    appToMatchingGroups match {
-      case None =>
-        reporter.fail(s"No autoscaling group found in ${stage.name} with tags matching package ${pkg.name}")
-      case Some(ASGMatch(_, List(singleGroup))) =>
-        reporter.verbose(s"Using group ${singleGroup.autoScalingGroupName} (${singleGroup.autoScalingGroupARN})")
+    val matches = groups.filter(hasExactTagRequirements(_, tagRequirements))
+    matches match {
+      case Nil =>
+        reporter.fail(s"No autoscaling group found with tags $tagRequirements")
+      case List(singleGroup) =>
         singleGroup
-      case Some(ASGMatch(app, groupList)) =>
-        reporter.fail(s"More than one autoscaling group match for $app in ${stage.name} (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
+      case groupList =>
+        reporter.fail(s"More than one autoscaling group match for $tagRequirements (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
   }
 }

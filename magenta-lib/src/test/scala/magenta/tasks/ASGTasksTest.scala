@@ -2,6 +2,7 @@ package magenta.tasks
 
 import java.util.UUID
 import magenta.artifact.S3Path
+import magenta.deployment_type.AutoScalingGroupInfo
 import magenta.fixtures._
 import magenta.{KeyRing, Stage, _}
 import org.mockito.MockitoSugar
@@ -25,12 +26,13 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .autoScalingGroupName("test")
       .maxSize(10)
       .build()
+    val info = AutoScalingGroupInfo(asg, Nil)
     val asgClientMock = mock[AutoScalingClient]
 
     val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
       deploymentTypes)
 
-    val task = DoubleSize("test", Region("eu-west-1"))
+    val task = DoubleSize(info, Region("eu-west-1"))
     val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
     task.execute(asg, resources, stopFlag = false, asgClientMock)
 
@@ -46,13 +48,14 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .desiredCapacity(1)
       .maxSize(1)
       .build()
+    val info = AutoScalingGroupInfo(asg, Nil)
 
     val asgClientMock = mock[AutoScalingClient]
 
     val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
       deploymentTypes)
 
-    val task = CheckGroupSize("test", Region("eu-west-1"))
+    val task = CheckGroupSize(info, Region("eu-west-1"))
 
     val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
 
