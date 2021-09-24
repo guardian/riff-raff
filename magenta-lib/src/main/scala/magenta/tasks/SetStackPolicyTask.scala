@@ -42,7 +42,12 @@ object StackPolicy {
     "AWS::ApiGateway::RestApi",
     "AWS::ApiGateway::DomainName",
     // buckets (although we think they can't be deleted with content)
-    "AWS::S3::Bucket"
+    "AWS::S3::Bucket",
+    // DNS infrastructure
+    "Guardian::DNS::RecordSet",
+    "AWS::Route53::HostedZone",
+    "AWS::Route53::RecordSet",
+    "AWS::Route53::RecordSetGroup"
   )
 
   val DENY_REPLACE_DELETE_POLICY: StackPolicy = StackPolicy("DenyReplaceDelete",
