@@ -377,24 +377,24 @@ class CheckUpdateEventsTask(
 
   object StackEvent {
     def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
-      reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatus}")
+      reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
       if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
     }
     def isStackEvent(stackName: String)(e: StackEvent): Boolean =
       e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
     def updateStart(stackName: String)(e: StackEvent): Boolean =
-      isStackEvent(stackName)(e) && (e.resourceStatus.toString == "UPDATE_IN_PROGRESS" || e.resourceStatus.toString == "CREATE_IN_PROGRESS")
+      isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
     def updateComplete(stackName: String)(e: StackEvent): Boolean =
-      isStackEvent(stackName)(e) && (e.resourceStatus.toString == "UPDATE_COMPLETE" || e.resourceStatus.toString == "CREATE_COMPLETE")
+      isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
 
     def updateFailed(e: StackEvent): Boolean = {
-      val failed = e.resourceStatus.toString.contains("FAILED") || e.resourceStatus.toString.contains("ROLLBACK")
-      logger.debug(s"${e.resourceStatus} - failed = $failed")
+      val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
+      logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
       failed
     }
 
     def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
-      s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatus}
+      s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
             |${e.resourceStatusReason}""".stripMargin)
   }
 
