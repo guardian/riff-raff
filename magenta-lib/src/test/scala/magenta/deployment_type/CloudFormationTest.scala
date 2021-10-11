@@ -8,6 +8,7 @@ import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
+import magenta.tasks.StackPolicy.privateSensitiveResourceTypes
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{EitherValues, Inside}
@@ -58,14 +59,14 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
     tasks should have size(7)
 
     tasks(0) shouldBe a[SetStackPolicyTask]
-    tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.DENY_REPLACE_DELETE_POLICY
+    tasks(0).asInstanceOf[SetStackPolicyTask].updateStrategy shouldBe MostlyHarmless
     tasks(1) shouldBe a[CreateChangeSetTask]
     tasks(2) shouldBe a[CheckChangeSetCreatedTask]
     tasks(3) shouldBe a[ExecuteChangeSetTask]
     tasks(4) shouldBe a[CheckUpdateEventsTask]
     tasks(5) shouldBe a[DeleteChangeSetTask]
     tasks(6) shouldBe a[SetStackPolicyTask]
-    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
+    tasks(6).asInstanceOf[SetStackPolicyTask].updateStrategy shouldBe Dangerous
   }
 
   it should "generate stack policy tasks in the correct order when manageStackPolicy is true and update strategy is Dangerous" in {
@@ -77,14 +78,14 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
     tasks should have size(7)
 
     tasks(0) shouldBe a[SetStackPolicyTask]
-    tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
+    tasks(0).asInstanceOf[SetStackPolicyTask].updateStrategy shouldBe Dangerous
     tasks(1) shouldBe a[CreateChangeSetTask]
     tasks(2) shouldBe a[CheckChangeSetCreatedTask]
     tasks(3) shouldBe a[ExecuteChangeSetTask]
     tasks(4) shouldBe a[CheckUpdateEventsTask]
     tasks(5) shouldBe a[DeleteChangeSetTask]
     tasks(6) shouldBe a[SetStackPolicyTask]
-    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe StackPolicy.ALLOW_ALL_POLICY
+    tasks(6).asInstanceOf[SetStackPolicyTask].updateStrategy shouldBe Dangerous
   }
 
   it should "ignore amiTags when amiParametersToTags and amiTags are provided" in {

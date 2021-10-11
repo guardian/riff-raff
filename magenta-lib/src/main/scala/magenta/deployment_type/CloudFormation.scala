@@ -1,11 +1,10 @@
 package magenta.deployment_type
 
-import magenta.Strategy.{MostlyHarmless, Dangerous}
-
-import java.net.URLEncoder
-import java.util.UUID
+import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
+import magenta.tasks.CloudFormation.withCfnClient
+import magenta.tasks.StackPolicy.privateSensitiveResourceTypes
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
@@ -82,7 +81,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |
       |The two stack policies are show below.
       |
-      |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY)}
+      |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY(privateSensitiveResourceTypes))}
       |
       |${StackPolicy.toMarkdown(StackPolicy.ALLOW_ALL_POLICY)}
       |""".stripMargin,
@@ -162,15 +161,11 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       new SetStackPolicyTask(
         target.region,
         stackLookup,
-        // check the update strategy and set policy accordingly
-        target.parameters.updateStrategy match {
-          case MostlyHarmless => StackPolicy.DENY_REPLACE_DELETE_POLICY
-          case Dangerous => StackPolicy.ALLOW_ALL_POLICY
-        }
+        target.parameters.updateStrategy
       ) :: tasks ::: List(new SetStackPolicyTask(
         target.region,
         stackLookup,
-        StackPolicy.ALLOW_ALL_POLICY
+        Dangerous
       ))
     } else tasks
   }

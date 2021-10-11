@@ -1,6 +1,12 @@
 package magenta.tasks
-import magenta.{DeploymentResources, KeyRing, Region}
-import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, SetStackPolicyRequest}
+import magenta.Strategy.{Dangerous, MostlyHarmless}
+import magenta.tasks.CloudFormation.withCfnClient
+import magenta.tasks.StackPolicy.privateSensitiveResourceTypes
+import magenta.{DeploymentResources, KeyRing, Region, Strategy}
+import software.amazon.awssdk.services.cloudformation.CloudFormationClient
+import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, ListTypesRequest, SetStackPolicyRequest, Visibility}
+
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 case class StackPolicy(name: String, body: String)
 
@@ -20,9 +26,17 @@ object StackPolicy {
     |""".stripMargin
   )
 
+  def privateSensitiveResourceTypes(client: CloudFormationClient): Set[String] = {
+    val request =  ListTypesRequest.builder().visibility(Visibility.PRIVATE).build()
+    val response = client.listTypes(request)
+    val privateTypes = response.typeSummaries().asScala.map(_.typeName()).toSet
+    privateTypes.intersect(privateSensitiveResourceTypes)
+  }
+
   // CFN resource types that have state or are likely to exist in
   // external config such as DNS or application config
-  val sensitiveResourceTypes: List[String] = List(
+  val sensitiveResourceTypes: List[String] = {
+  List(
     // databases: RDS, DynamoDB, DocumentDB, Elastic
     "AWS::RDS::DBInstance",
     "AWS::DynamoDB::Table",
@@ -44,38 +58,46 @@ object StackPolicy {
     // buckets (although we think they can't be deleted with content)
     "AWS::S3::Bucket",
     // DNS infrastructure
-    "Guardian::DNS::RecordSet",
     "AWS::Route53::HostedZone",
     "AWS::Route53::RecordSet",
     "AWS::Route53::RecordSetGroup"
   )
+  }
 
-  val DENY_REPLACE_DELETE_POLICY: StackPolicy = StackPolicy("DenyReplaceDelete",
-  s"""{
-        |  "Statement" : [
-        |    {
-        |      "Effect" : "Deny",
-        |      "Action" : ["Update:Replace", "Update:Delete"],
-        |      "Principal": "*",
-        |      "Resource" : "*",
-        |      "Condition" : {
-        |        "StringEquals" : {
-        |          "ResourceType" : [
-        |            ${sensitiveResourceTypes.mkString("\"","\",\n\"", "\"")}
-        |          ]
-        |        }
-        |      }
-        |    },
-        |    {
-        |      "Effect" : "Allow",
-        |      "Action" : "Update:*",
-        |      "Principal": "*",
-        |      "Resource" : "*"
-        |    }
-        |  ]
-        |}
-        |""".stripMargin
-  )
+  val privateSensitiveResourceTypes: Set[String] = {
+    Set(
+      "Guardian::DNS::RecordSet"
+    )
+  }
+
+  def DENY_REPLACE_DELETE_POLICY(privateSensitiveTypes: Set[String]): StackPolicy = {
+    StackPolicy("DenyReplaceDelete",
+      s"""{
+         |  "Statement" : [
+         |    {
+         |      "Effect" : "Deny",
+         |      "Action" : ["Update:Replace", "Update:Delete"],
+         |      "Principal": "*",
+         |      "Resource" : "*",
+         |      "Condition" : {
+         |        "StringEquals" : {
+         |          "ResourceType" : [
+         |            ${sensitiveResourceTypes.++(privateSensitiveTypes.toList).mkString("\"","\",\n\"", "\"")}
+         |          ]
+         |        }
+         |      }
+         |    },
+         |    {
+         |      "Effect" : "Allow",
+         |      "Action" : "Update:*",
+         |      "Principal": "*",
+         |      "Resource" : "*"
+         |    }
+         |  ]
+         |}
+         |""".stripMargin
+    )
+  }
 
   def toMarkdown(policy: StackPolicy): String = {
     s"""**${policy.name}**:
@@ -90,11 +112,24 @@ object StackPolicy {
 class SetStackPolicyTask(
                           region: Region,
                           stackLookup: CloudFormationStackMetadata,
-                          val stackPolicy: StackPolicy
+                          val updateStrategy: Strategy = MostlyHarmless,
                           )(implicit val keyRing: KeyRing) extends Task {
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
+
+      val stackPolicy = updateStrategy match {
+        case MostlyHarmless =>
+          // Only include private (custom Guardian) types if they are defined for
+          // the target account. If we include them when they are not yet defined,
+          // the SetStackPolicyTask will fail.
+          withCfnClient(keyRing, region, resources) { cfnClient =>
+            val privateTypes = privateSensitiveResourceTypes(cfnClient)
+            StackPolicy.DENY_REPLACE_DELETE_POLICY(privateTypes)
+          }
+
+        case Dangerous => StackPolicy.ALLOW_ALL_POLICY
+      }
 
       changeSetType match {
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")
@@ -111,5 +146,5 @@ class SetStackPolicyTask(
     }
   }
 
-  override def description: String = s"Set stack update policy to ${stackPolicy.name}"
+  override def description: String = s"Set stack update policy with update strategy $updateStrategy."
 }
