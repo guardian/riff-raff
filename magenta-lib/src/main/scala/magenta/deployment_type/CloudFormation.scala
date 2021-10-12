@@ -9,6 +9,8 @@ import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
 
+import scala.collection.mutable.ListBuffer
+
 //noinspection TypeAnnotation
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
 
@@ -158,15 +160,20 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
 
     // wrap the task list with policy updates if enabled
     if (manageStackPolicy) {
-      new SetStackPolicyTask(
-        target.region,
-        stackLookup,
-        target.parameters.updateStrategy
-      ) :: tasks ::: List(new SetStackPolicyTask(
+      val applyStackPolicy =
+        new SetStackPolicyTask(
+          target.region,
+          stackLookup,
+          target.parameters.updateStrategy
+        )
+
+      val resetStackPolicy = new SetStackPolicyTask(
         target.region,
         stackLookup,
         Dangerous
-      ))
+      )
+
+      applyStackPolicy :: tasks ::: List(resetStackPolicy)
     } else tasks
   }
   }
