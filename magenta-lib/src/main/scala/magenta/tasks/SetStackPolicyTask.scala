@@ -70,6 +70,14 @@ object StackPolicy {
     )
   }
 
+  // Provide
+
+  /** Policy to prevent destructive updates to stateful resources.
+    *
+    * @param privateSensitiveTypes private types that are defined for the target
+    * AWS account. We want to protect these resources, but the stack policy will
+    * fail if resources are specified which don't exist on the target account.
+    */
   def DENY_REPLACE_DELETE_POLICY(privateSensitiveTypes: Set[String]): StackPolicy = {
     StackPolicy("DenyReplaceDelete",
       s"""{
@@ -120,9 +128,6 @@ class SetStackPolicyTask(
 
       val stackPolicy = updateStrategy match {
         case MostlyHarmless =>
-          // Only include private (custom Guardian) types if they are defined for
-          // the target account. If we include them when they are not yet defined,
-          // the SetStackPolicyTask will fail.
           withCfnClient(keyRing, region, resources) { cfnClient =>
             val privateTypes = privateSensitiveResourceTypes(cfnClient)
             StackPolicy.DENY_REPLACE_DELETE_POLICY(privateTypes)
