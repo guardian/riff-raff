@@ -140,6 +140,7 @@ class SetStackPolicyTask(
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")
         case _ => {
           resources.reporter.info(s"Setting update policy for stack $stackName to ${stackPolicy.name}")
+          resources.reporter.info(s"Body of stack policy is: ${stackPolicy.body}.")
           cfnClient.setStackPolicy(
             SetStackPolicyRequest.builder
               .stackName(stackName)
