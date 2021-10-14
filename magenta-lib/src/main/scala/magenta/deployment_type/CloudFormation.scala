@@ -4,7 +4,7 @@ import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation.withCfnClient
-import magenta.tasks.StackPolicy.privateSensitiveResourceTypes
+import magenta.tasks.StackPolicy.{privateResourceTypes, sensitiveResourceTypes}
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
@@ -83,9 +83,9 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |
       |The two stack policies are show below.
       |
-      |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY(privateSensitiveResourceTypes))}
+      |${StackPolicy.toMarkdown(DenyReplaceDeletePolicy)}
       |
-      |${StackPolicy.toMarkdown(StackPolicy.ALLOW_ALL_POLICY)}
+      |${StackPolicy.toMarkdown(AllowAllPolicy)}
       |""".stripMargin,
     optional = true
   )
@@ -158,19 +158,24 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       )
     )
 
+    val policy = target.parameters.updateStrategy match {
+      case MostlyHarmless => DenyReplaceDeletePolicy
+      case Dangerous => AllowAllPolicy
+    }
+
     // wrap the task list with policy updates if enabled
     if (manageStackPolicy) {
       val applyStackPolicy =
         new SetStackPolicyTask(
           target.region,
           stackLookup,
-          target.parameters.updateStrategy
+          policy
         )
 
       val resetStackPolicy = new SetStackPolicyTask(
         target.region,
         stackLookup,
-        Dangerous
+        AllowAllPolicy
       )
 
       applyStackPolicy :: tasks ::: List(resetStackPolicy)
