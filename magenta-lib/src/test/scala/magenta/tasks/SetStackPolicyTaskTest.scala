@@ -1,6 +1,6 @@
 package magenta.tasks
 
-import magenta.tasks.StackPolicy.sensitiveResourceTypes
+import magenta.tasks.StackPolicy.allSensitiveResourceTypes
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescription => _}
@@ -8,7 +8,7 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescript
 class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
 
   "toPolicyDoc" should "return an allow doc when policy is AllowAllPolicy" in {
-    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, StackPolicy.sensitiveResourceTypes, () => Set.empty)
+    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, StackPolicy.allSensitiveResourceTypes, () => Set.empty)
     val want =
       """{
         |  "Statement" : [
@@ -28,7 +28,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, including supported private types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.sensitiveResourceTypes,
+      StackPolicy.allSensitiveResourceTypes,
       () => Set("Guardian::DNS::RecordSet")
     )
 
@@ -43,7 +43,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${sensitiveResourceTypes.mkString("\"","\",\n\"", "\"")}
+         |            ${allSensitiveResourceTypes.mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }
@@ -64,7 +64,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, excluding unsupported private types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.sensitiveResourceTypes,
+      StackPolicy.allSensitiveResourceTypes,
       () => Set.empty
     )
 
@@ -79,7 +79,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${sensitiveResourceTypes.filterNot(_ == "Guardian::DNS::RecordSet").mkString("\"","\",\n\"", "\"")}
+         |            ${allSensitiveResourceTypes.filterNot(_ == "Guardian::DNS::RecordSet").mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }

@@ -1,5 +1,5 @@
 package magenta.tasks
-import magenta.tasks.StackPolicy.{accountPrivateTypes, sensitiveResourceTypes, toPolicyDoc}
+import magenta.tasks.StackPolicy.{accountPrivateTypes, allSensitiveResourceTypes, toPolicyDoc}
 import magenta.{DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, ListTypesRequest, SetStackPolicyRequest, Visibility}
@@ -29,7 +29,7 @@ object StackPolicy {
   /** CFN resource types that have state or are likely to exist in external
    * config such as DNS or application config.
    */
-  val sensitiveResourceTypes: Set[String] =
+  val allSensitiveResourceTypes: Set[String] =
     Set(
       // databases: RDS, DynamoDB, DocumentDB, Elastic
       "AWS::RDS::DBInstance",
@@ -104,7 +104,7 @@ object StackPolicy {
     s"""**${policy.name}**:
       |
       |```
-      |${toPolicyDoc(policy, sensitiveResourceTypes, () => sensitiveResourceTypes)}
+      |${toPolicyDoc(policy, allSensitiveResourceTypes, () => allSensitiveResourceTypes)}
       |```
       |""".stripMargin
   }
@@ -118,7 +118,7 @@ class SetStackPolicyTask(
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      val policyDoc = toPolicyDoc(stackPolicy, sensitiveResourceTypes, () => accountPrivateTypes(cfnClient))
+      val policyDoc = toPolicyDoc(stackPolicy, allSensitiveResourceTypes, () => accountPrivateTypes(cfnClient))
 
       changeSetType match {
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")

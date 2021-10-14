@@ -4,7 +4,7 @@ import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation.withCfnClient
-import magenta.tasks.StackPolicy.{accountPrivateTypes, sensitiveResourceTypes}
+import magenta.tasks.StackPolicy.{accountPrivateTypes, allSensitiveResourceTypes}
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
