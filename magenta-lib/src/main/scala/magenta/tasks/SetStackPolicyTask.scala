@@ -1,5 +1,5 @@
 package magenta.tasks
-import magenta.tasks.StackPolicy.{privateResourceTypes, sensitiveResourceTypes, toPolicyDoc}
+import magenta.tasks.StackPolicy.{accountPrivateTypes, sensitiveResourceTypes, toPolicyDoc}
 import magenta.{DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, ListTypesRequest, SetStackPolicyRequest, Visibility}
@@ -19,7 +19,7 @@ object StackPolicy {
       DENY_REPLACE_DELETE_POLICY(sensitiveResources)
   }
 
-  def privateResourceTypes(client: CloudFormationClient): Set[String] = {
+  def accountPrivateTypes(client: CloudFormationClient): Set[String] = {
     val request =  ListTypesRequest.builder().visibility(Visibility.PRIVATE).build()
     val response = client.listTypesPaginator(request)
     response.typeSummaries().asScala.map(_.typeName()).toSet
@@ -87,7 +87,7 @@ object StackPolicy {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${sensitiveResourceTypes.mkString("\"","\",\n\"", "\"")}
+         |            ${sensitiveTypes.mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }
@@ -122,7 +122,7 @@ class SetStackPolicyTask(
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      val policyDoc = toPolicyDoc(stackPolicy, sensitiveResourceTypes, () => privateResourceTypes(cfnClient))
+      val policyDoc = toPolicyDoc(stackPolicy, sensitiveResourceTypes, () => accountPrivateTypes(cfnClient))
 
       changeSetType match {
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")

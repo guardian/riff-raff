@@ -8,7 +8,7 @@ import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
-import magenta.tasks.StackPolicy.privateResourceTypes
+import magenta.tasks.StackPolicy.accountPrivateTypes
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.{EitherValues, Inside}
