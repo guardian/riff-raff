@@ -13,7 +13,8 @@ case object DenyReplaceDeletePolicy extends StackPolicy
 object StackPolicy {
 
   def toPolicyDoc(policy: StackPolicy, sensitiveResourceTypes: Set[String], accountPrivateTypes: () => Set[String]): String = policy match {
-    case AllowAllPolicy => ALLOW_ALL_POLICY
+    case AllowAllPolicy =>
+      ALLOW_ALL_POLICY
     case DenyReplaceDeletePolicy =>
       val sensitiveResources = sensitiveResourceTypes.filter(t => t.startsWith("AWS") || accountPrivateTypes().contains(t))
       DENY_REPLACE_DELETE_POLICY(sensitiveResources)
@@ -25,8 +26,9 @@ object StackPolicy {
     response.typeSummaries().asScala.map(_.typeName()).toSet
   }
 
-  // CFN resource types that have state or are likely to exist in
-  // external config such as DNS or application config
+  /** CFN resource types that have state or are likely to exist in external
+   * config such as DNS or application config.
+   */
   val sensitiveResourceTypes: Set[String] =
     Set(
       // databases: RDS, DynamoDB, DocumentDB, Elastic
@@ -70,12 +72,6 @@ object StackPolicy {
       |}
       |""".stripMargin
 
-  /** Policy to prevent destructive updates to stateful resources.
-    *
-    * @param privateSensitiveTypes private types that are defined for the target
-    * AWS account. We want to protect these resources, but the stack policy will
-    * fail if resources are specified which don't exist on the target account.
-    */
   private[this] def DENY_REPLACE_DELETE_POLICY(sensitiveTypes: Set[String]): String =
       s"""{
          |  "Statement" : [
