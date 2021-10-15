@@ -1,14 +1,15 @@
 package magenta.deployment_type
 
-import magenta.Strategy.{MostlyHarmless, Dangerous}
-
-import java.net.URLEncoder
-import java.util.UUID
+import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
+import magenta.tasks.CloudFormation.withCfnClient
+import magenta.tasks.StackPolicy.{accountPrivateTypes, allSensitiveResourceTypes}
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
+
+import scala.collection.mutable.ListBuffer
 
 //noinspection TypeAnnotation
 object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
@@ -82,9 +83,9 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |
       |The two stack policies are show below.
       |
-      |${StackPolicy.toMarkdown(StackPolicy.DENY_REPLACE_DELETE_POLICY)}
+      |${StackPolicy.toMarkdown(DenyReplaceDeletePolicy)}
       |
-      |${StackPolicy.toMarkdown(StackPolicy.ALLOW_ALL_POLICY)}
+      |${StackPolicy.toMarkdown(AllowAllPolicy)}
       |""".stripMargin,
     optional = true
   )
@@ -157,21 +158,27 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       )
     )
 
+    val updatePolicy = target.parameters.updateStrategy match {
+      case MostlyHarmless => DenyReplaceDeletePolicy
+      case Dangerous => AllowAllPolicy
+    }
+
     // wrap the task list with policy updates if enabled
     if (manageStackPolicy) {
-      new SetStackPolicyTask(
+      val applyStackPolicy =
+        new SetStackPolicyTask(
+          target.region,
+          stackLookup,
+          updatePolicy
+        )
+
+      val resetStackPolicy = new SetStackPolicyTask(
         target.region,
         stackLookup,
-        // check the update strategy and set policy accordingly
-        target.parameters.updateStrategy match {
-          case MostlyHarmless => StackPolicy.DENY_REPLACE_DELETE_POLICY
-          case Dangerous => StackPolicy.ALLOW_ALL_POLICY
-        }
-      ) :: tasks ::: List(new SetStackPolicyTask(
-        target.region,
-        stackLookup,
-        StackPolicy.ALLOW_ALL_POLICY
-      ))
+        AllowAllPolicy
+      )
+
+      applyStackPolicy :: tasks ::: List(resetStackPolicy)
     } else tasks
   }
   }
