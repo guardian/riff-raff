@@ -158,7 +158,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       )
     )
 
-    val policy = target.parameters.updateStrategy match {
+    val updatePolicy = target.parameters.updateStrategy match {
       case MostlyHarmless => DenyReplaceDeletePolicy
       case Dangerous => AllowAllPolicy
     }
@@ -169,7 +169,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         new SetStackPolicyTask(
           target.region,
           stackLookup,
-          policy
+          updatePolicy
         )
 
       val resetStackPolicy = new SetStackPolicyTask(
