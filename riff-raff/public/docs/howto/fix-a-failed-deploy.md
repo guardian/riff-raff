@@ -27,6 +27,7 @@ See [here](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scalin
 
 ## Step 3 - repeat for other ASGs
 Check the Riff-Raff deployment logs to see if more than one ASG is used for the deploy. Repeat steps 1 and 2 for any other ASGs which may have been affected during the deploy. They may not be the ones listed as erroring, but could still have been halted at an intermediary state, and so need to be "reset" in order to do a successful redeployment.
+
 ## Step 4 -  do another deploy
 Once the ASG is back to its normal size, redeploy the project to a known good version. 
 This will ensure that the correct artifact is deployed and that all live boxes are in the correct state.
