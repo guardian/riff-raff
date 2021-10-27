@@ -11,7 +11,9 @@ the desired capacity stays the _same_ as the specified maximum capacity for the 
 state, Riff-Raff/Magenta will not be able to do any more automated deploys, because it can't double
 the desired capacity in excess of your configured max.
 
-## Step 1 - get the ASG back to it's normal size
+## Step 1 - get the ASG back to its normal size
+
+Be aware that reducing the number of instances can lead to outages if they are under stress. Always check with the relevant team before performing this action.
 
 Use the AWS console to change the desired size of the ASG back to the original value (typically half). 
 This will ensure that the new instances brought up by your failed deploy are terminated as Riff-Raff applies scale-in protection to existing instances before the deploy begins.
