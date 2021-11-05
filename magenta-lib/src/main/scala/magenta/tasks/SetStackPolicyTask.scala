@@ -55,6 +55,17 @@ object StackPolicy {
       "AWS::Route53::HostedZone",
       "AWS::Route53::RecordSet",
       "AWS::Route53::RecordSetGroup",
+      // VPC
+      "AWS::EC2::EIP",
+      "AWS::EC2::InternetGateway",
+      "AWS::EC2::NatGateway",
+      "AWS::EC2::Route",
+      "AWS::EC2::RouteTable",
+      "AWS::EC2::Subnet",
+      "AWS::EC2::SubnetRouteTableAssociation",
+      "AWS::EC2::VPC",
+      "AWS::EC2::VPCEndpoint",
+      "AWS::EC2::VPCGatewayAttachment",
       // Private types
       "Guardian::DNS::RecordSet",
     )
