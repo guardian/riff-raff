@@ -21,7 +21,7 @@ This will ensure that the new instances brought up by your failed deploy are ter
 See [here](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-manual-scaling.html) for detailed steps on how to change the desired size of an ASG.
 
 ## Step 2 - remove scale-in protection
-Part of the  deploy process, when successful, is to remove scale-in protection from healthy live instances so they will be identified as the redundant ones which are removed during the next deploy. If the deployment has failed, it is possible this scale-in protection has been added to instances without being removed, so it needs to be manually removed before attempting the next deploy.
+If the deployment has failed, it is possible that some instances will still have scale-in protection enabled. In some cases this needs to be manually removed before attempting the next deploy.
 
 In the same ASG section of AWS (see Step 1 above),  after completing Step 1, navigate to the "Instance management" tab to check and remove all instances for scale-in protection: Click the checkbox next to an instance ID, select the "Actions" drop-down", select "Remove scale-in protection" if available (it will only be available if the instance has scale-in protection), then confirm.
 
