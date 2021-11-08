@@ -25,7 +25,7 @@ If the deployment has failed, it is possible that some instances will still have
 
 In the same ASG section of AWS (see Step 1 above),  after completing Step 1, navigate to the "Instance management" tab to check and remove all instances for scale-in protection: Click the checkbox next to an instance ID, select the "Actions" drop-down", select "Remove scale-in protection" if available (it will only be available if the instance has scale-in protection), then confirm.
 
-See [here](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-instance-protection.html) for more information on instance scale-in protection in ASGs.
+See [here](https://docs.aws.amazon.com/autoscaling/ec2/userguide/ec2-auto-scaling-instance-protection.html) for more information on instance scale-in protection in ASGs, or in the case the UI navigation has shifted from what is described above. If the UI has changed, please open a PR to update these documents [here](https://github.com/guardian/riff-raff).
 
 ## Step 3 - repeat for other ASGs
 Check the Riff-Raff deployment logs to see if more than one ASG is used for the deploy. Repeat steps 1 and 2 for any other ASGs which may have been affected during the deploy. They may not be the ones listed as erroring, but could still have been halted at an intermediary state, and so need to be "reset" in order to do a successful redeployment.
