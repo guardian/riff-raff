@@ -24,7 +24,7 @@ Documentation
 -----
 
 The documentation is available in the application (under the Documentation menu) but can also be viewed under 
-[riff-raff/app/docs](riff-raff/app/docs) in github.
+[riff-raff/public/docs](riff-raff/public/docs) in GitHub.
 
 In action
 -----
