@@ -21,25 +21,34 @@ updateDeployInfo = () ->
       $("[rel='tooltip']").tooltip()
   )
 
+readFavourites = () ->
+  JSON.parse(localStorage.getItem('favouriteProjects'))
+
+writeFavourites = (newFavourites) ->
+  localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
+
 addFavourite = (project) ->
-  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  favourites = readFavourites()
   newFavourites =
     if favourites?
-      favourites.push(project)
+      projectAlreadyFavourited = favourites.includes(project)
+      if !projectAlreadyFavourited
+        favourites.push(project)
+
       favourites
     else
       [project]
-  localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
+  writeFavourites(newFavourites)
   renderFavourites()
 
 deleteFavourite = (project) ->
-  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  favourites = readFavourites()
   newFavourites =
     if favourites?
       favourites.filter (fav) -> fav != project
     else
       []
-  localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
+  writeFavourites(newFavourites)
   renderFavourites()
 
 setupFavouriteHandlers = () ->
@@ -59,7 +68,7 @@ setupFavouriteHandlers = () ->
 
 renderFavourites = () ->
   container = $('#favourites-container')
-  favourites = JSON.parse(localStorage.getItem('favouriteProjects'))
+  favourites = readFavourites()
   if favourites? && favourites.length > 0
     container.removeClass('hidden')
     list = $('#favourites-list', container)
@@ -84,6 +93,14 @@ $ ->
     input.autocomplete
       source:serverUrl
       minLength:0
+
+    addFavouriteProjectButton = $('#add-favourite-project-button')
+    updateFavouriteButton = ->
+      projectInputIsEmpty = input.val().trim() == ''
+      addFavouriteProjectButton.prop('disabled', projectInputIsEmpty)
+
+    input.on('change', updateFavouriteButton)
+    input.on('keyup', updateFavouriteButton)
 
   $('#projectInput').blur updateDeployInfo
 
@@ -126,7 +143,7 @@ $ ->
     elemProjectInput = $('#projectInput')
     selectedProject = elemProjectInput.val()
 
-    if selectedProject?
+    if selectedProject
       addFavourite(selectedProject)
 
   renderFavourites()
