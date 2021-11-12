@@ -85,6 +85,14 @@ $ ->
       source:serverUrl
       minLength:0
 
+    addFavouriteProjectButton = $('#add-favourite-project-button')
+    updateFavouriteButton = ->
+      projectInputIsEmpty = input.val().trim() == ''
+      addFavouriteProjectButton.prop('disabled', projectInputIsEmpty)
+
+    input.on('change', updateFavouriteButton)
+    input.on('keyup', updateFavouriteButton)
+
   $('#projectInput').blur updateDeployInfo
 
   $('#buildInput').each ->
@@ -126,7 +134,7 @@ $ ->
     elemProjectInput = $('#projectInput')
     selectedProject = elemProjectInput.val()
 
-    if selectedProject?
+    if selectedProject
       addFavourite(selectedProject)
 
   renderFavourites()
