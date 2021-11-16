@@ -123,7 +123,25 @@ case class CullInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: R
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
     EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       ELB.withClient(keyRing, region, resources) { elbClient =>
-        val instancesToKill = asg.instances.asScala.filter(instance => EC2.hasTag(instance, "Magenta", "Terminate", ec2Client))
+        val instancesToKill = asg.instances.asScala
+          .filter(instance => {
+            if(instance.lifecycleState == LifecycleState.UNKNOWN_TO_SDK_VERSION) {
+              logger.warn(s"Instance lifecycle state ${instance.lifecycleStateAsString} isn't recognised in the AWS SDK. Is there a later version of the AWS SDK available?")
+            }
+
+            // See https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html#lifecycle-hooks-overview
+            val terminatingStates = List(
+              LifecycleState.TERMINATING,
+              LifecycleState.TERMINATING_WAIT,
+              LifecycleState.TERMINATING_PROCEED,
+              LifecycleState.TERMINATED
+            ).map(_.toString)
+
+            val isAlreadyTerminating = terminatingStates.contains(instance.lifecycleStateAsString)
+            val isTaggedForTermination = EC2.hasTag(instance, "Magenta", "Terminate", ec2Client)
+
+            isTaggedForTermination && !isAlreadyTerminating
+          })
         val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
         try {
           resources.reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
