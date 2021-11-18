@@ -79,7 +79,14 @@ object AutoScaling extends DeploymentType {
   ).default(false)
 
   val asgMigrationInProgress = Param[Boolean]("asgMigrationInProgress",
-    "When this is set to true, Riff-Raff will search for two autoscaling groups and deploy to them both"
+    """
+      |When this is set to true, Riff-Raff will search for two autoscaling groups and deploy to them both.
+      |
+      |Note, for this to work, the following need to hold:
+      |
+      | - both ASGs need matching Stack,Stage,App tags
+      | - *exactly* two matching ASGs (not 1, 3, etc.)
+      | - the new ASG needs to have a 'gu:riffraff:new-asg' tag on it (with any value)""".stripMargin
   ).default(false)
 
   val deploy = Action("deploy",
