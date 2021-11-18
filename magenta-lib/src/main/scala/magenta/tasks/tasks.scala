@@ -3,7 +3,6 @@ package tasks
 
 import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
 import java.util.Base64
-import java.nio.charset.StandardCharsets
 import magenta.artifact._
 import magenta.deployment_type.{
   LambdaFunction,
@@ -434,8 +433,8 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
         resources.reporter.verbose(s"Invoking $function Lambda")
         val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
         val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
-        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose)//TODO: Improve what the Lambda logs
-        resources.reporter.info(invokeResponse.payload().asString(StandardCharsets.UTF_8)) //TODO: Parse as JSON and print per line
+        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose) //TODO: Group and also improve what the Lambda logs
+        Json.parse(invokeResponse.payload().asByteArray()).as[List[String]].foreach(resources.reporter.info)
         resources.reporter.verbose(s"Finished invoking $function Lambda")
       } else {
         resources.reporter.fail(s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'.")
