@@ -32,6 +32,7 @@ import software.amazon.awssdk.services.s3.model.{
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.io.Source
 import scala.util.control.NonFatal
 import scala.collection.parallel.CollectionConverters._
 
@@ -433,7 +434,8 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
         resources.reporter.verbose(s"Invoking $function Lambda")
         val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
         val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
-        resources.reporter.info(new String(logResultByteArray, StandardCharsets.UTF_8)) //TODO: Split log string on line breaks, and call reporter.info for each line (also improve what the Lambda logs)
+        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose)//TODO: Improve what the Lambda logs
+        resources.reporter.info(invokeResponse.payload().asString(StandardCharsets.UTF_8)) //TODO: Parse as JSON and print per line
         resources.reporter.verbose(s"Finished invoking $function Lambda")
       } else {
         resources.reporter.fail(s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'.")
