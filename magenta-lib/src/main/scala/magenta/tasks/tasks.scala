@@ -417,7 +417,6 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
     }).toMap
 
     val lambdaPayload = Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
-    resources.reporter.verbose(lambdaPayload.toString()) // TODO: Can this be wrapped in some heading/section?
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
 
       // FIXME: Move this into LambdaFunction trait to avoid repetition with UpdateS3Lambda
@@ -433,7 +432,7 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
         resources.reporter.verbose(s"Invoking $function Lambda")
         val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
         val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
-        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose) //TODO: Group and also improve what the Lambda logs
+        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose)
         Json.parse(invokeResponse.payload().asByteArray()).as[List[String]].foreach(resources.reporter.info)
         resources.reporter.verbose(s"Finished invoking $function Lambda")
       } else {
