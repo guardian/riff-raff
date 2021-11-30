@@ -405,7 +405,7 @@ case class UpdateS3Lambda(
 }
 
 case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region: Region)(implicit val keyRing: KeyRing) extends Task {
-  def description = "Task that invokes a lambda."
+  def description = s"Invoking $function Lambda."
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     implicit val s3client: S3Client = resources.artifactClient
@@ -429,12 +429,10 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
           }
       }
       if (functionName.startsWith(LambdaInvoke.lambdaFunctionNamePrefix)) {
-        resources.reporter.verbose(s"Invoking $function Lambda")
         val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
         val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
         Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose)
         Json.parse(invokeResponse.payload().asByteArray()).as[List[String]].foreach(resources.reporter.info)
-        resources.reporter.verbose(s"Finished invoking $function Lambda")
       } else {
         resources.reporter.fail(s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'.")
       }
