@@ -22,7 +22,7 @@ object BrazePublish extends LambdaInvoke {
       |  }
       |}
       |```
-    """
+    """.stripMargin
 
   override def defaultActions: List[Action] = super.defaultActions.map { action =>
     action.copy(){(pkg, resources, target) =>
