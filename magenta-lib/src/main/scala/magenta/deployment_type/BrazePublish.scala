@@ -38,4 +38,6 @@ object BrazePublish extends LambdaInvoke {
       )
     }
   }
+
+  override def paramsToHide: Seq[Param[_]] = super.params
 }

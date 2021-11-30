@@ -15,6 +15,7 @@ trait DeploymentType {
     }
   }
   def params = registerParamsList.values.toSeq
+  def paramsToHide = Seq.empty[Param[_]]
 
   private val registerActionsMap = mutable.Map.empty[String, Action]
   implicit val actionsRegister = new ActionRegister {
