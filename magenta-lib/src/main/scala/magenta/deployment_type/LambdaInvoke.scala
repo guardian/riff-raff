@@ -16,10 +16,11 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
   override def functionNamesParamDescriptionSuffix = "invoke"
 
   val name = "aws-invoke-lambda"
+  private val summary = s"Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas)."
 
   override def documentation: String =
     s"""
-      |Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas).
+      |${summary}
       |
       |Lambda function names must begin with `${lambdaFunctionNamePrefix}`.
       |
@@ -47,7 +48,7 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
   def buildLambdaTaskPrecursor(tags: LambdaFunctionTags, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
     InvokeLambdaFunction(tags, target.region)
 
-  override def defaultActions: List[Action] = List(Action("invoke","Do nothing"){
+  override def defaultActions: List[Action] = List(Action(name = "invokeLambda",documentation = summary){
     (pkg, resources, target) => {
       lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         InvokeLambda(

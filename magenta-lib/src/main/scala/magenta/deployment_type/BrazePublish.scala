@@ -5,9 +5,10 @@ import play.api.libs.json.{JsArray, JsString, JsBoolean}
 object BrazePublish extends LambdaInvoke {
   val brazePublishLambdaNameMinusStage = s"${LambdaInvoke.lambdaFunctionNamePrefix}braze-version-control-publish-lambda-"
   override val name = "braze-publish"
+  private val summary = s"Invokes Lambda `${brazePublishLambdaNameMinusStage}` (with the STAGE appended). This Lambda publishes content blocks to the target Braze environment (only if there are changes)."
 
   override def documentation: String = s"""
-      |Invokes Lambda `${brazePublishLambdaNameMinusStage}` (with the STAGE appended). This Lambda publishes content blocks to the target Braze environment (only if there are changes).
+      |${summary}
       |
       |The payload sent to the Lambda is constructed from the artifacts associated with this deployment step.
       |The top level key is the name of the deployment step, and the keys of the object within are the file names and the values are the file contents as strings.
@@ -25,7 +26,7 @@ object BrazePublish extends LambdaInvoke {
     """.stripMargin
 
   override def defaultActions: List[Action] = super.defaultActions.map { action =>
-    action.copy(){(pkg, resources, target) =>
+    action.copy(name="brazePublish", documentation=summary){(pkg, resources, target) =>
       action.taskGenerator(
         pkg.copy(pkgSpecificData = pkg.pkgSpecificData ++ Map(
           functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
