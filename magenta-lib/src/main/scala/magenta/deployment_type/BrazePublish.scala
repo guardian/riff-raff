@@ -26,7 +26,7 @@ object BrazePublish extends LambdaInvoke {
     """.stripMargin
 
   override def defaultActions: List[Action] = super.defaultActions.map { action =>
-    action.copy(name="brazePublish", documentation=summary){(pkg, resources, target) =>
+    Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
       action.taskGenerator(
         pkg.copy(pkgSpecificData = pkg.pkgSpecificData ++ Map(
           functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
