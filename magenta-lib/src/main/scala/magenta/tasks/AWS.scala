@@ -3,9 +3,7 @@ package magenta.tasks
 import java.nio.ByteBuffer
 import cats.implicits._
 import magenta.deployment_type.{
-  MigrationTagRequirements,
-  MustBePresent,
-  MustNotBePresent
+  LambdaFunction, LambdaFunctionName, LambdaFunctionTags, MigrationTagRequirements, MustBePresent, MustNotBePresent
 }
 import magenta.{
   ApiRoleCredentials,
@@ -248,6 +246,15 @@ object Lambda {
       .payload(SdkBytes.fromByteArray(payloadBytes))
       .logType(LogType.TAIL)
       .build()
+
+  def getFunctionName(client: LambdaClient, function: LambdaFunction, reporter: DeployReporter): String = function match {
+    case LambdaFunctionName(name) => name
+    case LambdaFunctionTags(tags) =>
+      val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
+      functionConfig.map(_.functionName).getOrElse{
+        reporter.fail(s"Failed to find any function with tags $tags")
+      }
+  }
 
   def findFunctionByTags(
       tags: Map[String, String],

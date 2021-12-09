@@ -383,16 +383,8 @@ case class UpdateS3Lambda(
       stopFlag: => Boolean
   ): Unit = {
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
-      val functionName: String = function match {
-        case LambdaFunctionName(name) => name
-        case LambdaFunctionTags(tags) =>
-          val functionConfig =
-            Lambda.findFunctionByTags(tags, resources.reporter, client)
-          functionConfig.map(_.functionName).getOrElse {
-            resources.reporter
-              .fail(s"Failed to find any function with tags $tags")
-          }
-      }
+      val functionName =
+            Lambda.getFunctionName(client, function, resources.reporter)
 
       resources.reporter.verbose(s"Starting update $function Lambda")
       client.updateFunctionCode(
@@ -418,16 +410,7 @@ case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region:
 
     val lambdaPayload = Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
-
-      // FIXME: Move this into LambdaFunction trait to avoid repetition with UpdateS3Lambda
-      val functionName: String = function match {
-        case LambdaFunctionName(name) => name
-        case LambdaFunctionTags(tags) =>
-          val functionConfig = Lambda.findFunctionByTags(tags, resources.reporter, client)
-          functionConfig.map(_.functionName).getOrElse{
-            resources.reporter.fail(s"Failed to find any function with tags $tags")
-          }
-      }
+      val functionName = Lambda.getFunctionName(client, function, resources.reporter)
       if (functionName.startsWith(LambdaInvoke.lambdaFunctionNamePrefix)) {
         val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
         val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
