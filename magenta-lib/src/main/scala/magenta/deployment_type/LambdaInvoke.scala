@@ -13,7 +13,8 @@ object LambdaInvoke {
 }
 
 trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
-  override def functionNamesParamDescriptionSuffix = "invoke"
+  override val lambdaKeyword: String = "invoke"
+  override def functionNamesParamDescriptionSuffix = lambdaKeyword
 
   val name = "aws-invoke-lambda"
   private val summary = s"Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas)."

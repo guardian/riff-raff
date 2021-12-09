@@ -27,6 +27,7 @@ trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with Bucke
       |
       """.stripMargin
 
+  override def lambdaKeyword: String = "deploy"
   val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
