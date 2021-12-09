@@ -25,19 +25,17 @@ object BrazePublish extends LambdaInvoke {
       |```
     """.stripMargin
 
-  override def defaultActions: List[Action] = super.defaultActions.map { action =>
-    Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
-      action.taskGenerator(
-        pkg.copy(pkgSpecificData = pkg.pkgSpecificData ++ Map(
+  override def defaultActions: List[Action] =
+    List(Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
+      invokeAction.taskGenerator(
+        pkg.copy(pkgSpecificData = pkg.pkgSpecificData.filterKeys(key => !super.params.map(_.name).contains(key)) ++ Map(
           functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
           prefixStackParam.name -> JsBoolean(false)
-          //TODO: Filter out other Lambda params to avoid misuse
         )),
         resources,
         target
       )
-    }
-  }
+    })
 
-  override def paramsToHide: Seq[Param[_]] = super.params
+  override def paramsToHide: Seq[Param[_]] = super.params // This deployment type takes no parameters, so we hide all the parameters from the parent
 }

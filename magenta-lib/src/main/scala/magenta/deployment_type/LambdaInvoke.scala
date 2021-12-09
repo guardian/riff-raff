@@ -48,7 +48,7 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
   def buildLambdaTaskPrecursor(tags: LambdaFunctionTags, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
     InvokeLambdaFunction(tags, target.region)
 
-  override def defaultActions: List[Action] = List(Action(name = "invokeLambda",documentation = summary){
+  val invokeAction = Action(name = "invokeLambda",documentation = summary){
     (pkg, resources, target) => {
       lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         InvokeLambda(
@@ -60,5 +60,7 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
         )
       }
     }
-  })
+  }
+
+  override def defaultActions: List[Action] = List(invokeAction)
 }
