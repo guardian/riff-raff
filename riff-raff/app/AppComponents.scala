@@ -126,7 +126,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val scheduledDeployNotifier = new DeployFailureNotifications(config, availableDeploymentTypes, targetResolver, prismLookup)
 
   val authAction = new AuthAction[AnyContent](
-    googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    googleAuthConfig, routes.Login.loginAction, controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -193,7 +193,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
-      Logger.error("Error whilst trying to serve request", t)
+      log.error("Error whilst trying to serve request", t)
       val reportException = if (t.getCause != null) t.getCause else t
       Future.successful(InternalServerError(views.html.errorPage(config)(reportException)))
     }

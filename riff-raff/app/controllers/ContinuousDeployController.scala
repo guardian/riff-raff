@@ -53,7 +53,7 @@ class ContinuousDeployController(config: Config,
           form.id, form.projectName, form.stage, form.branchMatcher, Trigger(form.trigger), request.user.fullName, new DateTime()
         )
         continuousDeploymentConfigRepository.setContinuousDeployment(config)
-        Redirect(routes.ContinuousDeployController.list())
+        Redirect(routes.ContinuousDeployController.list)
       }
     )
   }
@@ -61,7 +61,7 @@ class ContinuousDeployController(config: Config,
   def edit(id: String) = authAction { implicit request =>
     continuousDeploymentConfigRepository.getContinuousDeployment(UUID.fromString(id)).map{ deploymentConfig =>
       Ok(views.html.continuousDeployment.form(config, menu)(continuousDeploymentForm.fill(ConfigForm(deploymentConfig)), prismLookup))
-    }.getOrElse(Redirect(routes.ContinuousDeployController.list()))
+    }.getOrElse(Redirect(routes.ContinuousDeployController.list))
   }
 
   def delete(id: String) = authAction { implicit request =>
@@ -72,7 +72,7 @@ class ContinuousDeployController(config: Config,
           continuousDeploymentConfigRepository.deleteContinuousDeployment(UUID.fromString(id))
       }
     )
-    Redirect(routes.ContinuousDeployController.list())
+    Redirect(routes.ContinuousDeployController.list)
   }
 
 }

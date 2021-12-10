@@ -86,7 +86,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
     lazy val clientId: String = getStringOpt("auth.clientId").getOrException("No client ID configured")
     lazy val clientSecret: String = getStringOpt("auth.clientSecret").getOrException("No client secret configured")
-    lazy val redirectUrl: String = getStringOpt("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback().url}")
+    lazy val redirectUrl: String = getStringOpt("auth.redirectUrl").getOrElse(s"${urls.publicPrefix}${routes.Login.oauth2Callback.url}")
     lazy val domain: String = getStringOpt("auth.domain").getOrException("No auth domain configured")
     lazy val superusers: List[String] = getStringList("auth.superusers")
     lazy val secretStateSupplierKeyName: String = getStringOpt("auth.secretStateSupplier.keyName").getOrElse("/RiffRaff/PlayApplicationSecret")

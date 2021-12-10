@@ -8,12 +8,12 @@
     <h2>Create new API key</h2>
     <hr/>
 
-    @b3.form(action=routes.Api.createKey()) {
+    @b3.form(action=routes.Api.createKey) {
         @CSRF.formField
         @b3.text(apiForm("application"), '_label -> "Application that will use this key")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Create</button> or
-            <a href="@routes.Api.listKeys()" class="btn btn-danger">Cancel</a>
+            <a href="@routes.Api.listKeys" class="btn btn-danger">Cancel</a>
         </div>
     }
 }(config, menu)
