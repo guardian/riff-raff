@@ -5,7 +5,7 @@ import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.12.8",
+  scalaVersion := "2.12.13",
   scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions", "-Ypartial-unification"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
@@ -54,6 +54,7 @@ lazy val riffraff = project.in(file("riff-raff"))
     buildInfoPackage := "riffraff",
 
     libraryDependencies ++= riffRaffDeps,
+    dependencyOverrides += "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2", // Avoid binary incompatibility error.
 
     Universal / javaOptions ++= Seq(
       s"-Dpidfile.path=/dev/null",

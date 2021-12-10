@@ -40,7 +40,7 @@ object Dependencies {
     "com.gu" %% "fastly-api-client" % "0.4.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-    "com.typesafe.play" %% "play-json" % "2.7.2",
+    "com.typesafe.play" %% "play-json" % "2.9.2",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev75-1.25.0",
     "com.google.apis" % "google-api-services-storage" % "v1-rev171-1.25.0"
@@ -80,7 +80,7 @@ object Dependencies {
     "com.whisk" %% "docker-testkit-impl-spotify" % "0.9.8" % "test",
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.5.21" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.17" % Test,
     "org.gnieh" %% "diffson-play-json" % "2.2.1" % Test,
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
