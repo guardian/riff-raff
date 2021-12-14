@@ -1,8 +1,7 @@
 package magenta.tasks.gcp
 
 import cats.data.NonEmptyList
-import com.gu.management.Loggable
-import magenta.DeployReporter
+import magenta.{DeployReporter, Loggable}
 
 import scala.concurrent.duration._
 

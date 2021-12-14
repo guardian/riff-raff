@@ -1,8 +1,8 @@
 package lifecycle
 
-import com.gu.management.DefaultSwitch
 import controllers.Logging
 import deployment.{Deployments, Record}
+import magenta.DefaultSwitch
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._

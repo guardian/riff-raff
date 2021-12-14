@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.tasks.{ChangeSwitch, S3Upload}
+import magenta.tasks.{S3Upload, ShutdownTask}
 
 object SelfDeploy extends DeploymentType {
   val name = "self-deploy"
@@ -53,26 +53,16 @@ object SelfDeploy extends DeploymentType {
       )
     )
   }
+
+
   val selfDeploy = Action("selfDeploy",
     """
-      |Switches the `shutdown-when-inactive` switch to true on the target hosts (discovered using Prism to lookup
-      |hosts according to the stack, app and stage of the deployment).
-      |
-      |The switch is expected to be a [guardian management](https://github.com/guardian/guardian-management) switch.
+      |Invokes the Shutdown controller on the target instance.
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
-    val reporter = resources.reporter
+
     val hosts = resources.lookup.hosts.get(pkg, pkg.app, target.parameters, target.stack).toList
-    hosts.map{ host =>
-      ChangeSwitch(
-        host,
-        managementProtocol(pkg, target, reporter),
-        managementPort(pkg, target, reporter),
-        switchboardPath(pkg, target, reporter),
-        "shutdown-when-inactive",
-        desiredState=true
-      )
-    }
+    hosts.map(ShutdownTask.apply)
   }
 
   def defaultActions = List(uploadArtifacts, selfDeploy)

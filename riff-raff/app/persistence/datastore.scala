@@ -1,13 +1,13 @@
 package persistence
 
-import java.util.UUID
-
-import conf.{Config, DatastoreMetrics, DatastoreRequest}
+import conf.Config
 import controllers.{ApiKey, AuthorisationRecord, Logging}
 import org.joda.time.DateTime
 import play.api.Logger
 import scalikejdbc._
 import utils.Retriable
+
+import java.util.UUID
 
 trait CollectionStats {
   def dataSize: Long
@@ -48,7 +48,7 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
         Left(t)
     }
 
-  def run[T](block: => T): T = DatastoreRequest.measure(block)
+  def run[T](block: => T): T = block
 
   def collectionStats: Map[String, CollectionStats] = Map.empty
 

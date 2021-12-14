@@ -1,6 +1,6 @@
 package docs
 
-import com.gu.management.Loggable
+import magenta.Loggable
 import org.parboiled.common.StringUtils
 import org.pegdown.FastEncoder._
 import org.pegdown.LinkRenderer.Rendering

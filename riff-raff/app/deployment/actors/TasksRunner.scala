@@ -12,7 +12,6 @@ import org.joda.time.DateTime
 import scala.util.control.NonFatal
 
 class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Logging {
-  import DeployMetricsActor._
   import TasksRunner._
 
   log.debug(s"New tasks runner created with path ${self.path}")
@@ -33,14 +32,9 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
                 val stopMessage = s"Deploy has been stopped by ${stopFlagAgent()(uuid)}"
                 deployReporter.fail(stopMessage, DeployStoppedException(stopMessage))
               } else {
-                try {
-                  log.debug(s"Running task $taskId")
-                  deployMetricsProcessor ! TaskStart(uuid, taskId, queueTime, new DateTime())
-                  deployReporter.taskContext(task) { taskReporter =>
-                    task.execute(deploymentResources.copy(reporter = taskReporter), stopFlagAsker)
-                  }
-                } finally {
-                  deployMetricsProcessor ! TaskComplete(uuid, taskId, new DateTime())
+                log.debug(s"Running task $taskId")
+                deployReporter.taskContext(task) { taskReporter =>
+                  task.execute(deploymentResources.copy(reporter = taskReporter), stopFlagAsker)
                 }
               }
             }

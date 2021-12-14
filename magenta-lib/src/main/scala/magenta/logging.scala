@@ -1,11 +1,10 @@
 package magenta
 
 import java.util.UUID
-
 import enumeratum._
-import magenta.metrics.MagentaMetrics
 import magenta.tasks.Task
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 import play.api.libs.json.{Format, Json}
 import rx.lang.scala.{Observable, Subject}
 
@@ -58,9 +57,7 @@ object DeployReporter {
 
   private def send(reporter: DeployReporter, message: Message, messageUUID: UUID = UUID.randomUUID()) {
     val stack = MessageStack(message :: reporter.messageStack)
-    MagentaMetrics.MessageBrokerMessages.measure {
-      messageSubject.onNext(MessageWrapper(reporter.messageContext, messageUUID, stack))
-    }
+    messageSubject.onNext(MessageWrapper(reporter.messageContext, messageUUID, stack))
   }
 
   // get the genesis reporter that will be the root of all others
@@ -190,4 +187,8 @@ case object Message extends Enum[Message] with PlayJsonEnum[Message] {
   case class Warning(text: String) extends Message
 
   val values = findValues
+}
+
+trait Loggable {
+  val logger = LoggerFactory.getLogger(this.getClass)
 }
