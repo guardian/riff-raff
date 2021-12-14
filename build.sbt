@@ -5,14 +5,17 @@ import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.12.13",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions", "-Ypartial-unification"
+  scalaVersion := "2.13.7",
+  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
   Compile / doc / scalacOptions ++= Seq(
     "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
   ),
-  version := "1.0"
+  version := "1.0",
+  resolvers ++= Seq(
+    Resolver.sonatypeRepo("public")
+  )
 )
 
 lazy val root = project.in(file("."))

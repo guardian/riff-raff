@@ -1,8 +1,5 @@
 package magenta
 
-import java.io.Closeable
-
-import com.gu.management.Loggable
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}

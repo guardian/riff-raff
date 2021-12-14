@@ -1,15 +1,11 @@
 package magenta.tasks
 
-import java.nio.ByteBuffer
-
 import cats.implicits._
-import com.gu.management.Loggable
-import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
-import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentResources, KeyRing, Loggable, Region, StsDeploymentResources, withResource}
+import org.slf4j.LoggerFactory
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
-import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.core.retry.conditions.RetryCondition
 import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
@@ -23,21 +19,22 @@ import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancin
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DeregisterTargetsRequest, DescribeTargetHealthRequest, TargetDescription, TargetHealthStateEnum}
 import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELB}
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, ListFunctionsRequest, ListTagsRequest, UpdateFunctionCodeRequest}
+import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, ListTagsRequest, UpdateFunctionCodeRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.ssm.SsmClient
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 import software.amazon.awssdk.services.sts.StsClient
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
-
-import scala.annotation.tailrec
-import scala.collection.JavaConverters._
-import scala.util.{Random, Try}
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 
+import java.nio.ByteBuffer
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
+import scala.util.Try
+
 object S3 {
+
   def withS3client[T](keyRing: KeyRing, region: Region, config: ClientOverrideConfiguration = AWS.clientConfiguration, resources: DeploymentResources)(block: S3Client => T): T =
     withResource(S3Client.builder()
       .region(region.awsRegion)

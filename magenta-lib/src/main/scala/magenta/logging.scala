@@ -1,11 +1,11 @@
 package magenta
 
 import java.util.UUID
-
 import enumeratum._
 import magenta.metrics.MagentaMetrics
 import magenta.tasks.Task
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 import play.api.libs.json.{Format, Json}
 import rx.lang.scala.{Observable, Subject}
 
@@ -190,4 +190,8 @@ case object Message extends Enum[Message] with PlayJsonEnum[Message] {
   case class Warning(text: String) extends Message
 
   val values = findValues
+}
+
+trait Loggable {
+  val logger = LoggerFactory.getLogger(this.getClass)
 }

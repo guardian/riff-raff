@@ -1,18 +1,17 @@
 package persistence
 
-import java.util.UUID
 import cats.instances.either._
 import cats.instances.list._
 import cats.syntax.traverse._
 import controllers.{Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, DeployRecord, PaginationView}
-import henkan.convert.Syntax._
 import magenta.ContextMessage._
 import magenta.Strategy.MostlyHarmless
 import magenta._
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import org.joda.time.DateTime
-import persistence.DeploymentSelectorDocument._
+
+import java.util.UUID
 
 case class RecordConverter(uuid:UUID, startTime:DateTime, params: ParametersDocument, status:RunState, messages:List[MessageWrapper] = Nil) extends Logging {
   def +(newWrapper: MessageWrapper): RecordConverter = copy(messages = messages ::: List(newWrapper))
@@ -47,7 +46,12 @@ object RecordConverter {
       selector = sourceParams.selector match {
         case All => AllDocument
         case DeploymentKeysSelector(ids) =>
-          DeploymentKeysSelectorDocument(ids.map(_.to[DeploymentKeyDocument]()))
+          DeploymentKeysSelectorDocument(ids.map(id => DeploymentKeyDocument(
+            name = id.name,
+            action = id.action,
+            stack = id.stack,
+            region = id.region,
+          )))
       },
       updateStrategy = Some(sourceParams.updateStrategy)
     )
@@ -64,7 +68,12 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     deploy.parameters.selector match {
       case AllDocument => All
       case DeploymentKeysSelectorDocument(keys) =>
-        DeploymentKeysSelector(keys.map(_.to[DeploymentKey]()))
+        DeploymentKeysSelector(keys.map(key => DeploymentKey(
+          name = key.name,
+          action = key.action,
+          stack = key.stack,
+          region = key.region,
+        )))
     },
     deploy.parameters.updateStrategy.getOrElse(MostlyHarmless)
   )
