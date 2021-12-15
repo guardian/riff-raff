@@ -20,12 +20,12 @@ object Fixtures extends MockitoSugar {
   val threeSimpleTasks: List[Task] = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
     SayHello(host),
-    ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
+    ShutdownTask(Host("testHost", App("foo"), "CODE", "test"))
   )
 
   val twoTasks = List(
     S3Upload(Region("eu-west-1"), "test-bucket", Seq()),
-    ChangeSwitch(host, "http", 8080, "switchPath", "bobbinSwitch", desiredState = true)
+    ShutdownTask(Host("testHost", App("bar"), "CODE", "test"))
   )
 
   val threeSimpleTasksGraph = DeploymentGraph(threeSimpleTasks, "test")
