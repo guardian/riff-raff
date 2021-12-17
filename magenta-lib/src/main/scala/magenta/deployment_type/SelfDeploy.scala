@@ -27,16 +27,6 @@ object SelfDeploy extends DeploymentType {
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(false)
 
-  val managementPort = Param[Int]("managementPort",
-    "For deferred deployment only: The port of the management pages containing the location of the switchboard"
-  ).default(18080)
-  val managementProtocol = Param[String]("managementProtocol",
-    "For deferred deployment only: The protocol of the management pages containing the location of the switchboard"
-  ).default("http")
-  val switchboardPath = Param[String]("switchboardPath",
-    "For deferred deployment only: The URL path on the host to the switchboard management page"
-  ).default("/management/switchboard")
-
   val uploadArtifacts = Action("uploadArtifacts",
     """
       |Uploads the files in the deployment's directory to the specified bucket.
