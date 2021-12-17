@@ -211,15 +211,19 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
 case class ShutdownTask(host: Host)(implicit val keyRing: KeyRing)  extends Task {
 
   val description = "Shutdown Riffraff target(s) as part of self-deploy."
+  val shutdownUrl = s"https:://${host.name}:9000/shutdown"
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
-    val shutdownUrl = s"https:://${host.name}:9000/shutdown"
-    val request = new Request.Builder()
-      .url(
-        HttpUrl.parse(shutdownUrl).newBuilder().build()
-      )
-      .post(new FormBody.Builder().build())
-      .build()
+    val parsedUrl = Option(HttpUrl.parse(shutdownUrl))
+
+    val request = parsedUrl match {
+      case Some(url) =>
+        new Request.Builder().url(url.newBuilder().build())
+          .post(new FormBody.Builder().build())
+          .build()
+      case None =>
+        resources.reporter.fail(s"Shutdown request as part of self-deploy failed. Invalid target URL: ${shutdownUrl}")
+    }
 
     try {
       resources.reporter.verbose(s"Invoking shutdown with request: $request")
