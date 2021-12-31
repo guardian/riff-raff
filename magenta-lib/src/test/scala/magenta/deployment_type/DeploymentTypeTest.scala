@@ -89,8 +89,7 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
         "bucket-1234",
         Seq(sourceS3Package -> "test-stack/CODE/myapp"),
         cacheControlPatterns = List(PatternValue(".*", "no-cache")),
-        surrogateControlPatterns = List(PatternValue(".*", "max-age=3600")),
-        publicReadAcl = true
+        surrogateControlPatterns = List(PatternValue(".*", "max-age=3600"))
       ))
     )
   }
