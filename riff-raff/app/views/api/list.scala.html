@@ -5,7 +5,7 @@
 @main("API keys", request) {
     <h2>API keys</h2>
     <hr/>
-    <p><a class="btn btn-primary" href="@routes.Api.createKeyForm()"><i class="glyphicon glyphicon-plus glyphicon-white"></i> Create new API key</a></p>
+    <p><a class="btn btn-primary" href="@routes.Api.createKeyForm"><i class="glyphicon glyphicon-plus glyphicon-white"></i> Create new API key</a></p>
     <div class="content">
         @if(keyList.isEmpty) {
             <div class="alert alert-warning"><strong>No API keys.</strong></div>
@@ -32,7 +32,7 @@
                         <td>@key.lastUsed.map(utils.DateFormats.Short.print).getOrElse("never")</td>
                         <td>@key.totalCalls</td>
                         <td>
-                        @helper.form(routes.Api.delete(), 'class -> "modal-form") {
+                        @helper.form(routes.Api.delete, 'class -> "modal-form") {
                             @CSRF.formField
                             <button class="btn btn-xs btn-danger" name="key" value="@key.key"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                         }

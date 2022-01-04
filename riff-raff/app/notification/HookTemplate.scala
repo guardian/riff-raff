@@ -15,7 +15,10 @@ class HookTemplate(val input: ParserInput, record: DeployRecordDocument, urlEnco
 
   def Param = rule { SimpleParam | Tag }
 
-  def SimpleParam = rule { HookTemplate.paramSubstitutions.mapValues(f => encode(f(record))) }
+  def SimpleParam = {
+    val params = HookTemplate.paramSubstitutions.view.mapValues(f => encode(f(record))).toMap
+    rule { params }
+  }
 
   def Tag = rule { "tag." ~ capture( oneOrMore(Alpha | '-' | '_')) ~> (tagName =>
     encode(record.parameters.tags.getOrElse(tagName, ""))

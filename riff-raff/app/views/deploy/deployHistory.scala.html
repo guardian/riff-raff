@@ -3,7 +3,7 @@
 
 @if(restrictions.nonEmpty) {
     <div class="alert alert-warning" role="alert">
-        <p><strong>Deployment restricted</strong></p> <p>There are currently <a href="@routes.Restrictions.list()">restrictions</a>
+        <p><strong>Deployment restricted</strong></p> <p>There are currently <a href="@routes.Restrictions.list">restrictions</a>
             that prevent you from deploying <strong>@projectName</strong>@maybeStage.map{ stage => to <strong>@stage</strong>}:</p>
         @restrictions.map { restriction =>
             <p>

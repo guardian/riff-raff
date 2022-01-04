@@ -16,7 +16,7 @@ object RiffRaffYamlReader {
     // list instead of an unordered map
     def reads(json: JsValue): JsResult[List[(String, V)]] = json match {
       case JsObject(linkedMap) =>
-        type Errors = Seq[(JsPath, Seq[JsonValidationError])]
+        type Errors = scala.collection.Seq[(JsPath, scala.collection.Seq[JsonValidationError])]
         def locate(e: Errors, key: String) = e.map { case (p, valerr) => (JsPath \ key) ++ p -> valerr }
 
         linkedMap.foldLeft(Right(Nil): Either[Errors, List[(String, V)]]) {

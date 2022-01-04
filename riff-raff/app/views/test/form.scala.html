@@ -1,12 +1,11 @@
 @import conf.Config
 @(testForm: Form[controllers.Testing.TestForm])(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
-@import b3.vertical.fieldConstructor
 @import helper.CSRF
 
 @main("Test form", request) {
     <h2>Test form</h2>
 
-    @b3.form(action=routes.Testing.formPost) {
+    @b3.vertical.form(action=routes.Testing.formPost) { implicit fc =>
         @CSRF.formField
 
         @b3.text(testForm("project"))
@@ -16,7 +15,7 @@
         <div class="actions">
             <button name="action" type="submit" value="preview" class="btn btn-primary">Preview...</button> or
             <button name="action" type="submit" value="deploy" class="btn btn-danger">Deploy Now</button> or
-            <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
+            <a href="@routes.Application.index" class="btn btn-danger">Cancel</a>
         </div>
     }
 }(config, menu)

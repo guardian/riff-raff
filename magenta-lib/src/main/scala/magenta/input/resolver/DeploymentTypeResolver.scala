@@ -23,9 +23,18 @@ object DeploymentTypeResolver {
     invalidActions.map(invalids => Invalid(
       ConfigErrors(deployment.name, s"Invalid action ${invalids.toList.mkString(", ")} for type ${deployment.`type`}"))
     ).getOrElse {
-      import henkan.convert.Syntax._
       Validated.fromOption(actions.map(as =>
-        deployment.to[Deployment].set(actions = as)
+        Deployment(
+          name = deployment.name,
+          `type` = deployment.`type`,
+          stacks = deployment.stacks,
+          regions = deployment.regions,
+          actions = as,
+          app = deployment.app,
+          contentDirectory = deployment.contentDirectory,
+          dependencies = deployment.dependencies,
+          parameters = deployment.parameters,
+        )
       ), ConfigErrors(deployment.name, s"Either specify at least one action or omit the actions parameter"))
     }
   }

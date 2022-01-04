@@ -17,6 +17,7 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
+import scala.collection.parallel.CollectionConverters._
 
 case class S3Upload(
   region: Region,

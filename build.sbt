@@ -5,18 +5,16 @@ import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.12.8",
-  scalacOptions ++= Seq("-deprecation", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions", "-Ypartial-unification"
+  scalaVersion := "2.13.7",
+
+  // Temporarily disable warnings during 2.13 migration to focus on actual errors.
+  scalacOptions ++= Seq("-nowarn", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
-  scalacOptions in(Compile, doc) ++= Seq(
+  Compile / doc / scalacOptions ++= Seq(
     "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
   ),
-  version := "1.0",
-  resolvers ++= Seq(
-    "Typesafe Releases" at "https://repo.typesafe.com/typesafe/releases/",
-    "Guardian Github Releases" at "https://guardian.github.com/maven/repo-releases"
-  )
+  version := "1.0"
 )
 
 lazy val root = project.in(file("."))
@@ -30,7 +28,7 @@ lazy val lib = project.in(file("magenta-lib"))
   .settings(Seq(
     libraryDependencies ++= magentaLibDeps,
 
-    testOptions in Test += Tests.Argument("-oF")
+    Test / testOptions += Tests.Argument("-oF")
   ))
 
 lazy val riffraff = project.in(file("riff-raff"))
@@ -51,16 +49,15 @@ lazy val riffraff = project.in(file("riff-raff"))
 
     buildInfoKeys := Seq[BuildInfoKey](
       name, version, scalaVersion, sbtVersion,
-      BuildInfoKey.constant("gitCommitId", riffRaffBuildInfo.value.revision),
-      BuildInfoKey.constant("buildNumber", riffRaffBuildInfo.value.buildIdentifier)
+      "gitCommitId" -> riffRaffBuildInfo.value.revision,
+      "buildNumber" -> riffRaffBuildInfo.value.buildIdentifier
     ),
     buildInfoOptions += BuildInfoOption.BuildTime,
     buildInfoPackage := "riffraff",
 
-    resolvers += "Brian Clapper Bintray" at "https://dl.bintray.com/bmc/maven",
     libraryDependencies ++= riffRaffDeps,
 
-    javaOptions in Universal ++= Seq(
+    Universal / javaOptions ++= Seq(
       s"-Dpidfile.path=/dev/null",
       "-J-XX:MaxRAMFraction=2",
       "-J-XX:InitialRAMFraction=2",
@@ -69,9 +66,9 @@ lazy val riffraff = project.in(file("riff-raff"))
       s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log"
     ),
 
-    packageName in Universal := normalizedName.value,
-    topLevelDirectory in Universal := Some(normalizedName.value),
-    riffRaffPackageType := (packageZipTarball in Universal).value,
+    Universal / packageName := normalizedName.value,
+    Universal / topLevelDirectory := Some(normalizedName.value),
+    riffRaffPackageType := (Universal / packageZipTarball).value,
     riffRaffArtifactResources  := Seq(
       riffRaffPackageType.value -> s"${name.value}/${name.value}.tgz",
       baseDirectory.value / "bootstrap.sh" -> s"${name.value}/bootstrap.sh",
@@ -87,9 +84,9 @@ lazy val riffraff = project.in(file("riff-raff"))
       </dependencies>
     },
 
-    fork in Test := false,
+    Test / fork := false,
 
-    includeFilter in (Assets, LessKeys.less) := "*.less",
+    Assets / LessKeys.less / includeFilter := "*.less",
 
-    pipelineStages in Assets := Seq(digest)
+    Assets / pipelineStages := Seq(digest)
   ))

@@ -169,7 +169,7 @@ object CloudFormationParameters {
       .collect { case ExistingParameter(key, _, _) if allRequiredParamNames.contains(key) => key -> UseExistingValue }
       .toMap
     // Convert the full list of specified parameters
-    val specifiedParametersMap: Map[String, ParameterValue] = specifiedParameters.mapValues(SpecifiedValue.apply)
+    val specifiedParametersMap: Map[String, ParameterValue] = specifiedParameters.view.mapValues(SpecifiedValue.apply).toMap
     // Get the deployment parameters that are present in the template
     val deployParametersInTemplate: Map[String, ParameterValue] = deployParameters
       .collect { case (key, value) if allRequiredParamNames.contains(key) => key -> SpecifiedValue(value) }

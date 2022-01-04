@@ -67,7 +67,7 @@ class HooksController(config: Config,
       f => {
         val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName, f.method, f.postBody)
         hookConfigRepository.setPostDeployHook(config)
-        Redirect(routes.HooksController.list())
+        Redirect(routes.HooksController.list)
       }
     )
   }
@@ -76,7 +76,7 @@ class HooksController(config: Config,
     val uuid = UUID.fromString(id)
     hookConfigRepository.getPostDeployHook(uuid).map{ hc =>
       Ok(views.html.hooks.form(config, menu)(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
-    }.getOrElse(Redirect(routes.HooksController.list()))
+    }.getOrElse(Redirect(routes.HooksController.list))
   }
 
   def delete(id: String) = authAction { implicit request =>
@@ -87,6 +87,6 @@ class HooksController(config: Config,
           hookConfigRepository.deletePostDeployHook(UUID.fromString(id))
       }
     )
-    Redirect(routes.HooksController.list())
+    Redirect(routes.HooksController.list)
   }
 }

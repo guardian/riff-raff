@@ -116,7 +116,7 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
   }
 
   def hosts = new HostLookup {
-    def parseHosts(json: JsValue, entity: String = "instances"):Seq[Host] = {
+    def parseHosts(json: JsValue, entity: String = "instances"): Seq[Host] = {
       val tryHosts = (json \ "data" \ entity).as[JsArray].value.map { jsHost =>
         Try(jsHost.as[Host])
       }
@@ -128,7 +128,7 @@ class PrismLookup(config: Config, wsClient: WSClient, secretProvider: SecretProv
       if (errors.nonEmpty) log.warn(s"Encountered ${errors.size} (of ${tryHosts.size}) $entity records that could not be parsed in Prism response")
       if (log.isDebugEnabled) errors.foreach(e => log.debug("Couldn't parse instance from Prism data", e.exception))
 
-      tryHosts.flatMap {
+      tryHosts.toSeq.flatMap {
         case Success(hosts) => Some(hosts)
         case _ => None
       }

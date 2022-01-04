@@ -8,6 +8,7 @@ import org.joda.time.DateTime
 import controllers.Logging
 import magenta.Build
 import magenta.artifact.S3Object
+import scala.collection.Seq
 
 import scala.concurrent.{ExecutionContext, Future}
 

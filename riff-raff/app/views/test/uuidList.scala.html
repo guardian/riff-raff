@@ -31,7 +31,7 @@
         <td>V2</td>
         <td>
           <span>
-          @helper.form(action=routes.Testing.actionUUID(), 'class -> "modal-form") {
+          @helper.form(action=routes.Testing.actionUUID, 'class -> "modal-form") {
             @CSRF.formField
             <input type="hidden" name="uuid" value="@deploy.uuid"/>
             <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> V2</button>

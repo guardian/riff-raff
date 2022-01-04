@@ -1,5 +1,4 @@
 @import views.html.helper.magenta.PreviewHelper
-@import b3.inline.fieldConstructor
 @import magenta.input.DeploymentKey
 @*
 We use checkedKeys here separately from the form as Play! forms do not deal well with repeated checkboxes. We could try
@@ -10,7 +9,7 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
         form: Form[forms.DeployParameterForm], checkedKeys: List[magenta.input.DeploymentKey])(
  implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 
-@b3.formCSRF(routes.DeployController.processForm) {
+@b3.inline.formCSRF(routes.DeployController.processForm) { implicit fc =>
     @b3.hiddens(
         "project" -> form.value.map(_.project).get,
         "build" -> form.value.map(_.build).get,

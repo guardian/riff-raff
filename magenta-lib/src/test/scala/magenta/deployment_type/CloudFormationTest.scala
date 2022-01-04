@@ -18,6 +18,7 @@ import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
+import magenta.deployment_type.{CloudFormation => CloudFormationDeploymentType}
 
 import scala.concurrent.ExecutionContext.global
 
@@ -27,7 +28,7 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
   implicit val artifactClient: S3Client = null
   implicit val stsClient: StsClient = null
   val region = Region("eu-west-1")
-  val deploymentTypes: Seq[CloudFormation.type] = Seq(CloudFormation)
+  val deploymentTypes: Seq[CloudFormationDeploymentType.type] = Seq(CloudFormationDeploymentType)
   val app = App("app")
   val testStack = Stack("cfn")
   val cfnStackName = s"cfn-app-PROD"
@@ -36,7 +37,7 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
 
   private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false)), updateStrategy: Strategy = MostlyHarmless) = {
     val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global)
-    CloudFormation.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
+    CloudFormationDeploymentType.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
   }
 
   it should "generate the tasks in the correct order when manageStackPolicy is false" in {

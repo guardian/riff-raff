@@ -109,22 +109,22 @@
                             @maybeFilter.map { filter =>
                                 <li role="separator" class="divider"></li>
                                 <li><a href="@{
-                                    routes.DeployController.history()
+                                    routes.DeployController.history
                                 }?@{
                                     filter.replaceFilter(_.withStage(Some(record.parameters.stage.name))).q
                                 }">Filter Stage=<strong>@record.parameters.stage.name</strong></a></li>
                                 <li><a href="@{
-                                    routes.DeployController.history()
+                                    routes.DeployController.history
                                 }?@{
                                     filter.replaceFilter(_.withProjectName(Some(record.parameters.build.projectName))).q
                                 }">Filter Project=<strong>@record.parameters.build.projectName</strong></a></li>
                                 <li><a href="@{
-                                    routes.DeployController.history()
+                                    routes.DeployController.history
                                 }?@{
                                     filter.replaceFilter(_.withStatus(Some(record.state))).q
                                 }">Filter Status=<strong>@record.state.toString</strong></a></li>
                                 <li><a href="@{
-                                    routes.DeployController.history()
+                                    routes.DeployController.history
                                 }?@{
                                     filter.replaceFilter(_.withDeployer(Some(record.parameters.deployer.name))).q
                                 }">Filter Deployer=<strong>@record.parameters.deployer.name</strong></a></li>

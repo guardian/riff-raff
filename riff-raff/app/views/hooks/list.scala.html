@@ -6,7 +6,7 @@
 @main("Post Deploy Hooks", request) {
     <h2>Post Deploy Hooks</h2>
     <hr/>
-    <p><a class="btn btn-primary" href="@routes.HooksController.form()"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new hook</a></p>
+    <p><a class="btn btn-primary" href="@routes.HooksController.form"><i class="glyphicon glyphicon-plus glyphicon glyphicon-white"></i> Add new hook</a></p>
     <div class="content">
     @if(hooks.isEmpty) {
         <div class="alert alert-warning"><strong>No deploy hooks.</strong></div>

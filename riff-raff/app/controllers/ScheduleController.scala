@@ -75,7 +75,7 @@ class ScheduleController(config: Config,
         val config = form.toConfig(new DateTime(), request.user.fullName)
         scheduleRepository.setSchedule(config)
         deployScheduler.reschedule(config)
-        Redirect(routes.ScheduleController.list())
+        Redirect(routes.ScheduleController.list)
       }
     )
   }
@@ -97,7 +97,7 @@ class ScheduleController(config: Config,
           deployScheduler.cancel(uuid)
       }
     )
-    Redirect(routes.ScheduleController.list())
+    Redirect(routes.ScheduleController.list)
   }
 
 }

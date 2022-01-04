@@ -2,7 +2,6 @@ package test
 
 import java.util.UUID
 import deployment.DeployRecord
-import gnieh.diffson.playJson._
 import magenta.ContextMessage._
 import magenta.Message._
 import magenta.Strategy.MostlyHarmless
@@ -10,11 +9,7 @@ import magenta._
 import magenta.input.All
 import org.joda.time.DateTime
 import persistence.{LogDocument, RecordConverter}
-import play.api.libs.json.Json
 
-trait Utilities {
-  def compareJson(from: String, to: String) = JsonDiff.diff(Json.parse(from), Json.parse(to), remember = true)
-}
 
 trait PersistenceTestInstances {
   val testTime = new DateTime()

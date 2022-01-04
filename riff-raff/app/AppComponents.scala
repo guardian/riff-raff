@@ -1,9 +1,8 @@
 import java.time.Duration
 import ci._
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import software.amazon.awssdk.services.ssm.{SsmClient, SsmClientBuilder}
 import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
-import com.gu.play.secretrotation.aws.ParameterStore
+import com.gu.play.secretrotation.aws.parameterstore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
 import conf.{Config, Secrets}
 import controllers._
@@ -33,6 +32,7 @@ import schedule.DeployScheduler
 import software.amazon.awssdk.regions.Region
 import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 
+import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
@@ -51,16 +51,10 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   lazy val datastore: DataStore = new PostgresDatastoreOps(config, passwordProvider).buildDatastore()
 
   val secretStateSupplier: SnapshotProvider = {
-    new ParameterStore.SecretSupplier(
-      transitionTiming = TransitionTiming(
-        usageDelay = Duration.ofMinutes(3),
-        overlapDuration = Duration.ofHours(2)
-      ),
-      parameterName = config.auth.secretStateSupplierKeyName,
-      ssmClient = AWSSimpleSystemsManagementClientBuilder.standard()
-        .withRegion(config.auth.secretStateSupplierRegion)
-        .withCredentials(config.credentialsProviderChainV1(None, None))
-        .build()
+    new parameterstore.SecretSupplier(
+      TransitionTiming(usageDelay = ofMinutes(3), overlapDuration = ofHours(2)),
+      "/Example/PlayAppSecret",
+      parameterstore.AwsSdkV2(SsmClient.builder().build())
     )
   }
 
@@ -68,7 +62,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     clientId = config.auth.clientId,
     clientSecret = config.auth.clientSecret,
     redirectUrl = config.auth.redirectUrl,
-    domain = config.auth.domain,
+    domains = List(config.auth.domain),
     antiForgeryChecker = AntiForgeryChecker(secretStateSupplier, AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration))
   )
 
@@ -124,7 +118,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val scheduledDeployNotifier = new DeployFailureNotifications(config, availableDeploymentTypes, targetResolver, prismLookup)
 
   val authAction = new AuthAction[AnyContent](
-    googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
+    googleAuthConfig, routes.Login.loginAction, controllerComponents.parsers.default)(executionContext)
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -187,7 +181,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
-      Logger.error("Error whilst trying to serve request", t)
+      log.error("Error whilst trying to serve request", t)
       val reportException = if (t.getCause != null) t.getCause else t
       Future.successful(InternalServerError(views.html.errorPage(config)(reportException)))
     }

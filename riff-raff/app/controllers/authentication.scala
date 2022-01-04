@@ -119,7 +119,7 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
       email => {
         val auth = AuthorisationRecord(email.toLowerCase.trim, request.user.fullName, new DateTime())
         datastore.setAuthorisation(auth)
-        Redirect(routes.Login.authList())
+        Redirect(routes.Login.authList)
       }
     )
   }
@@ -129,9 +129,9 @@ class Login(config: Config, menu: Menu, deployments: Deployments, datastore: Dat
       log.info(s"${request.user.fullName} deleted authorisation for $email")
       datastore.deleteAuthorisation(email)
     } )
-    Redirect(routes.Login.authList())
+    Redirect(routes.Login.authList)
   }
 
-  override val failureRedirectTarget: Call = routes.Login.login()
-  override val defaultRedirectTarget: Call = routes.Application.index()
+  override val failureRedirectTarget: Call = routes.Login.login
+  override val defaultRedirectTarget: Call = routes.Application.index
 }
