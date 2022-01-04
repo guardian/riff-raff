@@ -211,7 +211,7 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
 case class ShutdownTask(host: Host)(implicit val keyRing: KeyRing)  extends Task {
 
   val description = "Shutdown Riffraff target(s) as part of self-deploy."
-  val shutdownUrl = s"http://${host.name}:9000/shutdown"
+  val shutdownUrl = s"http://${host.name}:9000/requestShutdown"
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     val parsedUrl = Option(HttpUrl.parse(shutdownUrl))
