@@ -57,13 +57,14 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
     thrown.getMessage should equal ("Package myapp [aws-s3] requires parameter cacheControl of type List")
   }
 
-  it should "log a warning when a default is explictly set" in {
+  it should "log a warning when a default is explicitly set" in {
     val mockReporter = mock[DeployReporter]
 
     val data: Map[String, JsValue] = Map(
       "bucket" -> JsString("bucket-1234"),
       "cacheControl" -> JsString("monkey"),
-      "prefixStage" -> JsBoolean(true)
+      "prefixStage" -> JsBoolean(true),
+      "publicReadAcl" -> JsBoolean(true)
     )
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
@@ -78,7 +79,8 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
     val data: Map[String, JsValue] = Map(
       "bucket" -> JsString("bucket-1234"),
       "cacheControl" -> JsString("no-cache"),
-      "surrogateControl" -> JsString("max-age=3600")
+      "surrogateControl" -> JsString("max-age=3600"),
+      "publicReadAcl" -> JsBoolean(true)
     )
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
@@ -101,7 +103,8 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
       "cacheControl" -> Json.arr(
         Json.obj("pattern" -> "^sub", "value" -> "no-cache"),
         Json.obj("pattern" -> ".*", "value" -> "public; max-age:3600")
-      )
+      ),
+      "publicReadAcl" -> JsBoolean(true)
     )
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
@@ -117,7 +120,8 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
       "cacheControl" -> JsString("no-cache"),
       "pathPrefixResource" -> JsString("s3-path-prefix"),
       "prefixStage" -> JsBoolean(false), // when we are using pathPrefixResource, we generally don't need or want the stage prefixe - we're already varying based on stage
-      "prefixPackage" -> JsBoolean(false)
+      "prefixPackage" -> JsBoolean(false),
+      "publicReadAcl" -> JsBoolean(true)
     )
 
     val p = DeploymentPackage("myapp", app1, data, "aws-s3", sourceS3Package, deploymentTypes)
