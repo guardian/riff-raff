@@ -6,7 +6,6 @@ import akka.actor.ActorSystem
 import akka.agent.Agent
 import akka.util.Switch
 import ci._
-import com.gu.management.DefaultSwitch
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta._
@@ -36,8 +35,6 @@ class Deployments(deploymentEngine: DeploymentEngine,
       requestedParams.build.projectName, requestedParams.stage.name, requestSource)
     if (restrictionsPreventingDeploy.nonEmpty) {
       Left(Error(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}"))
-    } else if (enableQueueingSwitch.isSwitchedOff) {
-      Left(Error(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableQueueingSwitch.name} switch"))
     } else {
       val params = if (requestedParams.build.id != "lastSuccessful")
         requestedParams
@@ -46,6 +43,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
           requestedParams.copy(build = requestedParams.build.copy(id=latestId))
         }.getOrElse(requestedParams)
       }
+
       deploysEnabled.whileOnYield {
         val record = create(params)
         deploymentEngine.interruptibleDeploy(record)
@@ -91,27 +89,11 @@ class Deployments(deploymentEngine: DeploymentEngine,
     DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
   }
 
-  lazy val completed: Observable[UUID] = deployCompleteSubject
-  private lazy val deployCompleteSubject = Subject[UUID]()
-
-  private val messagesSubscription: Subscription =
-    DeployReporter.messages.subscribe{ wrapper =>
-      try {
-        update(wrapper)
-      } catch {
-        case NonFatal(t) =>
-          log.error(s"Exception thrown whilst processing update with $wrapper", t)
-      }
-    }
-  def init() {}
-  def shutdown() { messagesSubscription.unsubscribe() }
-
-
   val deploysEnabled = new Switch(startAsOn = true)
 
   /**
     * Attempt to disable deploys from running.
- *
+    *
     * @return true if successful and false if this failed because a deploy was currently running
     */
   def atomicDisableDeploys:Boolean = {
@@ -128,7 +110,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   def enableDeploys = deploysEnabled.switchOn
 
-  lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
+  lazy val enableSwitches = List(enableDeploysSwitch)
 
   lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", deploysEnabled.isOn) {
     override def switchOff() {
@@ -141,7 +123,20 @@ class Deployments(deploymentEngine: DeploymentEngine,
     }
   }
 
-  lazy val enableQueueingSwitch = new DefaultSwitch("enable-deploy-queuing", "Enable riff-raff to queue deploys.  Turning this off will prevent anyone queueing a new deploy, although running deploys will continue.", true)
+  lazy val completed: Observable[UUID] = deployCompleteSubject
+  private lazy val deployCompleteSubject = Subject[UUID]()
+
+  private val messagesSubscription: Subscription =
+    DeployReporter.messages.subscribe{ wrapper =>
+      try {
+        update(wrapper)
+      } catch {
+        case NonFatal(t) =>
+          log.error(s"Exception thrown whilst processing update with $wrapper", t)
+      }
+    }
+  def init() {}
+  def shutdown() { messagesSubscription.unsubscribe() }
 
   implicit val system = ActorSystem("deploy")
 

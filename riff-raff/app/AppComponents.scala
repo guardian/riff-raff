@@ -1,12 +1,11 @@
 import java.time.Duration
-
 import ci._
 import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder
 import software.amazon.awssdk.services.ssm.{SsmClient, SsmClientBuilder}
 import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.ParameterStore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
-import conf.{Config, DeployMetrics, Secrets}
+import conf.{Config, Secrets}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
@@ -29,7 +28,6 @@ import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
 import resources.PrismLookup
-import riffraff.RiffRaffManagementServer
 import router.Routes
 import schedule.DeployScheduler
 import software.amazon.awssdk.regions.Region
@@ -144,26 +142,21 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   deployScheduler.initialise(new ScheduleRepository(config).getScheduleList())
 
   val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
-  val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
 
-  // the management server takes care of shutting itself down with a lifecycle hook
-  val management = new conf.Management(config, shutdownWhenInactive, deployments, datastore)
-  val managementServer = new RiffRaffManagementServer(management.applicationName, management.pages, Logger("ManagementServer"))
+  val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
 
   val lifecycleSingletons = Seq(
     ScheduledAgent,
     deployments,
     builds,
     targetResolver,
-    DeployMetrics,
     new GrafanaAnnotationLogger,
     hooksClient,
     new SummariseDeploysHousekeeping(config, datastore),
     continuousDeployment,
-    managementServer,
-    shutdownWhenInactive,
     artifactHousekeeper,
-    scheduledDeployNotifier
+    scheduledDeployNotifier,
+    shutdownWhenInactive,
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -190,6 +183,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val targetController = new TargetController(config, menu, deployments, targetDynamoRepository, authAction, controllerComponents)
   val loginController = new Login(config, menu, deployments, datastore, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(config, menu, datastore, prismLookup, documentStoreConverter, authAction, controllerComponents, artifactHousekeeper, deployments)
+  val managementController = new Management(controllerComponents, shutdownWhenInactive.switch, deployments)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
@@ -212,6 +206,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     targetController,
     loginController,
     testingController,
-    assets
+    assets,
+    managementController,
   )
 }

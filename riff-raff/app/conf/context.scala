@@ -1,28 +1,15 @@
 package conf
 
-import java.util.UUID
-
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.profile.{ProfileCredentialsProvider => ProfileCredentialsProviderV1}
 import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsProvider => AWSCredentialsProviderV1, AWSCredentialsProviderChain => AWSCredentialsProviderChainV1, BasicAWSCredentials => BasicAWSCredentialsV1, EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1, InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1, SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
-import com.amazonaws.services.rds.auth.{GetIamAuthTokenRequest, RdsIamAuthTokenGenerator}
-import com.gu.management._
-import com.gu.management.logback.LogbackLevelPage
 import com.typesafe.config.{Config => TypesafeConfig}
-import controllers.{Logging, routes}
-import deployment.Deployments
-import deployment.actors.DeployMetricsActor
-import lifecycle.{Lifecycle, ShutdownWhenInactive}
-import magenta.ContextMessage._
-import magenta.Message._
-import magenta._
+import controllers.Logging
+import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
-import org.joda.time.{DateTime, Days}
-import persistence.{CollectionStats, DataStore}
-import play.api.Configuration
-import riffraff.BuildInfo
+import controllers.routes
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
 import software.amazon.awssdk.regions.{Region => AWSRegion}
@@ -30,11 +17,10 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
-import utils.{DateFormats, PeriodicScheduledAgentUpdate, ScheduledAgent, UnnaturalOrdering}
+import utils.{DateFormats, UnnaturalOrdering}
+import riffraff.BuildInfo
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
 class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging {
@@ -268,99 +254,4 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
   val startTimeString:String = DateFormats.Short.print(startTime)
 
   override def toString: String = configuration.toString
-}
-
-class Management(config: Config, shutdownWhenInactive: ShutdownWhenInactive, deployments: Deployments, datastore: DataStore) {
-  val applicationName = "riff-raff"
-
-  val pages = List(
-    new BuildInfoPage,
-    new HealthcheckManagementPage,
-    new Switchboard(applicationName, shutdownWhenInactive.switch :: Healthcheck.switch :: deployments.enableSwitches),
-    StatusPage(applicationName, new Metrics(config, datastore).all),
-    new LogbackLevelPage(applicationName)
-  )
-}
-
-class BuildInfoPage extends ManagementPage {
-  val path = "/management/manifest"
-  def get(req: HttpRequest) = response
-  lazy val response = PlainTextResponse(BuildInfo.toString)
-}
-
-object DeployMetrics extends Lifecycle {
-  val runningDeploys = mutable.Buffer[UUID]()
-
-  object DeployStart extends CountMetric("riffraff", "start_deploy", "Start deploy", "Number of deploys that are kicked off")
-  object DeployComplete extends CountMetric("riffraff", "complete_deploy", "Complete deploy", "Number of deploys that completed", Some(DeployStart))
-  object DeployFail extends CountMetric("riffraff", "fail_deploy", "Fail deploy", "Number of deploys that failed", Some(DeployStart))
-
-  object DeployRunning extends GaugeMetric("riffraff", "running_deploys", "Running deploys", "Number of currently running deploys", () => runningDeploys.length)
-
-  val all = Seq(DeployStart, DeployComplete, DeployFail, DeployRunning)
-
-  val messageSub = DeployReporter.messages.subscribe(message => {
-    message.stack.top match {
-      case StartContext(Deploy(parameters)) =>
-        DeployStart.recordCount(1)
-        runningDeploys += message.context.deployId
-      case FailContext(Deploy(parameters)) =>
-        DeployFail.recordCount(1) // TODO this metric appears to be broken, never gets incremented
-        runningDeploys -= message.context.deployId
-      case FinishContext(Deploy(parameters)) =>
-        DeployComplete.recordCount(1)
-        runningDeploys -= message.context.deployId
-      case _ =>
-    }
-  })
-
-  def init() { }
-  def shutdown() { messageSub.unsubscribe() }
-}
-
-object TaskMetrics {
-  object TaskTimer extends TimingMetric("riffraff", "task_run", "Tasks running", "Timing of deployment tasks")
-  object TaskStartLatency extends TimingMetric("riffraff", "task_start_latency", "Task start latency", "Timing of deployment task start latency", Some(TaskTimer))
-  object TasksRunning extends GaugeMetric("riffraff", "running_tasks", "Running tasks", "Number of currently running tasks", () => DeployMetricsActor.runningTaskCount)
-  val all = Seq(TaskTimer, TaskStartLatency, TasksRunning)
-}
-
-object DatastoreRequest extends TimingMetric(
-  "performance",
-  "database_requests",
-  "Database requests",
-  "outgoing requests to the database"
-)
-
-class DatastoreMetrics(config: Config, datastore: DataStore) {
-  val update: PeriodicScheduledAgentUpdate[Map[String, CollectionStats]] = PeriodicScheduledAgentUpdate(5 seconds, 5 minutes){ _ => datastore.collectionStats }
-  val collectionStats = ScheduledAgent(Map.empty[String, CollectionStats], update)
-
-  def dataSize: Long = collectionStats().values.map(_.dataSize).foldLeft(0L)(_ + _)
-  def storageSize: Long = collectionStats().values.map(_.storageSize).foldLeft(0L)(_ + _)
-  def deployCollectionCount: Long = collectionStats().get("deploy").map(_.documentCount).getOrElse(0L)
-  object PostgresDataSize extends GaugeMetric("postgres", "data_size", "PostgreSQL data size", "The size of the data held in postgres tables", () => dataSize)
-  object PostgresStorageSize extends GaugeMetric("postgres", "storage_size", "PostgreSQL storage size", "The size of the storage used by the PostgreSQL tables", () => storageSize)
-  object PostgresDeployCollectionCount extends GaugeMetric("postgres", "deploys_collection_count", "Deploys collection count", "The number of rows in the deploys table", () => deployCollectionCount)
-  val all = Seq(DatastoreRequest, PostgresDataSize, PostgresStorageSize, PostgresDeployCollectionCount)
-}
-
-object LoginCounter extends CountMetric("webapp",
-  "login_attempts",
-  "Login attempts",
-  "Number of attempted logins")
-
-object FailedLoginCounter extends CountMetric("webapp",
-  "failed_logins",
-  "Failed logins",
-  "Number of failed logins")
-
-class Metrics(config: Config, datastore: DataStore) {
-  val all: Seq[Metric] =
-    magenta.metrics.MagentaMetrics.all ++
-    Seq(LoginCounter, FailedLoginCounter) ++
-    //PlayRequestMetrics.asMetrics ++
-    DeployMetrics.all ++
-    new DatastoreMetrics(config, datastore).all ++
-    TaskMetrics.all
 }

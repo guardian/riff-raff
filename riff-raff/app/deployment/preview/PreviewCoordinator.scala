@@ -1,16 +1,13 @@
 package deployment.preview
 
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-
-import cats.syntax.either._
-import com.gu.management.Loggable
 import conf.Config
 import magenta.artifact.{S3Error, S3YamlArtifact}
 import magenta.deployment_type.DeploymentType
-import magenta.{DeployParameters, DeployReporter, DeploymentResources}
+import magenta.{DeployParameters, DeployReporter, DeploymentResources, Loggable}
 import resources.PrismLookup
 
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.{Map => ConcurrentMap}
 import scala.concurrent.ExecutionContext.Implicits.global

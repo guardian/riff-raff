@@ -2,7 +2,6 @@ package magenta
 package tasks
 
 import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
-import com.gu.management.Loggable
 import magenta.artifact._
 import magenta.deployment_type.{LambdaFunction, LambdaFunctionName, LambdaFunctionTags}
 import magenta.deployment_type.param_reads.PatternValue
@@ -209,40 +208,39 @@ case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
   def description: String = "to " + host.name
 }
 
-case class ChangeSwitch(host: Host, protocol:String, port: Int, path: String, switchName: String, desiredState: Boolean)(implicit val keyRing: KeyRing) extends Task {
-  val desiredStateName: String = if (desiredState) "ON" else "OFF"
-  val switchboardUrl = s"$protocol://${host.name}:$port$path"
+case class ShutdownTask(host: Host)(implicit val keyRing: KeyRing)  extends Task {
 
-  // execute this task (should throw on failure)
+  val description = "Shutdown Riffraff target(s) as part of self-deploy."
+  val shutdownUrl = s"http://${host.name}:9000/requestShutdown"
+
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
-    resources.reporter.verbose(s"Changing $switchName to $desiredStateName using $switchboardUrl")
+    val parsedUrl = Option(HttpUrl.parse(shutdownUrl))
 
-    val request = new Request.Builder()
-      .url(
-        HttpUrl.parse(switchboardUrl).newBuilder()
-          .addQueryParameter(switchName, desiredStateName).build()
-      )
-      .post(new FormBody.Builder().build())
-      .build()
+    val request = parsedUrl match {
+      case Some(url) =>
+        new Request.Builder().url(url.newBuilder().build())
+          .post(new FormBody.Builder().build())
+          .build()
+      case None =>
+        resources.reporter.fail(s"Shutdown request as part of self-deploy failed. Invalid target URL: ${shutdownUrl}")
+    }
 
     try {
-      resources.reporter.verbose(s"Changing switch with request: $request")
-      val result = ChangeSwitch.client.newCall(request).execute()
+      resources.reporter.verbose(s"Invoking shutdown with request: $request")
+      val result = ShutdownTask.client.newCall(request).execute()
       if (result.code() != 200) {
         resources.reporter.fail(
-          s"Couldn't set $switchName to $desiredState, status was ${result.code}:\n${result.body().string()}")
+          s"Shutdown request as part of self-deploy failed. Status was ${result.code}:\n${result.body().string()}")
       }
       result.body().close()
     } catch {
       case NonFatal(t) =>
-        resources.reporter.fail(s"Couldn't set $switchName to $desiredState", t)
+        resources.reporter.fail(s"Shutdown request as part of self-deploy failed", t)
     }
   }
-
-  def description: String = s"$switchName to $desiredStateName using switchboard at $switchboardUrl"
 }
 
-object ChangeSwitch {
+object ShutdownTask {
   val client = new OkHttpClient()
 }
 

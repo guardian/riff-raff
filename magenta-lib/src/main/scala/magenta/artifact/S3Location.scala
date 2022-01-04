@@ -1,7 +1,6 @@
 package magenta.artifact
 
-import com.gu.management.Loggable
-import magenta.Build
+import magenta.{Build, Loggable}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 

@@ -3,12 +3,10 @@ package magenta.tasks.gcp
 import java.math.BigInteger
 import java.net.URLConnection
 import java.util.Arrays
-
 import com.google.api.client.http.InputStreamContent
 import com.google.api.services.storage.Storage
 import com.google.api.services.storage.model.{ObjectAccessControl, StorageObject}
-import com.gu.management.Loggable
-import magenta.{DeploymentResources, KeyRing, Stack, Stage}
+import magenta.{DeploymentResources, KeyRing, Loggable, Stack, Stage}
 import magenta.artifact.{S3Location, S3Object, S3Path}
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.tasks.Task

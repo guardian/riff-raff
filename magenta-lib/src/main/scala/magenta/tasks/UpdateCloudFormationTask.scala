@@ -1,10 +1,9 @@
 package magenta.tasks
 
-import com.gu.management.Loggable
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{CloudFormationStackLookupStrategy, LookupByName, LookupByTags}
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Loggable, Region, Stack, Stage}
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient

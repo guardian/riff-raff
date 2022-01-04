@@ -3,12 +3,11 @@ package controllers
 import java.util.UUID
 import cats.data.Validated.{Invalid, Valid}
 import com.gu.googleauth.AuthAction
-import com.gu.management.Loggable
 import conf.Config
 import controllers.forms.DeployParameterForm
 import deployment.preview.PreviewCoordinator
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
-import magenta.{Build, DeployParameters, Deployer, Stage, Strategy}
+import magenta.{Build, DeployParameters, Deployer, Loggable, Stage, Strategy}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}

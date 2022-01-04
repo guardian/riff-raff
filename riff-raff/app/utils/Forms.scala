@@ -1,6 +1,6 @@
 package utils
 
-import com.gu.management.Loggable
+import magenta.Loggable
 import magenta.input.DeploymentKey
 import play.api.data.FormError
 import play.api.data.Forms._

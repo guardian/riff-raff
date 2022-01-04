@@ -5,7 +5,6 @@ object Dependencies {
 
   object Versions {
     val aws = "2.17.35"
-    val guardianManagement = "5.41"
     val jackson = "2.9.8"
     val awsRds = "1.11.563"
     val enumeratumPlay = "1.5.15"
@@ -36,7 +35,6 @@ object Dependencies {
     "software.amazon.awssdk" % "cloudformation" % Versions.aws,
     "software.amazon.awssdk" % "sts" % Versions.aws,
     "software.amazon.awssdk" % "ssm" % Versions.aws,
-    "com.gu" %% "management" % Versions.guardianManagement,
     "com.gu" %% "fastly-api-client" % "0.4.0",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
@@ -52,8 +50,6 @@ object Dependencies {
   val riffRaffDeps = commonDeps ++ Seq(
     evolutions,
     jdbc,
-    "com.gu" %% "management-internal" % Versions.guardianManagement,
-    "com.gu" %% "management-logback" % Versions.guardianManagement,
     "com.gu" %% "play-googleauth" % "0.7.7",
     "com.gu.play-secret-rotation" %% "aws-parameterstore" % "0.12",
     "com.typesafe.akka" %% "akka-agent" % "2.5.26",

@@ -1,11 +1,9 @@
 package magenta.tasks
 
 import java.nio.ByteBuffer
-
 import cats.implicits._
-import com.gu.management.Loggable
 import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
-import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage, StsDeploymentResources, withResource}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Loggable, Region, Stack, Stage, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration

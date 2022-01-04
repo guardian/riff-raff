@@ -1,7 +1,6 @@
 package magenta.tasks.gcp
 
 import java.io.{ByteArrayInputStream, IOException}
-
 import cats.syntax.either._
 import com.google.api.client.googleapis.apache.GoogleApacheHttpTransport
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
@@ -13,9 +12,9 @@ import com.google.api.services.storage.Storage
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
-import com.gu.management.Loggable
 import magenta.tasks.gcp.GCPRetryHelper.Result
-import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing}
+import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing, Loggable}
+
 import scala.collection.JavaConverters._
 
 object GCP {

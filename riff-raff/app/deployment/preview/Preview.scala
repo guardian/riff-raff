@@ -1,19 +1,16 @@
 package deployment.preview
 
-import java.net.URLEncoder
-
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.kernel.Semigroup
 import cats.syntax.semigroup._
-import com.gu.management.Loggable
 import magenta.`package`._
 import magenta.artifact.S3YamlArtifact
 import magenta.deployment_type.DeploymentType
 import magenta.graph.{DeploymentTasks, Graph}
-import magenta.input.resolver._
 import magenta.input._
-import magenta.{DeployParameters, DeploymentResources}
+import magenta.input.resolver._
+import magenta.{DeployParameters, DeploymentResources, Loggable}
 
 object Preview extends Loggable {
   def apply(artifact: S3YamlArtifact, yamlConfig: String, parameters: DeployParameters,
