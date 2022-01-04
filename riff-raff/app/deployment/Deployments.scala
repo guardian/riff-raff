@@ -110,7 +110,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   def enableDeploys = deploysEnabled.switchOn
 
-  lazy val enableSwitches = List(enableDeploysSwitch, enableQueueingSwitch)
+  lazy val enableSwitches = List(enableDeploysSwitch)
 
   lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", deploysEnabled.isOn) {
     override def switchOff() {
@@ -122,9 +122,6 @@ class Deployments(deploymentEngine: DeploymentEngine,
       super.switchOn()
     }
   }
-
-  lazy val enableQueueingSwitch = new DefaultSwitch("enable-deploy-queuing", "Enable riff-raff to queue deploys.  Turning this off will prevent anyone queueing a new deploy, although running deploys will continue.", true)
-
 
   lazy val completed: Observable[UUID] = deployCompleteSubject
   private lazy val deployCompleteSubject = Subject[UUID]()
