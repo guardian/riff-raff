@@ -9,8 +9,8 @@ import controllers.Logging
 import deployment.ScheduledDeployNotificationError
 import lifecycle.Lifecycle
 import magenta.Message.Fail
-import magenta.deployment_type.DeploymentType
-import magenta.input.resolver.Resolver
+import magenta.input.RiffRaffYamlReader
+import magenta.input.resolver.{DeploymentResolver}
 import magenta.tasks.STS
 import magenta.{DeployParameters, DeployReporter, Lookup, Region, StsDeploymentResources, App => MagentaApp, Stack => MagentaStack}
 import schedule.ScheduledDeployer
@@ -19,12 +19,7 @@ import rx.lang.scala.Subscription
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
-class DeployFailureNotifications(config: Config,
-                                 deploymentTypes: Seq[DeploymentType],
-                                 targetResolver: TargetResolver,
-  lookup: Lookup)
-                                (implicit ec: ExecutionContext)
-  extends Lifecycle with Logging {
+class DeployFailureNotifications(config: Config, targetResolver: TargetResolver, lookup: Lookup) (implicit ec: ExecutionContext) extends Lifecycle with Logging {
 
   lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
   lazy private val snsClient = config.scheduledDeployment.snsClient
@@ -48,20 +43,21 @@ class DeployFailureNotifications(config: Config,
   }
 
   def getTargets(uuid: UUID, parameters: DeployParameters): List[Target] = {
-    val attemptToDeriveTargets = for {
-        yaml <- targetResolver.fetchYaml(parameters.build)
-        deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, magenta.input.All).toEither
-      } yield {
-        TargetResolver.extractTargets(deployGraph).toList.flatMap { target =>
-          val maybeAccountId = getAwsAccountIdTarget(target, parameters, uuid).toList
-          List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
-        }
+    (for {
+      yaml <- targetResolver.fetchYaml(parameters.build)
+      deployConfig <- RiffRaffYamlReader.fromString(yaml).toEither
+      partiallyResolvedDeployment <- DeploymentResolver.resolve(deployConfig).toEither
+    } yield {
+      TargetResolver.extractTargets(partiallyResolvedDeployment).toList.flatMap { target =>
+        val maybeAccountId = getAwsAccountIdTarget(target, parameters, uuid).toList
+        List(App(target.app), Stack(target.stack), Stage(parameters.stage.name)) ++ maybeAccountId
       }
-    attemptToDeriveTargets match {
+    }) match {
       case Right(targets) => targets
-      case Left(error) =>
+      case Left(error) => {
         log.warn(s"Failed to identify notification targets for ${parameters.build.projectName} due to $error")
         riffRaffTargets
+      }
     }
   }
 

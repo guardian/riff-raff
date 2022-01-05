@@ -121,7 +121,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
   val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes, ioExecutionContext)
   val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
-  val scheduledDeployNotifier = new DeployFailureNotifications(config, availableDeploymentTypes, targetResolver, prismLookup)
+  val scheduledDeployNotifier = new DeployFailureNotifications(config, targetResolver, prismLookup)
 
   val authAction = new AuthAction[AnyContent](
     googleAuthConfig, routes.Login.loginAction(), controllerComponents.parsers.default)(executionContext)
