@@ -7,8 +7,7 @@ val commonSettings = Seq(
   organization := "com.gu",
   scalaVersion := "2.13.7",
 
-  // Temporarily disable warnings during 2.13 migration to focus on actual errors.
-  scalacOptions ++= Seq("-nowarn", "-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"
+  scalacOptions ++= Seq("-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
   Compile / doc / scalacOptions ++= Seq(
