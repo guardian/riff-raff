@@ -19,7 +19,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   private def getCollectionStats[A](table: SQLSyntaxSupport[A]): CollectionStats = logExceptions(Some(s"Requestion table stats for ${table.tableName}")) {
     DB readOnly { implicit session =>
-      SQL(s"SELECT pg_table_size('${table.tableName}'), pg_total_relation_size('${table.tableName}'), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table.tableName}) as counts limit 1").map(CollectionStats(_)).single.apply()
+      SQL(s"SELECT pg_table_size('${table.tableName}'), pg_total_relation_size('${table.tableName}'), counts.cpt FROM information_schema.tables, (SELECT count(*) AS cpt FROM ${table.tableName}) as counts limit 1").map(CollectionStats(_)).single().apply()
     }
   } match {
     case Left(t) =>
@@ -39,7 +39,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   // Table: auth(email: String, content: jsonb)
   def getAuthorisation(email: String): Either[Throwable, Option[AuthorisationRecord]] = logExceptions(Some(s"Requesting authorisation object for $email")) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM auth WHERE email = $email".map(AuthorisationRecord(_)).single.apply()
+      sql"SELECT content FROM auth WHERE email = $email".map(AuthorisationRecord(_)).single().apply()
     }
   }
 
@@ -52,13 +52,13 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] = logExceptions(Some(s"Creating auth object $auth")) {
     DB localTx { implicit session =>
       val json = Json.toJson(auth).toString()
-      sql"INSERT INTO auth (email, content) VALUES (${auth.email}, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb".update.apply()
+      sql"INSERT INTO auth (email, content) VALUES (${auth.email}, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb".update().apply()
     }
   }
 
   def deleteAuthorisation(email: String): Either[Throwable, Unit] = logExceptions(Some(s"Deleting authorisation object for $email")) {
     DB localTx { implicit session =>
-      sql"DELETE FROM auth WHERE email = $email".update.apply()
+      sql"DELETE FROM auth WHERE email = $email".update().apply()
     }
   }
 
@@ -66,7 +66,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   def createApiKey(newKey: ApiKey): Unit = logExceptions(Some(s"Saving new API key ${newKey.key}")) {
     DB localTx { implicit session =>
       val json = Json.toJson(newKey).toString()
-      sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb".update.apply()
+      sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb".update().apply()
     }
   }
 
@@ -79,7 +79,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   def getApiKey(key: String): Option[ApiKey] = logAndSquashExceptions[Option[ApiKey]](Some(s"Getting API key details for $key"), None) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM apiKey WHERE key = $key".map(ApiKey(_)).single.apply()
+      sql"SELECT content FROM apiKey WHERE key = $key".map(ApiKey(_)).single().apply()
     }
   }
 
@@ -108,7 +108,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
           sqls"""UPDATE apiKey SET content = content || '{"lastUsed": "$now"}'::jsonb WHERE key = $key"""
       }
 
-      sql"$q".update.apply()
+      sql"$q".update().apply()
 
       //return updated apiKey
       sql"SELECT content FROM apiKey WHERE key = $key".map(ApiKey(_)).single().apply()
@@ -117,13 +117,13 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   def getApiKeyByApplication(application: String): Option[ApiKey] = logAndSquashExceptions[Option[ApiKey]](Some(s"Getting API key details for application $application"), None) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM apiKey WHERE content->>'application' = $application".map(ApiKey(_)).single.apply()
+      sql"SELECT content FROM apiKey WHERE content->>'application' = $application".map(ApiKey(_)).single().apply()
     }
   }
 
   def deleteApiKey(key: String): Unit = logAndSquashExceptions(Some(s"Deleting API key $key"), ()) {
     DB localTx { implicit session =>
-      sql"DELETE FROM apiKey WHERE key = $key".update.apply()
+      sql"DELETE FROM apiKey WHERE key = $key".update().apply()
     }
   }
 
@@ -131,13 +131,13 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   override def writeDeploy(deploy: DeployRecordDocument): Unit = logAndSquashExceptions(Some(s"Saving deploy record document for ${deploy.uuid}"), ()) {
     DB localTx { implicit session =>
       val json = Json.toJson(deploy).toString()
-      sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
+      sql"INSERT INTO deploy (id, content) VALUES (${deploy.uuid}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update().apply()
     }
   }
 
   override def readDeploy(uuid: UUID): Option[DeployRecordDocument] = logAndSquashExceptions[Option[DeployRecordDocument]](Some(s"Retrieving deploy record document for $uuid"), None) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM deploy WHERE id = $uuid".map(DeployRecordDocument(_)).single.apply()
+      sql"SELECT content FROM deploy WHERE id = $uuid".map(DeployRecordDocument(_)).single().apply()
     }
   }
 
@@ -145,14 +145,14 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     DB readOnly { implicit session =>
       val whereFilters: SQLSyntax = filter.map(_.postgresFilters).getOrElse(sqls"")
       val paginationFilters = pagination.pageSize.fold(sqls"")(size => sqls"OFFSET ${size*(pagination.page-1)} LIMIT $size")
-      sql"SELECT content FROM deploy $whereFilters ORDER BY content->>'startTime' DESC $paginationFilters".map(DeployRecordDocument(_)).list.apply()
+      sql"SELECT content FROM deploy $whereFilters ORDER BY content->>'startTime' DESC $paginationFilters".map(DeployRecordDocument(_)).list().apply()
     }
   }
 
   override def updateStatus(uuid: UUID, status: RunState): Unit = logAndSquashExceptions(Some(s"Updating status of $uuid to $status"), ()) {
     DB localTx { implicit session =>
       val update = Json.toJson(Map("status" -> status.entryName)).toString()
-      sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
+      sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update().apply()
     }
   }
 
@@ -164,7 +164,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
         "hasWarnings" -> JsBoolean(hasWarnings)) ++ totalTasks.map("totalTasks" -> JsNumber(_))
 
       val updates = Json.toJson(updatesMap).toString()
-      sql"UPDATE deploy SET content = content || $updates::jsonb WHERE id = $uuid".update.apply()
+      sql"UPDATE deploy SET content = content || $updates::jsonb WHERE id = $uuid".update().apply()
     }
   }
 
@@ -172,21 +172,21 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   override def getDeployUUIDs(limit: Int = 0): List[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting deploy UUIDs"), List.empty[SimpleDeployDetail]) {
     DB readOnly { implicit session =>
       val limitSQL = if (limit == 0) sqls"" else sqls"LIMIT $limit"
-      sql"SELECT id, content->>'startTime' FROM deploy ORDER BY content.startTime $limitSQL".map(SimpleDeployDetail(_)).list.apply()
+      sql"SELECT id, content->>'startTime' FROM deploy ORDER BY content.startTime $limitSQL".map(SimpleDeployDetail(_)).list().apply()
     }
   }
 
   override def countDeploys(filter: Option[DeployFilter]): Int = logAndSquashExceptions[Int](Some("Counting documents matching filter"),0) {
     DB readOnly { implicit session =>
       val whereFilters = filter.map(_.postgresFilters).getOrElse(List.empty)
-      sql"SELECT count(*) FROM deploy $whereFilters".map(_.int(1)).single.apply().get
+      sql"SELECT count(*) FROM deploy $whereFilters".map(_.int(1)).single().apply().get
     }
   }
 
   override def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = logAndSquashExceptions(Some(s"Requesting completed deploys older than $dateTime"), List.empty[SimpleDeployDetail]) {
     DB readOnly { implicit session =>
       sql"SELECT id, content->>'startTime' FROM deploy WHERE (content->>'startTime')::TIMESTAMP < $dateTime::TIMESTAMP AND (content->>'summarised') IS NOT NULL"
-        .map(SimpleDeployDetail(_)).list.apply()
+        .map(SimpleDeployDetail(_)).list().apply()
     }
   }
 
@@ -195,7 +195,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
   override def findProjects(): Either[Throwable, List[String]] = logExceptions(Some("Requesting projects")) {
     DB readOnly { implicit session =>
-      sql"SELECT DISTINCT content->'parameters'->>'projectName' FROM deploy".map(_.string(1)).list.apply()
+      sql"SELECT DISTINCT content->'parameters'->>'projectName' FROM deploy".map(_.string(1)).list().apply()
     }
   }
 
@@ -217,7 +217,7 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
                AND content->>'status'='Completed'
                AND (content->>'startTime')::TIMESTAMP > $threshold::TIMESTAMP
              ORDER  BY 1, 2 DESC, 3;
-           """.map(res => (res.string(1), UUID.fromString(res.string(3)))).list.apply()
+           """.map(res => (res.string(1), UUID.fromString(res.string(3)))).list().apply()
 
       list.toMap
     }
@@ -226,15 +226,15 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   override def summariseDeploy(uuid: UUID): Unit = logAndSquashExceptions(Some(s"Summarising deploy $uuid"), ()) {
     DB localTx { implicit session =>
       val update = Json.toJson(Map("summarised" -> true)).toString()
-      sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update.apply()
-      sql"DELETE FROM deployLog WHERE id = $uuid".update.apply()
+      sql"UPDATE deploy SET content = content || $update::jsonb WHERE id = $uuid".update().apply()
+      sql"DELETE FROM deployLog WHERE id = $uuid".update().apply()
     }
   }
 
   override def deleteDeployLog(uuid: UUID): Unit = logAndSquashExceptions(Some(s"Deleting deploy log for deploy with id $uuid"), ()) {
     DB localTx { implicit session =>
-      sql"DELETE FROM deploy WHERE id = $uuid".update.apply()
-      sql"DELETE FROM deployLog WHERE id = $uuid".update.apply()
+      sql"DELETE FROM deploy WHERE id = $uuid".update().apply()
+      sql"DELETE FROM deployLog WHERE id = $uuid".update().apply()
     }
   }
 
@@ -242,13 +242,13 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
   override def writeLog(log: LogDocument): Unit = logAndSquashExceptions(Some(s"Writing new log document with id ${log.id} for deploy ${log.deploy}"), ()) {
     DB localTx { implicit session =>
       val json = Json.toJson(log).toString()
-      sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update.apply()
+      sql"INSERT INTO deployLog (id, content) VALUES (${log.id}, $json::jsonb) ON CONFLICT (id) DO UPDATE SET content = $json::jsonb".update().apply()
     }
   }
 
   override def readLogs(uuid: UUID): List[LogDocument] = logAndSquashExceptions(Some(s"Retrieving logs for deploy $uuid"), List.empty[LogDocument]) {
     DB readOnly { implicit session =>
-      sql"SELECT content FROM deployLog WHERE content ->>'deploy' = ${uuid.toString()}".map(LogDocument(_)).list.apply()
+      sql"SELECT content FROM deployLog WHERE content ->>'deploy' = ${uuid.toString()}".map(LogDocument(_)).list().apply()
     }
   }
 }

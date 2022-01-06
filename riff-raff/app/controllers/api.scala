@@ -330,7 +330,7 @@ class Api(config: Config,
   }
 
   def stop = ApiJsonEndpoint("stopDeploy") { implicit request =>
-    Form("uuid" -> nonEmptyText).bindFromRequest.fold(
+    Form("uuid" -> nonEmptyText).bindFromRequest().fold(
       _ => throw new IllegalArgumentException("No UUID specified"),
       uuid => {
         val record = deployments.get(UUID.fromString(uuid), fetchLog = false)

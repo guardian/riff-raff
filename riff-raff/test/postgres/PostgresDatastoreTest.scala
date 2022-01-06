@@ -19,7 +19,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       try test
       finally {
         DB localTx { implicit session =>
-          sql"DELETE FROM apiKey".update.apply()
+          sql"DELETE FROM apiKey".update().apply()
         }
       }
     }
@@ -69,7 +69,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       try test
       finally {
         DB localTx { implicit session =>
-          sql"DELETE FROM auth".update.apply()
+          sql"DELETE FROM auth".update().apply()
         }
       }
     }
@@ -106,7 +106,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       try test
       finally {
         DB localTx { implicit session =>
-          sql"DELETE FROM deploy".update.apply()
+          sql"DELETE FROM deploy".update().apply()
         }
       }
     }
@@ -319,7 +319,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       try test
       finally {
         DB localTx { implicit session =>
-          sql"DELETE FROM deployLog".update.apply()
+          sql"DELETE FROM deployLog".update().apply()
         }
       }
     }

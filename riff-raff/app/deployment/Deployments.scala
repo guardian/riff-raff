@@ -224,6 +224,6 @@ class Deployments(deploymentEngine: DeploymentEngine,
   }
 
   def await(uuid: UUID, atMost: Duration): Record = {
-    Await.result(library.future.flatMap(_(uuid).future()), atMost)
+    Await.result(library.future().flatMap(_(uuid).future()), atMost)
   }
 }

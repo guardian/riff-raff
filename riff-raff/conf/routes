@@ -29,8 +29,8 @@ GET         /deployment/externalRequest                     controllers.DeployCo
 GET         /deployment/deployAgain                         controllers.DeployController.deployAgain
 GET         /deployment/deployAgain/:uuid                   controllers.DeployController.deployAgainUuid(uuid:String)
 
-GET         /deployment/history                             controllers.DeployController.history
-GET         /deployment/history/update                      controllers.DeployController.historyContent
+GET         /deployment/history                             controllers.DeployController.history()
+GET         /deployment/history/update                      controllers.DeployController.historyContent()
 GET         /deployment/history/graphData                   controllers.Api.historyGraph
 
 GET         /deployment/view/:uuid                          controllers.DeployController.viewUUID(uuid:String, verbose:Boolean?=false)
@@ -129,4 +129,4 @@ GET         /assets/javascripts/routes                      controllers.Applicat
 GET         /assets/*file                                   controllers.Assets.versioned(path="/public", file: Asset)
 
 # Management endpoints
-POST        /requestShutdown                                controllers.Management.requestShutdown
+POST        /requestShutdown                                controllers.Management.requestShutdown()
