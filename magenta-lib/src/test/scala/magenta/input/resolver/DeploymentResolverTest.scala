@@ -23,14 +23,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'type ("testType"),
-      'stacks (NEL.of("testStack")),
-      'regions (NEL.of("eu-west-1")),
-      'app ("test"),
-      'contentDirectory ("test"),
-      'actions (None),
-      'dependencies (Nil),
-      'parameters (Map("testParam" -> JsString("testValue")))
+      Symbol("type") ("testType"),
+      Symbol("stacks") (NEL.of("testStack")),
+      Symbol("regions") (NEL.of("eu-west-1")),
+      Symbol("app") ("test"),
+      Symbol("contentDirectory") ("test"),
+      Symbol("actions") (None),
+      Symbol("dependencies") (Nil),
+      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -49,14 +49,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'type ("testType"),
-      'stacks (NEL.of("stack1", "stack2")),
-      'regions (NEL.of("oceania-south-1")),
-      'app ("test"),
-      'contentDirectory ("test"),
-      'actions (None),
-      'dependencies (Nil),
-      'parameters (Map("testParam" -> JsString("testValue")))
+      Symbol("type") ("testType"),
+      Symbol("stacks") (NEL.of("stack1", "stack2")),
+      Symbol("regions") (NEL.of("oceania-south-1")),
+      Symbol("app") ("test"),
+      Symbol("contentDirectory") ("test"),
+      Symbol("actions") (None),
+      Symbol("dependencies") (Nil),
+      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -78,14 +78,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'type ("testType"),
-      'stacks (NEL.of("testStack")),
-      'regions (NEL.of("eurasia-north-1")),
-      'app ("test"),
-      'contentDirectory ("test"),
-      'actions (Some(NEL.of("deploymentAction"))),
-      'dependencies (Nil),
-      'parameters (Map("testParam" -> JsString("testValue")))
+      Symbol("type") ("testType"),
+      Symbol("stacks") (NEL.of("testStack")),
+      Symbol("regions") (NEL.of("eurasia-north-1")),
+      Symbol("app") ("test"),
+      Symbol("contentDirectory") ("test"),
+      Symbol("actions") (Some(NEL.of("deploymentAction"))),
+      Symbol("dependencies") (Nil),
+      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -109,13 +109,13 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'type ("testType"),
-      'stacks (NEL.of("testStack")),
-      'regions (NEL.of("eu-west-1")),
-      'app ("test"),
-      'contentDirectory ("test"),
-      'dependencies (Nil),
-      'parameters (Map("testParam" -> JsString("testValue"), "anotherParam" -> JsNumber(1984)))
+      Symbol("type") ("testType"),
+      Symbol("stacks") (NEL.of("testStack")),
+      Symbol("regions") (NEL.of("eu-west-1")),
+      Symbol("app") ("test"),
+      Symbol("contentDirectory") ("test"),
+      Symbol("dependencies") (Nil),
+      Symbol("parameters") (Map("testParam" -> JsString("testValue"), "anotherParam" -> JsNumber(1984)))
     )
   }
 
@@ -139,8 +139,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'stacks (NEL.of("deployment-stack")),
-      'regions (NEL.of("deployment-region"))
+      Symbol("stacks") (NEL.of("deployment-stack")),
+      Symbol("regions") (NEL.of("deployment-region"))
     )
   }
 
@@ -162,8 +162,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'stacks (NEL.of("template-stack")),
-      'regions (NEL.of("template-region"))
+      Symbol("stacks") (NEL.of("template-stack")),
+      Symbol("regions") (NEL.of("template-region"))
     )
   }
 
@@ -183,8 +183,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'stacks (NEL.of("global-stack")),
-      'regions (NEL.of("global-region"))
+      Symbol("stacks") (NEL.of("global-stack")),
+      Symbol("regions") (NEL.of("global-region"))
     )
   }
 
@@ -209,8 +209,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'stacks (NEL.of("nested-template-stack")),
-      'regions (NEL.of("template-region"))
+      Symbol("stacks") (NEL.of("nested-template-stack")),
+      Symbol("regions") (NEL.of("template-region"))
     )
   }
 
@@ -275,9 +275,9 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      'app ("templateApp"),
-      'actions (Some(NEL.of("templateAction"))),
-      'contentDirectory ("templateContentDirectory")
+      Symbol("app") ("templateApp"),
+      Symbol("actions") (Some(NEL.of("templateAction"))),
+      Symbol("contentDirectory") ("templateContentDirectory")
     )
   }
 

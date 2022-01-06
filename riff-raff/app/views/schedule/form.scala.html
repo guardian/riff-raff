@@ -22,15 +22,15 @@
             </div>
         }
 
-        @b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+        @b3.text(configForm("projectName"), Symbol("id") -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", Symbol("_label") -> "Project Name")
         @b3.select(
             configForm("stage"),
             options = helper.options(prismLookup.stages.toList),
-            '_default -> "--- Choose a stage ---",
-            '_label -> "Stage",
-            '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+            Symbol("_default") -> "--- Choose a stage ---",
+            Symbol("_label") -> "Stage",
+            Symbol("_error") -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
         )
-        @b3.text(configForm("schedule"), '_label -> "Schedule expression")
+        @b3.text(configForm("schedule"), Symbol("_label") -> "Schedule expression")
         <p>This should be a weird Quartz cron expression
             (<a href="https://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/crontrigger.html">docs</a>)
             (<a href="https://www.freeformatter.com/cron-expression-generator-quartz.html">online evaluator</a>).
@@ -38,12 +38,12 @@
         @b3.select(
             configForm("timezone"),
             options = helper.options(timeZones),
-            'id -> "timezoneInput",
-            '_default -> "--- Choose a timezone ---",
-            '_label -> "Schedule timezone",
-            '_error -> configForm.globalError.map(_.withMessage("Please select a valid timezone for the schedule"))
+            Symbol("id") -> "timezoneInput",
+            Symbol("_default") -> "--- Choose a timezone ---",
+            Symbol("_label") -> "Schedule timezone",
+            Symbol("_error") -> configForm.globalError.map(_.withMessage("Please select a valid timezone for the schedule"))
         )
-        @b3.checkbox(configForm("enabled"), '_label -> "Schedule Enabled")
+        @b3.checkbox(configForm("enabled"), Symbol("_label") -> "Schedule Enabled")
 
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or

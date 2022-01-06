@@ -23,15 +23,15 @@
             </div>
         }
 
-        @b3.text(configForm("projectName"), 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", '_label -> "Project Name")
+        @b3.text(configForm("projectName"), Symbol("id") -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", Symbol("_label") -> "Project Name")
         @b3.select(
             configForm("stage"),
             options = helper.options(prismLookup.stages.toList),
-            '_default -> "--- Choose a stage ---",
-            '_label -> "Stage",
-            '_error -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
+            Symbol("_default") -> "--- Choose a stage ---",
+            Symbol("_label") -> "Stage",
+            Symbol("_error") -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
         )
-        @b3.text(configForm("branchMatcher"), '_label -> "Branch RegEx")
+        @b3.text(configForm("branchMatcher"), Symbol("_label") -> "Branch RegEx")
         <legend>Trigger</legend>
         @b3.radio(
             configForm("trigger"),

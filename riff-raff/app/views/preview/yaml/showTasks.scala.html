@@ -34,14 +34,14 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
     }
     <div class="actions">
         @b3.submit(
-            'name -> "action",
-            'value -> "preview",
-            'class -> "btn btn-default"
+            Symbol("name") -> "action",
+            Symbol("value") -> "preview",
+            Symbol("class") -> "btn btn-default"
         ){Preview with selections}
         @b3.submit(
-            'name -> "action",
-            'value -> "deploy",
-            'class -> "btn btn-primary"
+            Symbol("name") -> "action",
+            Symbol("value") -> "deploy",
+            Symbol("class") -> "btn btn-primary"
         ){Deploy}
         <a class="btn btn-danger" href="@routes.PreviewController.preview(
             form.value.map(_.project).get,
@@ -62,11 +62,11 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
                         <span>
                             @b3.checkbox(
                                 form("selectedKeys[]"),
-                                'id -> s"selectedKey_$i",
-                                'class -> "task-selection",
-                                'value -> DeploymentKey.asString(key),
-                                'checked -> checkedKeys.contains(key),
-                                '_text -> "Run tasks"
+                                Symbol("id") -> s"selectedKey_$i",
+                                Symbol("class") -> "task-selection",
+                                Symbol("value") -> DeploymentKey.asString(key),
+                                Symbol("checked") -> checkedKeys.contains(key),
+                                Symbol("_text") -> "Run tasks"
                             )
                         </span>
                     </div>
@@ -107,14 +107,14 @@ to make it fit in the Play idea of forms but it's far from trivial. Be warned!
     }
     <div class="actions">
         @b3.submit(
-            'name -> "action",
-            'value -> "preview",
-            'class -> "btn btn-default"
+            Symbol("name") -> "action",
+            Symbol("value") -> "preview",
+            Symbol("class") -> "btn btn-default"
         ){Preview with selections}
         @b3.submit(
-            'name -> "action",
-            'value -> "deploy",
-            'class -> "btn btn-primary"
+            Symbol("name") -> "action",
+            Symbol("value") -> "deploy",
+            Symbol("class") -> "btn btn-primary"
         ){Deploy}
         <a class="btn btn-danger" href="@routes.PreviewController.preview(
             form.value.map(_.project).get,

@@ -85,7 +85,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
         withAuth { auth =>
           val dbAuth = datastore.getAuthorisation(auth.email)
 
-          dbAuth shouldBe 'right
+          dbAuth shouldBe Symbol("right")
           dbAuth.toOption.get shouldBe Some(auth)
         }
       }

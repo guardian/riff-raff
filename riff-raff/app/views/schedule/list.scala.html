@@ -38,7 +38,7 @@
                         <a class="btn btn-default btn-xs" href="@routes.ScheduleController.edit(config.id.toString)"><i class="glyphicon glyphicon-edit"></i> Edit</a>
                     </td>
                     <td>
-                    @helper.form(action=routes.ScheduleController.delete(config.id.toString), 'class -> "form-make-inline") {
+                    @helper.form(action=routes.ScheduleController.delete(config.id.toString), Symbol("class") -> "form-make-inline") {
                         @CSRF.formField
                         <button class="btn btn-xs btn-danger" name="action" value="delete"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                     }
