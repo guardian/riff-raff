@@ -15,7 +15,7 @@ import magenta.tasks.gcp.GCPRetryHelper.Result
 import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing, Loggable}
 
 import java.io.{ByteArrayInputStream, IOException}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object GCP {
   lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport

@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{CommonPrefix, ListObjectsV2Request, ListObjectsV2Response, S3Object}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ArtifactHousekeepingTest extends AnyFlatSpec with Matchers with MockitoSugar {
 

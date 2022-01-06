@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object ArtifactHousekeeping {
   @tailrec

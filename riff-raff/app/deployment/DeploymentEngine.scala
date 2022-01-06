@@ -11,7 +11,7 @@ import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
 import magenta.deployment_type.DeploymentType
 import resources.PrismLookup
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 
 class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], ioExecutionContext: ExecutionContext) extends Logging {

@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * A simple trait to aid with attempting an update multiple times in the case that an update is already running.

@@ -30,7 +30,7 @@ import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Random, Try}
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest

@@ -7,7 +7,7 @@ import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, LifecycleState, SetInstanceProtectionRequest}
 import software.amazon.awssdk.services.ec2.Ec2Client
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 case class CheckGroupSize(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
   override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {

@@ -8,7 +8,7 @@ import resources.PrismLookup
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.concurrent.{Map => ConcurrentMap}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
