@@ -77,6 +77,10 @@ chown -R ${USER} ${HOME}
 # try to clean up
 rm /tmp/${APP}.tgz || true
 
+# create GC log directory (Java process fails to start without this pre-existing)
+mkdir -p /var/log/${USER}
+chown ${USER} /var/log/${USER}
+
 # Service
 cat > /etc/systemd/system/${APP}.service << EOF
 [Unit]
