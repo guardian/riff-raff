@@ -86,7 +86,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
           val dbAuth = datastore.getAuthorisation(auth.email)
 
           dbAuth shouldBe 'right
-          dbAuth.right.get shouldBe Some(auth)
+          dbAuth.toOption.get shouldBe Some(auth)
         }
       }
     }
@@ -95,7 +95,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       withFixture {
         withAuth { auth =>
           datastore.deleteAuthorisation(auth.email)
-          datastore.getAuthorisation(auth.email).right.get shouldBe None
+          datastore.getAuthorisation(auth.email).toOption.get shouldBe None
         }
       }
     }
@@ -132,7 +132,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       withFixture {
         withDeploys(5) { _ =>
           val dbDeploys = datastore.getDeploys(None, PaginationView(pageSize = None, page = 1))
-          dbDeploys.right.get.size shouldBe 5
+          dbDeploys.toOption.get.size shouldBe 5
         }
       }
     }
@@ -141,10 +141,10 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
       withFixture {
         withDeploys(3) { _ =>
           val dbDeploysPage1 = datastore.getDeploys(None, PaginationView(pageSize = Some(2), page = 1))
-          dbDeploysPage1.right.get.size shouldBe 2
+          dbDeploysPage1.toOption.get.size shouldBe 2
 
           val dbDeploysPage2 = datastore.getDeploys(None, PaginationView(pageSize = Some(2), page = 2))
-          dbDeploysPage2.right.get.size shouldBe 1
+          dbDeploysPage2.toOption.get.size shouldBe 1
         }
       }
     }
@@ -157,8 +157,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
           val deployFilter = DeployFilter(projectName = Some(deploy.parameters.projectName))
           val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(pageSize = None, page = 1))
 
-          dbDeploys.right.get.size shouldBe 1
-          dbDeploys.right.get.head.parameters.projectName shouldBe deploy.parameters.projectName
+          dbDeploys.toOption.get.size shouldBe 1
+          dbDeploys.toOption.get.head.parameters.projectName shouldBe deploy.parameters.projectName
         }
       }
     }
@@ -171,8 +171,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
           val deployFilter = DeployFilter(projectName = Some("project-name"))
           val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(pageSize = Some(20), page = 1))
 
-          dbDeploys.right.get.size shouldBe 2
-          dbDeploys.right.get.head.parameters.projectName.startsWith("project-name") shouldBe true
+          dbDeploys.toOption.get.size shouldBe 2
+          dbDeploys.toOption.get.head.parameters.projectName.startsWith("project-name") shouldBe true
         }
       }
     }
@@ -192,8 +192,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
           )
           val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(None, 1))
 
-          dbDeploys.right.get.size shouldBe 1
-          dbDeploys.right.get.head shouldBe deploy
+          dbDeploys.toOption.get.size shouldBe 1
+          dbDeploys.toOption.get.head shouldBe deploy
         }
       }
     }
@@ -270,7 +270,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit
     "find projects" in {
       withFixture {
         withDeploys(5) { _ =>
-          datastore.findProjects().right.get.size shouldBe 5
+          datastore.findProjects().toOption.get.size shouldBe 5
         }
       }
     }
