@@ -52,9 +52,9 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
 
   val secretStateSupplier: SnapshotProvider = {
     new parameterstore.SecretSupplier(
-      TransitionTiming(usageDelay = ofMinutes(3), overlapDuration = ofHours(2)),
-      "/Example/PlayAppSecret",
-      parameterstore.AwsSdkV2(SsmClient.builder().build())
+      transitionTiming = TransitionTiming(usageDelay = ofMinutes(3), overlapDuration = ofHours(2)),
+      parameterName = config.auth.secretStateSupplierKeyName,
+      ssmClient = parameterstore.AwsSdkV2(SsmClient.builder().build())
     )
   }
 
