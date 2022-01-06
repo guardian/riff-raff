@@ -98,9 +98,9 @@ class DeployFailureNotifications(config: Config, targetResolver: TargetResolver,
     }
   })
 
-  def init() {}
+  def init(): Unit = {}
 
-  def shutdown() {
+  def shutdown(): Unit = {
     messageSub.unsubscribe()
   }
 }

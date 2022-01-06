@@ -24,10 +24,10 @@ class SummariseDeploysHousekeeping(config: Config, datastore: DataStore) extends
 
   val update = DailyScheduledAgentUpdate[Int](housekeepingTime){ _ + summariseDeploys() }
 
-  def init() {
+  def init(): Unit = {
     summariseSchedule = Some(ScheduledAgent(0, update))
   }
-  def shutdown() {
+  def shutdown(): Unit = {
     summariseSchedule.foreach(_.shutdown())
     summariseSchedule = None
   }

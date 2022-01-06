@@ -43,7 +43,7 @@ case class HookConfig(id: UUID,
     }
   }
 
-  def act(record: DeployRecordDocument)(implicit wSClient: WSClient, executionContext: ExecutionContext) {
+  def act(record: DeployRecordDocument)(implicit wSClient: WSClient, executionContext: ExecutionContext): Unit = {
     if (enabled) {
       val urlRequest = request(record)
       log.info(s"Calling ${urlRequest.url}")
@@ -93,7 +93,7 @@ class HooksClient(datastore: DataStore, hookConfigRepository: HookConfigReposito
       None
   }
 
-  def finishedBuild(uuid: UUID, parameters: DeployParameters) {
+  def finishedBuild(uuid: UUID, parameters: DeployParameters): Unit = {
     actor.foreach(_ ! HooksClientActor.Finished(uuid, parameters))
   }
 
@@ -105,8 +105,8 @@ class HooksClient(datastore: DataStore, hookConfigRepository: HookConfigReposito
     }
   })
 
-  def init() { }
-  def shutdown() {
+  def init(): Unit = { }
+  def shutdown(): Unit = {
     messageSub.unsubscribe()
     actor.foreach(system.stop)
   }

@@ -131,9 +131,9 @@ trait DocumentStore {
   def countDeploys(filter: Option[DeployFilter]): Int = 0
   def deleteDeployLog(uuid: UUID): Unit
   def getLastCompletedDeploys(projectName: String):Map[String,UUID] = Map.empty
-  def addStringUUID(uuid: UUID) {}
+  def addStringUUID(uuid: UUID): Unit = {}
   def getDeployUUIDsWithoutStringUUIDs: List[SimpleDeployDetail] = Nil
-  def summariseDeploy(uuid: UUID) {}
+  def summariseDeploy(uuid: UUID): Unit = {}
   def getCompleteDeploysOlderThan(dateTime: DateTime): List[SimpleDeployDetail] = Nil
   def findProjects: Either[Throwable, List[String]]
   def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit
@@ -141,35 +141,35 @@ trait DocumentStore {
 
 class DocumentStoreConverter(datastore: DataStore) extends Logging {
 
-  def saveDeploy(record: DeployRecord) {
+  def saveDeploy(record: DeployRecord): Unit = {
     if (record.messages.nonEmpty) throw new IllegalArgumentException
     val converter = RecordConverter(record)
     datastore.writeDeploy(converter.deployDocument)
     converter.logDocuments.foreach(datastore.writeLog)
   }
 
-  def saveMessage(message: MessageWrapper) {
+  def saveMessage(message: MessageWrapper): Unit = {
     datastore.writeLog(LogDocument(message))
   }
 
-  def updateDeploySummary(record: DeployRecord) {
+  def updateDeploySummary(record: DeployRecord): Unit = {
     updateDeploySummary(record.uuid, record.totalTasks, record.completedTasks, record.lastActivityTime, record.hasWarnings)
   }
 
-  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean) {
+  def updateDeploySummary(uuid: UUID, totalTasks:Option[Int], completedTasks:Int, lastActivityTime:DateTime, hasWarnings:Boolean): Unit = {
     datastore.updateDeploySummary(uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
   }
 
-  def updateDeployStatus(record: DeployRecord) {
+  def updateDeployStatus(record: DeployRecord): Unit = {
     updateDeployStatus(record.uuid, record.state)
   }
 
 
-  def updateDeployStatus(uuid: UUID, state: RunState) {
+  def updateDeployStatus(uuid: UUID, state: RunState): Unit = {
     datastore.updateStatus(uuid, state)
   }
 
-  def addMetaData(uuid: UUID, metaData: Map[String, String]) {
+  def addMetaData(uuid: UUID, metaData: Map[String, String]): Unit = {
     datastore.addMetaData(uuid, metaData)
   }
 

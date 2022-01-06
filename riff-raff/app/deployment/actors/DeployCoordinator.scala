@@ -33,7 +33,7 @@ class DeployCoordinator(
       }
   }
 
-  private def cleanup(uuid: UUID) {
+  private def cleanup(uuid: UUID): Unit = {
     log.debug("Cleaning up")
 
     deferredDeployQueue.foreach(self ! _)

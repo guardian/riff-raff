@@ -91,10 +91,10 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
 
   val update = DailyScheduledAgentUpdate[Int](housekeepingTime){ _ + housekeepArtifacts(new DateTime()) }
 
-  def init() {
+  def init(): Unit = {
     scheduledAgent = Some(ScheduledAgent(0, update))
   }
-  def shutdown() {
+  def shutdown(): Unit = {
     scheduledAgent.foreach(_.shutdown())
     scheduledAgent = None
   }

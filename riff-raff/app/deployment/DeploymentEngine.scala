@@ -51,12 +51,12 @@ class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes
     new DeployCoordinator(deployRunnerFactory, concurrentDeploys, stopFlagAgent)
   ), name = "deployCoordinator")
 
-  def interruptibleDeploy(record: Record) {
+  def interruptibleDeploy(record: Record): Unit = {
     log.debug("Sending start deploy message to co-ordinator")
     deployCoordinator ! DeployCoordinator.StartDeploy(record)
   }
 
-  def stopDeploy(uuid: UUID, userName: String) {
+  def stopDeploy(uuid: UUID, userName: String): Unit = {
     stopFlagAgent.send(_ + (uuid -> userName))
   }
 

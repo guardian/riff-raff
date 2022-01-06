@@ -441,7 +441,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
 class TestServer(port:Int = 9997) {
 
-  def withResponse(response: String) {
+  def withResponse(response: String): Unit = {
     val server = new ServerSocket(port)
     val socket = server.accept()
     val osw = new OutputStreamWriter(socket.getOutputStream)

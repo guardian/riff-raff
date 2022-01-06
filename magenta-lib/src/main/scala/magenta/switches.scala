@@ -29,8 +29,8 @@ object Switch {
   * mutate the state of a switch
   */
 trait Switchable extends Switch {
-  def switchOn()
-  def switchOff()
+  def switchOn(): Unit
+  def switchOff(): Unit
 
   /**
     * @return a single url-safe word that can be used to construct urls
@@ -53,12 +53,12 @@ case class DefaultSwitch(name: String, description: String, initiallyOn: Boolean
 
   def isSwitchedOn = isOn.get
 
-  def switchOn() {
+  def switchOn(): Unit = {
     logger.info("Switching on " + name)
     isOn set true
   }
 
-  def switchOff() {
+  def switchOff(): Unit = {
     logger.info("Switching off " + name)
     isOn set false
   }

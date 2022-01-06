@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class PreviewCoordinator(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], ioExecutionContext: ExecutionContext) extends Loggable {
   private val previews: ConcurrentMap[UUID, PreviewResult] = new ConcurrentHashMap[UUID, PreviewResult]().asScala
 
-  def cleanupPreviews() {
+  def cleanupPreviews(): Unit = {
     previews.retain{(uuid, result) =>
       !result.future.isCompleted || result.duration.toStandardMinutes.getMinutes < 60
     }

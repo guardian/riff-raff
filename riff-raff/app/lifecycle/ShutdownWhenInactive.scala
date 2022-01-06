@@ -19,7 +19,7 @@ class ShutdownWhenInactive(deployments: Deployments) extends Lifecycle with Logg
     }
   }
 
-  def attemptShutdown() {
+  def attemptShutdown(): Unit = {
     Future {
       log.info("Attempting to shutdown: trying to atomically disable deployment")
       if (deployments.atomicDisableDeploys) {
@@ -38,6 +38,6 @@ class ShutdownWhenInactive(deployments: Deployments) extends Lifecycle with Logg
   val sub = deployments.completed.subscribe(_ => if (switch.isSwitchedOn) attemptShutdown())
 
   // add hooks to listen and exit when desired
-  def init() { }
-  def shutdown() { sub.unsubscribe() }
+  def init(): Unit = { }
+  def shutdown(): Unit = { sub.unsubscribe() }
 }

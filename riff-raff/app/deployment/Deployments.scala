@@ -54,7 +54,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
     }
   }
 
-  def stop(uuid: UUID, fullName: String) {
+  def stop(uuid: UUID, fullName: String): Unit = {
     deploymentEngine.stopDeploy(uuid, fullName)
   }
 
@@ -113,7 +113,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
   lazy val enableSwitches = List(enableDeploysSwitch)
 
   lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", deploysEnabled.isOn) {
-    override def switchOff() {
+    override def switchOff(): Unit = {
       if (!atomicDisableDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
       super.switchOff()
     }
@@ -135,14 +135,14 @@ class Deployments(deploymentEngine: DeploymentEngine,
           log.error(s"Exception thrown whilst processing update with $wrapper", t)
       }
     }
-  def init() {}
-  def shutdown() { messagesSubscription.unsubscribe() }
+  def init(): Unit = {}
+  def shutdown(): Unit = { messagesSubscription.unsubscribe() }
 
   implicit val system = ActorSystem("deploy")
 
   val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
 
-  def update(wrapper: MessageWrapper) {
+  def update(wrapper: MessageWrapper): Unit = {
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
       recordAgent send { record =>
         val updated = record + wrapper
@@ -163,7 +163,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
     }
   }
 
-  def cleanup(uuid: UUID) {
+  def cleanup(uuid: UUID): Unit = {
     log.debug(s"Queuing removal of deploy record $uuid from internal caches")
     library sendOff { allDeploys =>
       import cats.instances.future._
@@ -188,7 +188,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
     firePostCleanup(uuid)
   }
 
-  def firePostCleanup(uuid: UUID) {
+  def firePostCleanup(uuid: UUID): Unit = {
     library.future().onComplete{ _ =>
       deployCompleteSubject.onNext(uuid)
     }
@@ -212,7 +212,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   def countDeploys(filter:Option[DeployFilter]) = documentStoreConverter.countDeploys(filter)
 
-  def markAsFailed(record: Record) {
+  def markAsFailed(record: Record): Unit = {
     documentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)
   }
 

@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client
 import scala.collection.JavaConverters._
 
 case class CheckGroupSize(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     val doubleCapacity = asg.desiredCapacity * 2
     resources.reporter.verbose(s"ASG desired = ${asg.desiredCapacity}; ASG max = ${asg.maxSize}; Target = $doubleCapacity")
     if (asg.maxSize < doubleCapacity) {
@@ -24,7 +24,7 @@ case class CheckGroupSize(info: AutoScalingGroupInfo, region: Region)(implicit v
 }
 
 case class TagCurrentInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     if (asg.instances.asScala.nonEmpty) {
       EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
         resources.reporter.verbose(s"Tagging ${asg.instances.asScala.toList.map(_.instanceId).mkString(", ")}")
@@ -39,7 +39,7 @@ case class TagCurrentInstancesWithTerminationTag(info: AutoScalingGroupInfo, reg
 }
 
 case class ProtectCurrentInstances(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     val instances = asg.instances.asScala.toList
     val instancesInService = instances.filter(_.lifecycleState == LifecycleState.IN_SERVICE)
     if (instancesInService.nonEmpty) {
@@ -60,7 +60,7 @@ case class ProtectCurrentInstances(info: AutoScalingGroupInfo, region: Region)(i
 
 case class DoubleSize(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     val targetCapacity = asg.desiredCapacity * 2
     resources.reporter.verbose(s"Doubling capacity to $targetCapacity")
     ASG.desiredCapacity(asg.autoScalingGroupName, targetCapacity, asgClient)
@@ -93,7 +93,7 @@ case class TerminationGrace(info: AutoScalingGroupInfo, region: Region, duration
 case class WaitForStabilization(info: AutoScalingGroupInfo, duration: Long, region: Region)(implicit val keyRing: KeyRing) extends ASGTask
     with SlowRepeatedPollingCheck {
 
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     ELB.withClient(keyRing, region, resources) { elbClient =>
       check(resources.reporter, stopFlag) {
         try {
@@ -120,7 +120,7 @@ case class WaitForStabilization(info: AutoScalingGroupInfo, duration: Long, regi
 }
 
 case class CullInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       ELB.withClient(keyRing, region, resources) { elbClient =>
         val instancesToKill = asg.instances.asScala
@@ -162,7 +162,7 @@ case class CullInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: R
 
 case class SuspendAlarmNotifications(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     ASG.suspendAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
@@ -171,7 +171,7 @@ case class SuspendAlarmNotifications(info: AutoScalingGroupInfo, region: Region)
 
 case class ResumeAlarmNotifications(info: AutoScalingGroupInfo, region: Region)(implicit val keyRing: KeyRing) extends ASGTask {
 
-  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient) {
+  override def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit = {
     ASG.resumeAlarmNotifications(asg.autoScalingGroupName, asgClient)
   }
 
@@ -185,9 +185,9 @@ trait ASGTask extends Task {
   def asgName: String = info.asg.autoScalingGroupName
   def region: Region
 
-  def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient)
+  def execute(asg: AutoScalingGroup, resources: DeploymentResources, stopFlag: => Boolean, asgClient: AutoScalingClient): Unit
 
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     ASG.withAsgClient(keyRing, region, resources) { asgClient =>
       resources.reporter.verbose(s"Looked up group matching tags ${info.tagRequirements}; identified ${info.asg.autoScalingGroupARN}")
       execute(info.asg, resources, stopFlag, asgClient)

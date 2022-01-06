@@ -29,7 +29,7 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit val keyRing: KeyRing, 
   // No, I'm not happy about this, but it gets things working until we can make a larger change
   def block[T](f: => Future[T]) = Await.result(f, 1.minute)
 
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     FastlyApiClientProvider.get(keyRing).foreach { client =>
       val activeVersionNumber = getActiveVersionNumber(client, resources.reporter, stopFlag)
       val nextVersionNumber = clone(activeVersionNumber, client, resources.reporter, stopFlag)

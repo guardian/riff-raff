@@ -329,7 +329,7 @@ object EC2 {
       .build())(block)
   }
 
-  def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client) {
+  def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client): Unit = {
     val request = CreateTagsRequest.builder()
       .resources(instances.map(_.instanceId).asJavaCollection)
       .tags(EC2Tag.builder().key(key).value(value).build())

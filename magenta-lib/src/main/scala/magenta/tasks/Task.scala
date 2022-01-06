@@ -5,7 +5,7 @@ import software.amazon.awssdk.services.sts.StsClient
 
 trait Task {
   // execute this task (should throw on failure)
-  def execute(resources: DeploymentResources, stopFlag: => Boolean)
+  def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit
 
   def keyRing: KeyRing
 

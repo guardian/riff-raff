@@ -43,13 +43,13 @@ class ContinuousDeployment(config: Config,
       buildCandidates(buildPoller.newBuilds)
     })
 
-  def init() {}
+  def init(): Unit = {}
 
-  def shutdown() {
+  def shutdown(): Unit = {
     sub.unsubscribe()
   }
 
-  def runDeploy(params: DeployParameters) {
+  def runDeploy(params: DeployParameters): Unit = {
     if (config.continuousDeployment.enabled) {
       if (!changeFreeze.frozen(params.stage.name)) {
         log.info(s"Triggering deploy of ${params.toString}")

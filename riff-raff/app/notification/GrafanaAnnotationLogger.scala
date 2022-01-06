@@ -45,5 +45,5 @@ class GrafanaAnnotationLogger extends Lifecycle with Logging {
 
   override def init(): Unit = {}
 
-  override def shutdown() { messageSub.unsubscribe() }
+  override def shutdown(): Unit = { messageSub.unsubscribe() }
 }

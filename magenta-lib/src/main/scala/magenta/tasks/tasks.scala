@@ -51,7 +51,7 @@ case class S3Upload(
       s"CacheControl:${request.cacheControl} ContentType:${request.contentType} PublicRead:${request.publicReadAcl}"
 
   // execute this task (should throw on failure)
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     if (totalSize == 0) {
       val locationDescription = paths.map {
         case (path: S3Path, _) => path.show()
@@ -161,10 +161,10 @@ case class PutReq(source: S3Object, target: S3Path, cacheControl: Option[String]
 trait PollingCheck {
   def duration: Long
 
-  def check(reporter: DeployReporter, stopFlag: => Boolean)(theCheck: => Boolean) {
+  def check(reporter: DeployReporter, stopFlag: => Boolean)(theCheck: => Boolean): Unit = {
     val expiry = System.currentTimeMillis() + duration
 
-    def checkAttempt(currentAttempt: Int) {
+    def checkAttempt(currentAttempt: Int): Unit = {
       if (!theCheck) {
         if (stopFlag) {
           reporter.info("Abandoning remaining checks as stop flag has been set")
@@ -202,7 +202,7 @@ trait SlowRepeatedPollingCheck extends PollingCheck {
 
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     resources.reporter.info("Hello to " + host.name + "!")
   }
 
@@ -248,7 +248,7 @@ object ShutdownTask {
 case class UpdateS3Lambda(function: LambdaFunction, s3Bucket: String, s3Key: String, region: Region)(implicit val keyRing: KeyRing) extends Task {
   def description = s"Updating $function Lambda using S3 $s3Bucket:$s3Key"
 
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     Lambda.withLambdaClient(keyRing, region, resources){ client =>
       val functionName: String = function match {
         case LambdaFunctionName(name) => name
