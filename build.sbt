@@ -65,9 +65,8 @@ lazy val riffraff = project.in(file("riff-raff"))
       "-J-XX:MaxRAMFraction=2",
       "-J-XX:InitialRAMFraction=2",
       "-J-XX:MaxMetaspaceSize=300m",
-      "-J-XX:+PrintGCDetails",
-      "-J-XX:+PrintGCDateStamps",
-      s"-J-Xloggc:/var/log/${packageName.value}/gc.log"
+      "-J-Xlog:gc*",
+      s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log"
     ),
 
     packageName in Universal := normalizedName.value,
