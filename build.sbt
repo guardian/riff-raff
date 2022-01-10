@@ -3,6 +3,14 @@ import Helpers._
 import play.sbt.routes.RoutesKeys
 import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
 
+inThisBuild(List(
+  semanticdbEnabled := true,
+  semanticdbOptions += "-P:semanticdb:synthetics:on",
+  semanticdbVersion := scalafixSemanticdb.revision,
+  scalafixScalaBinaryVersion := "2.13",
+  scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.3"
+))
+
 val commonSettings = Seq(
   organization := "com.gu",
   scalaVersion := "2.13.7",
@@ -13,7 +21,7 @@ val commonSettings = Seq(
   Compile / doc / scalacOptions ++= Seq(
     "-no-link-warnings" // Suppresses problems with Scaladoc @throws links
   ),
-  version := "1.0"
+  version := "1.0",
 )
 
 lazy val root = project.in(file("."))
