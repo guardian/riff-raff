@@ -103,7 +103,7 @@ object GCPRetryHelper extends Loggable {
   }
 
   def addJitter(baseTime: FiniteDuration, maxJitterToAdd: Duration): FiniteDuration = {
-    baseTime + ((scala.util.Random.nextFloat * maxJitterToAdd.toNanos) nanoseconds)
+    baseTime + ((scala.util.Random.nextFloat() * maxJitterToAdd.toNanos) nanoseconds)
   }
 
   /**

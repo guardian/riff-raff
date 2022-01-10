@@ -25,7 +25,7 @@ class CreateChangeSetTask(
         STS.withSTSclient(keyRing, region, resources) { stsClient =>
           val accountNumber = STS.getAccountNumber(stsClient)
 
-          val templateString = templatePath.fetchContentAsString.right.getOrElse(
+          val templateString = templatePath.fetchContentAsString().right.getOrElse(
             resources.reporter.fail(s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}")
           )
 
