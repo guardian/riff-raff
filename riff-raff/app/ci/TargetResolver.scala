@@ -8,14 +8,14 @@ import magenta.Build
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.graph.Graph
-import magenta.input.resolver.Resolver
+import magenta.input.resolver.{PartiallyResolvedDeployment, Resolver}
 import magenta.input.{All, ConfigErrors, Deployment}
 import persistence.TargetDynamoRepository
 
 case class Target(region: String, stack: String, app: String)
 
 object TargetResolver {
-  def extractTargets(graph: Graph[Deployment]): Set[Target] = {   
+  def extractTargets(graph: Graph[Deployment]): Set[Target] = {
     graph.nodes.values.flatMap { deployment =>
       for {
         region <- deployment.regions.toList
@@ -23,8 +23,14 @@ object TargetResolver {
       } yield Target(region, stack, deployment.app)
     }
   }
-
-
+  def extractTargets(deployConfig: List[PartiallyResolvedDeployment]): Set[Target] = {
+    deployConfig.flatMap { deployment => {
+      for {
+        region <- deployment.regions.toList
+        stack <- deployment.stacks.toList
+      } yield Target(region, stack, deployment.app)
+    }}.toSet
+  }
 }
 
 class TargetResolver(config: Config,
@@ -68,7 +74,7 @@ class TargetResolver(config: Config,
     val deployObjectPath = artifact.deployObject
     S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
   }
-  
+
   override def init() = {}
 
   override def shutdown() = {

@@ -88,7 +88,7 @@ object DeploymentResolver {
   }
 }
 
-private [resolver] case class PartiallyResolvedDeployment(
+case class PartiallyResolvedDeployment(
   name: String,
   `type`: String,
   stacks: NEL[String],
