@@ -63,7 +63,7 @@ case class DeployFilter(
 
   lazy val default = this == DeployFilter()
 
-  lazy val description = status.map(_ + " ").getOrElse("") +
+  lazy val description = status.map(String.valueOf(_) + " ").getOrElse("") +
     "deploys" + projectName.map(" of " + _).getOrElse("") +
     stage.map(" in " + _).getOrElse("")
 }

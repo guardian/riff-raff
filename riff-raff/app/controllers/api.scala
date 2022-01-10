@@ -186,7 +186,7 @@ class Api(config: Config,
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).logAndSquashException(Nil)
 
-    def description(state: RunState) = state + " deploys" + filter.map { f =>
+    def description(state: RunState) = String.valueOf(state) + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
     }.getOrElse("")
 
