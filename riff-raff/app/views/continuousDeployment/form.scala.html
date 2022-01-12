@@ -1,7 +1,6 @@
 @import conf.Config
 @(config: Config, menu: Menu)(configForm: Form[controllers.ContinuousDeployController.ConfigForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import ci.Trigger._
-@import b3.vertical.fieldConstructor
 @import helper.CSRF
 
 @main("Continuous Deployment", request, List("form-autocomplete")) {
@@ -9,7 +8,7 @@
     <h2>Continuous Deployment Configuration</h2>
     <hr/>
 
-    @b3.form(action=routes.ContinuousDeployController.save) {
+    @b3.vertical.form(action=routes.ContinuousDeployController.save) { implicit fc =>
         @CSRF.formField
         @snippets.inputHidden(configForm("id"))
 
@@ -42,7 +41,7 @@
 
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
-            <a href="@routes.ContinuousDeployController.list()" class="btn btn-danger">Cancel</a>
+            <a href="@routes.ContinuousDeployController.list" class="btn btn-danger">Cancel</a>
         </div>
     }
 }(config, menu)

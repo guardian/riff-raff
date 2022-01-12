@@ -248,15 +248,14 @@ case class Graph[T](edges: Set[Edge[T]]) {
   /** Builds a new graph by applying a function to each value in this graph. This retains the structure of the graph
     * but replaces the values of any [[magenta.graph.ValueNode]]. You cannot map two distinct values in the graph to a
     * single value as this would alter the structure of the graph.
-    *
-    * @param f function to apply to each existing value
+    *    * @param f function to apply to each existing value
     * @tparam R the type of the value in the new graph
     * @return new graph with the same structure but values from the function
     */
   def map[R](f: T => R): Graph[R] = {
-    val newNodeMap: Map[Node[T], Node[R]] = valueNodes.map { currentNode =>
+    val newNodeMap: Map[Node[T], Node[R]] = (valueNodes.map { currentNode =>
       currentNode -> ValueNode(f(currentNode.value))
-    }.toMap ++ Map(StartNode -> StartNode, EndNode -> EndNode)
+    }.toMap ++ Map[Node[T], Node[R]](StartNode -> StartNode, EndNode -> EndNode)).toMap
     assert(newNodeMap.size == newNodeMap.values.toSet.size, "Source nodes must be mapped onto unique target nodes")
     val newEdges = edges.map { oldEdge =>
       Edge(newNodeMap(oldEdge.from), newNodeMap(oldEdge.to), oldEdge.priority)
@@ -392,10 +391,10 @@ case class Graph[T](edges: Set[Edge[T]]) {
   override def toString: String = {
     val identifiers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     val nodeNumbers = (nodeList ::: (nodes -- nodeList).toList).zipWithIndex
-    val nodeNumberMap: Map[Node[T], String] = nodeNumbers.toMap.mapValues{
+    val nodeNumberMap: Map[Node[T], String] = nodeNumbers.toMap.view.mapValues{
       case index if index < identifiers.length => identifiers(index).toString
       case index => (index - identifiers.length).toString
-    }
+    }.toMap
     val numberedEdges = edges.toList.map { case Edge(from, to, priority) =>
       (nodeNumberMap(from), priority, nodeNumberMap(to))
     }.sorted

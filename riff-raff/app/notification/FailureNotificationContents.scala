@@ -23,7 +23,7 @@ class FailureNotificationContents(prefix: String) {
   }
 
   val scheduledDeployConfigUrl: String = {
-    val path = routes.ScheduleController.list()
+    val path = routes.ScheduleController.list
     prefix + path.url
   }
 

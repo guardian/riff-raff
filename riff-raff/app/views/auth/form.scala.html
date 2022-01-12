@@ -1,6 +1,5 @@
 @import conf.Config
 @(config: Config, menu: Menu)(hookForm: Form[String])(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
-@import b3.vertical.fieldConstructor
 @import helper.CSRF
 
 @main("Authorise a new user", request) {
@@ -8,12 +7,12 @@
     <h2>Authorise a new user</h2>
     <hr/>
 
-    @b3.form(action=routes.Login.authSave()) {
+    @b3.vertical.form(action=routes.Login.authSave) { implicit fc =>
         @CSRF.formField
         @b3.text(hookForm("email"), '_label -> "Email address of user")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Save</button> or
-            <a href="@routes.Login.authList()" class="btn btn-danger">Cancel</a>
+            <a href="@routes.Login.authList" class="btn btn-danger">Cancel</a>
         </div>
     }
 }(config, menu)

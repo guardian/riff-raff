@@ -9,6 +9,7 @@ import play.api.libs.json._
 import scala.util.Try
 import scala.util.control.NonFatal
 import cats.syntax.either._
+import scala.collection.Seq
 
 case class S3Build(
   id: Long,

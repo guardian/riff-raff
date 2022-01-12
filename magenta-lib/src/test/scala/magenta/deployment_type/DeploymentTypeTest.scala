@@ -7,7 +7,7 @@ import magenta._
 import magenta.artifact.S3Path
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.fixtures._
-import magenta.tasks._
+import magenta.tasks.{S3Upload, UpdateS3Lambda}
 import org.mockito.Mockito._
 import org.mockito.MockitoSugar
 import org.scalatest.Inside

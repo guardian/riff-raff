@@ -3,7 +3,7 @@ package ci
 import scala.collection.immutable.Queue
 
 class BoundedSet[T](queue: Queue[T], maxSize: Int) extends Set[T] {
-  def +(elem: T): BoundedSet[T] = {
+  override def incl(elem: T): BoundedSet[T] = {
     if (contains(elem)) {
       new BoundedSet(pushToBack(queue, elem), maxSize)
     } else {
@@ -18,7 +18,7 @@ class BoundedSet[T](queue: Queue[T], maxSize: Int) extends Set[T] {
     (queue.slice(0, currentPos) ++ queue.slice(currentPos + 1, queue.size)).enqueue(item)
   }
 
-  def -(elem: T) = new BoundedSet[T](queue.filter(_ != elem), maxSize)
+  override def excl(elem: T) = new BoundedSet[T](queue.filter(_ != elem), maxSize)
 
   def iterator = queue.iterator
 }

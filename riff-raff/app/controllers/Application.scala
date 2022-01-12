@@ -42,17 +42,17 @@ case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Ca
 
 class Menu(config: Config) {
   lazy val menuItems = Seq(
-    SingleMenuItem("Home", routes.Application.index(), identityRequired = false),
-    SingleMenuItem("History", routes.DeployController.history()),
-    SingleMenuItem("Deploy", routes.DeployController.deploy()),
+    SingleMenuItem("Home", routes.Application.index, identityRequired = false),
+    SingleMenuItem("History", routes.DeployController.history),
+    SingleMenuItem("Deploy", routes.DeployController.deploy),
     DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(
-      SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list()),
-      SingleMenuItem("Hooks", routes.HooksController.list()),
-      SingleMenuItem("Authorisation", routes.Login.authList(), enabled = config.auth.allowList.useDatabase),
-      SingleMenuItem("API keys", routes.Api.listKeys()),
-      SingleMenuItem("Restrictions", routes.Restrictions.list()),
-      SingleMenuItem("Schedules", routes.ScheduleController.list())
+      SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list),
+      SingleMenuItem("Hooks", routes.HooksController.list),
+      SingleMenuItem("Authorisation", routes.Login.authList, enabled = config.auth.allowList.useDatabase),
+      SingleMenuItem("API keys", routes.Api.listKeys),
+      SingleMenuItem("Restrictions", routes.Restrictions.list),
+      SingleMenuItem("Schedules", routes.ScheduleController.list)
     )),
     DropDownMenuItem("Documentation", Seq(
       SingleMenuItem("Deployment Types", routes.Application.documentation("magenta-lib/types")),
@@ -64,11 +64,11 @@ class Menu(config: Config) {
 
   lazy val deployInfoMenu = Seq(
     SingleMenuItem("Hosts", routes.Application.deployInfoHosts()),
-    SingleMenuItem("Resources", routes.Application.deployInfoData()),
-    SingleMenuItem("About", routes.Application.deployInfoAbout())
+    SingleMenuItem("Resources", routes.Application.deployInfoData),
+    SingleMenuItem("About", routes.Application.deployInfoAbout)
   )
 
-  lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction(), identityRequired = false)
+  lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction, identityRequired = false)
 }
 
 class Application(config: Config,

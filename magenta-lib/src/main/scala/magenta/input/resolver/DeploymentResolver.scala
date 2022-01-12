@@ -2,10 +2,9 @@ package magenta.input.resolver
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, NonEmptyList => NEL}
-import cats.syntax.apply._
-import cats.syntax.cartesian._
-import cats.syntax.traverse._
 import cats.instances.list._
+import cats.syntax.apply._
+import cats.syntax.traverse._
 import magenta.input._
 import play.api.libs.json.JsValue
 

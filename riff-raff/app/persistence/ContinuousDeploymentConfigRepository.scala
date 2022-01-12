@@ -3,8 +3,9 @@ package persistence
 import java.util.UUID
 
 import ci.{ContinuousDeploymentConfig, Trigger}
-import com.gu.scanamo.syntax._
-import com.gu.scanamo.{DynamoFormat, Table}
+import org.scanamo.syntax._
+import org.scanamo.auto._
+import org.scanamo.{DynamoFormat, Table}
 import cats.syntax.either._
 import conf.Config
 
@@ -21,11 +22,11 @@ class ContinuousDeploymentConfigRepository(config: Config) extends DynamoReposit
     exec(table.scan()).flatMap(_.toOption)
 
   def getContinuousDeployment(id: UUID): Option[ContinuousDeploymentConfig] =
-    exec(table.get('id -> id)).flatMap(_.toOption)
+    exec(table.get("id" -> id)).flatMap(_.toOption)
 
   def setContinuousDeployment(cd: ContinuousDeploymentConfig): Unit =
     exec(table.put(cd))
 
   def deleteContinuousDeployment(id: UUID): Unit =
-    exec(table.delete('id -> id))
+    exec(table.delete("id" -> id))
 }

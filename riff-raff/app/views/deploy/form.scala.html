@@ -3,7 +3,6 @@
 @import magenta.Strategy
 @import magenta.Strategy.MostlyHarmless
 @(config: Config, menu: Menu)(changeFreeze: ChangeFreeze)(deployForm: Form[controllers.forms.DeployParameterForm], prismLookup: resources.PrismLookup)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
-@import b3.vertical.fieldConstructor
 @import helper.CSRF
 
 @main("Deploy request", request, List("form-autocomplete", "collapsing")) {
@@ -56,7 +55,7 @@
     </style>
 
     <div class="col-md-6">
-    @b3.form(routes.DeployController.processForm, 'class -> "well") {
+    @b3.vertical.form(routes.DeployController.processForm, 'class -> "well") { implicit fc =>
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
@@ -106,7 +105,7 @@
             <div class="actions">
                 <button name="action" type="submit" value="preview" class="btn btn-default">Preview...</button>
                 <button id="modalConfirm" name="action" type="submit" value="deploy" class="btn btn-primary">Deploy Now</button>
-                <a href="@routes.Application.index()" class="btn btn-danger">Cancel</a>
+                <a href="@routes.Application.index" class="btn btn-danger">Cancel</a>
             </div>
         </fieldset>
     }

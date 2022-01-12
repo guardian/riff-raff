@@ -3,8 +3,9 @@ package persistence
 import java.util.UUID
 
 import ci.Trigger
-import com.gu.scanamo.syntax._
-import com.gu.scanamo.{DynamoFormat, Table}
+import org.scanamo.syntax._
+import org.scanamo.{DynamoFormat, Table}
+import org.scanamo.auto._
 import conf.Config
 import schedule.ScheduleConfig
 
@@ -21,11 +22,11 @@ class ScheduleRepository(config: Config) extends DynamoRepository(config) {
     exec(table.scan()).flatMap(_.toOption)
 
   def getSchedule(id: UUID): Option[ScheduleConfig] =
-    exec(table.get('id -> id)).flatMap(_.toOption)
+    exec(table.get("id" -> id)).flatMap(_.toOption)
 
   def setSchedule(schedule: ScheduleConfig): Unit =
     exec(table.put(schedule))
 
   def deleteSchedule(id: UUID): Unit =
-    exec(table.delete('id -> id))
+    exec(table.delete("id" -> id))
 }

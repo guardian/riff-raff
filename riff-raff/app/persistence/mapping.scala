@@ -6,7 +6,6 @@ import cats.instances.list._
 import cats.syntax.traverse._
 import controllers.{Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, DeployRecord, PaginationView}
-import henkan.convert.Syntax._
 import magenta.ContextMessage._
 import magenta.Strategy.MostlyHarmless
 import magenta._
@@ -47,7 +46,14 @@ object RecordConverter {
       selector = sourceParams.selector match {
         case All => AllDocument
         case DeploymentKeysSelector(ids) =>
-          DeploymentKeysSelectorDocument(ids.map(_.to[DeploymentKeyDocument]()))
+          DeploymentKeysSelectorDocument(ids.map(id =>
+            DeploymentKeyDocument(
+              name = id.name,
+              action = id.action,
+              stack = id.stack,
+              region = id.region,
+            )
+          ))
       },
       updateStrategy = Some(sourceParams.updateStrategy)
     )
@@ -64,7 +70,14 @@ case class DocumentConverter(deploy: DeployRecordDocument, logs: Seq[LogDocument
     deploy.parameters.selector match {
       case AllDocument => All
       case DeploymentKeysSelectorDocument(keys) =>
-        DeploymentKeysSelector(keys.map(_.to[DeploymentKey]()))
+        DeploymentKeysSelector(keys.map(key =>
+          DeploymentKey(
+            name = key.name,
+            action = key.action,
+            stack = key.stack,
+            region = key.region,
+          )
+        ))
     },
     deploy.parameters.updateStrategy.getOrElse(MostlyHarmless)
   )
@@ -195,7 +208,7 @@ class DocumentStoreConverter(datastore: DataStore) extends Logging {
   def countDeploys(filter: Option[DeployFilter]): Int = datastore.countDeploys(filter)
 
   def getLastCompletedDeploys(project: String, fetchLog:Boolean = false): Map[String, DeployRecord] =
-    datastore.getLastCompletedDeploys(project).mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get)
+    datastore.getLastCompletedDeploys(project).view.mapValues(uuid => getDeploy(uuid, fetchLog = fetchLog).get).toMap
 
   def findProjects: Either[Throwable, List[String]] = datastore.findProjects
 }

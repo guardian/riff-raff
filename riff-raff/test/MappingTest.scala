@@ -12,7 +12,7 @@ import persistence.{AllDocument, DeploymentKeysSelectorDocument}
 import persistence.DeployDocument
 import persistence._
 
-class MappingTest extends AnyFlatSpec with Matchers with Utilities with PersistenceTestInstances with Logging {
+class MappingTest extends AnyFlatSpec with Matchers with PersistenceTestInstances with Logging {
   "RecordConverter" should "transform a deploy record into a deploy document" in {
     RecordConverter(testRecord).deployDocument should be(
       DeployRecordDocument(

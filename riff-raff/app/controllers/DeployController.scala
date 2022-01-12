@@ -200,13 +200,13 @@ class DeployController(config: Config,
       case (k, v) => k + "=" + URLEncoder.encode(v, "UTF-8")
     }.mkString("&")
 
-    val url = s"${routes.DeployController.deployAgain().url}?$queryString"
+    val url = s"${routes.DeployController.deployAgain.url}?$queryString"
     Redirect(url)
   }
 
   def markAsFailed = AuthAction { implicit request =>
     UuidForm.form.bindFromRequest().fold(
-      _ => Redirect(routes.DeployController.history()),
+      _ => Redirect(routes.DeployController.history),
       form => {
         form.action match {
           case "markAsFailed" =>

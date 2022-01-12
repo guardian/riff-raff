@@ -9,7 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import persistence._
 
-class RepresentationTest extends AnyFlatSpec with Matchers with Utilities with PersistenceTestInstances {
+class RepresentationTest extends AnyFlatSpec with Matchers with PersistenceTestInstances {
 
   "MessageDocument" should "convert from log messages to documents" in {
     deploy.asMessageDocument should be(DeployDocument)

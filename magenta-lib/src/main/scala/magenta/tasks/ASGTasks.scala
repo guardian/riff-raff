@@ -142,7 +142,7 @@ case class CullInstancesWithTerminationTag(info: AutoScalingGroupInfo, region: R
 
             isTaggedForTermination && !isAlreadyTerminating
           })
-        val orderedInstancesToKill = instancesToKill.transposeBy(_.availabilityZone)
+        val orderedInstancesToKill = instancesToKill.toSeq.transposeBy(_.availabilityZone)
         try {
           resources.reporter.verbose(s"Culling instances: ${orderedInstancesToKill.map(_.instanceId).mkString(", ")}")
           orderedInstancesToKill.foreach(instance => ASG.cull(asg, instance, asgClient, elbClient))

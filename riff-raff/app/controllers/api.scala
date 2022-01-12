@@ -172,10 +172,10 @@ class Api(config: Config,
 
   def delete = authAction { implicit request =>
     apiKeyForm.bindFromRequest().fold(
-      errors => Redirect(routes.Api.listKeys()),
+      errors => Redirect(routes.Api.listKeys),
       apiKey => {
         datastore.deleteApiKey(apiKey)
-        Redirect(routes.Api.listKeys())
+        Redirect(routes.Api.listKeys)
       }
     )
   }

@@ -1,12 +1,11 @@
 @import conf.Config
 @(config: Config, menu: Menu)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity])
-@import b3.vertical.fieldConstructor
 @import helper.CSRF
 
 @main("Validation form", request) {
     <div class="clearfix"><p>&nbsp;</p></div>
     <div class="col-md-6">
-    @b3.form(routes.Application.validateConfiguration, 'class -> "well") {
+    @b3.vertical.form(routes.Application.validateConfiguration, 'class -> "well") { implicit fc =>
         @CSRF.formField
         <fieldset>
             <legend>Paste your riff-raff.yaml content to validate it...</legend>

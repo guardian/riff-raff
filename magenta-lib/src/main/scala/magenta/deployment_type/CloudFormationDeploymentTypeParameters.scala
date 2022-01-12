@@ -116,7 +116,7 @@ trait CloudFormationDeploymentTypeParameters {
       case (None, Some(tags)) => Map(amiParameter(pkg, target, reporter) -> tags)
       case _ => Map.empty
     }
-    map.mapValues(prefixEncrypted(amiEncrypted(pkg, target, reporter)))
+    map.view.mapValues(prefixEncrypted(amiEncrypted(pkg, target, reporter))).toMap
   }
 
   def getLatestAmi(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter,

@@ -65,7 +65,7 @@ class Restrictions(config: Config,
             val newConfig = RestrictionConfig(f.id, f.projectName, f.stage, new DateTime(), request.user.fullName,
               request.user.email, f.editingLocked, f.allowlist, f.continuousDeployment, f.note)
             restrictionConfigDynamoRepository.setRestriction(newConfig)
-            Redirect(routes.Restrictions.list())
+            Redirect(routes.Restrictions.list)
           case Left(Error(reason)) =>
             Forbidden(s"Not possible to update this restriction: $reason")
         }
@@ -84,14 +84,14 @@ class Restrictions(config: Config,
         restrictionForm = form,
         saveDisabled = cannotSave
       ))
-    }.getOrElse(Redirect(routes.Restrictions.list()))
+    }.getOrElse(Redirect(routes.Restrictions.list))
   }
 
   def delete(id: String) = authAction { request =>
     RestrictionChecker.isEditable(restrictionConfigDynamoRepository.getRestriction(UUID.fromString(id)), request.user, config.auth.superusers) match {
       case Right(_) =>
         restrictionConfigDynamoRepository.deleteRestriction(UUID.fromString(id))
-        Redirect(routes.Restrictions.list())
+        Redirect(routes.Restrictions.list)
       case Left(Error(reason)) =>
         Forbidden(s"Not possible to delete this restriction: $reason")
     }

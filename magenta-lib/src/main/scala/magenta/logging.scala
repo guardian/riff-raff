@@ -164,11 +164,6 @@ sealed trait Message extends EnumEntry {
 
 case object Message extends Enum[Message] with PlayJsonEnum[Message] {
 
-  sealed trait ContextMessage extends Message {
-    def originalMessage: Message
-    override def deployParameters: Option[DeployParameters] = originalMessage.deployParameters
-  }
-
   case class Deploy(parameters: DeployParameters) extends Message {
     lazy val text = s"deploy for ${parameters.build.projectName} (build ${parameters.build.id}) to stage ${parameters.stage.name}"
     override lazy val deployParameters = Some(parameters)
