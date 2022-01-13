@@ -148,9 +148,9 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         target.region,
         stackLookup
       ),
-      new CheckUpdateEventsTask(
+      new CheckUpdateEventsForChangeSetTask(
         target.region,
-        cloudFormationStackLookupStrategy
+        stackLookup
       ),
       new DeleteChangeSetTask(
         target.region,

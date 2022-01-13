@@ -7,7 +7,7 @@ import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResou
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, Parameter, StackEvent}
+import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, DescribeChangeSetRequest, Parameter, StackEvent}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
@@ -395,4 +395,32 @@ class CheckUpdateEventsTask(
   }
 
   def description = s"Checking events on update for stack $stackLookupStrategy"
+}
+
+/*
+We're sub-classing `CheckUpdateEventsTask` in order to first check if a ChangeSet has yielded any changes - only poll for CloudWatch Events if it did.
+Ideally this check would sit in `CheckUpdateEventsTask` itself, however `CheckUpdateEventsTask` is used by the `AmiCloudFormationParameter` deployment type, which is not yet ChangeSet aware.
+TODO Make `AmiCloudFormationParameter` deployment type ChangeSet aware.
+ */
+class CheckUpdateEventsForChangeSetTask(
+  region: Region,
+  stackLookup: CloudFormationStackMetadata
+)(implicit override val keyRing: KeyRing) extends CheckUpdateEventsTask(region, stackLookup.strategy) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
+      val changeSetName = stackLookup.changeSetName
+
+      val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+      val describeResponse = cfnClient.describeChangeSet(describeRequest)
+
+      if (describeResponse.changes.isEmpty) {
+        resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
+      } else {
+        super.execute(resources, stopFlag)
+      }
+    }
+  }
+
+  override def description = s"Checking events for change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
 }

@@ -20,6 +20,7 @@ object AmiCloudFormationParameter extends DeploymentType with CloudFormationDepl
     val amiParameterMap: Map[CfnParam, TagCriteria] = getAmiParameterMap(pkg, target, reporter)
     val cloudFormationStackLookupStrategy = getCloudFormationStackLookupStrategy(pkg, target, reporter)
 
+    // TODO wrap this CloudFormation update in a ChangeSet. See `Cloudformation.scala`.
     List(
       UpdateAmiCloudFormationParameterTask(
         target.region,
