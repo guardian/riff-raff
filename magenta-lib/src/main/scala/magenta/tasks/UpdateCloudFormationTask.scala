@@ -344,29 +344,26 @@ class CheckUpdateEventsTask(
         lastSeenEvent match {
           case None =>
             events.find(updateStart(stackName)) match {
-            case None =>
-              resources.reporter.fail(s"No events found at all for stack $stackName")
-            case Some(e) =>
-              val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
-              if (age > 30) {
-                resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
-              } else {
-                reportEvent(resources.reporter, e)
-                check(Some(e))
+              case None => resources.reporter.fail(s"No events found at all for stack $stackName")
+              case Some(e) =>
+                val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
+                if (age > 30) {
+                  resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+                } else {
+                  reportEvent(resources.reporter, e)
+                  check(Some(e))
+                }
               }
-            }
           case Some(event) =>
             val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
             newEvents.reverse.foreach(reportEvent(resources.reporter, _))
-
             newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
 
-          val complete = newEvents.exists(updateComplete(stackName))
-          if (!complete && !stopFlag) {
+            val complete = newEvents.exists(updateComplete(stackName))
+            if (!complete && !stopFlag) {
               Thread.sleep(5000)
               check(Some(newEvents.headOption.getOrElse(event)))
             }
-
         }
       }
 
