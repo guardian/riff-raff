@@ -334,7 +334,7 @@ class CheckUpdateEventsTask(
           stack.stackName
       }
 
-      StackEventPoller.check(stackName, cfnClient, resources, stopFlag, None)
+      new CloudFormationStackEventPoller(stackName, cfnClient, resources, stopFlag).check(None)
     }
   }
 
@@ -342,16 +342,32 @@ class CheckUpdateEventsTask(
   def description = s"Checking events on update for stack $stackLookupStrategy"
 }
 
-object StackEventPoller extends Loggable {
+class CloudFormationStackEventPoller(stackName: String, cfnClient: CloudFormationClient, resources: DeploymentResources, stopFlag: => Boolean) extends Loggable {
+  private def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
+    reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
+    if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
+  }
+  private def isStackEvent(stackName: String)(e: StackEvent): Boolean =
+    e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
+
+  private def updateStart(stackName: String)(e: StackEvent): Boolean =
+    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
+
+  private def updateComplete(stackName: String)(e: StackEvent): Boolean =
+    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
+
+  private def updateFailed(e: StackEvent): Boolean = {
+    val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
+    logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
+    failed
+  }
+
+  private def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
+    s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
+       |${e.resourceStatusReason}""".stripMargin)
+
   @tailrec
-  def check(
-    stackName: String,
-    cfnClient: CloudFormationClient,
-    resources: DeploymentResources,
-    stopFlag: => Boolean,
-    lastSeenEvent: Option[StackEvent],
-    completeChecks: Option[() => Boolean] = None
-  ): Unit = {
+  final def check(lastSeenEvent: Option[StackEvent], additionalChecks: () => Boolean = () => true): Unit = {
     val result = CloudFormation.describeStackEvents(stackName, cfnClient)
     val events = result.stackEvents.asScala
 
@@ -365,7 +381,7 @@ object StackEventPoller extends Loggable {
               resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
             } else {
               reportEvent(resources.reporter, e)
-              check(stackName, cfnClient, resources, stopFlag, Some(e))
+              check(Some(e), additionalChecks)
             }
         }
       case Some(event) =>
@@ -373,34 +389,11 @@ object StackEventPoller extends Loggable {
         newEvents.reverse.foreach(reportEvent(resources.reporter, _))
         newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
 
-        val additionalCompletionChecks = completeChecks.getOrElse(() => true)
-
-        val complete = newEvents.exists(updateComplete(stackName)) && additionalCompletionChecks()
+        val complete = newEvents.exists(updateComplete(stackName)) && additionalChecks()
         if (!complete && !stopFlag) {
           Thread.sleep(5000)
-          check(stackName, cfnClient, resources, stopFlag, Some(newEvents.headOption.getOrElse(event)))
+          check(Some(newEvents.headOption.getOrElse(event)), additionalChecks)
         }
     }
   }
-
-  def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
-    reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
-    if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
-  }
-  def isStackEvent(stackName: String)(e: StackEvent): Boolean =
-    e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
-  def updateStart(stackName: String)(e: StackEvent): Boolean =
-    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
-  def updateComplete(stackName: String)(e: StackEvent): Boolean =
-    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
-
-  def updateFailed(e: StackEvent): Boolean = {
-    val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
-    logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
-    failed
-  }
-
-  def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
-    s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
-          |${e.resourceStatusReason}""".stripMargin)
 }

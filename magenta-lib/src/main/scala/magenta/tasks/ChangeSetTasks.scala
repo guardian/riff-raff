@@ -140,10 +140,6 @@ class ExecuteChangeSetTask(
     response.executionStatusAsString()
   }
 
-  private def isChangeSetExecutionComplete(cfnClient: CloudFormationClient, changeSetArn: String): Boolean = {
-    getChangeSetExecutionStatus(cfnClient, changeSetArn) == "EXECUTE_COMPLETE"
-  }
-
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
@@ -163,11 +159,19 @@ class ExecuteChangeSetTask(
 
         val request = ExecuteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
         cfnClient.executeChangeSet(request)
-        
-        import magenta.tasks.StackEventPoller.check
 
-        // poll events and wait for completion
-        check(stackName, cfnClient, resources, stopFlag, None, Some(() => isChangeSetExecutionComplete(cfnClient, changeSetArn)))
+        new CloudFormationStackEventPoller(stackName, cfnClient, resources, stopFlag)
+          .check(None, () => {
+            val executionStatus = getChangeSetExecutionStatus(cfnClient, changeSetArn)
+
+            // Any other status is a failure condition, which `CloudFormationStackEventPoller` is handling at the CloudFormation event log level
+            val isComplete = executionStatus == "EXECUTE_COMPLETE"
+
+            if(!isComplete) {
+              resources.reporter.verbose(s"Execution status for change set $changeSetName on stack $stackName is $executionStatus")
+            }
+            isComplete
+          })
       }
     }
   }
