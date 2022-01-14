@@ -7,7 +7,7 @@ import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResou
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, Parameter, StackEvent}
+import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, DescribeChangeSetRequest, Parameter, StackEvent}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
@@ -344,29 +344,26 @@ class CheckUpdateEventsTask(
         lastSeenEvent match {
           case None =>
             events.find(updateStart(stackName)) match {
-            case None =>
-              resources.reporter.fail(s"No events found at all for stack $stackName")
-            case Some(e) =>
-              val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
-              if (age > 30) {
-                resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
-              } else {
-                reportEvent(resources.reporter, e)
-                check(Some(e))
+              case None => resources.reporter.fail(s"No events found at all for stack $stackName")
+              case Some(e) =>
+                val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
+                if (age > 30) {
+                  resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+                } else {
+                  reportEvent(resources.reporter, e)
+                  check(Some(e))
+                }
               }
-            }
           case Some(event) =>
             val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
             newEvents.reverse.foreach(reportEvent(resources.reporter, _))
-
             newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
 
-          val complete = newEvents.exists(updateComplete(stackName))
-          if (!complete && !stopFlag) {
+            val complete = newEvents.exists(updateComplete(stackName))
+            if (!complete && !stopFlag) {
               Thread.sleep(5000)
               check(Some(newEvents.headOption.getOrElse(event)))
             }
-
         }
       }
 
@@ -398,4 +395,32 @@ class CheckUpdateEventsTask(
   }
 
   def description = s"Checking events on update for stack $stackLookupStrategy"
+}
+
+/*
+We're sub-classing `CheckUpdateEventsTask` in order to first check if a ChangeSet has yielded any changes - only poll for CloudWatch Events if it did.
+Ideally this check would sit in `CheckUpdateEventsTask` itself, however `CheckUpdateEventsTask` is used by the `AmiCloudFormationParameter` deployment type, which is not yet ChangeSet aware.
+TODO Make `AmiCloudFormationParameter` deployment type ChangeSet aware.
+ */
+class CheckUpdateEventsForChangeSetTask(
+  region: Region,
+  stackLookup: CloudFormationStackMetadata
+)(implicit override val keyRing: KeyRing) extends CheckUpdateEventsTask(region, stackLookup.strategy) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
+    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
+      val changeSetName = stackLookup.changeSetName
+
+      val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
+      val describeResponse = cfnClient.describeChangeSet(describeRequest)
+
+      if (describeResponse.changes.isEmpty) {
+        resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
+      } else {
+        super.execute(resources, stopFlag)
+      }
+    }
+  }
+
+  override def description = s"Checking events for change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
 }
