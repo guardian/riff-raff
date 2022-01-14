@@ -326,8 +326,6 @@ class CheckUpdateEventsTask(
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
 
-      import StackEvent._
-
       val stackName = stackLookupStrategy match {
         case LookupByName(name) => name
         case strategy@LookupByTags(tags) =>
@@ -336,91 +334,73 @@ class CheckUpdateEventsTask(
           stack.stackName
       }
 
-      @tailrec
-      def check(lastSeenEvent: Option[StackEvent]): Unit = {
-        val result = CloudFormation.describeStackEvents(stackName, cfnClient)
-        val events = result.stackEvents.asScala
-
-        lastSeenEvent match {
-          case None =>
-            events.find(updateStart(stackName)) match {
-              case None => resources.reporter.fail(s"No events found at all for stack $stackName")
-              case Some(e) =>
-                val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
-                if (age > 30) {
-                  resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
-                } else {
-                  reportEvent(resources.reporter, e)
-                  check(Some(e))
-                }
-              }
-          case Some(event) =>
-            val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
-            newEvents.reverse.foreach(reportEvent(resources.reporter, _))
-            newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
-
-            val complete = newEvents.exists(updateComplete(stackName))
-            if (!complete && !stopFlag) {
-              Thread.sleep(5000)
-              check(Some(newEvents.headOption.getOrElse(event)))
-            }
-        }
-      }
-
-      check(None)
+      StackEventPoller.check(stackName, cfnClient, resources, stopFlag, None)
     }
   }
 
-  object StackEvent {
-    def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
-      reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
-      if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
-    }
-    def isStackEvent(stackName: String)(e: StackEvent): Boolean =
-      e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
-    def updateStart(stackName: String)(e: StackEvent): Boolean =
-      isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
-    def updateComplete(stackName: String)(e: StackEvent): Boolean =
-      isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
-
-    def updateFailed(e: StackEvent): Boolean = {
-      val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
-      logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
-      failed
-    }
-
-    def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
-      s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
-            |${e.resourceStatusReason}""".stripMargin)
-  }
 
   def description = s"Checking events on update for stack $stackLookupStrategy"
 }
 
-/*
-We're sub-classing `CheckUpdateEventsTask` in order to first check if a ChangeSet has yielded any changes - only poll for CloudWatch Events if it did.
-Ideally this check would sit in `CheckUpdateEventsTask` itself, however `CheckUpdateEventsTask` is used by the `AmiCloudFormationParameter` deployment type, which is not yet ChangeSet aware.
-TODO Make `AmiCloudFormationParameter` deployment type ChangeSet aware.
- */
-class CheckUpdateEventsForChangeSetTask(
-  region: Region,
-  stackLookup: CloudFormationStackMetadata
-)(implicit override val keyRing: KeyRing) extends CheckUpdateEventsTask(region, stackLookup.strategy) {
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
-    CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      val changeSetName = stackLookup.changeSetName
+object StackEventPoller extends Loggable {
+  @tailrec
+  def check(
+    stackName: String,
+    cfnClient: CloudFormationClient,
+    resources: DeploymentResources,
+    stopFlag: => Boolean,
+    lastSeenEvent: Option[StackEvent],
+    completeChecks: Option[() => Boolean] = None
+  ): Unit = {
+    val result = CloudFormation.describeStackEvents(stackName, cfnClient)
+    val events = result.stackEvents.asScala
 
-      val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
-      val describeResponse = cfnClient.describeChangeSet(describeRequest)
+    lastSeenEvent match {
+      case None =>
+        events.find(updateStart(stackName)) match {
+          case None => resources.reporter.fail(s"No events found at all for stack $stackName")
+          case Some(e) =>
+            val age = new Duration(new DateTime(e.timestamp().toEpochMilli), new DateTime()).getStandardSeconds
+            if (age > 30) {
+              resources.reporter.verbose("No recent IN_PROGRESS events found (nothing within last 30 seconds)")
+            } else {
+              reportEvent(resources.reporter, e)
+              check(stackName, cfnClient, resources, stopFlag, Some(e))
+            }
+        }
+      case Some(event) =>
+        val newEvents = events.takeWhile(_.timestamp.isAfter(event.timestamp))
+        newEvents.reverse.foreach(reportEvent(resources.reporter, _))
+        newEvents.filter(updateFailed).foreach(fail(resources.reporter, _))
 
-      if (describeResponse.changes.isEmpty) {
-        resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
-      } else {
-        super.execute(resources, stopFlag)
-      }
+        val additionalCompletionChecks = completeChecks.getOrElse(() => true)
+
+        val complete = newEvents.exists(updateComplete(stackName)) && additionalCompletionChecks()
+        if (!complete && !stopFlag) {
+          Thread.sleep(5000)
+          check(stackName, cfnClient, resources, stopFlag, Some(newEvents.headOption.getOrElse(event)))
+        }
     }
   }
 
-  override def description = s"Checking events for change set ${stackLookup.changeSetName} on stack ${stackLookup.strategy}"
+  def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
+    reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
+    if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
+  }
+  def isStackEvent(stackName: String)(e: StackEvent): Boolean =
+    e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
+  def updateStart(stackName: String)(e: StackEvent): Boolean =
+    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
+  def updateComplete(stackName: String)(e: StackEvent): Boolean =
+    isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
+
+  def updateFailed(e: StackEvent): Boolean = {
+    val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
+    logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
+    failed
+  }
+
+  def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
+    s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
+          |${e.resourceStatusReason}""".stripMargin)
 }
