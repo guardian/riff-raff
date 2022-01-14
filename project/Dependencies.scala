@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.17.35"
+    val aws = "2.17.109"
     val jackson = "2.9.8"
     val awsRds = "1.11.563"
     val enumeratumPlay = "1.7.0"
@@ -39,7 +39,7 @@ object Dependencies {
     "com.typesafe.play" %% "play-json" % "2.8.2",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev75-1.25.0",
-    "com.google.apis" % "google-api-services-storage" % "v1-rev171-1.25.0",
+    "com.google.cloud" % "google-cloud-storage" % "2.2.3",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this

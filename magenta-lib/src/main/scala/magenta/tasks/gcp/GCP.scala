@@ -1,25 +1,25 @@
 package magenta.tasks.gcp
 
-import java.io.{ByteArrayInputStream, IOException}
 import cats.syntax.either._
-import com.google.api.client.googleapis.apache.GoogleApacheHttpTransport
+import com.google.api.client.googleapis.apache.v2.GoogleApacheHttpTransport
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.HttpResponseException
-import com.google.api.client.http.apache.ApacheHttpTransport
-import com.google.api.client.json.jackson2.JacksonFactory
-import com.google.api.services.storage.Storage
+import com.google.api.client.http.apache.v2.ApacheHttpTransport
+import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
+import com.google.api.services.storage.Storage
 import magenta.tasks.gcp.GCPRetryHelper.Result
 import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing, Loggable}
 
+import java.io.{ByteArrayInputStream, IOException}
 import scala.collection.JavaConverters._
 
 object GCP {
   lazy val httpTransport: ApacheHttpTransport = GoogleApacheHttpTransport.newTrustedTransport
-  lazy val jsonFactory: JacksonFactory = JacksonFactory.getDefaultInstance
+  lazy val jsonFactory: GsonFactory = GsonFactory.getDefaultInstance
   val scopes: Seq[String] = Seq(
     DeploymentManagerScopes.CLOUD_PLATFORM
   )
