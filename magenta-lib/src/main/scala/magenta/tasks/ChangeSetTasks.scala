@@ -129,10 +129,19 @@ class CheckChangeSetCreatedTask(
   def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
 }
 
-class ExecuteChangeSetTask(
-                            region: Region,
-                            stackLookup: CloudFormationStackMetadata,
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+/**
+  * A task to execute a ChangeSet against a CloudFormation stack.
+  *
+  * If the ChangeSet does not contain any changes, it exits early.
+  *
+  * If there are changes, it waits until:
+  *   - The CloudFormation event log contains `UPDATE_COMPLETE` or `CREATE_COMPLETE`
+  *   - The execution status of the ChangeSet is `EXECUTE_COMPLETE`
+  *
+  * @see [[CloudFormationStackEventPoller]]
+  * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeChangeSet.html#API_DescribeChangeSet_ResponseElements
+  */
+class ExecuteChangeSetTask(region: Region, stackLookup: CloudFormationStackMetadata)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
   private def getChangeSetExecutionStatus(cfnClient: CloudFormationClient, changeSetArn: String): String = {
     val request = DescribeChangeSetRequest.builder().changeSetName(changeSetArn).build()
