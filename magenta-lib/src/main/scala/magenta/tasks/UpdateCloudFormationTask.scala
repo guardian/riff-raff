@@ -343,26 +343,26 @@ class CheckUpdateEventsTask(
 }
 
 class CloudFormationStackEventPoller(stackName: String, cfnClient: CloudFormationClient, resources: DeploymentResources, stopFlag: => Boolean) extends Loggable {
-  private def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
+  private[this] def reportEvent(reporter: DeployReporter, e: StackEvent): Unit = {
     reporter.info(s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}")
     if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
   }
-  private def isStackEvent(stackName: String)(e: StackEvent): Boolean =
+  private[this] def isStackEvent(stackName: String)(e: StackEvent): Boolean =
     e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
 
-  private def updateStart(stackName: String)(e: StackEvent): Boolean =
+  private[this] def updateStart(stackName: String)(e: StackEvent): Boolean =
     isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_IN_PROGRESS" || e.resourceStatusAsString == "CREATE_IN_PROGRESS")
 
-  private def updateComplete(stackName: String)(e: StackEvent): Boolean =
+  private[this] def updateComplete(stackName: String)(e: StackEvent): Boolean =
     isStackEvent(stackName)(e) && (e.resourceStatusAsString == "UPDATE_COMPLETE" || e.resourceStatusAsString == "CREATE_COMPLETE")
 
-  private def updateFailed(e: StackEvent): Boolean = {
+  private[this] def updateFailed(e: StackEvent): Boolean = {
     val failed = e.resourceStatusAsString.contains("FAILED") || e.resourceStatusAsString.contains("ROLLBACK")
     logger.debug(s"${e.resourceStatusAsString} - failed = $failed")
     failed
   }
 
-  private def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
+  private[this] def fail(reporter: DeployReporter, e: StackEvent): Unit = reporter.fail(
     s"""${e.logicalResourceId}(${e.resourceType}}: ${e.resourceStatusAsString}
        |${e.resourceStatusReason}""".stripMargin)
 
