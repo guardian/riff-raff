@@ -46,28 +46,26 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
     )
 
     val tasks = generateTasks(data)
-    tasks should have size(5)
+    tasks should have size(4)
 
     tasks(0) shouldBe a[CreateChangeSetTask]
     tasks(1) shouldBe a[CheckChangeSetCreatedTask]
     tasks(2) shouldBe a[ExecuteChangeSetTask]
-    tasks(3) shouldBe a[CheckUpdateEventsTask]
-    tasks(4) shouldBe a[DeleteChangeSetTask]
+    tasks(3) shouldBe a[DeleteChangeSetTask]
   }
 
   it should "generate stack policy tasks in the correct order when manageStackPolicy is true (default)" in {
     val tasks = generateTasks()
-    tasks should have size(7)
+    tasks should have size(6)
 
     tasks(0) shouldBe a[SetStackPolicyTask]
     tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe DenyReplaceDeletePolicy
     tasks(1) shouldBe a[CreateChangeSetTask]
     tasks(2) shouldBe a[CheckChangeSetCreatedTask]
     tasks(3) shouldBe a[ExecuteChangeSetTask]
-    tasks(4) shouldBe a[CheckUpdateEventsTask]
-    tasks(5) shouldBe a[DeleteChangeSetTask]
-    tasks(6) shouldBe a[SetStackPolicyTask]
-    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe AllowAllPolicy
+    tasks(4) shouldBe a[DeleteChangeSetTask]
+    tasks(5) shouldBe a[SetStackPolicyTask]
+    tasks(5).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe AllowAllPolicy
   }
 
   it should "generate stack policy tasks in the correct order when manageStackPolicy is true and update strategy is Dangerous" in {
@@ -76,17 +74,16 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
     )
 
     val tasks = generateTasks(data, updateStrategy = Dangerous)
-    tasks should have size(7)
+    tasks should have size(6)
 
     tasks(0) shouldBe a[SetStackPolicyTask]
     tasks(0).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe AllowAllPolicy
     tasks(1) shouldBe a[CreateChangeSetTask]
     tasks(2) shouldBe a[CheckChangeSetCreatedTask]
     tasks(3) shouldBe a[ExecuteChangeSetTask]
-    tasks(4) shouldBe a[CheckUpdateEventsTask]
-    tasks(5) shouldBe a[DeleteChangeSetTask]
-    tasks(6) shouldBe a[SetStackPolicyTask]
-    tasks(6).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe AllowAllPolicy
+    tasks(4) shouldBe a[DeleteChangeSetTask]
+    tasks(5) shouldBe a[SetStackPolicyTask]
+    tasks(5).asInstanceOf[SetStackPolicyTask].stackPolicy shouldBe AllowAllPolicy
   }
 
   it should "ignore amiTags when amiParametersToTags and amiTags are provided" in {

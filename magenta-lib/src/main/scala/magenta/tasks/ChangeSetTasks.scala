@@ -4,11 +4,14 @@ import magenta.artifact.S3Path
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{ApiRoleCredentials, DeployReporter, DeploymentResources, KeyRing, Region}
+import org.joda.time.{DateTime, Duration}
+import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
-import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest}
+import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, DeleteChangeSetRequest, DescribeChangeSetRequest, ExecuteChangeSetRequest, ListChangeSetsRequest, StackEvent}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.{Success, Try}
 
@@ -126,10 +129,26 @@ class CheckChangeSetCreatedTask(
   def description = s"Checking change set ${stackLookup.changeSetName} creation for stack ${stackLookup.strategy}"
 }
 
-class ExecuteChangeSetTask(
-                            region: Region,
-                            stackLookup: CloudFormationStackMetadata,
-)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+/**
+  * A task to execute a ChangeSet against a CloudFormation stack.
+  *
+  * If the ChangeSet does not contain any changes, it exits early.
+  *
+  * If there are changes, it waits until:
+  *   - The CloudFormation event log contains `UPDATE_COMPLETE` or `CREATE_COMPLETE`
+  *   - The execution status of the ChangeSet is `EXECUTE_COMPLETE`
+  *
+  * @see [[CloudFormationStackEventPoller]]
+  * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeChangeSet.html#API_DescribeChangeSet_ResponseElements
+  */
+class ExecuteChangeSetTask(region: Region, stackLookup: CloudFormationStackMetadata)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
+
+  private def getChangeSetExecutionStatus(cfnClient: CloudFormationClient, changeSetArn: String): String = {
+    val request = DescribeChangeSetRequest.builder().changeSetName(changeSetArn).build()
+    val response = cfnClient.describeChangeSet(request)
+    response.executionStatusAsString()
+  }
+
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
@@ -137,6 +156,8 @@ class ExecuteChangeSetTask(
 
       val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
       val describeResponse = cfnClient.describeChangeSet(describeRequest)
+
+      val changeSetArn = describeResponse.changeSetId()
 
       if (describeResponse.changes.isEmpty) {
         resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
@@ -147,6 +168,19 @@ class ExecuteChangeSetTask(
 
         val request = ExecuteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
         cfnClient.executeChangeSet(request)
+
+        new CloudFormationStackEventPoller(stackName, cfnClient, resources, stopFlag)
+          .check(None, () => {
+            val executionStatus = getChangeSetExecutionStatus(cfnClient, changeSetArn)
+
+            // Any other status is a failure condition, which `CloudFormationStackEventPoller` is handling at the CloudFormation event log level
+            val isComplete = executionStatus == "EXECUTE_COMPLETE"
+
+            if(!isComplete) {
+              resources.reporter.verbose(s"Execution status for change set $changeSetName on stack $stackName is $executionStatus")
+            }
+            isComplete
+          })
       }
     }
   }

@@ -148,10 +148,6 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         target.region,
         stackLookup
       ),
-      new CheckUpdateEventsForChangeSetTask(
-        target.region,
-        stackLookup
-      ),
       new DeleteChangeSetTask(
         target.region,
         stackLookup
