@@ -9,7 +9,7 @@
 
     @b3.vertical.form(action=routes.Api.createKey) { implicit fc =>
         @CSRF.formField
-        @b3.text(apiForm("application"), '_label -> "Application that will use this key")
+        @b3.text(apiForm("application"), Symbol("_label") -> "Application that will use this key")
         <div class="actions">
             <button name="action" type="submit" value="save" class="btn btn-primary">Create</button> or
             <a href="@routes.Api.listKeys" class="btn btn-danger">Cancel</a>

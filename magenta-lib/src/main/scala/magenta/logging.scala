@@ -36,15 +36,15 @@ case class DeployReporter(messageStack: List[Message], messageContext: MessageCo
   def taskContext[T](task: Task)(block: DeployReporter => T): T = {
     DeployReporter.sendContext(this, Message.TaskRun(task))(block)
   }
-  def taskList(tasks: List[Task]) { DeployReporter.send(this, Message.TaskList(tasks)) }
-  def info(message: String) { DeployReporter.send(this, Message.Info(message)) }
+  def taskList(tasks: List[Task]): Unit = { DeployReporter.send(this, Message.TaskList(tasks)) }
+  def info(message: String): Unit = { DeployReporter.send(this, Message.Info(message)) }
   def infoContext[T](message: String)(block: DeployReporter => T): T = {
     DeployReporter.sendContext(this, Message.Info(message))(block)
   }
-  def commandOutput(message: String) { DeployReporter.send(this, Message.CommandOutput(message)) }
-  def commandError(message: String) { DeployReporter.send(this, Message.CommandError(message)) }
-  def verbose(message: String) { DeployReporter.send(this, Message.Verbose(message)) }
-  def warning(message: String) { DeployReporter.send(this, Message.Warning(message)) }
+  def commandOutput(message: String): Unit = { DeployReporter.send(this, Message.CommandOutput(message)) }
+  def commandError(message: String): Unit = { DeployReporter.send(this, Message.CommandError(message)) }
+  def verbose(message: String): Unit = { DeployReporter.send(this, Message.Verbose(message)) }
+  def warning(message: String): Unit = { DeployReporter.send(this, Message.Warning(message)) }
   def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw DeployReporter.failException(this, message, e)
   }
@@ -55,7 +55,7 @@ object DeployReporter {
   private val messageSubject = Subject[MessageWrapper]()
   val messages: Observable[MessageWrapper] = messageSubject
 
-  private def send(reporter: DeployReporter, message: Message, messageUUID: UUID = UUID.randomUUID()) {
+  private def send(reporter: DeployReporter, message: Message, messageUUID: UUID = UUID.randomUUID()): Unit = {
     val stack = MessageStack(message :: reporter.messageStack)
     messageSubject.onNext(MessageWrapper(reporter.messageContext, messageUUID, stack))
   }
@@ -89,7 +89,7 @@ object DeployReporter {
     currentReporter.messageStack.headOption.foreach(msg => send(currentReporter, ContextMessage.FailContext(msg)))
     currentReporter.previousReporter
   }
-  def failContext(currentReporter: DeployReporter, message: String, reason: Throwable) {
+  def failContext(currentReporter: DeployReporter, message: String, reason: Throwable): Unit = {
     send(currentReporter, Message.Fail(message, reason))
     failContext(currentReporter)
   }

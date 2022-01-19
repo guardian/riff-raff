@@ -11,7 +11,7 @@ import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
 import magenta.deployment_type.DeploymentType
 import resources.PrismLookup
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 
 class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes: Seq[DeploymentType], ioExecutionContext: ExecutionContext) extends Logging {
@@ -51,12 +51,12 @@ class DeploymentEngine(config: Config, prismLookup: PrismLookup, deploymentTypes
     new DeployCoordinator(deployRunnerFactory, concurrentDeploys, stopFlagAgent)
   ), name = "deployCoordinator")
 
-  def interruptibleDeploy(record: Record) {
+  def interruptibleDeploy(record: Record): Unit = {
     log.debug("Sending start deploy message to co-ordinator")
     deployCoordinator ! DeployCoordinator.StartDeploy(record)
   }
 
-  def stopDeploy(uuid: UUID, userName: String) {
+  def stopDeploy(uuid: UUID, userName: String): Unit = {
     stopFlagAgent.send(_ + (uuid -> userName))
   }
 

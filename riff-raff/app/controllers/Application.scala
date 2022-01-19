@@ -43,7 +43,7 @@ case class DropDownMenuItem(title:String, items: Seq[SingleMenuItem], target: Ca
 class Menu(config: Config) {
   lazy val menuItems = Seq(
     SingleMenuItem("Home", routes.Application.index, identityRequired = false),
-    SingleMenuItem("History", routes.DeployController.history),
+    SingleMenuItem("History", routes.DeployController.history()),
     SingleMenuItem("Deploy", routes.DeployController.deploy),
     DropDownMenuItem("Deployment Info", deployInfoMenu),
     DropDownMenuItem("Configuration", Seq(

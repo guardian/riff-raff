@@ -36,7 +36,7 @@
                             })
                         </td>
                         <td>
-                        @helper.form(routes.Login.authDelete, 'class -> "modal-form") {
+                        @helper.form(routes.Login.authDelete, Symbol("class") -> "modal-form") {
                             @CSRF.formField
                             <button class="btn btn-xs btn-danger" name="email" value="@auth.email"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>
                         }

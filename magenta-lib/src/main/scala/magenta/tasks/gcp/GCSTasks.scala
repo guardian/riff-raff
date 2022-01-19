@@ -52,7 +52,7 @@ case class GCSUpload(
   def description: String = s"Upload ${fileString(objectMappings.size)} to GCS bucket $bucket using file mapping $paths"
 
   // execute this task (should throw on failure)
-  override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
+  override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     if (totalSize == 0) {
       val locationDescription = paths.map {
         case (path: S3Path, _) => path.show()

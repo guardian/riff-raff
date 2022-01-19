@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancin
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DescribeTargetHealthRequest, TargetHealthStateEnum, TagDescription => _, _}
 import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELBClient}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()

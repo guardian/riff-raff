@@ -4,7 +4,7 @@ import magenta.{DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, ListTypesRequest, SetStackPolicyRequest, Visibility}
 
-import scala.collection.JavaConverters.iterableAsScalaIterableConverter
+import scala.jdk.CollectionConverters._
 
 sealed trait StackPolicy { def name: String = this.getClass.getSimpleName }
 case object AllowAllPolicy extends StackPolicy

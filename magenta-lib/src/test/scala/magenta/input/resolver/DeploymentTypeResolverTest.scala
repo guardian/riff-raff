@@ -40,14 +40,14 @@ class DeploymentTypeResolverTest extends AnyFlatSpec with Matchers with Validate
   it should "preserve other fields" in {
     val validatedDeployment = DeploymentTypeResolver.validateDeploymentType(deployment, deploymentTypes).valid
     validatedDeployment should have(
-      'name ("bob"),
-      'type ("stub-package-type"),
-      'stacks (NEL.of("stack")),
-      'regions (NEL.of("eu-west-1")),
-      'app ("bob"),
-      'contentDirectory ("bob"),
-      'dependencies (Nil),
-      'parameters (Map.empty)
+      Symbol("name") ("bob"),
+      Symbol("type") ("stub-package-type"),
+      Symbol("stacks") (NEL.of("stack")),
+      Symbol("regions") (NEL.of("eu-west-1")),
+      Symbol("app") ("bob"),
+      Symbol("contentDirectory") ("bob"),
+      Symbol("dependencies") (Nil),
+      Symbol("parameters") (Map.empty)
     )
   }
 

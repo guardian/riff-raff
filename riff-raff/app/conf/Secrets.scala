@@ -5,7 +5,7 @@ import magenta.SecretProvider
 import software.amazon.awssdk.services.ssm.SsmClient
 import software.amazon.awssdk.services.ssm.model.GetParametersByPathRequest
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 case class CredentialKey(service: String, account: String)

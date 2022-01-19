@@ -10,7 +10,7 @@
     <p>@record.metaData.toString</p>
 
     <span>
-    @helper.form(action=routes.Testing.actionUUID, 'class -> "modal-form") {
+    @helper.form(action=routes.Testing.actionUUID, Symbol("class") -> "modal-form") {
         @CSRF.formField
         <input type="hidden" name="uuid" value="@record.uuid"/>
         <button name="action" type="submit" value="deleteV2" class="btn btn-danger btn-xs"><i class="glyphicon glyphicon-trash glyphicon glyphicon-white"></i> Delete</button>

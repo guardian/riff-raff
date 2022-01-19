@@ -33,9 +33,9 @@ class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
       latestBuild.number
     }
 
-  def init() {}
+  def init(): Unit = {}
 
-  def shutdown() {
+  def shutdown(): Unit = {
     subscriptions.foreach(_.unsubscribe())
   }
 }

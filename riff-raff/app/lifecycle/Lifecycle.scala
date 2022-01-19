@@ -1,6 +1,6 @@
 package lifecycle
 
 trait Lifecycle {
-  def init()
-  def shutdown()
+  def init(): Unit
+  def shutdown(): Unit
 }

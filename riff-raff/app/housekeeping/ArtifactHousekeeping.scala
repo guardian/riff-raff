@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import utils.{DailyScheduledAgentUpdate, ScheduledAgent}
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object ArtifactHousekeeping {
   @tailrec
@@ -91,10 +91,10 @@ class ArtifactHousekeeping(config: Config, deployments: Deployments) extends Log
 
   val update = DailyScheduledAgentUpdate[Int](housekeepingTime){ _ + housekeepArtifacts(new DateTime()) }
 
-  def init() {
+  def init(): Unit = {
     scheduledAgent = Some(ScheduledAgent(0, update))
   }
-  def shutdown() {
+  def shutdown(): Unit = {
     scheduledAgent.foreach(_.shutdown())
     scheduledAgent = None
   }

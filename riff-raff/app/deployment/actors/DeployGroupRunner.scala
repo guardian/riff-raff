@@ -240,7 +240,7 @@ class DeployGroupRunner(
     }
   }
 
-  private def honourStopFlag(reporter: DeployReporter)(elseBlock: => Unit) {
+  private def honourStopFlag(reporter: DeployReporter)(elseBlock: => Unit): Unit = {
     stopFlagAgent().get(record.uuid) match {
       case Some(userName) =>
         log.debug(s"$id:Stop flag set")

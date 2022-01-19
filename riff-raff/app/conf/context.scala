@@ -20,7 +20,7 @@ import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, UnnaturalOrdering}
 import riffraff.BuildInfo
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
 
 class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging {

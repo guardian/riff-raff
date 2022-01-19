@@ -46,7 +46,7 @@
                     It might be legitimately stuck and failing to time out on the current task.  Alternately, riff-raff might have
                     fallen over and the deploy is no longer really running.  In the latter case, you should mark the deploy as having
                     failed.
-                    @helper.form(action=routes.DeployController.markAsFailed, 'class -> "form-make-inline pull-right") {
+                    @helper.form(action=routes.DeployController.markAsFailed, Symbol("class") -> "form-make-inline pull-right") {
                         @CSRF.formField
                         <input type="hidden" name="uuid" value="@record.uuid"/>
                         <button name="action" type="submit" value="markAsFailed" class="btn btn-danger"><i class="glyphicon glyphicon-remove glyphicon glyphicon-white"></i> Mark as Failed</button>

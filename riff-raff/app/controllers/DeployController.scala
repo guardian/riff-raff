@@ -206,7 +206,7 @@ class DeployController(config: Config,
 
   def markAsFailed = AuthAction { implicit request =>
     UuidForm.form.bindFromRequest().fold(
-      _ => Redirect(routes.DeployController.history),
+      _ => Redirect(routes.DeployController.history()),
       form => {
         form.action match {
           case "markAsFailed" =>

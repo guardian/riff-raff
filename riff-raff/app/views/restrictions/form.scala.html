@@ -16,42 +16,42 @@
 
             @b3.text(
                 restrictionForm("projectName"),
-                'id -> "projectInput",
+                Symbol("id") -> "projectInput",
                 Symbol("data-url") -> "/deployment/request/autoComplete/project",
-                '_label -> "Project Name"
+                Symbol("_label") -> "Project Name"
             )
 
             @b3.text(
                 restrictionForm("stage"),
-                '_label -> "Stage",
-                '_error -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage")),
-                '_help -> "Hint: this value will be interpreted as a regex if it has a special character in it - any of $^.+*?()[{|"
+                Symbol("_label") -> "Stage",
+                Symbol("_error") -> restrictionForm.globalError.map(_.withMessage("Please enter a deployment stage")),
+                Symbol("_help") -> "Hint: this value will be interpreted as a regex if it has a special character in it - any of $^.+*?()[{|"
             )
 
             @b3.textarea(
                 restrictionForm("allowlist"),
-                '_label -> "Deploy allowlist",
-                '_help -> "List of e-mail addresses (one per line) of users who should still be able to deploy whilst the restriction is in place",
-                'cols -> 100, 'rows -> 6
+                Symbol("_label") -> "Deploy allowlist",
+                Symbol("_help") -> "List of e-mail addresses (one per line) of users who should still be able to deploy whilst the restriction is in place",
+                Symbol("cols") -> 100, Symbol("rows") -> 6
             )
 
             @b3.checkbox(
                 restrictionForm("continuousDeployment"),
-                '_text -> "Permit continuous and scheduled deployments",
-                '_help -> "If this is checked then deploys triggered by continuous or scheduled deployment will be allowed to run"
+                Symbol("_text") -> "Permit continuous and scheduled deployments",
+                Symbol("_help") -> "If this is checked then deploys triggered by continuous or scheduled deployment will be allowed to run"
             )
 
             @b3.textarea(
                 restrictionForm("note"),
-                '_label -> "Why does this restriction exist?",
-                '_help -> "This note will be displayed to users attempting to deploy this project",
-                'cols -> 100, 'rows -> 6
+                Symbol("_label") -> "Why does this restriction exist?",
+                Symbol("_help") -> "This note will be displayed to users attempting to deploy this project",
+                Symbol("cols") -> 100, Symbol("rows") -> 6
             )
 
             @b3.checkbox(
                 restrictionForm("editingLocked"),
-                '_text -> "Lock editing",
-                '_help -> s"When checked, users other than you (${request.user.fullName}) will not be able to edit or delete this restriction - use sparingly!"
+                Symbol("_text") -> "Lock editing",
+                Symbol("_help") -> s"When checked, users other than you (${request.user.fullName}) will not be able to edit or delete this restriction - use sparingly!"
             )
 
             <div class="actions">

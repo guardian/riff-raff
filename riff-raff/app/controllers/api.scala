@@ -186,7 +186,7 @@ class Api(config: Config,
     val pagination = deployment.DeployFilterPagination.fromRequest.withItemCount(Some(count)).withPageSize(None)
     val deployList = deployments.getDeploys(filter, pagination.pagination, fetchLogs = false).logAndSquashException(Nil)
 
-    def description(state: RunState) = state + " deploys" + filter.map { f =>
+    def description(state: RunState) = String.valueOf(state) + " deploys" + filter.map { f =>
       f.projectName.map(" of " + _).getOrElse("") + f.stage.map(" in " + _).getOrElse("")
     }.getOrElse("")
 
@@ -330,7 +330,7 @@ class Api(config: Config,
   }
 
   def stop = ApiJsonEndpoint("stopDeploy") { implicit request =>
-    Form("uuid" -> nonEmptyText).bindFromRequest.fold(
+    Form("uuid" -> nonEmptyText).bindFromRequest().fold(
       _ => throw new IllegalArgumentException("No UUID specified"),
       uuid => {
         val record = deployments.get(UUID.fromString(uuid), fetchLog = false)

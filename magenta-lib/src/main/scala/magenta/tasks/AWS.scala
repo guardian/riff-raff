@@ -30,7 +30,7 @@ import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Random, Try}
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
@@ -329,7 +329,7 @@ object EC2 {
       .build())(block)
   }
 
-  def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client) {
+  def setTag(instances: List[ASGInstance], key: String, value: String, client: Ec2Client): Unit = {
     val request = CreateTagsRequest.builder()
       .resources(instances.map(_.instanceId).asJavaCollection)
       .tags(EC2Tag.builder().key(key).value(value).build())

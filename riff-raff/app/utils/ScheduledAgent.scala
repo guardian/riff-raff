@@ -14,9 +14,9 @@ object ScheduledAgent extends Lifecycle {
     new ScheduledAgent(scheduleSystem, initialValue, updates:_*)
   }
 
-  def init() {}
+  def init(): Unit = {}
 
-  def shutdown() {
+  def shutdown(): Unit = {
     scheduleSystem.terminate()
   }
 }
@@ -90,7 +90,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
     }
   }
 
-  def queueUpdate(update: ScheduledAgentUpdate[T]) {
+  def queueUpdate(update: ScheduledAgentUpdate[T]): Unit = {
     agent sendOff{ lastValue =>
       try {
         update.block(lastValue)
@@ -105,7 +105,7 @@ class ScheduledAgent[T](system: ActorSystem, initialValue: T, updates: Scheduled
   def get(): T = agent()
   def apply(): T = get()
 
-  def shutdown() {
+  def shutdown(): Unit = {
     cancellablesAgent.send { cancellables =>
       cancellables.values.foreach(_.cancel())
       Map.empty

@@ -39,11 +39,11 @@ class TasksRunner(stopFlagAgent: Agent[Map[UUID, String]]) extends Actor with Lo
               }
             }
             log.debug("Sending completed message")
-            sender ! DeployGroupRunner.DeploymentCompleted(tasks)
+            sender() ! DeployGroupRunner.DeploymentCompleted(tasks)
           } catch {
             case t:Throwable =>
               log.debug("Sending failed message")
-              sender ! DeployGroupRunner.DeploymentFailed(tasks, t)
+              sender() ! DeployGroupRunner.DeploymentFailed(tasks, t)
               throw t
           }
         }

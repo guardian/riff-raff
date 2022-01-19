@@ -55,7 +55,7 @@
     </style>
 
     <div class="col-md-6">
-    @b3.vertical.form(routes.DeployController.processForm, 'class -> "well") { implicit fc =>
+    @b3.vertical.form(routes.DeployController.processForm, Symbol("class") -> "well") { implicit fc =>
         @CSRF.formField
         <fieldset>
             <legend>What would you like to deploy?</legend>
@@ -66,18 +66,18 @@
             </div>
 
             <div class="project-container">
-                @b3.text(deployForm("project"), '_label -> "Project", 'id -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", 'class -> "form-control input-md project-exact-match")
+                @b3.text(deployForm("project"), Symbol("_label") -> "Project", Symbol("id") -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", Symbol("class") -> "form-control input-md project-exact-match")
                 <button id="add-favourite-project-button" aria-label="Add to favourites" title="Add to favourites" disabled><i class="glyphicon glyphicon-star"></i></button>
             </div>
-            @b3.text(deployForm("build"),  '_label -> "Build", 'id -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", 'class -> "form-control input-md")
+            @b3.text(deployForm("build"),  Symbol("_label") -> "Build", Symbol("id") -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", Symbol("class") -> "form-control input-md")
             @b3.select(
                 deployForm("stage"),
                 helper.options(prismLookup.stages.toList),
-                '_default -> "--- Choose a stage ---",
-                '_label -> "Stage",
-                '_error -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
-                'id -> "stage",
-                'class -> "form-control"
+                Symbol("_default") -> "--- Choose a stage ---",
+                Symbol("_label") -> "Stage",
+                Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
+                Symbol("id") -> "stage",
+                Symbol("class") -> "form-control"
             )
 
             <div class="form-group">
@@ -94,10 +94,10 @@
                     @b3.select(
                         deployForm("updateStrategy"),
                         helper.options(Strategy.values.map(v => v.entryName -> v.userDescription):_*),
-                        '_label -> "Update strategy",
-                        'value -> deployForm("updateStrategy").value.getOrElse(Strategy.MostlyHarmless.entryName),
-                        '_error -> deployForm.globalError.map(_.withMessage("Please select an update strategy")),
-                        'id -> "updateStrategy"
+                        Symbol("_label") -> "Update strategy",
+                        Symbol("value") -> deployForm("updateStrategy").value.getOrElse(Strategy.MostlyHarmless.entryName),
+                        Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select an update strategy")),
+                        Symbol("id") -> "updateStrategy"
                     )
                 </div>
             </div>
