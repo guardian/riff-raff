@@ -93,11 +93,9 @@ class CheckChangeSetCreatedTask(
       CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
         val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
+        val changeSet = CloudFormation.describeChangeSetByName(stackName, changeSetName, cfnClient)
 
-        val request = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
-        val response = cfnClient.describeChangeSet(request)
-
-        shouldStopWaiting(changeSetType, response.status.toString, response.statusReason, response.changes.asScala, resources.reporter)
+        shouldStopWaiting(changeSetType, changeSet.status.toString, changeSet.statusReason, changeSet.changes.asScala, resources.reporter)
       }
     }
   }
@@ -139,36 +137,27 @@ class CheckChangeSetCreatedTask(
   * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_DescribeChangeSet.html#API_DescribeChangeSet_ResponseElements
   */
 class ExecuteChangeSetTask(region: Region, stackLookup: CloudFormationStackMetadata)(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
-
-  private def getChangeSetExecutionStatus(cfnClient: CloudFormationClient, changeSetArn: String): String = {
-    val request = DescribeChangeSetRequest.builder().changeSetName(changeSetArn).build()
-    val response = cfnClient.describeChangeSet(request)
-    response.executionStatusAsString()
-  }
-
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
-      val describeRequest = DescribeChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
-      val describeResponse = cfnClient.describeChangeSet(describeRequest)
+      val changeSet = CloudFormation.describeChangeSetByName(stackName, changeSetName, cfnClient)
 
-      val changeSetArn = describeResponse.changeSetId()
+      val changeSetArn = changeSet.changeSetId()
 
-      if (describeResponse.changes.isEmpty) {
+      if (changeSet.changes.isEmpty) {
         resources.reporter.info(s"No changes to perform for $changeSetName on stack $stackName")
       } else {
-        describeResponse.changes.asScala.foreach { change =>
+        changeSet.changes.asScala.foreach { change =>
           resources.reporter.verbose(s"${change.`type`} - ${change.resourceChange}")
         }
 
-        val request = ExecuteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
-        cfnClient.executeChangeSet(request)
+        CloudFormation.executeChangeSet(stackName, changeSetName, cfnClient)
 
         new CloudFormationStackEventPoller(stackName, cfnClient, resources, stopFlag)
           .check(None, () => {
-            val executionStatus = getChangeSetExecutionStatus(cfnClient, changeSetArn)
+            val executionStatus = CloudFormation.describeChangeSetByArn(changeSetArn, cfnClient).executionStatusAsString()
 
             // Any other status is a failure condition, which `CloudFormationStackEventPoller` is handling at the CloudFormation event log level
             val isComplete = executionStatus == "EXECUTE_COMPLETE"
@@ -194,8 +183,7 @@ class DeleteChangeSetTask(
       val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
-      val request = DeleteChangeSetRequest.builder().changeSetName(changeSetName).stackName(stackName).build()
-      cfnClient.deleteChangeSet(request)
+      CloudFormation.deleteChangeSet(stackName, changeSetName, cfnClient)
     }
   }
 

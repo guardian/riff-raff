@@ -7,7 +7,7 @@ import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResou
 import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, DescribeChangeSetRequest, Parameter, StackEvent}
+import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, CloudFormationException, Parameter, StackEvent}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
