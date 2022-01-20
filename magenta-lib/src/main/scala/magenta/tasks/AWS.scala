@@ -423,6 +423,41 @@ object CloudFormation {
     client.createChangeSet(requestWithTemplate.build())
   }
 
+  def describeChangeSetByName(stackName: String, changeSetName: String, client: CloudFormationClient): DescribeChangeSetResponse =
+    client.describeChangeSet(
+      DescribeChangeSetRequest
+        .builder()
+        .stackName(stackName)
+        .changeSetName(changeSetName)
+        .build()
+    )
+
+  def describeChangeSetByArn(changeSetArn: String, client: CloudFormationClient): DescribeChangeSetResponse =
+    client.describeChangeSet(
+      DescribeChangeSetRequest
+        .builder()
+        .changeSetName(changeSetArn)
+        .build()
+    )
+
+  def executeChangeSet(stackName: String, changeSetName: String, client: CloudFormationClient): ExecuteChangeSetResponse =
+    client.executeChangeSet(
+      ExecuteChangeSetRequest
+        .builder()
+        .stackName(stackName)
+        .changeSetName(changeSetName)
+        .build()
+    )
+
+  def deleteChangeSet(stackName: String, changeSetName: String, client: CloudFormationClient): DeleteChangeSetResponse =
+    client.deleteChangeSet(
+      DeleteChangeSetRequest
+        .builder()
+        .stackName(stackName)
+        .changeSetName(changeSetName)
+        .build()
+    )
+
   def describeStack(name: String, client: CloudFormationClient) =
     try {
       client.describeStacks(
