@@ -31,30 +31,6 @@ case class Datum(
   comment: Option[String]
 )
 
-case class HostList(hosts: Seq[Host]) {
-  def dump = hosts
-    .sortBy { _.name }
-    .map { h => s" ${h.name}: ${h.app}" }
-    .mkString("\n")
-
-  def filterByStage(stage: Stage): HostList = new HostList(hosts.filter(_.stage == stage.name))
-
-  def byStackAndApp = {
-    implicit val appOrder: Ordering[App] = Ordering.by(_.name)
-    implicit val hostOrder: Ordering[Host] = Ordering.by(_.name)
-    implicit def someBeforeNone[T](implicit ord: Ordering[T]): Ordering[Option[T]] =
-      new OptionOrdering[T] { val optionOrdering = ord.reverse }.reverse
-    implicit def setOrder[T](implicit ord: Ordering[T]): Ordering[Set[T]] = Ordering.by(_.toIterable)
-    implicit def seqOrder[T](implicit ord: Ordering[T]): Ordering[Seq[T]] = Ordering.by(_.toIterable)
-
-    hosts.groupBy(h => (h.stack, h.app)).toSeq.sorted
-  }
-}
-object HostList {
-  implicit def listOfHostsAsHostList(hosts: Seq[Host]): HostList = new HostList(hosts)
-  implicit def hostListAsListOfHosts(hostList: HostList): Seq[Host] = hostList.hosts
-}
-
 case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client, stsClient: StsClient, ioExecutionContext: ExecutionContext) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing = {
     val keyring: KeyRing = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
