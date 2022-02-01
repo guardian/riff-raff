@@ -13,7 +13,7 @@ This can manifest itself in one of several ways.
 2. The instance count (number of instances) is less than the maximum capacity, but has not fallen down to the desired capacity. 
 3. The instance count is equal to the desired capacity but some instances have "scale in" protection.
 
-In either of those cases, Riff-Raff might not be able to properly complete further deploys.
+In any of those cases, Riff-Raff might not be able to properly complete further deploys.
 
 ## Step 1 - get the ASG back to its normal size
 
