@@ -25,7 +25,7 @@ Use the AWS console to change the desired size of the ASG back to the original v
 
 The desired size can be modified by clicking the "edit" button in the "Details" tab. The Riff-Raff error and logs should let you know which ASGs have been used for your given deploy. This will ensure that the new instances brought up by your failed deploy are terminated as Riff-Raff applies scale-in protection to existing instances before the deploy begins.
 
-The operation of adjusting the number of instances to match the desirded capacity takes few seconds while AWS terminate some instances. If this steps doesn't complete correctly, meaning that you are not seeing the number of instance fall down to the desired capacity that you specified, then you might need to perform Step 2 to unlock instances with "scale in" protection. 
+The operation of adjusting the number of instances to match the desired capacity takes a few seconds while AWS terminates instances. If this step doesn't complete correctly, meaning that you are not seeing the number of instance fall down to the desired capacity that you specified, then you might need to perform Step 2 to unlock instances with "scale in" protection. 
 
 See [here](https://docs.aws.amazon.com/autoscaling/ec2/userguide/as-manual-scaling.html) for detailed steps on how to change the desired size of an ASG.
 
