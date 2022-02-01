@@ -30,6 +30,7 @@
     <!--<logger name="ci" level="DEBUG" />-->
     <!--<logger name="utils.ScheduledAgent" level="DEBUG" />-->
     <logger name="persistence.PostgresDatastore" level="DEBUG" />
+    <logger name="resources.PrismLookup" level="DEBUG" />
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>
