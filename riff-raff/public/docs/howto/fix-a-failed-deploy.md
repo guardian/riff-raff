@@ -21,7 +21,7 @@ Be aware that reducing the number of instances can lead to outages if they are u
 
 Access the AWS console via Janus, navigate to the EC2 section, then click "Autoscaling Groups."
 
-Use the AWS console to change the [desired] size of the ASG back to the original value. The desired capacity can be equal to or more than the minimum capacity, but should be less than half of the maximum capacity. 
+Use the AWS console to change the desired size of the ASG back to the original value. The desired capacity can be equal to or more than the minimum capacity, but should be less than half of the maximum capacity. 
 
 The desired size can be modified by clicking the "edit" button in the "Details" tab. The Riff-Raff error and logs should let you know which ASGs have been used for your given deploy. This will ensure that the new instances brought up by your failed deploy are terminated as Riff-Raff applies scale-in protection to existing instances before the deploy begins.
 
