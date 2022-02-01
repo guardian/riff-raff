@@ -63,7 +63,6 @@ class Menu(config: Config) {
   )
 
   lazy val deployInfoMenu = Seq(
-    SingleMenuItem("Hosts", routes.Application.deployInfoHosts()),
     SingleMenuItem("Resources", routes.Application.deployInfoData),
     SingleMenuItem("About", routes.Application.deployInfoAbout)
   )
