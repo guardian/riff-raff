@@ -7,7 +7,7 @@ GET         /                                               controllers.Applicat
 
 GET         /deployinfo/about                               controllers.Application.deployInfoAbout
 GET         /deployinfo/data                                controllers.Application.deployInfoData
-GET         /deployinfo/hosts                               controllers.Application.deployInfoHosts(app?="")
+#GET         /deployinfo/hosts                               controllers.Application.deployInfoHosts(app?="")
 
 # Docs
 GET         /docs/                                          controllers.Application.documentation(resource="")
