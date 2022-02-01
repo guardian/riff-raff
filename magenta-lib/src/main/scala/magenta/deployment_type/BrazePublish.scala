@@ -28,7 +28,7 @@ object BrazePublish extends LambdaInvoke {
   override def defaultActions: List[Action] =
     List(Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
       invokeAction.taskGenerator(
-        pkg.copy(pkgSpecificData = pkg.pkgSpecificData.filterKeys(key => !super.params.map(_.name).contains(key)) ++ Map(
+        pkg.copy(pkgSpecificData = pkg.pkgSpecificData.view.filterKeys(key => !super.params.map(_.name).contains(key)).toMap ++ Map(
           functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
           prefixStackParam.name -> JsBoolean(false)
         )),
