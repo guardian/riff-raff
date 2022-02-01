@@ -32,7 +32,7 @@ object `package` extends Loggable {
       implicit def setOrder[T](implicit ord: Ordering[T]): Ordering[Set[T]] = Ordering.by(_.toIterable)
       implicit def seqOrder[T](implicit ord: Ordering[T]): Ordering[Seq[T]] = Ordering.by(_.toIterable)
 
-      hosts.groupBy(h => (h.stack, h.app)).toSeq.sorted
+      hosts.groupBy(h => (h.stack, h.app)).toSeq
     }
   }
 
