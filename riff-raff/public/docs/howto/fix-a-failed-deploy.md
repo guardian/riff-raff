@@ -9,7 +9,7 @@ before killing the old ones off.
 When a Riff-Raff deploy fails, your Auto-Scaling Group could be left in a 'bad' state. 
 This can manifest itself in one of several ways. 
 
-1. The desired capacity stay the same as the maximum capacity.
+1. The desired capacity stays the same as the maximum capacity.
 2. The instance count (number of instances) is less than the maximum capacity, but has not fallen down to the desired capacity. 
 3. The instance count is equal to the desired capacity but some instances have "scale in" protection.
 
