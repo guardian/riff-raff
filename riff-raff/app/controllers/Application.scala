@@ -45,7 +45,7 @@ class Menu(config: Config) {
     SingleMenuItem("Home", routes.Application.index, identityRequired = false),
     SingleMenuItem("History", routes.DeployController.history()),
     SingleMenuItem("Deploy", routes.DeployController.deploy),
-    DropDownMenuItem("Deployment Info", deployInfoMenu),
+    SingleMenuItem("Deployment Resources", routes.Application.deployInfoData),
     DropDownMenuItem("Configuration", Seq(
       SingleMenuItem("Continuous Deployment", routes.ContinuousDeployController.list),
       SingleMenuItem("Hooks", routes.HooksController.list),
@@ -60,11 +60,6 @@ class Menu(config: Config) {
       SingleMenuItem("Fixing a failed deploy", routes.Application.documentation("howto/fix-a-failed-deploy")),
       SingleMenuItem("Everything else", routes.Application.documentation(""))
     ))
-  )
-
-  lazy val deployInfoMenu = Seq(
-    SingleMenuItem("Resources", routes.Application.deployInfoData),
-    SingleMenuItem("About", routes.Application.deployInfoAbout)
   )
 
   lazy val loginMenuItem = SingleMenuItem("Login", routes.Login.loginAction, identityRequired = false)
@@ -96,18 +91,6 @@ class Application(config: Config,
 
   def deployInfoData = authAction { implicit request =>
     Ok(views.html.deploy.deployInfoData(config, menu)(prismLookup))
-  }
-
-  def deployInfoHosts(appFilter: String) = authAction { implicit request =>
-    val hosts = prismLookup.hosts.all.filter { host =>
-      host.app.toString.matches(s"(?i).*$appFilter.*") &&
-      request.getQueryString("stack").forall(s => host.stack == s)
-    }.groupBy(_.stage)
-    Ok(views.html.deploy.deployInfoHosts(config, menu)(request, hosts, prismLookup))
-  }
-
-  def deployInfoAbout = authAction { request =>
-    Ok(views.html.deploy.deployInfoAbout(config, menu)(request))
   }
 
   val Prev = """.*prev:(\S+).*""".r

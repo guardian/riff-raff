@@ -5,9 +5,7 @@
 # Home page
 GET         /                                               controllers.Application.index
 
-GET         /deployinfo/about                               controllers.Application.deployInfoAbout
 GET         /deployinfo/data                                controllers.Application.deployInfoData
-#GET         /deployinfo/hosts                               controllers.Application.deployInfoHosts(app?="")
 
 # Docs
 GET         /docs/                                          controllers.Application.documentation(resource="")
