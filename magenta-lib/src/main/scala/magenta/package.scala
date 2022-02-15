@@ -1,13 +1,10 @@
 package magenta
 
-import java.io.Closeable
-
 import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}
 
 import scala.annotation.tailrec
-import scala.math.Ordering.OptionOrdering
 import scala.util.{Failure, Success, Try}
 
 object `package` extends Loggable {
@@ -20,19 +17,6 @@ object `package` extends Loggable {
     def transposeBy[K](f: A => K)(implicit ord:Ordering[K]): Seq[A] = {
       val listOfGroups = seq.groupBy(f).toList.sortBy(_._1).map(_._2)
       transpose(listOfGroups).fold(Nil)(_ ++ _)
-    }
-  }
-
-  implicit class SeqHost(hosts: Seq[Host]) {
-    def byStackAndApp: Seq[((String, App), Seq[Host])] = {
-      implicit val appOrder: Ordering[App] = Ordering.by(_.name)
-      implicit val hostOrder: Ordering[Host] = Ordering.by(_.name)
-      implicit def someBeforeNone[T](implicit ord: Ordering[T]): Ordering[Option[T]] =
-        new OptionOrdering[T] { val optionOrdering = ord.reverse }.reverse
-      implicit def setOrder[T](implicit ord: Ordering[T]): Ordering[Set[T]] = Ordering.by(_.toIterable)
-      implicit def seqOrder[T](implicit ord: Ordering[T]): Ordering[Seq[T]] = Ordering.by(_.toIterable)
-
-      hosts.groupBy(h => (h.stack, h.app)).toSeq.sorted
     }
   }
 
