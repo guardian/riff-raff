@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, UnnaturalOrdering}
 import riffraff.BuildInfo
+import software.amazon.awssdk.services.ssm.SsmClient
 
 import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
@@ -77,6 +78,10 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val superusers: List[String] = getStringList("auth.superusers")
     lazy val secretStateSupplierKeyName: String = getStringOpt("auth.secretStateSupplier.keyName").getOrElse("/RiffRaff/PlayApplicationSecret")
     lazy val secretStateSupplierRegion: String = getStringOpt("auth.secretStateSupplier.region").getOrElse("eu-west-1")
+    lazy val secretStateSupplierClient = SsmClient.builder()
+      .credentialsProvider(credentialsProviderChain(None, None))
+      .region(AWSRegion.of(secretStateSupplierRegion))
+      .build()
   }
 
   object concurrency {
