@@ -54,7 +54,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     new parameterstore.SecretSupplier(
       transitionTiming = TransitionTiming(usageDelay = ofMinutes(3), overlapDuration = ofHours(2)),
       parameterName = config.auth.secretStateSupplierKeyName,
-      ssmClient = parameterstore.AwsSdkV2(SsmClient.builder().build())
+      ssmClient = parameterstore.AwsSdkV2(config.auth.secretStateSupplierClient)
     )
   }
 
@@ -113,7 +113,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)
   val deployments = new Deployments(deploymentEngine, builds, documentStoreConverter, restrictionConfigDynamoRepository)
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
-  val previewCoordinator = new PreviewCoordinator(config,prismLookup, availableDeploymentTypes, ioExecutionContext)
+  val previewCoordinator = new PreviewCoordinator(config, prismLookup, availableDeploymentTypes, ioExecutionContext)
   val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
   val scheduledDeployNotifier = new DeployFailureNotifications(config, targetResolver, prismLookup)
 
