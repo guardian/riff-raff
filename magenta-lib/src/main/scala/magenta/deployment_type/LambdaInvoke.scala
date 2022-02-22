@@ -4,22 +4,23 @@ import magenta.deployment_type.LambdaInvoke.lambdaFunctionNamePrefix
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, Region}
 import magenta.tasks.InvokeLambda
 
-//object LambdaInvoke extends LambdaInvoke // TODO: Re-instate once DevX is happy for broad adoption
-
 case class InvokeLambdaFunction(function: LambdaFunction, region: Region) extends LambdaTaskPrecursor
 
-object LambdaInvoke {
+object LambdaInvoke extends LambdaInvoke {
   val lambdaFunctionNamePrefix = "RIFF-RAFF-INVOKABLE-"
+
+  val invokeAction = getInvokeAction
+  override def defaultActions: List[Action] = List(invokeAction)
 }
 
 trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
-  override val lambdaKeyword: String = "invoke"
+  override def lambdaKeyword: String = "invoke"
   override def functionNamesParamDescriptionSuffix = lambdaKeyword
 
   val name = "aws-invoke-lambda"
   private val summary = s"Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas)."
 
-  override def documentation: String =
+  val documentation: String =
     s"""
       |${summary}
       |
@@ -49,7 +50,7 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
   def buildLambdaTaskPrecursor(tags: LambdaFunctionTags, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
     InvokeLambdaFunction(tags, target.region)
 
-  val invokeAction = Action(name = "invokeLambda",documentation = summary){
+  def getInvokeAction = Action(name = "invokeLambda",documentation = summary){
     (pkg, resources, target) => {
       lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
         InvokeLambda(
@@ -63,5 +64,4 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
     }
   }
 
-  override def defaultActions: List[Action] = List(invokeAction)
 }

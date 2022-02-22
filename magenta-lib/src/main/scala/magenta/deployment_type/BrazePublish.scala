@@ -7,7 +7,7 @@ object BrazePublish extends LambdaInvoke {
   override val name = "braze-publish"
   private val summary = s"Invokes Lambda `${brazePublishLambdaNameMinusStage}` (with the STAGE appended). This Lambda publishes content blocks to the target Braze environment (only if there are changes)."
 
-  override def documentation: String = s"""
+  override val documentation: String = s"""
       |${summary}
       |
       |The payload sent to the Lambda is constructed from the artifacts associated with this deployment step.
@@ -25,17 +25,18 @@ object BrazePublish extends LambdaInvoke {
       |```
     """.stripMargin
 
-  override def defaultActions: List[Action] =
-    List(Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
-      invokeAction.taskGenerator(
-        pkg.copy(pkgSpecificData = pkg.pkgSpecificData.view.filterKeys(key => !super.params.map(_.name).contains(key)).toMap ++ Map(
-          functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
-          prefixStackParam.name -> JsBoolean(false)
-        )),
-        resources,
-        target
-      )
-    })
+  val brazePublishAction = Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
+    getInvokeAction.taskGenerator(
+      pkg.copy(pkgSpecificData = pkg.pkgSpecificData.view.filterKeys(key => !super.params.map(_.name).contains(key)).toMap ++ Map(
+        functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
+        prefixStackParam.name -> JsBoolean(false)
+      )),
+      resources,
+      target
+    )
+  }
+
+  override def defaultActions: List[Action] = List(brazePublishAction)
 
   override def paramsToHide: Seq[Param[_]] = super.params // This deployment type takes no parameters, so we hide all the parameters from the parent
 }

@@ -124,8 +124,9 @@ class AppComponents(
     S3,
     AutoScaling,
     Fastly,
-    new CloudFormation(DefaultBuildTags),
+   new CloudFormation(DefaultBuildTags),
     LambdaDeploy,
+    // LambdaInvoke, // TODO: Re-instate once DevX is happy for broad adoption
     BrazePublish,
     AmiCloudFormationParameter,
     SelfDeploy,
