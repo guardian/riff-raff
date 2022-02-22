@@ -55,9 +55,21 @@ Riff-Raff polls our build server frequently and can be configured to automatical
 How do I run Riff-Raff locally if I want to hack on it?
 -------------------------------------------------------
 
-Assuming you have a reasonably recent version of Java installed, 
+Assuming you have Java 11 or later installed, 
 
- * Create a basic configuration file at ~/.gu/riff-raff.conf (S3 and postgres config is probably the minimum)
+ * Create a basic configuration file at ~/.gu/riff-raff.conf replacing placeholders with appropriate values
+```
+artifact.aws.bucketName=<ARTIFACTS BUCKET NAME>
+build.aws.bucketName=<BUILDS BUCKET NAME>
+
+db.default.url="jdbc:postgresql://localhost:7432/riffraff"
+db.default.user="riffraff"
+db.default.hostname="riffraff"
+db.default.password="riffraff"
+
+lookup.prismUrl=<PRISM URL>
+lookup.source="prism"
+```
  * Run `./script/start` from the project root (add `--debug` to attach a remote debugger on port 9999)
  * Visit http://localhost:9000/
  * Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/administration/properties 
