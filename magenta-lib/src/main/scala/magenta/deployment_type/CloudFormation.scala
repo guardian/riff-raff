@@ -1,5 +1,6 @@
 package magenta.deployment_type
 
+import magenta.Loggable
 import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
@@ -12,7 +13,7 @@ import org.joda.time.DateTime
 import scala.collection.mutable.ListBuffer
 
 //noinspection TypeAnnotation
-object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters {
+object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters with Loggable {
 
   val name = "cloud-formation"
   def documentation =
@@ -40,6 +41,21 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
   val templatePath = Param[String]("templatePath",
     documentation = "Location of template to use within package."
   ).default("""cloud-formation/cfn.json""")
+
+  val templateStagePaths = Param[Map[String, String]](
+    "templateStagePaths",
+    documentation =
+    """
+      |Like templatePath, a map of stage and template file names.
+      |Advised to only use this if you're cloudformation is defined using @guardian/cdk.
+      |
+      |```yaml
+      |templateStagePaths:
+      |  CODE: cloudformation/my-app-CODE.json
+      |  PROD: cloudformation/my-app-PROD.json
+      |```
+      |""".stripMargin)
+    .default(Map.empty)
 
   val templateParameters = Param[Map[String, String]]("templateParameters",
     documentation = "Map of parameter names and values to be passed into template. `Stage` and `Stack` (if `defaultStacks` are specified) will be appropriately set automatically."
@@ -132,10 +148,19 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         .orElse(getManageStackPolicyFromLookup)
         .getOrElse(manageStackPolicyDefault)
 
+    val cfnTemplateFile: String = templateStagePaths(pkg, target, reporter).lift.apply(target.parameters.stage.name) match {
+      case Some(file) =>
+        logger.info(s"templateStagePaths property is set and has been resolved to $file")
+        file
+      case _ =>
+        logger.info(s"templateStagePaths property not set. Using templatePath")
+        templatePath(pkg, target, reporter)
+    }
+
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
         target.region,
-        templatePath = S3Path(pkg.s3Package, templatePath(pkg, target, reporter)),
+        templatePath = S3Path(pkg.s3Package, cfnTemplateFile),
         stackLookup,
         unresolvedParameters
       ),
