@@ -13,7 +13,7 @@ on:
 
 jobs:
   security:
-    uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@main
+    uses: guardian/.github/.github/workflows/sbt-snyk.yml@nt/ja/sbt-only-action
     with:
       DEBUG: true
       ORG: guardian-security
