@@ -15,7 +15,7 @@ jobs:
   security:
     uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@nt/ja/sbt-only-action
     with:
-      BUILD: sbt
+      SKIP_NODE: true
       DEBUG: true
       ORG: guardian-security
     secrets:
