@@ -8,12 +8,12 @@ on:
     - cron: '0 6 * * *'
   push:
     branches:
-      - nt/ja/github-actions
+      - main
   workflow_dispatch:
 
 jobs:
   security:
-    uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@nt/ja/sbt-only-action
+    uses: guardian/.github/.github/workflows/sbt-node-snyk.yml@main
     with:
       SKIP_NODE: true
       ORG: guardian-devtools
