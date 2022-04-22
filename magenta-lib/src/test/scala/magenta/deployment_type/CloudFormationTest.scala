@@ -27,8 +27,10 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
   implicit val stsClient: StsClient = null
+
+  val cloudformationDeploymentType = new CloudFormationDeploymentType(NoopVcsUrlLookup)
   val region = Region("eu-west-1")
-  val deploymentTypes: Seq[CloudFormationDeploymentType.type] = Seq(CloudFormationDeploymentType)
+  val deploymentTypes: Seq[CloudFormationDeploymentType] = Seq(cloudformationDeploymentType)
   val app = App("app")
   val testStack = Stack("cfn")
   val cfnStackName = s"cfn-app-PROD"
@@ -37,7 +39,7 @@ class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with Eith
 
   private def generateTasks(data: Map[String, JsValue] = Map("cloudFormationStackByTags" -> JsBoolean(false)), updateStrategy: Strategy = MostlyHarmless) = {
     val resources = DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global)
-    CloudFormationDeploymentType.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
+    cloudformationDeploymentType.actionsMap("updateStack").taskGenerator(p(data), resources, DeployTarget(parameters(updateStrategy = updateStrategy), testStack, region))
   }
 
   it should "generate the tasks in the correct order when manageStackPolicy is false" in {

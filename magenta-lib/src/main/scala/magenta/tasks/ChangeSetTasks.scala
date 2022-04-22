@@ -16,7 +16,8 @@ class CreateChangeSetTask(
                            region: Region,
                            templatePath: S3Path,
                            stackLookup: CloudFormationStackMetadata,
-                           val unresolvedParameters: CloudFormationParameters
+                           val unresolvedParameters: CloudFormationParameters,
+                           val stackTags: Map[String, String]
 )(implicit val keyRing: KeyRing, artifactClient: S3Client) extends Task {
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean ) = if (!stopFlag) {
@@ -58,7 +59,7 @@ class CreateChangeSetTask(
           val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
           maybeExecutionRole.foreach(role => resources.reporter.verbose(s"Using execution role $role"))
 
-          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, unresolvedParameters.stackTags, template, awsParameters, maybeExecutionRole, cfnClient)
+          CloudFormation.createChangeSet(resources.reporter, stackLookup.changeSetName, changeSetType, stackName, Some(stackTags), template, awsParameters, maybeExecutionRole, cfnClient)
         }
       }
     }
