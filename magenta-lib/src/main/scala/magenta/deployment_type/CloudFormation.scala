@@ -104,7 +104,7 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
       |${StackPolicy.toMarkdown(AllowAllPolicy)}
       |""".stripMargin,
     optional = true
-  )
+  ).default(manageStackPolicyDefault)
 
   val updateStack = Action("updateStack",
     """
