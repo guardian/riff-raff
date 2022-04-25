@@ -10,3 +10,9 @@ readme.html
 .settings
 .cache
 .bsp/
+
+.bloop
+.metals
+.vscode
+metals.sbt
+project/project

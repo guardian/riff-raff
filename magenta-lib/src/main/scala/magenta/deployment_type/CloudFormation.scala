@@ -12,8 +12,16 @@ import org.joda.time.DateTime
 
 import scala.collection.mutable.ListBuffer
 
+trait VcsLookup {
+  def get(projectName: String, buildId: String): String
+}
+
+// For testing purposes
+object NoopVcsUrlLookup extends VcsLookup { def get(projectName: String, buildId: String): String = "unknown"}  
+
+
 //noinspection TypeAnnotation
-object CloudFormation extends DeploymentType with CloudFormationDeploymentTypeParameters with Loggable {
+class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudFormationDeploymentTypeParameters with Loggable {
 
   val name = "cloud-formation"
   def documentation =
@@ -157,12 +165,17 @@ object CloudFormation extends DeploymentType with CloudFormationDeploymentTypePa
         templatePath(pkg, target, reporter)
     }
 
+    // The tag name here ('gu:repo') and format ('guardian/:reponame') MUST
+    // mirror the tag name and format used by @guardian/cdk.
+    val guRepoTag = ("gu:repo" -> vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id))
+
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
         target.region,
         templatePath = S3Path(pkg.s3Package, cfnTemplateFile),
         stackLookup,
-        unresolvedParameters
+        unresolvedParameters,
+        stackTags = unresolvedParameters.stackTags.getOrElse(Map.empty) + guRepoTag,
       ),
       new CheckChangeSetCreatedTask(
         target.region,

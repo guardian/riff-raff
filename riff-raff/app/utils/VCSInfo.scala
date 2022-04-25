@@ -66,4 +66,13 @@ object VCSInfo extends Logging {
       }
     }
   }
+
+  def normalise(url: String): Option[String] = {
+    url match {
+      case GitHubProtocol(path) => Some(path)
+      case GitHubUser(path) => Some(path)
+      case GitHubWeb(path) => Some(path)
+      case _ => None
+    }
+  }
 }

@@ -35,6 +35,7 @@ import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+import utils.VCSInfo
 
 class AppComponents(context: Context, config: Config, passwordProvider: PasswordProvider) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
@@ -80,8 +81,19 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     applicationLifecycle
   )
 
+  val s3BuildOps = new S3BuildOps(config)
+  val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
+  val builds = new Builds(buildPoller)
+
+  object CustomVcsUrlLookup extends VcsLookup {
+    def get(projectName: String, buildId: String): String = {
+      val url = builds.build(projectName, buildId).map(_.vcsURL)
+      url.flatMap(VCSInfo.normalise).getOrElse("unknown")
+    }
+  }
+
   val availableDeploymentTypes = Seq(
-    S3, AutoScaling, Fastly, CloudFormation, Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
+    S3, AutoScaling, Fastly, new CloudFormation(CustomVcsUrlLookup), Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
   )
 
   val ioExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("io-context")
@@ -89,7 +101,6 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val documentStoreConverter = new DocumentStoreConverter(datastore)
   val targetDynamoRepository = new TargetDynamoRepository(config)
   val restrictionConfigDynamoRepository = new RestrictionConfigDynamoRepository(config)
-  val s3BuildOps = new S3BuildOps(config)
   val changeFreeze = new ChangeFreeze(config)
   val scheduleRepository = new ScheduleRepository(config)
   val hookConfigRepository = new HookConfigRepository(config)
@@ -108,8 +119,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   secretProvider.populate()
   val prismLookup = new PrismLookup(config, wsClient, secretProvider)
   val deploymentEngine = new DeploymentEngine(config, prismLookup, availableDeploymentTypes, ioExecutionContext)
-  val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
-  val builds = new Builds(buildPoller)
+
   val targetResolver = new TargetResolver(config, buildPoller, availableDeploymentTypes, targetDynamoRepository)
   val deployments = new Deployments(deploymentEngine, builds, documentStoreConverter, restrictionConfigDynamoRepository)
   val continuousDeployment = new ContinuousDeployment(config, changeFreeze, buildPoller, deployments, continuousDeploymentConfigRepository)
