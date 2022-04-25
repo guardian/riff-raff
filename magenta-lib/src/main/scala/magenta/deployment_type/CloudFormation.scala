@@ -165,13 +165,17 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
         templatePath(pkg, target, reporter)
     }
 
+    // The tag name here ('gu:repo') and format ('guardian/:reponame') MUST
+    // mirror the tag name and format used by @guardian/cdk.
+    val guRepoTag = ("gu:repo" -> vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id))
+
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
         target.region,
         templatePath = S3Path(pkg.s3Package, cfnTemplateFile),
         stackLookup,
         unresolvedParameters,
-        stackTags = unresolvedParameters.stackTags.getOrElse(Map.empty) + ("vcsUrl" -> vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id))
+        stackTags = unresolvedParameters.stackTags.getOrElse(Map.empty) + guRepoTag,
       ),
       new CheckChangeSetCreatedTask(
         target.region,
