@@ -35,6 +35,7 @@ import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+import utils.VCSInfo
 
 class AppComponents(context: Context, config: Config, passwordProvider: PasswordProvider) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
@@ -86,7 +87,8 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
 
   object CustomVcsUrlLookup extends VcsLookup {
     def get(projectName: String, buildId: String): String = {
-      builds.build(projectName, buildId).map(_.vcsURL).getOrElse("unknown")
+      val url = builds.build(projectName, buildId).map(_.vcsURL)
+      url.flatMap(VCSInfo.normalise).getOrElse("unknown")
     }
   }
 
