@@ -1,48 +1,31 @@
 package utils
 
-import java.sql.DriverManager
+import com.whisk.docker.testkit.{Container, ContainerSpec, DockerReadyChecker, ManagedContainers}
+import com.spotify.docker.client.messages.PortBinding
+import com.whisk.docker.testkit.scalatest.DockerTestKitForAll
+import org.scalatest.Suite
 
-import com.spotify.docker.client.DefaultDockerClient
-import com.whisk.docker.impl.spotify.SpotifyDockerFactory
-import com.whisk.docker.{DockerCommandExecutor, DockerContainer, DockerContainerState, DockerFactory, DockerKit, DockerReadyChecker}
+import scala.concurrent.duration._
 
-import scala.concurrent.ExecutionContext
-import scala.util.Try
-
-trait DockerPostgresService extends DockerKit {
-  import scala.concurrent.duration._
-
+trait DockerPostgresService extends DockerTestKitForAll { self: Suite =>
   def PostgresAdvertisedPort = 5432
   def PostgresExposedPort = 44444
   val PostgresUser = "riffraff"
   val PostgresPassword = "riffraff"
 
-  val postgresContainer = DockerContainer("postgres:10.6")
-    .withPorts((PostgresAdvertisedPort, Some(PostgresExposedPort)))
+  val postgresContainer: Container = ContainerSpec("postgres:10.6")
+    .withPortBindings((PostgresAdvertisedPort, PortBinding.of("0.0.0.0", PostgresExposedPort)))
     .withEnv(s"POSTGRES_USER=$PostgresUser", s"POSTGRES_PASSWORD=$PostgresPassword")
     .withReadyChecker(
-      new PostgresReadyChecker(PostgresUser, PostgresPassword, Some(PostgresExposedPort))
+      DockerReadyChecker
+        .Jdbc(
+          driverClass = "org.postgresql.Driver",
+          user = PostgresUser,
+          password = Some(PostgresPassword)
+        )
         .looped(15, 1.second)
     )
+    .toContainer
 
-  abstract override def dockerContainers: List[DockerContainer] =
-    postgresContainer :: super.dockerContainers
-
-  override implicit val dockerFactory: DockerFactory =
-    new SpotifyDockerFactory(DefaultDockerClient.fromEnv().build())
-}
-
-class PostgresReadyChecker(user: String, password: String, port: Option[Int] = None)
-  extends DockerReadyChecker {
-
-  override def apply(container: DockerContainerState)(implicit docker: DockerCommandExecutor,
-                                                      ec: ExecutionContext) =
-    container
-      .getPorts()
-      .map(ports =>
-        Try {
-          Class.forName("org.postgresql.Driver")
-          val url = s"jdbc:postgresql://${docker.host}:${port.getOrElse(ports.values.head)}/"
-          Option(DriverManager.getConnection(url, user, password)).map(_.close).isDefined
-        }.getOrElse(false))
+  override val managedContainers: ManagedContainers = postgresContainer.toManagedContainer
 }
