@@ -21,14 +21,14 @@ updateDeployInfo = () ->
       $("[rel='tooltip']").tooltip()
   )
 
-readFavourites = () ->
+readFavouriteProjects = () ->
   JSON.parse(localStorage.getItem('favouriteProjects'))
 
-writeFavourites = (newFavourites) ->
+writeFavouriteProjects = (newFavourites) ->
   localStorage.setItem('favouriteProjects', JSON.stringify(newFavourites))
 
-addFavourite = (project) ->
-  favourites = readFavourites()
+addFavouriteProject = (project) ->
+  favourites = readFavouriteProjects()
   newFavourites =
     if favourites?
       projectAlreadyFavourited = favourites.includes(project)
@@ -38,17 +38,17 @@ addFavourite = (project) ->
       favourites
     else
       [project]
-  writeFavourites(newFavourites)
+  writeFavouriteProjects(newFavourites)
   renderFavourites()
 
 deleteFavourite = (project) ->
-  favourites = readFavourites()
+  favourites = readFavouriteProjects()
   newFavourites =
     if favourites?
       favourites.filter (fav) -> fav != project
     else
       []
-  writeFavourites(newFavourites)
+  writeFavouriteProjects(newFavourites)
   renderFavourites()
 
 setupFavouriteHandlers = () ->
@@ -68,7 +68,7 @@ setupFavouriteHandlers = () ->
 
 renderFavourites = () ->
   container = $('#favourites-container')
-  favourites = readFavourites()
+  favourites = readFavouriteProjects()
   if favourites? && favourites.length > 0
     container.removeClass('hidden')
     list = $('#favourites-list', container)
@@ -85,6 +85,34 @@ renderFavourites = () ->
     setupFavouriteHandlers()
   else
     container.addClass('hidden')
+
+readFavouriteStage = () ->
+  localStorage.getItem('favouriteStage')
+
+writeFavouriteStage = (newFavourite) ->
+  localStorage.setItem('favouriteStage', newFavourite)
+  favouriteStageSelected()
+
+removeFavouriteStage = () ->
+  localStorage.removeItem('favouriteStage')
+  favouriteStageNotSelected()
+
+updateFavouriteStageButton = () ->
+  currentStage = $('#stage').val()
+  favouriteStage = readFavouriteStage()
+
+  if (favouriteStage == currentStage)
+    favouriteStageSelected()
+  else
+    favouriteStageNotSelected()
+
+favouriteStageNotSelected = () ->
+  $('#add-favourite-stage-button').removeClass('hidden');
+  $('#remove-favourite-stage-button').addClass('hidden');
+
+favouriteStageSelected = () ->
+  $('#add-favourite-stage-button').addClass('hidden');
+  $('#remove-favourite-stage-button').removeClass('hidden');
 
 $ ->
   $('#projectInput').each ->
@@ -132,7 +160,17 @@ $ ->
     if (!menuOpen)
       $(e.target).autocomplete("search")
 
+  $('#stage').each ->
+    stageInput = $(this)
+
+    favouriteStage = readFavouriteStage()
+    if (favouriteStage)
+      stageInput.val(favouriteStage)
+      favouriteStageSelected()
+      updateDeployInfo()
+
   $('#stage').change ->
+    updateFavouriteStageButton()
     updateDeployInfo()
 
   updateDeployInfo()
@@ -144,7 +182,20 @@ $ ->
     selectedProject = elemProjectInput.val()
 
     if selectedProject
-      addFavourite(selectedProject)
+      addFavouriteProject(selectedProject)
+
+  $('#add-favourite-stage-button').click (e) ->
+    e.preventDefault()
+
+    elemProjectInput = $('#stage')
+    selectedStage = elemProjectInput.val()
+
+    if selectedStage
+      writeFavouriteStage(selectedStage)
+
+  $('#remove-favourite-stage-button').click (e) ->
+    e.preventDefault()
+    removeFavouriteStage()
 
   renderFavourites()
 

@@ -33,14 +33,14 @@
         .glyphicon-star {
             margin-left: 1px;
         }
-        .project-container {
+        .project-container, .stage-container {
             display: flex;
         }
-        #projectInput_field {
+        #projectInput_field, #stage_field {
             flex: 1;
             margin-right: 5px;
         }
-        #add-favourite-project-button {
+        #add-favourite-project-button, #add-favourite-stage-button, #remove-favourite-stage-button {
             top: 29px;
             position: relative;
             height: 100%;
@@ -67,18 +67,22 @@
 
             <div class="project-container">
                 @b3.text(deployForm("project"), Symbol("_label") -> "Project", Symbol("id") -> "projectInput", Symbol("data-url") -> "/deployment/request/autoComplete/project", Symbol("class") -> "form-control input-md project-exact-match")
-                <button id="add-favourite-project-button" aria-label="Add to favourites" title="Add to favourites" disabled><i class="glyphicon glyphicon-star"></i></button>
+                <button id="add-favourite-project-button" aria-label="Add to favourites" title="Add to favourites" disabled><i class="glyphicon glyphicon-star-empty"></i></button>
             </div>
             @b3.text(deployForm("build"),  Symbol("_label") -> "Build", Symbol("id") -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", Symbol("class") -> "form-control input-md")
-            @b3.select(
-                deployForm("stage"),
-                helper.options(prismLookup.stages.toList),
-                Symbol("_default") -> "--- Choose a stage ---",
-                Symbol("_label") -> "Stage",
-                Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
-                Symbol("id") -> "stage",
-                Symbol("class") -> "form-control"
-            )
+            <div class="stage-container">
+                @b3.select(
+                    deployForm("stage"),
+                    helper.options(prismLookup.stages.toList),
+                    Symbol("_default") -> "--- Choose a stage ---",
+                    Symbol("_label") -> "Stage",
+                    Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
+                    Symbol("id") -> "stage",
+                    Symbol("class") -> "form-control"
+                )
+                <button id="add-favourite-stage-button" aria-label="Set as default" title="Set as default"><i class="glyphicon glyphicon-star-empty"></i></button>
+                <button id="remove-favourite-stage-button" class="hidden" aria-label="Unset as default" title="Unset as default"><i class="glyphicon glyphicon-star"></i></button>
+            </div>
 
             <div class="form-group">
                 <span class="display-inline" role="button" data-toggle="collapse" href="#advanced" aria-expanded="false" aria-controls="advanced">
