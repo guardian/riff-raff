@@ -11,7 +11,7 @@ trait PostgresHelpers {
   val config = new Config(Configuration.from(Map(
     "db.default.user" -> "riffraff",
     "db.default.password" -> "riffraff",
-    "db.default.url" -> "jdbc:postgresql://localhost:44444/riffraff")
+    "db.default.url" -> "jdbc:postgresql://localhost:7432/riffraff")
   ).underlying, DateTime.now)
 
   val passwordProvider = new PasswordProvider {

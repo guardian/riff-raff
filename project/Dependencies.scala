@@ -72,8 +72,6 @@ object Dependencies {
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
     "org.postgresql" % "postgresql" % "42.3.2",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
-    "com.whisk" %% "docker-testkit-scalatest" % "0.11.0" % "test",
-    "com.whisk" %% "docker-testkit-impl-spotify" % "0.11.0-beta1" % "test",
     filters,
     ws,
     "com.typesafe.akka" %% "akka-testkit" % "2.6.17" % Test,

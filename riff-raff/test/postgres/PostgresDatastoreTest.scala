@@ -10,9 +10,8 @@ import org.scalatest.matchers.should.Matchers
 import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
 import postgres.TestData._
 import scalikejdbc._
-import utils.DockerPostgresService
 
-class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerPostgresService with PostgresHelpers {
+class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpers {
   "ApiKey table" - {
     def withFixture(test: => Any)= {
       try test
