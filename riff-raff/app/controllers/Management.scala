@@ -1,17 +1,15 @@
 package controllers
 
-import deployment.Deployments
-import magenta.Switchable
-import play.api.mvc.{BaseController, ControllerComponents}
+import lifecycle.ShutdownWhenInactive
+import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 
 class Management(
   val controllerComponents: ControllerComponents,
-  val shutdownSwitch: Switchable,
-  val deployments: Deployments,
+  val shutdown: ShutdownWhenInactive,
 ) extends BaseController with Logging {
 
-  def requestShutdown() = Action { request =>
-    shutdownSwitch.switchOn()
+  def requestShutdown(): Action[AnyContent] = Action { _ =>
+    shutdown.switch.switchOn()
     Ok("Shutdown requested.")
   }
 }

@@ -187,7 +187,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val targetController = new TargetController(config, menu, deployments, targetDynamoRepository, authAction, controllerComponents)
   val loginController = new Login(config, menu, deployments, datastore, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(config, menu, datastore, prismLookup, documentStoreConverter, authAction, controllerComponents, artifactHousekeeper, deployments)
-  val managementController = new Management(controllerComponents, shutdownWhenInactive.switch, deployments)
+  val managementController = new Management(controllerComponents, shutdownWhenInactive)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
