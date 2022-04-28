@@ -86,15 +86,18 @@ renderFavourites = () ->
   else
     container.addClass('hidden')
 
+
+favouriteStageItem = 'favouriteStage'
+
 readFavouriteStage = () ->
-  localStorage.getItem('favouriteStage')
+  localStorage.getItem(favouriteStageItem)
 
 writeFavouriteStage = (newFavourite) ->
-  localStorage.setItem('favouriteStage', newFavourite)
+  localStorage.setItem(favouriteStageItem, newFavourite)
   favouriteStageSelected()
 
 removeFavouriteStage = () ->
-  localStorage.removeItem('favouriteStage')
+  localStorage.removeItem(favouriteStageItem)
   favouriteStageNotSelected()
 
 updateFavouriteStageButton = () ->
