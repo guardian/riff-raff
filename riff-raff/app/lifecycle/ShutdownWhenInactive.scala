@@ -53,3 +53,10 @@ class ShutdownWhenInactive(val deployments: Deployments) extends WhenInactive {
 
   override def action(): Unit = System.exit(EXITCODE)
 }
+
+class RotateInstanceWhenInactive(val deployments: Deployments) extends WhenInactive {
+  override val name: String = "rotate-instance-when-inactive"
+  override val description: String = "Rotate underlying EC2 instance to get a new AMI by terminating the instance and expecting the ASG to launch a replacement."
+
+  override def action(): Unit = ???
+}

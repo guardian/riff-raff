@@ -9,7 +9,7 @@ import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
-import lifecycle.ShutdownWhenInactive
+import lifecycle.{Lifecycle, RotateInstanceWhenInactive, ShutdownWhenInactive}
 import magenta.deployment_type._
 import magenta.tasks.AWS
 import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
@@ -148,8 +148,9 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
 
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
+  val rotateInstanceWhenInactive = new RotateInstanceWhenInactive(deployments)
 
-  val lifecycleSingletons = Seq(
+  val lifecycleSingletons: Seq[Lifecycle] = Seq(
     ScheduledAgent,
     deployments,
     builds,
@@ -161,6 +162,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
     artifactHousekeeper,
     scheduledDeployNotifier,
     shutdownWhenInactive,
+    rotateInstanceWhenInactive
   )
 
   log.info(s"Calling init() on Lifecycle singletons: ${lifecycleSingletons.map(_.getClass.getName).mkString(", ")}")
@@ -187,7 +189,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val targetController = new TargetController(config, menu, deployments, targetDynamoRepository, authAction, controllerComponents)
   val loginController = new Login(config, menu, deployments, datastore, controllerComponents, authAction, googleAuthConfig)
   val testingController = new Testing(config, menu, datastore, prismLookup, documentStoreConverter, authAction, controllerComponents, artifactHousekeeper, deployments)
-  val managementController = new Management(controllerComponents, shutdownWhenInactive)
+  val managementController = new Management(controllerComponents, shutdownWhenInactive, rotateInstanceWhenInactive)
 
   override lazy val httpErrorHandler = new DefaultHttpErrorHandler(environment, configuration, sourceMapper, Some(router)) {
     override def onServerError(request: RequestHeader, t: Throwable): Future[Result] = {
