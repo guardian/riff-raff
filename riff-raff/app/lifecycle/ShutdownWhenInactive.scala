@@ -7,11 +7,10 @@ import controllers.Logging
 import deployment.{Deployments, Record}
 import magenta.DefaultSwitch
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
-import software.amazon.awssdk.services.autoscaling.model.TerminateInstanceInAutoScalingGroupRequest
+import software.amazon.awssdk.services.ec2.model.TerminateInstancesRequest
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
-import scala.util.Try
 
 trait WhenInactive extends Lifecycle with Logging {
   val name: String
@@ -86,12 +85,7 @@ class RotateInstanceWhenInactive(val deployments: Deployments, config: Config) e
       client = config.management.aws.snsClient
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
 
-    val request = TerminateInstanceInAutoScalingGroupRequest
-      .builder()
-      .instanceId(instanceId)
-      .shouldDecrementDesiredCapacity(false)
-      .build()
-
-    config.management.aws.asgClient.terminateInstanceInAutoScalingGroup(request)
+    val request = TerminateInstancesRequest.builder().instanceIds(instanceId).build()
+    config.management.aws.ec2Client.terminateInstances(request)
   }
 }

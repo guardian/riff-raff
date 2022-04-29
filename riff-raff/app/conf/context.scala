@@ -19,7 +19,6 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, UnnaturalOrdering}
 import riffraff.BuildInfo
-import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.ssm.SsmClient
 
 import scala.jdk.CollectionConverters._
@@ -234,8 +233,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       // TODO read config from more generic location
       lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
 
-      lazy val asgClient: AutoScalingClient = AutoScalingClient
-        .builder()
+      lazy val ec2Client: Ec2Client = Ec2Client.builder()
         .credentialsProvider(credentialsProviderChain(None, None))
         .region(AWSRegion.of(regionName))
         .build()
