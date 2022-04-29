@@ -4,7 +4,7 @@ import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.profile.{ProfileCredentialsProvider => ProfileCredentialsProviderV1}
 import com.amazonaws.auth.{AWSCredentials => AWSCredentialsV1, AWSCredentialsProvider => AWSCredentialsProviderV1, AWSCredentialsProviderChain => AWSCredentialsProviderChainV1, BasicAWSCredentials => BasicAWSCredentialsV1, EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1, InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1, SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
-import com.amazonaws.services.sns.{AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
+import com.amazonaws.services.sns.{AmazonSNSAsync, AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1}
 import com.typesafe.config.{Config => TypesafeConfig}
 import controllers.Logging
 import org.joda.time.DateTime
@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, UnnaturalOrdering}
 import riffraff.BuildInfo
+import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.ssm.SsmClient
 
 import scala.jdk.CollectionConverters._
@@ -219,6 +220,27 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     }
   }
 
+  object management {
+    object aws {
+      // TODO read config from more generic location
+      lazy val regionName: String = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
+
+      // For compatibility reasons this need to use the old AWS SDK
+      lazy val snsClient: AmazonSNSAsync = AmazonSNSAsyncClientBuilderV1.standard()
+        .withCredentials(credentialsProviderChainV1(None, None))
+        .withRegion(regionName)
+        .build()
+
+      // TODO read config from more generic location
+      lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
+
+      lazy val asgClient: AutoScalingClient = AutoScalingClient
+        .builder()
+        .credentialsProvider(credentialsProviderChain(None, None))
+        .region(AWSRegion.of(regionName))
+        .build()
+    }
+  }
 
   def credentialsProviderChainV1(accessKey: Option[String] = None, secretKey: Option[String] = None): AWSCredentialsProviderChainV1 = {
     new AWSCredentialsProviderChainV1(

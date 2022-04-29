@@ -148,7 +148,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
 
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
-  val rotateInstanceWhenInactive = new RotateInstanceWhenInactive(deployments)
+  val rotateInstanceWhenInactive = new RotateInstanceWhenInactive(deployments, config)
 
   val lifecycleSingletons: Seq[Lifecycle] = Seq(
     ScheduledAgent,
