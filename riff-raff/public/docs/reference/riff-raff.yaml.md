@@ -1,13 +1,15 @@
 The riff-raff.yaml configuration file
 =====================================
 
-Whilst writing riff-raff.yaml files you are strongly advised to use the 
+Whilst writing riff-raff.yaml files you are strongly advised to use the
 [Validate Template feature](/configuration/validation) in Riff-Raff to get fast feedback.
 
 ```yaml
-stacks: 
+stacks:
   - String
 regions:
+  - String
+allowedStages:
   - String
 templates:
   map of DeploymentOrTemplate
@@ -19,7 +21,7 @@ deployments:
 
 List of default stack names used to identify resources for this deploy. See `stacks` in `DeploymentOrTemplate`.
 
-_Required:_ Conditional. A list of stacks must be provided for each deployment. This provides a default that will be 
+_Required:_ Conditional. A list of stacks must be provided for each deployment. This provides a default that will be
 used by a deployment when a list of stacks are not specified explicitly in the deployment or a template it inherits. If
 stacks are specified elsewhere then this is not needed.
 
@@ -27,9 +29,15 @@ stacks are specified elsewhere then this is not needed.
 
 List of default AWS region names that this should be deployed to. See `regions` in `DeploymentOrTemplate`.
 
-_Required:_ Conditional. A list of regions must be provided for each deployment. This provides a default that will be 
+_Required:_ Conditional. A list of regions must be provided for each deployment. This provides a default that will be
 used by a deployment when a list of regions are not specified explicitly in the deployment or a template it inherits. If
-regions are specified elsewhere then this is not needed. 
+regions are specified elsewhere then this is not needed.
+
+### allowedStages
+
+Optional list of permitted stages for the deployment. Typically used to prevent
+deployment to unsupported stages and also used to narrow the stage options for
+manual deployments.
 
 ### templates
 
@@ -49,40 +57,40 @@ DeploymentOrTemplate
 ```yaml
 type: String
 template: String
-stacks: 
+stacks:
   - String
-regions: 
+regions:
   - String
 actions:
   - String
-app: 
+app:
   - String
-contentDirectory: 
+contentDirectory:
   - String
-dependencies: 
+dependencies:
   - String
-parameters: 
+parameters:
   map of any
 ```
 
 ### type
 
-The deployment type for this deployment step. You can see the available deployment types and the related actions and 
+The deployment type for this deployment step. You can see the available deployment types and the related actions and
 parameters [here](../magenta-lib/types.md).
- 
+
 _Required:_ Conditional. One of `type` or `template` must be specified.
- 
+
 ### template
 
-The name of a template in the templates section from which to use as a starting point. The values of the fields in the 
-template will be used by default. Any values from the template can be overridden or supplemented (in the case of 
+The name of a template in the templates section from which to use as a starting point. The values of the fields in the
+template will be used by default. Any values from the template can be overridden or supplemented (in the case of
 `parameters`).
- 
+
 _Required:_ Conditional. One of `type` or `template` must be specified.
 
 ### stacks
 
-A stack name is used to lookup AWS credentials (effectively selecting which AWS account to deploy to), to locate 
+A stack name is used to lookup AWS credentials (effectively selecting which AWS account to deploy to), to locate
 auto scaling groups and cloudformation stacks and also to set sane defaults for many parameters.
 
 _Required:_ Conditional. A list of stacks must be provided for each deployment. If specified here it will override any
@@ -90,7 +98,7 @@ global default.
 
 ### regions
 
-List of default AWS region names that this should be deployed to. This must be a valid [AWS region code](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html?shortFooter=true#concepts-available-regions). 
+List of default AWS region names that this should be deployed to. This must be a valid [AWS region code](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html?shortFooter=true#concepts-available-regions).
 This is used to create AWS SDK clients before undertaking deployment operations.
 
 _Required:_ Conditional. A list of regions must be provided for each deployment. If specified here it will override any
@@ -100,7 +108,7 @@ global default.
 
 List of deployment type actions to execute for this deployment. See the [deployment types list](../magenta-lib/types.md)
 for the available actions of each type.
- 
+
 _Required:_ No. If not specified then the default set of actions will be executed according to the deployment type.
 
 ### app
@@ -127,16 +135,16 @@ _Required:_ No.
 Map of parameters for the deployment type. This can be used to specify various options that control how a deployment
 type should behave. Some examples are bucket names, MIME type mappings, cache control headers and deployment wait times.
 
-_Required:_ Conditional. Some deployment types have parameters which must be specified. See the 
+_Required:_ Conditional. Some deployment types have parameters which must be specified. See the
 [deployment types list](../magenta-lib/types.md) for the available and required parameters of each type.
 
 Examples
 --------
 
-In order to understand how Riff-Raff interprets these files feel free to copy the YAML and paste it into Validate 
+In order to understand how Riff-Raff interprets these files feel free to copy the YAML and paste it into Validate
 Template page in Riff-Raff.
 
-Here is a minimal auto scaling deploy example taken from [Prism](https://github.com/guardian/prism/blob/master/riff-raff.yaml). 
+Here is a minimal auto scaling deploy example taken from [Prism](https://github.com/guardian/prism/blob/master/riff-raff.yaml).
 
 ```yaml
 regions:
