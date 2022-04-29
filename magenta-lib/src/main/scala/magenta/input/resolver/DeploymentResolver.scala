@@ -13,7 +13,7 @@ object DeploymentResolver {
     config.deployments.traverse { case (label, rawDeployment) =>
       for {
         templated <- applyTemplates(label, rawDeployment, config.templates)
-        deployment <- resolveDeployment(label, templated, config.stacks, config.regions)
+        deployment <- resolveDeployment(label, templated, config.stacks, config.regions, config.allowedStages)
         validatedDeployment <- validateDependencies(label, deployment, config.deployments)
       } yield validatedDeployment
     }
@@ -23,7 +23,7 @@ object DeploymentResolver {
     * Validates and resolves a templated deployment by merging its
     * deployment attributes with any globally defined properties.
     */
-  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]]): Validated[ConfigErrors, PartiallyResolvedDeployment] = {
+  private[input] def resolveDeployment(label: String, templated: DeploymentOrTemplate, globalStacks: Option[List[String]], globalRegions: Option[List[String]], globalAllowedStages: Option[List[String]]): Validated[ConfigErrors, PartiallyResolvedDeployment] = {
     ((Validated.fromOption(templated.`type`, ConfigErrors(label, "No type field provided")),
       Validated.fromOption(templated.stacks.orElse(globalStacks).flatMap(NEL.fromList), ConfigErrors(label, "No stacks provided")),
       Validated.fromOption(templated.regions.orElse(globalRegions).flatMap(NEL.fromList), ConfigErrors(label, "No regions provided")))).mapN { case (deploymentType, stacks, regions) =>
@@ -32,6 +32,7 @@ object DeploymentResolver {
         `type` = deploymentType,
         stacks = stacks,
         regions = regions,
+        allowedStages = globalAllowedStages.flatMap(NEL.fromList),
         actions = templated.actions.flatMap(NEL.fromList),
         app = templated.app.getOrElse(label),
         contentDirectory = templated.contentDirectory.getOrElse(label),
@@ -64,6 +65,7 @@ object DeploymentResolver {
             template = None,
             stacks = template.stacks.orElse(resolvedParent.stacks),
             regions = template.regions.orElse(resolvedParent.regions),
+            allowedStages = resolvedParent.allowedStages,
             actions = template.actions.orElse(resolvedParent.actions),
             app = template.app.orElse(resolvedParent.app),
             contentDirectory = template.contentDirectory.orElse(resolvedParent.contentDirectory),
@@ -93,6 +95,7 @@ case class PartiallyResolvedDeployment(
   `type`: String,
   stacks: NEL[String],
   regions: NEL[String],
+  allowedStages: Option[NEL[String]],
   actions: Option[NEL[String]],
   app: String,
   contentDirectory: String,

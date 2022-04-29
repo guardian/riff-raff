@@ -19,6 +19,7 @@ import resources.PrismLookup
 
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
+import magenta.input.RiffRaffYamlReader
 
 class DeployGroupRunner(
   config: Config,
@@ -191,6 +192,17 @@ class DeployGroupRunner(
 
       val riffRaffYaml = S3YamlArtifact(record.parameters.build, bucketName)
       val riffRaffYamlString = riffRaffYaml.deployObject.fetchContentAsString()(s3Client)
+
+      // Check that the requested stage is allowed for this deployment.
+      riffRaffYamlString.foreach( yaml => {
+        val maybeConfig = RiffRaffYamlReader.fromString(yaml)
+        maybeConfig.foreach(config => {
+          val stage = record.parameters.stage.name
+          val disallowedStage = config.allowedStages.exists(stages => !stages.contains(stage))
+          if (disallowedStage) safeReporter.fail(s"Stage '${stage}' is not in allowed stages (${config.allowedStages.getOrElse(List().mkString(","))}).")
+
+        })
+      })
 
       val context = riffRaffYamlString.map { yaml =>
         val graph = Resolver.resolve(yaml, resources, record.parameters, deploymentTypes, riffRaffYaml)
