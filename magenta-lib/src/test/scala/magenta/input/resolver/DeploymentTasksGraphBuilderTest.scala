@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class DeploymentTasksGraphBuilderTest extends AnyFlatSpec with Matchers {
-  val deployment = Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), NEL.of("deploy"), "bob", "bob", Nil, Map.empty)
+  val deployment = Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), None, NEL.of("deploy"), "bob", "bob", Nil, Map.empty)
 
   "buildGraph" should "build a simple graph for a single deployment" in {
     val graph = DeploymentGraphBuilder.buildGraph(List(deployment))

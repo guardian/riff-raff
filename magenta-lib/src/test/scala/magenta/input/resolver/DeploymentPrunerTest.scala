@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 class DeploymentPrunerTest extends AnyFlatSpec with Matchers {
   import DeploymentPruner._
   val testDeployment = Deployment("testName", "testType", NEL.of("testStack"), NEL.of("testRegion"),
-    NEL.of("testAction"), "testName", "testName", Nil, Map.empty)
+    None, NEL.of("testAction"), "testName", "testName", Nil, Map.empty)
   val testStackAndRegionPruner = StackAndRegion("testStack", "testRegion")
 
   "StackAndRegion pruner" should "return None when either the region or stack isn't specified" in {

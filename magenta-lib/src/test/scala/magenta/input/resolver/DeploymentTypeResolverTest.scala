@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.JsNumber
 
 class DeploymentTypeResolverTest extends AnyFlatSpec with Matchers with ValidatedValues {
-  val deployment = PartiallyResolvedDeployment("bob", "stub-package-type", NEL.of("stack"), NEL.of("eu-west-1"), actions=None, "bob", "bob", Nil, Map.empty)
+  val deployment = PartiallyResolvedDeployment("bob", "stub-package-type", NEL.of("stack"), NEL.of("eu-west-1"), None, actions=None, "bob", "bob", Nil, Map.empty)
   val deploymentTypes = List(stubDeploymentType(Seq("upload", "deploy")))
 
   "validateDeploymentType" should "fail on invalid deployment type" in {
