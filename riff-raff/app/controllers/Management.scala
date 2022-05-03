@@ -6,7 +6,7 @@ import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 class Management(
   val controllerComponents: ControllerComponents,
   val shutdown: ShutdownWhenInactive,
-  val rotateInstance: TerminateInstanceWhenInactive
+  val terminateInstance: TerminateInstanceWhenInactive
 ) extends BaseController with Logging {
 
   def requestShutdown(): Action[AnyContent] = Action { _ =>
@@ -14,8 +14,8 @@ class Management(
     Ok("Shutdown requested.")
   }
 
-  def requestInstanceRotation(): Action[AnyContent] = Action { _ =>
-    rotateInstance.switch.switchOn()
-    Ok("Instance rotation requested.")
+  def requestInstanceTermination(): Action[AnyContent] = Action { _ =>
+    terminateInstance.switch.switchOn()
+    Ok("Instance termination requested.")
   }
 }

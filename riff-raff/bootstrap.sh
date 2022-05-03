@@ -61,9 +61,9 @@ APP_BUCKET="deploy-tools-dist"
 USER=$APP
 HOME="/home/$APP"
 
-INSTANCE_ROTATION_SCHEDULE="WED *-*-* 08:00:00 Europe/London"
+INSTANCE_TERMINATION_SCHEDULE="WED *-*-* 08:00:00 Europe/London"
 if [ "$STAGE" == "PROD" ]; then
-  INSTANCE_ROTATION_SCHEDULE="THU *-*-* 08:00:00 Europe/London"
+  INSTANCE_TERMINATION_SCHEDULE="THU *-*-* 08:00:00 Europe/London"
 fi
 
 # Install a new copy of the properties file
@@ -106,26 +106,26 @@ RestartForceExitStatus=217
 WantedBy=multi-user.target
 EOF
 
-cat > /etc/systemd/system/${APP}-instance-rotation.service << EOF
+cat > /etc/systemd/system/${APP}-instance-termination.service << EOF
 [Unit]
-Description=${APP} instance rotation
+Description=${APP} instance termination
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/curl --silent -X POST http://localhost:9000/requestInstanceRotation
+ExecStart=/usr/bin/curl --silent -X POST http://localhost:9000/requestInstanceTermination
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-cat > /etc/systemd/system/${APP}-instance-rotation.timer << EOF
+cat > /etc/systemd/system/${APP}-instance-termination.timer << EOF
 [Unit]
-Description=${APP} instance rotation schedule
-Requires=${APP}-instance-rotation.service
+Description=${APP} instance termination schedule
+Requires=${APP}-instance-termination.service
 
 [Timer]
-Unit=${APP}-instance-rotation.service
-OnCalendar=${INSTANCE_ROTATION_SCHEDULE}
+Unit=${APP}-instance-termination.service
+OnCalendar=${INSTANCE_TERMINATION_SCHEDULE}
 
 [Install]
 WantedBy=timers.target
