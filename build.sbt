@@ -2,6 +2,7 @@ import Dependencies._
 import Helpers._
 import play.sbt.routes.RoutesKeys
 import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
+import scala.sys.process._
 
 inThisBuild(List(
   semanticdbEnabled := true,
@@ -92,6 +93,15 @@ lazy val riffraff = project.in(file("riff-raff"))
     },
 
     Test / fork := false,
+
+    Test / testOptions += Tests.Setup(_ => {
+      println(s"Starting Docker containers for tests")
+      "docker-compose up -d".!
+    }),
+    Test / testOptions += Tests.Cleanup(_ => {
+      println(s"Stopping Docker containers for tests")
+      "docker-compose rm --stop --force".!
+    }),
 
     Assets / LessKeys.less / includeFilter := "*.less",
 

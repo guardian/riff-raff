@@ -1,6 +1,5 @@
 package postgres
 
-import com.whisk.docker.scalatest.DockerTestKit
 import controllers.{ApiKey, AuthorisationRecord}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState.ChildRunning
@@ -11,9 +10,8 @@ import org.scalatest.matchers.should.Matchers
 import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
 import postgres.TestData._
 import scalikejdbc._
-import utils.DockerPostgresService
 
-class PostgresDatastoreTest extends AnyFreeSpec with Matchers with DockerTestKit with DockerPostgresService with PostgresHelpers {
+class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpers {
   "ApiKey table" - {
     def withFixture(test: => Any)= {
       try test
