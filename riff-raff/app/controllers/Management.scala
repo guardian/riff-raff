@@ -1,12 +1,12 @@
 package controllers
 
-import lifecycle.{RotateInstanceWhenInactive, ShutdownWhenInactive}
+import lifecycle.{ShutdownWhenInactive, TerminateInstanceWhenInactive}
 import play.api.mvc.{Action, AnyContent, BaseController, ControllerComponents}
 
 class Management(
   val controllerComponents: ControllerComponents,
   val shutdown: ShutdownWhenInactive,
-  val rotateInstance: RotateInstanceWhenInactive
+  val rotateInstance: TerminateInstanceWhenInactive
 ) extends BaseController with Logging {
 
   def requestShutdown(): Action[AnyContent] = Action { _ =>

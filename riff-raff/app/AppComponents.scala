@@ -9,7 +9,7 @@ import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
-import lifecycle.{Lifecycle, RotateInstanceWhenInactive, ShutdownWhenInactive}
+import lifecycle.{Lifecycle, ShutdownWhenInactive, TerminateInstanceWhenInactive}
 import magenta.deployment_type._
 import magenta.tasks.AWS
 import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
@@ -148,7 +148,7 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val hooksClient = new HooksClient(datastore, hookConfigRepository, wsClient, executionContext)
 
   val shutdownWhenInactive = new ShutdownWhenInactive(deployments)
-  val rotateInstanceWhenInactive = new RotateInstanceWhenInactive(deployments, config)
+  val rotateInstanceWhenInactive = new TerminateInstanceWhenInactive(deployments, config)
 
   val lifecycleSingletons: Seq[Lifecycle] = Seq(
     ScheduledAgent,
