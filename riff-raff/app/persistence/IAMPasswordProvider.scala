@@ -9,7 +9,7 @@ import magenta.`package`.logger
 
 class IAMPasswordProvider(conf: Config) extends PasswordProvider {
   private val generator = RdsIamAuthTokenGenerator.builder()
-    .credentials(conf.credentialsProviderChainV1())
+    .credentials(conf.legacyCredentialsProviderChain())
     .region(conf.artifact.aws.regionName)
     .build()
 
