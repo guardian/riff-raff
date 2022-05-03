@@ -40,6 +40,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     }
   }
 
+  private val defaultRegion: String = AWSRegion.EU_WEST_1.toString
+
   lazy val stage: String = {
     val theStage = Try(EC2MetadataUtils.getInstanceId) match {
       case Success(instanceId) if instanceId != null =>
@@ -77,7 +79,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val domain: String = getStringOpt("auth.domain").getOrException("No auth domain configured")
     lazy val superusers: List[String] = getStringList("auth.superusers")
     lazy val secretStateSupplierKeyName: String = getStringOpt("auth.secretStateSupplier.keyName").getOrElse("/RiffRaff/PlayApplicationSecret")
-    lazy val secretStateSupplierRegion: String = getStringOpt("auth.secretStateSupplier.region").getOrElse("eu-west-1")
+    lazy val secretStateSupplierRegion: String = getStringOpt("auth.secretStateSupplier.region").getOrElse(defaultRegion)
     lazy val secretStateSupplierClient = SsmClient.builder()
       .credentialsProvider(credentialsProviderChain(None, None))
       .region(AWSRegion.of(secretStateSupplierRegion))
@@ -94,24 +96,17 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
   object scheduledDeployment {
     lazy val enabled = getBooleanOpt("scheduledDeployment.enabled").getOrElse(false)
-    lazy val regionName = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
-    // For compatibility reasons this need to use the old AWS SDK
-    lazy val snsClient = AmazonSNSAsyncClientBuilderV1.standard()
-      .withCredentials(legacyCredentialsProviderChain(None, None))
-      .withRegion(regionName)
-      .build()
-    lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
   }
 
   object credentials {
-    lazy val regionName = getStringOpt("credentials.aws.region").getOrElse("eu-west-1")
+    lazy val regionName = getStringOpt("credentials.aws.region").getOrElse(defaultRegion)
     lazy val paramPrefix = getStringOpt("credentials.paramPrefix").getOrElse(s"/$stage/deploy/riff-raff/credentials")
     lazy val credentialsProvider = credentialsProviderChain(None, None)
     lazy val stsClient = StsClient.builder().region(AWSRegion.of(regionName)).credentialsProvider(credentialsProvider).build()
   }
 
   object dynamoDb {
-    lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
+    lazy val regionName = getStringOpt("artifact.aws.region").getOrElse(defaultRegion)
     // Used by Scanamo which is not on the latest version of AWS SDK
     val client = AmazonDynamoDBAsyncClientBuilder.standard()
       .withCredentials(legacyCredentialsProviderChain(None, None))
@@ -155,7 +150,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val elkStreamName = getStringOpt("logging.elkStreamName")
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
-    lazy val regionName = getStringOpt("logging.aws.region").getOrElse("eu-west-1")
+    lazy val regionName = getStringOpt("logging.aws.region").getOrElse(defaultRegion)
     lazy val credentialsProvider = legacyCredentialsProviderChain(accessKey, secretKey)
   }
 
@@ -182,7 +177,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       lazy val accessKey = getStringOpt("artifact.aws.accessKey")
       lazy val secretKey = getStringOpt("artifact.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
+      lazy val regionName = getStringOpt("artifact.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
         .region(AWSRegion.of(regionName))
@@ -197,7 +192,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       lazy val accessKey = getStringOpt("build.aws.accessKey")
       lazy val secretKey = getStringOpt("build.aws.secretKey")
       lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName = getStringOpt("build.aws.region").getOrElse("eu-west-1")
+      lazy val regionName = getStringOpt("build.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
         .region(AWSRegion.of(regionName))
@@ -211,7 +206,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
       lazy val accessKey: Option[String] = getStringOpt("tag.aws.accessKey")
       lazy val secretKey: Option[String] = getStringOpt("tag.aws.secretKey")
       lazy val credentialsProvider: AwsCredentialsProvider = credentialsProviderChain(accessKey, secretKey)
-      lazy val regionName: String = getStringOpt("tag.aws.region").getOrElse("eu-west-1")
+      lazy val regionName: String = getStringOpt("tag.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client.builder()
         .credentialsProvider(credentialsProvider)
         .region(AWSRegion.of(regionName))
@@ -221,23 +216,24 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
   object management {
     object aws {
-      // TODO read config from more generic location
-      lazy val regionName: String = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
-
-      // For compatibility reasons this need to use the old AWS SDK
-      lazy val snsClient: AmazonSNSAsync = AmazonSNSAsyncClientBuilderV1.standard()
-        .withCredentials(legacyCredentialsProviderChain(None, None))
-        .withRegion(regionName)
-        .build()
-
-      // TODO read config from more generic location
-      lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
-
+      lazy val regionName: String = getStringOpt("management.aws.region").getOrElse(defaultRegion)
       lazy val ec2Client: Ec2Client = Ec2Client.builder()
         .credentialsProvider(credentialsProviderChain(None, None))
         .region(AWSRegion.of(regionName))
         .build()
     }
+  }
+
+  object anghammarad {
+    lazy val regionName: String = getStringOpt("anghammarad.region").getOrElse(defaultRegion)
+    lazy val topicArn: String = getString("anghammarad.topic.arn")
+
+    // For compatibility reasons this need to use the old AWS SDK
+    // TODO use V2 client once Anghammarad supports it
+    lazy val snsClient: AmazonSNSAsync = AmazonSNSAsyncClientBuilderV1.standard()
+      .withCredentials(legacyCredentialsProviderChain(None, None))
+      .withRegion(regionName)
+      .build()
   }
 
   /**

@@ -20,9 +20,6 @@ import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 class DeployFailureNotifications(config: Config, targetResolver: TargetResolver, lookup: Lookup) (implicit ec: ExecutionContext) extends Lifecycle with Logging {
-
-  lazy private val anghammaradTopicARN = config.scheduledDeployment.anghammaradTopicARN
-  lazy private val snsClient = config.scheduledDeployment.snsClient
   lazy private val prefix = config.urls.publicPrefix
   lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
   lazy private val failureNotificationContents = new FailureNotificationContents(prefix)
@@ -70,8 +67,8 @@ class DeployFailureNotifications(config: Config, targetResolver: TargetResolver,
       channel = All,
       target = targets,
       actions = notificationContents.actions,
-      topicArn = anghammaradTopicARN,
-      client = snsClient
+      topicArn = config.anghammarad.topicArn,
+      client = config.anghammarad.snsClient
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
   }
 

@@ -81,8 +81,8 @@ class TerminateInstanceWhenInactive(val deployments: Deployments, config: Config
       target = List(Stack("deploy"), App("riff-raff"), Stage(config.stage)),
       actions = List.empty,
       channel = All,
-      topicArn = config.management.aws.anghammaradTopicARN,
-      client = config.management.aws.snsClient
+      topicArn = config.anghammarad.topicArn,
+      client = config.anghammarad.snsClient
     ).recover { case ex => log.error(s"Failed to send notification (via Anghammarad)", ex) }
 
     val request = TerminateInstancesRequest.builder().instanceIds(instanceId).build()
