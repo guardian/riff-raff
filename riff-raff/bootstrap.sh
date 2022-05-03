@@ -61,6 +61,11 @@ APP_BUCKET="deploy-tools-dist"
 USER=$APP
 HOME="/home/$APP"
 
+INSTANCE_ROTATION_SCHEDULE="WED *-*-* 08:00:00 Europe/London"
+if [ "$STAGE" == "PROD" ]; then
+  INSTANCE_ROTATION_SCHEDULE="THU *-*-* 08:00:00 Europe/London"
+fi
+
 # Install a new copy of the properties file
 id -u ${USER} &>/dev/null || adduser --system --home ${HOME} --disabled-password ${USER}
 CONFIG_ORIGIN="s3://$CONFIG_BUCKET/$STACK/$APP/$STAGE.conf"
@@ -99,6 +104,31 @@ RestartForceExitStatus=217
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/${APP}-instance-rotation.service << EOF
+[Unit]
+Description=${APP} instance rotation
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl --silent -X POST http://localhost:9000/requestInstanceRotation
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/${APP}-instance-rotation.timer << EOF
+[Unit]
+Description=${APP} instance rotation schedule
+Requires=${APP}-instance-rotation.service
+
+[Timer]
+Unit=${APP}-instance-rotation.service
+OnCalendar=${INSTANCE_ROTATION_SCHEDULE}
+
+[Install]
+WantedBy=timers.target
 EOF
 
 systemctl daemon-reload
