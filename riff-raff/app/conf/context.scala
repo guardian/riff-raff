@@ -97,7 +97,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val regionName = getStringOpt("scheduledDeployment.aws.region").getOrElse("eu-west-1")
     // For compatibility reasons this need to use the old AWS SDK
     lazy val snsClient = AmazonSNSAsyncClientBuilderV1.standard()
-      .withCredentials(credentialsProviderChainV1(None, None))
+      .withCredentials(legacyCredentialsProviderChain(None, None))
       .withRegion(regionName)
       .build()
     lazy val anghammaradTopicARN: String = getString("scheduledDeployment.anghammaradTopicARN")
@@ -114,7 +114,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val regionName = getStringOpt("artifact.aws.region").getOrElse("eu-west-1")
     // Used by Scanamo which is not on the latest version of AWS SDK
     val client = AmazonDynamoDBAsyncClientBuilder.standard()
-      .withCredentials(credentialsProviderChainV1(None, None))
+      .withCredentials(legacyCredentialsProviderChain(None, None))
       .withRegion(regionName)
       .withClientConfiguration(new ClientConfiguration())
       .build()
@@ -156,7 +156,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
     lazy val regionName = getStringOpt("logging.aws.region").getOrElse("eu-west-1")
-    lazy val credentialsProvider = credentialsProviderChainV1(accessKey, secretKey)
+    lazy val credentialsProvider = legacyCredentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {
@@ -226,7 +226,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
 
       // For compatibility reasons this need to use the old AWS SDK
       lazy val snsClient: AmazonSNSAsync = AmazonSNSAsyncClientBuilderV1.standard()
-        .withCredentials(credentialsProviderChainV1(None, None))
+        .withCredentials(legacyCredentialsProviderChain(None, None))
         .withRegion(regionName)
         .build()
 
@@ -240,7 +240,13 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     }
   }
 
-  def credentialsProviderChainV1(accessKey: Option[String] = None, secretKey: Option[String] = None): AWSCredentialsProviderChainV1 = {
+  /**
+    * Credentials for use with V1 of the AWS SDK.
+    * Considered legacy as, where possible, V2 of the AWS SDK should be used.
+    *
+    * @see [[credentialsProviderChain]]
+    */
+  def legacyCredentialsProviderChain(accessKey: Option[String] = None, secretKey: Option[String] = None): AWSCredentialsProviderChainV1 = {
     new AWSCredentialsProviderChainV1(
       new AWSCredentialsProviderV1 {
         override def getCredentials: AWSCredentialsV1 = (for {
