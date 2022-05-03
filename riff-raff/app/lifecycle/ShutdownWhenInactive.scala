@@ -72,7 +72,7 @@ class TerminateInstanceWhenInactive(val deployments: Deployments, config: Config
         s"""
           |Riff-Raff is about to undergo scheduled maintenance to rotate the AMI.
           |Please anticipate 503 responses whilst this completes.
-          |It usually takes around 5 minutes to complete and is starting now as there are not running deploys.
+          |It usually takes around 5 minutes to complete and is starting now as there are no running deploys.
           |
           |The current instance $instanceId will be terminated and replaced by the ASG.
           |
