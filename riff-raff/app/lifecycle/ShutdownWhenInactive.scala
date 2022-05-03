@@ -31,7 +31,7 @@ trait WhenInactive extends Lifecycle with Logging {
     Future {
       log.info(s"Attempting to $name: trying to atomically disable deployment")
       if (deployments.atomicDisableDeploys) {
-        log.info("Deployment disabled, shutting down JVM")
+        log.info(s"Deployment disabled. Shutting down JVM so $name can be completed.")
         // wait a while for AJAX update requests to complete
         blocking(Thread.sleep(2000L))
         action()
