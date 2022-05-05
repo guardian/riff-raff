@@ -137,3 +137,9 @@ STATUS=$(systemctl is-active ${APP} || true)
 if [ "$STATUS" = "inactive" ]; then
   systemctl start ${APP}
 fi
+
+INSTANCE_ROTATION_STATUS=$(systemctl is-active ${APP}-instance-rotation.timer || true)
+if [ "$INSTANCE_ROTATION_STATUS" = "inactive" ]; then
+  systemctl enable ${APP}-instance-rotation.timer
+  systemctl start ${APP}-instance-rotation.timer
+fi
