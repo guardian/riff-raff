@@ -75,6 +75,7 @@
                 helper.options(prismLookup.stages.toList),
                 Symbol("_default") -> "--- Choose a stage ---",
                 Symbol("_label") -> "Stage",
+                Symbol("_help") -> "Nb. you can now constrain available stages by setting 'allowedStages' in your riff-raff.yaml.",
                 Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select deployment stage")),
                 Symbol("id") -> "stage",
                 Symbol("class") -> "form-control",
