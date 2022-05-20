@@ -29,6 +29,7 @@ object DeploymentTypeResolver {
           `type` = deployment.`type`,
           stacks = deployment.stacks,
           regions = deployment.regions,
+          allowedStages = deployment.allowedStages,
           actions = as,
           app = deployment.app,
           contentDirectory = deployment.contentDirectory,

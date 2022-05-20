@@ -51,6 +51,13 @@ case class DeploymentKeysSelector(keys: List[DeploymentKey]) extends DeploymentS
 case class RiffRaffDeployConfig(
   stacks: Option[List[String]],
   regions: Option[List[String]],
+
+  /**
+    * allowedStages is a list of supported stages for the deployment. If
+    * defined, attempts to deploy to an unlisted stage will fail.
+    */
+  allowedStages: Option[List[String]],
+
   templates: Option[Map[String, DeploymentOrTemplate]],
   deployments: List[(String, DeploymentOrTemplate)]
 )
@@ -78,6 +85,7 @@ case class DeploymentOrTemplate(
   template: Option[String],
   stacks: Option[List[String]],
   regions: Option[List[String]],
+  allowedStages: Option[List[String]], // While part of the model, this is always considered globally and should not be specified in a template
   actions: Option[List[String]],
   app: Option[String],
   contentDirectory: Option[String],
@@ -96,6 +104,7 @@ case class Deployment(
   `type`: String,
   stacks: NEL[String],
   regions: NEL[String],
+  allowedStages: Option[NEL[String]],
   actions: NEL[String],
   app: String,
   contentDirectory: String,

@@ -192,6 +192,7 @@ class Application(config: Config,
       JavaScriptReverseRouter("jsRoutes")(
         routes.javascript.DeployController.stop,
         routes.javascript.DeployController.deployHistory,
+        routes.javascript.DeployController.allowedStages,
         routes.javascript.DeployController.dashboardContent,
         routes.javascript.DeployController.buildInfo,
         routes.javascript.DeployController.viewUUID,

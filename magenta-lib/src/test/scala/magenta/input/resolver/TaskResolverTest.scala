@@ -36,7 +36,7 @@ class TaskResolverTest extends AnyFlatSpec with Matchers with MockitoSugar with 
 
   "resolve" should "produce a deployment task" in {
     val deploymentTask = TaskResolver.resolve(
-      deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region"),
+      deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region"), Some(NEL.of("stage")),
         NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
@@ -54,7 +54,7 @@ class TaskResolverTest extends AnyFlatSpec with Matchers with MockitoSugar with 
   "resolve" should "produce a deployment task with multiple regions" in {
     val deploymentTask = TaskResolver.resolve(
       deployment = Deployment("test", "stub-package-type", NEL.of("stack"), NEL.of("region-one", "region-two"),
-        NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
+        Some(NEL.of("stage")), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = deploymentTypes,
@@ -72,7 +72,7 @@ class TaskResolverTest extends AnyFlatSpec with Matchers with MockitoSugar with 
 
   "resolve" should "produce an error when the deployment type isn't found" in {
     val deploymentTask = TaskResolver.resolve(
-      deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
+      deployment = Deployment("test", "autoscaling", NEL.of("stack"), NEL.of("region"), Some(NEL.of("stage")), NEL.of("uploadArtifact", "deploy"), "app", "directory", Nil, Map("bucket" -> JsString("bucketName"))),
       deploymentResources = DeploymentResources(reporter, stubLookup(), artifactClient, stsClient, global),
       parameters = DeployParameters(Deployer("Test user"), Build("test-project", "1"), Stage("PROD"), updateStrategy = MostlyHarmless),
       deploymentTypes = Nil,

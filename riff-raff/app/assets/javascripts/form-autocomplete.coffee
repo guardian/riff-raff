@@ -4,6 +4,23 @@ menuOpen = false
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
 
+updateStageInfo = () ->
+  elemProjectInput = $('#projectInput')
+  isExactMatch = elemProjectInput.hasClass("project-exact-match")
+  selectedProject = elemProjectInput.val()
+  selectedBuild = $('#buildInput').val()
+
+  url = jsRoutes.controllers.DeployController.allowedStages(selectedProject, selectedBuild).url
+
+  $.ajax({
+    url: url,
+    dataType: 'html',
+    success: (stageOptions) ->
+      stageInput = $('#stage')
+      stageInput.html(stageOptions)
+      stageInput.prop('disabled', false)
+  });
+
 updateDeployInfo = () ->
   elemProjectInput = $('#projectInput')
   isExactMatch = elemProjectInput.hasClass("project-exact-match")
@@ -118,8 +135,10 @@ $ ->
       close: (event,ui) ->
         menuOpen = false
         updateBuildInfo( input.val() )
+        updateStageInfo()
       select: (event,ui) ->
         updateBuildInfo( input.val() )
+        updateStageInfo()
       minLength:0
 
   $('#buildInput').on('input keyup',
@@ -131,6 +150,11 @@ $ ->
   $('#buildInput').focus (e) ->
     if (!menuOpen)
       $(e.target).autocomplete("search")
+
+  $('#buildInput').on('input keyup',
+    ->
+      updateStageInfo()
+  )
 
   $('#stage').change ->
     updateDeployInfo()

@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class DeploymentGraphActionFlatteningTest extends AnyFlatSpec with Matchers {
   "flattenActions" should "flatten out the actions in a deployment graph" in {
     val deployment =
-      Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), NEL.of("action1", "action2"), "bob", "bob", Nil, Map.empty)
+      Deployment("bob", "autoscaling", NEL.of("stackName"), NEL.of("eu-west-1"), None, NEL.of("action1", "action2"), "bob", "bob", Nil, Map.empty)
     val graph = Graph(deployment)
     val flattenedGraph = DeploymentGraphActionFlattening.flattenActions(graph)
 

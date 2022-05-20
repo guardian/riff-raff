@@ -27,6 +27,7 @@ import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import utils.{ChangeFreeze, LogAndSquashBehaviour}
+import magenta.input.RiffRaffYamlReader
 
 class DeployController(config: Config,
                        menu: Menu,
@@ -132,6 +133,47 @@ class DeployController(config: Config,
       Map("label" -> label, "value" -> build.number)
     }
     Ok(Json.toJson(possibleProjects))
+  }
+
+
+  def allowedStages(project: String, id: String) = AuthAction { request =>
+    val allStages = prismLookup.stages
+    def asJsonResponse(stages: Seq[String]) = Ok(Json.toJson(stages).toString()).as("application/json")
+
+    def defaultStage(stages: Seq[String]): Option[String] = {
+      val sorted = stages.sorted
+      val code = sorted.find(stage => stage.contains("CODE"))
+      val nonProd = sorted.find(stage => !stage.contains("PROD"))
+      code.orElse(nonProd).orElse(stages.headOption)
+    }
+
+    def asHtmlResponse(stages: Seq[String], selected: Option[String]) = {
+      val stageOptions = stages.map(stage => {
+        val isSelected = if (selected.contains(stage)) "selected" else ""
+        s"<option ${isSelected} value=\"${stage}\">${stage}</option>"})
+
+      val options = s"""<option value="" class="blank">--- Choose a stage ---</option>${stageOptions.mkString}""".stripMargin;
+
+      Ok(options)
+    }
+
+    if (project.trim.isEmpty || id.trim.isEmpty) {
+      asHtmlResponse(allStages, None)
+    } else {
+      val build = Build(project, id)
+      val artifact = S3YamlArtifact(build, config.artifact.aws.bucketName)
+      val deployObjectPath = artifact.deployObject
+      val deployObjectContent = S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
+
+      val allowedStages = for {
+        content <- deployObjectContent.map(Some.apply).getOrElse(None)
+        config <- RiffRaffYamlReader.fromString(content).toOption
+        allowedStages <- config.allowedStages
+      } yield allowedStages
+
+      val stages = allowedStages.getOrElse(allStages)
+      asHtmlResponse(stages, defaultStage(stages))
+    }
   }
 
   def deployHistory(project: String, maybeStage: Option[String], isExactMatchProjectName: Option[Boolean]) = AuthAction { request =>
