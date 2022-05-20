@@ -135,8 +135,10 @@ $ ->
       close: (event,ui) ->
         menuOpen = false
         updateBuildInfo( input.val() )
+        updateStageInfo()
       select: (event,ui) ->
         updateBuildInfo( input.val() )
+        updateStageInfo()
       minLength:0
 
   $('#buildInput').on('input keyup',
