@@ -16,9 +16,9 @@ updateStageInfo = () ->
     url: url,
     dataType: 'html',
     success: (stageOptions) ->
-      stageInput = document.getElementById('stage')
-      stageInput.innerHTML = stageOptions
-      stageInput.disabled = false
+      stageInput = $('#stage')
+      stageInput.html(stageOptions)
+      stageInput.prop('disabled', false)
   });
 
 updateDeployInfo = () ->
