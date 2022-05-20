@@ -1,5 +1,6 @@
 regions: [eu-west-1]
 stacks: [deploy]
+allowedStages: [CODE, PROD]
 deployments:
   riff-raff:
     type: self-deploy
