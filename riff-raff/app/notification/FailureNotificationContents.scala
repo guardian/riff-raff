@@ -37,7 +37,7 @@ class FailureNotificationContents(prefix: String) {
     )
   }
 
-  def scheduledDeployFailureNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, teamTargetsSearch: (UUID, DeployParameters) => List[Target], riffRaffTargets: List[Target]): NotificationContentsWithTargets = {
+  def scheduledDeployFailureNotificationContents(scheduledDeployError: ScheduledDeployNotificationError, teamTargetsSearch: (UUID, DeployParameters) => List[Target], fallbackTargets: List[Target]): NotificationContentsWithTargets = {
     val subject = "Scheduled Deployment failed to start"
     scheduledDeployError match {
       case SkippedDueToPreviousFailure(record) =>
@@ -46,11 +46,11 @@ class FailureNotificationContents(prefix: String) {
         NotificationContentsWithTargets(contents, teamTargetsSearch(record.uuid, record.parameters))
       case SkippedDueToPreviousWaitingDeploy(record) =>
         val contents = NotificationContents(subject, scheduledDeployError.message, List(viewProblematicDeploy(record.uuid, "waiting")))
-        NotificationContentsWithTargets(contents, riffRaffTargets)
+        NotificationContentsWithTargets(contents, fallbackTargets)
       case NoDeploysFoundForStage(_, _) =>
         val scheduledDeployConfig = Action("View Scheduled Deployment configuration", scheduledDeployConfigUrl)
         val contents = NotificationContents(subject, scheduledDeployError.message, List(scheduledDeployConfig))
-        NotificationContentsWithTargets(contents, riffRaffTargets)
+        NotificationContentsWithTargets(contents, fallbackTargets)
     }
   }
 
