@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 
 class DeployFailureNotifications(config: Config, targetResolver: TargetResolver, lookup: Lookup) (implicit ec: ExecutionContext) extends Lifecycle with Logging {
   lazy private val prefix = config.urls.publicPrefix
-  lazy private val riffRaffTargets = List(App("riff-raff"), Stack("deploy"))
+  lazy private val fallbackTargets = List(Stack("deploy"))
   lazy private val failureNotificationContents = new FailureNotificationContents(prefix)
 
   def getAwsAccountIdTarget(target: ci.Target, parameters: DeployParameters, uuid: UUID): Option[Target] = {
@@ -53,7 +53,7 @@ class DeployFailureNotifications(config: Config, targetResolver: TargetResolver,
       case Right(targets) => targets
       case Left(error) => {
         log.warn(s"Failed to identify notification targets for ${parameters.build.projectName} due to $error")
-        riffRaffTargets
+        fallbackTargets
       }
     }
   }
@@ -73,7 +73,7 @@ class DeployFailureNotifications(config: Config, targetResolver: TargetResolver,
   }
 
   def scheduledDeployFailureNotification(error: ScheduledDeployNotificationError): Unit = {
-    val contentsWithTargets = failureNotificationContents.scheduledDeployFailureNotificationContents(error, getTargets, riffRaffTargets)
+    val contentsWithTargets = failureNotificationContents.scheduledDeployFailureNotificationContents(error, getTargets, fallbackTargets)
     notifyViaAnghammarad(contentsWithTargets.notificationContents, contentsWithTargets.targets)
   }
 
