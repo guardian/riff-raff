@@ -49,6 +49,8 @@ object StackPolicy {
       // API gateway
       "AWS::ApiGateway::RestApi",
       "AWS::ApiGateway::DomainName",
+      "AWS::ApiGateway::BasePathMapping",
+      "AWS::ApiGateway::Stage",
       // buckets (although we think they can't be deleted with content)
       "AWS::S3::Bucket",
       // DNS infrastructure
