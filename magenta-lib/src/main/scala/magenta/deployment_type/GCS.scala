@@ -43,6 +43,8 @@ object GCS extends DeploymentType {
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(true)
 
+
+
   val cacheControl = Param[List[PatternValue]]("cacheControl",
     """
       |Set the cache control header for the uploaded files. This can take two forms, but in either case the format of
@@ -77,6 +79,17 @@ object GCS extends DeploymentType {
       |    ]
     """.stripMargin
   )
+
+  val removeObseleteFiles = Param(
+    name = "removeObseleteFiles",
+    documentation =
+      """
+        | This is primarily the data-tech's airflow deployment to cloud-composer.
+        | When DAGs ( or other python library files ) are removed frou our codebase, they remain in the deploy bucket
+        | Set to true will remove these unwanted files from GCS on each deploy
+        | Defaults to false
+        |""".stripMargin
+  ).default(false)
 
   val uploadStaticFiles = Action(
     name = "uploadStaticFiles",
@@ -118,6 +131,7 @@ object GCS extends DeploymentType {
       case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of bucketByStage or bucket must be provided")
     }
 
+
     val maybeDatum = resourceLookupFor(pathPrefixResource)
     val maybeString = maybeDatum.map(_.value)
     val prefix: String = maybeString.getOrElse(GCSUpload.prefixGenerator(
@@ -131,6 +145,7 @@ object GCS extends DeploymentType {
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg, target, reporter),
           publicReadAcl = publicReadAcl(pkg, target, reporter),
+          removeObseleteFiles = removeObseleteFiles(pkg, target, reporter)
         )
       )
     }

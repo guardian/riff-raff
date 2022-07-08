@@ -19,6 +19,7 @@ case class GCSUpload(
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
   publicReadAcl: Boolean = false,
+  removeObseleteFiles: Boolean = false
 )(implicit val keyRing: KeyRing, artifactClient: S3Client,
   withClientFactory: (KeyRing, DeploymentResources) => (Storage => Unit) => Unit = GCS.withGCSClient[Unit]) extends Task with Loggable {
 
@@ -84,6 +85,7 @@ case class GCSUpload(
           result
         }
       }
+
     }
     resources.reporter.verbose(s"Finished transfer of ${fileString(objectMappings.size)}")
   }
