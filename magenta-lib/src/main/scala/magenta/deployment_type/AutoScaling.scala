@@ -1,9 +1,11 @@
 package magenta.deployment_type
 
 import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch, TagRequirement}
-import magenta.{DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Stack, Stage, App}
+import magenta.{App, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack, Stage}
 import magenta.tasks._
 import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
+import magenta.tasks.{S3 => S3Tasks}
+import software.amazon.awssdk.services.ssm.SsmClient
 
 sealed trait MigrationTagRequirements
 case object NoMigration extends MigrationTagRequirements
@@ -36,7 +38,7 @@ object AutoScalingGroupLookup {
   }
 }
 
-object AutoScaling extends DeploymentType {
+object AutoScaling extends DeploymentType with BucketParameters {
   val name = "autoscaling"
   val documentation =
     """
@@ -48,17 +50,6 @@ object AutoScaling extends DeploymentType {
       | - scale up, wait for the new instances to become healthy and then scale back down
     """.stripMargin
 
-  val bucket = Param[String]("bucket",
-    """
-      |S3 bucket name to upload artifact into.
-      |
-      |The path in the bucket is `<stack>/<stage>/<packageName>/<fileName>`.
-      |
-      |Despite there being a default for this we are migrating to always requiring it to be specified.
-    """.stripMargin,
-    optional = true,
-    deprecatedDefault = true
-  ).defaultFromContext((_, target) => Right(s"${target.stack.name}-dist"))
   val secondsToWait = Param("secondsToWait", "Number of seconds to wait for instances to enter service").default(15 * 60)
   val healthcheckGrace = Param("healthcheckGrace", "Number of seconds to wait for the AWS api to stabilise").default(20)
   val warmupGrace = Param("warmupGrace", "Number of seconds to wait for the instances in the load balancer to warm up").default(1)
@@ -134,6 +125,9 @@ object AutoScaling extends DeploymentType {
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }
 
+  // TODO this is copied from `Lambda.scala` and could be DRYed out
+  def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
+
   val uploadArtifacts = Action("uploadArtifacts",
     """
       |Uploads the files in the deployment's directory to the specified bucket.
@@ -148,10 +142,19 @@ object AutoScaling extends DeploymentType {
       packageName = if (prefixPackage(pkg, target, reporter
       )) Some(pkg.name) else None
     )
+
+    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+
+    val s3Bucket = S3Tasks.getBucketName(
+      bucket,
+      withSsm(keyRing, target.region, resources),
+      resources.reporter
+    )
+
     List(
       S3Upload(
         target.region,
-        bucket(pkg, target, reporter),
+        s3Bucket,
         Seq(pkg.s3Package -> prefix),
         publicReadAcl = publicReadAcl(pkg, target, reporter)
       )
