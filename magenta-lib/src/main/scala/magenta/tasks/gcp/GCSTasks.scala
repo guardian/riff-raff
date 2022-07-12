@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import scala.collection.parallel.CollectionConverters._
 
 case class GCSUpload(
-  bucket: String,
+  bucket: Map[String, List[String]],
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
   publicReadAcl: Boolean = false,

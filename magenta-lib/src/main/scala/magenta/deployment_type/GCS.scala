@@ -24,15 +24,22 @@ object GCS extends DeploymentType {
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "GCS bucket to upload package files to (see also `bucketResource`)", optional = true)
-  val bucketByStage: Param[Map[String, String]] = Param[Map[String, String]](
+  val bucketByStage: Param[Map[String, Map[String, List[String]]]] = Param[Map[String, Map[String, List[String]]]](
     name = "bucketByStage",
     documentation =
       """
-        |A dict of stages to buckets in the package. When the current stage is found in here the bucket
-        |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists.
+        |A dict of stages to buckets in the package along with details of how When the current stage is found in here the bucket
+        |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists. If the name is defined here
+        | some other details can be included
+        |   -
+        |   - directoriesToPrune: A list of directories within the bucket. In each of these, recursively search for any files that aren't present in the current upload and remove them
         |```
         |bucketByStage:
-        |  PROD: prod-bucket
+        |  PROD:
+        |    name: [prod-bucket]
+        |    dirw
+        |
+        |
         |  CODE: code-bucket
         |```
         |""".stripMargin,
@@ -145,7 +152,6 @@ object GCS extends DeploymentType {
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg, target, reporter),
           publicReadAcl = publicReadAcl(pkg, target, reporter),
-          removeObseleteFiles = removeObseleteFiles(pkg, target, reporter)
         )
       )
     }
