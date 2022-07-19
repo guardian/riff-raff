@@ -65,7 +65,7 @@ object Dependencies {
     "org.webjars" % "jquery-ui" % "1.13.0",
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
-    "org.webjars" % "momentjs" % "2.16.0",
+    "org.webjars" % "momentjs" % "2.29.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "5.3",
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.30",
