@@ -12,7 +12,7 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.parboiled" %% "parboiled" % "2.1.8",
+    "org.parboiled" %% "parboiled" % "2.4.0",
     "org.typelevel" %% "cats-core" % "2.7.0",
     "org.scalatest" %% "scalatest" % "3.2.9" % Test,
     "org.mockito" %% "mockito-scala" % "1.16.37" % Test
