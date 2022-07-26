@@ -24,33 +24,66 @@ object GCS extends DeploymentType {
 
   //required configuration, you cannot upload without setting these
   val bucket = Param[String]("bucket", "GCS bucket to upload package files to (see also `bucketResource`)", optional = true)
-  val bucketByStage: Param[Map[String, Map[String, List[String]]]] = Param[Map[String, Map[String, List[String]]]](
+  val bucketByStage: Param[Map[String, String]] = Param[Map[String, String]](
     name = "bucketByStage",
     documentation =
       """
-        |A dict of stages to buckets in the package along with details of how When the current stage is found in here the bucket
-        |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists. If the name is defined here
-        | some other details can be included
-        |   -
-        |   - directoriesToPrune: A list of directories within the bucket. In each of these, recursively search for any files that aren't present in the current upload and remove them
+        |A dict of stages to buckets in the package. When the current stage is found in here the bucket
+        |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists.
         |```
         |bucketByStage:
-        |  PROD:
-        |    name: [prod-bucket]
-        |    dirw
-        |
-        |
+        |  PROD: prod-bucket
         |  CODE: code-bucket
         |```
         |""".stripMargin,
     optional = true
   )
 
+  val directoriesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
+    name = "directoriesToPruneByStage",
+    documentation =
+      """
+        |A list of directories in the target buckets which will be pruned of any files not in the current upload for the current stage
+        |Typically this is used to remove obsolete dags and associated python assets from a airflow deploy to cloud composer
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [dags/dags, dags/guardian]
+        | CODE: [dags/dags, dags/guardian]
+        |```
+        |Or more likely in this case:
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [dags/dags, dags/guardian]
+        | CODE: [dags/dags, dags/guardian]
+        |```
+        |
+         |""".stripMargin,
+    optional = true
+  )
+
+  val fileTypesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
+    name = "directoriesToPruneByStage",
+    documentation =
+      """
+        |Specify the types of file to remove when they are no longer in the current upload. Use case: Remove obselete dags from an airflow to cloud composer deployment
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [py, json]
+        | CODE: [py, json]
+        |```
+        |Or more likely in this case:
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [py, json]
+        |```
+        |
+         |""".stripMargin,
+    optional = true
+  )
+
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(true)
-
-
 
   val cacheControl = Param[List[PatternValue]]("cacheControl",
     """
@@ -86,17 +119,6 @@ object GCS extends DeploymentType {
       |    ]
     """.stripMargin
   )
-
-  val removeObseleteFiles = Param(
-    name = "removeObseleteFiles",
-    documentation =
-      """
-        | This is primarily the data-tech's airflow deployment to cloud-composer.
-        | When DAGs ( or other python library files ) are removed frou our codebase, they remain in the deploy bucket
-        | Set to true will remove these unwanted files from GCS on each deploy
-        | Defaults to false
-        |""".stripMargin
-  ).default(false)
 
   val uploadStaticFiles = Action(
     name = "uploadStaticFiles",
@@ -138,7 +160,6 @@ object GCS extends DeploymentType {
       case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of bucketByStage or bucket must be provided")
     }
 
-
     val maybeDatum = resourceLookupFor(pathPrefixResource)
     val maybeString = maybeDatum.map(_.value)
     val prefix: String = maybeString.getOrElse(GCSUpload.prefixGenerator(
@@ -146,16 +167,42 @@ object GCS extends DeploymentType {
         stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
-      List(
-        GCSUpload(
-          bucket = bucketName,
-          paths = Seq(pkg.s3Package -> prefix),
-          cacheControlPatterns = cacheControl(pkg, target, reporter),
-          publicReadAcl = publicReadAcl(pkg, target, reporter),
-        )
+
+    val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name,
+      directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
+
+    List(
+      GCSUpload(
+        bucket = bucketConfig,
+        paths = Seq(pkg.s3Package -> prefix),
+        cacheControlPatterns = cacheControl(pkg, target, reporter),
+        publicReadAcl = publicReadAcl(pkg, target, reporter),
       )
-    }
+    )}
   }
 
   def defaultActions = List(uploadStaticFiles)
 }
+
+object GcsTargetBucket {
+
+  def apply(name: String,
+            stage: String,
+            maybeDirectories: Option[Map[String, List[String]]],
+            maybeFileTypes: Option[Map[String, List[String]]]): GcsTargetBucket = {
+
+      def listOrEmpty(maybeMap: Option[Map[String, List[String]]]) =
+        (for{
+          map <- maybeMap
+          value <- map.get(stage)
+        } yield value).getOrElse(List.empty)
+
+
+      val directoriesToPurge = listOrEmpty(maybeDirectories)
+      val fileTypesToPurge = listOrEmpty(maybeFileTypes)
+      GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
+
+  }
+}
+
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String])

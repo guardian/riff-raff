@@ -6,9 +6,10 @@ import java.net.ServerSocket
 import java.util.UUID
 import com.google.api.client.http.AbstractInputStreamContent
 import com.google.api.services.storage.Storage
-import com.google.api.services.storage.model.StorageObject
+import com.google.api.services.storage.model.{Objects, StorageObject}
 import magenta.Strategy.MostlyHarmless
 import magenta.artifact.{S3Path, S3Object => MagentaS3Object}
+import magenta.deployment_type.GcsTargetBucket
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.input.All
 import magenta.tasks.gcp.{GCSPath, GCSUpload}
@@ -26,6 +27,8 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.utils.IoUtils
+import scala.collection.JavaConverters._
+
 
 import java.util.concurrent.Executors
 import scala.collection.mutable
@@ -274,7 +277,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val storageObjectsInsert = mock[storageObjects.Insert]
 
     val sourceBucket = "artifact-bucket"
-    val targetBucket = "destination-bucket"
+    val targetBucket = GcsTargetBucket("destination-bucket", List.empty, List.empty)
     val sourceKey = "foo/bar/the-jar.jar"
     val targetKey = "keyPrefix/the-jar.jar"
 
@@ -287,7 +290,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .build())
     ).thenReturn(mockGetObjectAsBytesResponse())
 
-    val storageObjectResult = new StorageObject().setBucket(targetBucket).setName("keyPrefix/the-jar.jar")
+    val storageObjectResult = new StorageObject().setBucket(targetBucket.name).setName("keyPrefix/the-jar.jar")
 
     when(storageClient.objects()).thenReturn(storageObjects)
     when(storageObjects.insert(any[String], any[StorageObject], any[AbstractInputStreamContent])).thenReturn(storageObjectsInsert)
@@ -302,7 +305,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     source.key should be (sourceKey)
     source.size should be (31)
 
-    target.bucket should be (targetBucket)
+    target.bucket should be (targetBucket.name)
     target.key should be (targetKey)
 
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
@@ -324,9 +327,12 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val storageObjects = mock[storageClient.Objects]
     val storageObjectsInsert = mock[storageObjects.Insert]
 
+    val bucket = GcsTargetBucket("bucket", List.empty, List.empty)
+
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+
 
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
@@ -339,9 +345,11 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     when(storageObjects.insert(any[String], any[StorageObject], any[AbstractInputStreamContent])).thenReturn(storageObjectsInsert)
     when(storageObjectsInsert.execute()).thenReturn(storageObjectResult)
 
+
+
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new GCSUpload("bucket", Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, storageClientFactory(storageClient))
+    val task = new GCSUpload(bucket, Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, storageClientFactory(storageClient))
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
     task.execute(resources, stopFlag = false)
 
@@ -365,6 +373,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+    val bucket = GcsTargetBucket("bucket", List.empty, List.empty)
+
 
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
@@ -379,7 +389,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
-    val task = new GCSUpload("bucket", Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
+    val task = new GCSUpload(bucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
     task.execute(resources, stopFlag = false)
 
@@ -395,6 +405,61 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(storageObjects)
   }
 
+  it should "delete any objects previously deployed not being re-deployed in a configured folder when their types are configured" in {
+    
+    val artifactClient = mock[S3Client]
+    val storageClient = mock[Storage]
+    val storageObjects = mock[storageClient.Objects]
+    val storageObjectsInsert = mock[storageObjects.Insert]
+    val storageObjectsList = mock[storageObjects.List]
+    val storageObjectsDelete = mock[storageObjects.Delete]
+    val objects = mock[Objects]
+
+    val mockStorageObjects = List("one", "two", "three").map {
+      name =>
+        val fullName = name match {
+          case "three" => s"sub/${name}.txt"
+          case _ => s"${name}.txt"
+        }
+        val mockStorageObject = mock[StorageObject]
+        when(mockStorageObject.getName).thenReturn(fullName)
+        mockStorageObject
+    }.asJava
+
+    val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
+    val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+    val bucket = GcsTargetBucket("bucket", List("test/123"), List("txt"))
+
+    val objectResult = mockListObjectsResponse(List(fileOne, fileThree))
+    when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
+
+    when(artifactClient.getObjectAsBytes(any[GetObjectRequest])).thenReturn(mockGetObjectAsBytesResponse())
+
+    val storageObjectResult = new StorageObject().setBucket("bucket").setName("keyPrefix/the-jar.jar")
+
+    when(storageClient.objects()).thenReturn(storageObjects)
+    when(storageObjects.insert(any[String], any[StorageObject], any[AbstractInputStreamContent])).thenReturn(storageObjectsInsert)
+    when(storageObjectsInsert.execute()).thenReturn(storageObjectResult)
+    when(storageObjects.list(ArgumentMatchers.eq(bucket.name))).thenReturn(storageObjectsList)
+    when(storageObjectsList.setPrefix(ArgumentMatchers.eq(bucket.directoriesToPurge.head))).thenReturn(storageObjectsList)
+    when(storageObjectsList.execute).thenReturn(objects)
+    when(objects.getItems).thenReturn(mockStorageObjects)
+    when(objects.getNextPageToken).thenReturn(null)
+    when(storageObjects.delete(any[String], any[String])).thenReturn(storageObjectsDelete)
+
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
+
+    val task = new GCSUpload(bucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
+    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
+    task.execute(resources, stopFlag = false)
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+
+    verify(storageObjects, times(1)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
   it should "use different cache control" in {
     val artifactClient = mock[S3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
@@ -402,10 +467,13 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
     val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
+    val bucket = GcsTargetBucket("bucket", List.empty, List.empty)
+
+
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-    val task = new GCSUpload("bucket", Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
+    val task = new GCSUpload(bucket, Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
 
     task.transfers.find(_.source == fileOne).get.target.getCacheControl should be("no-cache")
     task.transfers.find(_.source == fileTwo).get.target.getCacheControl should be("no-cache")
