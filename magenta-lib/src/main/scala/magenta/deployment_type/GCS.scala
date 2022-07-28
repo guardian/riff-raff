@@ -54,7 +54,6 @@ object GCS extends DeploymentType {
         |```
         |directoriesToPruneByStage:
         | PROD: [dags/dags, dags/guardian]
-        | CODE: [dags/dags, dags/guardian]
         |```
         |
          |""".stripMargin,
