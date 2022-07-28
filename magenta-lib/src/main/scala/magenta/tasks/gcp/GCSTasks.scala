@@ -127,6 +127,7 @@ case class GCSUpload(
 
       val listResults = query.execute
       val currentPageItems = Option(listResults.getItems).map(resultsSet => resultsSet.asScala).getOrElse(List.empty)
+      logger.info(s"+++++++++++++++ Current: ${currentPageItems.map(_.getName)}")
       val allItemsFoundSoFar = foundSoFar ++ currentPageItems
 
       Option(listResults.getNextPageToken) match {
@@ -137,9 +138,11 @@ case class GCSUpload(
 
     def allObjectsInMatchingDirectories(directoriesToPurge: List[String], itemsSoFar: List[StorageObject] = List.empty): List[StorageObject] = {
         directoriesToPurge match {
-          case Nil => itemsSoFar
+          case Nil =>
+            logger.info(s"++++++++++++++ Done So for ${itemsSoFar.map(_.getName)}")
+            itemsSoFar
           case head :: tail =>
-            logger.debug(s"++++++++++++++ $head")
+            logger.info(s"++++++++++++++ Dir: $head So for ${itemsSoFar.map(_.getName)}")
             val gcsQuery = storage.objects()
              .list(gcsTargetBucket.name)
              .setPrefix(head)
@@ -155,13 +158,15 @@ case class GCSUpload(
       s".${configuredFileType}"
     }
 
-    def filterListByFileTypes(baseList: List[StorageObject], filetypesToPurge: List[String]): List[StorageObject] =
+    def filterListByFileTypes(allDeployedObjects: List[StorageObject], filetypesToPurge: List[String], matchingObjects: List[StorageObject] = List.empty ): List[StorageObject] = {
       filetypesToPurge match {
-        case Nil => baseList
+        case Nil => matchingObjects
         case head :: tail =>
           val safeFileExtension = tidyFileType(head)
-          filterListByFileTypes(baseList.filter(ob => ob.getName.endsWith(safeFileExtension)), tail)
+          val objectsMatchingThisFiletype = allDeployedObjects.filter(ob => ob.getName.endsWith(safeFileExtension))
+          filterListByFileTypes(allDeployedObjects, tail, matchingObjects ::: objectsMatchingThisFiletype)
       }
+    }
 
     def findCurrentObjectsNotInThisTransfer(objectsToCheckInCurrentDeploy: List[StorageObject], objectsPreviouslyDeployed: List[StorageObject], objectsToDelete: List[StorageObject] = Nil): List[StorageObject] = {
       objectsToCheckInCurrentDeploy match {
@@ -175,7 +180,6 @@ case class GCSUpload(
               //Was previously deployed but not in this deploy. Delete it
               findCurrentObjectsNotInThisTransfer(tail, objectsPreviouslyDeployed,  head :: objectsToDelete)
           }
-
       }
     }
 
@@ -186,13 +190,13 @@ case class GCSUpload(
     }
 
     val allItemsFilteredByType = filterListByFileTypes(allItemsForConfiguredDirectories, gcsTargetBucket.fileTypesToPurge)
+   // logger.debug(s"Raw Deployed: ${allItemsForConfiguredDirectories.map(_.getName)}")
     logger.debug(s"Deployed: ${allItemsFilteredByType.map(_.getName)}")
-    logger.debug(s"To deploy: ${objectsInThisDeploy.map(_.getName)}")
-    logger.debug(s"To deployList: ${objectsInThisDeploy}")
-
+   // logger.debug(s"To deploy: ${objectsInThisDeploy.map(_.getName)}")
+    //logger.debug(s"To deployList: ${objectsInThisDeploy}")
 
     val toDelete = findCurrentObjectsNotInThisTransfer(allItemsFilteredByType, objectsInThisDeploy)
-    logger.debug(s"There are ${toDelete.size} obbject to go ")
+    logger.debug(s"+++ To DELETE:: ${toDelete.map(_.getName)}")
     toDelete
   }
 }

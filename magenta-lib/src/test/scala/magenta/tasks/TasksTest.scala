@@ -40,7 +40,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
 
-  ignore should "create an upload request with correct permissions" in {
+  "PutRec" should "create an upload request with correct permissions" in {
     val putRec = PutReq(
       source = MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       target = S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
@@ -63,7 +63,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     awsRequestWithoutAcl.acl should be (ObjectCannedACL.PUBLIC_READ)
   }
 
-  ignore should "create an upload request with cache control and content type" in {
+  it should "create an upload request with cache control and content type" in {
     val putRec = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
@@ -80,7 +80,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     Option(awsRequest.contentType) should be (Some("application/json"))
   }
 
-  ignore should "use a default mime type from S3" in {
+  it should "use a default mime type from S3" in {
     val putRecOne = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.css", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.css"),
@@ -109,7 +109,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     awsRequestThree.contentType should be ("application/javascript")
   }
 
-  ignore should "upload a single file to S3" in {
+  "S3Upload" should "upload a single file to S3" in {
     val artifactClient = mock[S3Client]
     val s3Client = mock[S3Client]
 
@@ -169,7 +169,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     putObjectData.head shouldBe "Some content for this S3Object."
   }
 
-  ignore should "upload a directory to S3" in {
+  it should "upload a directory to S3" in {
     val artifactClient = mock[S3Client]
     val s3Client = mock[S3Client]
 
@@ -203,7 +203,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(s3Client)
   }
 
-  ignore should "upload a directory to S3 with no prefix" in {
+  it should "upload a directory to S3 with no prefix" in {
     val artifactClient = mock[S3Client]
     val s3Client = mock[S3Client]
 
@@ -238,7 +238,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(s3Client)
   }
 
-  ignore should "use different cache control" in {
+  it should "use different cache control" in {
     val artifactClient = mock[S3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
@@ -255,7 +255,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     task.requests.find(_.source == fileThree).get.cacheControl should be(Some("public; max-age=3600"))
   }
 
-  ignore should "use overridden mime type" in {
+  it should "use overridden mime type" in {
     val artifactClient = mock[S3Client]
     val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.test.txt", 31)
     val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.test.xpi", 31)
@@ -300,11 +300,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "upload a directory to GCS" in new GcsDirUploadScope  {
-    override def magentaObjects: List[MagentaS3Object] =
-      List("test/123/package/one.txt", "test/123/package/two.txt", "test/123/package/sub/three.txt")
-        .map(name => MagentaS3Object(sourceBucket, name, 31)  )
-
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
 
     val task = new GCSUpload(targetBucket, Seq(packageRoot -> "myStack/CODE/myApp"))(fakeKeyRing, artifactClient, storageClientFactory(storageClient))
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
@@ -323,13 +318,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   it should "upload a directory to GCS with no prefix" in new GcsDirUploadScope {
 
-    override def magentaObjects: List[MagentaS3Object] =
-      List("test/123/package/one.txt", "test/123/package/two.txt", "test/123/package/sub/three.txt")
-        .map(name => MagentaS3Object(sourceBucket, name, 31)  )
-
-
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
     val task = new GCSUpload(targetBucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
     task.execute(resources, stopFlag = false)
@@ -346,65 +334,110 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(storageObjects)
   }
 
-  it should "delete any objects previously deployed not being re-deployed in a configured folder when their types are configured" in  new GcsDirUploadScope {
-    override def targetBucket: GcsTargetBucket  = GcsTargetBucket("target-bucket", List("test/123"), List("txt"))
+  it should "delete any objects previously deployed not being re-deployed in a configured folder when their types are configured" in  new GcsDeleteOnUploadScope {
 
-    val storageObjectsList = mock[storageObjects.List]
-    val storageObjectsDelete = mock[storageObjects.Delete]
-    val objects = mock[Objects]
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(dirName)
 
-    val mockStorageObjects = List("one.txt", "two.txt", "sub/three.txt").map {
-      name =>
-          val mockStorageObject = mock[StorageObject]
-          when(mockStorageObject.getName).thenReturn(name)
-          mockStorageObject
-    }.asJava
-
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List((dirName, List("one.txt", "two.txt", "sub/three.txt")))
     override def magentaObjects: List[MagentaS3Object] =
       List(
         MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
         MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
       )
 
-    
-    when(storageObjects.list(ArgumentMatchers.eq(targetBucket.name))).thenReturn(storageObjectsList)
-    when(storageObjectsList.setPrefix(ArgumentMatchers.eq(targetBucket.directoriesToPurge.head))).thenReturn(storageObjectsList)
-    when(storageObjectsList.execute).thenReturn(objects)
-    when(objects.getItems).thenReturn(mockStorageObjects)
-    when(objects.getNextPageToken).thenReturn(null)
-    when(storageObjects.delete(any[String], any[String])).thenReturn(storageObjectsDelete)
-
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
-    val task = new GCSUpload(targetBucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
-    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
-    task.execute(resources, stopFlag = false)
-
     verify(storageObjects, times(1)).list(any[String])
     verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
-
     verify(storageObjects, times(1)).delete(any[String], any[String])
     verifyNoMoreInteractions(storageObjects)
   }
 
-  ignore should "use different cache control" in {
-    val artifactClient = mock[S3Client]
-    val fileOne = MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
-    val fileTwo = MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31)
-    val fileThree = MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
-    val objectResult = mockListObjectsResponse(List(fileOne, fileTwo, fileThree))
-    when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
-    val bucket = GcsTargetBucket("bucket", List.empty, List.empty)
+  it should "delete objects previously redeployed in different configured directories" in new GcsDeleteOnUploadScope {
+    def dirsToPrune: List[String] = List("test/123", "test/124")
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List(
+      ("test/123", List("one.txt", "sub1/two.txt")),
+      ("test/124", List("sub2/three.txt", "sub2/four.txt", "sub2/five.txt"))
+    )
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub2/three.txt", 31)
+      )
+
+    verify(storageObjects, times(2)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(3)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
+  it should "only delete files with a configured suffix" in new GcsDeleteOnUploadScope {
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(dirName)
+
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List((dirName, List("one.txt", "two.txt", "sub/three.txt", "sub/four.py")))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+      )
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(1)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
+  it should "only delete files with a different configured suffixes" in new GcsDeleteOnUploadScope {
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(dirName)
+
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt", "py"))
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List((dirName, List("one.txt", "two.txt", "sub/three.txt", "sub/four.py")))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+      )
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(2)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
 
 
+ it should "only delete files in a configured directory" in new GcsDeleteOnUploadScope {
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(dirName)
+
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List(
+      ("test/123", List("one.txt", "sub1/two.txt")),
+      ("test/124", List("sub2/three.txt", "sub2/four.txt", "sub2/five.txt"))
+    )
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub2/three.txt", 31)
+      )
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(1)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
+  it should "use different cache control" in  new GcsDirUploadScope {
 
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
-    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-    val task = new GCSUpload(bucket, Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
+    val task = new GCSUpload(targetBucket, Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
 
-    task.transfers.find(_.source == fileOne).get.target.getCacheControl should be("no-cache")
-    task.transfers.find(_.source == fileTwo).get.target.getCacheControl should be("no-cache")
-    task.transfers.find(_.source == fileThree).get.target.getCacheControl should be("public; max-age=3600")
+    task.transfers.find(_.source == magentaObjects(0)).get.target.getCacheControl should be("no-cache")
+    task.transfers.find(_.source == magentaObjects(1)).get.target.getCacheControl should be("no-cache")
+    task.transfers.find(_.source == magentaObjects(2)).get.target.getCacheControl should be("public; max-age=3600")
   }
 
   def mockListObjectsResponse(objs: List[MagentaS3Object]): ListObjectsV2Response = {
@@ -436,21 +469,24 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val sourceKey = "foo/bar/the-jar.jar"
     val targetKey = "keyPrefix/the-jar.jar"
 
-
     val artifactClient = mock[S3Client]
     val storageClient = mock[Storage]
     val storageObjects = mock[storageClient.Objects]
     val storageObjectsInsert = mock[storageObjects.Insert]
 
     val sourceBucket = "artifact-bucket"
-  //  val targetzBucketName =
+    val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
+
+
     def targetBucket: GcsTargetBucket = GcsTargetBucket("destination-bucket", List.empty, List.empty)
+    def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/two.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+      )
 
-
-    def magentaObjects: List[MagentaS3Object]
     lazy val objectResult = mockListObjectsResponse(magentaObjects)
-
-//    val objectResult: ListObjectsV2Response = mockListObjectsResponse(List(MagentaS3Object(sourceBucket, "foo/bar/the-jar.jar", 31)))
 
     when(artifactClient.listObjectsV2(any[ListObjectsV2Request])).thenReturn(objectResult)
 
@@ -475,8 +511,43 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     when(artifactClient.getObjectAsBytes(any[GetObjectRequest])).thenReturn(mockGetObjectAsBytesResponse())
   }
 
-  trait GcsDelete
+  trait GcsDeleteOnUploadScope extends GcsDirUploadScope {
 
+    def currentlyDeployedFileNames: List[(String, List[String])]
+
+    val storageObjectsList = mock[storageObjects.List]
+    val storageObjectsDelete = mock[storageObjects.Delete]
+    val objects = mock[Objects]
+
+    val mockStorageObjectsbyDir = (for{
+      (dirName, fileNames) <- currentlyDeployedFileNames
+      mockObjects = fileNames.map { name =>
+        val mockStorageObject = mock[StorageObject]
+        when(mockStorageObject.getName).thenReturn(name)
+        mockStorageObject
+      }
+    } yield (dirName, mockObjects))
+
+
+    mockStorageObjectsbyDir.map(_._1).foreach { dir  =>
+      when(storageObjects.list(ArgumentMatchers.eq(targetBucket.name))).thenReturn(storageObjectsList)
+      when(storageObjectsList.setPrefix(ArgumentMatchers.eq(dir))).thenReturn(storageObjectsList)
+      when(storageObjectsList.execute).thenReturn(objects)
+      when(objects.getNextPageToken).thenReturn(null)
+    }
+
+    //Mock calls to different prefixes returning the expected list
+    mockStorageObjectsbyDir.map(_._2.asJava) match {
+      case Nil =>
+      case head :: Nil => when(objects.getItems).thenReturn(head)
+      case head :: tail => when(objects.getItems).thenReturn(head, tail:_*)
+    }
+
+    when(storageObjects.delete(any[String], any[String])).thenReturn(storageObjectsDelete)
+    val task = new GCSUpload(targetBucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
+    val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
+    task.execute(resources, stopFlag = false)
+  }
 }
 
 
