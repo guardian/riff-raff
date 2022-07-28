@@ -29,8 +29,7 @@ case class GCSUpload(
   private val PublicAcl = Arrays.asList(new ObjectAccessControl().setEntity("allUsers").setRole("READER"))
 
   lazy val objectMappings: Seq[(S3Object, GCSPath)] = paths flatMap {
-    case (file, targetKey) =>
-       resolveMappings(file, targetKey, bucket.name)
+    case (file, targetKey) => resolveMappings(file, targetKey, bucket.name)
   }
 
   lazy val totalSize: Long = objectMappings.map{ case (source, _) => source.size }.sum

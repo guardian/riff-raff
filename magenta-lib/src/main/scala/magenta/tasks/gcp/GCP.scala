@@ -159,7 +159,8 @@ object GCP {
 }
 
 object GCS {
-  def withGCSClient[T](keyRing: KeyRing, resources: DeploymentResources)(block: Storage => T): T = block(GCP.StorageApi.client(    credentials = GCP.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
+  def withGCSClient[T](keyRing: KeyRing, resources: DeploymentResources)(block: Storage => T): T = block(GCP.StorageApi.client(
+    credentials = GCP.credentials.getCredentials(keyRing).getOrElse(resources.reporter.fail("Unable to build GCP credentials from keyring"))
   ))
 }
 

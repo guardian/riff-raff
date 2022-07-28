@@ -426,8 +426,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(storageObjects)
   }
 
-
-
   it should "only delete files in a configured directory" in new GcsDeleteOnUploadScope {
     def dirName = "test/123"
     def dirsToPrune: List[String] = List(dirName)
@@ -450,7 +448,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "use different cache control" in  new GcsDirUploadScope {
-
     val patternValues = List(PatternValue("^keyPrefix/sub/", "public; max-age=3600"), PatternValue(".*", "no-cache"))
     val task = new GCSUpload(targetBucket, Seq(packageRoot -> "keyPrefix"), cacheControlPatterns = patternValues)(fakeKeyRing, artifactClient)
 
@@ -495,7 +492,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val sourceBucket = "artifact-bucket"
     val packageRoot = new S3Path("artifact-bucket", "test/123/package/")
-
 
     def targetBucket: GcsTargetBucket = GcsTargetBucket("destination-bucket", List.empty, List.empty)
     def magentaObjects: List[MagentaS3Object] =
@@ -569,9 +565,6 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 }
 
-
-
-
 class TestServer(port:Int = 9997) {
 
   def withResponse(response: String): Unit = {
@@ -583,5 +576,4 @@ class TestServer(port:Int = 9997) {
     socket.close()
     server.close()
   }
-
 }
