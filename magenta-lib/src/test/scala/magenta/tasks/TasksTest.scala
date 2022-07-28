@@ -408,8 +408,27 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verifyNoMoreInteractions(storageObjects)
   }
 
+  it should "handle configured suffixes which start with a dot" in new GcsDeleteOnUploadScope {
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(dirName)
 
- it should "only delete files in a configured directory" in new GcsDeleteOnUploadScope {
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List(".txt", ".py"))
+    override def currentlyDeployedFileNames: List[(String, List[String])] = List((dirName, List("one.txt", "two.txt", "sub/three.txt", "sub/four.py")))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+      )
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(2)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
+
+
+  it should "only delete files in a configured directory" in new GcsDeleteOnUploadScope {
     def dirName = "test/123"
     def dirsToPrune: List[String] = List(dirName)
 

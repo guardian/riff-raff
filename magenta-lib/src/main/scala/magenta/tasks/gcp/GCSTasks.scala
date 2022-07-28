@@ -92,7 +92,6 @@ case class GCSUpload(
         }
       }
       currentlyDeployedObjects.par.foreach { case storageObjectToDelete =>
-         logger.debug(s"Deleting object ${storageObjectToDelete.getName}")
         val errorMessage = s"Could not 0emove obselete object ${storageObjectToDelete.getName}"
         GCP.api.retryWhen500orGoogleError(resources.reporter, errorMessage) {
           client.objects().delete(bucket.name, storageObjectToDelete.getName).execute
@@ -110,10 +109,7 @@ case class GCSUpload(
     else s"$key/$fileName"
 
   private def resolveMappings(path: S3Location, targetKey: String, targetBucket: String): Seq[(S3Object, GCSPath)] = {
-    val value = path.listAll()(artifactClient)
-    //logger.info(s"+++++++++ Object List size ${value.size}")
-    value.map { obj =>
-      //logger.info(s"Object: *${obj}*")
+    path.listAll()(artifactClient).map { obj =>
       obj -> GCSPath(targetBucket, subDirectoryPrefix(targetKey, obj.relativeTo(path)))
     }
   }
@@ -122,12 +118,10 @@ case class GCSUpload(
 
   private def getCurrentObjectsForDeletion(storage: Storage, gcsTargetBucket: GcsTargetBucket, objectsInThisDeploy: List[StorageObject]) : List[StorageObject] = {
 
-    //Gets all objects under a given directory
     def getAllObjectsForDirectory(query: Storage#Objects#List,  foundSoFar: List[StorageObject] = List.empty): List[StorageObject] = {
 
       val listResults = query.execute
       val currentPageItems = Option(listResults.getItems).map(resultsSet => resultsSet.asScala).getOrElse(List.empty)
-      logger.info(s"+++++++++++++++ Current: ${currentPageItems.map(_.getName)}")
       val allItemsFoundSoFar = foundSoFar ++ currentPageItems
 
       Option(listResults.getNextPageToken) match {
@@ -136,20 +130,16 @@ case class GCSUpload(
       }
     }
 
-    def allObjectsInMatchingDirectories(directoriesToPurge: List[String], itemsSoFar: List[StorageObject] = List.empty): List[StorageObject] = {
+    def allObjectsInMatchingDirectories(directoriesToPurge: List[String], itemsSoFar: List[StorageObject] = List.empty): List[StorageObject] =
         directoriesToPurge match {
-          case Nil =>
-            logger.info(s"++++++++++++++ Done So for ${itemsSoFar.map(_.getName)}")
-            itemsSoFar
+          case Nil => itemsSoFar
           case head :: tail =>
-            logger.info(s"++++++++++++++ Dir: $head So for ${itemsSoFar.map(_.getName)}")
             val gcsQuery = storage.objects()
              .list(gcsTargetBucket.name)
              .setPrefix(head)
-            val itemsFortitemsSoFar = getAllObjectsForDirectory(gcsQuery, itemsSoFar)
-            allObjectsInMatchingDirectories(tail, itemsFortitemsSoFar )
+            val allItemsForThisDirectory = getAllObjectsForDirectory(gcsQuery, itemsSoFar)
+            allObjectsInMatchingDirectories(tail, allItemsForThisDirectory )
         }
-    }
 
     def tidyFileType(configuredFileType: String) : String = {
       if (configuredFileType.startsWith("."))
@@ -190,14 +180,7 @@ case class GCSUpload(
     }
 
     val allItemsFilteredByType = filterListByFileTypes(allItemsForConfiguredDirectories, gcsTargetBucket.fileTypesToPurge)
-   // logger.debug(s"Raw Deployed: ${allItemsForConfiguredDirectories.map(_.getName)}")
-    logger.debug(s"Deployed: ${allItemsFilteredByType.map(_.getName)}")
-   // logger.debug(s"To deploy: ${objectsInThisDeploy.map(_.getName)}")
-    //logger.debug(s"To deployList: ${objectsInThisDeploy}")
-
-    val toDelete = findCurrentObjectsNotInThisTransfer(allItemsFilteredByType, objectsInThisDeploy)
-    logger.debug(s"+++ To DELETE:: ${toDelete.map(_.getName)}")
-    toDelete
+    findCurrentObjectsNotInThisTransfer(allItemsFilteredByType, objectsInThisDeploy)
   }
 }
 
