@@ -61,18 +61,18 @@ object GCS extends DeploymentType {
   )
 
   val fileTypesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
-    name = "directoriesToPruneByStage",
+    name = "fileTypesToPruneByStage",
     documentation =
       """
         |Specify the types of file to remove when they are no longer in the current upload. Use case: Remove obselete dags from an airflow to cloud composer deployment
         |```
-        |directoriesToPruneByStage:
+        |fileTypesToPruneByStage:
         | PROD: [py, json]
         | CODE: [py, json]
         |```
         |Or more likely in this case:
         |```
-        |directoriesToPruneByStage:
+        |fileTypesToPruneByStage:
         | PROD: [py, json]
         |```
         |
