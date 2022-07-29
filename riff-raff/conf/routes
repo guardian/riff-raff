@@ -129,4 +129,4 @@ GET         /assets/*file                                   controllers.Assets.v
 
 # Management endpoints
 POST        /requestShutdown                                controllers.Management.requestShutdown()
-POST        /requestInstanceTermination                     controllers.Management.requestInstanceTermination()
+POST        /requestInstanceRotation                        controllers.Management.requestInstanceRotation()
