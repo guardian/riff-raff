@@ -19,7 +19,7 @@ import scala.collection.parallel.CollectionConverters._
 import scala.collection.JavaConverters._
 
 case class GCSUpload(
-  bucket: GcsTargetBucket,
+  gcsTargetBucket: GcsTargetBucket,
   paths: Seq[(S3Location, String)],
   cacheControlPatterns: List[PatternValue] = Nil,
   publicReadAcl: Boolean = false
@@ -29,13 +29,13 @@ case class GCSUpload(
   private val PublicAcl = Arrays.asList(new ObjectAccessControl().setEntity("allUsers").setRole("READER"))
 
   lazy val objectMappings: Seq[(S3Object, GCSPath)] = paths flatMap {
-    case (file, targetKey) => resolveMappings(file, targetKey, bucket.name)
+    case (file, targetKey) => resolveMappings(file, targetKey, gcsTargetBucket.name)
   }
 
   lazy val totalSize: Long = objectMappings.map{ case (source, _) => source.size }.sum
 
   lazy val transfers: Seq[StorageObjectTransfer] = objectMappings.map { case (source, target) =>
-    val storageObject = new StorageObject().setBucket(bucket.name)
+    val storageObject = new StorageObject().setBucket(gcsTargetBucket.name)
                                            .setName(target.key)
                                            .setSize(BigInteger.valueOf(source.size))
                                            .setContentType(URLConnection.guessContentTypeFromName(target.key))
@@ -53,7 +53,7 @@ case class GCSUpload(
   def fileString(quantity: Int) = s"$quantity file${if (quantity != 1) "s" else ""}"
 
   // end-user friendly description of this task
-  def description: String = s"Upload ${fileString(objectMappings.size)} to GCS bucket $bucket using file mapping $paths"
+  def description: String = s"Upload ${fileString(objectMappings.size)} to GCS bucket $gcsTargetBucket using file mapping $paths"
 
   // execute this task (should throw on failure)
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
@@ -68,7 +68,9 @@ case class GCSUpload(
     val withClient = withClientFactory(keyRing, resources)
     withClient { client =>
 
-      val currentlyDeployedObjects = getCurrentObjectsForDeletion(client, bucket, transfers.map(_.target).toList)
+      val currentlyDeployedObjects = getCurrentObjectsForDeletion(client)
+      logger.info(s"Objects to delete ${currentlyDeployedObjects.size}")
+
 
       resources.reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
       transfers.zipWithIndex.par.foreach { case (transfer, index) =>
@@ -85,7 +87,7 @@ case class GCSUpload(
                                                   .build()
           val inputStream = resources.artifactClient.getObjectAsBytes(copyObjectRequest).asInputStream()
           val contentType = Option(transfer.target.getContentType).getOrElse(URLConnection.guessContentTypeFromStream(inputStream))
-          val result      = client.objects().insert(bucket.name, transfer.target, new InputStreamContent(contentType, inputStream)).execute()
+          val result      = client.objects().insert(gcsTargetBucket.name, transfer.target, new InputStreamContent(contentType, inputStream)).execute()
           logger.debug(s"Put object ${result.getName}: MD5: ${result.getMd5Hash} Metadata: ${result.getMetadata}")
           result
         }
@@ -93,7 +95,7 @@ case class GCSUpload(
       currentlyDeployedObjects.par.foreach { case storageObjectToDelete =>
         val errorMessage = s"Could not 0emove obselete object ${storageObjectToDelete.getName}"
         GCP.api.retryWhen500orGoogleError(resources.reporter, errorMessage) {
-          client.objects().delete(bucket.name, storageObjectToDelete.getName).execute
+          client.objects().delete(gcsTargetBucket.name, storageObjectToDelete.getName).execute
         }
       }
     }
@@ -115,7 +117,9 @@ case class GCSUpload(
 
   private def cacheControlLookup(fileName:String) = cacheControlPatterns.find(_.regex.findFirstMatchIn(fileName).isDefined).map(_.value)
 
-  private def getCurrentObjectsForDeletion(storage: Storage, gcsTargetBucket: GcsTargetBucket, objectsInThisDeploy: List[StorageObject]) : List[StorageObject] = {
+  private def getCurrentObjectsForDeletion(storage: Storage) : List[StorageObject] = {
+
+    val objectsInThisDeploy = transfers.map(_.target).toList
 
     def getAllObjectsForDirectory(query: Storage#Objects#List,  foundSoFar: List[StorageObject] = List.empty): List[StorageObject] = {
 

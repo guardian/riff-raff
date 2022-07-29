@@ -340,7 +340,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     def dirsToPrune: List[String] = List(dirName)
 
     override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
-    override def currentlyDeployedFileNames: List[(String, List[String])] = List((dirName, List("one.txt", "two.txt", "sub/three.txt")))
+    override def currentlyDeployedFileNames: List[(String, List[String])] =  List((dirName, List("one.txt", "two.txt", "sub/three.txt")))
     override def magentaObjects: List[MagentaS3Object] =
       List(
         MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
@@ -352,6 +352,28 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     verify(storageObjects, times(1)).delete(any[String], any[String])
     verifyNoMoreInteractions(storageObjects)
   }
+
+  it should "delete any objects previously deployed not being re-deployed in a configured folder when their types are configured with a prefix" in  new GcsDeleteOnUploadScope {
+
+    def dirName = "test/123"
+    def dirsToPrune: List[String] = List(s"myStack/CODE/myApp/${dirName}")
+
+    override def prefix: String = "myStack/CODE/myApp"
+    override def targetBucket: GcsTargetBucket = GcsTargetBucket("target-bucket", dirsToPrune, List("txt"))
+    override def currentlyDeployedFileNames: List[(String, List[String])] =
+      List((dirName, List("one.txt", "two.txt", "sub/three.txt")))
+    override def magentaObjects: List[MagentaS3Object] =
+      List(
+        MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31),
+        MagentaS3Object("artifact-bucket", "test/123/package/sub/three.txt", 31)
+      )
+
+    verify(storageObjects, times(1)).list(any[String])
+    verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
+    verify(storageObjects, times(1)).delete(any[String], any[String])
+    verifyNoMoreInteractions(storageObjects)
+  }
+
 
   it should "delete objects previously redeployed in different configured directories" in new GcsDeleteOnUploadScope {
     def dirsToPrune: List[String] = List("test/123", "test/124")
@@ -529,6 +551,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   trait GcsDeleteOnUploadScope extends GcsDirUploadScope {
 
     def currentlyDeployedFileNames: List[(String, List[String])]
+    def prefix = ""
 
     val storageObjectsList = mock[storageObjects.List]
     val storageObjectsDelete = mock[storageObjects.Delete]
@@ -537,16 +560,18 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val mockStorageObjectsbyDir = (for{
       (dirName, fileNames) <- currentlyDeployedFileNames
       mockObjects = fileNames.map { name =>
+        val storageObjectName = if(prefix.isEmpty) name else s"$prefix/$name"
         val mockStorageObject = mock[StorageObject]
-        when(mockStorageObject.getName).thenReturn(name)
+        when(mockStorageObject.getName).thenReturn(storageObjectName)
         mockStorageObject
       }
     } yield (dirName, mockObjects))
 
 
     mockStorageObjectsbyDir.map(_._1).foreach { dir  =>
+      val expectedDir = if(prefix.isEmpty) dir else s"$prefix/$dir"
       when(storageObjects.list(ArgumentMatchers.eq(targetBucket.name))).thenReturn(storageObjectsList)
-      when(storageObjectsList.setPrefix(ArgumentMatchers.eq(dir))).thenReturn(storageObjectsList)
+      when(storageObjectsList.setPrefix(ArgumentMatchers.eq(expectedDir))).thenReturn(storageObjectsList)
       when(storageObjectsList.execute).thenReturn(objects)
       when(objects.getNextPageToken).thenReturn(null)
     }
@@ -559,7 +584,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     }
 
     when(storageObjects.delete(any[String], any[String])).thenReturn(storageObjectsDelete)
-    val task = new GCSUpload(targetBucket, Seq(packageRoot -> ""))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
+    val task = new GCSUpload(targetBucket, Seq(packageRoot -> prefix))(fakeKeyRing, artifactClient,  storageClientFactory(storageClient))
     val resources = DeploymentResources(reporter, null, artifactClient, mock[StsClient], global)
     task.execute(resources, stopFlag = false)
   }

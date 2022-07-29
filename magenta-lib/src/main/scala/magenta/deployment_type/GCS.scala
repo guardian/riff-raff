@@ -167,12 +167,12 @@ object GCS extends DeploymentType {
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
 
-    val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name,
+    val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name, prefix,
       directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
 
     List(
       GCSUpload(
-        bucket = bucketConfig,
+        gcsTargetBucket = bucketConfig,
         paths = Seq(pkg.s3Package -> prefix),
         cacheControlPatterns = cacheControl(pkg, target, reporter),
         publicReadAcl = publicReadAcl(pkg, target, reporter),
@@ -187,6 +187,7 @@ object GcsTargetBucket {
 
   def apply(name: String,
             stage: String,
+            prefix: String,
             maybeDirectories: Option[Map[String, List[String]]],
             maybeFileTypes: Option[Map[String, List[String]]]): GcsTargetBucket = {
 
@@ -197,11 +198,21 @@ object GcsTargetBucket {
         } yield value).getOrElse(List.empty)
 
 
-      val directoriesToPurge = listOrEmpty(maybeDirectories)
+      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else "$prefix/dir" )
       val fileTypesToPurge = listOrEmpty(maybeFileTypes)
       GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
 
   }
 }
 
-case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String])
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String]) {
+
+  //Because prefix is passd as a seq
+  def allDirectoriesToPurge(targetPaths: List[String], accumulatedDirectoryList: List[String] = List.empty): List[String] =
+    targetPaths match {
+      case Nil => accumulatedDirectoryList
+      case head :: tail =>
+          val directoriesForThisPath = directoriesToPurge.map(dir => if (head.isEmpty) dir else s"$head/$dir")
+          allDirectoriesToPurge(tail, accumulatedDirectoryList ::: directoriesForThisPath)
+    }
+}
