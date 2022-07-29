@@ -69,7 +69,7 @@ case class GCSUpload(
     withClient { client =>
 
       val currentlyDeployedObjects = getCurrentObjectsForDeletion(client)
-      logger.info(s"Objects to delete ${currentlyDeployedObjects.size}")
+      logger.debug(s"Objects to delete ${currentlyDeployedObjects.size}")
 
 
       resources.reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
