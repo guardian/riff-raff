@@ -45,6 +45,7 @@ object GCS extends DeploymentType {
       """
         |A list of directories in the target buckets which will be pruned of any files not in the current upload for the current stage
         |Typically this is used to remove obsolete dags and associated python assets from a airflow deploy to cloud composer
+        |These are assumed to be relative to any configured prefix
         |```
         |directoriesToPruneByStage:
         | PROD: [dags/dags, dags/guardian]
@@ -167,8 +168,6 @@ object GCS extends DeploymentType {
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
 
-    resources.reporter.verbose(s"++++ Prefix is: **${prefix}**")
-
 
     val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name, prefix,
       directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
@@ -207,14 +206,4 @@ object GcsTargetBucket {
   }
 }
 
-case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String]) {
-
-  //Because prefix is passd as a seq
-  def allDirectoriesToPurge(targetPaths: List[String], accumulatedDirectoryList: List[String] = List.empty): List[String] =
-    targetPaths match {
-      case Nil => accumulatedDirectoryList
-      case head :: tail =>
-          val directoriesForThisPath = directoriesToPurge.map(dir => if (head.isEmpty) dir else s"$head/$dir")
-          allDirectoriesToPurge(tail, accumulatedDirectoryList ::: directoriesForThisPath)
-    }
-}
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String])
