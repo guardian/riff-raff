@@ -68,8 +68,8 @@ case class GCSUpload(
     val withClient = withClientFactory(keyRing, resources)
     withClient { client =>
 
-      val currentlyDeployedObjects = getCurrentObjectsForDeletion(client)
-      logger.debug(s"Objects to delete ${currentlyDeployedObjects.size}")
+      val currentlyDeployedObjectsList = getCurrentObjectsForDeletion(client)
+      resources.reporter.verbose(s"Objects to delete ${currentlyDeployedObjectsList.size}")
 
 
       resources.reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
@@ -92,7 +92,7 @@ case class GCSUpload(
           result
         }
       }
-      currentlyDeployedObjects.par.foreach { case storageObjectToDelete =>
+      currentlyDeployedObjectsList.par.foreach { case storageObjectToDelete =>
         val errorMessage = s"Could not 0emove obselete object ${storageObjectToDelete.getName}"
         GCP.api.retryWhen500orGoogleError(resources.reporter, errorMessage) {
           client.objects().delete(gcsTargetBucket.name, storageObjectToDelete.getName).execute
