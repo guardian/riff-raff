@@ -198,14 +198,14 @@ object GcsTargetBucket {
         } yield value).getOrElse(List.empty)
 
 
-      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/dir" )
+      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/$dir" )
       val fileTypesToPurge = listOrEmpty(maybeFileTypes)
-      GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
+      GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge, s"**$prefix**")
 
   }
 }
 
-case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String]) {
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String], prefix: String) {
 
   //Because prefix is passd as a seq
   def allDirectoriesToPurge(targetPaths: List[String], accumulatedDirectoryList: List[String] = List.empty): List[String] =
