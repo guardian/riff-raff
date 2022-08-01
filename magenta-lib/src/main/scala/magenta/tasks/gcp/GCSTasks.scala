@@ -93,6 +93,7 @@ case class GCSUpload(
         }
       }
       currentlyDeployedObjectsList.par.foreach { case storageObjectToDelete =>
+        resources.reporter.verbose(s"Deleting obsolete file from GCP: ${storageObjectToDelete.getName}")
         val errorMessage = s"Could not 0emove obselete object ${storageObjectToDelete.getName}"
         GCP.api.retryWhen500orGoogleError(resources.reporter, errorMessage) {
           client.objects().delete(gcsTargetBucket.name, storageObjectToDelete.getName).execute
