@@ -198,7 +198,7 @@ object GcsTargetBucket {
         } yield value).getOrElse(List.empty)
 
 
-      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else "$prefix/dir" )
+      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/dir" )
       val fileTypesToPurge = listOrEmpty(maybeFileTypes)
       GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
 
