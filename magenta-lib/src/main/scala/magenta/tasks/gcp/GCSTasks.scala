@@ -68,6 +68,7 @@ case class GCSUpload(
     val withClient = withClientFactory(keyRing, resources)
     withClient { client =>
 
+      resources.reporter.verbose(s"Paths are *$paths**")
       val currentlyDeployedObjectsList = getCurrentObjectsForDeletion(client)
       resources.reporter.verbose(s"Objects to delete ${currentlyDeployedObjectsList.size}")
 

@@ -167,6 +167,9 @@ object GCS extends DeploymentType {
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
 
+    resources.reporter.verbose(s"++++ Prefix is: **${prefix}**")
+
+
     val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name, prefix,
       directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
 
@@ -201,7 +204,6 @@ object GcsTargetBucket {
       val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/$dir" )
       val fileTypesToPurge = listOrEmpty(maybeFileTypes)
       GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge, s"**$prefix**")
-
   }
 }
 
