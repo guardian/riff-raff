@@ -205,7 +205,7 @@ object GcsTargetBucket {
   }
 }
 
-case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String], prefix: String) {
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String], prefix: String = "Dang") {
 
   //Because prefix is passd as a seq
   def allDirectoriesToPurge(targetPaths: List[String], accumulatedDirectoryList: List[String] = List.empty): List[String] =
