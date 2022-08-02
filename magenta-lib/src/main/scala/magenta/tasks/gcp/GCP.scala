@@ -61,7 +61,7 @@ object GCP {
     case class DeploymentBundle(configPath: String, config: String, deps: Map[String, String])
 
     def client(creds: GoogleCredential): DeploymentManager = {
-      new DeploymentManager.Builder(httpTransport, jsonFactory, creds).build()
+      new DeploymentManager.Builder(httpTransport, jsonFactory, creds).setRootUrl("https://storage.googleapis.com/").build()
     }
 
     def toTargetConfiguration(bundle: DeploymentBundle): TargetConfiguration = {
