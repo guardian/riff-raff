@@ -140,7 +140,7 @@ case class GCSUpload(
              .list(gcsTargetBucket.name)
              .setPrefix(head)
             val allItemsForThisDirectory = getAllObjectsForDirectory(gcsQuery, itemsSoFar)
-            allObjectsInMatchingDirectories(tail, allItemsForThisDirectory )
+            allObjectsInMatchingDirectories(tail, itemsSoFar ::: allItemsForThisDirectory )
         }
 
     def tidyFileType(configuredFileType: String) : String = {

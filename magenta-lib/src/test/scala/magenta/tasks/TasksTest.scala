@@ -390,7 +390,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     verify(storageObjects, times(2)).list(any[String])
     verify(storageObjects, times(2)).insert(any[String], any[StorageObject], any[AbstractInputStreamContent])
-    verify(storageObjects, times(3)).delete(any[String], any[String])
+    //Delete everything in sub2 plus sub1/two.txt
+    verify(storageObjects, times(4)).delete(any[String], any[String])
     verifyNoMoreInteractions(storageObjects)
   }
 
