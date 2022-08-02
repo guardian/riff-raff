@@ -68,7 +68,7 @@ case class GCSUpload(
     val withClient = withClientFactory(keyRing, resources)
     withClient { client =>
 
-      val currentlyDeployedObjectsList = getCurrentObjectsForDeletion(client)
+      val currentlyDeployedObjectsToDelete = getCurrentObjectsForDeletion(client)
 
       resources.reporter.verbose(s"Starting transfer of ${fileString(objectMappings.size)} ($totalSize bytes)")
       transfers.zipWithIndex.par.foreach { case (transfer, index) =>
@@ -90,7 +90,7 @@ case class GCSUpload(
           result
         }
       }
-      currentlyDeployedObjectsList.par.foreach { case storageObjectToDelete =>
+      currentlyDeployedObjectsToDelete.par.foreach { case storageObjectToDelete =>
         resources.reporter.verbose(s"Deleting obsolete file from GCP: gcs://${gcsTargetBucket.name}/${storageObjectToDelete.getName}")
         val errorMessage = s"Could not 0emove obselete object ${storageObjectToDelete.getName}"
         GCP.api.retryWhen500orGoogleError(resources.reporter, errorMessage) {
@@ -160,7 +160,7 @@ case class GCSUpload(
       }
     }
 
-    def findCurrentObjectsNotInThisTransfer(objectsToCheckInCurrentDeploy: List[StorageObject], objectsPreviouslyDeployed: List[StorageObject], objectsToDelete: List[StorageObject] = Nil): List[StorageObject] = {
+    def findCurrentObjectsNotInThisTransfer(objectsToCheckInCurrentDeploy: List[StorageObject], objectsPreviouslyDeployed: List[StorageObject], objectsToDelete: List[StorageObject] = List.empty): List[StorageObject] = {
       objectsToCheckInCurrentDeploy match {
         case Nil => objectsToDelete
         case head :: tail =>
