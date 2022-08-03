@@ -19,9 +19,9 @@ object Dependencies {
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
-    "com.squareup.okhttp3" % "okhttp" % "3.14.9",
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.70",
-    "org.bouncycastle" % "bcpg-jdk15on" % "1.70",
+    "com.squareup.okhttp3" % "okhttp" % "4.10.0",
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.61",
+    "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
     "ch.qos.logback" % "logback-classic" % "1.2.0",
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
