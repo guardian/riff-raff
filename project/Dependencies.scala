@@ -15,11 +15,11 @@ object Dependencies {
     "org.parboiled" %% "parboiled" % "2.1.8",
     "org.typelevel" %% "cats-core" % "2.7.0",
     "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-    "org.mockito" %% "mockito-scala" % "1.16.37" % Test
+    "org.mockito" %% "mockito-scala" % "1.16.55" % Test
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
-    "com.squareup.okhttp3" % "okhttp" % "3.14.0",
+    "com.squareup.okhttp3" % "okhttp" % "3.14.9",
     "org.bouncycastle" % "bcprov-jdk15on" % "1.61",
     "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
     "ch.qos.logback" % "logback-classic" % "1.2.0",
@@ -38,7 +38,7 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.8.2",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-    "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev75-1.25.0",
+    "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220714-2.0.0",
     "com.google.cloud" % "google-cloud-storage" % "2.2.3",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
@@ -54,15 +54,15 @@ object Dependencies {
     "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
     "com.typesafe.akka" %% "akka-agent" % "2.5.26",
     "org.pegdown" % "pegdown" % "1.6.0",
-    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3",
+    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B4",
     "org.scanamo" %% "scanamo" % "1.0.0-M11",
     "software.amazon.awssdk" % "dynamodb" % Versions.aws,
     "software.amazon.awssdk" % "sns" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.2",
     "com.gu" %% "anghammarad-client" % "1.2.0",
     "org.webjars" %% "webjars-play" % "2.8.13",
-    "org.webjars" % "jquery" % "3.1.1-1",
-    "org.webjars" % "jquery-ui" % "1.13.0",
+    "org.webjars" % "jquery" % "3.1.1",
+    "org.webjars" % "jquery-ui" % "1.13.1",
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
     "org.webjars" % "momentjs" % "2.16.0",
