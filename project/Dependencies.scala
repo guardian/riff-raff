@@ -49,7 +49,7 @@ object Dependencies {
   val riffRaffDeps = commonDeps ++ Seq(
     evolutions,
     jdbc,
-    "com.gu.play-googleauth" %% "play-v28" % "2.2.2",
+    "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
     "com.gu.play-secret-rotation" %% "play-v28" % "0.33",
     "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
     "com.typesafe.akka" %% "akka-agent" % "2.5.26",
