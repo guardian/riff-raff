@@ -22,7 +22,7 @@ object Dependencies {
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
     "org.bouncycastle" % "bcprov-jdk15on" % "1.61",
     "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
-    "ch.qos.logback" % "logback-classic" % "1.2.0",
+    "ch.qos.logback" % "logback-classic" % "1.2.11",
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
     "software.amazon.awssdk" % "s3" % Versions.aws,
