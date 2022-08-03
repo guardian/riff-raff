@@ -15,7 +15,7 @@ object Dependencies {
     "org.parboiled" %% "parboiled" % "2.1.8",
     "org.typelevel" %% "cats-core" % "2.7.0",
     "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-    "org.mockito" %% "mockito-scala" % "1.16.55" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.12" % Test
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
