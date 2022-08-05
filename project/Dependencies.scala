@@ -70,7 +70,7 @@ object Dependencies {
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
-    "org.postgresql" % "postgresql" % "42.3.6",
+    "org.postgresql" % "postgresql" % "42.4.1",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
