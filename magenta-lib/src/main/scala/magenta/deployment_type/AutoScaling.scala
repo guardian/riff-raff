@@ -29,11 +29,10 @@ object AutoScalingGroupLookup {
     ) ++ migrationRequirement
   }
 
-  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements,
-                   resources: DeploymentResources, pkg: DeploymentPackage): AutoScalingGroupInfo = {
-    ASG.withAsgClient[AutoScalingGroupInfo](keyRing, target.region, resources) { asgClient =>
+  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements, resources: DeploymentResources, pkg: DeploymentPackage) = {
+    ASG.withAsgClient[Option[AutoScalingGroupInfo]](keyRing, target.region, resources) { asgClient =>
       val tagRequirements = getTagRequirements(target.parameters.stage, target.stack, pkg.app, migrationTagRequirements)
-      AutoScalingGroupInfo(ASG.groupWithTags(tagRequirements, asgClient, resources.reporter), tagRequirements)
+      ASG.groupWithTags(tagRequirements, asgClient, resources.reporter, strategy = target.parameters.updateStrategy).collect(AutoScalingGroupInfo(_, tagRequirements))
     }
   }
 }
@@ -118,9 +117,9 @@ object AutoScaling extends DeploymentType with BucketParameters {
       List(
         AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustNotBePresent, resources, pkg),
         AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustBePresent, resources, pkg)
-      )
+      ).flatten
     } else {
-      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg))
+      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg)).flatten
     }
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }
