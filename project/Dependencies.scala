@@ -6,23 +6,23 @@ object Dependencies {
   object Versions {
     val aws = "2.17.109"
     val jackson = "2.9.8"
-    val awsRds = "1.11.563"
+    val awsRds = "1.11.1034"
     val enumeratumPlay = "1.7.0"
   }
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.parboiled" %% "parboiled" % "2.1.8",
-    "org.typelevel" %% "cats-core" % "2.7.0",
+    "org.typelevel" %% "cats-core" % "2.8.0",
     "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-    "org.mockito" %% "mockito-scala" % "1.16.55" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.12" % Test
   )
 
   val magentaLibDeps = commonDeps ++ Seq(
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.70",
-    "org.bouncycastle" % "bcpg-jdk15on" % "1.70",
-    "ch.qos.logback" % "logback-classic" % "1.2.0",
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.61",
+    "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
+    "ch.qos.logback" % "logback-classic" % "1.2.11",
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
     "software.amazon.awssdk" % "s3" % Versions.aws,
@@ -36,10 +36,10 @@ object Dependencies {
     "com.gu" %% "fastly-api-client" % "0.4.1",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-    "com.typesafe.play" %% "play-json" % "2.8.2",
+    "com.typesafe.play" %% "play-json" % "2.9.2",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220714-2.0.0",
-    "com.google.cloud" % "google-cloud-storage" % "2.2.3",
+    "com.google.cloud" % "google-cloud-storage" % "2.11.2",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
@@ -49,10 +49,10 @@ object Dependencies {
   val riffRaffDeps = commonDeps ++ Seq(
     evolutions,
     jdbc,
-    "com.gu.play-googleauth" %% "play-v28" % "2.2.2",
+    "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
     "com.gu.play-secret-rotation" %% "play-v28" % "0.33",
     "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
-    "com.typesafe.akka" %% "akka-agent" % "2.5.26",
+    "com.typesafe.akka" %% "akka-agent" % "2.5.32",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B4",
     "org.scanamo" %% "scanamo" % "1.0.0-M11",
@@ -66,15 +66,15 @@ object Dependencies {
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
     "org.webjars" % "momentjs" % "2.16.0",
-    "net.logstash.logback" % "logstash-logback-encoder" % "5.3",
+    "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
-    "org.slf4j" % "jul-to-slf4j" % "1.7.30",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
-    "org.postgresql" % "postgresql" % "42.3.2",
+    "org.postgresql" % "postgresql" % "42.3.6",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.17" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test,
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
