@@ -5,8 +5,8 @@ object Dependencies {
 
   object Versions {
     val aws = "2.17.109"
-    val jackson = "2.9.10"
-    val awsRds = "1.11.1034"
+    val jackson = "2.9.8"
+    val awsRds = "1.12.276"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -70,7 +70,7 @@ object Dependencies {
     "com.gu" % "kinesis-logback-appender" % "1.4.4",
     "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
-    "org.postgresql" % "postgresql" % "42.3.6",
+    "org.postgresql" % "postgresql" % "42.4.1",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
