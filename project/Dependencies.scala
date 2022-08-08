@@ -69,7 +69,7 @@ object Dependencies {
     "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
     "com.typesafe.akka" %% "akka-agent" % "2.5.32",
     "org.pegdown" % "pegdown" % "1.6.0",
-    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B4",
+    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3",
     "org.scanamo" %% "scanamo" % "1.0.0-M11",
     "software.amazon.awssdk" % "dynamodb" % Versions.aws,
     "software.amazon.awssdk" % "sns" % Versions.aws,
