@@ -3,7 +3,7 @@ package magenta.tasks
 import java.nio.ByteBuffer
 import cats.implicits._
 import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
-import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Loggable, Region, Stack, Stage, StsDeploymentResources, withResource}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Loggable, Region, Stack, Stage, Strategy, StsDeploymentResources, withResource}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
@@ -234,9 +234,7 @@ object ASG {
   case class TagExists(key: String) extends TagRequirement
   case class TagAbsent(key: String) extends TagRequirement
 
-  def groupWithTags(tagRequirements: List[TagRequirement], client: AutoScalingClient,
-                          reporter: DeployReporter): AutoScalingGroup = {
-
+  def groupWithTags(tagRequirements: List[TagRequirement], client: AutoScalingClient, reporter: DeployReporter, strategy: Strategy = Strategy.MostlyHarmless): Option[AutoScalingGroup] = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
     def hasExactTagRequirements(asg: AutoScalingGroup, requirements: List[TagRequirement]): Boolean = {
@@ -257,10 +255,12 @@ object ASG {
 
     val matches = groups.filter(hasExactTagRequirements(_, tagRequirements))
     matches match {
+      case Nil if strategy == Strategy.Dangerous =>
+        reporter.info(s"Unable to locate an autoscaling group AND living dangerously - we'll assume you're creating a new stack")
+        None
       case Nil =>
-        reporter.fail(s"No autoscaling group found with tags $tagRequirements")
-      case List(singleGroup) =>
-        singleGroup
+        reporter.fail(s"No autoscaling group found with tags $tagRequirements. Creating a new stack? Initially choose the ${Strategy.Dangerous} strategy.")
+      case List(singleGroup) => Some(singleGroup)
       case groupList =>
         reporter.fail(s"More than one autoscaling group match for $tagRequirements (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic.")
     }
