@@ -64,6 +64,16 @@ object AutoScaling extends DeploymentType with BucketParameters {
     documentation = "Whether to prefix `stack` to the S3 location"
   ).default(true)
 
+  val prefixApp = Param[Boolean](
+    name = "prefixApp",
+    documentation =
+      """
+        |Whether to prefix `app` to the S3 location instead of `package`.
+        |
+        |When `true` `prefixPackage` will be ignored and `app` will be used over `package`, useful if `package` and `app` don't align.
+        |""".stripMargin
+  ).default(false)
+
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
   ).default(false)
@@ -135,11 +145,17 @@ object AutoScaling extends DeploymentType with BucketParameters {
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     val reporter = resources.reporter
+
+    val maybePackageOrAppName: Option[String] = (prefixPackage(pkg, target, reporter), prefixApp(pkg, target, reporter)) match {
+      case (_, true) => Some(pkg.app.name)
+      case (true, false) => Some(pkg.name)
+      case (false, false) => None
+    }
+
     val prefix = S3Upload.prefixGenerator(
       stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
       stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
-      packageName = if (prefixPackage(pkg, target, reporter
-      )) Some(pkg.name) else None
+      packageOrAppName = maybePackageOrAppName
     )
 
     val bucket = getTargetBucketFromConfig(pkg, target, reporter)
