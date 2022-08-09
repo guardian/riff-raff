@@ -5,20 +5,35 @@ object Dependencies {
 
   object Versions {
     val aws = "2.17.109"
-    val jackson = "2.9.8"
+    val jackson = "2.13.3"
     val awsRds = "1.12.276"
     val enumeratumPlay = "1.7.0"
   }
+
+  // https://github.com/orgs/playframework/discussions/11222
+  private val jacksonOverrides = Seq(
+    "com.fasterxml.jackson.core"     % "jackson-core",
+    "com.fasterxml.jackson.core"     % "jackson-annotations",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8",
+    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310",
+    "com.fasterxml.jackson.core" % "jackson-databind",
+  ).map(_ % Versions.jackson)
+
+  private val akkaSerializationJacksonOverrides = Seq(
+    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor",
+    "com.fasterxml.jackson.module"     % "jackson-module-parameter-names",
+    "com.fasterxml.jackson.module"     %% "jackson-module-scala",
+  ).map(_ % Versions.jackson)
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.parboiled" %% "parboiled" % "2.1.8",
     "org.typelevel" %% "cats-core" % "2.8.0",
-    "org.scalatest" %% "scalatest" % "3.2.9" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.12" % Test,
     "org.mockito" %% "mockito-scala" % "1.17.12" % Test
   )
 
-  val magentaLibDeps = commonDeps ++ Seq(
+  val magentaLibDeps = commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
     "org.bouncycastle" % "bcprov-jdk15on" % "1.61",
     "org.bouncycastle" % "bcpg-jdk15on" % "1.61",
@@ -46,7 +61,7 @@ object Dependencies {
     m.excludeAll(ExclusionRule(organization = "com.google.code.findbugs", name = "jsr305"))
   )
 
-  val riffRaffDeps = commonDeps ++ Seq(
+  val riffRaffDeps = commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
     evolutions,
     jdbc,
     "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
