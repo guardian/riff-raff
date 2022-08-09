@@ -29,11 +29,10 @@ object AutoScalingGroupLookup {
     ) ++ migrationRequirement
   }
 
-  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements,
-                   resources: DeploymentResources, pkg: DeploymentPackage): AutoScalingGroupInfo = {
-    ASG.withAsgClient[AutoScalingGroupInfo](keyRing, target.region, resources) { asgClient =>
+  def getTargetAsg(keyRing: KeyRing, target: DeployTarget, migrationTagRequirements: MigrationTagRequirements, resources: DeploymentResources, pkg: DeploymentPackage) = {
+    ASG.withAsgClient[Option[AutoScalingGroupInfo]](keyRing, target.region, resources) { asgClient =>
       val tagRequirements = getTagRequirements(target.parameters.stage, target.stack, pkg.app, migrationTagRequirements)
-      AutoScalingGroupInfo(ASG.groupWithTags(tagRequirements, asgClient, resources.reporter), tagRequirements)
+      ASG.groupWithTags(tagRequirements, asgClient, resources.reporter, strategy = target.parameters.updateStrategy).collect(AutoScalingGroupInfo(_, tagRequirements))
     }
   }
 }
@@ -64,6 +63,16 @@ object AutoScaling extends DeploymentType with BucketParameters {
   val prefixStack = Param[Boolean]("prefixStack",
     documentation = "Whether to prefix `stack` to the S3 location"
   ).default(true)
+
+  val prefixApp = Param[Boolean](
+    name = "prefixApp",
+    documentation =
+      """
+        |Whether to prefix `app` to the S3 location instead of `package`.
+        |
+        |When `true` `prefixPackage` will be ignored and `app` will be used over `package`, useful if `package` and `app` don't align.
+        |""".stripMargin
+  ).default(false)
 
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL"
@@ -118,9 +127,9 @@ object AutoScaling extends DeploymentType with BucketParameters {
       List(
         AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustNotBePresent, resources, pkg),
         AutoScalingGroupLookup.getTargetAsg(keyRing, target, MustBePresent, resources, pkg)
-      )
+      ).flatten
     } else {
-      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg))
+      List(AutoScalingGroupLookup.getTargetAsg(keyRing, target, NoMigration, resources, pkg)).flatten
     }
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }
@@ -136,11 +145,17 @@ object AutoScaling extends DeploymentType with BucketParameters {
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient = resources.artifactClient
     val reporter = resources.reporter
+
+    val maybePackageOrAppName: Option[String] = (prefixPackage(pkg, target, reporter), prefixApp(pkg, target, reporter)) match {
+      case (_, true) => Some(pkg.app.name)
+      case (true, false) => Some(pkg.name)
+      case (false, false) => None
+    }
+
     val prefix = S3Upload.prefixGenerator(
       stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
       stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
-      packageName = if (prefixPackage(pkg, target, reporter
-      )) Some(pkg.name) else None
+      packageOrAppName = maybePackageOrAppName
     )
 
     val bucket = getTargetBucketFromConfig(pkg, target, reporter)

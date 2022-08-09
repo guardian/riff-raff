@@ -75,7 +75,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
 
     withObjectMocked[AutoScalingGroupLookup.type] {
       val testInfo = testAsgInfo()
-      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)) thenAnswer testInfo
+      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)) thenAnswer Some(testInfo)
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
         WaitForStabilization(testInfo, 5 * 60 * 1000, Region("eu-west-1")),
@@ -111,7 +111,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
     withObjectMocked[AutoScalingGroupLookup.type] {
       val testOldCfnAsg = testAsgInfo("testOldCfnAsg")
       val testNewCdkAsg = testAsgInfo("testNewCdkAsg")
-      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)).thenReturn(testOldCfnAsg, testNewCdkAsg)
+      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)).thenReturn(Some(testOldCfnAsg), Some(testNewCdkAsg))
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
         // All tasks for testOldCfnAsg
@@ -179,7 +179,7 @@ class AutoScalingTest extends AnyFlatSpec with Matchers with MockitoSugar with A
 
     withObjectMocked[AutoScalingGroupLookup.type] {
       val testInfo = testAsgInfo()
-      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)) thenAnswer testInfo
+      when(AutoScalingGroupLookup.getTargetAsg(*, *, *, *, *)) thenAnswer Some(testInfo)
       val actual = AutoScaling.actionsMap("deploy").taskGenerator(p, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global), DeployTarget(parameters(), stack, region))
       val expected = List(
         WaitForStabilization(testInfo, 5 * 60 * 1000, Region("eu-west-1")),
