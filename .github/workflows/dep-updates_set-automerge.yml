@@ -1,0 +1,11 @@
+name: Set automerge on dependency update PRs
+
+on:
+  pull_request:
+    branches:
+      - dependency-updates
+
+jobs:
+  set-automerge:
+    name: Set automerge on opened PRs targeting the tracking branch
+    uses: guardian/.github/.github/workflows/pr-batching_set-automerge.yml@v1.0.1
