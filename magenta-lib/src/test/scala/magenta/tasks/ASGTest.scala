@@ -69,7 +69,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       TagMatch("App", "logcabin"),
     )
     val group = ASG.groupWithTags(tags, asgClientMock, reporter)
-    group shouldBe desiredGroup
+    group shouldBe Some(desiredGroup)
   }
 
   it should "fail if more than one ASG matches the Stack and App tags (unless MigrationTagRequirements are specified)" in {
@@ -121,7 +121,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       TagExists("gu:riffraff:new-asg")
     )
     val group = ASG.groupWithTags(tags, asgClientMock, reporter)
-    group shouldBe desiredGroup
+    group shouldBe Some(desiredGroup)
   }
 
   it should "identify a single ASG based on Stack & App tags and MustNotBePresent MigrationTagRequirements" in {
@@ -144,7 +144,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
       TagAbsent("gu:riffraff:new-asg")
     )
     val group = ASG.groupWithTags(tags, asgClientMock, reporter)
-    group shouldBe desiredGroup
+    group shouldBe Some(desiredGroup)
   }
 
   it should "wait for instances in ELB to stabilise if there is one" in {
