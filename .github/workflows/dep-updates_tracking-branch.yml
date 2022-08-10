@@ -8,4 +8,4 @@ on:
 jobs:
   update-dependency-update-branch:
     name: Keep tracking branch up to date with main
-    uses: guardian/.github/.github/workflows/pr-batching_tracking-branch.yml@v1
+    uses: guardian/.github/.github/workflows/pr-batching_tracking-branch.yml@v1.0.1
