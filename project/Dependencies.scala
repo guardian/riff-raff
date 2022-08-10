@@ -82,7 +82,7 @@ object Dependencies {
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
     "org.webjars" % "momentjs" % "2.16.0",
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
-    "com.gu" % "kinesis-logback-appender" % "1.4.4",
+    "com.gu" % "kinesis-logback-appender" % "2.1.0",
     "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
     "org.postgresql" % "postgresql" % "42.4.1",
