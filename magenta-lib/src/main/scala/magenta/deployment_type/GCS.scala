@@ -193,11 +193,11 @@ object GcsTargetBucket {
             maybeDirectories: Option[Map[String, List[String]]],
             maybeFileTypes: Option[Map[String, List[String]]]): GcsTargetBucket = {
 
-      def listOrEmpty(maybeMap: Option[Map[String, List[String]]]) =
+      def listOrEmpty(m: Option[Map[String, List[String]]]) =
         (for{
-          map <- maybeMap
-          value <- map.get(stage)
-        } yield value).getOrElse(List.empty)
+          infoByStage <- m
+          info <- infoByStage.get(stage)
+        } yield info).getOrElse(List.empty)
 
 
       val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/$dir" )
