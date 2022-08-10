@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.17.109"
     val jackson = "2.13.3"
-    val awsRds = "1.12.276"
+    val awsRds = "1.12.278"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -65,8 +65,8 @@ object Dependencies {
     evolutions,
     jdbc,
     "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
-    "com.gu.play-secret-rotation" %% "play-v28" % "0.33",
-    "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
+    "com.gu.play-secret-rotation" %% "play-v28" % "0.36",
+    "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.36",
     "com.typesafe.akka" %% "akka-agent" % "2.5.32",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B4",
