@@ -76,7 +76,7 @@ object Dependencies {
     "org.quartz-scheduler" % "quartz" % "2.3.2",
     "com.gu" %% "anghammarad-client" % "1.2.0",
     "org.webjars" %% "webjars-play" % "2.8.13",
-    "org.webjars" % "jquery" % "3.1.1-1",
+    "org.webjars" % "jquery" % "3.6.0",
     "org.webjars" % "jquery-ui" % "1.13.2",
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
