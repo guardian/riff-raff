@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.17.109"
     val jackson = "2.13.3"
-    val awsRds = "1.12.277"
+    val awsRds = "1.12.281"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -65,24 +65,24 @@ object Dependencies {
     evolutions,
     jdbc,
     "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
-    "com.gu.play-secret-rotation" %% "play-v28" % "0.33",
-    "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.33",
+    "com.gu.play-secret-rotation" %% "play-v28" % "0.36",
+    "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.36",
     "com.typesafe.akka" %% "akka-agent" % "2.5.32",
     "org.pegdown" % "pegdown" % "1.6.0",
-    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3",
+    "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
     "org.scanamo" %% "scanamo" % "1.0.0-M11",
     "software.amazon.awssdk" % "dynamodb" % Versions.aws,
     "software.amazon.awssdk" % "sns" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.2",
     "com.gu" %% "anghammarad-client" % "1.2.0",
     "org.webjars" %% "webjars-play" % "2.8.13",
-    "org.webjars" % "jquery" % "3.1.1",
+    "org.webjars" % "jquery" % "3.6.0",
     "org.webjars" % "jquery-ui" % "1.13.2",
     "org.webjars" % "bootstrap" % "3.3.7",
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
-    "org.webjars" % "momentjs" % "2.16.0",
+    "org.webjars" % "momentjs" % "2.29.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
-    "com.gu" % "kinesis-logback-appender" % "1.4.4",
+    "com.gu" % "kinesis-logback-appender" % "2.1.0",
     "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
     "org.postgresql" % "postgresql" % "42.4.1",
