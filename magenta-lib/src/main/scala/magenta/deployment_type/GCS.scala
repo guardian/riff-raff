@@ -39,6 +39,48 @@ object GCS extends DeploymentType {
     optional = true
   )
 
+  val directoriesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
+    name = "directoriesToPruneByStage",
+    documentation =
+      """
+        |A list of directories in the target buckets which will be pruned of any files not in the current upload for the current stage
+        |Typically this is used to remove obsolete dags and associated python assets from a airflow deploy to cloud composer
+        |These are assumed to be relative to any configured prefix
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [dags/dags, dags/guardian]
+        | CODE: [dags/dags, dags/guardian]
+        |```
+        |Or more likely in this case:
+        |```
+        |directoriesToPruneByStage:
+        | PROD: [dags/dags, dags/guardian]
+        |```
+        |
+         |""".stripMargin,
+    optional = true
+  )
+
+  val fileTypesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
+    name = "fileTypesToPruneByStage",
+    documentation =
+      """
+        |Specify the types of file to remove when they are no longer in the current upload. Use case: Remove obselete dags from an airflow to cloud composer deployment
+        |```
+        |fileTypesToPruneByStage:
+        | PROD: [py, json]
+        | CODE: [py, json]
+        |```
+        |Or more likely in this case:
+        |```
+        |fileTypesToPruneByStage:
+        | PROD: [py, json]
+        |```
+        |
+         |""".stripMargin,
+    optional = true
+  )
+
   val publicReadAcl = Param[Boolean]("publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(true)
@@ -125,16 +167,43 @@ object GCS extends DeploymentType {
         stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
         packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
       ))
-      List(
-        GCSUpload(
-          bucket = bucketName,
-          paths = Seq(pkg.s3Package -> prefix),
-          cacheControlPatterns = cacheControl(pkg, target, reporter),
-          publicReadAcl = publicReadAcl(pkg, target, reporter),
-        )
+
+
+    val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name, prefix,
+      directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
+
+    List(
+      GCSUpload(
+        gcsTargetBucket = bucketConfig,
+        paths = Seq(pkg.s3Package -> prefix),
+        cacheControlPatterns = cacheControl(pkg, target, reporter),
+        publicReadAcl = publicReadAcl(pkg, target, reporter),
       )
-    }
+    )}
   }
 
   def defaultActions = List(uploadStaticFiles)
 }
+
+object GcsTargetBucket {
+
+  def apply(name: String,
+            stage: String,
+            prefix: String,
+            maybeDirectories: Option[Map[String, List[String]]],
+            maybeFileTypes: Option[Map[String, List[String]]]): GcsTargetBucket = {
+
+      def listOrEmpty(m: Option[Map[String, List[String]]]) =
+        (for{
+          infoByStage <- m
+          info <- infoByStage.get(stage)
+        } yield info).getOrElse(List.empty)
+
+
+      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/$dir" )
+      val fileTypesToPurge = listOrEmpty(maybeFileTypes)
+      GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
+  }
+}
+
+case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String])
