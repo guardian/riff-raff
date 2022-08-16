@@ -124,7 +124,7 @@ object GCP {
 
   object StorageApi extends Loggable {
     def client(credentials: GoogleCredential): Storage = {
-      new Storage.Builder(httpTransport, jsonFactory, credentials).build()
+      new Storage.Builder(httpTransport, jsonFactory, credentials).setRootUrl("https://storage.googleapis.com/").build()
     }
   }
 
