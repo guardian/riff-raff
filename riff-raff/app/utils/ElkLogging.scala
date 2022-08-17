@@ -5,7 +5,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.Appender
 import ch.qos.logback.core.joran.spi.JoranException
 import ch.qos.logback.core.util.StatusPrinter
-import com.amazonaws.auth.AWSCredentialsProvider
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import com.gu.logback.appender.kinesis.KinesisAppender
 import controllers.Logging
 import net.logstash.logback.layout.LogstashLayout
@@ -19,7 +19,7 @@ import scala.util.control.NonFatal
 class ElkLogging(stage: String,
                  region: String,
                  loggingStreamName: Option[String],
-                 awsCredentialsProvider: AWSCredentialsProvider,
+                 awsCredentialsProvider: AwsCredentialsProvider,
                  applicationLifecycle: ApplicationLifecycle) extends Logging {
   def getContextTags: Map[String, String] = {
     val effective = Map(
