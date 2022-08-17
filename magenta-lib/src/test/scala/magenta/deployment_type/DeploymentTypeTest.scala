@@ -28,8 +28,8 @@ class DeploymentTypeTest extends AnyFlatSpec with Matchers with Inside with Mock
   val deploymentTypes = Seq(S3, Lambda)
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 10
-    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","surrogateControl","mimeTypes"))
+    S3.params should have size 11
+    S3.params.map(_.name).toSet should be(Set("prefixStage","prefixPackage","prefixStack", "prefixApp", "pathPrefixResource","bucket","publicReadAcl","bucketResource","cacheControl","surrogateControl","mimeTypes"))
   }
 
   private val sourceS3Package = S3Path("artifact-bucket", "test/123/static-files")

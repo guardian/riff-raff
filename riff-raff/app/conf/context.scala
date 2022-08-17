@@ -151,7 +151,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime) extends Logging
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
     lazy val regionName = getStringOpt("logging.aws.region").getOrElse(defaultRegion)
-    lazy val credentialsProvider = legacyCredentialsProviderChain(accessKey, secretKey)
+    lazy val credentialsProvider = credentialsProviderChain(accessKey, secretKey)
   }
 
   object lookup {
