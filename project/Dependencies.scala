@@ -83,7 +83,7 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.29.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
     "com.gu" % "kinesis-logback-appender" % "2.1.0",
-    "org.slf4j" % "jul-to-slf4j" % "1.7.36",
+    "org.slf4j" % "jul-to-slf4j" % "2.0.0",
     "org.scalikejdbc" %% "scalikejdbc" % "4.0.0",
     "org.postgresql" % "postgresql" % "42.4.2",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
