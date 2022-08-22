@@ -70,7 +70,7 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-agent" % "2.5.32",
     "org.pegdown" % "pegdown" % "1.6.0",
     "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
-    "org.scanamo" %% "scanamo" % "1.0.0-M11",
+    "org.scanamo" %% "scanamo" % "1.0.0-M11", // scala-steward:off,
     "software.amazon.awssdk" % "dynamodb" % Versions.aws,
     "software.amazon.awssdk" % "sns" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.2",
@@ -78,8 +78,8 @@ object Dependencies {
     "org.webjars" %% "webjars-play" % "2.8.13",
     "org.webjars" % "jquery" % "3.6.0",
     "org.webjars" % "jquery-ui" % "1.13.2",
-    "org.webjars" % "bootstrap" % "3.4.1",
-    "org.webjars" % "jasny-bootstrap" % "3.1.3-2",
+    "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
+    "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
     "org.webjars" % "momentjs" % "2.29.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
     "com.gu" % "kinesis-logback-appender" % "2.1.0",
