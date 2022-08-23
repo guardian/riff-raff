@@ -82,7 +82,8 @@ object Dependencies {
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
     "com.gu" % "kinesis-logback-appender" % "2.1.0",
     "org.slf4j" % "jul-to-slf4j" % "2.0.0",
-    "org.scalikejdbc" %% "scalikejdbc" % "3.5.0",
+    // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
+    "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
     "org.postgresql" % "postgresql" % "42.4.2",
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
