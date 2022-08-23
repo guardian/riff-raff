@@ -35,8 +35,6 @@ object Dependencies {
 
   val magentaLibDeps = commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.71.1",
-    "org.bouncycastle" % "bcpg-jdk15on" % "1.71.1",
     "ch.qos.logback" % "logback-classic" % "1.2.11",
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
