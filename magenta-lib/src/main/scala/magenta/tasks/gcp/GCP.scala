@@ -4,13 +4,14 @@ import cats.syntax.either._
 import com.google.api.client.googleapis.apache.v2.GoogleApacheHttpTransport
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
-import com.google.api.client.http.HttpResponseException
+import com.google.api.client.http.{HttpRequest, HttpRequestInitializer, HttpResponseException}
 import com.google.api.client.http.apache.v2.ApacheHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.deploymentmanager.model.Operation.Error.Errors
 import com.google.api.services.deploymentmanager.model._
 import com.google.api.services.deploymentmanager.{DeploymentManager, DeploymentManagerScopes}
 import com.google.api.services.storage.Storage
+import magenta.tasks.gcp.GCP.credentials
 import magenta.tasks.gcp.GCPRetryHelper.Result
 import magenta.{ApiStaticCredentials, DeployReporter, DeploymentResources, KeyRing, Loggable}
 
@@ -123,8 +124,20 @@ object GCP {
   }
 
   object StorageApi extends Loggable {
+
+
+
     def client(credentials: GoogleCredential): Storage = {
-      new Storage.Builder(httpTransport, jsonFactory, credentials).setRootUrl("https://storage.googleapis.com/").build()
+
+      val resquestInitialiser =  new HttpRequestInitializer {
+        override def initialize(request: HttpRequest): Unit = {
+          credentials.initialize(request)
+          request.setConnectTimeout(3 * 60000) //3 mins
+          request.setReadTimeout(3 * 60000) //3 mns
+        }
+      }
+
+      new Storage.Builder(httpTransport, jsonFactory, resquestInitialiser).setRootUrl("https://storage.googleapis.com/").build()
     }
   }
 
