@@ -74,7 +74,7 @@ object Dependencies {
     "org.quartz-scheduler" % "quartz" % "2.3.2",
     "com.gu" %% "anghammarad-client" % "1.2.0",
     "org.webjars" %% "webjars-play" % "2.8.13",
-    "org.webjars" % "jquery" % "3.6.0",
+    "org.webjars" % "jquery" % "3.6.1",
     "org.webjars" % "jquery-ui" % "1.13.2",
     "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
     "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
