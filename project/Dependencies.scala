@@ -35,7 +35,8 @@ object Dependencies {
 
   val magentaLibDeps = commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-    "ch.qos.logback" % "logback-classic" % "1.2.11",
+    // Not upgradeable until Play moves to 1.3+. It depends on slf4j 2, which has breaking changes
+    "ch.qos.logback" % "logback-classic" % "1.2.11", // scala-steward:off,
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
     "software.amazon.awssdk" % "s3" % Versions.aws,
