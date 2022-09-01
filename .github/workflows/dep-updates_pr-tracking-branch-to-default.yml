@@ -2,7 +2,7 @@ name: Create batch dependency update PR
 
 on:
   schedule:
-    - cron: "35 10 * * MON"
+    - cron: "35 10 1 * *"
   # Provide support for manually triggering the workflow via GitHub.
   workflow_dispatch:
 
