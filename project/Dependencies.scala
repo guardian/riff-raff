@@ -82,7 +82,7 @@ object Dependencies {
     "org.webjars" % "momentjs" % "2.29.4",
     "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
     "com.gu" % "kinesis-logback-appender" % "2.1.0",
-    "org.slf4j" % "jul-to-slf4j" % "2.0.0",
+    "org.slf4j" % "jul-to-slf4j" % "1.7.36",
     // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
     "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
     "org.postgresql" % "postgresql" % "42.5.0",
