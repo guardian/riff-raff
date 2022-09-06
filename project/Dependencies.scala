@@ -90,7 +90,7 @@ object Dependencies {
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test,
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test,
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
