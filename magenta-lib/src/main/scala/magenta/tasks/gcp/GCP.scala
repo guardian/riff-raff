@@ -132,8 +132,8 @@ object GCP {
       val resquestInitialiser =  new HttpRequestInitializer {
         override def initialize(request: HttpRequest): Unit = {
           credentials.initialize(request)
-          request.setConnectTimeout(3 * 60000) //3 mins
-          request.setReadTimeout(3 * 60000) //3 mns
+          request.setConnectTimeout(0) //3 mins
+          request.setReadTimeout(0) //3 mns
         }
       }
 
