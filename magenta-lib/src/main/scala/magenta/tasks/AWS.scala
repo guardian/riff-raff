@@ -234,6 +234,16 @@ object ASG {
   case class TagExists(key: String) extends TagRequirement
   case class TagAbsent(key: String) extends TagRequirement
 
+  def getGroupByName(name: String, client: AutoScalingClient, reporter: DeployReporter): AutoScalingGroup = {
+    val request = DescribeAutoScalingGroupsRequest.builder()
+      .autoScalingGroupNames(name)
+      .maxRecords(1)
+      .build()
+    val autoScalingGroups = client.describeAutoScalingGroups(request).autoScalingGroups().asScala.toList
+    // We've asked for one record and the name must be unique per Region per account
+    autoScalingGroups.headOption.getOrElse(reporter.fail(s"Failed to identify an autoscaling group with name ${name}"))
+  }
+
   def groupWithTags(tagRequirements: List[TagRequirement], client: AutoScalingClient, reporter: DeployReporter, strategy: Strategy = Strategy.MostlyHarmless): Option[AutoScalingGroup] = {
     case class ASGMatch(app:App, matches:List[AutoScalingGroup])
 
