@@ -190,7 +190,11 @@ trait ASGTask extends Task {
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     ASG.withAsgClient(keyRing, region, resources) { asgClient =>
       resources.reporter.verbose(s"Looked up group matching tags ${info.tagRequirements}; identified ${info.asg.autoScalingGroupARN}")
-      execute(info.asg, resources, stopFlag, asgClient)
+      // Although we have already identified the correct autoscaling group, we always need to check the latest state
+      // before performing a task.
+      // For example, we need to make sure that we have the latest desired capacity when doubling the size of the ASG.
+      val latestAsgState = ASG.getGroupByName(asgName, asgClient, resources.reporter)
+      execute(latestAsgState, resources, stopFlag, asgClient)
     }
   }
 }
