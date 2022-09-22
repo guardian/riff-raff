@@ -14,7 +14,7 @@ inThisBuild(List(
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.13.8",
+  scalaVersion := "2.13.9",
 
   scalacOptions ++= Seq("-feature", "-language:postfixOps,reflectiveCalls,implicitConversions"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
