@@ -40,6 +40,14 @@
           "title": "Override the name of the app (defaults to the name of the deployment)",
           "type": "string"
         },
+        "actions": {
+          "title": "List of deployment type actions to execute for this deployment",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
         "contentDirectory": {
           "title": "Override the directory suffix used to find the files for this deployment (defaults to the deployment name)",
           "type": "string"
