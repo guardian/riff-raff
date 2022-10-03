@@ -25,4 +25,4 @@ jobs:
           # Ensure we don't overwrite existing (Teamcity) builds.
           # LAST_TEAMCITY_BUILD=TODO
           # export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
-          sbt clean compile riffraff/riffRaffUpload
+          sbt clean compile lib/test riffraff/riffRaffUpload
