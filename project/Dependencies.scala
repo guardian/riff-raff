@@ -5,8 +5,8 @@ object Dependencies {
 
   object Versions {
     val aws = "2.17.248"
-    val jackson = "2.13.3"
-    val awsRds = "1.12.294"
+    val jackson = "2.13.4"
+    val awsRds = "1.12.314"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -27,7 +27,7 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.13" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.14" % Test,
     "org.parboiled" %% "parboiled" % "2.4.0",
     "org.typelevel" %% "cats-core" % "2.8.0",
     "org.mockito" %% "mockito-scala" % "1.17.12" % Test
@@ -52,8 +52,8 @@ object Dependencies {
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.9.3",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-    "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220811-2.0.0",
-    "com.google.cloud" % "google-cloud-storage" % "2.11.3",
+    "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220908-2.0.0",
+    "com.google.cloud" % "google-cloud-storage" % "2.12.0",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
@@ -90,7 +90,8 @@ object Dependencies {
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test,
+    // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test, // scala-steward:off
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
