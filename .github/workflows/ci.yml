@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: corretto
+          java-version: 11
+
+      - name: build + test
+        run: |
+          sbt clean compile lib/test riffraff/riffRaffUpload
