@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.17.248"
     val jackson = "2.13.4"
-    val awsRds = "1.12.307"
+    val awsRds = "1.12.314"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -27,7 +27,7 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.13" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.14" % Test,
     "org.parboiled" %% "parboiled" % "2.4.0",
     "org.typelevel" %% "cats-core" % "2.8.0",
     "org.mockito" %% "mockito-scala" % "1.17.12" % Test
