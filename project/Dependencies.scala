@@ -90,7 +90,8 @@ object Dependencies {
     "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
     filters,
     ws,
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test,
+    // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test, // scala-steward:off
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
