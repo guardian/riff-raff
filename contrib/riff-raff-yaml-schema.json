@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/guardian/riff-raff/master/contrib/riff-raff-yaml-schema.json",
+  "$id": "https://raw.githubusercontent.com/guardian/riff-raff/main/contrib/riff-raff-yaml-schema.json",
   "title": "Riff-Raff deployment",
   "definitions": {
     "stacks": {
