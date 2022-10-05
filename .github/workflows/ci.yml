@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: 4core-ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
