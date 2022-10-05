@@ -82,6 +82,7 @@ lazy val riffraff = project.in(file("riff-raff"))
       baseDirectory.value / "bootstrap.sh" -> s"${name.value}/bootstrap.sh",
       baseDirectory.value / "riff-raff.yaml" -> "riff-raff.yaml"
     ),
+    riffRaffManifestProjectName := "tools::riffraff", // explicitly named for continuity following move from TeamCity to GitHub Actions
 
     ivyXML := {
       <dependencies>
