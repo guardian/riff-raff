@@ -156,6 +156,10 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
         .orElse(getManageStackPolicyFromLookup)
         .getOrElse(manageStackPolicyDefault)
 
+    if(!manageStackPolicy) {
+      reporter.warning("You've opted out of having Riff-Raff protect resources during a CloudFormation deployment (`manageStackPolicy` = false). See https://riffraff.gutools.co.uk/docs/riffraff/advanced-settings.md.")
+    }
+
     val cfnTemplateFile: String = templateStagePaths(pkg, target, reporter).lift.apply(target.parameters.stage.name) match {
       case Some(file) =>
         logger.info(s"templateStagePaths property is set and has been resolved to $file")
