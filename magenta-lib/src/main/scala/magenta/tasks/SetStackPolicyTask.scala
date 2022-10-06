@@ -12,12 +12,9 @@ case object DenyReplaceDeletePolicy extends StackPolicy
 
 object StackPolicy {
 
-  def toPolicyDoc(policy: StackPolicy, sensitiveResourceTypes: Set[String], accountResourceTypes: () => Set[String]): String = policy match {
-    case AllowAllPolicy =>
-      ALLOW_ALL_POLICY
-    case DenyReplaceDeletePolicy =>
-      val sensitiveResources = sensitiveResourceTypes.intersect(accountResourceTypes())
-      DENY_REPLACE_DELETE_POLICY(sensitiveResources)
+  def toPolicyDoc(policy: StackPolicy, accountResourceTypes: () => Set[String]): String = policy match {
+    case AllowAllPolicy => ALLOW_ALL_POLICY
+    case DenyReplaceDeletePolicy => DENY_REPLACE_DELETE_POLICY(accountResourceTypes())
   }
 
   /**
@@ -126,8 +123,8 @@ object StackPolicy {
       |}
       |""".stripMargin
 
-  private[this] def DENY_REPLACE_DELETE_POLICY(sensitiveTypes: Set[String]): String = {
-    val sortedSensitiveTypes = sensitiveTypes.toSeq.sorted // alphabetical to make testing easier
+  private[this] def DENY_REPLACE_DELETE_POLICY(availableAccountResources: Set[String]): String = {
+    val resourcesToProtect = allSensitiveResourceTypes.intersect(availableAccountResources).toSeq.sorted // alphabetical to make testing easier
 
     s"""{
          |  "Statement" : [
@@ -139,7 +136,7 @@ object StackPolicy {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${sortedSensitiveTypes.mkString("\"","\",\n\"", "\"")}
+         |            ${resourcesToProtect.mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }
@@ -160,7 +157,7 @@ object StackPolicy {
     s"""**${policy.name}**:
       |
       |```
-      |${toPolicyDoc(policy, allSensitiveResourceTypes, () => allSensitiveResourceTypes)}
+      |${toPolicyDoc(policy, () => allSensitiveResourceTypes)}
       |```
       |""".stripMargin
   }
@@ -174,7 +171,7 @@ class SetStackPolicyTask(
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      val policyDoc = toPolicyDoc(stackPolicy, allSensitiveResourceTypes, () => accountResourceTypes(cfnClient))
+      val policyDoc = toPolicyDoc(stackPolicy, () => accountResourceTypes(cfnClient))
 
       changeSetType match {
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")

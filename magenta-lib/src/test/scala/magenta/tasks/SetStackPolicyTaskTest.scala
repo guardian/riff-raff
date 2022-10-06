@@ -7,7 +7,7 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescript
 class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
 
   "toPolicyDoc" should "return an allow doc when policy is AllowAllPolicy" in {
-    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, StackPolicy.allSensitiveResourceTypes, () => Set.empty)
+    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, () => Set.empty)
     val want =
       """{
         |  "Statement" : [
@@ -27,7 +27,6 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, including supported resource types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.allSensitiveResourceTypes,
       () => Set(
         // sensitive AWS types
         "AWS::DocDB::DBCluster",
@@ -73,7 +72,6 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, excluding unsupported private types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.allSensitiveResourceTypes,
       () => Set(
         "AWS::Kinesis::Stream", // sensitive AWS type
         "AWS::IAM::Role", // non-sensitive AWS type, should not appear in the policy
