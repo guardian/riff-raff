@@ -16,7 +16,7 @@ object StackPolicy {
     case AllowAllPolicy =>
       ALLOW_ALL_POLICY
     case DenyReplaceDeletePolicy =>
-      val sensitiveResources = sensitiveResourceTypes.intersect(accountResourceTypes()).toList.sorted.toSet // alphabetical to make testing easier
+      val sensitiveResources = sensitiveResourceTypes.intersect(accountResourceTypes())
       DENY_REPLACE_DELETE_POLICY(sensitiveResources)
   }
 
@@ -126,8 +126,10 @@ object StackPolicy {
       |}
       |""".stripMargin
 
-  private[this] def DENY_REPLACE_DELETE_POLICY(sensitiveTypes: Set[String]): String =
-      s"""{
+  private[this] def DENY_REPLACE_DELETE_POLICY(sensitiveTypes: Set[String]): String = {
+    val sortedSensitiveTypes = sensitiveTypes.toSeq.sorted // alphabetical to make testing easier
+
+    s"""{
          |  "Statement" : [
          |    {
          |      "Effect" : "Deny",
@@ -137,7 +139,7 @@ object StackPolicy {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${sensitiveTypes.mkString("\"","\",\n\"", "\"")}
+         |            ${sortedSensitiveTypes.mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }
@@ -151,7 +153,7 @@ object StackPolicy {
          |  ]
          |}
          |""".stripMargin
-
+  }
 
 
   def toMarkdown(policy: StackPolicy): String = {
