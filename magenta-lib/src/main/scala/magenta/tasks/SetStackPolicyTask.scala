@@ -1,8 +1,8 @@
 package magenta.tasks
-import magenta.tasks.StackPolicy.{accountPrivateTypes, allSensitiveResourceTypes, toPolicyDoc}
+import magenta.tasks.StackPolicy.{accountResourceTypes, allSensitiveResourceTypes, toPolicyDoc}
 import magenta.{DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{ChangeSetType, ListTypesRequest, SetStackPolicyRequest, Visibility}
+import software.amazon.awssdk.services.cloudformation.model.{Category, ChangeSetType, ListTypesRequest, RegistryType, SetStackPolicyRequest, TypeFilters, Visibility}
 
 import scala.jdk.CollectionConverters._
 
@@ -12,18 +12,59 @@ case object DenyReplaceDeletePolicy extends StackPolicy
 
 object StackPolicy {
 
-  def toPolicyDoc(policy: StackPolicy, sensitiveResourceTypes: Set[String], accountPrivateTypes: () => Set[String]): String = policy match {
+  def toPolicyDoc(policy: StackPolicy, sensitiveResourceTypes: Set[String], accountResourceTypes: () => Set[String]): String = policy match {
     case AllowAllPolicy =>
       ALLOW_ALL_POLICY
     case DenyReplaceDeletePolicy =>
-      val sensitiveResources = sensitiveResourceTypes.filter(t => t.startsWith("AWS") || accountPrivateTypes().contains(t))
+      val sensitiveResources = sensitiveResourceTypes.intersect(accountResourceTypes()).toList.sorted.toSet // alphabetical to make testing easier
       DENY_REPLACE_DELETE_POLICY(sensitiveResources)
   }
 
-  def accountPrivateTypes(client: CloudFormationClient): Set[String] = {
+  /**
+   * Returns the names of private resource types that can be CLoudFormed in a given region.
+   * Necessary because we've not deployed all our private resource types to all regions.
+   *
+   * @param client A CloudFormation client, with a set region
+   * @return A Set of Resource type names
+   * @see https://github.com/guardian/cfn-private-resource-types
+   */
+  private def accountPrivateTypes(client: CloudFormationClient): Set[String] = {
     val request =  ListTypesRequest.builder().visibility(Visibility.PRIVATE).build()
     val response = client.listTypesPaginator(request)
     response.typeSummaries().asScala.map(_.typeName()).toSet
+  }
+
+  /**
+   * Returns the names of AWS and private resource types that can be CloudFormed in a given region.
+   * Necessary because every region does not support every resource.
+   * For example AWS::DocDB::DBCluster is not supported in us-west-1.
+   *
+   * @param client A CloudFormation client, with a set region
+   * @return A Set of Resource type names
+   * @see https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/list-types.html
+   * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-resource-specification.html
+   */
+  private def accountAwsResourceTypes(client: CloudFormationClient): Set[String] = {
+    val request = ListTypesRequest.builder()
+      .visibility(Visibility.PUBLIC)
+      .`type`(RegistryType.RESOURCE)
+      .filters(
+        TypeFilters.builder()
+          .category(Category.AWS_TYPES)
+          .build()
+      ).build()
+    val response = client.listTypesPaginator(request)
+    response.typeSummaries().asScala.map(_.typeName()).toSet
+  }
+
+  /**
+   * Returns the names of AWS and Private resource types that can be CloudFormed in a given region.
+   *
+   * @param client A CloudFormation client, with a set region
+   * @return A Set of Resource type names
+   */
+  def accountResourceTypes(client: CloudFormationClient): Set[String] = {
+    accountAwsResourceTypes(client) ++ accountPrivateTypes(client)
   }
 
   /** CFN resource types that have state or are likely to exist in external
@@ -131,7 +172,7 @@ class SetStackPolicyTask(
   override def execute(resources: DeploymentResources, stopFlag: => Boolean): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
       val (stackName, changeSetType, _) = stackLookup.lookup(resources.reporter, cfnClient)
-      val policyDoc = toPolicyDoc(stackPolicy, allSensitiveResourceTypes, () => accountPrivateTypes(cfnClient))
+      val policyDoc = toPolicyDoc(stackPolicy, allSensitiveResourceTypes, () => accountResourceTypes(cfnClient))
 
       changeSetType match {
         case ChangeSetType.CREATE => resources.reporter.info(s"Stack $stackName not found - no need to update policy")
