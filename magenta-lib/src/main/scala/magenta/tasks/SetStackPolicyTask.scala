@@ -136,7 +136,7 @@ object StackPolicy {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${resourcesToProtect.mkString("\"","\",\n\"", "\"")}
+         |            ${resourcesToProtect.mkString("\"","\",\"", "\"")}
          |          ]
          |        }
          |      }
