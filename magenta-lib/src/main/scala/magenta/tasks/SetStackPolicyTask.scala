@@ -18,7 +18,7 @@ object StackPolicy {
   }
 
   /**
-   * Returns the names of private resource types that can be CLoudFormed in a given region.
+   * Returns the names of private resource types that can be CloudFormed in a given region.
    * Necessary because we've not deployed all our private resource types to all regions.
    *
    * @param client A CloudFormation client, with a set region
@@ -136,7 +136,7 @@ object StackPolicy {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${resourcesToProtect.mkString("\"","\",\n\"", "\"")}
+         |            ${resourcesToProtect.mkString("\"","\",\"", "\"")}
          |          ]
          |        }
          |      }
