@@ -1,6 +1,5 @@
 package magenta.tasks
 
-import magenta.tasks.StackPolicy.allSensitiveResourceTypes
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescription => _}
@@ -8,7 +7,7 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescript
 class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
 
   "toPolicyDoc" should "return an allow doc when policy is AllowAllPolicy" in {
-    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, StackPolicy.allSensitiveResourceTypes, () => Set.empty)
+    val got = StackPolicy.toPolicyDoc(AllowAllPolicy, () => Set.empty)
     val want =
       """{
         |  "Statement" : [
@@ -25,11 +24,20 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
     got shouldBe want
   }
 
-  it should "return a deny doc when policy is DenyReplaceDeletePolicy, including supported private types" in {
+  it should "return a deny doc when policy is DenyReplaceDeletePolicy, including supported resource types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.allSensitiveResourceTypes,
-      () => Set("Guardian::DNS::RecordSet")
+      () => Set(
+        // sensitive AWS types
+        "AWS::DocDB::DBCluster",
+        "AWS::Kinesis::Stream",
+
+        // non-sensitive AWS type, should not appear in the policy
+        "AWS::IAM::Role",
+
+        // sensitive private type
+        "Guardian::DNS::RecordSet",
+      )
     )
 
     val want =
@@ -43,7 +51,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${allSensitiveResourceTypes.mkString("\"","\",\n\"", "\"")}
+         |            ${Set("AWS::DocDB::DBCluster", "AWS::Kinesis::Stream", "Guardian::DNS::RecordSet").mkString("\"","\",\n\"", "\"")}
          |          ]
          |        }
          |      }
@@ -64,8 +72,10 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, excluding unsupported private types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      StackPolicy.allSensitiveResourceTypes,
-      () => Set.empty
+      () => Set(
+        "AWS::Kinesis::Stream", // sensitive AWS type
+        "AWS::IAM::Role", // non-sensitive AWS type, should not appear in the policy
+      )
     )
 
     val want =
@@ -79,7 +89,7 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${allSensitiveResourceTypes.filterNot(_ == "Guardian::DNS::RecordSet").mkString("\"","\",\n\"", "\"")}
+         |            "AWS::Kinesis::Stream"
          |          ]
          |        }
          |      }
