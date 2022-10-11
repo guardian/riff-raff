@@ -51,7 +51,9 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
          |      "Condition" : {
          |        "StringEquals" : {
          |          "ResourceType" : [
-         |            ${Set("AWS::DocDB::DBCluster", "AWS::Kinesis::Stream", "Guardian::DNS::RecordSet").mkString("\"","\",\n\"", "\"")}
+         |            "AWS::DocDB::DBCluster",
+         |"AWS::Kinesis::Stream",
+         |"Guardian::DNS::RecordSet"
          |          ]
          |        }
          |      }
