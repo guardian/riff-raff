@@ -30,7 +30,10 @@ trait BucketParameters {
 
     val bucket = (bucketSsmLookup, maybeExplicitBucket) match {
       case (true, None) => BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
-      case (false, Some(explicitBucket)) => BucketByName(explicitBucket)
+      case (false, Some(explicitBucket)) => {
+        reporter.warning("Explicit bucket name in riff-raff.yaml. Prefer to use bucketSsmLookup=true, removing private information from VCS.")
+        BucketByName(explicitBucket)
+      }
       case _ => reporter.fail("One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true")
     }
     reporter.verbose(s"Resolved artifact bucket as $bucket")
