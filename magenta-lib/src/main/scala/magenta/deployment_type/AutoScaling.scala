@@ -5,7 +5,6 @@ import magenta.{App, DeployTarget, DeploymentPackage, DeploymentResources, KeyRi
 import magenta.tasks._
 import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
 import magenta.tasks.{S3 => S3Tasks}
-import software.amazon.awssdk.services.ssm.SsmClient
 
 sealed trait MigrationTagRequirements
 case object NoMigration extends MigrationTagRequirements
@@ -155,7 +154,7 @@ object AutoScaling extends DeploymentType with BucketParameters {
       packageOrAppName = maybePackageOrAppName
     )
 
-    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+    val bucket = getTargetBucketFromConfig(pkg, target, resources)
 
     val s3Bucket = S3Tasks.getBucketName(
       bucket,

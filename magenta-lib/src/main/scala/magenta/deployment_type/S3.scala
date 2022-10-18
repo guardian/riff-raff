@@ -2,9 +2,10 @@ package magenta.deployment_type
 
 import magenta.Datum
 import magenta.deployment_type.param_reads.PatternValue
-import magenta.tasks.S3Upload
+import magenta.tasks.{S3Upload, SSM}
+import magenta.tasks.{S3 => S3Tasks}
 
-object S3 extends DeploymentType {
+object S3 extends DeploymentType with BucketParameters {
   val name = "aws-s3"
   val documentation = "For uploading files into an S3 bucket."
 
@@ -28,17 +29,6 @@ object S3 extends DeploymentType {
     """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
        the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
        full control over the path with the resource lookup.
-    """.stripMargin,
-    optional = true
-  )
-
-  //required configuration, you cannot upload without setting these
-  val bucket = Param[String]("bucket", "S3 bucket to upload package files to (see also `bucketResource`)", optional = true)
-  val bucketResource = Param[String]("bucketResource",
-    """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
-      |
-      |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
-      |regardless of the target stage.
     """.stripMargin,
     optional = true
   )
@@ -126,29 +116,16 @@ object S3 extends DeploymentType {
         |greater control. The generated key looks like: `/<pathPrefix>/<filePathAndName>`.
         """.stripMargin
   ){ (pkg, resources, target) => {
-      def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-        val maybeResource = resource.get(pkg)
-        maybeResource.flatMap { resourceName =>
-          val dataLookup = resources.lookup.data
-          val datumOpt = dataLookup.datum(resourceName, pkg.app, target.parameters.stage, target.stack)
-          if (datumOpt.isEmpty) {
-            def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-            resources.reporter.verbose(s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
-          }
-          datumOpt
-        }
-      }
 
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
 
-      assert(bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined, "One, and only one, of bucket or bucketResource must be specified")
-      val bucketName = bucket.get(pkg) getOrElse {
-        val data = resourceLookupFor(bucketResource)
-        assert(data.isDefined, s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.app} in ${target.parameters.stage.name})")
-        data.get.value
-      }
+    val s3Bucket = S3Tasks.getBucketName(
+      getTargetBucketFromConfig(pkg, target, resources, keyRequired = true),
+      SSM.withSsmClient(keyRing, target.region, resources),
+      resources.reporter
+    )
 
     val maybePackageOrAppName: Option[String] = (prefixPackage(pkg, target, reporter), prefixApp(pkg, target, reporter)) match {
       case (_, true) => Some(pkg.app.name)
@@ -156,7 +133,7 @@ object S3 extends DeploymentType {
       case (false, false) => None
     }
 
-    val maybeDatum = resourceLookupFor(pathPrefixResource)
+    val maybeDatum = pathPrefixResource.get(pkg).flatMap(pathPrefix => resourceLookupFor(pathPrefix, pkg, target, resources))
     val maybeString = maybeDatum.map(_.value)
     val prefix:String = maybeString.getOrElse(S3Upload.prefixGenerator(
         stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
@@ -166,7 +143,7 @@ object S3 extends DeploymentType {
       List(
         S3Upload(
           target.region,
-          bucket = bucketName,
+          bucket = s3Bucket,
           paths = Seq(pkg.s3Package -> prefix),
           cacheControlPatterns = cacheControl(pkg, target, reporter),
           surrogateControlPatterns = surrogateControl(pkg, target, reporter),

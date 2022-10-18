@@ -1,10 +1,9 @@
 package magenta.deployment_type
 
 import magenta.artifact.S3Path
-import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack}
+import magenta.tasks.{S3Upload, SSM, UpdateS3Lambda, S3 => S3Tasks}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.ssm.SsmClient
 
 object Lambda extends Lambda
 
@@ -70,8 +69,9 @@ trait Lambda extends DeploymentType with BucketParameters {
     optional = true
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
-    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+  def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, resources: DeploymentResources): List[UpdateLambdaFunction] = {
+    val reporter = resources.reporter
+    val bucket = getTargetBucketFromConfig(pkg, target, resources)
 
     val stage = target.parameters.stage.name
 
@@ -116,7 +116,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
-    lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+    lambdaToProcess(pkg, target, resources).map { lambda =>
       val s3Bucket = S3Tasks.getBucketName(
         lambda.s3Bucket,
         SSM.withSsmClient(keyRing, target.region, resources),
@@ -148,7 +148,7 @@ trait Lambda extends DeploymentType with BucketParameters {
     """.stripMargin){ (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
-    lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+    lambdaToProcess(pkg, target, resources).map { lambda =>
         val s3Bucket = S3Tasks.getBucketName(
           lambda.s3Bucket,
           SSM.withSsmClient(keyRing, target.region, resources),
