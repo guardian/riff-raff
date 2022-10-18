@@ -134,9 +134,6 @@ object AutoScaling extends DeploymentType with BucketParameters {
     groupsToUpdate.flatMap(asg => tasksPerAutoScalingGroup(asg))
   }
 
-  // TODO this is copied from `Lambda.scala` and could be DRYed out
-  def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
-
   val uploadArtifacts = Action("uploadArtifacts",
     """
       |Uploads the files in the deployment's directory to the specified bucket.
@@ -162,7 +159,7 @@ object AutoScaling extends DeploymentType with BucketParameters {
 
     val s3Bucket = S3Tasks.getBucketName(
       bucket,
-      withSsm(keyRing, target.region, resources),
+      SSM.withSsmClient(keyRing, target.region, resources),
       resources.reporter
     )
 
