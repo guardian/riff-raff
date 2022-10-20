@@ -91,7 +91,7 @@ object S3 {
       case BucketByName(name) => name
       case BucketBySsmKey(ssmKey) =>
         try {
-          val resolvedBucket = withSsmClient { SSM.getParameter(reporter, _, ssmKey) }
+          val resolvedBucket = withSsmClient { SSM.getParameter(_, ssmKey) }
           reporter.verbose(s"Resolved bucket from SSM key $ssmKey to be $resolvedBucket")
           resolvedBucket
         } catch {
@@ -549,7 +549,7 @@ object SSM {
       .build())(block)
   }
 
-  def getParameter(reporter: DeployReporter, ssmClient: SsmClient, key: String): String =
+  def getParameter(ssmClient: SsmClient, key: String): String =
       ssmClient
         .getParameter(GetParameterRequest.builder.name(key).build)
         .parameter.value
