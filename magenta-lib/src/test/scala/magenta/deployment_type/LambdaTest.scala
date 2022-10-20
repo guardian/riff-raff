@@ -152,7 +152,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     e.message shouldBe s"Explicit bucket name has not been provided and failed to read bucket from SSM parameter: $ssmKey"
   }
 
-  it should "default to lookup bucket from SSM bucket name is not provided and bucketSsmLookup is false" in {
+  it should "default to lookup bucket from SSM when bucket name is not provided and bucketSsmLookup is false" in {
     val dataWithoutStackOverride: Map[String, JsValue] = Map(
       "functionNames" -> Json.arr("MyFunction-")
     )
