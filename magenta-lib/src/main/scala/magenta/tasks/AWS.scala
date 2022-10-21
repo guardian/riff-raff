@@ -25,7 +25,7 @@ import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, List
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.ssm.SsmClient
-import software.amazon.awssdk.services.ssm.model.GetParameterRequest
+import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, SsmException}
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
@@ -90,9 +90,14 @@ object S3 {
     bucket match {
       case BucketByName(name) => name
       case BucketBySsmKey(ssmKey) =>
-        val resolvedBucket = withSsmClient { SSM.getParameter(_, ssmKey) }
-        reporter.verbose(s"Resolved bucket from SSM key $ssmKey to be $resolvedBucket")
-        resolvedBucket
+        try {
+          val resolvedBucket = withSsmClient { SSM.getParameter(_, ssmKey) }
+          reporter.verbose(s"Resolved bucket from SSM key $ssmKey to be $resolvedBucket")
+          resolvedBucket
+        } catch {
+          case e: SsmException =>
+            reporter.fail(s"Explicit bucket name has not been provided and failed to read bucket from SSM parameter: $ssmKey", e)
+        }
     }
   }
 
@@ -544,10 +549,10 @@ object SSM {
       .build())(block)
   }
 
-  def getParameter(ssmClient: SsmClient, key: String): String = {
-    val result = ssmClient.getParameter(GetParameterRequest.builder.name(key).build)
-    result.parameter.value
-  }
+  def getParameter(ssmClient: SsmClient, key: String): String =
+      ssmClient
+        .getParameter(GetParameterRequest.builder.name(key).build)
+        .parameter.value
 }
 
 object AWS extends Loggable {

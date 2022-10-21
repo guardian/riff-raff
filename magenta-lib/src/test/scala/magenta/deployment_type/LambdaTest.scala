@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
-import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, GetParameterResponse, Parameter}
+import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, GetParameterResponse, Parameter, SsmException}
 import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
@@ -105,8 +105,9 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "refuse to work if a bucket name is provided and bucketSsmLookup is true" in {
+    val lambdaBucketName = "lambda-bucket"
     val dataWithoutStackOverride: Map[String, JsValue] = Map(
-      "bucket" -> JsString("lambda-bucket"),
+      "bucket" -> JsString(lambdaBucketName),
       "bucketSsmLookup" -> JsBoolean(true),
       "functionNames" -> Json.arr("MyFunction-")
     )
@@ -119,10 +120,11 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
         "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
-    e.message shouldBe "One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true"
+
+    e.message shouldBe s"Bucket name provided ($lambdaBucketName) & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
   }
 
-  it should "refuse to work if bucket name is not provided and bucketSsmLookup is false" in {
+  it should "refuse to work if bucket name is not provided and no bucket is specified in SSM" in {
     val dataWithoutStackOverride: Map[String, JsValue] = Map(
       "functionNames" -> Json.arr("MyFunction-")
     )
@@ -130,12 +132,57 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
       S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
 
+    val ssmClient = mock[SsmClient]
+
+    when(ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))).thenThrow(
+      SsmException.builder.message("Boom!").build()
+    )
+
+    object LambdaTest extends Lambda {
+      override def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = _ (ssmClient)
+    }
+
     val e = the [FailException] thrownBy {
-      Lambda.actionsMap(
+      LambdaTest.actionsMap(
         "updateLambda").taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
         DeployTarget(parameters(PROD), Stack("some-stack"), region))
     }
-    e.message shouldBe "One and only one of the following must be set: the bucket parameter or bucketSsmLookup=true"
+
+    val ssmKey = BucketParametersDefaults.defaultSsmKeyParamDefault
+    e.message shouldBe s"Explicit bucket name has not been provided and failed to read bucket from SSM parameter: $ssmKey"
+  }
+
+  it should "default to lookup bucket from SSM when bucket name is not provided and bucketSsmLookup is false" in {
+    val dataWithoutStackOverride: Map[String, JsValue] = Map(
+      "functionNames" -> Json.arr("MyFunction-")
+    )
+    val app = App("lambda")
+    val pkg = DeploymentPackage("lambda", app, dataWithoutStackOverride, "aws-lambda",
+      S3Path("artifact-bucket", "test/123/lambda"), deploymentTypes)
+
+    val ssmClient = mock[SsmClient]
+
+    when(ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))).thenReturn(
+      GetParameterResponse.builder.parameter(Parameter.builder.value("bobbins").build).build
+    )
+    object LambdaTest extends Lambda {
+      override def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = _ (ssmClient)
+    }
+
+    val tasks = LambdaTest.actionsMap("updateLambda")
+      .taskGenerator(pkg, DeploymentResources(reporter, lookupEmpty, artifactClient, stsClient, global),
+        DeployTarget(parameters(PROD), Stack("some-stack"), region)
+      )
+
+    tasks shouldBe List(
+      UpdateS3Lambda(
+        function = LambdaFunctionName("some-stackMyFunction-PROD"),
+        s3Bucket = s"bobbins",
+        s3Key = "some-stack/PROD/lambda/lambda.zip",
+        region = defaultRegion
+      )
+    )
+
   }
 
   it should "lookup bucket from SSM when bucketSsmLookup is true" in {
