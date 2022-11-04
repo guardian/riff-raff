@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.17.248"
     val jackson = "2.13.4"
-    val awsRds = "1.12.314"
+    val awsRds = "1.12.333"
     val enumeratumPlay = "1.7.0"
   }
 
@@ -28,15 +28,14 @@ object Dependencies {
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.14" % Test,
-    "org.parboiled" %% "parboiled" % "2.4.0",
+    "org.parboiled" %% "parboiled" % "2.4.1",
     "org.typelevel" %% "cats-core" % "2.8.0",
     "org.mockito" %% "mockito-scala" % "1.17.12" % Test
   )
 
   val magentaLibDeps = commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
     "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-    // Not upgradeable until Play moves to 1.3+. It depends on slf4j 2, which has breaking changes
-    "ch.qos.logback" % "logback-classic" % "1.2.11", // scala-steward:off,
+    "ch.qos.logback" % "logback-classic" % "1.4.4",
     "software.amazon.awssdk" % "core" % Versions.aws,
     "software.amazon.awssdk" % "autoscaling" % Versions.aws,
     "software.amazon.awssdk" % "s3" % Versions.aws,
@@ -53,7 +52,7 @@ object Dependencies {
     "com.typesafe.play" %% "play-json" % "2.9.3",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220908-2.0.0",
-    "com.google.cloud" % "google-cloud-storage" % "2.12.0",
+    "com.google.cloud" % "google-cloud-storage" % "2.14.0",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
@@ -74,7 +73,7 @@ object Dependencies {
     "software.amazon.awssdk" % "sns" % Versions.aws,
     "org.quartz-scheduler" % "quartz" % "2.3.2",
     "com.gu" %% "anghammarad-client" % "1.2.0",
-    "org.webjars" %% "webjars-play" % "2.8.13",
+    "org.webjars" %% "webjars-play" % "2.8.18",
     "org.webjars" % "jquery" % "3.6.1",
     "org.webjars" % "jquery-ui" % "1.13.2",
     "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
@@ -91,7 +90,7 @@ object Dependencies {
     filters,
     ws,
     // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
-    "com.typesafe.akka" %% "akka-testkit" % "2.6.19" % Test, // scala-steward:off
+    "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test, // scala-steward:off
     "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
