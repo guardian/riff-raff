@@ -52,7 +52,7 @@ object Dependencies {
     "com.typesafe.play" %% "play-json" % "2.9.3",
     "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
     "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220908-2.0.0",
-    "com.google.cloud" % "google-cloud-storage" % "2.14.0",
+    "com.google.cloud" % "google-cloud-storage" % "2.15.0",
     "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   ).map((m: ModuleID) =>
     // don't even ask why I need to do this
