@@ -46,7 +46,7 @@ object Dependencies {
     "software.amazon.awssdk" % "cloudformation" % Versions.aws,
     "software.amazon.awssdk" % "sts" % Versions.aws,
     "software.amazon.awssdk" % "ssm" % Versions.aws,
-    "com.gu" %% "fastly-api-client" % "0.4.2",
+    "com.gu" %% "fastly-api-client" % "0.4.3",
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
     "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
     "com.typesafe.play" %% "play-json" % "2.9.3",
