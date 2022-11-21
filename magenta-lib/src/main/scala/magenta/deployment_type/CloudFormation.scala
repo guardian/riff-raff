@@ -172,6 +172,9 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
     // The tag name here ('gu:repo') and format ('guardian/:reponame') MUST
     // mirror the tag name and format used by @guardian/cdk.
     val guRepoTag = ("gu:repo" -> vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id))
+    if (guRepoTag._2 == "") {
+      reporter.warning("Unable to detect the Github repository for your build (used to provide better reporting to teams). This is probably because you are using an unsupported library (or custom script) to generate your Riffraff bundle. To fix this, we recommend that you use https://github.com/guardian/actions-riff-raff/ instead.")
+    }
 
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
