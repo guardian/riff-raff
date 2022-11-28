@@ -177,13 +177,23 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
       reporter.warning("Unable to detect the Github repository for your build. DevX require this information to provide better reporting for teams as part of the upcoming Service Catalogue. This info is probably missing because you are using an unsupported library (or custom script) to generate your Riffraff bundle. To fix this, we recommend that you use https://github.com/guardian/actions-riff-raff/ or, if you are using https://github.com/guardian/sbt-riffraff-artifact or https://github.com/guardian/node-riffraff-artifact, upgrade to the latest version.")
     }
 
+    val defaultTags = Map(
+      "Stack" -> target.stack.name,
+      "Stage" -> target.parameters.stage.name,
+      "App" -> pkg.app.name,
+      "gu:repo" -> vcsUrl.getOrElse("unknown"),
+    )
+
+    // Existing tags override the defaults.
+    val mergedTags = defaultTags ++ unresolvedParameters.stackTags.getOrElse(Map.empty)
+
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
         target.region,
         templatePath = S3Path(pkg.s3Package, cfnTemplateFile),
         stackLookup,
         unresolvedParameters,
-        stackTags = unresolvedParameters.stackTags.getOrElse(Map.empty) + guRepoTag,
+        stackTags = mergedTags,
       ),
       new CheckChangeSetCreatedTask(
         target.region,
