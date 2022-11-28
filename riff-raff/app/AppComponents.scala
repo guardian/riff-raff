@@ -86,9 +86,9 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val builds = new Builds(buildPoller)
 
   object CustomVcsUrlLookup extends VcsLookup {
-    def get(projectName: String, buildId: String): String = {
+    def get(projectName: String, buildId: String): Option[String] = {
       val url = builds.build(projectName, buildId).map(_.vcsURL)
-      url.flatMap(VCSInfo.normalise).getOrElse("unknown")
+      url.flatMap(VCSInfo.normalise)
     }
   }
 

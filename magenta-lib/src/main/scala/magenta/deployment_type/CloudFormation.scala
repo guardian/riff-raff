@@ -13,11 +13,11 @@ import org.joda.time.DateTime
 import scala.collection.mutable.ListBuffer
 
 trait VcsLookup {
-  def get(projectName: String, buildId: String): String
+  def get(projectName: String, buildId: String): Option[String]
 }
 
 // For testing purposes
-object NoopVcsUrlLookup extends VcsLookup { def get(projectName: String, buildId: String): String = "unknown"}  
+object NoopVcsUrlLookup extends VcsLookup { def get(projectName: String, buildId: String): Option[String] = None}
 
 
 //noinspection TypeAnnotation
@@ -171,7 +171,11 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
 
     // The tag name here ('gu:repo') and format ('guardian/:reponame') MUST
     // mirror the tag name and format used by @guardian/cdk.
-    val guRepoTag = ("gu:repo" -> vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id))
+    val vcsUrl = vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id)
+    val guRepoTag = ("gu:repo" -> vcsUrl.getOrElse("unknown"))
+    if (vcsUrl.isEmpty) {
+      reporter.warning("Unable to detect the Github repository for your build. DevX require this information to provide better reporting for teams as part of the upcoming Service Catalogue. This info is probably missing because you are using an unsupported library (or custom script) to generate your Riffraff bundle. To fix this, we recommend that you use https://github.com/guardian/actions-riff-raff/ or, if you are using https://github.com/guardian/sbt-riffraff-artifact or https://github.com/guardian/node-riffraff-artifact, upgrade to the latest version.")
+    }
 
     val tasks: List[Task] = List(
       new CreateChangeSetTask(
