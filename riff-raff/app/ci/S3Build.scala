@@ -9,6 +9,7 @@ import play.api.libs.json._
 import scala.util.Try
 import scala.util.control.NonFatal
 import cats.syntax.either._
+
 import scala.collection.Seq
 
 case class S3Build(
@@ -19,7 +20,8 @@ case class S3Build(
   number: String,
   startTime: DateTime,
   revision: String,
-  vcsURL: String
+  vcsURL: String,
+  buildTool: Option[String],
 ) extends CIBuild
 
 case class S3Project(id: String, name: String) extends Job
@@ -64,7 +66,8 @@ class S3BuildOps(config: Config) extends Logging {
         (JsPath \ "buildNumber").read[String] and
         (JsPath \ "startTime").read[DateTime] and
         (JsPath \ "revision").read[String] and
-        (JsPath \ "vcsURL").read[String]
+        (JsPath \ "vcsURL").read[String] and
+        (JsPath \ "buildTool").readNullable[String]
       )(S3Build.apply _)
 
     Json.parse(json).validate[S3Build].asEither

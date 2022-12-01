@@ -43,9 +43,9 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
   val contDeployConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
   val contDeployBranchConfigs = Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaBranchEnabled, td2ProdBranchEnabled)
 
-  val tdB71 = S3Build(45397, "tools::deploy", "45397", "branch", "71", new DateTime(2013,1,25,14,42,47), "", "")
-  val td2B392 = S3Build(45400, "tools::deploy2", "45400", "branch", "392", new DateTime(2013,1,25,15,34,47), "", "")
-  val otherBranch = S3Build(45401, "tools::deploy2", "45401", "other", "393", new DateTime(2013,1,25,15,34,47), "", "")
+  val tdB71 = S3Build(45397, "tools::deploy", "45397", "branch", "71", new DateTime(2013,1,25,14,42,47), "", "", buildTool = None)
+  val td2B392 = S3Build(45400, "tools::deploy2", "45400", "branch", "392", new DateTime(2013,1,25,15,34,47), "", "", buildTool = None)
+  val otherBranch = S3Build(45401, "tools::deploy2", "45401", "other", "393", new DateTime(2013,1,25,15,34,47), "", "", buildTool = Some("guardian/actions-riff-raff"))
 
   it should "retry until finds success" in {
     var i = 0
