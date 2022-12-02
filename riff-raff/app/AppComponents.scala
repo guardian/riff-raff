@@ -1,6 +1,4 @@
-import java.time.Duration
 import ci._
-import software.amazon.awssdk.services.ssm.{SsmClient, SsmClientBuilder}
 import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
 import com.gu.play.secretrotation.aws.parameterstore
 import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
@@ -15,6 +13,7 @@ import magenta.tasks.AWS
 import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
 import persistence._
 import play.api.ApplicationLoader.Context
+import play.api.BuiltInComponentsFromContext
 import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.http.DefaultHttpErrorHandler
@@ -23,19 +22,18 @@ import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.Results.InternalServerError
 import play.api.mvc.{AnyContent, RequestHeader, Result}
 import play.api.routing.Router
-import play.api.{BuiltInComponentsFromContext, Logger}
 import play.filters.csrf.CSRFComponents
 import play.filters.gzip.GzipFilterComponents
 import resources.PrismLookup
 import router.Routes
 import schedule.DeployScheduler
 import software.amazon.awssdk.regions.Region
-import utils.{ChangeFreeze, ElkLogging, HstsFilter, ScheduledAgent}
+import software.amazon.awssdk.services.ssm.SsmClient
+import utils._
 
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-import utils.VCSInfo
 
 class AppComponents(context: Context, config: Config, passwordProvider: PasswordProvider) extends BuiltInComponentsFromContext(context)
   with RotatingSecretComponents
@@ -85,15 +83,22 @@ class AppComponents(context: Context, config: Config, passwordProvider: Password
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)
 
-  object CustomVcsUrlLookup extends VcsLookup {
-    def get(projectName: String, buildId: String): Option[String] = {
-      val url = builds.build(projectName, buildId).map(_.vcsURL)
-      url.flatMap(VCSInfo.normalise)
+  object DefaultBuildTags extends BuildTags {
+    def get(projectName: String, buildId: String): Map[String, String] = {
+      val build = builds.build(projectName, buildId)
+      val repoUrl = build.flatMap(b => VCSInfo.normalise(b.vcsURL))
+      val buildTool = build.flatMap(b => b.buildTool)
+      val default = "unknown"
+
+      Map(
+        "gu:repo" -> buildTool.getOrElse(default),
+        "gu:build-tool" -> repoUrl.getOrElse(default),
+      )
     }
   }
 
   val availableDeploymentTypes = Seq(
-    S3, AutoScaling, Fastly, new CloudFormation(CustomVcsUrlLookup), Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
+    S3, AutoScaling, Fastly, new CloudFormation(DefaultBuildTags), Lambda, AmiCloudFormationParameter, SelfDeploy, GcpDeploymentManager, GCS
   )
 
   val ioExecutionContext: ExecutionContext = actorSystem.dispatchers.lookup("io-context")

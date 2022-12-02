@@ -4,24 +4,18 @@ import magenta.Loggable
 import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
-import magenta.tasks.CloudFormation.withCfnClient
-import magenta.tasks.StackPolicy.{accountPrivateTypes, allSensitiveResourceTypes}
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
 
-import scala.collection.mutable.ListBuffer
-
-trait VcsLookup {
-  def get(projectName: String, buildId: String): Option[String]
+trait BuildTags {
+  // Returns tags for a build, which should be added to the Cloudformation
+  // stack. Tags are named with a `gu:` prefix.
+  def get(projectName: String, buildId: String): Map[String, String]
 }
 
-// For testing purposes
-object NoopVcsUrlLookup extends VcsLookup { def get(projectName: String, buildId: String): Option[String] = None}
-
-
 //noinspection TypeAnnotation
-class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudFormationDeploymentTypeParameters with Loggable {
+class CloudFormation(tagger: BuildTags) extends DeploymentType with CloudFormationDeploymentTypeParameters with Loggable {
 
   val name = "cloud-formation"
   def documentation =
@@ -169,23 +163,13 @@ class CloudFormation(vcsUrlLookup: VcsLookup) extends DeploymentType with CloudF
         templatePath(pkg, target, reporter)
     }
 
-    // The tag name here ('gu:repo') and format ('guardian/:reponame') MUST
-    // mirror the tag name and format used by @guardian/cdk.
-    val vcsUrl = vcsUrlLookup.get(target.parameters.build.projectName, target.parameters.build.id)
-    val guRepoTag = ("gu:repo" -> vcsUrl.getOrElse("unknown"))
-    if (vcsUrl.isEmpty) {
-      reporter.warning("Unable to detect the Github repository for your build. DevX require this information to provide better reporting for teams as part of the upcoming Service Catalogue. This info is probably missing because you are using an unsupported library (or custom script) to generate your Riffraff bundle. To fix this, we recommend that you use https://github.com/guardian/actions-riff-raff/ or, if you are using https://github.com/guardian/sbt-riffraff-artifact or https://github.com/guardian/node-riffraff-artifact, upgrade to the latest version.")
-    }
-
     val defaultTags = Map(
       "Stack" -> target.stack.name,
       "Stage" -> target.parameters.stage.name,
       "App" -> pkg.app.name,
-      "gu:repo" -> vcsUrl.getOrElse("unknown"),
     )
-
-    // Existing tags override the defaults.
-    val mergedTags = defaultTags ++ unresolvedParameters.stackTags.getOrElse(Map.empty)
+    val trackingTags = tagger.get(target.parameters.build.projectName, target.parameters.build.id)
+    val mergedTags = defaultTags ++ trackingTags ++ unresolvedParameters.stackTags.getOrElse(Map.empty)
 
     val tasks: List[Task] = List(
       new CreateChangeSetTask(

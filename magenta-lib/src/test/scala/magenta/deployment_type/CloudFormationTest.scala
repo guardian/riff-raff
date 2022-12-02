@@ -1,34 +1,35 @@
 package magenta.deployment_type
 
 import magenta.Strategy.{Dangerous, MostlyHarmless}
-
-import java.util.UUID
 import magenta._
 import magenta.artifact.S3Path
+import magenta.deployment_type.{CloudFormation => CloudFormationDeploymentType}
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
 import magenta.tasks.CloudFormationParameters.{ExistingParameter, InputParameter, TemplateParameter}
-import magenta.tasks.StackPolicy.accountPrivateTypes
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
-import org.scalatest.{EitherValues, Inside}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.{EitherValues, Inside}
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
-import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType, Parameter}
+import software.amazon.awssdk.services.cloudformation.model.{Change, ChangeSetType}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
-import magenta.deployment_type.{CloudFormation => CloudFormationDeploymentType}
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.global
 
+object EmptyBuildTags extends BuildTags {
+  def get(projectName: String, buildId: String): Map[String, String] = Map.empty
+}
 class CloudFormationTest extends AnyFlatSpec with Matchers with Inside with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
   implicit val artifactClient: S3Client = null
   implicit val stsClient: StsClient = null
 
-  val cloudformationDeploymentType = new CloudFormationDeploymentType(NoopVcsUrlLookup)
+  val cloudformationDeploymentType = new CloudFormationDeploymentType(EmptyBuildTags)
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[CloudFormationDeploymentType] = Seq(cloudformationDeploymentType)
   val app = App("app")

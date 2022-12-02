@@ -20,6 +20,7 @@ trait CIBuild {
   def id: Long
   def startTime: DateTime
   def vcsURL: String
+  def buildTool: Option[String]
   def toMagentaBuild: Build = Build(jobName, number)
 }
 
