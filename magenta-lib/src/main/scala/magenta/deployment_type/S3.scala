@@ -2,9 +2,9 @@ package magenta.deployment_type
 
 import magenta.Datum
 import magenta.deployment_type.param_reads.PatternValue
-import magenta.tasks.S3Upload
+import magenta.tasks.{S3Upload, S3 => S3Tasks, SSM}
 
-object S3 extends DeploymentType {
+object S3 extends DeploymentType with BucketParameters {
   val name = "aws-s3"
   val documentation = "For uploading files into an S3 bucket."
 
@@ -26,21 +26,6 @@ object S3 extends DeploymentType {
         |""".stripMargin
   ).default(false)
 
-  val pathPrefixResource = Param[String](
-    "pathPrefixResource",
-    """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
-       the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
-       full control over the path with the resource lookup.
-    """.stripMargin,
-    optional = true
-  )
-
-  // required configuration, you cannot upload without setting these
-  val bucket = Param[String](
-    "bucket",
-    "S3 bucket to upload package files to (see also `bucketResource`)",
-    optional = true
-  )
   val bucketResource = Param[String](
     "bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
@@ -138,44 +123,51 @@ object S3 extends DeploymentType {
         """.stripMargin
   ) { (pkg, resources, target) =>
     {
-      def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-        val maybeResource = resource.get(pkg)
-        maybeResource.flatMap { resourceName =>
-          val dataLookup = resources.lookup.data
-          val datumOpt = dataLookup.datum(
-            resourceName,
-            pkg.app,
-            target.parameters.stage,
-            target.stack
+      def resourceLookupFor(resourceName: String): Option[Datum] = {
+        val dataLookup = resources.lookup.data
+        val datumOpt = dataLookup.datum(
+          resourceName,
+          pkg.app,
+          target.parameters.stage,
+          target.stack
+        )
+
+        if (datumOpt.isEmpty) {
+          def str(f: Datum => String) =
+            s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
+          resources.reporter.verbose(
+            s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(
+                _.app
+              )} stage=${str(_.stage)} stack=${str(_.stack.mkString)}"
           )
-          if (datumOpt.isEmpty) {
-            def str(f: Datum => String) =
-              s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-            resources.reporter.verbose(
-              s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(
-                  _.app
-                )} stage=${str(_.stage)} stack=${str(_.stack.mkString)}"
-            )
-          }
-          datumOpt
         }
+
+        datumOpt
       }
 
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
 
-      assert(
-        bucket.get(pkg).isDefined != bucketResource.get(pkg).isDefined,
-        "One, and only one, of bucket or bucketResource must be specified"
-      )
-      val bucketName = bucket.get(pkg) getOrElse {
-        val data = resourceLookupFor(bucketResource)
-        assert(
-          data.isDefined,
-          s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.app} in ${target.parameters.stage.name})"
-        )
-        data.get.value
+      // TODO we will shortly remove the bucket resource parameter and support
+      // so this will become a lot simpler.
+      val bucketName = bucketResource.get(pkg) match {
+        case Some(resource) =>
+          val data = resourceLookupFor(resource)
+          data match {
+            case Some(datum) => datum.value
+            case None =>
+              reporter.fail(
+                s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.app} in ${target.parameters.stage.name})"
+              )
+          }
+        case None =>
+          val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+          S3Tasks.getBucketName(
+            bucket,
+            SSM.withSsmClient(keyRing, target.region, resources),
+            resources.reporter
+          )
       }
 
       val maybePackageOrAppName: Option[String] = (
@@ -187,20 +179,15 @@ object S3 extends DeploymentType {
         case (false, false) => None
       }
 
-      val maybeDatum = resourceLookupFor(pathPrefixResource)
-      val maybeString = maybeDatum.map(_.value)
-      val prefix: String = maybeString.getOrElse(
-        S3Upload.prefixGenerator(
-          stack =
-            if (prefixStack(pkg, target, reporter)) Some(target.stack)
-            else None,
-          stage =
-            if (prefixStage(pkg, target, reporter))
-              Some(target.parameters.stage)
-            else None,
-          packageOrAppName = maybePackageOrAppName
-        )
+      val prefix: String = S3Upload.prefixGenerator(
+        stack =
+          if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
+        stage =
+          if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage)
+          else None,
+        packageOrAppName = maybePackageOrAppName
       )
+
       List(
         S3Upload(
           target.region,
