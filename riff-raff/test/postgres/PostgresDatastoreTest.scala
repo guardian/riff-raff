@@ -7,13 +7,22 @@ import magenta.{TaskDetail, ThrowableDetail}
 import org.joda.time.DateTime
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-import persistence.{DeployDocument, DeployRecordDocument, FailDocument, LogDocument, TaskListDocument}
+import persistence.{
+  DeployDocument,
+  DeployRecordDocument,
+  FailDocument,
+  LogDocument,
+  TaskListDocument
+}
 import postgres.TestData._
 import scalikejdbc._
 
-class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpers {
+class PostgresDatastoreTest
+    extends AnyFreeSpec
+    with Matchers
+    with PostgresHelpers {
   "ApiKey table" - {
-    def withFixture(test: => Any)= {
+    def withFixture(test: => Any) = {
       try test
       finally {
         DB localTx { implicit session =>
@@ -53,7 +62,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
     "create and update an api key" in {
       withFixture {
         withApiKey { apiKey =>
-          val dbApiKey = datastore.getAndUpdateApiKey(apiKey.key, Some("history"))
+          val dbApiKey =
+            datastore.getAndUpdateApiKey(apiKey.key, Some("history"))
 
           dbApiKey shouldBe defined
           dbApiKey.get.callCounters shouldBe Map("history" -> 11)
@@ -63,7 +73,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
   }
 
   "Auth table" - {
-    def withFixture(test: => Any)= {
+    def withFixture(test: => Any) = {
       try test
       finally {
         DB localTx { implicit session =>
@@ -100,7 +110,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
   }
 
   "Deploy table" - {
-    def withFixture(test: => Any)= {
+    def withFixture(test: => Any) = {
       try test
       finally {
         DB localTx { implicit session =>
@@ -110,7 +120,10 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
     }
 
     def withDeploys(count: Int = 1)(test: List[DeployRecordDocument] => Any) = {
-      val deploys = (0 until count).foldLeft(List.empty[DeployRecordDocument])((acc, _) => acc :+ someDeploy)
+      val deploys =
+        (0 until count).foldLeft(List.empty[DeployRecordDocument])((acc, _) =>
+          acc :+ someDeploy
+        )
       deploys.foreach(datastore.writeDeploy)
       test(deploys)
     }
@@ -129,7 +142,10 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
     "get deploys using no filters and no pagination" in {
       withFixture {
         withDeploys(5) { _ =>
-          val dbDeploys = datastore.getDeploys(None, PaginationView(pageSize = None, page = 1))
+          val dbDeploys = datastore.getDeploys(
+            None,
+            PaginationView(pageSize = None, page = 1)
+          )
           dbDeploys.toOption.get.size shouldBe 5
         }
       }
@@ -138,10 +154,16 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
     "get deploys using pagination, but no filters" in {
       withFixture {
         withDeploys(3) { _ =>
-          val dbDeploysPage1 = datastore.getDeploys(None, PaginationView(pageSize = Some(2), page = 1))
+          val dbDeploysPage1 = datastore.getDeploys(
+            None,
+            PaginationView(pageSize = Some(2), page = 1)
+          )
           dbDeploysPage1.toOption.get.size shouldBe 2
 
-          val dbDeploysPage2 = datastore.getDeploys(None, PaginationView(pageSize = Some(2), page = 2))
+          val dbDeploysPage2 = datastore.getDeploys(
+            None,
+            PaginationView(pageSize = Some(2), page = 2)
+          )
           dbDeploysPage2.toOption.get.size shouldBe 1
         }
       }
@@ -152,8 +174,12 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
         withDeploys(2) { deploys =>
           val deploy = deploys.head
 
-          val deployFilter = DeployFilter(projectName = Some(deploy.parameters.projectName))
-          val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(pageSize = None, page = 1))
+          val deployFilter =
+            DeployFilter(projectName = Some(deploy.parameters.projectName))
+          val dbDeploys = datastore.getDeploys(
+            Some(deployFilter),
+            PaginationView(pageSize = None, page = 1)
+          )
 
           dbDeploys.toOption.get.size shouldBe 1
           dbDeploys.toOption.get.head.parameters.projectName shouldBe deploy.parameters.projectName
@@ -167,10 +193,14 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
           val deploy = deploys.head
 
           val deployFilter = DeployFilter(projectName = Some("project-name"))
-          val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(pageSize = Some(20), page = 1))
+          val dbDeploys = datastore.getDeploys(
+            Some(deployFilter),
+            PaginationView(pageSize = Some(20), page = 1)
+          )
 
           dbDeploys.toOption.get.size shouldBe 2
-          dbDeploys.toOption.get.head.parameters.projectName.startsWith("project-name") shouldBe true
+          dbDeploys.toOption.get.head.parameters.projectName
+            .startsWith("project-name") shouldBe true
         }
       }
     }
@@ -188,7 +218,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
             maxDaysAgo = None,
             hasWarnings = deploy.hasWarnings
           )
-          val dbDeploys = datastore.getDeploys(Some(deployFilter), PaginationView(None, 1))
+          val dbDeploys =
+            datastore.getDeploys(Some(deployFilter), PaginationView(None, 1))
 
           dbDeploys.toOption.get.size shouldBe 1
           dbDeploys.toOption.get.head shouldBe deploy
@@ -217,7 +248,13 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
           val lastActivityTime = DateTime.now()
           val hasWarnings = true
 
-          datastore.updateDeploySummary(deploys.head.uuid, totalTasks, completedTasks, lastActivityTime, hasWarnings)
+          datastore.updateDeploySummary(
+            deploys.head.uuid,
+            totalTasks,
+            completedTasks,
+            lastActivityTime,
+            hasWarnings
+          )
 
           val dbDeploy = datastore.readDeploy(deploys.head.uuid)
 
@@ -235,7 +272,8 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
         withDeploys(5) { deploys =>
           val deploy = deploys.head
 
-          val stageDeployFilter = DeployFilter(stage = Some(deploy.parameters.stage))
+          val stageDeployFilter =
+            DeployFilter(stage = Some(deploy.parameters.stage))
 
           val dbDeploys = datastore.countDeploys(Some(stageDeployFilter))
 
@@ -281,13 +319,16 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
           val newDeploy = someDeploy
           val modifiedNewDeploy = newDeploy.copy(
             startTime = DateTime.now(),
-            parameters = newDeploy.parameters.copy(projectName = projectName))
+            parameters = newDeploy.parameters.copy(projectName = projectName)
+          )
           datastore.writeDeploy(modifiedNewDeploy)
 
           val anotherDeploy = someDeploy
           val modifiedDeploy = anotherDeploy.copy(
             startTime = DateTime.now(),
-            parameters = anotherDeploy.parameters.copy(projectName = projectName, stage = "CODE"))
+            parameters = anotherDeploy.parameters
+              .copy(projectName = projectName, stage = "CODE")
+          )
           datastore.writeDeploy(modifiedDeploy)
 
           val result = datastore.getLastCompletedDeploys(projectName)
@@ -313,7 +354,7 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
   }
 
   "DeployLog table" - {
-    def withFixture(test: => Any)= {
+    def withFixture(test: => Any) = {
       try test
       finally {
         DB localTx { implicit session =>
@@ -339,7 +380,14 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
 
     "read a deploy log with a TaskListDocument document type" in {
       withFixture {
-        val deployLog = someLogDocument(TaskListDocument(List(TaskDetail("name1", "description1", "verbose1"), TaskDetail("name2", "description2", "verbose2"))))
+        val deployLog = someLogDocument(
+          TaskListDocument(
+            List(
+              TaskDetail("name1", "description1", "verbose1"),
+              TaskDetail("name2", "description2", "verbose2")
+            )
+          )
+        )
 
         withLogDocument(deployLog) { logDoc =>
           datastore.readLogs(logDoc.deploy).head shouldBe logDoc
@@ -349,7 +397,9 @@ class PostgresDatastoreTest extends AnyFreeSpec with Matchers with PostgresHelpe
 
     "read a deploy log with a FailDocument document type" in {
       withFixture {
-        val deployLog = someLogDocument(FailDocument("fail", ThrowableDetail("name", "message", "stacktrace")))
+        val deployLog = someLogDocument(
+          FailDocument("fail", ThrowableDetail("name", "message", "stacktrace"))
+        )
 
         withLogDocument(deployLog) { logDoc =>
           datastore.readLogs(logDoc.deploy).head shouldBe logDoc

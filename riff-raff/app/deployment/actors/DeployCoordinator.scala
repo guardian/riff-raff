@@ -3,7 +3,13 @@ package deployment.actors
 import java.util.UUID
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorRef, ActorRefFactory, OneForOneStrategy, Terminated}
+import akka.actor.{
+  Actor,
+  ActorRef,
+  ActorRefFactory,
+  OneForOneStrategy,
+  Terminated
+}
 import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
@@ -12,14 +18,19 @@ import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 
 class DeployCoordinator(
-  val deployGroupRunnerFactory: (ActorRefFactory, Record, ActorRef) => ActorRef,
-  maxDeploys: Int, stopFlagAgent: Agent[Map[UUID, String]]
-) extends Actor with Logging {
+    val deployGroupRunnerFactory: (
+        ActorRefFactory,
+        Record,
+        ActorRef
+    ) => ActorRef,
+    maxDeploys: Int,
+    stopFlagAgent: Agent[Map[UUID, String]]
+) extends Actor
+    with Logging {
 
-  override def supervisorStrategy() = OneForOneStrategy() {
-    case throwable =>
-      log.warn("DeployGroupRunner died with exception", throwable)
-      Stop
+  override def supervisorStrategy() = OneForOneStrategy() { case throwable =>
+    log.warn("DeployGroupRunner died with exception", throwable)
+    Stop
   }
 
   var deployRunners = Map.empty[UUID, (Record, ActorRef)]
@@ -27,10 +38,10 @@ class DeployCoordinator(
 
   private def schedulable(recordToSchedule: Record): Boolean = {
     deployRunners.size < maxDeploys &&
-      !deployRunners.values.exists{ case (record, actor) =>
-        record.parameters.build.projectName == recordToSchedule.parameters.build.projectName &&
-          record.parameters.stage == recordToSchedule.parameters.stage
-      }
+    !deployRunners.values.exists { case (record, actor) =>
+      record.parameters.build.projectName == recordToSchedule.parameters.build.projectName &&
+      record.parameters.stage == recordToSchedule.parameters.stage
+    }
   }
 
   private def cleanup(uuid: UUID): Unit = {
@@ -52,7 +63,8 @@ class DeployCoordinator(
     case StartDeploy(record) if schedulable(record) =>
       log.debug("Scheduling deploy")
       try {
-        val deployGroupRunner = context.watch(deployGroupRunnerFactory(context, record, context.self))
+        val deployGroupRunner =
+          context.watch(deployGroupRunnerFactory(context, record, context.self))
         deployRunners += (record.uuid -> (record, deployGroupRunner))
         deployGroupRunner ! DeployGroupRunner.Start
       } catch {
@@ -63,9 +75,12 @@ class DeployCoordinator(
       cleanup(uuid)
 
     case Terminated(actor) =>
-      val maybeUUID = deployRunners.find{case (_, (_, ref)) => ref == actor}.map(_._1)
+      val maybeUUID =
+        deployRunners.find { case (_, (_, ref)) => ref == actor }.map(_._1)
       maybeUUID.foreach { uuid =>
-        log.warn(s"Received premature terminate from ${actor.path} (had not been cleaned up)")
+        log.warn(
+          s"Received premature terminate from ${actor.path} (had not been cleaned up)"
+        )
         cleanup(uuid)
       }
 

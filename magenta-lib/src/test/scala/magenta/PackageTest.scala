@@ -11,17 +11,23 @@ import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.core.retry.conditions.RetryCondition
 
 class PackageTest extends AnyFlatSpec with Matchers with MockitoSugar {
-  val clientConfiguration: ClientOverrideConfiguration = ClientOverrideConfiguration.builder().
-    retryPolicy(RetryPolicy.builder()
-      .retryCondition(RetryCondition.defaultRetryCondition())
-      .backoffStrategy(BackoffStrategy.defaultStrategy())
-      .numRetries(3)
-      .throttlingBackoffStrategy(BackoffStrategy.none())
-    .build()).build()
+  val clientConfiguration: ClientOverrideConfiguration =
+    ClientOverrideConfiguration
+      .builder()
+      .retryPolicy(
+        RetryPolicy
+          .builder()
+          .retryCondition(RetryCondition.defaultRetryCondition())
+          .backoffStrategy(BackoffStrategy.defaultStrategy())
+          .numRetries(3)
+          .throttlingBackoffStrategy(BackoffStrategy.none())
+          .build()
+      )
+      .build()
 
   "retryOnException" should "work when no exception is thrown" in {
     var calls = 0
-    def block:String = {
+    def block: String = {
       calls += 1
       "banana"
     }
@@ -36,7 +42,11 @@ class PackageTest extends AnyFlatSpec with Matchers with MockitoSugar {
     def block: String = {
       calls += 1
       if (calls == 1)
-        throw AwsServiceException.builder().message("failure message").cause(new IOException("IO cause")).build()
+        throw AwsServiceException
+          .builder()
+          .message("failure message")
+          .cause(new IOException("IO cause"))
+          .build()
       else
         "banana"
     }
@@ -50,10 +60,16 @@ class PackageTest extends AnyFlatSpec with Matchers with MockitoSugar {
     var calls = 0
     def block: String = {
       calls += 1
-      throw AwsServiceException.builder().message("failure message").cause(new IOException("IO cause")).build()
+      throw AwsServiceException
+        .builder()
+        .message("failure message")
+        .cause(new IOException("IO cause"))
+        .build()
     }
 
-    an [AwsServiceException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an[AwsServiceException] should be thrownBy retryOnException(
+      clientConfiguration
+    )(block)
 
     /*
     numRetries is set to 3 in `clientConfiguration`
@@ -72,7 +88,9 @@ class PackageTest extends AnyFlatSpec with Matchers with MockitoSugar {
       throw AwsServiceException.builder().message("failure message").build()
     }
 
-    an [AwsServiceException] should be thrownBy retryOnException(clientConfiguration)(block)
+    an[AwsServiceException] should be thrownBy retryOnException(
+      clientConfiguration
+    )(block)
 
     calls should be(1)
   }

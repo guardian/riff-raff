@@ -13,7 +13,11 @@ import org.quartz.impl.StdSchedulerFactory
 import org.quartz.{JobDataMap, JobKey, TriggerKey}
 import schedule.DeployScheduler.JobDataKeys
 
-class DeployScheduler(config: Config, deployments: Deployments, scheduledDeployNotifier: DeployFailureNotifications) extends Logging {
+class DeployScheduler(
+    config: Config,
+    deployments: Deployments,
+    scheduledDeployNotifier: DeployFailureNotifications
+) extends Logging {
 
   private val scheduler = StdSchedulerFactory.getDefaultScheduler
 
@@ -39,18 +43,26 @@ class DeployScheduler(config: Config, deployments: Deployments, scheduledDeployN
         .usingJobData(buildJobDataMap(scheduleConfig))
         .build()
 
-      scheduler.getContext.put("scheduledDeployNotifier", scheduledDeployNotifier)
+      scheduler.getContext.put(
+        "scheduledDeployNotifier",
+        scheduledDeployNotifier
+      )
 
       val trigger = newTrigger()
         .withIdentity(triggerKey(id))
         .withSchedule(
-          cronSchedule(scheduleConfig.scheduleExpression).inTimeZone(TimeZone.getTimeZone(scheduleConfig.timezone))
+          cronSchedule(scheduleConfig.scheduleExpression)
+            .inTimeZone(TimeZone.getTimeZone(scheduleConfig.timezone))
         )
         .build()
       scheduler.scheduleJob(jobDetail, trigger)
-      log.info(s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
+      log.info(
+        s"Scheduled [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]"
+      )
     } else {
-      log.info(s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]")
+      log.info(
+        s"NOT scheduling disabled schedule [$id] to deploy with schedule [${scheduleConfig.scheduleExpression} in ${scheduleConfig.timezone}]"
+      )
     }
   }
 
@@ -64,7 +76,10 @@ class DeployScheduler(config: Config, deployments: Deployments, scheduledDeployN
   private def buildJobDataMap(scheduleConfig: ScheduleConfig): JobDataMap = {
     val map = new JobDataMap()
     map.put(JobDataKeys.Deployments, deployments)
-    map.put(JobDataKeys.ScheduledDeploymentEnabled, config.scheduledDeployment.enabled)
+    map.put(
+      JobDataKeys.ScheduledDeploymentEnabled,
+      config.scheduledDeployment.enabled
+    )
     map.put(JobDataKeys.ProjectName, scheduleConfig.projectName)
     map.put(JobDataKeys.Stage, scheduleConfig.stage)
     map

@@ -23,30 +23,40 @@ object TargetResolver {
       } yield Target(region, stack, deployment.app)
     }
   }
-  def extractTargets(deployConfig: List[PartiallyResolvedDeployment]): Set[Target] = {
-    deployConfig.flatMap { deployment => {
-      for {
-        region <- deployment.regions.toList
-        stack <- deployment.stacks.toList
-      } yield Target(region, stack, deployment.app)
-    }}.toSet
+  def extractTargets(
+      deployConfig: List[PartiallyResolvedDeployment]
+  ): Set[Target] = {
+    deployConfig.flatMap { deployment =>
+      {
+        for {
+          region <- deployment.regions.toList
+          stack <- deployment.stacks.toList
+        } yield Target(region, stack, deployment.app)
+      }
+    }.toSet
   }
 }
 
-class TargetResolver(config: Config,
-                     ciBuildPoller: CIBuildPoller,
-                     deploymentTypes: Seq[DeploymentType],
-                     targetDynamoRepository: TargetDynamoRepository)
-  extends Lifecycle with Logging {
+class TargetResolver(
+    config: Config,
+    ciBuildPoller: CIBuildPoller,
+    deploymentTypes: Seq[DeploymentType],
+    targetDynamoRepository: TargetDynamoRepository
+) extends Lifecycle
+    with Logging {
 
   val poller = ciBuildPoller.newBuilds.subscribe { build =>
     val result = for {
       yaml <- fetchYaml(build.toMagentaBuild)
-      deployGraph <- Resolver.resolveDeploymentGraph(yaml, deploymentTypes, All).toEither
+      deployGraph <- Resolver
+        .resolveDeploymentGraph(yaml, deploymentTypes, All)
+        .toEither
       targets = TargetResolver.extractTargets(deployGraph)
     } yield {
       targets.map { t =>
-        Either.catchNonFatal(t -> targetDynamoRepository.set(t, build.jobName, build.startTime))
+        Either.catchNonFatal(
+          t -> targetDynamoRepository.set(t, build.jobName, build.startTime)
+        )
       }
     }
     result match {
@@ -58,13 +68,17 @@ class TargetResolver(config: Config,
       case Left(error) =>
         val message: (String, Option[Throwable]) = error match {
           case EmptyS3Location(location) => s"Empty location: $location" -> None
-          case UnknownS3Error(exception) => s"Unknown S3 error" -> Some(exception)
-          case ConfigErrors(errors) => s"Configuration errors: ${errors.toList.mkString("; ")}" -> None
+          case UnknownS3Error(exception) =>
+            s"Unknown S3 error" -> Some(exception)
+          case ConfigErrors(errors) =>
+            s"Configuration errors: ${errors.toList.mkString("; ")}" -> None
           case _ => s"Unknown error" -> None
         }
         message match {
-          case (msg, Some(t)) => log.warn(s"Error resolving target for $build: $msg", t)
-          case (msg, None) => log.warn(s"Error resolving target for $build: $msg")
+          case (msg, Some(t)) =>
+            log.warn(s"Error resolving target for $build: $msg", t)
+          case (msg, None) =>
+            log.warn(s"Error resolving target for $build: $msg")
         }
     }
   }
@@ -72,7 +86,9 @@ class TargetResolver(config: Config,
   def fetchYaml(build: Build): Either[S3Error, String] = {
     val artifact = S3YamlArtifact(build, config.artifact.aws.bucketName)
     val deployObjectPath = artifact.deployObject
-    S3Location.fetchContentAsString(deployObjectPath)(config.artifact.aws.client)
+    S3Location.fetchContentAsString(deployObjectPath)(
+      config.artifact.aws.client
+    )
   }
 
   override def init() = {}

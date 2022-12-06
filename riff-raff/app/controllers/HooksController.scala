@@ -16,26 +16,40 @@ import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
 import resources.PrismLookup
 
-case class HookForm(id:UUID, projectName: String, stage: String, url: String, enabled: Boolean,
-                    method: HttpMethod, postBody: Option[String])
+case class HookForm(
+    id: UUID,
+    projectName: String,
+    stage: String,
+    url: String,
+    enabled: Boolean,
+    method: HttpMethod,
+    postBody: Option[String]
+)
 
-class HooksController(config: Config,
-                      menu: Menu,
-                      prismLookup: PrismLookup,
-                      authAction: AuthAction[AnyContent],
-                      hookConfigRepository: HookConfigRepository,
-                      val controllerComponents: ControllerComponents)
-                     (implicit val wsClient: WSClient)
-  extends BaseController with Logging with I18nSupport {
+class HooksController(
+    config: Config,
+    menu: Menu,
+    prismLookup: PrismLookup,
+    authAction: AuthAction[AnyContent],
+    hookConfigRepository: HookConfigRepository,
+    val controllerComponents: ControllerComponents
+)(implicit val wsClient: WSClient)
+    extends BaseController
+    with Logging
+    with I18nSupport {
 
   implicit val httpMethodFormatter = new Formatter[HttpMethod] {
-    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], HttpMethod] = {
+    override def bind(
+        key: String,
+        data: Map[String, String]
+    ): Either[Seq[FormError], HttpMethod] = {
       data.get(key).map { value =>
         Right(HttpMethod(value))
       } getOrElse Left(Seq(FormError(key, "error.httpMethod", Nil)))
     }
 
-    override def unbind(key: String, value: HttpMethod): Map[String, String] = Map(key -> value.serialised)
+    override def unbind(key: String, value: HttpMethod): Map[String, String] =
+      Map(key -> value.serialised)
   }
 
   lazy val hookForm = Form[HookForm](
@@ -47,46 +61,90 @@ class HooksController(config: Config,
       "enabled" -> boolean,
       "method" -> default(of[HttpMethod], GET),
       "postBody" -> optional(text)
-    )( HookForm.apply)(HookForm.unapply ).verifying(
-      "URL is invalid", form => try { new URL(form.url); true } catch { case e:MalformedURLException => false }
+    )(HookForm.apply)(HookForm.unapply).verifying(
+      "URL is invalid",
+      form =>
+        try { new URL(form.url); true }
+        catch { case e: MalformedURLException => false }
     )
   )
 
   def list = authAction { implicit request =>
-    val hooks = hookConfigRepository.getPostDeployHookList.toSeq.sortBy(q => (q.projectName, q.stage))
+    val hooks = hookConfigRepository.getPostDeployHookList.toSeq.sortBy(q =>
+      (q.projectName, q.stage)
+    )
     Ok(views.html.hooks.list(config, menu)(request, hooks))
   }
 
   def form = authAction { implicit request =>
-    Ok(views.html.hooks.form(config, menu)(hookForm.fill(HookForm(UUID.randomUUID(),"","","",enabled=true, GET, None)), prismLookup))
+    Ok(
+      views.html.hooks.form(config, menu)(
+        hookForm.fill(
+          HookForm(UUID.randomUUID(), "", "", "", enabled = true, GET, None)
+        ),
+        prismLookup
+      )
+    )
   }
 
   def save = authAction { implicit request =>
-    hookForm.bindFromRequest().fold(
-      formWithErrors => Ok(views.html.hooks.form(config, menu)(formWithErrors, prismLookup)),
-      f => {
-        val config = HookConfig(f.id,f.projectName,f.stage,f.url,f.enabled,new DateTime(),request.user.fullName, f.method, f.postBody)
-        hookConfigRepository.setPostDeployHook(config)
-        Redirect(routes.HooksController.list)
-      }
-    )
+    hookForm
+      .bindFromRequest()
+      .fold(
+        formWithErrors =>
+          Ok(views.html.hooks.form(config, menu)(formWithErrors, prismLookup)),
+        f => {
+          val config = HookConfig(
+            f.id,
+            f.projectName,
+            f.stage,
+            f.url,
+            f.enabled,
+            new DateTime(),
+            request.user.fullName,
+            f.method,
+            f.postBody
+          )
+          hookConfigRepository.setPostDeployHook(config)
+          Redirect(routes.HooksController.list)
+        }
+      )
   }
 
   def edit(id: String) = authAction { implicit request =>
     val uuid = UUID.fromString(id)
-    hookConfigRepository.getPostDeployHook(uuid).map{ hc =>
-      Ok(views.html.hooks.form(config, menu)(hookForm.fill(HookForm(hc.id,hc.projectName,hc.stage,hc.url,hc.enabled, hc.method, hc.postBody)), prismLookup))
-    }.getOrElse(Redirect(routes.HooksController.list))
+    hookConfigRepository
+      .getPostDeployHook(uuid)
+      .map { hc =>
+        Ok(
+          views.html.hooks.form(config, menu)(
+            hookForm.fill(
+              HookForm(
+                hc.id,
+                hc.projectName,
+                hc.stage,
+                hc.url,
+                hc.enabled,
+                hc.method,
+                hc.postBody
+              )
+            ),
+            prismLookup
+          )
+        )
+      }
+      .getOrElse(Redirect(routes.HooksController.list))
   }
 
   def delete(id: String) = authAction { implicit request =>
-    Form("action" -> nonEmptyText).bindFromRequest().fold(
-      errors => {},
-      {
-        case "delete" =>
+    Form("action" -> nonEmptyText)
+      .bindFromRequest()
+      .fold(
+        errors => {},
+        { case "delete" =>
           hookConfigRepository.deletePostDeployHook(UUID.fromString(id))
-      }
-    )
+        }
+      )
     Redirect(routes.HooksController.list)
   }
 }

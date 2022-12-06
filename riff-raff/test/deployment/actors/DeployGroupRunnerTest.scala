@@ -14,7 +14,10 @@ import play.api.Configuration
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")) with AnyFlatSpecLike with Matchers {
+class DeployGroupRunnerTest
+    extends TestKit(ActorSystem("DeployGroupRunnerTest"))
+    with AnyFlatSpecLike
+    with Matchers {
   import Fixtures._
   "DeployGroupRunnerTest" should "initalise the state from a set of tasks" in {
     val dr = createDeployRunnerWithUnderlying()
@@ -27,7 +30,9 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
-    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
     val firstDeployment = runDeployment.deployment
     firstDeployment should be(DeploymentTasks(threeSimpleTasks, "test"))
     dr.ul.executing should contain(ValueNode(firstDeployment))
@@ -37,12 +42,18 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val dr = createDeployRunner()
     prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
-    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
     val firstDeployment = runDeployment.deployment
     firstDeployment should be(DeploymentTasks(threeSimpleTasks, "test"))
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(firstDeployment))
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentCompleted(firstDeployment)
+    )
     dr.deploymentRunnerProbe.expectNoMsg()
-    dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
+    dr.deployCoordinatorProbe.expectMsgClass(
+      classOf[DeployCoordinator.CleanupDeploy]
+    )
   }
 
   it should "correctly process a graph" in {
@@ -50,8 +61,12 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     prepare(dr, simpleGraph)
     val firstDeployments = dr.ul.first
     firstDeployments.size should be(2)
-    firstDeployments should contain(ValueNode(DeploymentTasks(twoTasks, "branch one")))
-    firstDeployments should contain(ValueNode(DeploymentTasks(twoTasks, "branch two")))
+    firstDeployments should contain(
+      ValueNode(DeploymentTasks(twoTasks, "branch one"))
+    )
+    firstDeployments should contain(
+      ValueNode(DeploymentTasks(twoTasks, "branch two"))
+    )
     dr.ul.markComplete(firstDeployments.head.value)
     val nextResult = dr.ul.next(firstDeployments.head.value)
     nextResult should be(DeployGroupRunner.DeployUnfinished)
@@ -75,8 +90,12 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
-    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(runDeployment.deployment))
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentCompleted(runDeployment.deployment)
+    )
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
     dr.ul.completed should be(Set(ValueNode(runDeployment.deployment)))
@@ -86,30 +105,52 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, threeSimpleTasksGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
-    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentFailed(
+        runDeployment.deployment,
+        new RuntimeException("test exception")
+      )
+    )
     dr.ul.isExecuting should be(false)
     dr.ul.executing should be(Set.empty)
     dr.ul.failed should be(Set(ValueNode(runDeployment.deployment)))
     dr.deploymentRunnerProbe.expectNoMsg()
-    dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
+    dr.deployCoordinatorProbe.expectMsgClass(
+      classOf[DeployCoordinator.CleanupDeploy]
+    )
   }
 
   it should "be finished if all tasks that could potentially be run (given failures) have completed" in {
     val dr = createDeployRunnerWithUnderlying()
     prepare(dr, dependentGraph)
     dr.ref ! DeployGroupRunner.StartDeployment
-    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
-    val secondTaskSet = dr.deploymentRunnerProbe.expectMsgClass(classOf[TasksRunner.RunDeployment])
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentFailed(runDeployment.deployment, new RuntimeException("test exception")))
+    val runDeployment = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
+    val secondTaskSet = dr.deploymentRunnerProbe.expectMsgClass(
+      classOf[TasksRunner.RunDeployment]
+    )
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentFailed(
+        runDeployment.deployment,
+        new RuntimeException("test exception")
+      )
+    )
     dr.ul.isExecuting should be(true)
     dr.ul.failed should be(Set(ValueNode(runDeployment.deployment)))
     dr.ul.isFinished should be(false)
-    dr.deploymentRunnerProbe.reply(DeployGroupRunner.DeploymentCompleted(secondTaskSet.deployment))
-    dr.ul.isExecuting should be (false)
+    dr.deploymentRunnerProbe.reply(
+      DeployGroupRunner.DeploymentCompleted(secondTaskSet.deployment)
+    )
+    dr.ul.isExecuting should be(false)
     dr.ul.isFinished should be(true)
     dr.deploymentRunnerProbe.expectNoMsg()
-    dr.deployCoordinatorProbe.expectMsgClass(classOf[DeployCoordinator.CleanupDeploy])
+    dr.deployCoordinatorProbe.expectMsgClass(
+      classOf[DeployCoordinator.CleanupDeploy]
+    )
   }
 
   val deploymentTypes = Nil
@@ -121,43 +162,92 @@ class DeployGroupRunnerTest extends TestKit(ActorSystem("DeployGroupRunnerTest")
     def ref: ActorRef
   }
 
-  case class DRImpl(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]]) extends DR
+  case class DRImpl(
+      record: Record,
+      deployCoordinatorProbe: TestProbe,
+      deploymentRunnerProbe: TestProbe,
+      ref: ActorRef,
+      stopFlagAgent: Agent[Map[UUID, String]]
+  ) extends DR
 
-  val config = new Config(configuration = Configuration(("test.config", "abc")).underlying, DateTime.now)
+  val config = new Config(
+    configuration = Configuration(("test.config", "abc")).underlying,
+    DateTime.now
+  )
 
   def createDeployRunner(): DRImpl = {
     val deployCoordinatorProbe = TestProbe()
     val deploymentRunnerProbe = TestProbe()
-    val deploymentRunnerFactory = (context: ActorRefFactory, name: String) => deploymentRunnerProbe.ref
+    val deploymentRunnerFactory = (context: ActorRefFactory, name: String) =>
+      deploymentRunnerProbe.ref
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = system.actorOf(
-      Props(new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes, global)),
-      name=s"DeployGroupRunner-${record.uuid.toString}"
+      Props(
+        new DeployGroupRunner(
+          config,
+          record,
+          deployCoordinatorProbe.ref,
+          deploymentRunnerFactory,
+          stopFlagAgent,
+          prismLookup = null,
+          deploymentTypes,
+          global
+        )
+      ),
+      name = s"DeployGroupRunner-${record.uuid.toString}"
     )
-    DRImpl(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent)
+    DRImpl(
+      record,
+      deployCoordinatorProbe,
+      deploymentRunnerProbe,
+      ref,
+      stopFlagAgent
+    )
   }
 
-  case class DRwithUnderlying(record: Record, deployCoordinatorProbe: TestProbe, deploymentRunnerProbe: TestProbe, ref: ActorRef, stopFlagAgent: Agent[Map[UUID, String]], ul: DeployGroupRunner) extends DR {
-  }
+  case class DRwithUnderlying(
+      record: Record,
+      deployCoordinatorProbe: TestProbe,
+      deploymentRunnerProbe: TestProbe,
+      ref: ActorRef,
+      stopFlagAgent: Agent[Map[UUID, String]],
+      ul: DeployGroupRunner
+  ) extends DR {}
 
   def createDeployRunnerWithUnderlying(): DRwithUnderlying = {
     val deployCoordinatorProbe = TestProbe()
     val deploymentRunnerProbe = TestProbe()
-    val deploymentRunnerFactory = (context: ActorRefFactory, name: String) => deploymentRunnerProbe.ref
+    val deploymentRunnerFactory = (context: ActorRefFactory, name: String) =>
+      deploymentRunnerProbe.ref
     val stopFlagAgent = Agent(Map.empty[UUID, String])
     val record = createRecord()
     val ref = TestActorRef(
-      new DeployGroupRunner(config, record, deployCoordinatorProbe.ref, deploymentRunnerFactory, stopFlagAgent,
-        prismLookup = null, deploymentTypes, global),
-      name=s"DeployGroupRunner-${record.uuid.toString}"
+      new DeployGroupRunner(
+        config,
+        record,
+        deployCoordinatorProbe.ref,
+        deploymentRunnerFactory,
+        stopFlagAgent,
+        prismLookup = null,
+        deploymentTypes,
+        global
+      ),
+      name = s"DeployGroupRunner-${record.uuid.toString}"
     )
-    DRwithUnderlying(record, deployCoordinatorProbe, deploymentRunnerProbe, ref, stopFlagAgent, ref.underlyingActor)
+    DRwithUnderlying(
+      record,
+      deployCoordinatorProbe,
+      deploymentRunnerProbe,
+      ref,
+      stopFlagAgent,
+      ref.underlyingActor
+    )
   }
 
   def prepare(dr: DR, deployments: Graph[DeploymentTasks]): Unit = {
-    val context = createContext(deployments, dr.record.uuid, dr.record.parameters)
+    val context =
+      createContext(deployments, dr.record.uuid, dr.record.parameters)
     dr.ref ! DeployGroupRunner.ContextCreated(context)
   }
 

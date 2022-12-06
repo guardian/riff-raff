@@ -22,34 +22,59 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.control.NonFatal
 
-class Deployments(deploymentEngine: DeploymentEngine,
-                  builds: Builds,
-                  documentStoreConverter: DocumentStoreConverter,
-                  restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository)
-                 (implicit val executionContext: ExecutionContext)
-  extends Lifecycle with Logging {
+class Deployments(
+    deploymentEngine: DeploymentEngine,
+    builds: Builds,
+    documentStoreConverter: DocumentStoreConverter,
+    restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository
+)(implicit val executionContext: ExecutionContext)
+    extends Lifecycle
+    with Logging {
 
-  def deploy(requestedParams: DeployParameters, requestSource: RequestSource): Either[Error, UUID] = {
+  def deploy(
+      requestedParams: DeployParameters,
+      requestSource: RequestSource
+  ): Either[Error, UUID] = {
     log.info(s"Started deploying $requestedParams")
-    val restrictionsPreventingDeploy = RestrictionChecker.configsThatPreventDeployment(restrictionConfigDynamoRepository,
-      requestedParams.build.projectName, requestedParams.stage.name, requestSource)
+    val restrictionsPreventingDeploy =
+      RestrictionChecker.configsThatPreventDeployment(
+        restrictionConfigDynamoRepository,
+        requestedParams.build.projectName,
+        requestedParams.stage.name,
+        requestSource
+      )
     if (restrictionsPreventingDeploy.nonEmpty) {
-      Left(Error(s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy.map(r => s"${r.fullName}: ${r.note}").mkString("; ")}"))
+      Left(
+        Error(
+          s"Unable to queue deploy as restrictions are currently in place: ${restrictionsPreventingDeploy
+              .map(r => s"${r.fullName}: ${r.note}")
+              .mkString("; ")}"
+        )
+      )
     } else {
-      val params = if (requestedParams.build.id != "lastSuccessful")
-        requestedParams
-      else {
-        builds.getLastSuccessful(requestedParams.build.projectName).map { latestId =>
-          requestedParams.copy(build = requestedParams.build.copy(id=latestId))
-        }.getOrElse(requestedParams)
-      }
+      val params =
+        if (requestedParams.build.id != "lastSuccessful")
+          requestedParams
+        else {
+          builds
+            .getLastSuccessful(requestedParams.build.projectName)
+            .map { latestId =>
+              requestedParams
+                .copy(build = requestedParams.build.copy(id = latestId))
+            }
+            .getOrElse(requestedParams)
+        }
 
       deploysEnabled.whileOnYield {
         val record = create(params)
         deploymentEngine.interruptibleDeploy(record)
         Right(record.uuid)
       } getOrElse {
-        Left(Error(s"Unable to queue a new deploy; deploys are currently disabled by the ${enableDeploysSwitch.name} switch"))
+        Left(
+          Error(
+            s"Unable to queue a new deploy; deploys are currently disabled by the ${enableDeploysSwitch.name} switch"
+          )
+        )
       }
     }
   }
@@ -58,11 +83,14 @@ class Deployments(deploymentEngine: DeploymentEngine,
     deploymentEngine.stopDeploy(uuid, fullName)
   }
 
-  def getStopFlag(uuid: UUID): Boolean = deploymentEngine.getDeployStopFlag(uuid)
+  def getStopFlag(uuid: UUID): Boolean =
+    deploymentEngine.getDeployStopFlag(uuid)
 
   def create(params: DeployParameters): Record = {
     val uuid = java.util.UUID.randomUUID()
-    val hostNameMetadata = Map(Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName)
+    val hostNameMetadata = Map(
+      Record.RIFFRAFF_HOSTNAME -> java.net.InetAddress.getLocalHost.getHostName
+    )
     val record = deployRecordFor(uuid, params) ++ hostNameMetadata
 
     // information for creating a master to main progress dashboard
@@ -76,8 +104,13 @@ class Deployments(deploymentEngine: DeploymentEngine,
     await(uuid, 30 seconds)
   }
 
-  def deployRecordFor(uuid: UUID, parameters: DeployParameters): DeployRecord = {
-    val build = builds.all.find(b => b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id)
+  def deployRecordFor(
+      uuid: UUID,
+      parameters: DeployParameters
+  ): DeployRecord = {
+    val build = builds.all.find(b =>
+      b.jobName == parameters.build.projectName && b.id.toString == parameters.build.id
+    )
     val metaData = build.map { case b: S3Build =>
       Map(
         "branch" -> b.branchName,
@@ -86,25 +119,33 @@ class Deployments(deploymentEngine: DeploymentEngine,
       )
     }
 
-    DeployRecord(new DateTime(), uuid, parameters, metaData.getOrElse(Map.empty[String, String]))
+    DeployRecord(
+      new DateTime(),
+      uuid,
+      parameters,
+      metaData.getOrElse(Map.empty[String, String])
+    )
   }
 
   val deploysEnabled = new Switch(startAsOn = true)
 
-  /**
-    * Attempt to disable deploys from running.
+  /** Attempt to disable deploys from running.
     *
-    * @return true if successful and false if this failed because a deploy was currently running
+    * @return
+    *   true if successful and false if this failed because a deploy was
+    *   currently running
     */
-  def atomicDisableDeploys:Boolean = {
+  def atomicDisableDeploys: Boolean = {
     try {
       deploysEnabled.switchOff {
         if (getControllerDeploys.exists(!_.isDone))
-          throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+          throw new IllegalStateException(
+            "Cannot turn switch off as builds are currently running"
+          )
       }
       true
     } catch {
-      case e:IllegalStateException => false
+      case e: IllegalStateException => false
     }
   }
 
@@ -112,9 +153,16 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   lazy val enableSwitches = List(enableDeploysSwitch)
 
-  lazy val enableDeploysSwitch = new DefaultSwitch("enable-deploys", "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.", deploysEnabled.isOn) {
+  lazy val enableDeploysSwitch = new DefaultSwitch(
+    "enable-deploys",
+    "Enable riff-raff to queue and run deploys.  This switch can only be turned off if no deploys are running.",
+    deploysEnabled.isOn
+  ) {
     override def switchOff(): Unit = {
-      if (!atomicDisableDeploys) throw new IllegalStateException("Cannot turn switch off as builds are currently running")
+      if (!atomicDisableDeploys)
+        throw new IllegalStateException(
+          "Cannot turn switch off as builds are currently running"
+        )
       super.switchOff()
     }
     override def switchOn(): Unit = {
@@ -127,12 +175,15 @@ class Deployments(deploymentEngine: DeploymentEngine,
   private lazy val deployCompleteSubject = Subject[UUID]()
 
   private val messagesSubscription: Subscription =
-    DeployReporter.messages.subscribe{ wrapper =>
+    DeployReporter.messages.subscribe { wrapper =>
       try {
         update(wrapper)
       } catch {
         case NonFatal(t) =>
-          log.error(s"Exception thrown whilst processing update with $wrapper", t)
+          log.error(
+            s"Exception thrown whilst processing update with $wrapper",
+            t
+          )
       }
     }
   def init(): Unit = {}
@@ -140,7 +191,7 @@ class Deployments(deploymentEngine: DeploymentEngine,
 
   implicit val system = ActorSystem("deploy")
 
-  val library = Agent(Map.empty[UUID,Agent[DeployRecord]])
+  val library = Agent(Map.empty[UUID, Agent[DeployRecord]])
 
   def update(wrapper: MessageWrapper): Unit = {
     Option(library()(wrapper.context.deployId)) foreach { recordAgent =>
@@ -150,9 +201,11 @@ class Deployments(deploymentEngine: DeploymentEngine,
         if (record.state != updated.state) {
           documentStoreConverter.updateDeployStatus(updated)
         }
-        if (record.totalTasks != updated.totalTasks ||
-            record.completedTasks != updated.completedTasks ||
-            record.hasWarnings != updated.hasWarnings) {
+        if (
+          record.totalTasks != updated.totalTasks ||
+          record.completedTasks != updated.completedTasks ||
+          record.hasWarnings != updated.hasWarnings
+        ) {
           documentStoreConverter.updateDeploySummary(updated)
         }
         if (updated.isDone) {
@@ -181,7 +234,9 @@ class Deployments(deploymentEngine: DeploymentEngine,
           log.warn(s"$uuid not found in internal caches")
           allDeploys
         case Some(rec) =>
-          log.debug(s"About to  remove deploy record $uuid from internal caches")
+          log.debug(
+            s"About to  remove deploy record $uuid from internal caches"
+          )
           allDeploys - rec.uuid
       }
     }
@@ -189,18 +244,31 @@ class Deployments(deploymentEngine: DeploymentEngine,
   }
 
   def firePostCleanup(uuid: UUID): Unit = {
-    library.future().onComplete{ _ =>
+    library.future().onComplete { _ =>
       deployCompleteSubject.onNext(uuid)
     }
   }
-  def getControllerDeploys: Iterable[Record] = { library().values.map{ _() } }
-  def getDatastoreDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView, fetchLogs: Boolean): Either[Throwable, List[Record]] = {
+  def getControllerDeploys: Iterable[Record] = { library().values.map { _() } }
+  def getDatastoreDeploys(
+      filter: Option[DeployFilter] = None,
+      pagination: PaginationView,
+      fetchLogs: Boolean
+  ): Either[Throwable, List[Record]] = {
     documentStoreConverter.getDeployList(filter, pagination, fetchLogs)
   }
 
-  def getDeploys(filter:Option[DeployFilter] = None, pagination: PaginationView = PaginationView(), fetchLogs: Boolean = false): Either[Throwable, List[Record]] = {
-    require(!fetchLogs || pagination.pageSize.isDefined, "Too much effort required to fetch complete record with no pagination")
-    getDatastoreDeploys(filter, pagination, fetchLogs=fetchLogs).map(_.sortWith{ _.time.getMillis < _.time.getMillis })
+  def getDeploys(
+      filter: Option[DeployFilter] = None,
+      pagination: PaginationView = PaginationView(),
+      fetchLogs: Boolean = false
+  ): Either[Throwable, List[Record]] = {
+    require(
+      !fetchLogs || pagination.pageSize.isDefined,
+      "Too much effort required to fetch complete record with no pagination"
+    )
+    getDatastoreDeploys(filter, pagination, fetchLogs = fetchLogs).map(
+      _.sortWith { _.time.getMillis < _.time.getMillis }
+    )
   }
 
   def getLastCompletedDeploys(project: String): Map[String, Record] = {
@@ -210,7 +278,8 @@ class Deployments(deploymentEngine: DeploymentEngine,
   def findProjects: Either[Throwable, List[String]] =
     documentStoreConverter.findProjects
 
-  def countDeploys(filter:Option[DeployFilter]) = documentStoreConverter.countDeploys(filter)
+  def countDeploys(filter: Option[DeployFilter]) =
+    documentStoreConverter.countDeploys(filter)
 
   def markAsFailed(record: Record): Unit = {
     documentStoreConverter.updateDeployStatus(record.uuid, RunState.Failed)

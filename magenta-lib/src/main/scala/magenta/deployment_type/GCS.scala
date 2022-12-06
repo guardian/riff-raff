@@ -8,13 +8,17 @@ object GCS extends DeploymentType {
   val name = "gcp-gcs"
   val documentation = "For uploading files into a GCS bucket."
 
-  val prefixStage = Param("prefixStage",
-    "Prefix the GCS bucket key with the target stage").default(true)
-  val prefixPackage = Param("prefixPackage",
-    "Prefix the GCS bucket key with the package name").default(true)
-  val prefixStack = Param("prefixStack",
-    "Prefix the GCS bucket key with the target stack").default(true)
-  val pathPrefixResource = Param[String]("pathPrefixResource",
+  val prefixStage =
+    Param("prefixStage", "Prefix the GCS bucket key with the target stage")
+      .default(true)
+  val prefixPackage =
+    Param("prefixPackage", "Prefix the GCS bucket key with the package name")
+      .default(true)
+  val prefixStack =
+    Param("prefixStack", "Prefix the GCS bucket key with the target stack")
+      .default(true)
+  val pathPrefixResource = Param[String](
+    "pathPrefixResource",
     """Deploy Info resource key to use to look up an additional prefix for the path key. Note that this will override
        the `prefixStage`, `prefixPackage` and `prefixStack` keys - none of those prefixes will be applied, as you have
        full control over the path with the resource lookup.
@@ -22,12 +26,15 @@ object GCS extends DeploymentType {
     optional = true
   )
 
-  //required configuration, you cannot upload without setting these
-  val bucket = Param[String]("bucket", "GCS bucket to upload package files to (see also `bucketResource`)", optional = true)
+  // required configuration, you cannot upload without setting these
+  val bucket = Param[String](
+    "bucket",
+    "GCS bucket to upload package files to (see also `bucketResource`)",
+    optional = true
+  )
   val bucketByStage: Param[Map[String, String]] = Param[Map[String, String]](
     name = "bucketByStage",
-    documentation =
-      """
+    documentation = """
         |A dict of stages to buckets in the package. When the current stage is found in here the bucket
         |will be used from this dict. If it's not found here then it will fall back to `bucket` if it exists.
         |```
@@ -39,10 +46,10 @@ object GCS extends DeploymentType {
     optional = true
   )
 
-  val directoriesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
-    name = "directoriesToPruneByStage",
-    documentation =
-      """
+  val directoriesToPruneByStage: Param[Map[String, List[String]]] =
+    Param[Map[String, List[String]]](
+      name = "directoriesToPruneByStage",
+      documentation = """
         |A list of directories in the target buckets which will be pruned of any files not in the current upload for the current stage
         |Typically this is used to remove obsolete dags and associated python assets from a airflow deploy to cloud composer
         |These are assumed to be relative to any configured prefix
@@ -58,13 +65,13 @@ object GCS extends DeploymentType {
         |```
         |
          |""".stripMargin,
-    optional = true
-  )
+      optional = true
+    )
 
-  val fileTypesToPruneByStage: Param[Map[String, List[String]]]  = Param[Map[String, List[String]]](
-    name = "fileTypesToPruneByStage",
-    documentation =
-      """
+  val fileTypesToPruneByStage: Param[Map[String, List[String]]] =
+    Param[Map[String, List[String]]](
+      name = "fileTypesToPruneByStage",
+      documentation = """
         |Specify the types of file to remove when they are no longer in the current upload. Use case: Remove obselete dags from an airflow to cloud composer deployment
         |```
         |fileTypesToPruneByStage:
@@ -78,14 +85,16 @@ object GCS extends DeploymentType {
         |```
         |
          |""".stripMargin,
-    optional = true
-  )
+      optional = true
+    )
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
+  val publicReadAcl = Param[Boolean](
+    "publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(true)
 
-  val cacheControl = Param[List[PatternValue]]("cacheControl",
+  val cacheControl = Param[List[PatternValue]](
+    "cacheControl",
     """
       |Set the cache control header for the uploaded files. This can take two forms, but in either case the format of
       |the cache control value itself must be a valid HTTP `Cache-Control` value such as `public, max-age=315360000`.
@@ -122,8 +131,7 @@ object GCS extends DeploymentType {
 
   val uploadStaticFiles = Action(
     name = "uploadStaticFiles",
-    documentation =
-      """
+    documentation = """
         |Uploads the deployment files to a GCS bucket. In order for this to work, magenta must have credentials that are
         |valid to write to the bucket in the specified location.
         |
@@ -133,53 +141,83 @@ object GCS extends DeploymentType {
         |Alternatively, you can specify a pathPrefixResource (eg `s3-path-prefix`) to lookup the path prefix, giving you
         |greater control. The generated key looks like: `/<pathPrefix>/<filePathAndName>`.
         """.stripMargin
-  ){ (pkg, resources, target) => {
-    def resourceLookupFor(resource: Param[String]): Option[Datum] = {
-      val maybeResource = resource.get(pkg)
-      maybeResource.flatMap { resourceName =>
-        val dataLookup = resources.lookup.data
-        val datumOpt = dataLookup.datum(resourceName, pkg.app, target.parameters.stage, target.stack)
-        if (datumOpt.isEmpty) {
-          def str(f: Datum => String) = s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-          resources.reporter.verbose(s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(_.app)} stage=${str(_.stage)} stack=${str(_.stack.mkString)}")
+  ) { (pkg, resources, target) =>
+    {
+      def resourceLookupFor(resource: Param[String]): Option[Datum] = {
+        val maybeResource = resource.get(pkg)
+        maybeResource.flatMap { resourceName =>
+          val dataLookup = resources.lookup.data
+          val datumOpt = dataLookup.datum(
+            resourceName,
+            pkg.app,
+            target.parameters.stage,
+            target.stack
+          )
+          if (datumOpt.isEmpty) {
+            def str(f: Datum => String) =
+              s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
+            resources.reporter.verbose(
+              s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(
+                  _.app
+                )} stage=${str(_.stage)} stack=${str(_.stack.mkString)}"
+            )
+          }
+          datumOpt
         }
-        datumOpt
       }
-    }
 
-    implicit val keyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient = resources.artifactClient
-    val reporter = resources.reporter
+      implicit val keyRing = resources.assembleKeyring(target, pkg)
+      implicit val artifactClient = resources.artifactClient
+      val reporter = resources.reporter
 
-    val bucketName: String = (bucketByStage.get(pkg), bucket.get(pkg)) match {
-      case (Some(map), None)                 => map.getOrElse(
-                                                  target.parameters.stage.name,
-                                                  reporter.fail(s"No bucket supplied for stage ${target.parameters.stage.name} in bucketByStage")
-                                                )
-      case (None, Some(bucket))              => bucket
-      case (None, None) | (Some(_), Some(_)) => reporter.fail(s"One and only one of bucketByStage or bucket must be provided")
-    }
+      val bucketName: String = (bucketByStage.get(pkg), bucket.get(pkg)) match {
+        case (Some(map), None) =>
+          map.getOrElse(
+            target.parameters.stage.name,
+            reporter.fail(
+              s"No bucket supplied for stage ${target.parameters.stage.name} in bucketByStage"
+            )
+          )
+        case (None, Some(bucket)) => bucket
+        case (None, None) | (Some(_), Some(_)) =>
+          reporter.fail(
+            s"One and only one of bucketByStage or bucket must be provided"
+          )
+      }
 
-    val maybeDatum = resourceLookupFor(pathPrefixResource)
-    val maybeString = maybeDatum.map(_.value)
-    val prefix: String = maybeString.getOrElse(GCSUpload.prefixGenerator(
-        stack = if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
-        stage = if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage) else None,
-        packageName = if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
-      ))
-
-
-    val bucketConfig =  GcsTargetBucket( bucketName, target.parameters.stage.name, prefix,
-      directoriesToPruneByStage.get(pkg), fileTypesToPruneByStage.get(pkg))
-
-    List(
-      GCSUpload(
-        gcsTargetBucket = bucketConfig,
-        paths = Seq(pkg.s3Package -> prefix),
-        cacheControlPatterns = cacheControl(pkg, target, reporter),
-        publicReadAcl = publicReadAcl(pkg, target, reporter),
+      val maybeDatum = resourceLookupFor(pathPrefixResource)
+      val maybeString = maybeDatum.map(_.value)
+      val prefix: String = maybeString.getOrElse(
+        GCSUpload.prefixGenerator(
+          stack =
+            if (prefixStack(pkg, target, reporter)) Some(target.stack)
+            else None,
+          stage =
+            if (prefixStage(pkg, target, reporter))
+              Some(target.parameters.stage)
+            else None,
+          packageName =
+            if (prefixPackage(pkg, target, reporter)) Some(pkg.name) else None
+        )
       )
-    )}
+
+      val bucketConfig = GcsTargetBucket(
+        bucketName,
+        target.parameters.stage.name,
+        prefix,
+        directoriesToPruneByStage.get(pkg),
+        fileTypesToPruneByStage.get(pkg)
+      )
+
+      List(
+        GCSUpload(
+          gcsTargetBucket = bucketConfig,
+          paths = Seq(pkg.s3Package -> prefix),
+          cacheControlPatterns = cacheControl(pkg, target, reporter),
+          publicReadAcl = publicReadAcl(pkg, target, reporter)
+        )
+      )
+    }
   }
 
   def defaultActions = List(uploadStaticFiles)
@@ -187,23 +225,30 @@ object GCS extends DeploymentType {
 
 object GcsTargetBucket {
 
-  def apply(name: String,
-            stage: String,
-            prefix: String,
-            maybeDirectories: Option[Map[String, List[String]]],
-            maybeFileTypes: Option[Map[String, List[String]]]): GcsTargetBucket = {
+  def apply(
+      name: String,
+      stage: String,
+      prefix: String,
+      maybeDirectories: Option[Map[String, List[String]]],
+      maybeFileTypes: Option[Map[String, List[String]]]
+  ): GcsTargetBucket = {
 
-      def listOrEmpty(m: Option[Map[String, List[String]]]) =
-        (for{
-          infoByStage <- m
-          info <- infoByStage.get(stage)
-        } yield info).getOrElse(List.empty)
+    def listOrEmpty(m: Option[Map[String, List[String]]]) =
+      (for {
+        infoByStage <- m
+        info <- infoByStage.get(stage)
+      } yield info).getOrElse(List.empty)
 
-
-      val directoriesToPurge = listOrEmpty(maybeDirectories).map( dir => if (prefix.isEmpty) dir else s"$prefix/$dir" )
-      val fileTypesToPurge = listOrEmpty(maybeFileTypes)
-      GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
+    val directoriesToPurge = listOrEmpty(maybeDirectories).map(dir =>
+      if (prefix.isEmpty) dir else s"$prefix/$dir"
+    )
+    val fileTypesToPurge = listOrEmpty(maybeFileTypes)
+    GcsTargetBucket(name, directoriesToPurge, fileTypesToPurge)
   }
 }
 
-case class GcsTargetBucket(name: String, directoriesToPurge: List[String], fileTypesToPurge: List[String])
+case class GcsTargetBucket(
+    name: String,
+    directoriesToPurge: List[String],
+    fileTypesToPurge: List[String]
+)

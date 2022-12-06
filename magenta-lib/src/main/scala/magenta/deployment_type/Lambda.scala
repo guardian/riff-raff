@@ -2,7 +2,16 @@ package magenta.deployment_type
 
 import magenta.artifact.S3Path
 import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack}
+import magenta.{
+  DeployParameters,
+  DeployReporter,
+  DeployTarget,
+  DeploymentPackage,
+  DeploymentResources,
+  KeyRing,
+  Region,
+  Stack
+}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
@@ -24,31 +33,40 @@ trait Lambda extends DeploymentType with BucketParameters {
       |
       """.stripMargin
 
-  val functionNamesParam = Param[List[String]]("functionNames",
+  val functionNamesParam = Param[List[String]](
+    "functionNames",
     """One or more function names to update with the code from fileNameParam.
       |Each function name will be suffixed with the stage, e.g. MyFunction- becomes MyFunction-CODE""".stripMargin,
     optional = true
   )
 
-  val lookupByTags = Param[Boolean]("lookupByTags",
+  val lookupByTags = Param[Boolean](
+    "lookupByTags",
     """When true, this will lookup the function to deploy to by using the Stack, Stage and App tags on a function.
       |The values looked up come from the `stacks` and `app` in the riff-raff.yaml and the stage deployed to.
     """.stripMargin
   ).default(false)
 
-  val prefixStackParam = Param[Boolean]("prefixStack",
-    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed").default(true)
+  val prefixStackParam = Param[Boolean](
+    "prefixStack",
+    "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed"
+  ).default(true)
 
-  val prefixStackToKeyParam = Param[Boolean]("prefixStackToKey",
+  val prefixStackToKeyParam = Param[Boolean](
+    "prefixStackToKey",
     documentation = "Whether to prefix `package` to the S3 location"
   ).default(true)
 
-  val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
+  val fileNameParam = Param[String](
+    "fileName",
+    "The name of the archive of the function",
+    deprecatedDefault = true
+  )
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
-  val functionsParam = Param[Map[String, Map[String, String]]]("functions",
-    documentation =
-      """
+  val functionsParam = Param[Map[String, Map[String, String]]](
+    "functions",
+    documentation = """
         |In order for this to work, magenta must have credentials that are able to perform `lambda:UpdateFunctionCode`
         |on the specified resources.
         |
@@ -70,51 +88,102 @@ trait Lambda extends DeploymentType with BucketParameters {
     optional = true
   )
 
-  def lambdaToProcess(pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter): List[UpdateLambdaFunction] = {
+  def lambdaToProcess(
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ): List[UpdateLambdaFunction] = {
     val bucket = getTargetBucketFromConfig(pkg, target, reporter)
 
     val stage = target.parameters.stage.name
 
-    (functionNamesParam.get(pkg), functionsParam.get(pkg), lookupByTags(pkg, target, reporter), prefixStackParam(pkg, target, reporter)) match {
+    (
+      functionNamesParam.get(pkg),
+      functionsParam.get(pkg),
+      lookupByTags(pkg, target, reporter),
+      prefixStackParam(pkg, target, reporter)
+    ) match {
       // the lambdas are a simple hardcoded list of function names
       case (Some(functionNames), None, false, prefixStack) =>
         val stackNamePrefix = if (prefixStack) target.stack.name else ""
         for {
           name <- functionNames
-        } yield UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, bucket)
+        } yield UpdateLambdaFunction(
+          LambdaFunctionName(s"$stackNamePrefix$name$stage"),
+          fileNameParam(pkg, target, reporter),
+          target.region,
+          bucket
+        )
 
       // the list of lambdas are provided in a map from stage to lambda name and filename
       case (None, Some(functionsMap), false, _) =>
-        val functionDefinition = functionsMap.getOrElse(stage, reporter.fail(s"Function not defined for stage $stage"))
-        val functionName = functionDefinition.getOrElse("name", reporter.fail(s"Function name not defined for stage $stage"))
+        val functionDefinition = functionsMap.getOrElse(
+          stage,
+          reporter.fail(s"Function not defined for stage $stage")
+        )
+        val functionName = functionDefinition.getOrElse(
+          "name",
+          reporter.fail(s"Function name not defined for stage $stage")
+        )
         val fileName = functionDefinition.getOrElse("filename", "lambda.zip")
-        List(UpdateLambdaFunction(LambdaFunctionName(functionName), fileName, target.region, bucket))
+        List(
+          UpdateLambdaFunction(
+            LambdaFunctionName(functionName),
+            fileName,
+            target.region,
+            bucket
+          )
+        )
 
       // the lambda to update is discovered from Stack, App and Stage tags
       case (None, None, true, _) =>
-        val tags = LambdaFunctionTags(Map(
-          "Stack" -> target.stack.name,
-          "App" -> pkg.app.name,
-          "Stage" -> stage
-        ))
-        List(UpdateLambdaFunction(tags, fileNameParam(pkg, target, reporter), target.region, bucket))
+        val tags = LambdaFunctionTags(
+          Map(
+            "Stack" -> target.stack.name,
+            "App" -> pkg.app.name,
+            "Stage" -> stage
+          )
+        )
+        List(
+          UpdateLambdaFunction(
+            tags,
+            fileNameParam(pkg, target, reporter),
+            target.region,
+            bucket
+          )
+        )
 
-      case _ => reporter.fail("Must specify one of 'functions', 'functionNames' or 'lookupByTags' parameters")
+      case _ =>
+        reporter.fail(
+          "Must specify one of 'functions', 'functionNames' or 'lookupByTags' parameters"
+        )
     }
   }
 
-  def makeS3Key(target: DeployTarget, pkg:DeploymentPackage, fileName: String, reporter: DeployReporter): String = {
+  def makeS3Key(
+      target: DeployTarget,
+      pkg: DeploymentPackage,
+      fileName: String,
+      reporter: DeployReporter
+  ): String = {
     val prefixStack = prefixStackToKeyParam(pkg, target, reporter)
     val prefix = if (prefixStack) List(target.stack.name) else Nil
-    (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName)).mkString("/")
+    (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName))
+      .mkString("/")
   }
 
-  def withSsm[T](keyRing: KeyRing, region: Region, resources: DeploymentResources): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
+  def withSsm[T](
+      keyRing: KeyRing,
+      region: Region,
+      resources: DeploymentResources
+  ): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
 
-  val uploadLambda = Action("uploadLambda",
+  val uploadLambda = Action(
+    "uploadLambda",
     """
       |Uploads the lambda code to S3.
-    """.stripMargin){ (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
@@ -131,7 +200,8 @@ trait Lambda extends DeploymentType with BucketParameters {
       )
     }.distinct
   }
-  val updateLambda = Action("updateLambda",
+  val updateLambda = Action(
+    "updateLambda",
     """
       |Updates the lambda to use new code using the UpdateFunctionCode API.
       |
@@ -146,22 +216,23 @@ trait Lambda extends DeploymentType with BucketParameters {
       |Due to the current limitations in AWS (particularly the lack of configuration mechanisms) there is a more
       |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
       |As a result you can bundle stage specific configuration into the respective files.
-    """.stripMargin){ (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-        val s3Bucket = S3Tasks.getBucketName(
-          lambda.s3Bucket,
-          withSsm(keyRing, target.region, resources),
-          resources.reporter
-        )
-        val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
-        UpdateS3Lambda(
-          lambda.function,
-          s3Bucket,
-          s3Key,
-          lambda.region
-        )
+      val s3Bucket = S3Tasks.getBucketName(
+        lambda.s3Bucket,
+        withSsm(keyRing, target.region, resources),
+        resources.reporter
+      )
+      val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
+      UpdateS3Lambda(
+        lambda.function,
+        s3Bucket,
+        s3Key,
+        lambda.region
+      )
     }.distinct
   }
 
@@ -171,4 +242,9 @@ trait Lambda extends DeploymentType with BucketParameters {
 sealed trait LambdaFunction
 case class LambdaFunctionName(name: String) extends LambdaFunction
 case class LambdaFunctionTags(tags: Map[String, String]) extends LambdaFunction
-case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: S3Tasks.Bucket)
+case class UpdateLambdaFunction(
+    function: LambdaFunction,
+    fileName: String,
+    region: Region,
+    s3Bucket: S3Tasks.Bucket
+)

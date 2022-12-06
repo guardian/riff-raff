@@ -12,11 +12,15 @@ import views.html.helper.magenta.MessageHelper
 
 class MessageHelperTest extends AnyFunSuite with Matchers {
   test("MessageHelper.messageType should return correct message type") {
-    val report = DeployReportTree(messageState = StartMessageState(
-      startContext = StartContext(Verbose("verbose")),
-      time = DateTime.now, messageId = UUID.randomUUID()))
+    val report = DeployReportTree(messageState =
+      StartMessageState(
+        startContext = StartContext(Verbose("verbose")),
+        time = DateTime.now,
+        messageId = UUID.randomUUID()
+      )
+    )
 
-    MessageHelper.messageType(report) should be ("verbose")
+    MessageHelper.messageType(report) should be("verbose")
   }
 
 }

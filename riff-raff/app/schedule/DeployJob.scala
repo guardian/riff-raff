@@ -14,21 +14,28 @@ import scala.annotation.tailrec
 import scala.util.Try
 
 class DeployJob extends Job with Logging {
-  private def getAs[T](key: String)(implicit jobDataMap: JobDataMap): T = jobDataMap.get(key).asInstanceOf[T]
+  private def getAs[T](key: String)(implicit jobDataMap: JobDataMap): T =
+    jobDataMap.get(key).asInstanceOf[T]
 
   override def execute(context: JobExecutionContext): Unit = {
     implicit val jobDataMap: JobDataMap = context.getJobDetail.getJobDataMap
     val deployments = getAs[Deployments](JobDataKeys.Deployments)
     val projectName = getAs[String](JobDataKeys.ProjectName)
     val stage = getAs[String](JobDataKeys.Stage)
-    val scheduledDeploymentEnabled = getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
+    val scheduledDeploymentEnabled =
+      getAs[Boolean](JobDataKeys.ScheduledDeploymentEnabled)
 
     val schedulerContext = context.getScheduler.getContext
-    val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext.get("scheduledDeployNotifier").asInstanceOf[DeployFailureNotifications]
+    val scheduledDeployNotifier: DeployFailureNotifications = schedulerContext
+      .get("scheduledDeployNotifier")
+      .asInstanceOf[DeployFailureNotifications]
 
     val attemptToStartDeploy = for {
       record <- DeployJob.getLastDeploy(deployments, projectName, stage)
-      params <- DeployJob.createDeployParameters(record, scheduledDeploymentEnabled)
+      params <- DeployJob.createDeployParameters(
+        record,
+        scheduledDeploymentEnabled
+      )
       uuid <- deployments.deploy(params, ScheduleRequestSource)
     } yield uuid
 
@@ -36,7 +43,9 @@ class DeployJob extends Job with Logging {
       case Left(error: ScheduledDeployNotificationError) =>
         scheduledDeployNotifier.scheduledDeployFailureNotification(error)
       case Left(anotherError) =>
-        log.warn(s"Scheduled deploy failed to start due to $anotherError. A notification will not be sent...")
+        log.warn(
+          s"Scheduled deploy failed to start due to $anotherError. A notification will not be sent..."
+        )
       case Right(uuid) =>
         log.info(s"Started scheduled deploy $uuid")
     }
@@ -45,21 +54,32 @@ class DeployJob extends Job with Logging {
 
 object DeployJob extends Logging with LogAndSquashBehaviour {
 
-  def createDeployParameters(lastDeploy: Record, scheduledDeploysEnabled: Boolean): Either[RiffRaffError, DeployParameters] = {
+  def createDeployParameters(
+      lastDeploy: Record,
+      scheduledDeploysEnabled: Boolean
+  ): Either[RiffRaffError, DeployParameters] = {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = extractDeployParameters(lastDeploy)
         if (scheduledDeploysEnabled) {
           Right(params)
         } else {
-          Left(Error(s"Scheduled deployments disabled. Would have deployed $params"))
+          Left(
+            Error(
+              s"Scheduled deployments disabled. Would have deployed $params"
+            )
+          )
         }
       case RunState.Failed =>
         Left(SkippedDueToPreviousFailure(lastDeploy))
       case RunState.NotRunning =>
         Left(SkippedDueToPreviousWaitingDeploy(lastDeploy))
       case otherState =>
-        Left(Error(s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"))
+        Left(
+          Error(
+            s"Skipping scheduled deploy as deploy record ${lastDeploy.uuid} has status $otherState"
+          )
+        )
     }
   }
 
@@ -73,7 +93,12 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
   }
 
   @tailrec
-  private def getLastDeploy(deployments: Deployments, projectName: String, stage: String, attempts: Int = 5): Either[ScheduledDeployNotificationError, Record] = {
+  private def getLastDeploy(
+      deployments: Deployments,
+      projectName: String,
+      stage: String,
+      attempts: Int = 5
+  ): Either[ScheduledDeployNotificationError, Record] = {
     if (attempts == 0) {
       Left(NoDeploysFoundForStage(projectName, stage))
     } else {
@@ -84,12 +109,17 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
       )
       val pagination = PaginationView().withPageSize(Some(1))
 
-      val result = Try(deployments.getDeploys(Some(filter), pagination).logAndSquashException(Nil).headOption).toOption.flatten
+      val result = Try(
+        deployments
+          .getDeploys(Some(filter), pagination)
+          .logAndSquashException(Nil)
+          .headOption
+      ).toOption.flatten
       result match {
         case Some(record) => Right(record)
         case None =>
           Thread.sleep(1000)
-          getLastDeploy(deployments, projectName, stage, attempts-1)
+          getLastDeploy(deployments, projectName, stage, attempts - 1)
       }
     }
   }

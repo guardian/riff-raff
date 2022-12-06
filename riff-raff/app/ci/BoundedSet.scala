@@ -15,10 +15,12 @@ class BoundedSet[T](queue: Queue[T], maxSize: Int) extends Set[T] {
 
   def pushToBack(queue: Queue[T], item: T): Queue[T] = {
     val currentPos = queue.indexOf(item)
-    (queue.slice(0, currentPos) ++ queue.slice(currentPos + 1, queue.size)).enqueue(item)
+    (queue.slice(0, currentPos) ++ queue.slice(currentPos + 1, queue.size))
+      .enqueue(item)
   }
 
-  override def excl(elem: T) = new BoundedSet[T](queue.filter(_ != elem), maxSize)
+  override def excl(elem: T) =
+    new BoundedSet[T](queue.filter(_ != elem), maxSize)
 
   def iterator = queue.iterator
 }

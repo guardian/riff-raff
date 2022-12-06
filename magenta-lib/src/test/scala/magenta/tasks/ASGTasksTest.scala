@@ -9,7 +9,10 @@ import org.mockito.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
-import software.amazon.awssdk.services.autoscaling.model.{AutoScalingGroup, SetDesiredCapacityRequest}
+import software.amazon.awssdk.services.autoscaling.model.{
+  AutoScalingGroup,
+  SetDesiredCapacityRequest
+}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
@@ -17,11 +20,18 @@ import scala.concurrent.ExecutionContext.global
 
 class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
-  val reporter: DeployReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
-  val deploymentTypes: Seq[StubDeploymentType] = Seq(stubDeploymentType(name = "testDeploymentType", actionNames = Seq("testAction")))
+  val reporter: DeployReporter =
+    DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  val deploymentTypes: Seq[StubDeploymentType] = Seq(
+    stubDeploymentType(
+      name = "testDeploymentType",
+      actionNames = Seq("testAction")
+    )
+  )
 
   it should "double the size of the autoscaling group" in {
-    val asg = AutoScalingGroup.builder()
+    val asg = AutoScalingGroup
+      .builder()
       .desiredCapacity(3)
       .autoScalingGroupName("test")
       .maxSize(10)
@@ -29,20 +39,37 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val info = AutoScalingGroupInfo(asg, Nil)
     val asgClientMock = mock[AutoScalingClient]
 
-    val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
-      deploymentTypes)
+    val p = DeploymentPackage(
+      "test",
+      App("app"),
+      Map.empty,
+      "testDeploymentType",
+      S3Path("artifact-bucket", "project/123/test"),
+      deploymentTypes
+    )
 
     val task = DoubleSize(info, Region("eu-west-1"))
-    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
+    val resources = DeploymentResources(
+      reporter,
+      null,
+      mock[S3Client],
+      mock[StsClient],
+      global
+    )
     task.execute(asg, resources, stopFlag = false, asgClientMock)
 
     verify(asgClientMock).setDesiredCapacity(
-      SetDesiredCapacityRequest.builder().autoScalingGroupName("test").desiredCapacity(6).build()
+      SetDesiredCapacityRequest
+        .builder()
+        .autoScalingGroupName("test")
+        .desiredCapacity(6)
+        .build()
     )
   }
 
   it should "fail if you do not have the capacity to deploy" in {
-    val asg = AutoScalingGroup.builder()
+    val asg = AutoScalingGroup
+      .builder()
       .autoScalingGroupName("test")
       .minSize(1)
       .desiredCapacity(1)
@@ -52,15 +79,31 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val asgClientMock = mock[AutoScalingClient]
 
-    val p = DeploymentPackage("test", App("app"), Map.empty, "testDeploymentType", S3Path("artifact-bucket", "project/123/test"),
-      deploymentTypes)
+    val p = DeploymentPackage(
+      "test",
+      App("app"),
+      Map.empty,
+      "testDeploymentType",
+      S3Path("artifact-bucket", "project/123/test"),
+      deploymentTypes
+    )
 
     val task = CheckGroupSize(info, Region("eu-west-1"))
 
-    val resources = DeploymentResources(reporter, null, mock[S3Client], mock[StsClient], global)
+    val resources = DeploymentResources(
+      reporter,
+      null,
+      mock[S3Client],
+      mock[StsClient],
+      global
+    )
 
-    val thrown = intercept[FailException](task.execute(asg, resources, stopFlag = false, asgClientMock))
+    val thrown = intercept[FailException](
+      task.execute(asg, resources, stopFlag = false, asgClientMock)
+    )
 
-    thrown.getMessage should startWith ("Autoscaling group does not have the capacity")
+    thrown.getMessage should startWith(
+      "Autoscaling group does not have the capacity"
+    )
   }
 }

@@ -10,19 +10,31 @@ import play.api.data.format.Formatter
 object Forms extends Loggable {
   val deploymentKey = of[DeploymentKey](new Formatter[DeploymentKey] {
     def bind(key: String, data: Map[String, String]) = {
-      stringFormat.bind(key, data).right.flatMap{ s =>
-        DeploymentKey.fromString(s).toRight(Seq(FormError("form.deployment-key", "Couldn't parse as deployment key")))
+      stringFormat.bind(key, data).right.flatMap { s =>
+        DeploymentKey
+          .fromString(s)
+          .toRight(
+            Seq(
+              FormError(
+                "form.deployment-key",
+                "Couldn't parse as deployment key"
+              )
+            )
+          )
       }
     }
-    def unbind(key: String, value: DeploymentKey) = Map(key -> DeploymentKey.asString(value))
+    def unbind(key: String, value: DeploymentKey) =
+      Map(key -> DeploymentKey.asString(value))
   })
 
-  val deploymentKeyList = of[List[DeploymentKey]](new Formatter[List[DeploymentKey]] {
-    def bind(key: String, data: Map[String, String]) = {
-      stringFormat.bind(key, data).right.flatMap{ s =>
-        Right(DeploymentKey.fromStringToList(s))
+  val deploymentKeyList =
+    of[List[DeploymentKey]](new Formatter[List[DeploymentKey]] {
+      def bind(key: String, data: Map[String, String]) = {
+        stringFormat.bind(key, data).right.flatMap { s =>
+          Right(DeploymentKey.fromStringToList(s))
+        }
       }
-    }
-    def unbind(key: String, value: List[DeploymentKey]) = Map(key -> DeploymentKey.asString(value))
-  })
+      def unbind(key: String, value: List[DeploymentKey]) =
+        Map(key -> DeploymentKey.asString(value))
+    })
 }

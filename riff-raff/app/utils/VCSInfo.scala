@@ -15,7 +15,7 @@ trait VCSInfo {
   def headUrl: URI
 
   import VCSInfo._
-  def map: Map[String,String] = Map(
+  def map: Map[String, String] = Map(
     REVISION -> revision,
     CIURL -> ciVcsUrl,
     NAME -> name,
@@ -27,7 +27,8 @@ trait VCSInfo {
   )
 }
 
-case class GitHub(ciVcsUrl: String, revision: String, repo: String) extends VCSInfo {
+case class GitHub(ciVcsUrl: String, revision: String, repo: String)
+    extends VCSInfo {
   lazy val name = "GitHub"
   lazy val baseUrl = new URI(s"https://github.com/$repo")
   lazy val commitUrl = new URI(s"$baseUrl/commit/$revision")
@@ -50,17 +51,17 @@ object VCSInfo extends Logging {
   val GitHubWeb = """https://github\.com/(.*?)(?:.git)?$""".r
 
   def apply(ciVcsUrl: String, revision: String): Option[VCSInfo] = {
-    log.debug("url:%s revision:%s" format(ciVcsUrl, revision))
+    log.debug("url:%s revision:%s" format (ciVcsUrl, revision))
     ciVcsUrl match {
       case GitHubProtocol(repo) => Some(GitHub(ciVcsUrl, revision, repo))
-      case GitHubUser(repo) => Some(GitHub(ciVcsUrl, revision, repo))
-      case GitHubWeb(repo) => Some(GitHub(ciVcsUrl, revision, repo))
-      case _ => None
+      case GitHubUser(repo)     => Some(GitHub(ciVcsUrl, revision, repo))
+      case GitHubWeb(repo)      => Some(GitHub(ciVcsUrl, revision, repo))
+      case _                    => None
     }
   }
 
   def apply(metaData: Map[String, String]): Option[VCSInfo] = {
-    metaData.get(REVISION).flatMap{ revision =>
+    metaData.get(REVISION).flatMap { revision =>
       metaData.get(CIURL).flatMap { url =>
         VCSInfo(url, revision)
       }
@@ -70,9 +71,9 @@ object VCSInfo extends Logging {
   def normalise(url: String): Option[String] = {
     url match {
       case GitHubProtocol(path) => Some(path)
-      case GitHubUser(path) => Some(path)
-      case GitHubWeb(path) => Some(path)
-      case _ => None
+      case GitHubUser(path)     => Some(path)
+      case GitHubWeb(path)      => Some(path)
+      case _                    => None
     }
   }
 }

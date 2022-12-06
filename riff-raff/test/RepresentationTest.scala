@@ -9,7 +9,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import persistence._
 
-class RepresentationTest extends AnyFlatSpec with Matchers with PersistenceTestInstances {
+class RepresentationTest
+    extends AnyFlatSpec
+    with Matchers
+    with PersistenceTestInstances {
 
   "MessageDocument" should "convert from log messages to documents" in {
     deploy.asMessageDocument should be(DeployDocument)
@@ -24,7 +27,7 @@ class RepresentationTest extends AnyFlatSpec with Matchers with PersistenceTestI
   }
 
   it should "not convert StartContext log messages" in {
-    intercept[IllegalArgumentException]{
+    intercept[IllegalArgumentException] {
       startDeploy.asMessageDocument
     }
   }
@@ -35,7 +38,15 @@ class RepresentationTest extends AnyFlatSpec with Matchers with PersistenceTestI
         testUUID,
         Some(testUUID.toString),
         testTime,
-        ParametersDocument("Tester", "test-project", "1", "CODE", Map("branch"->"master"), AllDocument, updateStrategy = Some(MostlyHarmless)),
+        ParametersDocument(
+          "Tester",
+          "test-project",
+          "1",
+          "CODE",
+          Map("branch" -> "master"),
+          AllDocument,
+          updateStrategy = Some(MostlyHarmless)
+        ),
         RunState.Completed
       )
     )
@@ -43,16 +54,26 @@ class RepresentationTest extends AnyFlatSpec with Matchers with PersistenceTestI
 
   "Rich list" should "retain the order of a list" in {
     case class Monkey(name: String, age: Int)
-    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3))
+    val monkies =
+      List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3))
     val distinctMonkies = monkies.distinctOn(identity)
     distinctMonkies shouldBe monkies
   }
 
   it should "remove duplicates later in the list" in {
     case class Monkey(name: String, age: Int)
-    val monkies = List(Monkey("fred", 1), Monkey("bob", 2), Monkey("marjorie", 3), Monkey("bob", 3))
+    val monkies = List(
+      Monkey("fred", 1),
+      Monkey("bob", 2),
+      Monkey("marjorie", 3),
+      Monkey("bob", 3)
+    )
     val distinctMonkies = monkies.distinctOn(_.name)
-    distinctMonkies shouldBe List(Monkey("fred", 1), Monkey("marjorie", 3), Monkey("bob", 3))
+    distinctMonkies shouldBe List(
+      Monkey("fred", 1),
+      Monkey("marjorie", 3),
+      Monkey("bob", 3)
+    )
   }
 
 }

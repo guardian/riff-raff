@@ -10,7 +10,9 @@ trait LogAndSquashBehaviour {
       either match {
         case Right(t) => t
         case Left(throwable) =>
-          val errorMessage = "Squashing uncaught exception%s" format message.map("whilst %s" format _).getOrElse("")
+          val errorMessage = "Squashing uncaught exception%s" format message
+            .map("whilst %s" format _)
+            .getOrElse("")
           log.error(errorMessage, throwable)
           default
       }

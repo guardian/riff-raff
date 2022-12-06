@@ -7,7 +7,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNumber, JsString}
 
-class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedValues {
+class DeploymentResolverTest
+    extends AnyFlatSpec
+    with Matchers
+    with ValidatedValues {
   "DeploymentResolver" should "parse a simple deployment with defaults" in {
     val yamlString =
       """
@@ -23,14 +26,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("type") ("testType"),
-      Symbol("stacks") (NEL.of("testStack")),
-      Symbol("regions") (NEL.of("eu-west-1")),
-      Symbol("app") ("test"),
-      Symbol("contentDirectory") ("test"),
-      Symbol("actions") (None),
-      Symbol("dependencies") (Nil),
-      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
+      Symbol("type")("testType"),
+      Symbol("stacks")(NEL.of("testStack")),
+      Symbol("regions")(NEL.of("eu-west-1")),
+      Symbol("app")("test"),
+      Symbol("contentDirectory")("test"),
+      Symbol("actions")(None),
+      Symbol("dependencies")(Nil),
+      Symbol("parameters")(Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -49,14 +52,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("type") ("testType"),
-      Symbol("stacks") (NEL.of("stack1", "stack2")),
-      Symbol("regions") (NEL.of("oceania-south-1")),
-      Symbol("app") ("test"),
-      Symbol("contentDirectory") ("test"),
-      Symbol("actions") (None),
-      Symbol("dependencies") (Nil),
-      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
+      Symbol("type")("testType"),
+      Symbol("stacks")(NEL.of("stack1", "stack2")),
+      Symbol("regions")(NEL.of("oceania-south-1")),
+      Symbol("app")("test"),
+      Symbol("contentDirectory")("test"),
+      Symbol("actions")(None),
+      Symbol("dependencies")(Nil),
+      Symbol("parameters")(Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -78,14 +81,14 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("type") ("testType"),
-      Symbol("stacks") (NEL.of("testStack")),
-      Symbol("regions") (NEL.of("eurasia-north-1")),
-      Symbol("app") ("test"),
-      Symbol("contentDirectory") ("test"),
-      Symbol("actions") (Some(NEL.of("deploymentAction"))),
-      Symbol("dependencies") (Nil),
-      Symbol("parameters") (Map("testParam" -> JsString("testValue")))
+      Symbol("type")("testType"),
+      Symbol("stacks")(NEL.of("testStack")),
+      Symbol("regions")(NEL.of("eurasia-north-1")),
+      Symbol("app")("test"),
+      Symbol("contentDirectory")("test"),
+      Symbol("actions")(Some(NEL.of("deploymentAction"))),
+      Symbol("dependencies")(Nil),
+      Symbol("parameters")(Map("testParam" -> JsString("testValue")))
     )
   }
 
@@ -109,13 +112,18 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("type") ("testType"),
-      Symbol("stacks") (NEL.of("testStack")),
-      Symbol("regions") (NEL.of("eu-west-1")),
-      Symbol("app") ("test"),
-      Symbol("contentDirectory") ("test"),
-      Symbol("dependencies") (Nil),
-      Symbol("parameters") (Map("testParam" -> JsString("testValue"), "anotherParam" -> JsNumber(1984)))
+      Symbol("type")("testType"),
+      Symbol("stacks")(NEL.of("testStack")),
+      Symbol("regions")(NEL.of("eu-west-1")),
+      Symbol("app")("test"),
+      Symbol("contentDirectory")("test"),
+      Symbol("dependencies")(Nil),
+      Symbol("parameters")(
+        Map(
+          "testParam" -> JsString("testValue"),
+          "anotherParam" -> JsNumber(1984)
+        )
+      )
     )
   }
 
@@ -139,8 +147,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("stacks") (NEL.of("deployment-stack")),
-      Symbol("regions") (NEL.of("deployment-region"))
+      Symbol("stacks")(NEL.of("deployment-stack")),
+      Symbol("regions")(NEL.of("deployment-region"))
     )
   }
 
@@ -162,8 +170,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("stacks") (NEL.of("template-stack")),
-      Symbol("regions") (NEL.of("template-region"))
+      Symbol("stacks")(NEL.of("template-stack")),
+      Symbol("regions")(NEL.of("template-region"))
     )
   }
 
@@ -183,8 +191,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("stacks") (NEL.of("global-stack")),
-      Symbol("regions") (NEL.of("global-region"))
+      Symbol("stacks")(NEL.of("global-stack")),
+      Symbol("regions")(NEL.of("global-region"))
     )
   }
 
@@ -209,8 +217,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("stacks") (NEL.of("nested-template-stack")),
-      Symbol("regions") (NEL.of("template-region"))
+      Symbol("stacks")(NEL.of("nested-template-stack")),
+      Symbol("regions")(NEL.of("template-region"))
     )
   }
 
@@ -275,9 +283,9 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val deployments = yaml.andThen(DeploymentResolver.resolve).valid
     deployments.size should be(1)
     deployments.head should have(
-      Symbol("app") ("templateApp"),
-      Symbol("actions") (Some(NEL.of("templateAction"))),
-      Symbol("contentDirectory") ("templateContentDirectory")
+      Symbol("app")("templateApp"),
+      Symbol("actions")(Some(NEL.of("templateAction"))),
+      Symbol("contentDirectory")("templateContentDirectory")
     )
   }
 
@@ -380,7 +388,12 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
     configErrors.errors.toList.size should be(1)
-    configErrors.errors.head should be(ConfigError("test", "Template with name nonExistentTemplate does not exist"))
+    configErrors.errors.head should be(
+      ConfigError(
+        "test",
+        "Template with name nonExistentTemplate does not exist"
+      )
+    )
   }
 
   it should "report an error if a named dependency does not exist" in {
@@ -396,7 +409,9 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
     configErrors.errors.toList.size should be(1)
-    configErrors.errors.head should be(ConfigError("test", "Missing deployment dependencies missing-dep"))
+    configErrors.errors.head should be(
+      ConfigError("test", "Missing deployment dependencies missing-dep")
+    )
 
   }
 
@@ -410,7 +425,9 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.head should be(ConfigError("test", "No stacks provided"))
+    configErrors.errors.head should be(
+      ConfigError("test", "No stacks provided")
+    )
   }
 
   it should "report an error if no regions are provided" in {
@@ -423,6 +440,8 @@ class DeploymentResolverTest extends AnyFlatSpec with Matchers with ValidatedVal
       """.stripMargin
     val yaml = RiffRaffYamlReader.fromString(yamlString)
     val configErrors = yaml.andThen(DeploymentResolver.resolve).invalid
-    configErrors.errors.head should be(ConfigError("test", "No regions provided"))
+    configErrors.errors.head should be(
+      ConfigError("test", "No regions provided")
+    )
   }
 }

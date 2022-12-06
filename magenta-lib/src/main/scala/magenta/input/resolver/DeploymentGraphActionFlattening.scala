@@ -6,7 +6,7 @@ import magenta.input.Deployment
 
 object DeploymentGraphActionFlattening {
   def flattenActions(deploymentGraph: Graph[Deployment]): Graph[Deployment] = {
-    deploymentGraph.flatMap{
+    deploymentGraph.flatMap {
       case ValueNode(deployment) =>
         val deploymentPerAction = for {
           action <- deployment.actions

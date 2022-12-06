@@ -2,7 +2,9 @@ package magenta.tasks
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import software.amazon.awssdk.services.elasticloadbalancingv2.model.{TagDescription => _}
+import software.amazon.awssdk.services.elasticloadbalancingv2.model.{
+  TagDescription => _
+}
 
 class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
 
@@ -27,17 +29,18 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, including supported resource types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      () => Set(
-        // sensitive AWS types
-        "AWS::DocDB::DBCluster",
-        "AWS::Kinesis::Stream",
+      () =>
+        Set(
+          // sensitive AWS types
+          "AWS::DocDB::DBCluster",
+          "AWS::Kinesis::Stream",
 
-        // non-sensitive AWS type, should not appear in the policy
-        "AWS::IAM::Role",
+          // non-sensitive AWS type, should not appear in the policy
+          "AWS::IAM::Role",
 
-        // sensitive private type
-        "Guardian::DNS::RecordSet",
-      )
+          // sensitive private type
+          "Guardian::DNS::RecordSet"
+        )
     )
 
     val want =
@@ -72,10 +75,11 @@ class SetStackPolicyTaskTest extends AnyFlatSpec with Matchers {
   it should "return a deny doc when policy is DenyReplaceDeletePolicy, excluding unsupported private types" in {
     val got = StackPolicy.toPolicyDoc(
       DenyReplaceDeletePolicy,
-      () => Set(
-        "AWS::Kinesis::Stream", // sensitive AWS type
-        "AWS::IAM::Role", // non-sensitive AWS type, should not appear in the policy
-      )
+      () =>
+        Set(
+          "AWS::Kinesis::Stream", // sensitive AWS type
+          "AWS::IAM::Role" // non-sensitive AWS type, should not appear in the policy
+        )
     )
 
     val want =
