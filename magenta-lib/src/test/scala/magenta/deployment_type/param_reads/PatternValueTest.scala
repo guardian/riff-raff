@@ -33,9 +33,8 @@ class PatternValueTest extends AnyFlatSpec with Matchers with Inside {
   it should "error if a string or list of objects isn't provided" in {
     val json = JsNumber(123)
     val jsResult = Json.fromJson[List[PatternValue]](json)
-    inside(jsResult) {
-      case JsError((_, firstError :: Nil) :: Nil) =>
-        firstError.message shouldBe "Need a string or an array of objects with pattern and value fields"
+    inside(jsResult) { case JsError((_, firstError :: Nil) :: Nil) =>
+      firstError.message shouldBe "Need a string or an array of objects with pattern and value fields"
     }
   }
 
@@ -51,8 +50,7 @@ class PatternValueTest extends AnyFlatSpec with Matchers with Inside {
       )
     )
     val jsResult = Json.fromJson[List[PatternValue]](json)
-    jsResult should matchPattern{
-      case JsError(_) =>
+    jsResult should matchPattern { case JsError(_) =>
     }
   }
 }

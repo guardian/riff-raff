@@ -1,14 +1,26 @@
 package controllers.forms
 
 import magenta.Strategy
-import magenta.input.{All, DeploymentKey, DeploymentKeysSelector, DeploymentSelector}
+import magenta.input.{
+  All,
+  DeploymentKey,
+  DeploymentKeysSelector,
+  DeploymentSelector
+}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.format.Formatter
 import utils.Forms._
 
-case class DeployParameterForm(project:String, build:String, stage:String, action: String,
-  selectedKeys: List[DeploymentKey], totalKeyCount: Option[Int], updateStrategy: Strategy) {
+case class DeployParameterForm(
+    project: String,
+    build: String,
+    stage: String,
+    action: String,
+    selectedKeys: List[DeploymentKey],
+    totalKeyCount: Option[Int],
+    updateStrategy: Strategy
+) {
 
   def makeSelector: DeploymentSelector = {
     val keysList =
@@ -19,7 +31,7 @@ case class DeployParameterForm(project:String, build:String, stage:String, actio
       }
     keysList match {
       case Some(list) => DeploymentKeysSelector(list)
-      case None => All
+      case None       => All
     }
   }
 }

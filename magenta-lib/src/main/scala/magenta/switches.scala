@@ -3,9 +3,8 @@ package magenta
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
-  * This trait should be used by anything that wants to read
-  * the state of a switch
+/** This trait should be used by anything that wants to read the state of a
+  * switch
   */
 trait Switch {
   def isSwitchedOn: Boolean
@@ -24,31 +23,35 @@ object Switch {
   }
 }
 
-/**
-  * This trait should be used by anything that wants to
-  * mutate the state of a switch
+/** This trait should be used by anything that wants to mutate the state of a
+  * switch
   */
 trait Switchable extends Switch {
   def switchOn(): Unit
   def switchOff(): Unit
 
-  /**
-    * @return a single url-safe word that can be used to construct urls
-    * for this switch.
+  /** @return
+    *   a single url-safe word that can be used to construct urls for this
+    *   switch.
     */
   def name: String
 
-  /**
-    * @return a sentence that describes, in websys understandable terms, the
-    * effect of switching this switch
+  /** @return
+    *   a sentence that describes, in websys understandable terms, the effect of
+    *   switching this switch
     */
   def description: String
 }
 
-/**
-  * A simple implementation of Switchable that does the right thing in most cases
+/** A simple implementation of Switchable that does the right thing in most
+  * cases
   */
-case class DefaultSwitch(name: String, description: String, initiallyOn: Boolean = true) extends Switchable with Loggable {
+case class DefaultSwitch(
+    name: String,
+    description: String,
+    initiallyOn: Boolean = true
+) extends Switchable
+    with Loggable {
   private val isOn = new AtomicBoolean(initiallyOn)
 
   def isSwitchedOn = isOn.get

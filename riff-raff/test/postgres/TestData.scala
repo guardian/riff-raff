@@ -5,7 +5,13 @@ import controllers.{ApiKey, AuthorisationRecord}
 import magenta.RunState
 import magenta.Strategy.MostlyHarmless
 import org.joda.time.DateTime
-import persistence.{AllDocument, DeployRecordDocument, LogDocument, MessageDocument, ParametersDocument}
+import persistence.{
+  AllDocument,
+  DeployRecordDocument,
+  LogDocument,
+  MessageDocument,
+  ParametersDocument
+}
 
 import scala.util.Random
 

@@ -19,16 +19,22 @@ object MarkDownParser extends Loggable {
       val modifiedUrl = if (relative) urlToCall(url).path else url
 
       val rendering = new LinkRenderer.Rendering(modifiedUrl, text)
-      if (StringUtils.isEmpty(node.title)) rendering else rendering.withAttribute("title", encode(node.title))
+      if (StringUtils.isEmpty(node.title)) rendering
+      else rendering.withAttribute("title", encode(node.title))
     }
   }
 
-  def toHtml(markDown: String, linkRenderer: Option[LinkRenderer] = None): Html = {
+  def toHtml(
+      markDown: String,
+      linkRenderer: Option[LinkRenderer] = None
+  ): Html = {
     Html(Try {
-      val pegDown = new PegDownProcessor(Extensions.ALL - Extensions.HARDWRAPS - Extensions.ANCHORLINKS)
+      val pegDown = new PegDownProcessor(
+        Extensions.ALL - Extensions.HARDWRAPS - Extensions.ANCHORLINKS
+      )
       linkRenderer match {
         case Some(renderer) => pegDown.markdownToHtml(markDown, renderer)
-        case None => pegDown.markdownToHtml(markDown)
+        case None           => pegDown.markdownToHtml(markDown)
       }
     }.getOrElse("Unable to parse markdown"))
   }

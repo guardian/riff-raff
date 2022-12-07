@@ -13,40 +13,59 @@ import scala.concurrent.ExecutionContext
 import scala.collection.immutable
 import scala.math.Ordering.OptionOrdering
 
-case class Host(name: String,
-                app: App,
-                stage: String = "NO_STAGE",
-                stack: String,
-                connectAs: Option[String] = None,
-                tags: Map[String, String] = Map.empty) {
+case class Host(
+    name: String,
+    app: App,
+    stage: String = "NO_STAGE",
+    stack: String,
+    connectAs: Option[String] = None,
+    tags: Map[String, String] = Map.empty
+) {
 
   def isValidForStack(s: Stack) = s.name == stack
 }
 
 case class Datum(
-  stack: String,
-  app: String,
-  stage: String,
-  value: String,
-  comment: Option[String]
+    stack: String,
+    app: String,
+    stage: String,
+    value: String,
+    comment: Option[String]
 )
 
-case class DeploymentResources(reporter: DeployReporter, lookup: Lookup, artifactClient: S3Client, stsClient: StsClient, ioExecutionContext: ExecutionContext) {
+case class DeploymentResources(
+    reporter: DeployReporter,
+    lookup: Lookup,
+    artifactClient: S3Client,
+    stsClient: StsClient,
+    ioExecutionContext: ExecutionContext
+) {
   def assembleKeyring(target: DeployTarget, pkg: DeploymentPackage): KeyRing = {
-    val keyring: KeyRing = lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
-    reporter.verbose(s"Keyring for ${pkg.name} in ${target.stack.name}/${target.region.name}: $keyring")
+    val keyring: KeyRing =
+      lookup.keyRing(target.parameters.stage, pkg.app, target.stack)
+    reporter.verbose(
+      s"Keyring for ${pkg.name} in ${target.stack.name}/${target.region.name}: $keyring"
+    )
     keyring
   }
 }
 
 case class StsDeploymentResources(deployId: UUID, stsClient: StsClient)
 object StsDeploymentResources {
-  def fromDeploymentResources(resources: DeploymentResources): StsDeploymentResources =
-    StsDeploymentResources(resources.reporter.messageContext.deployId, resources.stsClient)
+  def fromDeploymentResources(
+      resources: DeploymentResources
+  ): StsDeploymentResources =
+    StsDeploymentResources(
+      resources.reporter.messageContext.deployId,
+      resources.stsClient
+    )
 }
 
-
-case class DeployTarget(parameters: DeployParameters, stack: Stack, region: Region)
+case class DeployTarget(
+    parameters: DeployParameters,
+    stack: Stack,
+    region: Region
+)
 
 trait DeploymentStep {
   def app: App
@@ -54,11 +73,11 @@ trait DeploymentStep {
   def resolve(resources: DeploymentResources, target: DeployTarget): List[Task]
 }
 
-case class App (name: String)
+case class App(name: String)
 
 case class Stage(name: String)
 
-case class Build(projectName:String, id:String)
+case class Build(projectName: String, id: String)
 
 case class Stack(name: String) extends AnyVal
 
@@ -84,8 +103,10 @@ object Strategy extends Enum[Strategy] with PlayJsonEnum[Strategy] {
   }
 }
 
-case class DeployParameters(deployer: Deployer,
-                            build: Build,
-                            stage: Stage,
-                            selector: DeploymentSelector = All,
-                            updateStrategy: Strategy)
+case class DeployParameters(
+    deployer: Deployer,
+    build: Build,
+    stage: Stage,
+    selector: DeploymentSelector = All,
+    updateStrategy: Strategy
+)

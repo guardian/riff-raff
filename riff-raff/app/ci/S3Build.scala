@@ -13,15 +13,15 @@ import cats.syntax.either._
 import scala.collection.Seq
 
 case class S3Build(
-  id: Long,
-  jobName: String,
-  jobId: String,
-  branchName: String,
-  number: String,
-  startTime: DateTime,
-  revision: String,
-  vcsURL: String,
-  buildTool: Option[String],
+    id: Long,
+    jobName: String,
+    jobId: String,
+    branchName: String,
+    number: String,
+    startTime: DateTime,
+    revision: String,
+    vcsURL: String,
+    buildTool: Option[String]
 ) extends CIBuild
 
 case class S3Project(id: String, name: String) extends Job
@@ -33,14 +33,15 @@ class S3BuildOps(config: Config) extends Logging {
 
   def buildJsons: Seq[S3Object] = Try {
     S3Location.listAll(bucketName).filter(_.key.endsWith("build.json"))
-  } recover {
-    case NonFatal(e) =>
-      log.error(s"Error finding buildJsons", e)
-      Nil
+  } recover { case NonFatal(e) =>
+    log.error(s"Error finding buildJsons", e)
+    Nil
   } get
 
   def buildAt(location: S3Object): Either[S3BuildError, S3Build] =
-    location.fetchContentAsString().leftMap[S3BuildError](S3BuildRetrievalError)
+    location
+      .fetchContentAsString()
+      .leftMap[S3BuildError](S3BuildRetrievalError)
       .flatMap { s =>
         val s3BuildEither = parse(s)
         if (s3BuildEither.isLeft) {
@@ -49,17 +50,23 @@ class S3BuildOps(config: Config) extends Logging {
         s3BuildEither.leftMap[S3BuildError](S3BuildParseError)
       }
 
-  def parse(json: String): Either[Seq[(JsPath, Seq[JsonValidationError])], S3Build] = {
+  def parse(
+      json: String
+  ): Either[Seq[(JsPath, Seq[JsonValidationError])], S3Build] = {
     import play.api.libs.functional.syntax._
     import utils.Json.DefaultJodaDateReads
     import cats.syntax.either._
     implicit val reads: Reads[S3Build] = (
-      (JsPath \ "buildNumber").read[String].flatMap(s => Reads(_ =>
-        Either.catchOnly[NumberFormatException](s.toLong) match {
-          case Left(e) => JsError(s"'$s' is not a number")
-          case Right(l) => JsSuccess(l)
-        }
-      )) and
+      (JsPath \ "buildNumber")
+        .read[String]
+        .flatMap(s =>
+          Reads(_ =>
+            Either.catchOnly[NumberFormatException](s.toLong) match {
+              case Left(e)  => JsError(s"'$s' is not a number")
+              case Right(l) => JsSuccess(l)
+            }
+          )
+        ) and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "projectName").read[String] and
         (JsPath \ "branch").read[String] and
@@ -68,7 +75,7 @@ class S3BuildOps(config: Config) extends Logging {
         (JsPath \ "revision").read[String] and
         (JsPath \ "vcsURL").read[String] and
         (JsPath \ "buildTool").readNullable[String]
-      )(S3Build.apply _)
+    )(S3Build.apply _)
 
     Json.parse(json).validate[S3Build].asEither
   }
@@ -76,4 +83,6 @@ class S3BuildOps(config: Config) extends Logging {
 
 sealed trait S3BuildError
 final case class S3BuildRetrievalError(s3Error: S3Error) extends S3BuildError
-final case class S3BuildParseError(parseErrors: Seq[(JsPath, Seq[JsonValidationError])]) extends S3BuildError
+final case class S3BuildParseError(
+    parseErrors: Seq[(JsPath, Seq[JsonValidationError])]
+) extends S3BuildError

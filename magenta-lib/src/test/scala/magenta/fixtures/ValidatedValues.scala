@@ -4,12 +4,13 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import org.scalatest.exceptions.TestFailedException
 
-/**
-  * This trait is inspired strongly by [[org.scalatest.EitherValues]] as a way of simply asserting that you expect
-  * either a Valid or Invalid value from a Validated type.
+/** This trait is inspired strongly by [[org.scalatest.EitherValues]] as a way
+  * of simply asserting that you expect either a Valid or Invalid value from a
+  * Validated type.
   *
-  * Two functions are pimped onto Validated for the purposes of testing and if the value is not of the expected type
-  * then the test will fail detailing what the unexpected value was.
+  * Two functions are pimped onto Validated for the purposes of testing and if
+  * the value is not of the expected type then the test will fail detailing what
+  * the unexpected value was.
   */
 trait ValidatedValues {
 

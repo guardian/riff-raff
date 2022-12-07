@@ -15,71 +15,98 @@ import play.api.routing.sird._
 import play.api.test.WsTestClient
 import play.core.server.Server
 import resources.{Image, PrismLookup}
-import magenta.{ApiCredentials, ApiRoleCredentials, ApiStaticCredentials, App, KeyRing, SecretProvider, Stack, Stage}
+import magenta.{
+  ApiCredentials,
+  ApiRoleCredentials,
+  ApiStaticCredentials,
+  App,
+  KeyRing,
+  SecretProvider,
+  Stack,
+  Stage
+}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 
 class PrismLookupTest extends AnyFlatSpec with Matchers {
 
-  val config = new Config(configuration = Configuration(("lookup.timeoutSeconds", 10), ("lookup.prismUrl", "")).underlying, DateTime.now)
+  val config = new Config(
+    configuration = Configuration(
+      ("lookup.timeoutSeconds", 10),
+      ("lookup.prismUrl", "")
+    ).underlying,
+    DateTime.now
+  )
   val secretProvider = new SecretProvider {
-    override def lookup(service: String, account: String): Option[String] = Some("")
+    override def lookup(service: String, account: String): Option[String] =
+      Some("")
   }
 
-  def withPrismClient[T](images: List[Image])(block: WSClient => T):(T, Option[Request[AnyContent]]) = {
+  def withPrismClient[T](
+      images: List[Image]
+  )(block: WSClient => T): (T, Option[Request[AnyContent]]) = {
     var mockRequest: Option[Request[AnyContent]] = None
     import scala.concurrent.ExecutionContext.Implicits.global
     val actionBuilder = new api.mvc.ActionBuilder.IgnoringBody()
     def Action: ActionBuilder[Request, AnyContent] = actionBuilder
 
     val result = Server.withRouter() {
-      case GET(p"/images") => Action { request =>
-        mockRequest = Some(request)
-        Ok(Json.obj(
-          "data" -> Json.obj(
-            "images" -> Json.toJson(images)
-          )
-        ))
-      }
-      case GET(p"/data/keys") => Action { request =>
-        mockRequest = Some(request)
-        Ok(Json.obj(
-          "data" -> Json.obj(
-            "keys" -> Json.arr(
-              JsString("credentials:aws"), JsString("credentials:aws-role")
+      case GET(p"/images") =>
+        Action { request =>
+          mockRequest = Some(request)
+          Ok(
+            Json.obj(
+              "data" -> Json.obj(
+                "images" -> Json.toJson(images)
+              )
             )
           )
-        ))
-      }
-      case GET(url) => Action { request =>
-        mockRequest = Some(request)
-         if (url.toString().contains("role")) {
-           Ok(Json.obj(
-             "data" -> Json.obj(
-               "stack" -> JsString("deploy"),
-               "app" -> JsString(".*"),
-               "stage" -> JsString(".*"),
-               "value" -> JsString("role ARN"),
-               "comment" -> JsString("comment")
-             )
-           )
-           )
-         } else {
-           Ok(Json.obj(
-             "data" -> Json.obj(
-               "stack" -> JsString("deploy"),
-               "app" -> JsString(".*"),
-               "stage" -> JsString(".*"),
-               "value" -> JsString("access key"),
-               "comment" -> JsString("comment")
-             )
-           )
-           )
-         }
-      }
-    }
-    { implicit port =>
+        }
+      case GET(p"/data/keys") =>
+        Action { request =>
+          mockRequest = Some(request)
+          Ok(
+            Json.obj(
+              "data" -> Json.obj(
+                "keys" -> Json.arr(
+                  JsString("credentials:aws"),
+                  JsString("credentials:aws-role")
+                )
+              )
+            )
+          )
+        }
+      case GET(url) =>
+        Action { request =>
+          mockRequest = Some(request)
+          if (url.toString().contains("role")) {
+            Ok(
+              Json.obj(
+                "data" -> Json.obj(
+                  "stack" -> JsString("deploy"),
+                  "app" -> JsString(".*"),
+                  "stage" -> JsString(".*"),
+                  "value" -> JsString("role ARN"),
+                  "comment" -> JsString("comment")
+                )
+              )
+            )
+          } else {
+            Ok(
+              Json.obj(
+                "data" -> Json.obj(
+                  "stack" -> JsString("deploy"),
+                  "app" -> JsString(".*"),
+                  "stage" -> JsString(".*"),
+                  "value" -> JsString("access key"),
+                  "comment" -> JsString("comment")
+                )
+              )
+            )
+          }
+        }
+    } { implicit port =>
       WsTestClient.withClient { client =>
         block(client)
       }
@@ -87,11 +114,14 @@ class PrismLookupTest extends AnyFlatSpec with Matchers {
     (result, mockRequest)
   }
 
-
   "Keyring" should "correctly generate keyring" in {
     withPrismClient(List()) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
-      val result = lookup.keyRing(stage = Stage("PROD"), app = App("amigo"), stack = Stack("deploy"))
+      val result = lookup.keyRing(
+        stage = Stage("PROD"),
+        app = App("amigo"),
+        stack = Stack("deploy")
+      )
       val awsCreds = result.apiCredentials("aws")
       awsCreds shouldBe a[ApiStaticCredentials]
       awsCreds.id shouldBe "access key"
@@ -103,10 +133,14 @@ class PrismLookupTest extends AnyFlatSpec with Matchers {
 
   "PrismLookup" should "return latest image" in {
     val images = List(
-      Image("test-ami", new DateTime(2017,3,2,13,32,0), Map.empty),
-      Image("test-later-ami", new DateTime(2017,4,2,13,32,0), Map.empty),
-      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0), Map.empty),
-      Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
+      Image("test-ami", new DateTime(2017, 3, 2, 13, 32, 0), Map.empty),
+      Image("test-later-ami", new DateTime(2017, 4, 2, 13, 32, 0), Map.empty),
+      Image(
+        "test-later-still-ami",
+        new DateTime(2017, 5, 2, 13, 32, 0),
+        Map.empty
+      ),
+      Image("test-early-ami", new DateTime(2017, 1, 2, 13, 32, 0), Map.empty)
     )
     withPrismClient(images) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
@@ -127,26 +161,41 @@ class PrismLookupTest extends AnyFlatSpec with Matchers {
   it should "correctly query using the tags" in {
     val (result, request) = withPrismClient(Nil) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
-      lookup.getLatestAmi(None, _ => true)("bob")(Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2"))
+      lookup.getLatestAmi(None, _ => true)("bob")(
+        Map("tagName" -> "tagValue?", "tagName*" -> "tagValue2")
+      )
     }
-    request.map(_.queryString) shouldBe Some(Map(
-      "region" -> ArrayBuffer("bob"),
-      "state" -> ArrayBuffer("available"),
-      "tags.tagName" -> ArrayBuffer("tagValue?"),
-      "tags.tagName*" -> ArrayBuffer("tagValue2")
-    ))
+    request.map(_.queryString) shouldBe Some(
+      Map(
+        "region" -> ArrayBuffer("bob"),
+        "state" -> ArrayBuffer("available"),
+        "tags.tagName" -> ArrayBuffer("tagValue?"),
+        "tags.tagName*" -> ArrayBuffer("tagValue2")
+      )
+    )
   }
 
   it should "correctly filter out images that are encrypted" in {
     val images = List(
-      Image("test-ami", new DateTime(2017,3,2,13,32,0), Map.empty),
-      Image("test-later-ami", new DateTime(2017,4,2,13,32,0), Map("Encrypted" -> "very")),
-      Image("test-later-still-ami", new DateTime(2017,5,2,13,32,0), Map("Encrypted" -> "true")),
-      Image("test-early-ami", new DateTime(2017,1,2,13,32,0), Map.empty)
+      Image("test-ami", new DateTime(2017, 3, 2, 13, 32, 0), Map.empty),
+      Image(
+        "test-later-ami",
+        new DateTime(2017, 4, 2, 13, 32, 0),
+        Map("Encrypted" -> "very")
+      ),
+      Image(
+        "test-later-still-ami",
+        new DateTime(2017, 5, 2, 13, 32, 0),
+        Map("Encrypted" -> "true")
+      ),
+      Image("test-early-ami", new DateTime(2017, 1, 2, 13, 32, 0), Map.empty)
     )
     withPrismClient(images) { client =>
       val lookup = new PrismLookup(config, client, secretProvider)
-      val result = lookup.getLatestAmi(None, CloudFormationDeploymentTypeParameters.unencryptedTagFilter)("bob")(Map.empty)
+      val result = lookup.getLatestAmi(
+        None,
+        CloudFormationDeploymentTypeParameters.unencryptedTagFilter
+      )("bob")(Map.empty)
       result shouldBe Some("test-ami")
     }
   }

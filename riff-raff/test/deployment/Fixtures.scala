@@ -5,7 +5,19 @@ import magenta.Strategy.MostlyHarmless
 import java.util.UUID
 import magenta.graph.{DeploymentGraph, DeploymentTasks, Graph}
 import magenta.tasks._
-import magenta.{App, Build, DeployContext, DeployParameters, DeployReporter, Deployer, DeploymentResources, Host, KeyRing, Region, Stage}
+import magenta.{
+  App,
+  Build,
+  DeployContext,
+  DeployParameters,
+  DeployReporter,
+  Deployer,
+  DeploymentResources,
+  Host,
+  KeyRing,
+  Region,
+  Stage
+}
 import org.joda.time.DateTime
 import org.mockito.MockitoSugar
 import software.amazon.awssdk.services.s3.S3Client
@@ -31,32 +43,44 @@ object Fixtures extends MockitoSugar {
   val threeSimpleTasksGraph = DeploymentGraph(threeSimpleTasks, "test")
 
   val simpleGraph: Graph[DeploymentTasks] = {
-    DeploymentGraph(twoTasks, "branch one") joinParallel DeploymentGraph(twoTasks, "branch two")
+    DeploymentGraph(twoTasks, "branch one") joinParallel DeploymentGraph(
+      twoTasks,
+      "branch two"
+    )
   }
 
   val dependentGraph: Graph[DeploymentTasks] = {
-    (DeploymentGraph(twoTasks, "one") joinSeries DeploymentGraph(twoTasks, "two")) joinParallel DeploymentGraph(twoTasks, "branch two")
+    (DeploymentGraph(twoTasks, "one") joinSeries DeploymentGraph(
+      twoTasks,
+      "two"
+    )) joinParallel DeploymentGraph(twoTasks, "branch two")
   }
 
   def createRecord(
-    projectName: String = "test",
-    stage: String = "TEST",
-    buildId: String = "1",
-    deployer: String = "Tester",
-    stacks: Seq[String] = Seq("test"),
-    uuid:UUID = UUID.randomUUID()
+      projectName: String = "test",
+      stage: String = "TEST",
+      buildId: String = "1",
+      deployer: String = "Tester",
+      stacks: Seq[String] = Seq("test"),
+      uuid: UUID = UUID.randomUUID()
   ) = DeployRecord(
     DateTime.now(),
     uuid,
-    DeployParameters(Deployer(deployer),
+    DeployParameters(
+      Deployer(deployer),
       Build(projectName, buildId),
       Stage(stage),
       updateStrategy = MostlyHarmless
     )
   )
 
-  def createContext(taskGraph: Graph[DeploymentTasks], uuid: UUID, parameters: DeployParameters): DeployContext =
+  def createContext(
+      taskGraph: Graph[DeploymentTasks],
+      uuid: UUID,
+      parameters: DeployParameters
+  ): DeployContext =
     DeployContext(uuid, parameters, taskGraph)
 
-  def createReporter(record: Record) = DeployReporter.rootReporterFor(record.uuid, record.parameters)
+  def createReporter(record: Record) =
+    DeployReporter.rootReporterFor(record.uuid, record.parameters)
 }

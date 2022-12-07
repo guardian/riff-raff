@@ -8,9 +8,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object Every extends Logging {
 
-  def apply[T](frequency: Duration)
-              (buildRetriever: => Observable[T])
-              (implicit ec: ExecutionContext): Observable[T] = {
+  def apply[T](frequency: Duration)(
+      buildRetriever: => Observable[T]
+  )(implicit ec: ExecutionContext): Observable[T] = {
     (for {
       _ <- Observable.interval(1.second, frequency)
       _ = log.debug("Ping!")
@@ -24,12 +24,18 @@ object Every extends Logging {
 trait ContinuousIntegrationAPI {
   def jobs(implicit ec: ExecutionContext): Observable[Job]
   def builds(job: Job)(implicit ec: ExecutionContext): Observable[CIBuild]
-  def succesfulBuildBatch(job: Job)(implicit ec: ExecutionContext): Observable[Iterable[CIBuild]]
-  def tags(build: CIBuild)(implicit ec: ExecutionContext): Future[Option[List[String]]]
+  def succesfulBuildBatch(job: Job)(implicit
+      ec: ExecutionContext
+  ): Observable[Iterable[CIBuild]]
+  def tags(build: CIBuild)(implicit
+      ec: ExecutionContext
+  ): Future[Option[List[String]]]
 }
 
 object FailSafeObservable extends Logging {
-  def apply[T](f: Future[T], msg: => String)(implicit ec: ExecutionContext): Observable[T] =
+  def apply[T](f: Future[T], msg: => String)(implicit
+      ec: ExecutionContext
+  ): Observable[T] =
     Observable.from(f).onErrorResumeNext { e =>
       log.error(msg, e)
       Observable.empty

@@ -12,7 +12,9 @@ import schedule.ScheduleConfig
 class ScheduleRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val triggerModeFormat =
-    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
+    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](
+      Trigger.withName
+    )(_.toString)
 
   override val tablePrefix = "schedule-config"
 

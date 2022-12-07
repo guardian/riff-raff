@@ -20,13 +20,15 @@ class UnnaturalOrderingTest extends AnyFlatSpec with Matchers {
 
   it should "sort aliens using natural ordering" in {
     val ordering = UnnaturalOrdering(List("test", "alpha", "first"))
-    val result = List("zebra", "bobbins", "egg", "first", "test").sorted(ordering)
+    val result =
+      List("zebra", "bobbins", "egg", "first", "test").sorted(ordering)
     result should be(List("test", "first", "bobbins", "egg", "zebra"))
   }
 
   it should "sort aliens to the beginning if you feel like it" in {
     val ordering = UnnaturalOrdering(List("test", "alpha", "first"), false)
-    val result = List("zebra", "bobbins", "egg", "first", "test").sorted(ordering)
+    val result =
+      List("zebra", "bobbins", "egg", "first", "test").sorted(ordering)
     result should be(List("bobbins", "egg", "zebra", "test", "first"))
 
   }

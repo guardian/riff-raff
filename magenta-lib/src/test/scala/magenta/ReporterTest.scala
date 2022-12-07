@@ -13,13 +13,21 @@ class ReporterTest extends AnyFlatSpec with Matchers {
 
   def getWrapperBuffer(uuid: UUID): ListBuffer[MessageWrapper] = {
     val wrappers = ListBuffer.empty[MessageWrapper]
-    DeployReporter.messages.filter(_.context.deployId == uuid).subscribe(wrappers += _)
+    DeployReporter.messages
+      .filter(_.context.deployId == uuid)
+      .subscribe(wrappers += _)
     wrappers
   }
 
-  def getRandomReporter = DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
+  def getRandomReporter =
+    DeployReporter.rootReporterFor(UUID.randomUUID(), parameters)
 
-  val parameters = DeployParameters(Deployer("Tester"), Build("test-app", "test-build"), Stage("TEST"), updateStrategy = MostlyHarmless)
+  val parameters = DeployParameters(
+    Deployer("Tester"),
+    Build("test-app", "test-build"),
+    Stage("TEST"),
+    updateStrategy = MostlyHarmless
+  )
 
   it should "send messagewrappers to message sinks" in {
     val reporter = getRandomReporter
@@ -43,8 +51,18 @@ class ReporterTest extends AnyFlatSpec with Matchers {
     wrappers.size should be(3)
     wrappers(0).context should be(reporter.messageContext)
     wrappers(0).stack.messages should be(List(StartContext(Deploy(parameters))))
-    wrappers(1).context should be(MessageContext(reporter.messageContext.deployId, parameters, Some(wrappers(0).messageId)))
-    wrappers(1).stack.messages should be(List(Info("this should work"), Deploy(parameters)))
-    wrappers(2).stack.messages should be(List(FinishContext(Deploy(parameters)), Deploy(parameters)))
+    wrappers(1).context should be(
+      MessageContext(
+        reporter.messageContext.deployId,
+        parameters,
+        Some(wrappers(0).messageId)
+      )
+    )
+    wrappers(1).stack.messages should be(
+      List(Info("this should work"), Deploy(parameters))
+    )
+    wrappers(2).stack.messages should be(
+      List(FinishContext(Deploy(parameters)), Deploy(parameters))
+    )
   }
 }

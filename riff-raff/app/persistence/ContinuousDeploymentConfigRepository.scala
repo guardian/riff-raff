@@ -9,10 +9,13 @@ import org.scanamo.{DynamoFormat, Table}
 import cats.syntax.either._
 import conf.Config
 
-class ContinuousDeploymentConfigRepository(config: Config) extends DynamoRepository(config) {
+class ContinuousDeploymentConfigRepository(config: Config)
+    extends DynamoRepository(config) {
 
   implicit val triggerModeFormat =
-    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](Trigger.withName)(_.toString)
+    DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](
+      Trigger.withName
+    )(_.toString)
 
   override val tablePrefix = "continuous-deployment-config"
 

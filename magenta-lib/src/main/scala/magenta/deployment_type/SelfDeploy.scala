@@ -13,7 +13,8 @@ object SelfDeploy extends DeploymentType {
       |opportunity (when it has finished deploys).
     """.stripMargin
 
-  val bucket = Param[String]("bucket",
+  val bucket = Param[String](
+    "bucket",
     """
       |S3 bucket name to upload artifact into.
       |
@@ -21,20 +22,26 @@ object SelfDeploy extends DeploymentType {
       |
       |Despite there being a default for this we are migrating to always requiring it to be specified.
     """.stripMargin
-  ).defaultFromContext{ case (_, target) => Right(s"${target.stack.name}-dist") }
+  ).defaultFromContext { case (_, target) =>
+    Right(s"${target.stack.name}-dist")
+  }
 
-  val publicReadAcl = Param[Boolean]("publicReadAcl",
+  val publicReadAcl = Param[Boolean](
+    "publicReadAcl",
     "Whether the uploaded artifacts should be given the PublicRead Canned ACL. (Default is true!)"
   ).default(false)
 
-  val uploadArtifacts = Action("uploadArtifacts",
+  val uploadArtifacts = Action(
+    "uploadArtifacts",
     """
       |Uploads the files in the deployment's directory to the specified bucket.
-    """.stripMargin) { (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
     val reporter = resources.reporter
     implicit val artifactClient = resources.artifactClient
-    val prefix = S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
+    val prefix =
+      S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
     List(
       S3Upload(
         target.region,
@@ -44,17 +51,19 @@ object SelfDeploy extends DeploymentType {
     )
   }
 
-
-  val selfDeploy = Action("selfDeploy",
+  val selfDeploy = Action(
+    "selfDeploy",
     """
       |Invokes the Shutdown controller on the target instance.
-    """.stripMargin){ (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing = resources.assembleKeyring(target, pkg)
 
-    val hosts = resources.lookup.hosts.get(pkg, pkg.app, target.parameters, target.stack).toList
+    val hosts = resources.lookup.hosts
+      .get(pkg, pkg.app, target.parameters, target.stack)
+      .toList
     hosts.map(ShutdownTask.apply)
   }
 
   def defaultActions = List(uploadArtifacts, selfDeploy)
 }
-
