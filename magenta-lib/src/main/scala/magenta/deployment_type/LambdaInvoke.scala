@@ -4,7 +4,8 @@ import magenta.deployment_type.LambdaInvoke.lambdaFunctionNamePrefix
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, Region}
 import magenta.tasks.InvokeLambda
 
-case class InvokeLambdaFunction(function: LambdaFunction, region: Region) extends LambdaTaskPrecursor
+case class InvokeLambdaFunction(function: LambdaFunction, region: Region)
+    extends LambdaTaskPrecursor
 
 object LambdaInvoke extends LambdaInvoke {
   val lambdaFunctionNamePrefix = "RIFF-RAFF-INVOKABLE-"
@@ -18,7 +19,8 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
   override def functionNamesParamDescriptionSuffix = lambdaKeyword
 
   val name = "aws-invoke-lambda"
-  private val summary = s"Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas)."
+  private val summary =
+    s"Invokes Lambda(s), selected using the parameters below (similar to the way the `${LambdaDeploy.name}` deployment type finds Lambdas)."
 
   val documentation: String =
     s"""
@@ -41,27 +43,49 @@ trait LambdaInvoke extends LambdaDeploymentType[InvokeLambdaFunction] {
       |```
     """.stripMargin
 
-  def buildLambdaTaskPrecursor(stackNamePrefix: String, stage: String, name: String, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
-    InvokeLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), target.region)
+  def buildLambdaTaskPrecursor(
+      stackNamePrefix: String,
+      stage: String,
+      name: String,
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
+    InvokeLambdaFunction(
+      LambdaFunctionName(s"$stackNamePrefix$name$stage"),
+      target.region
+    )
 
-  def buildLambdaTaskPrecursor(functionName: String, functionDefinition: Map[String, String], pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
+  def buildLambdaTaskPrecursor(
+      functionName: String,
+      functionDefinition: Map[String, String],
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
     InvokeLambdaFunction(LambdaFunctionName(functionName), target.region)
 
-  def buildLambdaTaskPrecursor(tags: LambdaFunctionTags, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
+  def buildLambdaTaskPrecursor(
+      tags: LambdaFunctionTags,
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
     InvokeLambdaFunction(tags, target.region)
 
-  def getInvokeAction = Action(name = "invokeLambda",documentation = summary){
-    (pkg, resources, target) => {
-      lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-        InvokeLambda(
-          function = lambda.function,
-          artifactsPath = pkg.s3Package,
-          region = lambda.region
-        )(
-          keyRing = resources.assembleKeyring(target, pkg)
-        )
+  def getInvokeAction = Action(name = "invokeLambda", documentation = summary) {
+    (pkg, resources, target) =>
+      {
+        lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
+          InvokeLambda(
+            function = lambda.function,
+            artifactsPath = pkg.s3Package,
+            region = lambda.region
+          )(
+            keyRing = resources.assembleKeyring(target, pkg)
+          )
+        }
       }
-    }
   }
 
 }

@@ -7,8 +7,9 @@ import magenta.artifact._
 import magenta.deployment_type.{
   LambdaFunction,
   LambdaFunctionName,
-  LambdaFunctionTags
-, LambdaInvoke}
+  LambdaFunctionTags,
+  LambdaInvoke
+}
 import magenta.deployment_type.param_reads.PatternValue
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
 import play.api.libs.json.Json
@@ -384,7 +385,7 @@ case class UpdateS3Lambda(
   ): Unit = {
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
       val functionName =
-            Lambda.getFunctionName(client, function, resources.reporter)
+        Lambda.getFunctionName(client, function, resources.reporter)
 
       resources.reporter.verbose(s"Starting update $function Lambda")
       client.updateFunctionCode(
@@ -396,28 +397,54 @@ case class UpdateS3Lambda(
 
 }
 
-case class InvokeLambda(function: LambdaFunction, artifactsPath: S3Path, region: Region)(implicit val keyRing: KeyRing) extends Task {
+case class InvokeLambda(
+    function: LambdaFunction,
+    artifactsPath: S3Path,
+    region: Region
+)(implicit val keyRing: KeyRing)
+    extends Task {
   def description = s"Invoking $function Lambda."
 
   override def execute(resources: DeploymentResources, stopFlag: => Boolean) {
     implicit val s3client: S3Client = resources.artifactClient
-    val artifactFileNameToContentMap = S3Location.listObjects(artifactsPath).map(s3object => {
-      S3Location.fetchContentAsString(s3object).fold(
-        error => resources.reporter.fail(error.toString),
-        content => s3object.fileName -> content
-      )
-    }).toMap
+    val artifactFileNameToContentMap = S3Location
+      .listObjects(artifactsPath)
+      .map(s3object => {
+        S3Location
+          .fetchContentAsString(s3object)
+          .fold(
+            error => resources.reporter.fail(error.toString),
+            content => s3object.fileName -> content
+          )
+      })
+      .toMap
 
-    val lambdaPayload = Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
+    val lambdaPayload =
+      Json.toJson(Map(artifactsPath.fileName -> artifactFileNameToContentMap))
     Lambda.withLambdaClient(keyRing, region, resources) { client =>
-      val functionName = Lambda.getFunctionName(client, function, resources.reporter)
+      val functionName =
+        Lambda.getFunctionName(client, function, resources.reporter)
       if (functionName.startsWith(LambdaInvoke.lambdaFunctionNamePrefix)) {
-        val invokeResponse = client.invoke(Lambda.lambdaInvokeRequest(functionName, payloadBytes = Json.toBytes(lambdaPayload)))
-        val logResultByteArray = Base64.getDecoder().decode(invokeResponse.logResult())
-        Source.fromBytes(logResultByteArray).getLines().foreach(resources.reporter.verbose)
-        Json.parse(invokeResponse.payload().asByteArray()).as[List[String]].foreach(resources.reporter.info)
+        val invokeResponse = client.invoke(
+          Lambda.lambdaInvokeRequest(
+            functionName,
+            payloadBytes = Json.toBytes(lambdaPayload)
+          )
+        )
+        val logResultByteArray =
+          Base64.getDecoder().decode(invokeResponse.logResult())
+        Source
+          .fromBytes(logResultByteArray)
+          .getLines()
+          .foreach(resources.reporter.verbose)
+        Json
+          .parse(invokeResponse.payload().asByteArray())
+          .as[List[String]]
+          .foreach(resources.reporter.info)
       } else {
-        resources.reporter.fail(s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'.")
+        resources.reporter.fail(
+          s"Lambda function name '${functionName}' did not begin with '${LambdaInvoke.lambdaFunctionNamePrefix}'."
+        )
       }
     }
   }

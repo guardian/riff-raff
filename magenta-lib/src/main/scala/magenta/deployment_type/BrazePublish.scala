@@ -3,9 +3,11 @@ package magenta.deployment_type
 import play.api.libs.json.{JsArray, JsString, JsBoolean}
 
 object BrazePublish extends LambdaInvoke {
-  val brazePublishLambdaNameMinusStage = s"${LambdaInvoke.lambdaFunctionNamePrefix}braze-version-control-publish-lambda-"
+  val brazePublishLambdaNameMinusStage =
+    s"${LambdaInvoke.lambdaFunctionNamePrefix}braze-version-control-publish-lambda-"
   override val name = "braze-publish"
-  private val summary = s"Invokes Lambda `${brazePublishLambdaNameMinusStage}` (with the STAGE appended). This Lambda publishes content blocks to the target Braze environment (only if there are changes)."
+  private val summary =
+    s"Invokes Lambda `${brazePublishLambdaNameMinusStage}` (with the STAGE appended). This Lambda publishes content blocks to the target Braze environment (only if there are changes)."
 
   override val documentation: String = s"""
       |${summary}
@@ -25,18 +27,27 @@ object BrazePublish extends LambdaInvoke {
       |```
     """.stripMargin
 
-  val brazePublishAction = Action(name="brazePublish", documentation=summary){(pkg, resources, target) =>
-    getInvokeAction.taskGenerator(
-      pkg.copy(pkgSpecificData = pkg.pkgSpecificData.view.filterKeys(key => !super.params.map(_.name).contains(key)).toMap ++ Map(
-        functionNamesParam.name -> JsArray(Array(JsString(brazePublishLambdaNameMinusStage))),
-        prefixStackParam.name -> JsBoolean(false)
-      )),
-      resources,
-      target
-    )
-  }
+  val brazePublishAction =
+    Action(name = "brazePublish", documentation = summary) {
+      (pkg, resources, target) =>
+        getInvokeAction.taskGenerator(
+          pkg.copy(pkgSpecificData =
+            pkg.pkgSpecificData.view
+              .filterKeys(key => !super.params.map(_.name).contains(key))
+              .toMap ++ Map(
+              functionNamesParam.name -> JsArray(
+                Array(JsString(brazePublishLambdaNameMinusStage))
+              ),
+              prefixStackParam.name -> JsBoolean(false)
+            )
+          ),
+          resources,
+          target
+        )
+    }
 
   override def defaultActions: List[Action] = List(brazePublishAction)
 
-  override def paramsToHide: Seq[Param[_]] = super.params // This deployment type takes no parameters, so we hide all the parameters from the parent
+  override def paramsToHide: Seq[Param[_]] =
+    super.params // This deployment type takes no parameters, so we hide all the parameters from the parent
 }

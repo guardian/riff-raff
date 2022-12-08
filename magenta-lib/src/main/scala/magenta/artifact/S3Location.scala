@@ -88,8 +88,12 @@ object S3Location extends Loggable {
       }
   }
 
-  def fetchContentAsString(location: S3Location)(implicit client: S3Client): Either[S3Error, String] = {
-    fetchContentAsBytes(location).map(bytes => new String(bytes, StandardCharsets.UTF_8))
+  def fetchContentAsString(
+      location: S3Location
+  )(implicit client: S3Client): Either[S3Error, String] = {
+    fetchContentAsBytes(location).map(bytes =>
+      new String(bytes, StandardCharsets.UTF_8)
+    )
   }
 }
 

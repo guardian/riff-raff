@@ -3,15 +3,31 @@ package magenta.deployment_type
 import magenta.artifact.S3Path
 import magenta.tasks.S3.Bucket
 import magenta.tasks.{S3Upload, SSM, STS, UpdateS3Lambda, S3 => S3Tasks}
-import magenta.{DeployParameters, DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, Stack}
+import magenta.{
+  DeployParameters,
+  DeployReporter,
+  DeployTarget,
+  DeploymentPackage,
+  DeploymentResources,
+  KeyRing,
+  Region,
+  Stack
+}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
 object LambdaDeploy extends LambdaDeploy
 
-case class UpdateLambdaFunction(function: LambdaFunction, fileName: String, region: Region, s3Bucket: S3Tasks.Bucket) extends LambdaTaskPrecursor
+case class UpdateLambdaFunction(
+    function: LambdaFunction,
+    fileName: String,
+    region: Region,
+    s3Bucket: S3Tasks.Bucket
+) extends LambdaTaskPrecursor
 
-trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with BucketParameters {
+trait LambdaDeploy
+    extends LambdaDeploymentType[UpdateLambdaFunction]
+    with BucketParameters {
   val name = "aws-lambda"
   val documentation =
     """
@@ -28,24 +44,64 @@ trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with Bucke
       """.stripMargin
 
   override def lambdaKeyword: String = "deploy"
-  val fileNameParam = Param[String]("fileName", "The name of the archive of the function", deprecatedDefault = true)
+  val fileNameParam = Param[String](
+    "fileName",
+    "The name of the archive of the function",
+    deprecatedDefault = true
+  )
     .defaultFromContext((pkg, _) => Right(s"${pkg.name}.zip"))
 
-  override def functionNamesParamDescriptionSuffix = "update with the code from fileNameParam"
+  override def functionNamesParamDescriptionSuffix =
+    "update with the code from fileNameParam"
 
-  def buildLambdaTaskPrecursor(stackNamePrefix: String, stage: String, name: String, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
-    UpdateLambdaFunction(LambdaFunctionName(s"$stackNamePrefix$name$stage"), fileNameParam(pkg, target, reporter), target.region, getTargetBucketFromConfig(pkg, target, reporter))
+  def buildLambdaTaskPrecursor(
+      stackNamePrefix: String,
+      stage: String,
+      name: String,
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
+    UpdateLambdaFunction(
+      LambdaFunctionName(s"$stackNamePrefix$name$stage"),
+      fileNameParam(pkg, target, reporter),
+      target.region,
+      getTargetBucketFromConfig(pkg, target, reporter)
+    )
 
-  def buildLambdaTaskPrecursor(functionName: String, functionDefinition: Map[String, String], pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
-    UpdateLambdaFunction(LambdaFunctionName(functionName), fileName = functionDefinition.getOrElse("filename", "lambda.zip"), target.region, getTargetBucketFromConfig(pkg, target, reporter))
+  def buildLambdaTaskPrecursor(
+      functionName: String,
+      functionDefinition: Map[String, String],
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
+    UpdateLambdaFunction(
+      LambdaFunctionName(functionName),
+      fileName = functionDefinition.getOrElse("filename", "lambda.zip"),
+      target.region,
+      getTargetBucketFromConfig(pkg, target, reporter)
+    )
 
-  def buildLambdaTaskPrecursor(tags: LambdaFunctionTags, pkg: DeploymentPackage, target: DeployTarget, reporter: DeployReporter) =
-    UpdateLambdaFunction(tags, fileNameParam(pkg, target, reporter), target.region, getTargetBucketFromConfig(pkg, target, reporter))
+  def buildLambdaTaskPrecursor(
+      tags: LambdaFunctionTags,
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ) =
+    UpdateLambdaFunction(
+      tags,
+      fileNameParam(pkg, target, reporter),
+      target.region,
+      getTargetBucketFromConfig(pkg, target, reporter)
+    )
 
-  val uploadLambda = Action("uploadLambda",
+  val uploadLambda = Action(
+    "uploadLambda",
     """
       |Uploads the lambda code to S3.
-    """.stripMargin){ (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
@@ -62,7 +118,8 @@ trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with Bucke
       )
     }.distinct
   }
-  val updateLambda = Action("updateLambda",
+  val updateLambda = Action(
+    "updateLambda",
     """
       |Updates the lambda to use new code using the UpdateFunctionCode API.
       |
@@ -77,22 +134,23 @@ trait LambdaDeploy extends LambdaDeploymentType[UpdateLambdaFunction] with Bucke
       |Due to the current limitations in AWS (particularly the lack of configuration mechanisms) there is a more
       |powerful `functions` parameter. This lets you bind a specific file to a specific function for any given stage.
       |As a result you can bundle stage specific configuration into the respective files.
-    """.stripMargin){ (pkg, resources, target) =>
+    """.stripMargin
+  ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
     lambdaToProcess(pkg, target, resources.reporter).map { lambda =>
-        val s3Bucket = S3Tasks.getBucketName(
-          lambda.s3Bucket,
-          withSsm(keyRing, target.region, resources),
-          resources.reporter
-        )
-        val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
-        UpdateS3Lambda(
-          lambda.function,
-          s3Bucket,
-          s3Key,
-          lambda.region
-        )
+      val s3Bucket = S3Tasks.getBucketName(
+        lambda.s3Bucket,
+        withSsm(keyRing, target.region, resources),
+        resources.reporter
+      )
+      val s3Key = makeS3Key(target, pkg, lambda.fileName, resources.reporter)
+      UpdateS3Lambda(
+        lambda.function,
+        s3Bucket,
+        s3Key,
+        lambda.region
+      )
     }.distinct
   }
 

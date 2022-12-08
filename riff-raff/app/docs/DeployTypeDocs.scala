@@ -84,7 +84,8 @@ object DeployTypeDocs {
       )
 
       val paramDocs = dt.params
-        .diff(dt.paramsToHide).sortBy(_.name)
+        .diff(dt.paramsToHide)
+        .sortBy(_.name)
         .map { param =>
           val defaults = defaultFromParam(deploymentPackage, param)
           ParamDoc(param.name, param.documentation, defaults)

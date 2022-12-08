@@ -3,7 +3,12 @@ package magenta.tasks
 import java.nio.ByteBuffer
 import cats.implicits._
 import magenta.deployment_type.{
-  LambdaFunction, LambdaFunctionName, LambdaFunctionTags, MigrationTagRequirements, MustBePresent, MustNotBePresent
+  LambdaFunction,
+  LambdaFunctionName,
+  LambdaFunctionTags,
+  MigrationTagRequirements,
+  MustBePresent,
+  MustNotBePresent
 }
 import magenta.{
   ApiRoleCredentials,
@@ -69,7 +74,13 @@ import software.amazon.awssdk.services.elasticloadbalancingv2.{
   ElasticLoadBalancingV2Client => ApplicationELB
 }
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, InvokeRequest, ListFunctionsRequest, ListTagsRequest, LogType, UpdateFunctionCodeRequest
+import software.amazon.awssdk.services.lambda.model.{
+  FunctionConfiguration,
+  InvokeRequest,
+  ListFunctionsRequest,
+  ListTagsRequest,
+  LogType,
+  UpdateFunctionCodeRequest
 }
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
@@ -240,18 +251,26 @@ object Lambda {
       .s3Key(s3Key)
       .build()
 
-  def lambdaInvokeRequest(functionName: String, payloadBytes: Array[Byte]): InvokeRequest =
-    InvokeRequest.builder()
+  def lambdaInvokeRequest(
+      functionName: String,
+      payloadBytes: Array[Byte]
+  ): InvokeRequest =
+    InvokeRequest
+      .builder()
       .functionName(functionName)
       .payload(SdkBytes.fromByteArray(payloadBytes))
       .logType(LogType.TAIL)
       .build()
 
-  def getFunctionName(client: LambdaClient, function: LambdaFunction, reporter: DeployReporter): String = function match {
+  def getFunctionName(
+      client: LambdaClient,
+      function: LambdaFunction,
+      reporter: DeployReporter
+  ): String = function match {
     case LambdaFunctionName(name) => name
     case LambdaFunctionTags(tags) =>
       val functionConfig = Lambda.findFunctionByTags(tags, reporter, client)
-      functionConfig.map(_.functionName).getOrElse{
+      functionConfig.map(_.functionName).getOrElse {
         reporter.fail(s"Failed to find any function with tags $tags")
       }
   }

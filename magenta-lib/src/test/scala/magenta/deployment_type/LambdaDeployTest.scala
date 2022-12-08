@@ -32,7 +32,6 @@ import software.amazon.awssdk.services.sts.StsClient
 
 import scala.concurrent.ExecutionContext.global
 
-
 class LambdaDeployTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter =
