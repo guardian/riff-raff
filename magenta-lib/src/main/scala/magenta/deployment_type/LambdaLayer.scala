@@ -16,8 +16,8 @@ trait LambdaLayer extends DeploymentType with BucketParameters {
       |
       """.stripMargin
 
-  val layerNameParam = Param[String]("layerNames",
-    """One or more layer names to update with the code from fileNameParam.
+  val layerNameParam = Param[String]("layerName",
+    """The layer name to update with the code from fileNameParam.
       |""".stripMargin,
     optional = false
   )
