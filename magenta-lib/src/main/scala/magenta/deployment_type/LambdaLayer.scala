@@ -6,9 +6,7 @@ import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResou
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
-object LambdaLayer extends LambdaLayer
-
-trait LambdaLayer extends DeploymentType with BucketParameters {
+object LambdaLayer extends DeploymentType with BucketParameters {
   val name = "aws-lambda-layer"
   val documentation =
     """
