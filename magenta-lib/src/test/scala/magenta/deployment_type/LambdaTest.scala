@@ -235,7 +235,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
         )
     }
 
-    e.message shouldBe s"Bucket name provided ($lambdaBucketName) & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
+    e.message shouldBe s"Bucket name provided & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
   }
 
   it should "refuse to work if bucket name is not provided and no bucket is specified in SSM" in {

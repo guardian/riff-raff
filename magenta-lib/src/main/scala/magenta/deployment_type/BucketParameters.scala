@@ -37,6 +37,9 @@ trait BucketParameters {
       |  CODE: some-ssm-path-for-code
       |  PROD: some-ssm-path-for-prod
       |```
+      |
+      |For the most part, you should not use this. But it is useful if you
+      |are e.g. serving static sites from S3.
       |""".stripMargin
   ).default(Map.empty)
 
@@ -68,9 +71,9 @@ trait BucketParameters {
     // The behaviour here is *very* counter-intuitive; even if bucketSsmLookup=false
     // we default to SSM unless an explicit bucket name has been set.
     val bucket = (bucketSsmLookup, explicitBucket) match {
-      case (true, Some(name)) =>
+      case (true, Some(_)) =>
         reporter.fail(
-          s"Bucket name provided ($name) & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
+          s"Bucket name provided & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
         )
       case (false, Some(name)) =>
         reporter.warning(
