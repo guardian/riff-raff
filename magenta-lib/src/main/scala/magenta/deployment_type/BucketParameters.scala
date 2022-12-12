@@ -65,20 +65,20 @@ trait BucketParameters {
     val bucketSsmLookup = bucketSsmLookupParam(pkg, target, reporter)
     val explicitBucket = bucketParam.get(pkg)
 
+    // The behaviour here is *very* counter-intuitive; even if bucketSsmLookup=false
+    // we default to SSM unless an explicit bucket name has been set.
     val bucket = (bucketSsmLookup, explicitBucket) match {
       case (true, Some(name)) =>
         reporter.fail(
           s"Bucket name provided ($name) & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
         )
-      case (true, None) =>
-        bySsm()
       case (false, Some(name)) =>
         reporter.warning(
           "Explicit bucket name in riff-raff.yaml. Prefer to use bucketSsmLookup=true, removing private information from VCS."
         )
         BucketByName(name)
-      case (false, None) =>
-        BucketBySsmKey(defaultSsmKeyParamDefault)
+      case (_, None) =>
+        bySsm()
     }
 
     reporter.verbose(s"Resolved artifact bucket as $bucket")
