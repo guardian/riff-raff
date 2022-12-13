@@ -114,8 +114,8 @@ class AppComponents(
       val default = "unknown"
 
       Map(
-        "gu:repo" -> buildTool.getOrElse(default),
-        "gu:build-tool" -> repoUrl.getOrElse(default)
+        "gu:build-tool" -> buildTool.getOrElse(default),
+        "gu:repo" -> repoUrl.getOrElse(default)
       )
     }
   }
