@@ -28,28 +28,62 @@ trait BucketParameters {
     """The SSM key used to lookup the bucket name for uploading distribution artifacts.""".stripMargin
   ).default(defaultSsmKeyParamDefault)
 
+  val bucketSsmKeyStageParam = Param[Map[String, String]](
+    "bucketSsmKeyStageParam",
+    """
+      |Like bucketSsmKeyParam, but with the ability to configure by stage:
+      |
+      |```yaml
+      |  CODE: some-ssm-path-for-code
+      |  PROD: some-ssm-path-for-prod
+      |```
+      |
+      |For the most part, you should not use this. But it is useful if you
+      |are e.g. serving static sites from S3.
+      |""".stripMargin
+  ).default(Map.empty)
+
   def getTargetBucketFromConfig(
       pkg: DeploymentPackage,
       target: DeployTarget,
       reporter: DeployReporter
   ): Bucket = {
-    val bucketSsmLookup = bucketSsmLookupParam(pkg, target, reporter)
-    val maybeExplicitBucket = bucketParam.get(pkg)
 
-    val bucket = (bucketSsmLookup, maybeExplicitBucket) match {
-      // Default to looking up target bucket from SSM
-      case (_, None) =>
-        BucketBySsmKey(bucketSsmKeyParam(pkg, target, reporter))
-      case (false, Some(explicitBucket)) =>
+    def bySsm(): Bucket = {
+      val stage = target.parameters.stage.name
+      val ssmKeyByStage = bucketSsmKeyStageParam(pkg, target, reporter)
+      val stageKey = ssmKeyByStage.get(stage)
+
+      if (ssmKeyByStage.nonEmpty && stageKey.isEmpty) {
+        reporter.fail(
+          s"Unable to determine bucket to deploy to: bucketSsmKeyStageParam is set but no mapping was found for stage '$stage'."
+        )
+      }
+
+      BucketBySsmKey(
+        stageKey.getOrElse(bucketSsmKeyParam(pkg, target, reporter))
+      )
+    }
+
+    val bucketSsmLookup = bucketSsmLookupParam(pkg, target, reporter)
+    val explicitBucket = bucketParam.get(pkg)
+
+    // The behaviour here is *very* counter-intuitive; even if bucketSsmLookup=false
+    // we default to SSM unless an explicit bucket name has been set.
+    val bucket = (bucketSsmLookup, explicitBucket) match {
+      case (true, Some(_)) =>
+        reporter.fail(
+          s"Bucket name provided & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
+        )
+      case (false, Some(name)) =>
         reporter.warning(
           "Explicit bucket name in riff-raff.yaml. Prefer to use bucketSsmLookup=true, removing private information from VCS."
         )
-        BucketByName(explicitBucket)
-      case (true, Some(explicitBucket)) =>
-        reporter.fail(
-          s"Bucket name provided ($explicitBucket) & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
-        )
+        BucketByName(name)
+      case (_, None) =>
+        bySsm()
     }
+
     reporter.verbose(s"Resolved artifact bucket as $bucket")
     bucket
   }
