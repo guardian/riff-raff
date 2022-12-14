@@ -60,7 +60,7 @@ object LambdaLayer extends DeploymentType with BucketParameters {
 
     layerNameParam.get(pkg) match {
       case Some(name) => UpdateLambdaLayer(
-        layer = LambdaLayerName(s"$name$stage"),
+        layer = LambdaLayerName(name),
         fileName = fileNameParam(pkg, target, reporter),
         region = target.region,
         s3Bucket = bucket
