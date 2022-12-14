@@ -268,9 +268,8 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
   // TODO: these tests regularly fail with `An illegal reflective access
   // operation has occurred`. This appears to be caused by Mockito when mocking
-  // the `ApplicationELBClient` and/or `ClassicELBClient` classes. We should
-  // investigate this further and re-enable these tests once fixed.œ
-
+  // some of the Amazon types. We should investigate this further and re-enable
+  // these tests once fixed.
   it should "wait for instances in ELB to stabilise if there is one" ignore {
     val appELBClient = mock[ApplicationELBClient]
     val classicELBClient = mock[ClassicELBClient]
