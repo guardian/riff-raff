@@ -33,17 +33,19 @@ class DeploymentTypeTest
   val deploymentTypes = Seq(S3, Lambda)
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 11
+    S3.params should have size 13
     S3.params.map(_.name).toSet should be(
       Set(
         "prefixStage",
         "prefixPackage",
         "prefixStack",
         "prefixApp",
-        "pathPrefixResource",
         "bucket",
-        "publicReadAcl",
         "bucketResource",
+        "bucketSsmKey",
+        "bucketSsmKeyStageParam",
+        "bucketSsmLookup",
+        "publicReadAcl",
         "cacheControl",
         "surrogateControl",
         "mimeTypes"
@@ -96,43 +98,6 @@ class DeploymentTypeTest
 
     thrown.getMessage should equal(
       "Package myapp [aws-s3] requires parameter cacheControl of type List"
-    )
-  }
-
-  it should "log a warning when a default is explicitly set" in {
-    val mockReporter = mock[DeployReporter]
-
-    val data: Map[String, JsValue] = Map(
-      "bucket" -> JsString("bucket-1234"),
-      "cacheControl" -> JsString("monkey"),
-      "prefixStage" -> JsBoolean(true),
-      "publicReadAcl" -> JsBoolean(true)
-    )
-
-    val p = DeploymentPackage(
-      "myapp",
-      app1,
-      data,
-      "aws-s3",
-      sourceS3Package,
-      deploymentTypes
-    )
-
-    S3.actionsMap("uploadStaticFiles")
-      .taskGenerator(
-        p,
-        DeploymentResources(
-          mockReporter,
-          lookupSingleHost,
-          artifactClient,
-          stsClient,
-          global
-        ),
-        DeployTarget(parameters(CODE), stack, region)
-      )
-
-    verify(mockReporter).warning(
-      "Parameter prefixStage is unnecessarily explicitly set to the default value of true"
     )
   }
 
@@ -218,63 +183,6 @@ class DeploymentTypeTest
           PatternValue("^sub", "no-cache"),
           PatternValue(".*", "public; max-age:3600")
         )
-      )
-    }
-  }
-
-  it should "allow the path to be varied by Deployment Resource lookup" in {
-    val data: Map[String, JsValue] = Map(
-      "bucket" -> JsString("bucket-1234"),
-      "cacheControl" -> JsString("no-cache"),
-      "pathPrefixResource" -> JsString("s3-path-prefix"),
-      "prefixStage" -> JsBoolean(
-        false
-      ), // when we are using pathPrefixResource, we generally don't need or want the stage prefixe - we're already varying based on stage
-      "prefixPackage" -> JsBoolean(false),
-      "publicReadAcl" -> JsBoolean(true)
-    )
-
-    val p = DeploymentPackage(
-      "myapp",
-      app1,
-      data,
-      "aws-s3",
-      sourceS3Package,
-      deploymentTypes
-    )
-
-    val lookup = stubLookup(
-      List(Host("the_host", app1, stage = CODE.name, stack.name)),
-      Map(
-        "s3-path-prefix" -> Seq(
-          Datum(
-            stack.name,
-            app1.name,
-            CODE.name,
-            "testing/2016/05/brexit-companion",
-            None
-          )
-        )
-      )
-    )
-
-    inside(
-      S3.actionsMap("uploadStaticFiles")
-        .taskGenerator(
-          p,
-          DeploymentResources(
-            reporter,
-            lookup,
-            artifactClient,
-            stsClient,
-            global
-          ),
-          DeployTarget(parameters(CODE), stack, region)
-        )
-        .head
-    ) { case upload: S3Upload =>
-      upload.paths should be(
-        Seq(sourceS3Package -> "testing/2016/05/brexit-companion")
       )
     }
   }
