@@ -29,7 +29,7 @@ object GCS extends DeploymentType {
   // required configuration, you cannot upload without setting these
   val bucket = Param[String](
     "bucket",
-    "GCS bucket to upload package files to (see also `bucketResource`)",
+    "GCS bucket to upload package files to",
     optional = true
   )
   val bucketByStage: Param[Map[String, String]] = Param[Map[String, String]](

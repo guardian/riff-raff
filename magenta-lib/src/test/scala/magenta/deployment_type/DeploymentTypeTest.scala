@@ -33,7 +33,7 @@ class DeploymentTypeTest
   val deploymentTypes = Seq(S3, Lambda)
 
   "Deployment types" should "automatically register params in the params Seq" in {
-    S3.params should have size 13
+    S3.params should have size 12
     S3.params.map(_.name).toSet should be(
       Set(
         "prefixStage",
@@ -41,7 +41,6 @@ class DeploymentTypeTest
         "prefixStack",
         "prefixApp",
         "bucket",
-        "bucketResource",
         "bucketSsmKey",
         "bucketSsmKeyStageParam",
         "bucketSsmLookup",
