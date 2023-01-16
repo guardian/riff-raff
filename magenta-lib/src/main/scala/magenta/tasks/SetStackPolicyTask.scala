@@ -137,6 +137,8 @@ object StackPolicy {
       "AWS::EC2::VPC",
       "AWS::EC2::VPCEndpoint",
       "AWS::EC2::VPCGatewayAttachment",
+      // Storage that persists outside of EC2 life-cycle
+      "AWS::EFS::FileSystem",
       // Private types
       "Guardian::DNS::RecordSet"
     )
