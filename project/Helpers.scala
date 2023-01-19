@@ -1,4 +1,3 @@
-
 object Helpers {
 
   // TODO is this actually needed?
