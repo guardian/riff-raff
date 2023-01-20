@@ -2,88 +2,30 @@ package magenta.tasks
 
 import java.nio.ByteBuffer
 import cats.implicits._
-import magenta.deployment_type.{
-  MigrationTagRequirements,
-  MustBePresent,
-  MustNotBePresent
-}
-import magenta.{
-  ApiRoleCredentials,
-  ApiStaticCredentials,
-  App,
-  DeployReporter,
-  DeploymentPackage,
-  DeploymentResources,
-  KeyRing,
-  Loggable,
-  Region,
-  Stack,
-  Stage,
-  Strategy,
-  StsDeploymentResources,
-  withResource
-}
-import software.amazon.awssdk.auth.credentials.{
-  AwsBasicCredentials,
-  AwsCredentials,
-  AwsCredentialsProvider,
-  AwsCredentialsProviderChain,
-  ProfileCredentialsProvider,
-  StaticCredentialsProvider
-}
+import magenta.deployment_type.{MigrationTagRequirements, MustBePresent, MustNotBePresent}
+import magenta.{ApiRoleCredentials, ApiStaticCredentials, App, DeployReporter, DeploymentPackage, DeploymentResources, KeyRing, Loggable, Region, Stack, Stage, Strategy, StsDeploymentResources, withResource}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials, AwsCredentialsProvider, AwsCredentialsProviderChain, ProfileCredentialsProvider, StaticCredentialsProvider}
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.core.retry.conditions.RetryCondition
 import software.amazon.awssdk.core.retry.{RetryPolicy, RetryPolicyContext}
 import software.amazon.awssdk.services.autoscaling.AutoScalingClient
-import software.amazon.awssdk.services.autoscaling.model.{
-  Instance => ASGInstance,
-  _
-}
+import software.amazon.awssdk.services.autoscaling.model.{Instance => ASGInstance, _}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{
-  Stack => AmazonStack,
-  Tag => CfnTag,
-  _
-}
+import software.amazon.awssdk.services.cloudformation.model.{Stack => AmazonStack, Tag => CfnTag, _}
 import software.amazon.awssdk.services.ec2.Ec2Client
-import software.amazon.awssdk.services.ec2.model.{
-  CreateTagsRequest,
-  DescribeInstancesRequest,
-  Tag => EC2Tag
-}
-import software.amazon.awssdk.services.elasticloadbalancing.model.{
-  DeregisterInstancesFromLoadBalancerRequest,
-  DescribeInstanceHealthRequest,
-  Instance => ELBInstance
-}
-import software.amazon.awssdk.services.elasticloadbalancing.{
-  ElasticLoadBalancingClient => ClassicELB
-}
-import software.amazon.awssdk.services.elasticloadbalancingv2.model.{
-  DeregisterTargetsRequest,
-  DescribeTargetHealthRequest,
-  TargetDescription,
-  TargetHealthStateEnum
-}
-import software.amazon.awssdk.services.elasticloadbalancingv2.{
-  ElasticLoadBalancingV2Client => ApplicationELB
-}
+import software.amazon.awssdk.services.ec2.model.{CreateTagsRequest, DescribeInstancesRequest, Tag => EC2Tag}
+import software.amazon.awssdk.services.elasticloadbalancing.model.{DeregisterInstancesFromLoadBalancerRequest, DescribeInstanceHealthRequest, Instance => ELBInstance}
+import software.amazon.awssdk.services.elasticloadbalancing.{ElasticLoadBalancingClient => ClassicELB}
+import software.amazon.awssdk.services.elasticloadbalancingv2.model.{DeregisterTargetsRequest, DescribeTargetHealthRequest, TargetDescription, TargetHealthStateEnum}
+import software.amazon.awssdk.services.elasticloadbalancingv2.{ElasticLoadBalancingV2Client => ApplicationELB}
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.{
-  FunctionConfiguration,
-  ListFunctionsRequest,
-  ListTagsRequest,
-  UpdateFunctionCodeRequest
-}
+import software.amazon.awssdk.services.lambda.model.{FunctionConfiguration, LayerVersionContentInput, ListFunctionsRequest, ListTagsRequest, PublishLayerVersionRequest, PublishVersionRequest, UpdateFunctionCodeRequest}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.ssm.SsmClient
-import software.amazon.awssdk.services.ssm.model.{
-  GetParameterRequest,
-  SsmException
-}
+import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, SsmException}
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest.Builder
 
@@ -245,6 +187,24 @@ object Lambda {
       .s3Bucket(s3Bucket)
       .s3Key(s3Key)
       .build()
+
+  def lambdaPublishLayerVersionRequest(
+    layerName: String,
+    s3Bucket: String,
+    s3Key: String
+  ): PublishLayerVersionRequest = {
+    val layerContent = LayerVersionContentInput
+      .builder()
+      .s3Bucket(s3Bucket)
+      .s3Key(s3Key)
+      .build()
+
+    PublishLayerVersionRequest
+      .builder()
+      .layerName(layerName)
+      .content(layerContent)
+      .build()
+  }
 
   def findFunctionByTags(
       tags: Map[String, String],
