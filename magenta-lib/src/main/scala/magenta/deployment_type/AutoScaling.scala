@@ -264,6 +264,7 @@ object AutoScaling extends DeploymentType with BucketParameters {
     }
 
     val prefix = S3Upload.prefixGenerator(
+      delimiter = "/",
       stack =
         if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
       stage =

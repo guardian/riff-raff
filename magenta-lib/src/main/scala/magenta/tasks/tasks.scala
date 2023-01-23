@@ -199,15 +199,16 @@ object S3Upload {
     mimeTypes.getMimetype(new File(fileName))
 
   def prefixGenerator(
+      delimiter: String,
       stack: Option[Stack] = None,
       stage: Option[Stage] = None,
-      packageOrAppName: Option[String] = None
+      packageOrAppName: Option[String] = None,
   ): String = {
     (stack.map(_.name) :: stage.map(_.name) :: packageOrAppName :: Nil).flatten
-      .mkString("/")
+      .mkString(delimiter)
   }
-  def prefixGenerator(stack: Stack, stage: Stage, packageName: String): String =
-    prefixGenerator(Some(stack), Some(stage), Some(packageName))
+  def prefixGenerator(delimiter: String, stack: Stack, stage: Stage, packageName: String): String =
+    prefixGenerator(delimiter, Some(stack), Some(stage), Some(packageName))
 }
 
 case class PutReq(

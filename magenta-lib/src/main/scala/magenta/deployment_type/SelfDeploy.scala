@@ -41,7 +41,7 @@ object SelfDeploy extends DeploymentType {
     val reporter = resources.reporter
     implicit val artifactClient = resources.artifactClient
     val prefix =
-      S3Upload.prefixGenerator(target.stack, target.parameters.stage, pkg.name)
+      S3Upload.prefixGenerator("/", target.stack, target.parameters.stage, pkg.name)
     List(
       S3Upload(
         target.region,

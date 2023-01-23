@@ -26,6 +26,12 @@ object S3 extends DeploymentType with BucketParameters {
         |""".stripMargin
   ).default(false)
 
+  val prefixDelimiter = Param[String](
+    "prefixDelimiter",
+    documentation = "The delimiter to use between prefixes when forming the object path",
+    optional = true
+  ).default("/")
+
   val bucketResource = Param[String](
     "bucketResource",
     """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
@@ -180,6 +186,7 @@ object S3 extends DeploymentType with BucketParameters {
       }
 
       val prefix: String = S3Upload.prefixGenerator(
+        delimiter = prefixDelimiter(pkg, target, reporter),
         stack =
           if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
         stage =
