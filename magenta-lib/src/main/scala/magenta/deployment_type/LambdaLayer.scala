@@ -2,7 +2,15 @@ package magenta.deployment_type
 
 import magenta.artifact.S3Path
 import magenta.tasks.{SSM, UpdateS3LambdaLayer}
-import magenta.{DeployReporter, DeployTarget, DeploymentPackage, DeploymentResources, KeyRing, Region, tasks}
+import magenta.{
+  DeployReporter,
+  DeployTarget,
+  DeploymentPackage,
+  DeploymentResources,
+  KeyRing,
+  Region,
+  tasks
+}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
 
@@ -14,7 +22,8 @@ object LambdaLayer extends DeploymentType with BucketParameters {
       |
       """.stripMargin
 
-  val layerNameParam = Param[String]("layerName",
+  val layerNameParam = Param[String](
+    "layerName",
     """The layer name to update with the code from fileNameParam.
       |""".stripMargin,
     optional = false
@@ -33,17 +42,17 @@ object LambdaLayer extends DeploymentType with BucketParameters {
   ).default(true)
 
   def withSsm[T](
-                  keyRing: KeyRing,
-                  region: Region,
-                  resources: DeploymentResources
-                ): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
+      keyRing: KeyRing,
+      region: Region,
+      resources: DeploymentResources
+  ): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
 
   def makeS3Key(
-                 target: DeployTarget,
-                 pkg: DeploymentPackage,
-                 fileName: String,
-                 reporter: DeployReporter
-               ): String = {
+      target: DeployTarget,
+      pkg: DeploymentPackage,
+      fileName: String,
+      reporter: DeployReporter
+  ): String = {
     val prefixStack = prefixStackToKeyParam(pkg, target, reporter)
     val prefix = if (prefixStack) List(target.stack.name) else Nil
     (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName))
@@ -51,20 +60,21 @@ object LambdaLayer extends DeploymentType with BucketParameters {
   }
 
   def layerToProcess(
-                       pkg: DeploymentPackage,
-                       target: DeployTarget,
-                       reporter: DeployReporter
-                     ): UpdateLambdaLayer = {
+      pkg: DeploymentPackage,
+      target: DeployTarget,
+      reporter: DeployReporter
+  ): UpdateLambdaLayer = {
     val bucket = getTargetBucketFromConfig(pkg, target, reporter)
     val stage = target.parameters.stage.name
 
     layerNameParam.get(pkg) match {
-      case Some(name) => UpdateLambdaLayer(
-        layer = LambdaLayerName(name),
-        fileName = fileNameParam(pkg, target, reporter),
-        region = target.region,
-        s3Bucket = bucket
-      )
+      case Some(name) =>
+        UpdateLambdaLayer(
+          layer = LambdaLayerName(name),
+          fileName = fileNameParam(pkg, target, reporter),
+          region = target.region,
+          s3Bucket = bucket
+        )
       case None => reporter.fail(s"Lambda layer name not defined")
     }
   }
@@ -143,8 +153,8 @@ object LambdaLayer extends DeploymentType with BucketParameters {
 
 case class LambdaLayerName(name: String)
 case class UpdateLambdaLayer(
-  layer: LambdaLayerName,
-  fileName: String,
-  region: Region,
-  s3Bucket: tasks.S3.Bucket
+    layer: LambdaLayerName,
+    fileName: String,
+    region: Region,
+    s3Bucket: tasks.S3.Bucket
 )
