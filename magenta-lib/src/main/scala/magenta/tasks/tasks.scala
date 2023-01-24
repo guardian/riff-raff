@@ -3,28 +3,15 @@ package tasks
 
 import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
 import magenta.artifact._
-import magenta.deployment_type.{
-  LambdaFunction,
-  LambdaFunctionName,
-  LambdaFunctionTags
-}
+import magenta.deployment_type.{LambdaFunction, LambdaFunctionName, LambdaFunctionTags, LambdaLayer, LambdaLayerName}
 import magenta.deployment_type.param_reads.PatternValue
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
-import software.amazon.awssdk.core.sync.{
-  ResponseTransformer,
-  RequestBody => AWSRequestBody
-}
+import software.amazon.awssdk.core.sync.{ResponseTransformer, RequestBody => AWSRequestBody}
 import software.amazon.awssdk.http.ContentStreamProvider
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.model.{
-  GetObjectRequest,
-  GetObjectResponse,
-  HeadObjectRequest,
-  ObjectCannedACL,
-  PutObjectRequest
-}
+import software.amazon.awssdk.services.s3.model.{GetObjectRequest, GetObjectResponse, HeadObjectRequest, ObjectCannedACL, PutObjectRequest}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
@@ -364,6 +351,28 @@ case class ShutdownTask(host: Host)(implicit val keyRing: KeyRing)
 
 object ShutdownTask {
   val client = new OkHttpClient()
+}
+
+case class UpdateS3LambdaLayer(
+  layer: LambdaLayerName,
+  s3Bucket: String,
+  s3Key: String,
+  region: Region
+)(implicit val keyRing: KeyRing) extends Task {
+  def description = s"Updating $layer Lambda Layer using S3 $s3Bucket:$s3Key"
+  override def execute(
+                        resources: DeploymentResources,
+                        stopFlag: => Boolean
+                      ): Unit = {
+
+    Lambda.withLambdaClient(keyRing, region, resources) { client =>
+      resources.reporter.verbose(s"Starting update $layer Lambda Layer")
+      client.publishLayerVersion(
+        Lambda.lambdaPublishLayerVersionRequest(layer.name, s3Bucket, s3Key)
+      )
+      resources.reporter.verbose(s"Finished update $layer Lambda Layer")
+    }
+  }
 }
 
 case class UpdateS3Lambda(

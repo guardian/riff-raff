@@ -126,6 +126,7 @@ class AppComponents(
     Fastly,
     new CloudFormation(DefaultBuildTags),
     Lambda,
+    LambdaLayer,
     AmiCloudFormationParameter,
     SelfDeploy,
     GcpDeploymentManager,
