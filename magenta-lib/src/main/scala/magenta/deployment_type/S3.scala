@@ -26,16 +26,6 @@ object S3 extends DeploymentType with BucketParameters {
         |""".stripMargin
   ).default(false)
 
-  val bucketResource = Param[String](
-    "bucketResource",
-    """Deploy Info resource key to use to look up the S3 bucket to which the package files should be uploaded.
-      |
-      |This parameter is mutually exclusive with `bucket`, which can be used instead if you upload to the same bucket
-      |regardless of the target stage.
-    """.stripMargin,
-    optional = true
-  )
-
   val publicReadAcl = Param[Boolean](
     "publicReadAcl",
     """
@@ -123,51 +113,17 @@ object S3 extends DeploymentType with BucketParameters {
         """.stripMargin
   ) { (pkg, resources, target) =>
     {
-      def resourceLookupFor(resourceName: String): Option[Datum] = {
-        val dataLookup = resources.lookup.data
-        val datumOpt = dataLookup.datum(
-          resourceName,
-          pkg.app,
-          target.parameters.stage,
-          target.stack
-        )
-
-        if (datumOpt.isEmpty) {
-          def str(f: Datum => String) =
-            s"[${dataLookup.get(resourceName).map(f).toSet.mkString(", ")}]"
-          resources.reporter.verbose(
-            s"No datum found for resource=$resourceName app=${pkg.app} stage=${target.parameters.stage} stack=${target.stack} - values *are* defined for app=${str(
-                _.app
-              )} stage=${str(_.stage)} stack=${str(_.stack.mkString)}"
-          )
-        }
-
-        datumOpt
-      }
-
       implicit val keyRing = resources.assembleKeyring(target, pkg)
       implicit val artifactClient = resources.artifactClient
       val reporter = resources.reporter
 
-      // TODO we will shortly remove the bucket resource parameter and support
-      // so this will become a lot simpler.
-      val bucketName = bucketResource.get(pkg) match {
-        case Some(resource) =>
-          val data = resourceLookupFor(resource)
-          data match {
-            case Some(datum) => datum.value
-            case None =>
-              reporter.fail(
-                s"Cannot find resource value for ${bucketResource(pkg, target, reporter)} (${pkg.app} in ${target.parameters.stage.name})"
-              )
-          }
-        case None =>
-          val bucket = getTargetBucketFromConfig(pkg, target, reporter)
-          S3Tasks.getBucketName(
-            bucket,
-            SSM.withSsmClient(keyRing, target.region, resources),
-            resources.reporter
-          )
+      val bucketName = {
+        val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+        S3Tasks.getBucketName(
+          bucket,
+          SSM.withSsmClient(keyRing, target.region, resources),
+          resources.reporter
+        )
       }
 
       val maybePackageOrAppName: Option[String] = (
