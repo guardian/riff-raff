@@ -164,7 +164,9 @@ case class CloudFormationParameters(
     stackTags: Option[Map[String, String]],
     userParameters: Map[String, String],
     amiParameterMap: Map[CfnParam, TagCriteria],
-    latestImage: String => String => Map[String, String] => Option[String]
+    latestImage: CfnParam => String => String => Map[String, String] => Option[
+      String
+    ]
 )
 
 object CloudFormationParameters {
@@ -206,7 +208,9 @@ object CloudFormationParameters {
     val resolvedAmiParameters: Map[String, String] =
       cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
         cfnParameters
-          .latestImage(accountNumber)(cfnParameters.target.region.name)(tags)
+          .latestImage(name)(accountNumber)(cfnParameters.target.region.name)(
+            tags
+          )
           .map(name -> _)
       }
 
@@ -396,7 +400,9 @@ case class UpdateAmiCloudFormationParameterTask(
     region: Region,
     cloudFormationStackLookupStrategy: CloudFormationStackLookupStrategy,
     amiParameterMap: Map[CfnParam, TagCriteria],
-    latestImage: String => String => Map[String, String] => Option[String],
+    latestImage: CfnParam => String => String => Map[String, String] => Option[
+      String
+    ],
     stage: Stage,
     stack: Stack
 )(implicit val keyRing: KeyRing)
@@ -445,7 +451,8 @@ case class UpdateAmiCloudFormationParameterTask(
             val accountNumber = STS.withSTSclient(keyRing, region, resources)(
               STS.getAccountNumber
             )
-            val maybeNewAmi = latestImage(accountNumber)(region.name)(amiTags)
+            val maybeNewAmi =
+              latestImage(parameterName)(accountNumber)(region.name)(amiTags)
             maybeNewAmi match {
               case Some(sameAmi) if currentAmi == sameAmi =>
                 resources.reporter.info(

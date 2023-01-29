@@ -3,6 +3,7 @@ package magenta.deployment_type
 import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta._
 import magenta.artifact.S3Path
+import magenta.deployment_type.CloudFormationDeploymentTypeParameters.CfnParam
 import magenta.deployment_type.{CloudFormation => CloudFormationDeploymentType}
 import magenta.fixtures._
 import magenta.tasks.CloudFormation.{SpecifiedValue, UseExistingValue}
@@ -556,7 +557,8 @@ class CloudFormationTest
       None,
       Map.empty,
       Map.empty,
-      (_: String) => (_: String) => (_: Map[String, String]) => None
+      (_: CfnParam) =>
+        (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
     val params = resolve(
@@ -588,7 +590,8 @@ class CloudFormationTest
       None,
       Map.empty,
       Map.empty,
-      (_: String) => (_: String) => (_: Map[String, String]) => None
+      (_: CfnParam) =>
+        (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
     val params = resolve(
@@ -628,7 +631,8 @@ class CloudFormationTest
       None,
       Map.empty,
       Map.empty,
-      (_: String) => (_: String) => (_: Map[String, String]) => None
+      (_: CfnParam) =>
+        (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
     val params = resolve(
@@ -668,7 +672,8 @@ class CloudFormationTest
       None,
       userParameters,
       Map.empty,
-      (_: String) => (_: String) => (_: Map[String, String]) => None
+      (_: CfnParam) =>
+        (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
     val params = resolve(
@@ -707,7 +712,8 @@ class CloudFormationTest
       None,
       Map.empty,
       Map.empty,
-      (_: String) => (_: String) => (_: Map[String, String]) => None
+      (_: CfnParam) =>
+        (_: String) => (_: String) => (_: Map[String, String]) => None
     )
 
     val params = resolve(
