@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-set -e
-
-"$JAVA_HOME"/bin/java -jar sbt-launch.jar \
-  clean compile test scalafmtCheckAll riffraff/riffRaffNotifyTeamcity
