@@ -42,4 +42,4 @@ In order to make this work you need:
  1. A riff-raff.yaml file containing:
      a. the regions and stacks that you want to deploy to (the stack is important - it must match the tags on the AWS 
         account credentials you wish to use and the stack tags on your autoscaling group)
-     a. a deployment of type `autoscaling` and specifying a target S3 bucket in the `bucket` parameter
+     a. a deployment of type `autoscaling` and an S3 target bucket location defined - ideally using `bucketSsmLookup` as [bucket names are considered private information](https://github.com/guardian/recommendations/blob/main/github.md#private-information), but optionally specifying a S3 bucket name in the `bucket` parameter if your repository is private
