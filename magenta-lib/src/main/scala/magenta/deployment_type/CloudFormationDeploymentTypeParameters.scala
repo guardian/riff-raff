@@ -157,24 +157,22 @@ trait CloudFormationDeploymentTypeParameters {
       reporter: DeployReporter,
       lookup: Lookup
   ): CfnParam => String => String => Map[String, String] => Option[String] = {
-    amiIdCfnParam =>
+    amiCfnParam =>
       { accountNumber =>
         {
-          (amiParametersToTags.get(pkg), amiTags.get(pkg)) match {
-            case (Some(params), _) =>
-              val useEncryptedAmi = params
-                .getOrElse(amiIdCfnParam, Map.empty)
+          val useEncryptedAmi: Boolean = amiParametersToTags.get(pkg) match {
+            case Some(params) =>
+              params
+                .getOrElse(amiCfnParam, Map.empty)
                 .get("Encrypted")
                 .contains("true")
+            case _ => amiEncrypted(pkg, target, reporter)
+          }
 
-              if (useEncryptedAmi) {
-                lookup.getLatestAmi(Some(accountNumber), _ => true)
-              } else {
-                lookup.getLatestAmi(None, unencryptedTagFilter)
-              }
-            case (None, Some(_)) if amiEncrypted(pkg, target, reporter) =>
-              lookup.getLatestAmi(Some(accountNumber), _ => true)
-            case _ => lookup.getLatestAmi(None, unencryptedTagFilter)
+          if (useEncryptedAmi) {
+            lookup.getLatestAmi(Some(accountNumber), _ => true)
+          } else {
+            lookup.getLatestAmi(None, unencryptedTagFilter)
           }
         }
       }
