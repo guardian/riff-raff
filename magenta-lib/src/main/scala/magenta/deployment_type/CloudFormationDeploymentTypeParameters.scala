@@ -5,7 +5,7 @@ import magenta.tasks.UpdateCloudFormationTask.{
   LookupByName,
   LookupByTags
 }
-import magenta.{DeploymentPackage, DeployReporter, DeployTarget, Lookup}
+import magenta.{DeployReporter, DeployTarget, DeploymentPackage, Lookup}
 
 object CloudFormationDeploymentTypeParameters {
   type TagCriteria = Map[String, String]
@@ -156,12 +156,25 @@ trait CloudFormationDeploymentTypeParameters {
       target: DeployTarget,
       reporter: DeployReporter,
       lookup: Lookup
-  ): String => String => Map[String, String] => Option[String] = {
-    accountNumber =>
-      if (amiEncrypted(pkg, target, reporter)) {
-        lookup.getLatestAmi(Some(accountNumber), _ => true)
-      } else {
-        lookup.getLatestAmi(None, unencryptedTagFilter)
+  ): CfnParam => String => String => Map[String, String] => Option[String] = {
+    amiCfnParam =>
+      { accountNumber =>
+        {
+          val useEncryptedAmi: Boolean = amiParametersToTags.get(pkg) match {
+            case Some(params) =>
+              params
+                .getOrElse(amiCfnParam, Map.empty)
+                .get("Encrypted")
+                .contains("true")
+            case _ => amiEncrypted(pkg, target, reporter)
+          }
+
+          if (useEncryptedAmi) {
+            lookup.getLatestAmi(Some(accountNumber), _ => true)
+          } else {
+            lookup.getLatestAmi(None, unencryptedTagFilter)
+          }
+        }
       }
   }
 }
