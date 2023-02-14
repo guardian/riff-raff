@@ -27,6 +27,17 @@ trait S3ObjectPrefixParameters {
         |""".stripMargin
   ).default(false)
 
+  val prefixStagePaths: Param[Map[String, String]] = Param[Map[String, String]](
+    "prefixStagePaths",
+    documentation = """
+        |```yaml
+        |prefixStagePaths:
+        |  CODE: atoms-CODE
+        |  PROD: atoms
+        |```
+        |""".stripMargin
+  ).default(Map.empty)
+
   def getPrefix(
       pkg: DeploymentPackage,
       target: DeployTarget,
@@ -41,13 +52,38 @@ trait S3ObjectPrefixParameters {
       case (false, false) => None
     }
 
-    S3Upload.prefixGenerator(
-      stack =
-        if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
-      stage =
-        if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage)
-        else None,
-      packageOrAppName = maybePackageOrAppName
-    )
+    val prefixFromStagePaths: Map[String, String] =
+      prefixStagePaths(pkg, target, reporter)
+
+    if (prefixFromStagePaths.isEmpty) {
+      S3Upload.prefixGenerator(
+        stack =
+          if (prefixStack(pkg, target, reporter)) Some(target.stack)
+          else None,
+        stage =
+          if (prefixStage(pkg, target, reporter))
+            Some(target.parameters.stage)
+          else None,
+        packageOrAppName = maybePackageOrAppName
+      )
+    } else {
+      prefixFromStagePaths.lift.apply(target.parameters.stage.name) match {
+        case Some(prefix) => prefix
+        case _ =>
+          reporter.fail(
+            s"""
+               |Unable to locate prefix for stage ${target.parameters.stage.name}.
+               |
+               |prefixFromStagePaths is set to:
+               |
+               |$prefixFromStagePaths
+               |
+               |To resolve, either:
+               |  - Deploy to a known stage
+               |  - Update prefixFromStagePaths, adding a value for ${target.parameters.stage.name}
+               |""".stripMargin
+          )
+      }
+    }
   }
 }
