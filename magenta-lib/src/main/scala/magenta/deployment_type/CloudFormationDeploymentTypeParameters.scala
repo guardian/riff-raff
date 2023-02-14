@@ -165,7 +165,11 @@ trait CloudFormationDeploymentTypeParameters {
               params
                 .getOrElse(amiCfnParam, Map.empty)
                 .get("Encrypted")
-                .contains("true")
+                .flatMap(_.toBooleanOption)
+                .getOrElse(
+                  // When `amiParametersToTags/Encrypted` is not explicitly set, fallback to `amiEncrypted`
+                  amiEncrypted(pkg, target, reporter)
+                )
             case _ => amiEncrypted(pkg, target, reporter)
           }
 
