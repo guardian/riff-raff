@@ -42,4 +42,4 @@ In order to make this work you need:
  1. A riff-raff.yaml file containing:
      a. the regions and stacks that you want to deploy to (the stack is important - it must match the tags on the AWS 
         account credentials you wish to use and the stack tags on your autoscaling group)
-     a. a deployment of type `autoscaling` and specifying a target S3 bucket in the `bucket` parameter
+     a. a deployment of type `autoscaling` and an S3 target bucket location defined. By default Riff-Raff will use the value in the SSM parameter `/account/services/artifact.bucket`. This can be customised with `bucketSsmKey` if necessary. See https://riffraff.gutools.co.uk/docs/magenta-lib/types#autoscaling for full detail.
