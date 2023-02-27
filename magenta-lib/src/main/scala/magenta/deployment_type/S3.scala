@@ -21,6 +21,7 @@ object S3 extends DeploymentType with BucketParameters {
     name = "prefixApp",
     documentation = """
         |Whether to prefix `app` to the S3 location instead of `package`.
+        |Unless `explicitS3Location` or `explicitS3LocationByStage` in which case are set, this will be ignored.
         |
         |When `true` `prefixPackage` will be ignored and `app` will be used over `package`, useful if `package` and `app` don't align.
         |""".stripMargin
@@ -99,6 +100,21 @@ object S3 extends DeploymentType with BucketParameters {
     """.stripMargin
   ).default(Map.empty)
 
+  val explicitS3Location = Param[String](
+    "explicitS3Location",
+    documentation =
+      "An explicit value to use for the S3 location instead of the package name.",
+    optional = true
+  )
+
+  val explicitS3LocationByStage = Param[Map[String, String]](
+    "explicitS3LocationByStage",
+    documentation =
+      "Like explicitS3Location, but a map of stage to explicit S3 location template file names.",
+    optional = true
+  )
+    .default(Map.empty)
+
   val uploadStaticFiles = Action(
     name = "uploadStaticFiles",
     documentation = """
@@ -126,6 +142,10 @@ object S3 extends DeploymentType with BucketParameters {
         )
       }
 
+      val maybeExplicitS3Location: Option[String] =
+        explicitS3LocationByStage.get(pkg).flatMap(_.get(target.parameters.stage.name)) orElse
+        explicitS3Location.get(pkg)
+
       val maybePackageOrAppName: Option[String] = (
         prefixPackage(pkg, target, reporter),
         prefixApp(pkg, target, reporter)
@@ -141,7 +161,7 @@ object S3 extends DeploymentType with BucketParameters {
         stage =
           if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage)
           else None,
-        packageOrAppName = maybePackageOrAppName
+        packageOrAppName = maybeExplicitS3Location orElse maybePackageOrAppName
       )
 
       List(
