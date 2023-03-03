@@ -30,6 +30,15 @@ trait S3ObjectPrefixParameters {
   val prefixStagePaths: Param[Map[String, String]] = Param[Map[String, String]](
     "prefixStagePaths",
     documentation = """
+        |This option allows full control over the paths used for each stage, and will override all other prefix options.
+        |
+        |This is a useful escape hatch if you find yourself in a scenario where you are deploying to a single bucket and
+        |the upload path between stages cannot be repeated.
+        |
+        |**Note:** For the most part, you should not use this.
+        |If at all possible, prefer to use a single bucket per-stage.
+        |
+        |See our recommendation here: https://github.com/guardian/recommendations/blob/main/AWS.md?plain=1#L70
         |```yaml
         |prefixStagePaths:
         |  CODE: atoms-CODE
