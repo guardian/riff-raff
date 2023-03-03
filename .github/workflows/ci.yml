@@ -41,4 +41,4 @@ jobs:
           export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
 
           # Note, lib/test because riffraff/riffRaffUpload only tests the riffraff project.
-          sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/riffRaffUpload
+          ./sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/riffRaffUpload
