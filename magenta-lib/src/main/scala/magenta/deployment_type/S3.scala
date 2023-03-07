@@ -1,30 +1,14 @@
 package magenta.deployment_type
 
-import magenta.Datum
 import magenta.deployment_type.param_reads.PatternValue
 import magenta.tasks.{S3Upload, S3 => S3Tasks, SSM}
 
-object S3 extends DeploymentType with BucketParameters {
+object S3
+    extends DeploymentType
+    with BucketParameters
+    with S3ObjectPrefixParameters {
   val name = "aws-s3"
   val documentation = "For uploading files into an S3 bucket."
-
-  val prefixStage =
-    Param("prefixStage", "Prefix the S3 bucket key with the target stage")
-      .default(true)
-  val prefixPackage =
-    Param("prefixPackage", "Prefix the S3 bucket key with the package name")
-      .default(true)
-  val prefixStack =
-    Param("prefixStack", "Prefix the S3 bucket key with the target stack")
-      .default(true)
-  val prefixApp = Param[Boolean](
-    name = "prefixApp",
-    documentation = """
-        |Whether to prefix `app` to the S3 location instead of `package`.
-        |
-        |When `true` `prefixPackage` will be ignored and `app` will be used over `package`, useful if `package` and `app` don't align.
-        |""".stripMargin
-  ).default(false)
 
   val publicReadAcl = Param[Boolean](
     "publicReadAcl",
@@ -126,23 +110,7 @@ object S3 extends DeploymentType with BucketParameters {
         )
       }
 
-      val maybePackageOrAppName: Option[String] = (
-        prefixPackage(pkg, target, reporter),
-        prefixApp(pkg, target, reporter)
-      ) match {
-        case (_, true)      => Some(pkg.app.name)
-        case (true, false)  => Some(pkg.name)
-        case (false, false) => None
-      }
-
-      val prefix: String = S3Upload.prefixGenerator(
-        stack =
-          if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
-        stage =
-          if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage)
-          else None,
-        packageOrAppName = maybePackageOrAppName
-      )
+      val prefix: String = getPrefix(pkg, target, reporter)
 
       List(
         S3Upload(
