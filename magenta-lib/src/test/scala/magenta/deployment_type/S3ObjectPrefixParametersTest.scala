@@ -137,13 +137,13 @@ class S3ObjectPrefixParametersTest extends AnyFlatSpec with Matchers {
       """
          |Unable to locate prefix for stage UAT.
          |
-         |prefixFromStagePaths is set to:
+         |prefixStagePaths is set to:
          |
          |Map(CODE -> atoms-CODE, PROD -> atoms)
          |
          |To resolve, either:
          |  - Deploy to a known stage
-         |  - Update prefixFromStagePaths, adding a value for UAT
+         |  - Update prefixStagePaths, adding a value for UAT
          |""".stripMargin
     )
   }

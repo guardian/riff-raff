@@ -83,13 +83,13 @@ trait S3ObjectPrefixParameters {
             s"""
                |Unable to locate prefix for stage ${target.parameters.stage.name}.
                |
-               |prefixFromStagePaths is set to:
+               |prefixStagePaths is set to:
                |
                |$prefixFromStagePaths
                |
                |To resolve, either:
                |  - Deploy to a known stage
-               |  - Update prefixFromStagePaths, adding a value for ${target.parameters.stage.name}
+               |  - Update prefixStagePaths, adding a value for ${target.parameters.stage.name}
                |""".stripMargin
           )
       }
