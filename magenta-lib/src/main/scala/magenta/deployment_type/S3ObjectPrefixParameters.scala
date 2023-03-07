@@ -76,7 +76,7 @@ trait S3ObjectPrefixParameters {
         packageOrAppName = maybePackageOrAppName
       )
     } else {
-      prefixFromStagePaths.lift.apply(target.parameters.stage.name) match {
+      prefixFromStagePaths.get(target.parameters.stage.name) match {
         case Some(prefix) => prefix
         case _ =>
           reporter.fail(
