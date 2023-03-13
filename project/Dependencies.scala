@@ -4,9 +4,9 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.19.12"
-    val jackson = "2.14.1"
-    val awsRds = "1.12.380"
+    val aws = "2.20.21"
+    val jackson = "2.14.2"
+    val awsRds = "1.12.420"
     val enumeratumPlay = "1.7.2"
   }
 
@@ -50,10 +50,10 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.4.3",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-      "com.typesafe.play" %% "play-json" % "2.9.3",
+      "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20220908-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.16.0",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230202-2.0.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.20.1",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -69,9 +69,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v28" % "2.2.6",
-      "com.gu.play-secret-rotation" %% "play-v28" % "0.36",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.36",
+      "com.gu.play-googleauth" %% "play-v28" % "2.2.7",
+      "com.gu.play-secret-rotation" %% "play-v28" % "0.37",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.37",
       "com.typesafe.akka" %% "akka-agent" % "2.5.32",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
@@ -86,13 +86,13 @@ object Dependencies {
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
       "org.webjars" % "momentjs" % "2.29.4",
-      "net.logstash.logback" % "logstash-logback-encoder" % "7.2",
+      "net.logstash.logback" % "logstash-logback-encoder" % "7.3",
       "com.gu" % "kinesis-logback-appender" % "2.1.1",
       // Similar to logback-classic, update when Play supports logback 1.3+ / SLF4J 2+
       "org.slf4j" % "jul-to-slf4j" % "1.7.36", // scala-steward:off
       // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.5.1",
+      "org.postgresql" % "postgresql" % "42.5.4",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
