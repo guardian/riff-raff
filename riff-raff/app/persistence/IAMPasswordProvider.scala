@@ -1,7 +1,10 @@
 package persistence
 
 import java.time.{Duration, Instant}
-import com.amazonaws.services.rds.auth.{GetIamAuthTokenRequest, RdsIamAuthTokenGenerator}
+import com.amazonaws.services.rds.auth.{
+  GetIamAuthTokenRequest,
+  RdsIamAuthTokenGenerator
+}
 import conf.Config
 import magenta.`package`.logger
 
