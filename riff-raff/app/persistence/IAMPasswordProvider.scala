@@ -1,13 +1,14 @@
 package persistence
 
 import java.time.{Duration, Instant}
-
 import com.amazonaws.services.rds.auth.{
   GetIamAuthTokenRequest,
   RdsIamAuthTokenGenerator
 }
 import conf.Config
 import magenta.`package`.logger
+
+import scala.util.{Failure, Success, Try}
 
 class IAMPasswordProvider(conf: Config) extends PasswordProvider {
   private val generator = RdsIamAuthTokenGenerator
@@ -26,7 +27,14 @@ class IAMPasswordProvider(conf: Config) extends PasswordProvider {
         .port(5432)
         .userName(conf.postgres.user)
         .build()
-      generator.getAuthToken(authTokenRequest)
+
+      Try(generator.getAuthToken(authTokenRequest)) match {
+        case Success(value) =>
+          value
+        case Failure(exception) =>
+          logger.error("unable to fetch db password", exception)
+          throw exception
+      }
     } else {
       conf.postgres.defaultPassword
     }
