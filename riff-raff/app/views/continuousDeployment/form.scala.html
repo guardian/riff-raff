@@ -31,7 +31,7 @@
             Symbol("_label") -> "Stage",
             Symbol("_error") -> configForm.globalError.map(_.withMessage("Please select deployment stage"))
         )
-        @b3.text(configForm("branchMatcher"), Symbol("_label") -> "Branch RegEx")
+        @b3.text(configForm("branchMatcher"), Symbol("_label") -> "Branch Name")
         <legend>Trigger</legend>
         @b3.radio(
             configForm("trigger"),

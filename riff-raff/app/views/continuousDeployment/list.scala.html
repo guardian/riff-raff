@@ -36,7 +36,7 @@
                 <tr @if(config.trigger == Disabled){ class="danger" }>
                     <td>@utils.DateFormats.Short.print(config.lastEdited) by <span class="label label-default">@config.user</span></td>
                     <td>@config.projectName</td>
-                    <td>@config.branchRE.toString()</td>
+                    <td>@config.branchMatcher.getOrElse("*")</td>
                     <td>@config.stage</td>
                     <td>@config.trigger match {
                         case SuccessfulBuild => { Build succeeds }
