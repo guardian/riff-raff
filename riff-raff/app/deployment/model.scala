@@ -29,6 +29,14 @@ case class NoDeploysFoundForStage(projectName: String, stage: String)
     s"A scheduled deploy didn't start because Riff-Raff has never deployed $projectName to $stage before. " +
       "Please inform the owner of this schedule as it's likely that they have made a configuration error."
 }
+case class SkippedDueToPreviousPartialDeploy(partialDeployRecord: Record)
+    extends ScheduledDeployNotificationError {
+  val message =
+    s"Scheduled Deployment for ${partialDeployRecord.parameters.build.projectName} to ${partialDeployRecord.parameters.stage.name} " +
+      s"didn't start because the most recent deploy was 'partial' (i.e. had some deploy steps skipped). " +
+      s"Please review the most recent deploy and manually deploy if it's now possible to deploy fully (all steps), " +
+      s"to ensure instances are running with the latest AMI."
+}
 case class SkippedDueToPreviousFailure(failedDeployRecord: Record)
     extends ScheduledDeployNotificationError {
   val message =
