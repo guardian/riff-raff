@@ -4,9 +4,9 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.20.21"
+    val aws = "2.20.37"
     val jackson = "2.14.2"
-    val awsRds = "1.12.420"
+    val awsRds = "1.12.438"
     val enumeratumPlay = "1.7.2"
   }
 
@@ -30,13 +30,13 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.15" % Test,
     "org.parboiled" %% "parboiled" % "2.4.1",
     "org.typelevel" %% "cats-core" % "2.9.0",
-    "org.mockito" %% "mockito-scala" % "1.17.12" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   )
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
       "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-      "ch.qos.logback" % "logback-classic" % "1.4.5",
+      "ch.qos.logback" % "logback-classic" % "1.4.6",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
       "software.amazon.awssdk" % "s3" % Versions.aws,
@@ -53,7 +53,7 @@ object Dependencies {
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230202-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.20.1",
+      "com.google.cloud" % "google-cloud-storage" % "2.20.2",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -81,7 +81,7 @@ object Dependencies {
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "1.2.0",
       "org.webjars" %% "webjars-play" % "2.8.18",
-      "org.webjars" % "jquery" % "3.6.3",
+      "org.webjars" % "jquery" % "3.6.4",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
@@ -92,7 +92,7 @@ object Dependencies {
       "org.slf4j" % "jul-to-slf4j" % "1.7.36", // scala-steward:off
       // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.5.4",
+      "org.postgresql" % "postgresql" % "42.6.0",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
