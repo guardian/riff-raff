@@ -42,6 +42,9 @@ class DeployJob extends Job with Logging {
 
     attemptToStartDeploy match {
       case Left(error: ScheduledDeployNotificationError) =>
+        log.info(
+          s"Scheduled deploy failed to start due to $error. A notification will be sent..."
+        )
         scheduledDeployNotifier.scheduledDeployFailureNotification(error)
       case Left(anotherError) =>
         log.warn(
