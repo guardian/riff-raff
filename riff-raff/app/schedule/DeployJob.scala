@@ -3,6 +3,7 @@ package schedule
 import controllers.Logging
 import deployment._
 import magenta.Strategy.MostlyHarmless
+import magenta.input.DeploymentKeysSelector
 import magenta.{DeployParameters, RunState}
 import notification.DeployFailureNotifications
 import org.quartz.{Job, JobDataMap, JobExecutionContext}
@@ -41,6 +42,9 @@ class DeployJob extends Job with Logging {
 
     attemptToStartDeploy match {
       case Left(error: ScheduledDeployNotificationError) =>
+        log.info(
+          s"Scheduled deploy failed to start due to $error. A notification will be sent..."
+        )
         scheduledDeployNotifier.scheduledDeployFailureNotification(error)
       case Left(anotherError) =>
         log.warn(
@@ -61,7 +65,11 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
     lastDeploy.state match {
       case RunState.Completed =>
         val params = extractDeployParameters(lastDeploy)
-        if (scheduledDeploysEnabled) {
+        if (
+          lastDeploy.parameters.selector.isInstanceOf[DeploymentKeysSelector]
+        ) {
+          Left(SkippedDueToPreviousPartialDeploy(lastDeploy))
+        } else if (scheduledDeploysEnabled) {
           Right(params)
         } else {
           Left(
