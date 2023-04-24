@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.20.50"
-    val jackson = "2.14.2"
+    val jackson = "2.15.0"
     val awsRds = "1.12.452"
     val enumeratumPlay = "1.7.2"
   }
@@ -35,7 +35,7 @@ object Dependencies {
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
-      "com.squareup.okhttp3" % "okhttp" % "4.10.0",
+      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
       "ch.qos.logback" % "logback-classic" % "1.4.7",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
