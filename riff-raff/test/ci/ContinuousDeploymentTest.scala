@@ -49,7 +49,11 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
       Trigger.SuccessfulBuild,
       "Test user"
     )
-    val cdConfigs = Set(matchingProjectAndBranchEnabled, matchingProjectAndBranchDisabled, wrongProject)
+    val cdConfigs = Set(
+      matchingProjectAndBranchEnabled,
+      matchingProjectAndBranchDisabled,
+      wrongProject
+    )
 
     val params = ContinuousDeployment
       .getMatchesForSuccessfulBuilds(build, cdConfigs)
@@ -107,7 +111,10 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
     )
 
     val params = ContinuousDeployment
-      .getMatchesForSuccessfulBuilds(build, Set(projectDoesNotMatch, branchDoesNotMatch, cdDisabled))
+      .getMatchesForSuccessfulBuilds(
+        build,
+        Set(projectDoesNotMatch, branchDoesNotMatch, cdDisabled)
+      )
       .map(ContinuousDeployment.getDeployParams(_))
       .toSet
 
@@ -144,7 +151,10 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
     )
 
     val params = ContinuousDeployment
-      .getMatchesForSuccessfulBuilds(build, Set(nonMatchingBranch, matchingBranch))
+      .getMatchesForSuccessfulBuilds(
+        build,
+        Set(nonMatchingBranch, matchingBranch)
+      )
       .map(ContinuousDeployment.getDeployParams(_))
       .toSet
 
