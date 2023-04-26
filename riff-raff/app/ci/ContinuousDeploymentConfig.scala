@@ -13,13 +13,12 @@ case class ContinuousDeploymentConfig(
     id: UUID,
     projectName: String,
     stage: String,
-    branchMatcher: Option[String],
+    branchMatcher: String,
     trigger: Trigger.Mode,
     user: String,
     lastEdited: DateTime = new DateTime()
 ) {
-  lazy val branchRE =
-    branchMatcher.map(re => "^%s$".format(re).r).getOrElse(".*".r)
+  lazy val branchRE = "^%s$".format(branchMatcher).r
   lazy val buildFilter =
     (build: CIBuild) =>
       build.jobName == projectName && branchRE

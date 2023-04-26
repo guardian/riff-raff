@@ -34,7 +34,7 @@ class ContinuousDeployController(
       "id" -> uuid,
       "projectName" -> nonEmptyText,
       "stage" -> nonEmptyText,
-      "branchMatcher" -> optional(text),
+      "branchMatcher" -> nonEmptyText,
       "trigger" -> number
     )(ConfigForm.apply)(ConfigForm.unapply)
   )
@@ -57,7 +57,7 @@ class ContinuousDeployController(
             UUID.randomUUID(),
             "",
             "",
-            None,
+            "",
             Trigger.SuccessfulBuild.id
           )
         ),
@@ -126,7 +126,7 @@ object ContinuousDeployController {
       id: UUID,
       projectName: String,
       stage: String,
-      branchMatcher: Option[String],
+      branchMatcher: String,
       trigger: Int
   )
   object ConfigForm {
