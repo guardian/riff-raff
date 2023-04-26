@@ -13,12 +13,49 @@ import java.util.UUID
 import scala.util.{Failure, Success}
 
 class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
+  "Continuous Deployment" should "create deploy parameters for a set of matching builds" in {
+    val build = S3Build(
+      45397,
+      "tools::deploy",
+      "45397",
+      "main",
+      "71",
+      new DateTime(2013, 1, 25, 14, 42, 47),
+      "",
+      "",
+      buildTool = None
+    )
+    val matchingProjectAndBranchEnabled = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "PROD",
+      "(main|release)",
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+    val matchingProjectAndBranchDisabled = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "QA",
+      "(main|release)",
+      Trigger.Disabled,
+      "Test user"
+    )
+    val wrongProject = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      "tools::someotherproject",
+      "CODE",
+      "main",
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+    val cdConfigs = Set(matchingProjectAndBranchEnabled, matchingProjectAndBranchDisabled, wrongProject)
 
-  "Continuous Deployment" should "create deploy parameters for a set of builds" in {
     val params = ContinuousDeployment
-      .getMatchesForSuccessfulBuilds(tdB71, contDeployConfigs)
+      .getMatchesForSuccessfulBuilds(build, cdConfigs)
       .map(ContinuousDeployment.getDeployParams(_))
       .toSet
+
     params.size should be(1)
     params should be(
       Set(
@@ -33,123 +70,95 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return nothing if no matches" in {
+    val build = S3Build(
+      45401,
+      "tools::deploy2",
+      "45401",
+      "other_branch_name",
+      "393",
+      new DateTime(2013, 1, 25, 15, 34, 47),
+      "",
+      "",
+      buildTool = Some("guardian/actions-riff-raff")
+    )
+    val projectDoesNotMatch = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      "tools::deploy",
+      "PROD",
+      "main",
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+    val branchDoesNotMatch = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "PROD",
+      "branch_name",
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+    val cdDisabled = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "PROD",
+      build.branchName,
+      Trigger.Disabled,
+      "Test user"
+    )
+
     val params = ContinuousDeployment
-      .getMatchesForSuccessfulBuilds(otherBranch, contDeployBranchConfigs)
+      .getMatchesForSuccessfulBuilds(build, Set(projectDoesNotMatch, branchDoesNotMatch, cdDisabled))
       .map(ContinuousDeployment.getDeployParams(_))
       .toSet
+
     params should be(Set())
   }
 
   it should "take account of branch" in {
+    val build = S3Build(
+      45400,
+      "tools::deploy2",
+      "45400",
+      "main",
+      "392",
+      new DateTime(2013, 1, 25, 15, 34, 47),
+      "",
+      "",
+      buildTool = None
+    )
+    val nonMatchingBranch = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "QA",
+      "some_other_branch",
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+    val matchingBranch = ContinuousDeploymentConfig(
+      UUID.randomUUID(),
+      build.jobName,
+      "PROD",
+      build.branchName,
+      Trigger.SuccessfulBuild,
+      "Test user"
+    )
+
     val params = ContinuousDeployment
-      .getMatchesForSuccessfulBuilds(td2B392, contDeployBranchConfigs)
+      .getMatchesForSuccessfulBuilds(build, Set(nonMatchingBranch, matchingBranch))
       .map(ContinuousDeployment.getDeployParams(_))
       .toSet
+
     params should be(
       Set(
         DeployParameters(
           Deployer("Continuous Deployment"),
           Build("tools::deploy2", "392"),
-          Stage("QA"),
+          Stage("PROD"),
           updateStrategy = MostlyHarmless
         )
       )
     )
   }
-
-  /* Test types */
-
-  val tdProdEnabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy",
-    "PROD",
-    None,
-    Trigger.SuccessfulBuild,
-    "Test user"
-  )
-  val tdCodeDisabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy",
-    "CODE",
-    None,
-    Trigger.Disabled,
-    "Test user"
-  )
-  val td2ProdDisabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy2",
-    "PROD",
-    None,
-    Trigger.Disabled,
-    "Test user"
-  )
-  val td2QaEnabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy2",
-    "QA",
-    None,
-    Trigger.SuccessfulBuild,
-    "Test user"
-  )
-  val td2QaBranchEnabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy2",
-    "QA",
-    Some("branch"),
-    Trigger.SuccessfulBuild,
-    "Test user"
-  )
-  val td2ProdBranchEnabled = ContinuousDeploymentConfig(
-    UUID.randomUUID(),
-    "tools::deploy2",
-    "PROD",
-    Some("master"),
-    Trigger.SuccessfulBuild,
-    "Test user"
-  )
-  val contDeployConfigs =
-    Seq(tdProdEnabled, tdCodeDisabled, td2ProdDisabled, td2QaEnabled)
-  val contDeployBranchConfigs = Seq(
-    tdProdEnabled,
-    tdCodeDisabled,
-    td2ProdDisabled,
-    td2QaBranchEnabled,
-    td2ProdBranchEnabled
-  )
-
-  val tdB71 = S3Build(
-    45397,
-    "tools::deploy",
-    "45397",
-    "branch",
-    "71",
-    new DateTime(2013, 1, 25, 14, 42, 47),
-    "",
-    "",
-    buildTool = None
-  )
-  val td2B392 = S3Build(
-    45400,
-    "tools::deploy2",
-    "45400",
-    "branch",
-    "392",
-    new DateTime(2013, 1, 25, 15, 34, 47),
-    "",
-    "",
-    buildTool = None
-  )
-  val otherBranch = S3Build(
-    45401,
-    "tools::deploy2",
-    "45401",
-    "other",
-    "393",
-    new DateTime(2013, 1, 25, 15, 34, 47),
-    "",
-    "",
-    buildTool = Some("guardian/actions-riff-raff")
-  )
 
   it should "retry until finds success" in {
     var i = 0
