@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -e
+
+for arg in "$@"; do
+  if [ "$arg" == "--debug" ]; then
+    IS_DEBUG=true
+    shift
+  fi
+done
+
+docker-compose up -d
+
+if [ "$IS_DEBUG" == true ] ; then
+  ./sbt-debug test
+else
+  ./sbt test
+fi
