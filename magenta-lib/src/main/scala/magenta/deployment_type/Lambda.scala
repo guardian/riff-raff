@@ -52,6 +52,16 @@ trait Lambda extends DeploymentType with BucketParameters {
     "If true then the values in the functionNames param will be prefixed with the name of the stack being deployed"
   ).default(true)
 
+  val prefixStageToKeyParam = Param[Boolean](
+    "prefixStageToKey",
+    documentation = "Whether to prefix `stage` to the S3 location"
+  ).default(true)
+
+  val prefixAppToKeyParam = Param[Boolean](
+    "prefixAppToKey",
+    documentation = "Whether to prefix `app` to the S3 location"
+  ).default(true)
+
   val prefixStackToKeyParam = Param[Boolean](
     "prefixStackToKey",
     documentation = "Whether to prefix `package` to the S3 location"
@@ -166,10 +176,20 @@ trait Lambda extends DeploymentType with BucketParameters {
       fileName: String,
       reporter: DeployReporter
   ): String = {
-    val prefixStack = prefixStackToKeyParam(pkg, target, reporter)
-    val prefix = if (prefixStack) List(target.stack.name) else Nil
-    (prefix ::: List(target.parameters.stage.name, pkg.app.name, fileName))
-      .mkString("/")
+    val prefix = S3Upload.prefixGenerator(
+      stack =
+        if (prefixStackToKeyParam(pkg, target, reporter)) Some(target.stack)
+        else None,
+      stage =
+        if (prefixStageToKeyParam(pkg, target, reporter))
+          Some(target.parameters.stage)
+        else None,
+      packageOrAppName =
+        if (prefixAppToKeyParam(pkg, target, reporter)) Some(pkg.app.name)
+        else None
+    )
+
+    List(prefix, fileName).mkString("/")
   }
 
   def withSsm[T](
