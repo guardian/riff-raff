@@ -18,6 +18,16 @@ object FastlyCompute extends DeploymentType with BucketParameters {
   val documentation: String =
     """
       |Deploy a [Compute@Edge](https://www.fastly.com/products/edge-compute) package via the Fastly API.
+      |
+      |Example:
+      |
+      |```yaml
+      |your-service:
+      |  type: fastly-compute
+      |```
+      |Note that `your-service` must match the App name in Deployment Resources under `credentials:fastly`.
+      |It will appear there once it has been added to `prism-data.json`, which lives in the `prism-data`
+      |bucket within the `deployTools` account.
     """.stripMargin
 
   // TODO this is copied from `Lambda.scala` and could be DRYed out
@@ -78,13 +88,8 @@ object FastlyCompute extends DeploymentType with BucketParameters {
       |Undertakes the following using the Fastly API:
       |
       | - Clones the currently active version
-      | - Uploads the package to the Fastly API
-      |
-      |Note that `your-service` must match the deployment resource name
-      |```yaml
-      |  your-service:
-      |   type: fastly-compute
-      |```
+      | - Uploads the Compute@Edge package containing the WebAssembly binary
+      | - Activates the new version
     """.stripMargin
   ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)

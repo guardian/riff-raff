@@ -49,7 +49,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
 
       resources.reporter
         .info(
-          s"Fastly Compute@Edge service ${client.serviceId} version $nextVersionNumber is now active"
+          s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
         )
     }
   }
@@ -110,7 +110,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
             .build()
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
-              reporter.info(s"Uploading $fileName")
+              reporter.info(s"Uploading $fileName to Fastly")
               val bytes =
                 scala.io.Source.fromInputStream(stream).mkString.getBytes
               Files
