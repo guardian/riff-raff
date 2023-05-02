@@ -189,7 +189,11 @@ trait Lambda extends DeploymentType with BucketParameters {
         else None
     )
 
-    List(prefix, fileName).mkString("/")
+    if (prefix.isEmpty) {
+      fileName
+    } else {
+      List(prefix, fileName).mkString("/")
+    }
   }
 
   def withSsm[T](

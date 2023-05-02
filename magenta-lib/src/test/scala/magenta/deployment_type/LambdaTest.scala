@@ -1,6 +1,5 @@
 package magenta.deployment_type
 
-import java.util.UUID
 import magenta.artifact.S3Path
 import magenta.fixtures._
 import magenta.tasks.{S3Upload, UpdateS3Lambda}
@@ -30,6 +29,7 @@ import software.amazon.awssdk.services.ssm.model.{
 }
 import software.amazon.awssdk.services.sts.StsClient
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.global
 
 class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
@@ -236,6 +236,69 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
     }
 
     e.message shouldBe s"Bucket name provided & bucketSsmLookup=true, please choose one or omit both to default to SSM lookup."
+  }
+
+  it should "build the S3 location, respecting stack, env, app and file names" in {
+    object LambdaTest extends Lambda {}
+
+    val app = App("lambda")
+    val deployEnv = PROD
+    val stack = Stack("some-stack")
+    val deployTarget = DeployTarget(parameters(deployEnv), stack, region)
+    val fileName = "test-file.zip"
+
+    def buildDeploymentPackageWithData(data: Map[String, JsValue]) =
+      DeploymentPackage(
+        "lambda",
+        app,
+        data,
+        "aws-lambda",
+        S3Path("artifact-bucket", "test/123/lambda"),
+        deploymentTypes
+      )
+
+    val defaultData: Map[String, JsValue] = Map()
+    val noPrefixData: Map[String, JsValue] = Map(
+      "prefixStackToKey" -> Json.parse("false"),
+      "prefixStageToKey" -> Json.parse("false"),
+      "prefixAppToKey" -> Json.parse("false")
+    )
+    val skipStackPrefixData: Map[String, JsValue] = Map(
+      "prefixStageToKey" -> Json.parse("false"),
+      "prefixAppToKey" -> Json.parse("false")
+    )
+    val skipStagePrefixData: Map[String, JsValue] = Map(
+      "prefixStackToKey" -> Json.parse("false"),
+      "prefixAppToKey" -> Json.parse("false")
+    )
+    val skipAppPrefixData: Map[String, JsValue] = Map(
+      "prefixStackToKey" -> Json.parse("false"),
+      "prefixStageToKey" -> Json.parse("false")
+    )
+    val skipStageAndStackPrefixData: Map[String, JsValue] = Map(
+      "prefixAppToKey" -> Json.parse("false")
+    )
+
+    val testCases = Map(
+      defaultData -> s"${stack.name}/${deployEnv.name}/${app.name}/${fileName}",
+      skipStackPrefixData -> s"${stack.name}/${fileName}",
+      skipStagePrefixData -> s"${deployEnv.name}/${fileName}",
+      skipAppPrefixData -> s"${app.name}/${fileName}",
+      skipStageAndStackPrefixData -> s"${stack.name}/${deployEnv.name}/${fileName}",
+      noPrefixData -> fileName
+    )
+
+    testCases.foreach { case (data, expectedS3Key) =>
+      val pkg = buildDeploymentPackageWithData(data)
+      val s3Key = LambdaTest.makeS3Key(
+        target = deployTarget,
+        pkg = pkg,
+        fileName = fileName,
+        reporter = reporter
+      )
+
+      s3Key shouldBe expectedS3Key
+    }
   }
 
   it should "refuse to work if bucket name is not provided and no bucket is specified in SSM" in {
