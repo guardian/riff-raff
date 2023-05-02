@@ -45,7 +45,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
         stopFlag
       )
 
-      activateVersion(nextVersionNumber, client, resources.reporter)
+      activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
 
       resources.reporter
         .info(
@@ -58,7 +58,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     if (!stopFlag) block
     else
       throw DeployStoppedException(
-        "Deploy manually stopped during UpdateFastlyConfig"
+        "Deploy manually stopped during UpdateFastlyPackage"
       )
 
   private def getActiveVersionNumber(
@@ -98,6 +98,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   ): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
+        reporter.info(s"Found $obj with extension ${obj.extension}")
         if (obj.extension.contains("tar.gz")) {
           reporter.info(s"About to upload artifact ${obj.key} to Fastly")
           val fileName = obj.relativeTo(s3Package)
@@ -129,12 +130,15 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   private def activateVersion(
       versionNumber: Int,
       client: FastlyApiClient,
-      reporter: DeployReporter
+      reporter: DeployReporter,
+      stopFlag: => Boolean
   ): Unit = {
-    reporter.info(
-      s"Activating Fastly Compute@Edge service ${client.serviceId} - version $versionNumber"
-    )
-    block(client.versionActivate(versionNumber))
+    stopOnFlag(stopFlag) {
+      reporter.info(
+        s"Activating Fastly Compute@Edge service ${client.serviceId} - version $versionNumber"
+      )
+      block(client.versionActivate(versionNumber))
+    }
   }
 
   override def description: String =
