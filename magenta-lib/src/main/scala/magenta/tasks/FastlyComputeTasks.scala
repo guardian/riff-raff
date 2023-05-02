@@ -98,10 +98,8 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   ): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
-        reporter.info(s"$obj")
-        reporter.info(s"${obj.key}")
-        reporter.info(s"${obj.bucket}")
         if (obj.extension.contains("tar.gz")) {
+          reporter.info(s"About to upload artifact ${obj.key} to Fastly")
           val fileName = obj.relativeTo(s3Package)
           val getObjectRequest = GetObjectRequest
             .builder()
@@ -110,11 +108,14 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
             .build()
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
-              reporter.info(s"Uploading $fileName to Fastly")
               val bytes =
                 scala.io.Source.fromInputStream(stream).mkString.getBytes
               Files
-                .write(Files.createTempFile("temp-package", "tar.gz"), bytes)
+                .write(
+                  Files
+                    .createTempFile(fileName.replace(".tar.gz", ""), "tar.gz"),
+                  bytes
+                )
                 .toFile
             }
           block(
