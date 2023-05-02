@@ -114,28 +114,32 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
             .key(obj.key)
             .build()
 
-          implicit val codec: Codec = UTF8
+          // We're about to create a buffered stream for binary data
+          // so we need to override the implicit codec for `scala.io.Source.fromInputStream`
+          val codec: Codec = UTF8
           codec.onMalformedInput(CodingErrorAction.REPLACE)
           codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
 
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
               val bufferedSource =
-                scala.io.Source.fromInputStream(stream)
-              val bufferedSourceAsString = bufferedSource.mkString
+                scala.io.Source.fromInputStream(stream)(codec)
               val bytes =
-                bufferedSourceAsString.getBytes(StandardCharsets.UTF_8)
-              Files
+                bufferedSource.mkString.getBytes(StandardCharsets.UTF_8)
+              val packageToUpload = Files
                 .write(
                   Files
-                    .createTempFile(fileName, ".tmp"),
+                    .createTempFile(fileName.replace(".tar.gz", ""), "tar.gz"),
                   bytes
                 )
                 .toFile
+              reporter.info(s"Successfully created $packageToUpload")
+              packageToUpload
             }
-          block(
+          val response = block(
             client.packageUpload(client.serviceId, versionNumber, `package`)
           )
+          reporter.info(s"Response from the Fastly API: $response")
         }
       }
     }
