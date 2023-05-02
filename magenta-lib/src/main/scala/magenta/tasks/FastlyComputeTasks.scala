@@ -8,7 +8,7 @@ import play.api.libs.json.Json
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
-import java.nio.charset.{CodingErrorAction, StandardCharsets}
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.duration._
 import scala.concurrent.{
@@ -18,7 +18,7 @@ import scala.concurrent.{
   Future
 }
 import scala.io.Codec
-import scala.io.Codec.UTF8
+import scala.io.Codec.ISO8859
 
 case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     val keyRing: KeyRing,
@@ -104,47 +104,48 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       s3Package.listAll()(artifactClient).map { obj =>
         if (!obj.extension.contains("gz")) {
           reporter.fail("Could not found a Compute@Edge package in the bucket")
-        } else {
-          val fileName = obj.relativeTo(s3Package)
-          reporter.info(s"About to upload artifact $fileName to Fastly")
+        }
 
-          val getObjectRequest = GetObjectRequest
-            .builder()
-            .bucket(obj.bucket)
-            .key(obj.key)
-            .build()
+        val fileName = obj.relativeTo(s3Package)
+        reporter.info(s"About to upload artifact $fileName to Fastly")
 
-          // We're about to create a buffered stream for binary data
-          // so we need to override the implicit codec for `scala.io.Source.fromInputStream`
-          val codec: Codec = UTF8
-          codec.onMalformedInput(CodingErrorAction.REPLACE)
-          codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
+        val getObjectRequest = GetObjectRequest
+          .builder()
+          .bucket(obj.bucket)
+          .key(obj.key)
+          .build()
 
-          val `package` =
-            withResource(artifactClient.getObject(getObjectRequest)) { stream =>
-              val bufferedSource =
-                scala.io.Source.fromInputStream(stream)(codec)
-              val bytes =
-                bufferedSource.mkString.getBytes(StandardCharsets.UTF_8)
-              val packageToUpload = Files
-                .write(
-                  Files
-                    .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
-                  bytes
-                )
-                .toFile
-              reporter.info(s"Successfully created $packageToUpload")
-              packageToUpload
-            }
-          val response = block(
-            client.packageUpload(client.serviceId, versionNumber, `package`)
-          )
+        // We're about to create a buffered stream for binary data
+        // so we need to override the implicit codec for `scala.io.Source.fromInputStream`
+        val codec: Codec = ISO8859
+        // codec.onMalformedInput(CodingErrorAction.REPLACE)
+        // codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
 
-          if (response.getStatusCode != 200) {
-            reporter.fail(
-              s"Failed to upload package to the Fastly API: ${response.getResponseBody}"
-            )
+        val `package` =
+          withResource(artifactClient.getObject(getObjectRequest)) { stream =>
+            val bufferedSource =
+              scala.io.Source.fromInputStream(stream)(codec)
+            val bytes =
+              bufferedSource.mkString.getBytes(StandardCharsets.ISO_8859_1)
+            val packageToUpload = Files
+              .write(
+                Files
+                  .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
+                bytes
+              )
+              .toFile
+            reporter.info(s"Successfully created $packageToUpload")
+            packageToUpload
           }
+
+        val response = block(
+          client.packageUpload(client.serviceId, versionNumber, `package`)
+        )
+
+        if (response.getStatusCode != 200) {
+          reporter.fail(
+            s"Failed to upload package to the Fastly API: ${response.getResponseBody}"
+          )
         }
       }
     }
