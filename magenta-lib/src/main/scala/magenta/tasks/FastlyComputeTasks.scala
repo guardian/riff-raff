@@ -48,7 +48,9 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       activateVersion(nextVersionNumber, client, resources.reporter)
 
       resources.reporter
-        .info(s"Fastly version $nextVersionNumber is now active")
+        .info(
+          s"Fastly Compute@Edge service ${client.serviceId} version $nextVersionNumber is now active"
+        )
     }
   }
 
@@ -96,6 +98,9 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   ): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
+        reporter.info(s"$obj")
+        reporter.info(s"${obj.key}")
+        reporter.info(s"${obj.bucket}")
         if (obj.extension.contains("tar.gz")) {
           val fileName = obj.relativeTo(s3Package)
           val getObjectRequest = GetObjectRequest
@@ -126,7 +131,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       reporter: DeployReporter
   ): Unit = {
     reporter.info(
-      s"Activating Fastly service ${client.serviceId} - version $versionNumber"
+      s"Activating Fastly Compute@Edge service ${client.serviceId} - version $versionNumber"
     )
     block(client.versionActivate(versionNumber))
   }

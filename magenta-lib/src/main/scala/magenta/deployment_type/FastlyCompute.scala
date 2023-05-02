@@ -1,10 +1,18 @@
 package magenta.deployment_type
 
-import magenta.KeyRing
-import magenta.tasks.UpdateFastlyPackage
+import magenta.{DeploymentResources, KeyRing, Region}
+import magenta.deployment_type.AutoScaling.{
+  prefixApp,
+  prefixPackage,
+  prefixStack,
+  prefixStage
+}
+import magenta.tasks.{S3Upload, SSM, UpdateFastlyPackage}
+import magenta.tasks.{S3 => S3Tasks}
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.ssm.SsmClient
 
-object FastlyCompute extends DeploymentType {
+object FastlyCompute extends DeploymentType with BucketParameters {
   val name = "fastly-compute"
 
   val documentation: String =
@@ -12,18 +20,70 @@ object FastlyCompute extends DeploymentType {
       |Deploy a [Compute@Edge](https://www.fastly.com/products/edge-compute) package via the Fastly API.
     """.stripMargin
 
+  // TODO this is copied from `Lambda.scala` and could be DRYed out
+  def withSsm[T](
+      keyRing: KeyRing,
+      region: Region,
+      resources: DeploymentResources
+  ): (SsmClient => T) => T = SSM.withSsmClient[T](keyRing, region, resources)
+
+  val uploadArtifacts: Action = Action(
+    "uploadArtifacts",
+    """
+      |Uploads the Compute@Edge package in the deployment's directory to the specified bucket.
+    """.stripMargin
+  ) { (pkg, resources, target) =>
+    implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient: S3Client = resources.artifactClient
+    val reporter = resources.reporter
+
+    val maybePackageOrAppName: Option[String] = (
+      prefixPackage(pkg, target, reporter),
+      prefixApp(pkg, target, reporter)
+    ) match {
+      case (_, true)      => Some(pkg.app.name)
+      case (true, false)  => Some(pkg.name)
+      case (false, false) => None
+    }
+
+    val prefix = S3Upload.prefixGenerator(
+      stack =
+        if (prefixStack(pkg, target, reporter)) Some(target.stack) else None,
+      stage =
+        if (prefixStage(pkg, target, reporter)) Some(target.parameters.stage)
+        else None,
+      packageOrAppName = maybePackageOrAppName
+    )
+
+    val bucket = getTargetBucketFromConfig(pkg, target, reporter)
+
+    val s3Bucket = S3Tasks.getBucketName(
+      bucket,
+      withSsm(keyRing, target.region, resources),
+      resources.reporter
+    )
+
+    List(
+      S3Upload(
+        target.region,
+        s3Bucket,
+        Seq(pkg.s3Package -> prefix)
+      )
+    )
+  }
+
   val deploy: Action = Action(
     "deploy",
     """
       |Undertakes the following using the Fastly API:
       |
-      | - Clone the currently active version
-      | - Uploads the package
+      | - Clones the currently active version
+      | - Uploads the package to the Fastly API
       |
       |Note that `your-service` must match the deployment resource name
-      | ```
+      |```yaml
       |  your-service:
-      |   type: fastly-compute-edge
+      |   type: fastly-compute
       |```
     """.stripMargin
   ) { (pkg, resources, target) =>
@@ -33,5 +93,5 @@ object FastlyCompute extends DeploymentType {
     List(UpdateFastlyPackage(pkg.s3Package)(keyRing, artifactClient))
   }
 
-  def defaultActions: List[Action] = List(deploy)
+  def defaultActions: List[Action] = List(uploadArtifacts, deploy)
 }
