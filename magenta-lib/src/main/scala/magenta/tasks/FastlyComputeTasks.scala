@@ -3,11 +3,12 @@ package magenta.tasks
 import java.util.concurrent.Executors
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
-import magenta.artifact.S3Path
+import magenta.artifact.{S3Object, S3Path}
 import play.api.libs.json.Json
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
+import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.duration._
@@ -17,7 +18,6 @@ import scala.concurrent.{
   ExecutionContextExecutorService,
   Future
 }
-import scala.io.Codec
 import scala.io.Codec.ISO8859
 
 case class UpdateFastlyPackage(s3Package: S3Path)(implicit
@@ -40,7 +40,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       val nextVersionNumber =
         clone(activeVersionNumber, client, resources.reporter, stopFlag)
 
-      uploadPackageTo(
+      uploadPackage(
         nextVersionNumber,
         s3Package,
         client,
@@ -92,7 +92,55 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     }
   }
 
-  private def uploadPackageTo(
+  /** A helper method that creates a `java.io.File` from an S3 object, making
+    * sure that it has the correct Compute@Edge package extension.
+    * @param obj
+    *   The S3 Object to be converted to an instance of the `java.io.File` class
+    * @param reporter
+    *   The Deploy Reporter
+    * @return
+    *   a valid File
+    */
+  private def createFileFromS3Object(
+      obj: S3Object,
+      reporter: DeployReporter
+  ): File = {
+    if (!obj.extension.contains("gz")) {
+      reporter.fail("The object is not a valid Compute@Edge package")
+    }
+
+    val fileName = obj.relativeTo(s3Package)
+
+    val getObjectRequest = GetObjectRequest
+      .builder()
+      .bucket(obj.bucket)
+      .key(obj.key)
+      .build()
+
+    reporter.info(s"About to fetch $fileName from S3")
+    val `package` =
+      withResource(artifactClient.getObject(getObjectRequest)) { stream =>
+        // `fromInputStream` uses an implicit codec which needs to be
+        // overridden in order to convert binary to Latin-1, hence ISO-8859-1.
+        // This will allow us to send a valid HTTP request to the Fastly API
+        val bufferedSource =
+          scala.io.Source.fromInputStream(stream)(ISO8859)
+        val bytes =
+          bufferedSource.mkString.getBytes(StandardCharsets.ISO_8859_1)
+        Files
+          .write(
+            Files
+              .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
+            bytes
+          )
+          .toFile
+      }
+
+    reporter.info(s"${`package`} successfully created from S3 resource")
+    `package`
+  }
+
+  private def uploadPackage(
       versionNumber: Int,
       s3Package: S3Path,
       client: FastlyApiClient,
@@ -102,41 +150,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     stopOnFlag(stopFlag) {
 
       s3Package.listAll()(artifactClient).map { obj =>
-        if (!obj.extension.contains("gz")) {
-          reporter.fail("Could not found a Compute@Edge package in the bucket")
-        }
-
-        val fileName = obj.relativeTo(s3Package)
-        reporter.info(s"About to upload artifact $fileName to Fastly")
-
-        val getObjectRequest = GetObjectRequest
-          .builder()
-          .bucket(obj.bucket)
-          .key(obj.key)
-          .build()
-
-        // We're about to create a buffered stream for binary data
-        // so we need to override the implicit codec for `scala.io.Source.fromInputStream`
-        val codec: Codec = ISO8859
-        // codec.onMalformedInput(CodingErrorAction.REPLACE)
-        // codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
-
-        val `package` =
-          withResource(artifactClient.getObject(getObjectRequest)) { stream =>
-            val bufferedSource =
-              scala.io.Source.fromInputStream(stream)(codec)
-            val bytes =
-              bufferedSource.mkString.getBytes(StandardCharsets.ISO_8859_1)
-            val packageToUpload = Files
-              .write(
-                Files
-                  .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
-                bytes
-              )
-              .toFile
-            reporter.info(s"Successfully created $packageToUpload")
-            packageToUpload
-          }
+        val `package` = createFileFromS3Object(obj, reporter)
 
         val response = block(
           client.packageUpload(client.serviceId, versionNumber, `package`)
@@ -147,6 +161,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
             s"Failed to upload package to the Fastly API: ${response.getResponseBody}"
           )
         }
+        reporter.info("Compute@Edge package successfully uploaded to Fastly")
       }
     }
   }
