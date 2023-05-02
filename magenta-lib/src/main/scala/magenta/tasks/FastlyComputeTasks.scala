@@ -10,12 +10,16 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import java.nio.file.Files
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService, Future}
-
+import scala.concurrent.{
+  Await,
+  ExecutionContext,
+  ExecutionContextExecutorService,
+  Future
+}
 
 case class UpdateFastlyPackage(s3Package: S3Path)(implicit
-                                                  val keyRing: KeyRing,
-                                                  artifactClient: S3Client
+    val keyRing: KeyRing,
+    artifactClient: S3Client
 ) extends Task {
 
   implicit val ec: ExecutionContextExecutorService =
@@ -24,9 +28,9 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   def block[T](f: => Future[T]): T = Await.result(f, 1.minute)
 
   override def execute(
-                        resources: DeploymentResources,
-                        stopFlag: => Boolean
-                      ): Unit = {
+      resources: DeploymentResources,
+      stopFlag: => Boolean
+  ): Unit = {
     FastlyApiClientProvider.get(keyRing).foreach { client =>
       val activeVersionNumber =
         getActiveVersionNumber(client, resources.reporter, stopFlag)
@@ -56,10 +60,10 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       )
 
   private def getActiveVersionNumber(
-                                      client: FastlyApiClient,
-                                      reporter: DeployReporter,
-                                      stopFlag: => Boolean
-                                    ): Int = {
+      client: FastlyApiClient,
+      reporter: DeployReporter,
+      stopFlag: => Boolean
+  ): Int = {
     stopOnFlag(stopFlag) {
       val versionList = block(client.versionList())
       val versions = Json.parse(versionList.getResponseBody).as[List[Version]]
@@ -70,11 +74,11 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   }
 
   private def clone(
-                     versionNumber: Int,
-                     client: FastlyApiClient,
-                     reporter: DeployReporter,
-                     stopFlag: => Boolean
-                   ): Int = {
+      versionNumber: Int,
+      client: FastlyApiClient,
+      reporter: DeployReporter,
+      stopFlag: => Boolean
+  ): Int = {
     stopOnFlag(stopFlag) {
       val cloned = block(client.versionClone(versionNumber))
       val clonedVersion = Json.parse(cloned.getResponseBody).as[Version]
@@ -84,12 +88,12 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
   }
 
   private def uploadPackageTo(
-                               versionNumber: Int,
-                               s3Package: S3Path,
-                               client: FastlyApiClient,
-                               reporter: DeployReporter,
-                               stopFlag: => Boolean
-                             ): Unit = {
+      versionNumber: Int,
+      s3Package: S3Path,
+      client: FastlyApiClient,
+      reporter: DeployReporter,
+      stopFlag: => Boolean
+  ): Unit = {
     stopOnFlag(stopFlag) {
       s3Package.listAll()(artifactClient).map { obj =>
         if (obj.extension.contains("tar.gz")) {
@@ -102,25 +106,31 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
               reporter.info(s"Uploading $fileName")
-              val bytes = scala.io.Source.fromInputStream(stream).mkString.getBytes
-              Files.write(Files.createTempFile("temp-package", "tar.gz"), bytes).toFile
+              val bytes =
+                scala.io.Source.fromInputStream(stream).mkString.getBytes
+              Files
+                .write(Files.createTempFile("temp-package", "tar.gz"), bytes)
+                .toFile
             }
-          block(client.packageUpload(client.serviceId, versionNumber, `package`))
+          block(
+            client.packageUpload(client.serviceId, versionNumber, `package`)
+          )
         }
       }
     }
   }
 
   private def activateVersion(
-                               versionNumber: Int,
-                               client: FastlyApiClient,
-                               reporter: DeployReporter
-                             ): Unit = {
-    reporter.info(s"Activating Fastly service ${client.serviceId} - version $versionNumber")
+      versionNumber: Int,
+      client: FastlyApiClient,
+      reporter: DeployReporter
+  ): Unit = {
+    reporter.info(
+      s"Activating Fastly service ${client.serviceId} - version $versionNumber"
+    )
     block(client.versionActivate(versionNumber))
   }
 
   override def description: String =
     "Upload a Compute@Edge package"
 }
-
