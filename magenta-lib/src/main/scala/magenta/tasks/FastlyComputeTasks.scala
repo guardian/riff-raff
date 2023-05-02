@@ -129,7 +129,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
               val packageToUpload = Files
                 .write(
                   Files
-                    .createTempFile(fileName.replace(".tar.gz", ""), "tar.gz"),
+                    .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
                   bytes
                 )
                 .toFile
@@ -139,7 +139,12 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
           val response = block(
             client.packageUpload(client.serviceId, versionNumber, `package`)
           )
-          reporter.info(s"Response from the Fastly API: $response")
+
+          if (response.getStatusCode != 200) {
+            reporter.fail(
+              s"Failed to upload package to the Fastly API: ${response.getResponseBody}"
+            )
+          }
         }
       }
     }
