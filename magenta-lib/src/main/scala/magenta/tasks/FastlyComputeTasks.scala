@@ -8,6 +8,7 @@ import play.api.libs.json.Json
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.duration._
 import scala.concurrent.{
@@ -113,7 +114,10 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
               val bytes =
-                scala.io.Source.fromInputStream(stream).mkString.getBytes
+                scala.io.Source
+                  .fromInputStream(stream)
+                  .mkString
+                  .getBytes(StandardCharsets.UTF_8)
               Files
                 .write(
                   Files
