@@ -8,6 +8,7 @@ import play.api.libs.json.Json
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
+import java.nio.charset.{CodingErrorAction, StandardCharsets}
 import java.nio.file.Files
 import scala.concurrent.duration._
 import scala.concurrent.{
@@ -16,6 +17,7 @@ import scala.concurrent.{
   ExecutionContextExecutorService,
   Future
 }
+import scala.io.Codec
 import scala.io.Codec.UTF8
 
 case class UpdateFastlyPackage(s3Package: S3Path)(implicit
@@ -98,6 +100,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
       stopFlag: => Boolean
   ): Unit = {
     stopOnFlag(stopFlag) {
+
       s3Package.listAll()(artifactClient).map { obj =>
         if (!obj.extension.contains("gz")) {
           reporter.fail("Could not found a Compute@Edge package in the bucket")
@@ -111,10 +114,17 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
             .key(obj.key)
             .build()
 
+          implicit val codec: Codec = UTF8
+          codec.onMalformedInput(CodingErrorAction.REPLACE)
+          codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
+
           val `package` =
             withResource(artifactClient.getObject(getObjectRequest)) { stream =>
+              val bufferedSource =
+                scala.io.Source.fromInputStream(stream)
+              val bufferedSourceAsString = bufferedSource.mkString
               val bytes =
-                scala.io.Source.fromInputStream(stream)(UTF8).mkString.getBytes
+                bufferedSourceAsString.getBytes(StandardCharsets.UTF_8)
               Files
                 .write(
                   Files
