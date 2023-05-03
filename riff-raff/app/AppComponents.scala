@@ -124,6 +124,7 @@ class AppComponents(
     S3,
     AutoScaling,
     Fastly,
+    FastlyCompute,
     new CloudFormation(DefaultBuildTags),
     Lambda,
     LambdaLayer,
