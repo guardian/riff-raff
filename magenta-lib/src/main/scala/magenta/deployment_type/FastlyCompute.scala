@@ -26,8 +26,7 @@ object FastlyCompute extends DeploymentType with BucketParameters {
       |  type: fastly-compute
       |```
       |Note that `your-service` must match the App name in Deployment Resources under `credentials:fastly`.
-      |It will appear there once it has been added to `prism-data.json`, which lives in the `prism-data`
-      |bucket within the `deployTools` account.
+      |Instructions on how to add a new Deployment Resource can be found [here](https://github.com/guardian/deploy-tools-platform/blob/main/cloudformation/riffraff/riff-raff-roles.md#updating-riffraff-configuration)
     """.stripMargin
 
   // TODO this is copied from `Lambda.scala` and could be DRYed out
@@ -88,7 +87,7 @@ object FastlyCompute extends DeploymentType with BucketParameters {
       |Undertakes the following using the Fastly API:
       |
       | - Clones the currently active version
-      | - Uploads the Compute@Edge package containing the WebAssembly binary
+      | - Uploads the Compute@Edge package containing the WebAssembly binary and the manifest
       | - Activates the new version
     """.stripMargin
   ) { (pkg, resources, target) =>

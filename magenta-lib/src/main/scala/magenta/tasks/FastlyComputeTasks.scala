@@ -127,16 +127,22 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
           scala.io.Source.fromInputStream(stream)(ISO8859)
         val bytes =
           bufferedSource.mkString.getBytes(StandardCharsets.ISO_8859_1)
+
+        // `createTempFile` expects a prefix and a suffix.
+        // If we don't strip off the suffix from the file name (which includes the extension),
+        // it will be duplicated (e.g. `package-name.tar.gz.tar.gz`)
+        val tempFile = Files
+          .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz")
+
         Files
           .write(
-            Files
-              .createTempFile(fileName.replace(".tar.gz", ""), ".tar.gz"),
+            tempFile,
             bytes
           )
           .toFile
       }
 
-    reporter.info(s"${`package`} successfully created from S3 resource")
+    reporter.info(s"${`package`.getName} successfully created from S3 resource")
     `package`
   }
 
