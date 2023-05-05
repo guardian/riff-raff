@@ -20,7 +20,7 @@ object Vcl {
   implicit val reads: Reads[Vcl] = Json.reads[Vcl]
 }
 
-case class UpdateFastlyConfigUtils(s3Package: S3Path)(implicit
+case class UpdateFastlyConfig(s3Package: S3Path)(implicit
     val keyRing: KeyRing,
     artifactClient: S3Client,
     parameters: DeployParameters

@@ -1,7 +1,7 @@
 package magenta.deployment_type
 
 import magenta.{DeployParameters, KeyRing}
-import magenta.tasks.UpdateFastlyConfigUtils
+import magenta.tasks.UpdateFastlyConfig
 import software.amazon.awssdk.services.s3.S3Client
 
 object Fastly extends DeploymentType {
@@ -32,7 +32,7 @@ object Fastly extends DeploymentType {
     implicit val deployParameters: DeployParameters = target.parameters
     resources.reporter.verbose(s"Keyring is $keyRing")
     List(
-      UpdateFastlyConfigUtils(pkg.s3Package)(
+      UpdateFastlyConfig(pkg.s3Package)(
         keyRing,
         artifactClient,
         deployParameters
