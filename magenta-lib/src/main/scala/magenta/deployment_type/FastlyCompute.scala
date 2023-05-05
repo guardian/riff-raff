@@ -93,8 +93,9 @@ object FastlyCompute extends DeploymentType with BucketParameters {
   ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
-    resources.reporter.verbose(s"Keyring is $keyRing")
-    List(UpdateFastlyPackage(pkg.s3Package)(keyRing, artifactClient))
+    implicit val deployParameters = target.parameters
+      resources.reporter.verbose(s"Keyring is $keyRing")
+    List(UpdateFastlyPackage(pkg.s3Package)(keyRing, artifactClient, deployParameters))
   }
 
   def defaultActions: List[Action] = List(uploadArtifacts, deploy)
