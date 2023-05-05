@@ -1,7 +1,12 @@
 package magenta.deployment_type
 
 import magenta.{DeployParameters, DeploymentResources, KeyRing, Region}
-import magenta.deployment_type.AutoScaling.{prefixApp, prefixPackage, prefixStack, prefixStage}
+import magenta.deployment_type.AutoScaling.{
+  prefixApp,
+  prefixPackage,
+  prefixStack,
+  prefixStage
+}
 import magenta.tasks.{FastlyComputeTasks, S3Upload, SSM}
 import magenta.tasks.{S3 => S3Tasks}
 import software.amazon.awssdk.services.s3.S3Client
