@@ -199,7 +199,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
           Project ${parameters.build.projectName}
           Stage ${parameters.stage}
           Build ${parameters.build.id}
-          Deployer${parameters.deployer}
+          Deployer ${parameters.deployer}
           """
         )
       )
