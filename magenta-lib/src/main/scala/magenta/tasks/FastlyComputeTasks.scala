@@ -22,7 +22,8 @@ import scala.io.Codec.ISO8859
 
 case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     val keyRing: KeyRing,
-    artifactClient: S3Client
+    artifactClient: S3Client,
+    parameters: DeployParameters
 ) extends Task {
 
   implicit val ec: ExecutionContextExecutorService =
@@ -45,6 +46,14 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
         s3Package,
         client,
         resources.reporter,
+        stopFlag
+      )
+
+      commentVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        parameters,
         stopFlag
       )
 
@@ -169,6 +178,31 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
         }
         reporter.info("Compute@Edge package successfully uploaded to Fastly")
       }
+    }
+  }
+
+  private def commentVersion(
+      versionNumber: Int,
+      client: FastlyApiClient,
+      reporter: DeployReporter,
+      parameters: DeployParameters,
+      stopFlag: => Boolean
+  ): Unit = {
+
+    stopOnFlag(stopFlag) {
+      reporter.info("Adding deployment information")
+      block(
+        client.versionComment(
+          versionNumber,
+          s"""
+          Deployed via Riff-Raff
+          Project ${parameters.build.projectName}
+          Stage ${parameters.stage}
+          Build ${parameters.build.id}
+          Deployer${parameters.deployer}
+          """
+        )
+      )
     }
   }
 
