@@ -195,11 +195,9 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
         client.versionComment(
           versionNumber,
           s"""
-          Deployed via Riff-Raff
-          Project ${parameters.build.projectName}
-          Stage ${parameters.stage}
-          Build ${parameters.build.id}
-          Deployer ${parameters.deployer}
+          Deployed via Riff-Raff by ${parameters.deployer.name}
+          (${parameters.build.projectName}, ${parameters.stage.name},
+          build ${parameters.build.id})
           """
         )
       )
