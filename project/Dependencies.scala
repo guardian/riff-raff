@@ -4,9 +4,9 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.20.37"
-    val jackson = "2.14.2"
-    val awsRds = "1.12.438"
+    val aws = "2.20.60"
+    val jackson = "2.15.0"
+    val awsRds = "1.12.462"
     val enumeratumPlay = "1.7.2"
   }
 
@@ -35,8 +35,8 @@ object Dependencies {
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
-      "com.squareup.okhttp3" % "okhttp" % "4.10.0",
-      "ch.qos.logback" % "logback-classic" % "1.4.6",
+      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
+      "ch.qos.logback" % "logback-classic" % "1.4.7",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
       "software.amazon.awssdk" % "s3" % Versions.aws,
@@ -47,13 +47,13 @@ object Dependencies {
       "software.amazon.awssdk" % "cloudformation" % Versions.aws,
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
-      "com.gu" %% "fastly-api-client" % "0.5.0",
+      "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230202-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.20.2",
+      "com.google.cloud" % "google-cloud-storage" % "2.22.1",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
