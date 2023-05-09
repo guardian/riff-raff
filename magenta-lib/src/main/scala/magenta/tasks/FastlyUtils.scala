@@ -65,4 +65,12 @@ trait FastlyUtils {
       )
     }
   }
+
+  protected def activateVersion(
+      nextVersionNumber: Int,
+      client: FastlyApiClient,
+      deployReporter: DeployReporter,
+      stopFlag: => Boolean
+  ): Unit
+
 }

@@ -115,7 +115,7 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
     }
   }
 
-  private def activateVersion(
+  override def activateVersion(
       versionNumber: Int,
       client: FastlyApiClient,
       reporter: DeployReporter,
