@@ -66,6 +66,7 @@ class CreateChangeSetTask(
 
             val parameters = CloudFormationParameters
               .resolve(
+                resources.reporter,
                 unresolvedParameters,
                 accountNumber,
                 templateParameters,
