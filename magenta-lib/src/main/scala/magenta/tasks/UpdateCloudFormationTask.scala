@@ -199,6 +199,7 @@ object CloudFormationParameters {
   ): List[Parameter] = params.map(InputParameter.toAWS)
 
   def resolve(
+      reporter: DeployReporter,
       cfnParameters: CloudFormationParameters,
       accountNumber: String,
       templateParameters: List[TemplateParameter],
@@ -207,11 +208,17 @@ object CloudFormationParameters {
 
     val resolvedAmiParameters: Map[String, String] =
       cfnParameters.amiParameterMap.flatMap { case (name, tags) =>
-        cfnParameters
+        val ami = cfnParameters
           .latestImage(name)(accountNumber)(cfnParameters.target.region.name)(
             tags
           )
-          .map(name -> _)
+        if (ami.isEmpty) {
+          val tagsStr = tags.map { case (k, v) => s"$k: $v" }.mkString(", ")
+          reporter.warning(
+            s"Failed to resolve AMI for parameter $name in account $accountNumber with tags $tagsStr"
+          )
+        }
+        ami.map(name -> _)
       }
 
     val deploymentParameters = Map(

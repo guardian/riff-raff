@@ -562,6 +562,7 @@ class CloudFormationTest
     )
 
     val params = resolve(
+      reporter,
       cfp,
       "0123456789",
       List(
@@ -595,6 +596,7 @@ class CloudFormationTest
     )
 
     val params = resolve(
+      reporter,
       cfp,
       "0123456789",
       List(
@@ -636,6 +638,7 @@ class CloudFormationTest
     )
 
     val params = resolve(
+      reporter,
       cfp,
       "0123456789",
       List(
@@ -677,6 +680,7 @@ class CloudFormationTest
     )
 
     val params = resolve(
+      reporter,
       cfp,
       "0123456789",
       List(
@@ -717,6 +721,7 @@ class CloudFormationTest
     )
 
     val params = resolve(
+      reporter,
       cfp,
       "0123456789",
       List(
