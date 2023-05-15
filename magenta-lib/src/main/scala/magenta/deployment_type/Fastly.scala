@@ -1,15 +1,17 @@
 package magenta.deployment_type
 
+import magenta.{DeployParameters, KeyRing}
 import magenta.tasks.UpdateFastlyConfig
+import software.amazon.awssdk.services.s3.S3Client
 
 object Fastly extends DeploymentType {
   val name = "fastly"
-  val documentation =
+  val documentation: String =
     """
       |Deploy a new set of VCL configuration files to the [fastly](https://www.fastly.com/) CDN via the fastly API.
     """.stripMargin
 
-  val deploy = Action(
+  val deploy: Action = Action(
     "deploy",
     """
       |Undertakes the following using the fastly API:
@@ -25,11 +27,18 @@ object Fastly extends DeploymentType {
       | your VCL files to facilitate this.
     """.stripMargin
   ) { (pkg, resources, target) =>
-    implicit val keyRing = resources.assembleKeyring(target, pkg)
-    implicit val artifactClient = resources.artifactClient
+    implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
+    implicit val artifactClient: S3Client = resources.artifactClient
+    implicit val deployParameters: DeployParameters = target.parameters
     resources.reporter.verbose(s"Keyring is $keyRing")
-    List(UpdateFastlyConfig(pkg.s3Package)(keyRing, artifactClient))
+    List(
+      UpdateFastlyConfig(pkg.s3Package)(
+        keyRing,
+        artifactClient,
+        deployParameters
+      )
+    )
   }
 
-  def defaultActions = List(deploy)
+  def defaultActions: List[Action] = List(deploy)
 }

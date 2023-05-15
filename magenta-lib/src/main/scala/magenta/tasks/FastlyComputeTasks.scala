@@ -4,31 +4,24 @@ import java.util.concurrent.Executors
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
 import magenta.artifact.{S3Object, S3Path}
-import play.api.libs.json.Json
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import scala.concurrent.duration._
-import scala.concurrent.{
-  Await,
-  ExecutionContext,
-  ExecutionContextExecutorService,
-  Future
-}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.io.Codec.ISO8859
 
-case class UpdateFastlyPackage(s3Package: S3Path)(implicit
+case class FastlyComputeTasks(s3Package: S3Path)(implicit
     val keyRing: KeyRing,
-    artifactClient: S3Client
-) extends Task {
+    artifactClient: S3Client,
+    parameters: DeployParameters
+) extends Task
+    with FastlyUtils {
 
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
-
-  def block[T](f: => Future[T]): T = Await.result(f, 1.minute)
 
   override def execute(
       resources: DeploymentResources,
@@ -48,47 +41,20 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
         stopFlag
       )
 
+      commentVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        parameters,
+        stopFlag
+      )
+
       activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
 
       resources.reporter
         .info(
           s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
         )
-    }
-  }
-
-  def stopOnFlag[T](stopFlag: => Boolean)(block: => T): T =
-    if (!stopFlag) block
-    else
-      throw DeployStoppedException(
-        "Deploy manually stopped during UpdateFastlyPackage"
-      )
-
-  private def getActiveVersionNumber(
-      client: FastlyApiClient,
-      reporter: DeployReporter,
-      stopFlag: => Boolean
-  ): Int = {
-    stopOnFlag(stopFlag) {
-      val versionList = block(client.versionList())
-      val versions = Json.parse(versionList.getResponseBody).as[List[Version]]
-      val activeVersion = versions.filter(x => x.active.getOrElse(false)).head
-      reporter.info(s"Current active version ${activeVersion.number}")
-      activeVersion.number
-    }
-  }
-
-  private def clone(
-      versionNumber: Int,
-      client: FastlyApiClient,
-      reporter: DeployReporter,
-      stopFlag: => Boolean
-  ): Int = {
-    stopOnFlag(stopFlag) {
-      val cloned = block(client.versionClone(versionNumber))
-      val clonedVersion = Json.parse(cloned.getResponseBody).as[Version]
-      reporter.info(s"Cloned version ${clonedVersion.number}")
-      clonedVersion.number
     }
   }
 
@@ -172,7 +138,7 @@ case class UpdateFastlyPackage(s3Package: S3Path)(implicit
     }
   }
 
-  private def activateVersion(
+  override def activateVersion(
       versionNumber: Int,
       client: FastlyApiClient,
       reporter: DeployReporter,

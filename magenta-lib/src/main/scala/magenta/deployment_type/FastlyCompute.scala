@@ -1,13 +1,13 @@
 package magenta.deployment_type
 
-import magenta.{DeploymentResources, KeyRing, Region}
+import magenta.{DeployParameters, DeploymentResources, KeyRing, Region}
 import magenta.deployment_type.AutoScaling.{
   prefixApp,
   prefixPackage,
   prefixStack,
   prefixStage
 }
-import magenta.tasks.{S3Upload, SSM, UpdateFastlyPackage}
+import magenta.tasks.{FastlyComputeTasks, S3Upload, SSM}
 import magenta.tasks.{S3 => S3Tasks}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.ssm.SsmClient
@@ -93,8 +93,15 @@ object FastlyCompute extends DeploymentType with BucketParameters {
   ) { (pkg, resources, target) =>
     implicit val keyRing: KeyRing = resources.assembleKeyring(target, pkg)
     implicit val artifactClient: S3Client = resources.artifactClient
+    implicit val deployParameters: DeployParameters = target.parameters
     resources.reporter.verbose(s"Keyring is $keyRing")
-    List(UpdateFastlyPackage(pkg.s3Package)(keyRing, artifactClient))
+    List(
+      FastlyComputeTasks(pkg.s3Package)(
+        keyRing,
+        artifactClient,
+        deployParameters
+      )
+    )
   }
 
   def defaultActions: List[Action] = List(uploadArtifacts, deploy)
