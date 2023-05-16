@@ -53,15 +53,22 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
             stopFlag
           )
 
-          activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
+          activateVersion(
+            nextVersionNumber,
+            client,
+            resources.reporter,
+            stopFlag
+          )
 
           resources.reporter
             .info(
               s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
             )
-        }
-        catch {
-          case err: _ => resources.reporter.fail(s"Error: $err. Your API key be invalid or it may have expired")
+        } catch {
+          case err: Exception =>
+            resources.reporter.fail(
+              s"Error: $err. Your API key be invalid or it may have expired"
+            )
         }
     }
   }
