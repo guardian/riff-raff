@@ -4,7 +4,7 @@ import java.util.concurrent.Executors
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
 import magenta.artifact.S3Path
-import play.api.libs.json.{JsString, Json, Reads}
+import play.api.libs.json.{JsResultException, JsString, Json, Reads}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
@@ -38,38 +38,50 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
       case None =>
         resources.reporter.fail("Failed to fetch Fastly API credentials")
       case Some(client) =>
-        val activeVersionNumber =
-          getActiveVersionNumber(client, resources.reporter, stopFlag)
-        val nextVersionNumber =
-          clone(activeVersionNumber, client, resources.reporter, stopFlag)
+        try {
+          val activeVersionNumber =
+            getActiveVersionNumber(client, resources.reporter, stopFlag)
+          val nextVersionNumber =
+            clone(activeVersionNumber, client, resources.reporter, stopFlag)
 
-        deleteAllVclFilesFrom(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          stopFlag
-        )
+          deleteAllVclFilesFrom(
+            nextVersionNumber,
+            client,
+            resources.reporter,
+            stopFlag
+          )
 
-        uploadNewVclFilesTo(
-          nextVersionNumber,
-          s3Package,
-          client,
-          resources.reporter,
-          stopFlag
-        )
+          uploadNewVclFilesTo(
+            nextVersionNumber,
+            s3Package,
+            client,
+            resources.reporter,
+            stopFlag
+          )
 
-        commentVersion(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          parameters,
-          stopFlag
-        )
+          commentVersion(
+            nextVersionNumber,
+            client,
+            resources.reporter,
+            parameters,
+            stopFlag
+          )
 
-        activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
+          activateVersion(
+            nextVersionNumber,
+            client,
+            resources.reporter,
+            stopFlag
+          )
 
-        resources.reporter
-          .info(s"Fastly version $nextVersionNumber is now active")
+          resources.reporter
+            .info(s"Fastly version $nextVersionNumber is now active")
+        } catch {
+          case err: Exception =>
+            resources.reporter.fail(
+              s"$err. Your API key may be invalid or it may have expired"
+            )
+        }
     }
   }
 
