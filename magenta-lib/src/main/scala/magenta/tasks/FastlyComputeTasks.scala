@@ -67,7 +67,7 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
         } catch {
           case err: Exception =>
             resources.reporter.fail(
-              s"Error: $err. Your API key be invalid or it may have expired"
+              s"$err. Your API key may be invalid or it may have expired"
             )
         }
     }
