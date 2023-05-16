@@ -31,33 +31,38 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
       case None =>
         resources.reporter.fail("Failed to fetch Fastly API credentials")
       case Some(client) =>
-        val activeVersionNumber =
-          getActiveVersionNumber(client, resources.reporter, stopFlag)
-        val nextVersionNumber =
-          clone(activeVersionNumber, client, resources.reporter, stopFlag)
+        try {
+          val activeVersionNumber =
+            getActiveVersionNumber(client, resources.reporter, stopFlag)
+          val nextVersionNumber =
+            clone(activeVersionNumber, client, resources.reporter, stopFlag)
 
-        uploadPackage(
-          nextVersionNumber,
-          s3Package,
-          client,
-          resources.reporter,
-          stopFlag
-        )
-
-        commentVersion(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          parameters,
-          stopFlag
-        )
-
-        activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
-
-        resources.reporter
-          .info(
-            s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
+          uploadPackage(
+            nextVersionNumber,
+            s3Package,
+            client,
+            resources.reporter,
+            stopFlag
           )
+
+          commentVersion(
+            nextVersionNumber,
+            client,
+            resources.reporter,
+            parameters,
+            stopFlag
+          )
+
+          activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
+
+          resources.reporter
+            .info(
+              s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
+            )
+        }
+        catch {
+          case err: _ => resources.reporter.fail(s"Error: $err. Your API key be invalid or it may have expired")
+        }
     }
   }
 
