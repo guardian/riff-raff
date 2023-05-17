@@ -194,7 +194,14 @@ class CheckChangeSetCreatedTask(
       reporter: DeployReporter
   ): Boolean = {
     Try(valueOf(status)) match {
-      case Success(CREATE_COMPLETE) => true
+      case Success(CREATE_COMPLETE) =>
+        if (changes.nonEmpty) { // TODO detect new CFN params etc. too
+          reporter.awaitUserInput(
+            "Change set is non-empty, so requires a go-ahead before being applied...\n" +
+              changes.mkString("\n") // TODO format changeset as table
+          )
+        }
+        true
       // special case an empty change list when the status reason is no updates
       case Success(FAILED)
           if changes.isEmpty && isNoOpStatusReason(statusReason) =>

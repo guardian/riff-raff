@@ -1,5 +1,7 @@
-@(reportTree: magenta.DeployReportTree, depth: Int)
+@import magenta.Message.AwaitingUserInput
+@(reportTree: magenta.DeployReportTree, depth: Int)(implicit request: Request[AnyContent], record: deployment.Record)
 @import magenta.RunState
+@import helper.CSRF
 
 <li>
     @defining((MessageHelper.messageType(reportTree), MessageHelper.state(reportTree), reportTree.messageState.messageId.toString)){ case (messageType, state, id) =>
@@ -13,6 +15,18 @@
                 }
                 </span>
                 <span class="message-@messageType @state">@reportTree.timeString.map{time => <span class="magenta-timestamp">[@time] </span>}@MessageHelper.trim{@reportTree.message.text}</span>
+                @if(AwaitingUserInput.is(reportTree.message)) {
+                  <div>
+                      @helper.form(routes.DeployController.proceedAfterUserInput(record.uuid.toString), Symbol("class") -> "form-make-inline pull-right stop-deploy-hide") {
+                          @CSRF.formField
+                          <button name="action" type="button" value="@record.uuid" class="proceed-deploy-button refresh-disabled-hide btn btn-success">
+                              <i class="glyphicon glyphicon-play-circle glyphicon-white"></i> Proceed
+                          </button>
+                      }
+                  </div>
+                  <br />
+                  <div class="clearfix"></div>
+                }
             </span>
             @if(reportTree.children.nonEmpty) {
                 <ul id="@id" class="collapsing-node magenta-reporttree collapse@if(open){ in}">

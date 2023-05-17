@@ -65,7 +65,7 @@ ul.magenta-list {
 }
 
 ul.magenta-reporttree {
- overflow-wrap: break-word; 
+ overflow-wrap: break-word;
 }
 
 .magenta-timestamp {
@@ -104,6 +104,12 @@ ul.magenta-reporttree {
 .message-warning {
   color: #ff3333;
   background-color: black;
+}
+
+.message-awaitinguserinput {
+  background-color: #c0a600;
+  color: black;
+  font-weight: bold;
 }
 
 .message-fail {
@@ -225,6 +231,15 @@ tr.has-warnings {
   color: black;
 }
 
+tr.is-awaiting-user-input {
+  background: repeating-linear-gradient( 45deg, #fcf9d7, #fcf9d7 10px, #dddddd 10px, #dddddd 20px );
+  color: black;
+}
+
 .label-reporter-warning {
   background: repeating-linear-gradient( 45deg, #af0000, #af0000 5px, #000000 5px, #000000 10px );
+}
+
+label-reporter-awaiting-user-input {
+  background: #c0a600;
 }

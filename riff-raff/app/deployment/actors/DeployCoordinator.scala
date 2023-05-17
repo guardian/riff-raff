@@ -71,6 +71,11 @@ class DeployCoordinator(
         case NonFatal(t) => log.error("Couldn't schedule deploy", t)
       }
 
+    case ProceedAfterUserInput(uuid, fullName) =>
+      deployRunners.get(uuid).map { case (_, actorRef) =>
+        actorRef ! DeployGroupRunner.ProceedAfterUserInput(fullName)
+      }
+
     case CleanupDeploy(uuid) =>
       cleanup(uuid)
 
@@ -88,7 +93,9 @@ class DeployCoordinator(
 }
 
 object DeployCoordinator {
-  trait Message
+  sealed trait Message
   case class StartDeploy(record: Record) extends Message
+
+  case class ProceedAfterUserInput(uuid: UUID, fullName: String) extends Message
   case class CleanupDeploy(uuid: UUID) extends Message
 }

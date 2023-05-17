@@ -90,4 +90,8 @@ class DeploymentEngine(
   def getDeployStopFlag(uuid: UUID): Boolean = {
     stopFlagAgent().contains(uuid)
   }
+
+  def proceedAfterUserInput(uuid: UUID, userName: String): Unit = {
+    deployCoordinator ! DeployCoordinator.ProceedAfterUserInput(uuid, userName)
+  }
 }

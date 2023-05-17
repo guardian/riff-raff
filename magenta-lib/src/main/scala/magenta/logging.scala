@@ -2,11 +2,18 @@ package magenta
 
 import java.util.UUID
 import enumeratum._
+import magenta.Message.AwaitingUserInput
 import magenta.tasks.Task
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{Format, Json}
 import rx.lang.scala.{Observable, Subject}
+
+import java.time.LocalDateTime
+import java.time.LocalDateTime.now
+import java.time.temporal.ChronoUnit.MILLIS
+import java.time.temporal.{ChronoUnit, TemporalAmount, TemporalUnit}
+import scala.concurrent.duration.{DurationInt, FiniteDuration, MILLISECONDS}
 
 case class ThrowableDetail(
     name: String,
@@ -49,6 +56,7 @@ case class DeployReporter(
     previousReporter: Option[DeployReporter] = None,
     publishMessages: Boolean
 ) {
+
   def taskContext[T](task: Task)(block: DeployReporter => T): T = {
     DeployReporter.sendContext(this, Message.TaskRun(task))(block)
   }
@@ -73,6 +81,31 @@ case class DeployReporter(
   def warning(message: String): Unit = {
     DeployReporter.send(this, Message.Warning(message))
   }
+
+  def awaitUserInput(
+      message: String,
+      durationToWaitForUserInput: FiniteDuration = 15 minutes
+  ): Unit = {
+    DeployReporter.send(this, Message.AwaitingUserInput(message))
+    val timeToGiveUpWaitingForUserInput: LocalDateTime =
+      now().plus(durationToWaitForUserInput.toMillis, MILLIS)
+    def stillAwaitingUserInput =
+      messageStack.lastOption.exists(AwaitingUserInput.is) ||
+        !messageStack.exists(
+          AwaitingUserInput.is
+        ) // this handles when the AwaitingUserInput hasn't yet made it to the messageStack
+    val cycleWaitTime = 5.seconds.toMillis
+    // loop is required here to ensure UI stays up to date (rather than one big wait)
+    while (
+      stillAwaitingUserInput && timeToGiveUpWaitingForUserInput.isAfter(now())
+    ) {
+      Thread.sleep(cycleWaitTime)
+    }
+    if (stillAwaitingUserInput) {
+      fail(s"Gave up after $durationToWaitForUserInput waiting for user input.")
+    }
+  }
+
   def fail(message: String, e: Option[Throwable] = None): Nothing = {
     throw DeployReporter.failException(this, message, e)
   }
@@ -281,6 +314,11 @@ case object Message extends Enum[Message] with PlayJsonEnum[Message] {
   case class Verbose(text: String) extends Message
   case class Fail(text: String, detail: ThrowableDetail) extends Message
   case class Warning(text: String) extends Message
+
+  case class AwaitingUserInput(text: String) extends Message
+  object AwaitingUserInput {
+    def is(message: Message): Boolean = message.isInstanceOf[AwaitingUserInput]
+  }
 
   val values = findValues
 }

@@ -165,6 +165,9 @@ trait Record {
       }
     }
   }
+
+  lazy val isAwaitingUserInput: Boolean =
+    report.allMessages.lastOption.map(_.message).exists(AwaitingUserInput.is)
 }
 
 case class DeployRecord(

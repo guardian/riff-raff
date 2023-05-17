@@ -172,6 +172,9 @@ class DeployGroupRunner(
           cleanup()
       }
 
+    case ProceedAfterUserInput(fullName) =>
+      rootReporter.info(s"$fullName proceeded with the deploy!")
+
     case ContextCreated(preparedContext) =>
       deployContext = Some(preparedContext)
 
@@ -373,6 +376,8 @@ object DeployGroupRunner {
 
   sealed trait Message
   case object Start extends Message
+
+  case class ProceedAfterUserInput(fullName: String) extends Message
   case class ContextCreated(context: DeployContext) extends Message
   case object StartDeployment extends Message
   case class DeploymentCompleted(tasks: DeploymentTasks) extends Message

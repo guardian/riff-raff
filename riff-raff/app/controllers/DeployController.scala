@@ -106,6 +106,14 @@ class DeployController(
       )
   }
 
+  def proceedAfterUserInput(uuid: String) = AuthAction { implicit request =>
+    deployments.proceedAfterUserInput(
+      UUID.fromString(uuid),
+      request.user.fullName
+    )
+    Redirect(routes.DeployController.viewUUID(uuid))
+  }
+
   def stop(uuid: String) = AuthAction { implicit request =>
     deployments.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.DeployController.viewUUID(uuid))

@@ -31,7 +31,7 @@
     <tbody class="rowlink" data-provides="rowlink">
     @records.map{ record =>
         @defining(record.vcsInfo) { vcsInfo =>
-        <tr class="rowlink@if(record.hasWarnings){ has-warnings}">
+        <tr class="rowlink@if(record.hasWarnings){ has-warnings}@if(record.isAwaitingUserInput){ is-awaiting-user-input}">
             <td><time class="makeRelativeDate" withinhours="24" datetime="@record.time">@utils.DateFormats.Medium.print(record.time)</time></td>
             <td><span class="label label-default">@record.deployerName</span></td>
             @if(allColumns) {
@@ -86,6 +86,7 @@
                     }
                     }
                         @if(record.hasWarnings) { <br/><span class="label label-reporter-warning">Warnings encountered</span> }
+                        @if(record.isAwaitingUserInput) { <br/><span class="label label-reporter-awaiting-user-input">Awaiting user input</span> }
                     }
                 </a>
             </td>

@@ -79,6 +79,10 @@ class Deployments(
     }
   }
 
+  def proceedAfterUserInput(uuid: UUID, fullName: String): Unit = {
+    deploymentEngine.proceedAfterUserInput(uuid: UUID, fullName: String)
+  }
+
   def stop(uuid: UUID, fullName: String): Unit = {
     deploymentEngine.stopDeploy(uuid, fullName)
   }

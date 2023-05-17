@@ -182,17 +182,18 @@ object MessageDocument {
 
   def apply(from: Message): MessageDocument = {
     from match {
-      case Deploy(_)           => DeployDocument
-      case TaskList(taskList)  => TaskListDocument(taskList)
-      case TaskRun(task)       => TaskRunDocument(task)
-      case Info(text)          => InfoDocument(text)
-      case CommandOutput(text) => CommandOutputDocument(text)
-      case CommandError(text)  => CommandErrorDocument(text)
-      case Verbose(text)       => VerboseDocument(text)
-      case Fail(text, detail)  => FailDocument(text, detail)
-      case FinishContext(_)    => FinishContextDocument
-      case FailContext(_)      => FailContextDocument
-      case Warning(text)       => WarningDocument(text)
+      case Deploy(_)               => DeployDocument
+      case TaskList(taskList)      => TaskListDocument(taskList)
+      case TaskRun(task)           => TaskRunDocument(task)
+      case Info(text)              => InfoDocument(text)
+      case CommandOutput(text)     => CommandOutputDocument(text)
+      case CommandError(text)      => CommandErrorDocument(text)
+      case Verbose(text)           => VerboseDocument(text)
+      case AwaitingUserInput(text) => AwaitingUserInputDocument(text)
+      case Fail(text, detail)      => FailDocument(text, detail)
+      case FinishContext(_)        => FinishContextDocument
+      case FailContext(_)          => FailContextDocument
+      case Warning(text)           => WarningDocument(text)
       case StartContext(_) =>
         throw new IllegalArgumentException(
           "StartContext can not be turned into a MessageDocument"
@@ -229,6 +230,14 @@ case class InfoDocument(text: String) extends MessageDocument {
 }
 object InfoDocument {
   implicit def formats: Format[InfoDocument] = Json.format[InfoDocument]
+}
+case class AwaitingUserInputDocument(text: String) extends MessageDocument {
+  def asMessage(params: DeployParameters, originalMessage: Option[Message]) =
+    AwaitingUserInput(text)
+}
+object AwaitingUserInputDocument {
+  implicit def formats: Format[AwaitingUserInputDocument] =
+    Json.format[AwaitingUserInputDocument]
 }
 
 case class CommandOutputDocument(text: String) extends MessageDocument {
