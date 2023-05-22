@@ -4,10 +4,15 @@
 
 @menubar(config){
     @defining(UserIdentity.fromRequest(request)) { identity =>
+        <ul class="nav navbar-nav navbar-collapse collapse d-flex align-items-center">
+            @for(item <- menu.menuItems) {
+                @menubaritem(request, item)
+            }
+        </ul>
         @if(identity.isDefined) {
             <ul class="btn-group pull-right hidden-xs nav navbar-nav">
                 <li>
-                    <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                    <a href="#" class="btn-group" role="menu" data-toggle="dropdown" aria-haspopup="true" href="#">
                         <i class="glyphicon glyphicon-user"></i> @identity.get.fullName
                         <span class="caret"></span>
                     </a>
@@ -25,10 +30,5 @@
                 </li>
             </ul>
         }
-        <ul class="nav navbar-nav navbar-collapse collapse">
-        @for(item <- menu.menuItems) {
-            @menubaritem(request, item)
-        }
-        </ul>
     }
 }
