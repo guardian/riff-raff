@@ -4,6 +4,11 @@
 
 @menubar(config){
     @defining(UserIdentity.fromRequest(request)) { identity =>
+        <ul class="nav navbar-nav navbar-collapse collapse d-flex align-items-center">
+            @for(item <- menu.menuItems) {
+                @menubaritem(request, item)
+            }
+        </ul>
         @if(identity.isDefined) {
             <ul class="btn-group pull-right hidden-xs nav navbar-nav">
                 <li>
@@ -25,10 +30,5 @@
                 </li>
             </ul>
         }
-        <ul class="nav navbar-nav navbar-collapse collapse d-flex align-items-center">
-        @for(item <- menu.menuItems) {
-            @menubaritem(request, item)
-        }
-        </ul>
     }
 }
