@@ -6,6 +6,8 @@ First, and most importantly, thanks!
    - Java 11
    - SBT
    - Docker
+You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally.
+
 2. Create configuration
 Create a configuration file at `~/.gu/riff-raff.conf`. At a minimum it looks like this,
 replacing placeholders with appropriate values:
