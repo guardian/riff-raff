@@ -52,7 +52,7 @@ object Dependencies {
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230202-2.0.0",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230518-2.0.0",
       "com.google.cloud" % "google-cloud-storage" % "2.22.1",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
