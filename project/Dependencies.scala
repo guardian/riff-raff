@@ -4,9 +4,9 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.20.71"
+    val aws = "2.20.60"
     val jackson = "2.15.0"
-    val awsRds = "1.12.474"
+    val awsRds = "1.12.462"
     val enumeratumPlay = "1.7.2"
   }
 
@@ -27,7 +27,7 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.15" % Test,
     "org.parboiled" %% "parboiled" % "2.4.1",
     "org.typelevel" %% "cats-core" % "2.9.0",
     "org.mockito" %% "mockito-scala" % "1.17.14" % Test
