@@ -16,9 +16,9 @@
     <h4>Last deploys of <em>@projectName</em> @maybeStage.map{ stage => to @stage }</h4>
     @snippets.recordTable(records, None, allColumns = false, popOutLink = true)
 } else {
-    <div class="alert alert-danger" role="alert">
+    <div class="alert alert-warning" role="alert">
         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-        <span class="sr-only">Error:</span>
+        <span class="sr-only">Warning:</span>
         Riff Raff has not been used to deploy @projectName @maybeStage.map{ stage => to @stage }
     </div>
 }
