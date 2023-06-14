@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.20.84"
-    val jackson = "2.15.0"
+    val jackson = "2.15.2"
     val awsRds = "1.12.487"
     val enumeratumPlay = "1.7.2"
   }
@@ -27,8 +27,8 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.15" % Test,
-    "org.parboiled" %% "parboiled" % "2.4.1",
+    "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+    "org.parboiled" %% "parboiled" % "2.5.0",
     "org.typelevel" %% "cats-core" % "2.9.0",
     "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   )
@@ -36,7 +36,7 @@ object Dependencies {
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
       "com.squareup.okhttp3" % "okhttp" % "4.11.0",
-      "ch.qos.logback" % "logback-classic" % "1.4.7",
+      "ch.qos.logback" % "logback-classic" % "1.4.8",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
       "software.amazon.awssdk" % "s3" % Versions.aws,
@@ -52,8 +52,8 @@ object Dependencies {
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230202-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.22.1",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230518-2.0.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.22.4",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
