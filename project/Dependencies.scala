@@ -86,7 +86,7 @@ object Dependencies {
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
       "org.webjars" % "momentjs" % "2.29.4",
-      "net.logstash.logback" % "logstash-logback-encoder" % "7.3",
+      "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
       "com.gu" % "kinesis-logback-appender" % "2.1.1",
       // Similar to logback-classic, update when Play supports logback 1.3+ / SLF4J 2+
       "org.slf4j" % "jul-to-slf4j" % "1.7.36", // scala-steward:off
