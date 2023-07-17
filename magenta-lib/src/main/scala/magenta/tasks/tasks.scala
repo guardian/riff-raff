@@ -42,6 +42,7 @@ case class S3Upload(
     surrogateControlPatterns: List[PatternValue] = Nil,
     extensionToMimeType: Map[String, String] = Map.empty,
     publicReadAcl: Boolean = false,
+    lambdaArtifact: Boolean = false,
     detailedLoggingThreshold: Int = 10
 )(implicit
     val keyRing: KeyRing,
@@ -70,7 +71,8 @@ case class S3Upload(
       cacheControlLookup(target.key),
       surrogateControlLookup(target.key),
       contentTypeLookup(target.key),
-      publicReadAcl
+      publicReadAcl = publicReadAcl,
+      lambdaArtifact = lambdaArtifact
     )
   }
 
@@ -231,7 +233,8 @@ case class PutReq(
     cacheControl: Option[String],
     surrogateControl: Option[String],
     contentType: Option[String],
-    publicReadAcl: Boolean
+    publicReadAcl: Boolean,
+    lambdaArtifact: Boolean
 ) {
   import collection.JavaConverters._
 
@@ -255,6 +258,9 @@ case class PutReq(
       .key(target.key)
       .contentType(mimeType)
       .contentLength(source.size)
+    if (lambdaArtifact) {
+      req.tagging("temporary-lambda-artifact=true")
+    }
     val reqWithCacheControl = (setCacheControl andThen setsurrogateControl)(req)
     if (publicReadAcl)
       reqWithCacheControl.acl(ObjectCannedACL.PUBLIC_READ).build()

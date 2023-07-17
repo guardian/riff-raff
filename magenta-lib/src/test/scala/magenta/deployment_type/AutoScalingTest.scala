@@ -278,7 +278,8 @@ class AutoScalingTest
         p,
         resource,
         DeployTarget(parameters(), stack, region)
-      ) should matchPattern { case List(S3Upload(_, _, _, _, _, _, false, _)) =>
+      ) should matchPattern {
+      case List(S3Upload(_, _, _, _, _, _, false, false, _)) =>
     }
   }
 

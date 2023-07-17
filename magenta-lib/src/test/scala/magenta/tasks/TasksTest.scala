@@ -46,7 +46,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       cacheControl = None,
       surrogateControl = None,
       contentType = None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      lambdaArtifact = false
     )
 
     val awsRequest = putRec.toAwsRequest
@@ -71,7 +72,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       Some("no-cache"),
       None,
       Some("application/json"),
-      publicReadAcl = false
+      publicReadAcl = false,
+      lambdaArtifact = false
     )
 
     val awsRequest = putRec.toAwsRequest
@@ -90,7 +92,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       Some("no-cache"),
       None,
       None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      lambdaArtifact = false
     )
     val putRecTwo = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
@@ -98,7 +101,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       Some("no-cache"),
       None,
       None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      lambdaArtifact = false
     )
     val putRecThree = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.js", 31),
@@ -106,7 +110,8 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       Some("no-cache"),
       None,
       None,
-      publicReadAcl = false
+      publicReadAcl = false,
+      lambdaArtifact = false
     )
 
     val awsRequestOne = putRecOne.toAwsRequest
@@ -116,6 +121,34 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     awsRequestOne.contentType should be("text/css")
     awsRequestTwo.contentType should be("application/octet-stream")
     awsRequestThree.contentType should be("application/javascript")
+  }
+
+  it should "not add any S3 object tags by default" in {
+    val putRec = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
+      Some("no-cache"),
+      None,
+      Some("application/json"),
+      publicReadAcl = false,
+      lambdaArtifact = false
+    )
+    val awsRequest = putRec.toAwsRequest
+    awsRequest.tagging should be(null)
+  }
+
+  it should "not add the correct S3 object tags when building requests for Lambda artifacts" in {
+    val putRec = PutReq(
+      MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
+      S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
+      Some("no-cache"),
+      None,
+      Some("application/json"),
+      publicReadAcl = false,
+      lambdaArtifact = true
+    )
+    val awsRequest = putRec.toAwsRequest
+    awsRequest.tagging should be("temporary-lambda-artifact=true")
   }
 
   "S3Upload" should "upload a single file to S3" in {
