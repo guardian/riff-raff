@@ -221,7 +221,7 @@ trait Lambda extends DeploymentType with BucketParameters {
         lambda.region,
         s3Bucket,
         Seq(S3Path(pkg.s3Package, lambda.fileName) -> s3Key),
-        lambdaArtifact = true
+        allowDeletionByLifecycleRule = true
       )
     }.distinct
   }

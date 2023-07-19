@@ -42,7 +42,7 @@ case class S3Upload(
     surrogateControlPatterns: List[PatternValue] = Nil,
     extensionToMimeType: Map[String, String] = Map.empty,
     publicReadAcl: Boolean = false,
-    lambdaArtifact: Boolean = false,
+    allowDeletionByLifecycleRule: Boolean = false,
     detailedLoggingThreshold: Int = 10
 )(implicit
     val keyRing: KeyRing,
@@ -72,7 +72,7 @@ case class S3Upload(
       surrogateControlLookup(target.key),
       contentTypeLookup(target.key),
       publicReadAcl = publicReadAcl,
-      lambdaArtifact = lambdaArtifact
+      allowDeletionByLifecycleRule = allowDeletionByLifecycleRule
     )
   }
 
@@ -234,7 +234,7 @@ case class PutReq(
     surrogateControl: Option[String],
     contentType: Option[String],
     publicReadAcl: Boolean,
-    lambdaArtifact: Boolean
+    allowDeletionByLifecycleRule: Boolean
 ) {
   import collection.JavaConverters._
 
@@ -258,8 +258,8 @@ case class PutReq(
       .key(target.key)
       .contentType(mimeType)
       .contentLength(source.size)
-    if (lambdaArtifact) {
-      req.tagging("temporary-lambda-artifact=true")
+    if (allowDeletionByLifecycleRule) {
+      req.tagging("allow-deletion-by-lifecycle-rule=true")
     }
     val reqWithCacheControl = (setCacheControl andThen setsurrogateControl)(req)
     if (publicReadAcl)

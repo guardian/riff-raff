@@ -47,7 +47,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       surrogateControl = None,
       contentType = None,
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
 
     val awsRequest = putRec.toAwsRequest
@@ -73,7 +73,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       Some("application/json"),
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
 
     val awsRequest = putRec.toAwsRequest
@@ -93,7 +93,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       None,
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
     val putRecTwo = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.xpi", 31),
@@ -102,7 +102,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       None,
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
     val putRecThree = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.js", 31),
@@ -111,7 +111,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       None,
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
 
     val awsRequestOne = putRecOne.toAwsRequest
@@ -131,13 +131,13 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       Some("application/json"),
       publicReadAcl = false,
-      lambdaArtifact = false
+      allowDeletionByLifecycleRule = false
     )
     val awsRequest = putRec.toAwsRequest
     awsRequest.tagging should be(null)
   }
 
-  it should "not add the correct S3 object tags when building requests for Lambda artifacts" in {
+  it should "add the correct S3 object tags when building requests for Lambda artifacts" in {
     val putRec = PutReq(
       MagentaS3Object("artifact-bucket", "foo/bar/foo-bar.jar", 31),
       S3Path("artifact-bucket", "foo/bar/the-jar.jar"),
@@ -145,10 +145,10 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       None,
       Some("application/json"),
       publicReadAcl = false,
-      lambdaArtifact = true
+      allowDeletionByLifecycleRule = true
     )
     val awsRequest = putRec.toAwsRequest
-    awsRequest.tagging should be("temporary-lambda-artifact=true")
+    awsRequest.tagging should be("allow-deletion-by-lifecycle-rule=true")
   }
 
   "S3Upload" should "upload a single file to S3" in {

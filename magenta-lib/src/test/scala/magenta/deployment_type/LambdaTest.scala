@@ -87,7 +87,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
               "test/123/lambda/test-file.zip"
             ) -> s"test/PROD/lambda/test-file.zip"
           ),
-          lambdaArtifact = true
+          allowDeletionByLifecycleRule = true
         )
       )
     )
