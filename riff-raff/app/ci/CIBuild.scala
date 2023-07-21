@@ -25,7 +25,8 @@ trait CIBuild {
 }
 
 object CIBuild {
-  implicit val ord = Ordering.by[CIBuild, Long](_.id)
+  implicit val ord: Ordering[CIBuild] =
+    Ordering.by[CIBuild, DateTime](_.startTime)
 }
 
 trait Job {

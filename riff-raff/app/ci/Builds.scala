@@ -4,6 +4,7 @@ import akka.agent.Agent
 import ci.Context._
 import controllers.Logging
 import lifecycle.Lifecycle
+import org.joda.time.DateTime
 import rx.lang.scala.Subscription
 
 class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
@@ -33,7 +34,9 @@ class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
   val buildsAgent = Agent[Set[CIBuild]](BoundedSet(100000))
   val jobsAgent = Agent[Set[Job]](Set())
   def successfulBuilds(jobName: String): List[CIBuild] =
-    all.filter(_.jobName == jobName).sortBy(-_.id)
+    all
+      .filter(_.jobName == jobName)
+      .sortBy(_.startTime)(Ordering[DateTime].reverse)
   def getLastSuccessful(jobName: String): Option[String] =
     successfulBuilds(jobName).headOption.map { latestBuild =>
       latestBuild.number

@@ -151,6 +151,33 @@ class ContinuousDeploymentTest extends AnyFlatSpec with Matchers {
     buildTool = Some("guardian/actions-riff-raff")
   )
 
+  val olderBiggerID = S3Build(
+    2,
+    "tools::deploy",
+    "2",
+    "branch",
+    "71",
+    new DateTime(2023, 6, 27, 14, 42, 14),
+    "",
+    "",
+    buildTool = None
+  )
+  val newerSmallerID = S3Build(
+    1,
+    "tools::deploy",
+    "1",
+    "branch",
+    "71",
+    new DateTime(2023, 6, 27, 14, 43, 14),
+    "",
+    "",
+    buildTool = None
+  )
+
+  it should "order builds by start time (not build ID)" in {
+    List(newerSmallerID, olderBiggerID).max(CIBuild.ord).id should be(1)
+  }
+
   it should "retry until finds success" in {
     var i = 0
     def failingFun = {
