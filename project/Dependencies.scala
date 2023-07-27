@@ -6,8 +6,8 @@ object Dependencies {
   object Versions {
     val aws = "2.20.99"
     val jackson = "2.15.2"
-    val awsRds = "1.12.505"
-    val enumeratumPlay = "1.7.2"
+    val awsRds = "1.12.513"
+    val enumeratumPlay = "1.7.3"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -53,7 +53,7 @@ object Dependencies {
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230518-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.24.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.25.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -81,7 +81,7 @@ object Dependencies {
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "1.7.5",
       "org.webjars" %% "webjars-play" % "2.8.18",
-      "org.webjars" % "jquery" % "3.6.4",
+      "org.webjars" % "jquery" % "3.7.0",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
