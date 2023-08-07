@@ -219,7 +219,11 @@ case class CullInstancesWithTerminationTag(
   ): Unit = {
     EC2.withEc2Client(keyRing, region, resources) { ec2Client =>
       ELB.withClient(keyRing, region, resources) { elbClient =>
-        val instancesToKill = asg.instances.asScala
+        val allInstances = asg.instances.asScala
+        resources.reporter.verbose(
+          s"Found the following instances: ${allInstances.map(_.instanceId).mkString(", ")}"
+        )
+        val instancesToKill = allInstances
           .filter(instance => {
             if (
               instance.lifecycleState == LifecycleState.UNKNOWN_TO_SDK_VERSION
@@ -244,6 +248,31 @@ case class CullInstancesWithTerminationTag(
 
             isTaggedForTermination && !isAlreadyTerminating
           })
+
+        val instancesToRetain = allInstances.diff(instancesToKill).toList
+        resources.reporter.verbose(
+          s"Decided to keep the following instances: ${instancesToRetain.map(_.instanceId).mkString(", ")}"
+        )
+
+        if (instancesToRetain.size != instancesToKill.size) {
+          resources.reporter.warning(
+            s"Terminating ${instancesToKill.size} instances and retaining ${instancesToRetain.size} instances"
+          )
+          logger.warn(
+            s"Unusual number of instances terminated as part of autoscaling deployment"
+          )
+          instancesToRetain.foreach(instanceToRetain => {
+            val tags = EC2
+              .allTags(instanceToRetain, ec2Client)
+              .toList
+              .map(tag => s"${tag.key}:${tag.value}")
+              .mkString(", ")
+            resources.reporter.verbose(
+              s"Will not terminate $instanceToRetain. State: ${instanceToRetain.lifecycleStateAsString}. Tags: $tags"
+            )
+          })
+        }
+
         val orderedInstancesToKill =
           instancesToKill.toSeq.transposeBy(_.availabilityZone)
         try {
