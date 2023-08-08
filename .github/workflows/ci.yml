@@ -32,6 +32,7 @@ jobs:
         with:
           distribution: corretto
           java-version: 11
+          cache: sbt
 
       - name: build + test
         env:
