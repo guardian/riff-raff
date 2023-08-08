@@ -34,6 +34,10 @@ jobs:
           java-version: 11
 
       - name: build + test
+        env:
+          # The GitHub runner has 7GB of RAM, lets give 4GB to Java.
+          # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources.
+          JAVA_OPTS: -Xmx4g
         run: |
           set -e
           # Ensure we don't overwrite existing (Teamcity) builds.
@@ -41,4 +45,4 @@ jobs:
           export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
 
           # Note, lib/test because riffraff/riffRaffUpload only tests the riffraff project.
-          ./sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/riffRaffUpload
+          sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/riffRaffUpload
