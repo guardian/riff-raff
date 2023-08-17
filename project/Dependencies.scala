@@ -97,7 +97,7 @@ object Dependencies {
       filters,
       ws,
       // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test, // scala-steward:off
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.21" % Test,
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
