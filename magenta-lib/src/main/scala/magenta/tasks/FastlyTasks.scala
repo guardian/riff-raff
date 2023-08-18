@@ -35,7 +35,7 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
       client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
-  ): Try[Unit] = {
+  ): Try[Int] = {
     for {
       activeVersionNumber <- Try(
         getActiveVersionNumber(client, resources.reporter, stopFlag)
@@ -79,7 +79,6 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
         )
       )
     } yield nextVersionNumber
-
   }
 
   override def execute(
