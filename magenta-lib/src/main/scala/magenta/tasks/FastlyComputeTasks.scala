@@ -28,7 +28,7 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
       client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
-  ): Try[Unit] = {
+  ): Try[Int] = {
     for {
       activeVersionNumber <-
         Try(getActiveVersionNumber(client, resources.reporter, stopFlag))
