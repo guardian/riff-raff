@@ -4,11 +4,12 @@ import java.util.concurrent.Executors
 import com.gu.fastly.api.FastlyApiClient
 import magenta._
 import magenta.artifact.S3Path
-import play.api.libs.json.{JsResultException, JsString, Json, Reads}
+import play.api.libs.json.{JsString, Json, Reads}
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import scala.util.{Failure, Success, Try}
 
 case class Version(number: Int, active: Option[Boolean])
 object Version {
@@ -30,6 +31,57 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
+  private def _execute(
+      client: FastlyApiClient,
+      resources: DeploymentResources,
+      stopFlag: => Boolean
+  ): Try[Unit] = {
+    for {
+      activeVersionNumber <- Try(
+        getActiveVersionNumber(client, resources.reporter, stopFlag)
+      )
+      nextVersionNumber <- Try(
+        clone(activeVersionNumber, client, resources.reporter, stopFlag)
+      )
+      _ <- Try(
+        deleteAllVclFilesFrom(
+          nextVersionNumber,
+          client,
+          resources.reporter,
+          stopFlag
+        )
+      )
+      _ <-
+        Try(
+          uploadNewVclFilesTo(
+            nextVersionNumber,
+            s3Package,
+            client,
+            resources.reporter,
+            stopFlag
+          )
+        )
+      _ <- Try(
+        commentVersion(
+          nextVersionNumber,
+          client,
+          resources.reporter,
+          parameters,
+          stopFlag
+        )
+      )
+      _ <- Try(
+        activateVersion(
+          nextVersionNumber,
+          client,
+          resources.reporter,
+          stopFlag
+        )
+      )
+    } yield nextVersionNumber
+
+  }
+
   override def execute(
       resources: DeploymentResources,
       stopFlag: => Boolean
@@ -38,46 +90,11 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
       case None =>
         resources.reporter.fail("Failed to fetch Fastly API credentials")
       case Some(client) =>
-        try {
-          val activeVersionNumber =
-            getActiveVersionNumber(client, resources.reporter, stopFlag)
-          val nextVersionNumber =
-            clone(activeVersionNumber, client, resources.reporter, stopFlag)
-
-          deleteAllVclFilesFrom(
-            nextVersionNumber,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-
-          uploadNewVclFilesTo(
-            nextVersionNumber,
-            s3Package,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-
-          commentVersion(
-            nextVersionNumber,
-            client,
-            resources.reporter,
-            parameters,
-            stopFlag
-          )
-
-          activateVersion(
-            nextVersionNumber,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-
-          resources.reporter
-            .info(s"Fastly version $nextVersionNumber is now active")
-        } catch {
-          case err: Exception =>
+        _execute(client, resources, stopFlag) match {
+          case Success(nextVersionNumber) =>
+            resources.reporter
+              .info(s"Fastly version $nextVersionNumber is now active")
+          case Failure(err) =>
             resources.reporter.fail(
               s"$err. Your API key may be invalid or it may have expired"
             )
