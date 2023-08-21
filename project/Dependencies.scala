@@ -29,7 +29,7 @@ object Dependencies {
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.16" % Test,
     "org.parboiled" %% "parboiled" % "2.5.0",
-    "org.typelevel" %% "cats-core" % "2.9.0",
+    "org.typelevel" %% "cats-core" % "2.10.0",
     "org.mockito" %% "mockito-scala" % "1.17.14" % Test
   )
 
@@ -52,8 +52,8 @@ object Dependencies {
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
       "com.typesafe.play" %% "play-json" % "2.9.4",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230518-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.26.0",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230622-2.0.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.26.1",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -70,8 +70,8 @@ object Dependencies {
       evolutions,
       jdbc,
       "com.gu.play-googleauth" %% "play-v28" % "2.2.7",
-      "com.gu.play-secret-rotation" %% "play-v28" % "0.37",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.37",
+      "com.gu.play-secret-rotation" %% "play-v28" % "0.38",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.38",
       "com.typesafe.akka" %% "akka-agent" % "2.5.32",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
@@ -97,7 +97,7 @@ object Dependencies {
       filters,
       ws,
       // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
-      "com.typesafe.akka" %% "akka-testkit" % "2.6.20" % Test, // scala-steward:off
+      "com.typesafe.akka" %% "akka-testkit" % "2.6.21" % Test,
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
