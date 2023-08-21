@@ -10,7 +10,7 @@ inThisBuild(
     semanticdbOptions += "-P:semanticdb:synthetics:on",
     semanticdbVersion := scalafixSemanticdb.revision,
     scalafixScalaBinaryVersion := "2.13",
-    scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.3"
+    scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.5"
   )
 )
 
