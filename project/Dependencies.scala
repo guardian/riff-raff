@@ -30,7 +30,7 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.16" % Test,
     "org.parboiled" %% "parboiled" % "2.5.0",
     "org.typelevel" %% "cats-core" % "2.10.0",
-    "org.mockito" %% "mockito-scala" % "1.17.14" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.22" % Test
   )
 
   val magentaLibDeps =
