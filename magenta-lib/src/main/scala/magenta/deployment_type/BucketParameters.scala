@@ -77,7 +77,7 @@ trait BucketParameters {
         )
       case (false, Some(name)) =>
         reporter.warning(
-          "Explicit bucket name in riff-raff.yaml. Prefer to use bucketSsmLookup=true, removing private information from VCS."
+          "riff-raff.yaml exposes the bucket name. Prefer to use bucketSsmLookup=true and store bucket name in parameter store, removing private information from version control."
         )
         BucketByName(name)
       case (_, None) =>

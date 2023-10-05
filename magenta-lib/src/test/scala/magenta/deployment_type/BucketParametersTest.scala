@@ -75,7 +75,7 @@ class BucketParametersTest extends AnyFlatSpec with Matchers with MockitoSugar {
 
     val _ = Test.getTargetBucketFromConfig(pkg, target, mockReporter)
     verify(mockReporter).warning(
-      "Explicit bucket name in riff-raff.yaml. Prefer to use bucketSsmLookup=true, removing private information from VCS."
+      "riff-raff.yaml exposes the bucket name. Prefer to use bucketSsmLookup=true and store bucket name in parameter store, removing private information from version control."
     )
   }
 
