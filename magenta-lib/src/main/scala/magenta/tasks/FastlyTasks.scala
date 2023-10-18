@@ -31,73 +31,70 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
-  private def _execute(
+  private def executeWithCredentials(
       client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
   ): Try[Int] = {
-    for {
-      activeVersionNumber <- Try(
+    Try {
+      val activeVersionNumber =
         getActiveVersionNumber(client, resources.reporter, stopFlag)
-      )
-      nextVersionNumber <- Try(
+
+      val nextVersionNumber =
         clone(activeVersionNumber, client, resources.reporter, stopFlag)
+
+      deleteAllVclFilesFrom(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        stopFlag
       )
-      _ <- Try(
-        deleteAllVclFilesFrom(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          stopFlag
-        )
+
+      uploadNewVclFilesTo(
+        nextVersionNumber,
+        s3Package,
+        client,
+        resources.reporter,
+        stopFlag
       )
-      _ <-
-        Try(
-          uploadNewVclFilesTo(
-            nextVersionNumber,
-            s3Package,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-        )
-      _ <- Try(
-        commentVersion(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          parameters,
-          stopFlag
-        )
+
+      commentVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        parameters,
+        stopFlag
       )
-      _ <- Try(
-        activateVersion(
-          nextVersionNumber,
-          client,
-          resources.reporter,
-          stopFlag
-        )
+
+      activateVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        stopFlag
       )
-    } yield nextVersionNumber
+
+      nextVersionNumber
+    }
   }
 
   override def execute(
       resources: DeploymentResources,
       stopFlag: => Boolean
   ): Unit = {
-    FastlyApiClientProvider.get(keyRing) match {
+    FastlyApiClientProvider
+      .get(keyRing)
+      .map(executeWithCredentials(_, resources, stopFlag)) match {
       case None =>
-        resources.reporter.fail("Failed to fetch Fastly API credentials")
-      case Some(client) =>
-        _execute(client, resources, stopFlag) match {
-          case Success(nextVersionNumber) =>
-            resources.reporter
-              .info(s"Fastly version $nextVersionNumber is now active")
-          case Failure(err) =>
-            resources.reporter.fail(
-              s"$err. Your API key may be invalid or it may have expired"
-            )
-        }
+        resources.reporter.fail(
+          "Failed to fetch Fastly API credentials from keyring"
+        )
+      case Some(Success(nextVersionNumber)) =>
+        resources.reporter
+          .info(s"Fastly version $nextVersionNumber is now active")
+      case Some(Failure(err)) =>
+        resources.reporter.fail(
+          s"$err. Your API key may be invalid or it may have expired"
+        )
     }
   }
 

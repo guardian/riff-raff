@@ -24,69 +24,67 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
-  private def _execute(
+  private def executeWithCredentials(
       client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
   ): Try[Int] = {
-    for {
-      activeVersionNumber <-
-        Try(getActiveVersionNumber(client, resources.reporter, stopFlag))
-      nextVersionNumber <-
-        Try(clone(activeVersionNumber, client, resources.reporter, stopFlag))
-      _ <-
-        Try(
-          uploadPackage(
-            nextVersionNumber,
-            s3Package,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-        )
-      _ <-
-        Try(
-          commentVersion(
-            nextVersionNumber,
-            client,
-            resources.reporter,
-            parameters,
-            stopFlag
-          )
-        )
-      _ <-
-        Try(
-          activateVersion(
-            nextVersionNumber,
-            client,
-            resources.reporter,
-            stopFlag
-          )
-        )
-    } yield nextVersionNumber
+    Try {
+      val activeVersionNumber =
+        getActiveVersionNumber(client, resources.reporter, stopFlag)
+      val nextVersionNumber =
+        clone(activeVersionNumber, client, resources.reporter, stopFlag)
+
+      uploadPackage(
+        nextVersionNumber,
+        s3Package,
+        client,
+        resources.reporter,
+        stopFlag
+      )
+
+      commentVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        parameters,
+        stopFlag
+      )
+
+      activateVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        stopFlag
+      )
+
+      nextVersionNumber
+    }
   }
 
   override def execute(
       resources: DeploymentResources,
       stopFlag: => Boolean
   ): Unit = {
-    FastlyApiClientProvider.get(keyRing) match {
+    FastlyApiClientProvider
+      .get(keyRing)
+      .map(client =>
+        (client, executeWithCredentials(client, resources, stopFlag))
+      ) match {
       case None =>
         resources.reporter.fail(
-          "Failed to fetch Fastly API credentials"
+          "Failed to fetch Fastly API credentials from keyring"
         )
-      case Some(client) =>
-        _execute(client, resources, stopFlag) match {
-          case Success(nextVersionNumber) =>
-            resources.reporter
-              .info(
-                s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
-              )
-          case Failure(err) =>
-            resources.reporter.fail(
-              s"$err. Your API key may be invalid or it may have expired"
-            )
-        }
+      case Some((client, Success(nextVersionNumber))) =>
+        resources.reporter
+          .info(
+            s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
+          )
+      case Some((_, Failure(err))) =>
+        resources.reporter.fail(
+          s"$err. Your API key may be invalid or it may have expired"
+        )
+
     }
   }
 
