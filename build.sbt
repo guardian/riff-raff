@@ -10,13 +10,13 @@ inThisBuild(
     semanticdbOptions += "-P:semanticdb:synthetics:on",
     semanticdbVersion := scalafixSemanticdb.revision,
     scalafixScalaBinaryVersion := "2.13",
-    scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.3"
+    scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.5"
   )
 )
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.13.10",
+  scalaVersion := "2.13.12",
   scalacOptions ++= Seq(
     "-feature",
     "-language:postfixOps,reflectiveCalls,implicitConversions"
@@ -45,10 +45,13 @@ lazy val lib = project
     )
   )
 
+def env(propName: String): String =
+  sys.env.get(propName).filter(_.trim.nonEmpty).getOrElse("DEV")
+
 lazy val riffraff = project
   .in(file("riff-raff"))
   .dependsOn(lib % "compile->compile;test->test")
-  .enablePlugins(PlayScala, SbtWeb, BuildInfoPlugin, RiffRaffArtifact)
+  .enablePlugins(PlayScala, SbtWeb, BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
     Seq(
@@ -66,8 +69,11 @@ lazy val riffraff = project
         version,
         scalaVersion,
         sbtVersion,
-        "gitCommitId" -> riffRaffBuildInfo.value.revision,
-        "buildNumber" -> riffRaffBuildInfo.value.buildIdentifier
+
+        // These env vars are set by GitHub Actions
+        // See https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+        "gitCommitId" -> env("GITHUB_SHA"),
+        "buildNumber" -> env("GITHUB_RUN_NUMBER")
       ),
       buildInfoOptions += BuildInfoOption.BuildTime,
       buildInfoPackage := "riffraff",
@@ -82,14 +88,6 @@ lazy val riffraff = project
       ),
       Universal / packageName := normalizedName.value,
       Universal / topLevelDirectory := Some(normalizedName.value),
-      riffRaffPackageType := (Universal / packageZipTarball).value,
-      riffRaffArtifactResources := Seq(
-        riffRaffPackageType.value -> s"${name.value}/${name.value}.tgz",
-        baseDirectory.value / "bootstrap.sh" -> s"${name.value}/bootstrap.sh",
-        baseDirectory.value / "riff-raff.yaml" -> "riff-raff.yaml"
-      ),
-      riffRaffManifestProjectName := "tools::riffraff", // explicitly named for continuity following move from TeamCity to GitHub Actions
-
       ivyXML := {
         <dependencies>
         <exclude org="commons-logging"><!-- Conflicts with acl-over-slf4j in Play. --> </exclude>

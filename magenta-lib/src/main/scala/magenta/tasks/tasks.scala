@@ -42,6 +42,7 @@ case class S3Upload(
     surrogateControlPatterns: List[PatternValue] = Nil,
     extensionToMimeType: Map[String, String] = Map.empty,
     publicReadAcl: Boolean = false,
+    allowDeletionByLifecycleRule: Boolean = false,
     detailedLoggingThreshold: Int = 10
 )(implicit
     val keyRing: KeyRing,
@@ -70,7 +71,8 @@ case class S3Upload(
       cacheControlLookup(target.key),
       surrogateControlLookup(target.key),
       contentTypeLookup(target.key),
-      publicReadAcl
+      publicReadAcl = publicReadAcl,
+      allowDeletionByLifecycleRule = allowDeletionByLifecycleRule
     )
   }
 
@@ -231,7 +233,8 @@ case class PutReq(
     cacheControl: Option[String],
     surrogateControl: Option[String],
     contentType: Option[String],
-    publicReadAcl: Boolean
+    publicReadAcl: Boolean,
+    allowDeletionByLifecycleRule: Boolean
 ) {
   import collection.JavaConverters._
 
@@ -255,6 +258,9 @@ case class PutReq(
       .key(target.key)
       .contentType(mimeType)
       .contentLength(source.size)
+    if (allowDeletionByLifecycleRule) {
+      req.tagging("allow-deletion-by-lifecycle-rule=true")
+    }
     val reqWithCacheControl = (setCacheControl andThen setsurrogateControl)(req)
     if (publicReadAcl)
       reqWithCacheControl.acl(ObjectCannedACL.PUBLIC_READ).build()

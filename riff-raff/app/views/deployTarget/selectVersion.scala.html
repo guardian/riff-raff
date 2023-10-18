@@ -9,9 +9,9 @@
         <h4>Last deploys of <em>@targetId.projectName</em> to @stage</h4>
         @snippets.recordTable(records, None, allColumns = false, Some(("", views.html.deployTarget.deployButton.f)))
     } else {
-        <div class="alert alert-danger" role="alert">
+        <div class="alert alert-info" role="alert">
             <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-            <span class="sr-only">Error:</span>
+            <span class="sr-only">Info:</span>
             Riff Raff has not been used to deploy @targetId.projectName to @stage
         </div>
     }

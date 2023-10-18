@@ -6,12 +6,12 @@
             <li@if(si.isActive(request)){ class="active"}><a href="@si.target">@si.title</a></li>
         }
         case ddi:DropDownMenuItem => {
-            <li class="dropdown@if(ddi.isActive(request)){ active}">
-                <a role="button" id="@ddi.hashCode" data-toggle="dropdown">@ddi.title <span class="caret"></span></a>
+            <li class="btn-group">
+                <a href="#" class="btn-group" role="menu" id="@ddi.hashCode" data-toggle="dropdown">@ddi.title <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu" aria-labelledby="@ddi.hashCode">
-                @ddi.items.map { subItem =>
-                    @menubaritem(request, subItem)
-                }
+                    @ddi.items.map { subItem =>
+                        @menubaritem(request, subItem)
+                    }
                 </ul>
             </li>
         }

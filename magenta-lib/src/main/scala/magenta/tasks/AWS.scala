@@ -96,6 +96,8 @@ import scala.util.{Random, Try}
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 
+import scala.collection.mutable
+
 object S3 {
   def withS3client[T](
       keyRing: KeyRing,
@@ -670,9 +672,16 @@ object EC2 {
       value: String,
       client: Ec2Client
   ): Boolean = {
-    describe(instance, client).tags.asScala.exists { tag =>
+    allTags(instance, client).exists { tag =>
       tag.key == key && tag.value == value
     }
+  }
+
+  def allTags(
+      instance: ASGInstance,
+      client: Ec2Client
+  ): mutable.Buffer[EC2Tag] = {
+    describe(instance, client).tags.asScala
   }
 
   def describe(instance: ASGInstance, client: Ec2Client) = client

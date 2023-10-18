@@ -154,7 +154,7 @@ class ParamTest extends AnyFlatSpec with Matchers with MockitoSugar {
     thrown.getMessage shouldBe "Error whilst generating default for parameter key in package testPackage [testDeploymentType]: something was wrong"
   }
 
-  it should "log a warning if the value you've specified is the same as the default" in {
+  it should "log if the value you've specified is the same as the default" in {
     val mockReporter = mock[DeployReporter]
     implicit val register = new TestRegister
     val pkg = DeploymentPackage(
@@ -168,12 +168,12 @@ class ParamTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val key = Param[String]("key").default("sameValue")
     val paramValue = key.apply(pkg, target, mockReporter)
     paramValue shouldBe "sameValue"
-    verify(mockReporter).warning(
+    verify(mockReporter).info(
       "Parameter key is unnecessarily explicitly set to the default value of sameValue"
     )
   }
 
-  it should "log a warning if the value you've specified is the same as the default from context" in {
+  it should "log if the value you've specified is the same as the default from context" in {
     val mockReporter = mock[DeployReporter]
     implicit val register = new TestRegister
     val pkg = DeploymentPackage(
@@ -188,7 +188,7 @@ class ParamTest extends AnyFlatSpec with Matchers with MockitoSugar {
       Param[String]("key").defaultFromContext((_, _) => Right("sameValue"))
     val paramValue = key.apply(pkg, target, mockReporter)
     paramValue shouldBe "sameValue"
-    verify(mockReporter).warning(
+    verify(mockReporter).info(
       "Parameter key is unnecessarily explicitly set to the default value of sameValue"
     )
   }

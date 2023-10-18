@@ -20,9 +20,9 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: aws-actions/configure-aws-credentials@v1
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: eu-west-1
           role-to-assume: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
@@ -32,13 +32,23 @@ jobs:
         with:
           distribution: corretto
           java-version: 11
+          cache: sbt
 
       - name: build + test
-        run: |
-          set -e
-          # Ensure we don't overwrite existing (Teamcity) builds.
-          LAST_TEAMCITY_BUILD=2360
-          export GITHUB_RUN_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))
+        env:
+          # The GitHub runner has 7GB of RAM, lets give 4GB to Java.
+          # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources.
+          JAVA_OPTS: -Xmx4g
+        run: sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/test Universal/packageZipTarball
 
-          # Note, lib/test because riffraff/riffRaffUpload only tests the riffraff project.
-          ./sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/riffRaffUpload
+      - uses: guardian/actions-riff-raff@v2
+        with:
+          # Ensure we don't overwrite existing (Teamcity) builds.
+          buildNumberOffset: 2360
+
+          projectName: tools::riffraff
+          configPath: riff-raff/riff-raff.yaml
+          contentDirectories: |
+            riff-raff:
+              - riff-raff/bootstrap.sh
+              - riff-raff/target/universal/riff-raff.tgz
