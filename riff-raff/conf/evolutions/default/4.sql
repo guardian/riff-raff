@@ -10,7 +10,7 @@ CREATE USER service_catalogue;
 -- We dont necessarily need/want all data from riff-raff or want the same table names.
 -- The cloudquery postgres plugin doesn't give many options for filtering for specific tables or renaming.
 -- So create a view for only the tables we want and rename to be more user friendly in service-catalogue.
-CREATE SCHEMA AUTHORIZATION service_catalogue;
+CREATE SCHEMA service_catalogue;
 ALTER USER service_catalogue SET search_path TO service_catalogue;
 
 CREATE VIEW service_catalogue.riffraff_deploys AS SELECT * FROM public.deploy;
@@ -18,6 +18,7 @@ CREATE VIEW service_catalogue.riffraff_deploy_logs AS SELECT * FROM public.deplo
 CREATE VIEW service_catalogue.riffraff_authorized_users AS SELECT * FROM public.auth;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM service_catalogue;
+GRANT USAGE ON SCHEMA service_catalogue TO service_catalogue;
 GRANT SELECT ON ALL TABLES IN SCHEMA service_catalogue TO service_catalogue;
 
 -- !Downs
