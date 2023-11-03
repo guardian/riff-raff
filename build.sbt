@@ -73,7 +73,7 @@ lazy val riffraff = project
         // These env vars are set by GitHub Actions
         // See https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
         "gitCommitId" -> env("GITHUB_SHA"),
-        "buildNumber" -> env("GITHUB_RUN_NUMBER")
+        "buildNumber" -> env("BUILD_NUMBER")
       ),
       buildInfoOptions += BuildInfoOption.BuildTime,
       buildInfoPackage := "riffraff",
