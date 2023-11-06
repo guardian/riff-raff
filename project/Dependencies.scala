@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.20.147"
+    val aws = "2.21.15"
     val jackson = "2.15.2"
     val awsRds = "1.12.578"
     val enumeratumPlay = "1.7.3"
@@ -35,7 +35,7 @@ object Dependencies {
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
-      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
+      "com.squareup.okhttp3" % "okhttp" % "4.12.0",
       "ch.qos.logback" % "logback-classic" % "1.4.8", // scala-steward:off
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
@@ -79,7 +79,7 @@ object Dependencies {
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "1.8.0",
+      "com.gu" %% "anghammarad-client" % "1.8.1",
       "org.webjars" %% "webjars-play" % "2.8.18",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
