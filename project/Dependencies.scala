@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.20.147"
-    val jackson = "2.15.3"
+    val jackson = "2.15.2"
     val awsRds = "1.12.578"
     val enumeratumPlay = "1.7.3"
   }
@@ -30,12 +30,12 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.10.0",
-    "org.mockito" %% "mockito-scala" % "1.17.29" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.27" % Test
   )
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
-      "com.squareup.okhttp3" % "okhttp" % "4.12.0",
+      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
       "ch.qos.logback" % "logback-classic" % "1.4.8", // scala-steward:off
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
@@ -50,10 +50,10 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-      "com.typesafe.play" %% "play-json" % "2.10.3",
+      "com.typesafe.play" %% "play-json" % "2.10.1",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230921-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.29.1",
+      "com.google.cloud" % "google-cloud-storage" % "2.28.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -79,8 +79,8 @@ object Dependencies {
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "1.8.1",
-      "org.webjars" %% "webjars-play" % "2.9.0",
+      "com.gu" %% "anghammarad-client" % "1.8.0",
+      "org.webjars" %% "webjars-play" % "2.8.18",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
