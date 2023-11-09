@@ -6,7 +6,8 @@ import deployment.{
   NoDeploysFoundForStage,
   ScheduledDeployNotificationError,
   SkippedDueToPreviousFailure,
-  SkippedDueToPreviousWaitingDeploy
+  SkippedDueToPreviousWaitingDeploy,
+  SkippedDueToPreviousPartialDeploy
 }
 import magenta.DeployParameters
 
@@ -68,6 +69,18 @@ class FailureNotificationContents(prefix: String) {
           subject,
           scheduledDeployError.message,
           List(viewProblematicDeploy(record.uuid, "failed"), redeployAction)
+        )
+        NotificationContentsWithTargets(
+          contents,
+          teamTargetsSearch(record.uuid, record.parameters)
+        )
+      case SkippedDueToPreviousPartialDeploy(record) =>
+        val redeployAction =
+          Action("Redeploy manually", deployAgainUrl(record.uuid))
+        val contents = NotificationContents(
+          subject,
+          scheduledDeployError.message,
+          List(viewProblematicDeploy(record.uuid, "partial"), redeployAction)
         )
         NotificationContentsWithTargets(
           contents,

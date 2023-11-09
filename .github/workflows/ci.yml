@@ -34,6 +34,15 @@ jobs:
           java-version: 11
           cache: sbt
 
+      # Seed the build number with last number from TeamCity.
+      # This env var is used by the SBT build, and guardian/actions-riff-raff.
+      # Set the value early, rather than `buildNumberOffset` in guardian/actions-riff-raff, to ensure each usage has the same number.
+      # For some reason, it's not possible to mutate GITHUB_RUN_NUMBER, so set BUILD_NUMBER instead.
+      - name: Set BUILD_NUMBER environment variable
+        run: |
+          LAST_TEAMCITY_BUILD=2360
+          echo "BUILD_NUMBER=$(( $GITHUB_RUN_NUMBER + $LAST_TEAMCITY_BUILD ))" >> $GITHUB_ENV
+
       - name: build + test
         env:
           # The GitHub runner has 7GB of RAM, lets give 4GB to Java.
@@ -43,9 +52,7 @@ jobs:
 
       - uses: guardian/actions-riff-raff@v2
         with:
-          # Ensure we don't overwrite existing (Teamcity) builds.
-          buildNumberOffset: 2360
-
+          buildNumber: ${{ env.BUILD_NUMBER }}
           projectName: tools::riffraff
           configPath: riff-raff/riff-raff.yaml
           contentDirectories: |
