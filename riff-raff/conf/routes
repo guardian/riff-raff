@@ -111,8 +111,8 @@ GET         /testing/reportTestPartial                      controllers.Testing.
 GET         /testing/form                                   controllers.Testing.form
 POST        /testing/formPost                               controllers.Testing.formPost
 GET         /testing/uuidList                               controllers.Testing.uuidList(limit:Int ?= 500)
-GET         /testing/s3Latency                              controllers.Testing.S3LatencyList(limit:Int ?= 10, csv:Boolean=false)
-GET         /testing/s3Latency/csv                          controllers.Testing.S3LatencyList(limit:Int ?= 10, csv:Boolean=true)
+GET         /testing/s3Latency                              controllers.Testing.S3LatencyList(csv:Boolean=false)
+GET         /testing/s3Latency/csv                          controllers.Testing.S3LatencyList(csv:Boolean=true)
 POST        /testing/actionUUID                             controllers.Testing.actionUUID
 GET         /testing/view/:uuid                             controllers.Testing.debugLogViewer(uuid)
 GET         /testing/addStringUUID                          controllers.Testing.transferAllUUIDs

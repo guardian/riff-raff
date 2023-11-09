@@ -258,7 +258,7 @@ class Testing(
     Ok(views.html.test.uuidList(config, menu)(request, allDeploys.take(limit)))
   }
 
-  def S3LatencyList(limit: Int, csv: Boolean) = authAction { implicit request =>
+  def S3LatencyList(csv: Boolean) = authAction { implicit request =>
     val filter = DeployFilter.fromRequest
     val pagination = PaginationView.fromRequest
     val allDeploys = documentStoreConverter
