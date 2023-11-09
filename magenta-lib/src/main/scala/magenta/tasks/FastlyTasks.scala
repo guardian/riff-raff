@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
+import scala.util.{Failure, Success, Try}
 
 case class Version(number: Int, active: Option[Boolean])
 object Version {
@@ -30,13 +31,15 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
-  override def execute(
+  private def executeWithCredentials(
+      client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
-  ): Unit = {
-    FastlyApiClientProvider.get(keyRing).foreach { client =>
+  ): Try[Int] = {
+    Try {
       val activeVersionNumber =
         getActiveVersionNumber(client, resources.reporter, stopFlag)
+
       val nextVersionNumber =
         clone(activeVersionNumber, client, resources.reporter, stopFlag)
 
@@ -63,10 +66,35 @@ case class UpdateFastlyConfig(s3Package: S3Path)(implicit
         stopFlag
       )
 
-      activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
+      activateVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        stopFlag
+      )
 
-      resources.reporter
-        .info(s"Fastly version $nextVersionNumber is now active")
+      nextVersionNumber
+    }
+  }
+
+  override def execute(
+      resources: DeploymentResources,
+      stopFlag: => Boolean
+  ): Unit = {
+    FastlyApiClientProvider
+      .get(keyRing)
+      .map(executeWithCredentials(_, resources, stopFlag)) match {
+      case None =>
+        resources.reporter.fail(
+          "Failed to fetch Fastly API credentials from keyring"
+        )
+      case Some(Success(nextVersionNumber)) =>
+        resources.reporter
+          .info(s"Fastly version $nextVersionNumber is now active")
+      case Some(Failure(err)) =>
+        resources.reporter.fail(
+          s"$err. Your API key may be invalid or it may have expired"
+        )
     }
   }
 
