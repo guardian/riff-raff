@@ -1,8 +1,9 @@
 package utils
 
 import play.api.Logger
-import scala.util.{Try, Success, Failure}
-import scala.annotation.tailrec
+
+import scala.util.{Failure, Success, Try}
+import scala.annotation.{nowarn, tailrec}
 
 trait Retriable {
   def log: Logger
@@ -10,6 +11,7 @@ trait Retriable {
   def retryUpTo[T](maxAttempts: Int, message: Option[String] = None)(
       thunk: => T
   ): Try[T] = {
+    @nowarn // It would fail on the following inputs: Cons(), Empty
     @tailrec def go(s: Stream[Try[T]], n: Int): Try[T] = s match {
       case (f @ Failure(t)) #:: tail =>
         val errorMessage = "Caught exception %s (attempt #%d)".format(
