@@ -69,7 +69,7 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v28" % "2.2.7",
+      "com.gu.play-googleauth" %% "play-v28" % "2.2.8",
       "com.gu.play-secret-rotation" %% "play-v28" % "0.38",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.38",
       "com.typesafe.akka" %% "akka-agent" % "2.5.32",
