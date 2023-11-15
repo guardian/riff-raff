@@ -5,9 +5,9 @@ object Dependencies {
 
   object Versions {
     val aws = "2.21.15"
-    val jackson = "2.15.3"
+    val jackson = "2.15.2"
     val awsRds = "1.12.583"
-    val enumeratumPlay = "1.8.0"
+    val enumeratumPlay = "1.7.3"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -30,7 +30,7 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.10.0",
-    "org.mockito" %% "mockito-scala" % "1.17.29" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.27" % Test
   )
 
   val magentaLibDeps =
@@ -50,10 +50,10 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-      "com.typesafe.play" %% "play-json" % "2.10.3",
+      "com.typesafe.play" %% "play-json" % "2.10.1",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230921-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.29.1",
+      "com.google.cloud" % "google-cloud-storage" % "2.28.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -69,9 +69,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ akkaSerializationJacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v28" % "2.2.8",
-      "com.gu.play-secret-rotation" %% "play-v28" % "0.40",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.40",
+      "com.gu.play-googleauth" %% "play-v28" % "2.2.7",
+      "com.gu.play-secret-rotation" %% "play-v28" % "0.38",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.38",
       "com.typesafe.akka" %% "akka-agent" % "2.5.32",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
@@ -80,7 +80,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "1.8.1",
-      "org.webjars" %% "webjars-play" % "2.9.0",
+      "org.webjars" %% "webjars-play" % "2.8.18",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
