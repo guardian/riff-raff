@@ -19,7 +19,8 @@ val commonSettings = Seq(
   scalaVersion := "2.13.12",
   scalacOptions ++= Seq(
     "-feature",
-    "-language:postfixOps,reflectiveCalls,implicitConversions"
+    "-language:postfixOps,reflectiveCalls,implicitConversions",
+    "-Wconf:cat=other-match-analysis:error"
 //    , "-Xfatal-warnings" TODO: Akka Agents have been deprecated. Once they have been replaced we can re-enable, but that's not trivial
   ),
   Compile / doc / scalacOptions ++= Seq(

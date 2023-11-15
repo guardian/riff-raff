@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.io.Codec.ISO8859
+import scala.util.{Failure, Success, Try}
 
 case class FastlyComputeTasks(s3Package: S3Path)(implicit
     val keyRing: KeyRing,
@@ -23,11 +24,12 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
   implicit val ec: ExecutionContextExecutorService =
     ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(10))
 
-  override def execute(
+  private def executeWithCredentials(
+      client: FastlyApiClient,
       resources: DeploymentResources,
       stopFlag: => Boolean
-  ): Unit = {
-    FastlyApiClientProvider.get(keyRing).foreach { client =>
+  ): Try[Int] = {
+    Try {
       val activeVersionNumber =
         getActiveVersionNumber(client, resources.reporter, stopFlag)
       val nextVersionNumber =
@@ -49,12 +51,40 @@ case class FastlyComputeTasks(s3Package: S3Path)(implicit
         stopFlag
       )
 
-      activateVersion(nextVersionNumber, client, resources.reporter, stopFlag)
+      activateVersion(
+        nextVersionNumber,
+        client,
+        resources.reporter,
+        stopFlag
+      )
 
-      resources.reporter
-        .info(
-          s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
+      nextVersionNumber
+    }
+  }
+
+  override def execute(
+      resources: DeploymentResources,
+      stopFlag: => Boolean
+  ): Unit = {
+    FastlyApiClientProvider
+      .get(keyRing)
+      .map(client =>
+        (client, executeWithCredentials(client, resources, stopFlag))
+      ) match {
+      case None =>
+        resources.reporter.fail(
+          "Failed to fetch Fastly API credentials from keyring"
         )
+      case Some((client, Success(nextVersionNumber))) =>
+        resources.reporter
+          .info(
+            s"Fastly Compute@Edge service ${client.serviceId} - version $nextVersionNumber is now active"
+          )
+      case Some((_, Failure(err))) =>
+        resources.reporter.fail(
+          s"$err. Your API key may be invalid or it may have expired"
+        )
+
     }
   }
 
