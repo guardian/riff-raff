@@ -50,7 +50,10 @@ class DeployController(
   def deploy = AuthAction { implicit request =>
     Ok(
       views.html.deploy
-        .form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup)
+        .form(config, menu)(changeFreeze)(
+          DeployParameterForm.form.bindFromRequest(),
+          prismLookup
+        )
     )
   }
 
