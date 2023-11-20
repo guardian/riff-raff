@@ -19,6 +19,8 @@ jobs:
       # Required for `actions/checkout`
       contents: read
 
+      pull-requests: write # Required by guardian/actions-riff-raff@v3
+
     steps:
       - uses: actions/checkout@v4
 
@@ -50,9 +52,10 @@ jobs:
           JAVA_OPTS: -Xmx4g
         run: sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/test Universal/packageZipTarball
 
-      - uses: guardian/actions-riff-raff@v2
+      - uses: guardian/actions-riff-raff@v3
         with:
           buildNumber: ${{ env.BUILD_NUMBER }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
           projectName: tools::riffraff
           configPath: riff-raff/riff-raff.yaml
           contentDirectories: |
