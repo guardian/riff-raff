@@ -70,7 +70,7 @@ object Dependencies {
       evolutions,
       jdbc,
       "com.gu.play-googleauth" %% "play-v28" % "2.2.8",
-      "com.gu.play-secret-rotation" %% "play-v28" % "0.38",
+      "com.gu.play-secret-rotation" %% "play-v28" % "0.40",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "0.40",
       "com.typesafe.akka" %% "akka-agent" % "2.5.32",
       "org.pegdown" % "pegdown" % "1.6.0",
