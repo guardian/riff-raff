@@ -50,7 +50,7 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.fasterxml.jackson.core" % "jackson-databind" % Versions.jackson,
-      "com.typesafe.play" %% "play-json" % "2.10.1",
+      "com.typesafe.play" %% "play-json" % "2.10.3",
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230921-2.0.0",
       "com.google.cloud" % "google-cloud-storage" % "2.29.1",
