@@ -7,7 +7,7 @@ object Dependencies {
     val aws = "2.21.41"
     val jackson = "2.15.2"
     val awsRds = "1.12.606"
-    val enumeratumPlay = "1.7.3"
+    val enumeratumPlay = "1.8.0"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
