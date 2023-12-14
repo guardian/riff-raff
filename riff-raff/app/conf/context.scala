@@ -219,7 +219,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
   object logging {
     lazy val verbose =
       getStringOpt("logging").exists(_.equalsIgnoreCase("VERBOSE"))
-    lazy val elkStreamName = getStringOpt("logging.elkStreamName")
     lazy val accessKey = getStringOpt("logging.aws.accessKey")
     lazy val secretKey = getStringOpt("logging.aws.secretKey")
     lazy val regionName =
