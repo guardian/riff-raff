@@ -1,7 +1,6 @@
 package deployment.actors
 
 import java.util.UUID
-
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{
   Actor,
@@ -10,7 +9,6 @@ import akka.actor.{
   OneForOneStrategy,
   Terminated
 }
-import akka.agent.Agent
 import cats.data.Validated.{Invalid, Valid}
 import conf.Config
 import controllers.Logging
@@ -37,6 +35,7 @@ import resources.PrismLookup
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import magenta.input.RiffRaffYamlReader
+import utils.Agent
 
 class DeployGroupRunner(
     config: Config,

@@ -2,7 +2,6 @@ package deployment.actors
 
 import java.util.UUID
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import conf.Config
 import deployment.{Fixtures, Record}
@@ -11,6 +10,7 @@ import org.joda.time.DateTime
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import play.api.Configuration
+import utils.Agent
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

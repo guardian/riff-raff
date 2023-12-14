@@ -1,7 +1,6 @@
 package utils
 
 import akka.actor.{Cancellable, ActorSystem}
-import akka.agent.Agent
 import controllers.Logging
 import lifecycle.Lifecycle
 import scala.concurrent.duration._

@@ -1,15 +1,14 @@
 package deployment
 
 import java.util.UUID
-
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
 import com.typesafe.config.ConfigFactory
 import conf.Config
 import controllers.Logging
 import deployment.actors.{DeployCoordinator, DeployGroupRunner, TasksRunner}
 import magenta.deployment_type.DeploymentType
 import resources.PrismLookup
+import utils.Agent
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext

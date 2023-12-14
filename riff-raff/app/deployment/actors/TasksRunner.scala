@@ -1,13 +1,12 @@
 package deployment.actors
 
 import java.util.UUID
-
 import akka.actor.Actor
-import akka.agent.Agent
 import controllers.Logging
 import magenta.{DeployReporter, DeployStoppedException, DeploymentResources}
 import magenta.graph.DeploymentTasks
 import org.joda.time.DateTime
+import utils.Agent
 
 import scala.util.control.NonFatal
 

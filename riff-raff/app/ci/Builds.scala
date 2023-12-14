@@ -1,10 +1,10 @@
 package ci
 
-import akka.agent.Agent
 import ci.Context._
 import controllers.Logging
 import lifecycle.Lifecycle
 import rx.lang.scala.Subscription
+import utils.Agent
 
 class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
 
@@ -20,8 +20,8 @@ class Builds(ciBuildPoller: CIBuildPoller) extends Lifecycle with Logging {
     }
   )
 
-  def jobs: Iterable[Job] = jobsAgent.get()
-  def all: List[CIBuild] = buildsAgent.get().toList
+  def jobs: Iterable[Job] = jobsAgent()
+  def all: List[CIBuild] = buildsAgent().toList
   def build(project: String, number: String) =
     all.find(b => b.jobName == project && b.number == number)
   def buildFromRevision(project: String, revision: String) = all.find {

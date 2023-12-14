@@ -3,7 +3,6 @@ package deployment
 import java.util.UUID
 
 import akka.actor.ActorSystem
-import akka.agent.Agent
 import akka.util.Switch
 import ci._
 import controllers.Logging
@@ -16,6 +15,7 @@ import play.api.MarkerContext
 import restrictions.RestrictionChecker
 import rx.lang.scala.{Observable, Subject, Subscription}
 import utils.VCSInfo
+import utils.Agent
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._

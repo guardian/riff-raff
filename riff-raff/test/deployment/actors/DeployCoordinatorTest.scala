@@ -1,9 +1,7 @@
 package deployment.actors
 
 import java.util.UUID
-
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
 import akka.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
 import deployment.{Fixtures, Record}
@@ -11,6 +9,7 @@ import org.mockito.MockitoSugar
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
+import utils.Agent
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable

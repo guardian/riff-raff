@@ -1,7 +1,6 @@
 package deployment.actors
 
 import java.util.UUID
-
 import akka.actor.SupervisorStrategy.Stop
 import akka.actor.{
   Actor,
@@ -10,9 +9,9 @@ import akka.actor.{
   OneForOneStrategy,
   Terminated
 }
-import akka.agent.Agent
 import controllers.Logging
 import deployment.Record
+import utils.Agent
 
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
