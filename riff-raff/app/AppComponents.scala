@@ -94,14 +94,6 @@ class AppComponents(
   implicit val implicitMessagesApi = messagesApi
   implicit val implicitWsClient = wsClient
 
-  val elkLogging = new ElkLogging(
-    config.stage,
-    config.logging.regionName,
-    config.logging.elkStreamName,
-    config.logging.credentialsProvider,
-    applicationLifecycle
-  )
-
   val s3BuildOps = new S3BuildOps(config)
   val buildPoller = new CIBuildPoller(config, s3BuildOps, executionContext)
   val builds = new Builds(buildPoller)

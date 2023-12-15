@@ -15,10 +15,8 @@
         </encoder>
     </appender>
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%date [%thread{10}] %-5level %logger{20} - %msg%n%xException{3}</pattern>
-        </encoder>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
     </appender>
 
     <logger name="com.amazonaws.request" level="WARN" />
@@ -33,7 +31,7 @@
 
     <root level="INFO">
         <appender-ref ref="LOGFILE"/>
-        <!--<appender-ref ref="CONSOLE"/>-->
+        <appender-ref ref="STDOUT"/>
     </root>
 
 </configuration>
