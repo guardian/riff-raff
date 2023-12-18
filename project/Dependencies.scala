@@ -91,7 +91,7 @@ object Dependencies {
       "org.slf4j" % "jul-to-slf4j" % "1.7.36", // scala-steward:off
       // We can't update this to 4.0.0 due to an incompatibility with Play 2.8.x, attempt to update along with Play
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.6.0",
+      "org.postgresql" % "postgresql" % "42.7.1",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
