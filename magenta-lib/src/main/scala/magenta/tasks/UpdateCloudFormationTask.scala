@@ -214,7 +214,7 @@ object CloudFormationParameters {
           )
         if (ami.isEmpty) {
           val tagsStr = tags.map { case (k, v) => s"$k: $v" }.mkString(", ")
-          reporter.warning(
+          reporter.fail(
             s"Failed to resolve AMI for parameter $name in account $accountNumber with tags $tagsStr"
           )
         }
