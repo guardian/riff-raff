@@ -80,7 +80,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "1.8.1",
-      "org.webjars" %% "webjars-play" % "2.8.18",
+      "org.webjars" %% "webjars-play" % "2.9.1",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
