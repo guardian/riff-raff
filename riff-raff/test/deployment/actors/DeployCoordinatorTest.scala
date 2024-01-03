@@ -2,9 +2,9 @@ package deployment.actors
 
 import java.util.UUID
 
-import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
-import akka.testkit.{TestActorRef, TestKit, TestProbe}
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
+import org.apache.pekko.agent.Agent
+import org.apache.pekko.testkit.{TestActorRef, TestKit, TestProbe}
 import com.typesafe.config.ConfigFactory
 import deployment.{Fixtures, Record}
 import org.mockito.MockitoSugar

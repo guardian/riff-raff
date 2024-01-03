@@ -2,8 +2,8 @@ package controllers
 
 import java.net.{URLDecoder, URLEncoder}
 import java.util.UUID
-import akka.stream.scaladsl.{Source, StreamConverters}
-import akka.util.ByteString
+import org.apache.pekko.stream.scaladsl.{Source, StreamConverters}
+import org.apache.pekko.util.ByteString
 import cats.syntax.either._
 import ci.{Builds, S3Tag, TagClassification}
 import com.gu.googleauth.AuthAction

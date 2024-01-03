@@ -3,7 +3,7 @@ package notification
 import java.net.URL
 import java.util.UUID
 
-import akka.actor.{Actor, ActorSystem, Props}
+import org.apache.pekko.actor.{Actor, ActorSystem, Props}
 import controllers.Logging
 import lifecycle.Lifecycle
 import magenta.ContextMessage._

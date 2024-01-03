@@ -2,8 +2,8 @@ package deployment.actors
 
 import java.util.UUID
 
-import akka.actor.Actor
-import akka.agent.Agent
+import org.apache.pekko.actor.Actor
+import org.apache.pekko.agent.Agent
 import controllers.Logging
 import magenta.{DeployReporter, DeployStoppedException, DeploymentResources}
 import magenta.graph.DeploymentTasks

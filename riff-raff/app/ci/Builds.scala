@@ -1,6 +1,6 @@
 package ci
 
-import akka.agent.Agent
+import org.apache.pekko.agent.Agent
 import ci.Context._
 import controllers.Logging
 import lifecycle.Lifecycle

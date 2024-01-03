@@ -1,6 +1,6 @@
 package ci
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 
 object Context {
   val actorSystem = ActorSystem("build-agents")
