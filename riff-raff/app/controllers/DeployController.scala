@@ -14,7 +14,7 @@ import magenta._
 import magenta.artifact._
 import magenta.deployment_type.DeploymentType
 import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
-import org.joda.time.DateTimeZone
+import org.joda.time.{DateTimeZone, LocalDate}
 import org.joda.time.format.DateTimeFormat
 import persistence.RestrictionConfigDynamoRepository
 import play.api.http.HttpEntity
@@ -26,8 +26,9 @@ import play.utils.UriEncoding
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import utils.{ChangeFreeze, LogAndSquashBehaviour}
+import utils.{ChangeFreeze, Graph, LogAndSquashBehaviour}
 import magenta.input.RiffRaffYamlReader
+import play.api.libs.json.Json.toJson
 
 class DeployController(
     config: Config,
@@ -487,6 +488,84 @@ class DeployController(
       StreamConverters.fromInputStream(() => stream)
     Ok.sendEntity(HttpEntity.Streamed(source, None, Some("")))
       .as(stream.response.contentType)
+  }
+
+  def historyGraph = AuthAction { implicit request =>
+    val filter = deployment.DeployFilter
+      .fromRequest(request)
+      .map(_.withMaxDaysAgo(Some(90)))
+      .orElse(Some(DeployFilter(maxDaysAgo = Some(30))))
+    val count = deployments.countDeploys(filter)
+    val pagination = deployment.DeployFilterPagination.fromRequest
+      .withItemCount(Some(count))
+      .withPageSize(None)
+    val deployList = deployments
+      .getDeploys(filter, pagination.pagination, fetchLogs = false)
+      .logAndSquashException(Nil)
+
+    def description(state: RunState) =
+      String.valueOf(state) + " deploys" + filter
+        .map { f =>
+          f.projectName
+            .map(" of " + _)
+            .getOrElse("") + f.stage.map(" in " + _).getOrElse("")
+        }
+        .getOrElse("")
+
+    implicit val dateOrdering: Ordering[LocalDate] = new Ordering[LocalDate] {
+      override def compare(x: LocalDate, y: LocalDate): Int = x.compareTo(y)
+    }
+    val allDataByDay =
+      deployList.groupBy(_.time.toLocalDate).mapValues(_.size).toList.sortBy {
+        case (day, _) => day
+      }
+    val firstDate = allDataByDay.headOption.map(_._1)
+    val lastDate = allDataByDay.lastOption.map(_._1)
+
+    val deploysByState = deployList.groupBy(_.state).toList.sortBy {
+      case (RunState.Completed, _) => 1
+      case (RunState.Failed, _) => 2
+      case (RunState.Running, _) => 3
+      case (RunState.NotRunning, _) => 4
+      case default => 5
+    }
+
+    val deploys = deploysByState.map { case (state, deploysInThatState) =>
+      val seriesDataByDay = deploysInThatState
+        .groupBy(_.time.toLocalDate)
+        .mapValues(_.size)
+        .toList
+        .sortBy { case (day, _) =>
+          day
+        }
+      val seriesJson =
+        Graph.zeroFillDays(seriesDataByDay, firstDate, lastDate).map {
+          case (day, deploysOnThatDay) =>
+            toJson(
+              Map(
+                "x" -> toJson(day.toDateTimeAtStartOfDay.getMillis / 1000),
+                "y" -> toJson(deploysOnThatDay)
+              )
+            )
+        }
+      Map(
+        "data" -> toJson(seriesJson),
+        "points" -> toJson(seriesJson.length),
+        "deploystate" -> toJson(state.toString),
+        "name" -> toJson(description(state))
+      )
+    }
+
+    Ok(toJson(
+      Map(
+        "response" -> toJson(
+          Map(
+            "series" -> toJson(deploys),
+            "status" -> toJson("ok")
+          )
+        )
+      )
+    ))
   }
 
 }

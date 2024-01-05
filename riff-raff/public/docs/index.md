@@ -18,7 +18,6 @@ Using Riff-Raff
 ---------------
 
  - [Advanced deployment settings](riffraff/advanced-settings.md) - what is an update strategy and how to choose one
- - [API](riffraff/api.md) - how to use the API and a description of the endpoints available
  - [Continuous Integration and Deployment](riffraff/hooksAndCD.md) - guide to the Riff-Raff hooks available to make continuous
  deployment easy
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy

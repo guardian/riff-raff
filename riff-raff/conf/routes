@@ -29,7 +29,7 @@ GET         /deployment/deployAgain/:uuid                   controllers.DeployCo
 
 GET         /deployment/history                             controllers.DeployController.history()
 GET         /deployment/history/update                      controllers.DeployController.historyContent()
-GET         /deployment/history/graphData                   controllers.Api.historyGraph
+GET         /deployment/history/graphData                   controllers.DeployController.historyGraph()
 
 GET         /deployment/view/:uuid                          controllers.DeployController.viewUUID(uuid:String, verbose:Boolean?=false)
 POST        /deployment/markAsFailed                        controllers.DeployController.markAsFailed
@@ -94,17 +94,6 @@ GET         /auth/new                                       controllers.Login.au
 POST        /auth/delete                                    controllers.Login.authDelete
 POST        /auth/save                                      controllers.Login.authSave
 
-# api endpoints
-GET         /apiKeys/list                                   controllers.Api.listKeys
-GET         /apiKeys/create                                 controllers.Api.createKeyForm
-POST        /apiKeys/create                                 controllers.Api.createKey
-POST        /apiKeys/delete                                 controllers.Api.delete
-
-GET         /api/history                                    controllers.Api.history
-GET         /api/deploy/view                                controllers.Api.view(uuid:String)
-POST        /api/deploy/request                             controllers.Api.deploy
-POST        /api/deploy/stop                                controllers.Api.stop
-POST        /api/validate                                   controllers.Api.validate
 
 # Testing pages (for changing styling without running deploys)
 GET         /testing/reportTestPartial                      controllers.Testing.reportTestPartial(take:Int ?= 20, verbose:Boolean ?= false)

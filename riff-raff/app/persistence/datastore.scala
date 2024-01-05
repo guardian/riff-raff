@@ -1,7 +1,7 @@
 package persistence
 
 import conf.Config
-import controllers.{ApiKey, AuthorisationRecord, Logging}
+import controllers.{AuthorisationRecord, Logging}
 import org.joda.time.DateTime
 import play.api.Logger
 import scalikejdbc._
@@ -63,16 +63,6 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
   def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
   def deleteAuthorisation(email: String): Either[Throwable, Unit]
-
-  def createApiKey(newKey: ApiKey): Unit
-  def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
-  def getApiKey(key: String): Option[ApiKey]
-  def getAndUpdateApiKey(
-      key: String,
-      counter: Option[String] = None
-  ): Option[ApiKey]
-  def getApiKeyByApplication(application: String): Option[ApiKey]
-  def deleteApiKey(key: String): Unit
 }
 
 class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
@@ -86,16 +76,6 @@ class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
       auth: AuthorisationRecord
   ): Either[Throwable, Unit] = unit
   final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
-
-  final def createApiKey(newKey: ApiKey): Unit = ()
-  final def getApiKeyList = nil
-  final def getApiKey(key: String): Option[ApiKey] = None
-  final def getAndUpdateApiKey(
-      key: String,
-      counter: Option[String] = None
-  ): Option[ApiKey] = None
-  final def getApiKeyByApplication(application: String): Option[ApiKey] = None
-  final def deleteApiKey(key: String): Unit = ()
 
   final def findProjects = nil
   final def writeDeploy(deploy: DeployRecordDocument) = ()

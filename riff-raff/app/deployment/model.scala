@@ -2,7 +2,6 @@ package deployment
 
 import java.util.UUID
 import com.gu.googleauth.UserIdentity
-import controllers.ApiKey
 import magenta.ContextMessage._
 import magenta.Message._
 import magenta._
@@ -13,7 +12,6 @@ import utils.VCSInfo
 sealed trait RequestSource
 case class UserRequestSource(user: UserIdentity) extends RequestSource
 case object ContinuousDeploymentRequestSource extends RequestSource
-case class ApiRequestSource(key: ApiKey) extends RequestSource
 case object ScheduleRequestSource extends RequestSource
 
 sealed trait RiffRaffError {

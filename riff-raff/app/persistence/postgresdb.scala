@@ -4,7 +4,7 @@ import java.sql.{Connection, DriverManager}
 import java.util.UUID
 
 import conf.Config
-import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
+import controllers.{AuthorisationRecord, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
 import org.apache.commons.dbcp2.{
@@ -44,7 +44,6 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
       ),
       LogDocument.tableName -> getCollectionStats(LogDocument),
       AuthorisationRecord.tableName -> getCollectionStats(AuthorisationRecord),
-      ApiKey.tableName -> getCollectionStats(ApiKey)
     )
 
   // Table: auth(email: String, content: jsonb)
@@ -81,98 +80,6 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
     logExceptions(Some(s"Deleting authorisation object for $email")) {
       DB localTx { implicit session =>
         sql"DELETE FROM auth WHERE email = $email".update().apply()
-      }
-    }
-
-  // Table: apiKey(id: String, content: jsonb)
-  def createApiKey(newKey: ApiKey): Unit =
-    logExceptions(Some(s"Saving new API key ${newKey.key}")) {
-      DB localTx { implicit session =>
-        val json = Json.toJson(newKey).toString()
-        sql"INSERT INTO apiKey (key, content) VALUES (${newKey.key}, $json::jsonb) ON CONFLICT (key) DO UPDATE SET content = $json::jsonb"
-          .update()
-          .apply()
-      }
-    }
-
-  def getApiKeyList: Either[Throwable, List[ApiKey]] =
-    logExceptions(Some("Requesting list of API keys")) {
-      DB readOnly { implicit session =>
-        sql"SELECT content FROM apiKey".map(ApiKey(_)).list().apply()
-      }
-    }
-
-  def getApiKey(key: String): Option[ApiKey] =
-    logAndSquashExceptions[Option[ApiKey]](
-      Some(s"Getting API key details for $key"),
-      None
-    ) {
-      DB readOnly { implicit session =>
-        sql"SELECT content FROM apiKey WHERE key = $key"
-          .map(ApiKey(_))
-          .single()
-          .apply()
-      }
-    }
-
-  def getAndUpdateApiKey(
-      key: String,
-      counterOpt: Option[String]
-  ): Option[ApiKey] = logAndSquashExceptions[Option[ApiKey]](
-    Some(s"Getting and updating API key details for $key"),
-    None
-  ) {
-    DB localTx { implicit session =>
-      val now = java.time.ZonedDateTime.now.toOffsetDateTime.toString
-
-      val q: SQLSyntax = counterOpt match {
-        case Some(counter) =>
-          val content: String = s"""
-        jsonb_set(
-            content || '{"lastUsed": "$now"}',
-            '{callCounters, $counter}',
-            (COALESCE(content->'callCounters'->>'$counter','0')::int + 1)::text::jsonb
-        )
-        """
-          SQLSyntax.createUnsafely(s"""
-          UPDATE
-              apiKey
-          SET
-              content = $content
-          WHERE
-              key = '$key';
-          """)
-        case None =>
-          sqls"""UPDATE apiKey SET content = content || '{"lastUsed": "$now"}'::jsonb WHERE key = $key"""
-      }
-
-      sql"$q".update().apply()
-
-      // return updated apiKey
-      sql"SELECT content FROM apiKey WHERE key = $key"
-        .map(ApiKey(_))
-        .single()
-        .apply()
-    }
-  }
-
-  def getApiKeyByApplication(application: String): Option[ApiKey] =
-    logAndSquashExceptions[Option[ApiKey]](
-      Some(s"Getting API key details for application $application"),
-      None
-    ) {
-      DB readOnly { implicit session =>
-        sql"SELECT content FROM apiKey WHERE content->>'application' = $application"
-          .map(ApiKey(_))
-          .single()
-          .apply()
-      }
-    }
-
-  def deleteApiKey(key: String): Unit =
-    logAndSquashExceptions(Some(s"Deleting API key $key"), ()) {
-      DB localTx { implicit session =>
-        sql"DELETE FROM apiKey WHERE key = $key".update().apply()
       }
     }
 

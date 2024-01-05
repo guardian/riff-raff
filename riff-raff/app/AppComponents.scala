@@ -276,16 +276,6 @@ class AppComponents(
     restrictionConfigDynamoRepository,
     controllerComponents
   )
-  val apiController = new Api(
-    config,
-    menu,
-    deployments,
-    availableDeploymentTypes,
-    datastore,
-    changeFreeze,
-    authAction,
-    controllerComponents
-  )
   val continuousDeployController = new ContinuousDeployController(
     config,
     menu,
@@ -383,7 +373,6 @@ class AppComponents(
     applicationController,
     previewController,
     deployController,
-    apiController,
     continuousDeployController,
     hooksController,
     restrictionsController,

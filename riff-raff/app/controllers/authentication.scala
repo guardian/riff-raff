@@ -18,11 +18,6 @@ import utils.LogAndSquashBehaviour
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ApiRequest[A](val apiKey: ApiKey, request: Request[A])
-    extends WrappedRequest[A](request) {
-  lazy val fullName = s"API:${apiKey.application}"
-}
-
 case class AuthorisationRecord(
     email: String,
     approvedBy: String,
@@ -32,7 +27,7 @@ case class AuthorisationRecord(
 
   def isSuperuser(config: Config) = config.auth.superusers.contains(email)
 }
-object AuthorisationRecord extends SQLSyntaxSupport[ApiKey] {
+object AuthorisationRecord extends SQLSyntaxSupport[AuthorisationRecord] {
   implicit val formats: Format[AuthorisationRecord] =
     Json.format[AuthorisationRecord]
 

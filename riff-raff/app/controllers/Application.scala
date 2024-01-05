@@ -76,7 +76,6 @@ class Menu(config: Config) {
           routes.Login.authList,
           enabled = config.auth.allowList.useDatabase
         ),
-        SingleMenuItem("API keys", routes.Api.listKeys),
         SingleMenuItem("Restrictions", routes.Restrictions.list),
         SingleMenuItem("Schedules", routes.ScheduleController.list)
       )

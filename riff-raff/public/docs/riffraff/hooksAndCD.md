@@ -22,15 +22,6 @@ pipelines.
 Starting deploys automatically
 ------------------------------
 
-For the first of these, Riff-Raff provides two options:
- 1. API endpoint to trigger a deploy
- 2. Continuous Deployment configurations
-
-In the first case you'll need some form of external system to make the API call - you can see the details in the
-[API documentation](api).
-
-### Continuous Deployment configurations
-
 A continuous deployment configuration is designed to watch for new builds and react to
  events. You can currently set up a configuration that reacts to a successful build. When the matching event occurs,
  Riff-Raff will start a deploy automatically to the specified environment.
