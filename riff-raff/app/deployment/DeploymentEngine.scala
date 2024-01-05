@@ -2,8 +2,8 @@ package deployment
 
 import java.util.UUID
 
-import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
-import akka.agent.Agent
+import org.apache.pekko.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
+import org.apache.pekko.agent.Agent
 import com.typesafe.config.ConfigFactory
 import conf.Config
 import controllers.Logging
@@ -25,13 +25,13 @@ class DeploymentEngine(
 
   private lazy val dispatcherConfig = ConfigFactory.parseMap(
     Map(
-      "akka.deploy-dispatcher.type" -> "Dispatcher",
-      "akka.deploy-dispatcher.executor" -> "fork-join-executor",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
-      "akka.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
-      "akka.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
-      "akka.deploy-dispatcher.throughput" -> "1"
+      "pekko.deploy-dispatcher.type" -> "Dispatcher",
+      "pekko.deploy-dispatcher.executor" -> "fork-join-executor",
+      "pekko.deploy-dispatcher.fork-join-executor.parallelism-min" -> s"$concurrentDeploys",
+      "pekko.deploy-dispatcher.fork-join-executor.parallelism-factor" -> s"$concurrentDeploys",
+      "pekko.deploy-dispatcher.fork-join-executor.parallelism-max" -> s"${concurrentDeploys * 4}",
+      "pekko.deploy-dispatcher.fork-join-executor.task-peeking-mode" -> "FIFO",
+      "pekko.deploy-dispatcher.throughput" -> "1"
     ).asJava
   )
 
@@ -45,7 +45,7 @@ class DeploymentEngine(
     (context: ActorRefFactory, runnerName: String) =>
       context.actorOf(
         props = Props(new TasksRunner(stopFlagAgent))
-          .withDispatcher("akka.deploy-dispatcher"),
+          .withDispatcher("pekko.deploy-dispatcher"),
         name = s"deploymentRunner-$runnerName"
       )
 
@@ -63,7 +63,7 @@ class DeploymentEngine(
             deploymentTypes,
             ioExecutionContext
           )
-        ).withDispatcher("akka.deploy-dispatcher"),
+        ).withDispatcher("pekko.deploy-dispatcher"),
         name = s"deployGroupRunner-${record.uuid.toString}"
       )
 

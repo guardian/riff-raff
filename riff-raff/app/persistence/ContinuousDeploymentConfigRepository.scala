@@ -1,7 +1,6 @@
 package persistence
 
 import java.util.UUID
-
 import ci.{ContinuousDeploymentConfig, Trigger}
 import org.scanamo.syntax._
 import org.scanamo.auto._

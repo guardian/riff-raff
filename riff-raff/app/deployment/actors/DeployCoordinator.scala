@@ -2,15 +2,15 @@ package deployment.actors
 
 import java.util.UUID
 
-import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{
+import org.apache.pekko.actor.SupervisorStrategy.Stop
+import org.apache.pekko.actor.{
   Actor,
   ActorRef,
   ActorRefFactory,
   OneForOneStrategy,
   Terminated
 }
-import akka.agent.Agent
+import org.apache.pekko.agent.Agent
 import controllers.Logging
 import deployment.Record
 

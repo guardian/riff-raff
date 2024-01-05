@@ -29,7 +29,8 @@ import play.api.BuiltInComponentsFromContext
 import play.api.db.evolutions.EvolutionsComponents
 import play.api.db.{DBComponents, HikariCPComponents}
 import play.api.http.DefaultHttpErrorHandler
-import play.api.i18n.I18nComponents
+import play.api.i18n.{I18nComponents, MessagesApi}
+import play.api.libs.ws.WSClient
 import play.api.libs.ws.ahc.AhcWSComponents
 import play.api.mvc.Results.InternalServerError
 import play.api.mvc.{AnyContent, RequestHeader, Result}

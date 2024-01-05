@@ -2,9 +2,9 @@ package deployment
 
 import java.util.UUID
 
-import akka.actor.ActorSystem
-import akka.agent.Agent
-import akka.util.Switch
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.agent.Agent
+import org.apache.pekko.util.Switch
 import ci._
 import controllers.Logging
 import lifecycle.Lifecycle

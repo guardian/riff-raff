@@ -1,11 +1,14 @@
 package utils
 
-import akka.actor.{Cancellable, ActorSystem}
-import akka.agent.Agent
+import org.apache.pekko.actor.{ActorSystem, Cancellable}
+import org.apache.pekko.agent.Agent
 import controllers.Logging
 import lifecycle.Lifecycle
+
 import scala.concurrent.duration._
 import org.joda.time.{DateTime, Interval, LocalDate, LocalTime}
+
+import scala.concurrent.ExecutionContextExecutor
 
 object ScheduledAgent extends Lifecycle {
   val scheduleSystem = ActorSystem("scheduled-agent")
