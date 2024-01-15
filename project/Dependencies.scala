@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.21.46"
-    val jackson = "2.15.2"
+    val jackson = "2.15.3"
     val awsRds = "1.12.637"
     val enumeratumPlay = "1.8.0"
   }
@@ -29,7 +29,7 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.10.0",
-    "org.mockito" %% "mockito-scala" % "1.17.27" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.30" % Test
   )
 
   val magentaLibDeps =
@@ -48,8 +48,8 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20230921-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.28.0",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240104-2.0.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.31.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -75,7 +75,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "1.8.1",
-      "org.webjars" %% "webjars-play" % "3.0.0",
+      "org.webjars" %% "webjars-play" % "3.0.1",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
@@ -83,11 +83,11 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.29.4",
       "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.6.0",
+      "org.postgresql" % "postgresql" % "42.7.1",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
-      "org.apache.pekko" %% "pekko-testkit" % "1.0.1" % Test,
+      "org.apache.pekko" %% "pekko-testkit" % "1.0.2" % Test,
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
