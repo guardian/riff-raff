@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.21.46"
-    val jackson = "2.15.3"
+    val jackson = "2.16.1"
     val awsRds = "1.12.641"
     val enumeratumPlay = "1.8.0"
   }
@@ -49,7 +49,7 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240104-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.31.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.32.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
