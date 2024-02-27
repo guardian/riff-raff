@@ -12,22 +12,14 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # Allow GitHub to request an OIDC JWT ID token, for exchange with `aws-actions/configure-aws-credentials`
-      # See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services#updating-your-github-actions-workflow
-      id-token: write
-
-      # Required for `actions/checkout`
       contents: read
 
-      pull-requests: write # Required by guardian/actions-riff-raff@v3
+      # These permissions are required by guardian/actions-riff-raff...
+      id-token: write # ...to exchange an OIDC JWT ID token for AWS credentials
+      pull-requests: write #...to comment on PRs
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: eu-west-1
-          role-to-assume: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -52,10 +44,11 @@ jobs:
           JAVA_OPTS: -Xmx4g
         run: sbt clean scalafmtCheckAll scalafmtSbtCheck compile lib/test riffraff/test Universal/packageZipTarball
 
-      - uses: guardian/actions-riff-raff@v3
+      - uses: guardian/actions-riff-raff@v4
         with:
           buildNumber: ${{ env.BUILD_NUMBER }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+          roleArn: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
           projectName: tools::riffraff
           configPath: riff-raff/riff-raff.yaml
           contentDirectories: |
