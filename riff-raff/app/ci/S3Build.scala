@@ -9,6 +9,11 @@ import play.api.libs.json._
 import scala.util.Try
 import scala.util.control.NonFatal
 import cats.syntax.either._
+import play.api.MarkerContext
+
+import scala.jdk.CollectionConverters._
+import net.logstash.logback.marker.Markers.appendEntries
+import utils.VCSInfo
 
 import scala.collection.Seq
 
@@ -38,15 +43,38 @@ class S3BuildOps(config: Config) extends Logging {
     Nil
   } get
 
+  private def buildMarker(build: S3Build): MarkerContext = {
+    val params: Map[String, String] = Map(
+      "projectName" -> build.jobName,
+      "projectBuildNumber" -> build.number,
+      "projectBuildTool" -> build.buildTool.getOrElse("unknown"),
+      "projectVcsUrl" -> VCSInfo.normalise(build.vcsURL).getOrElse("unknown"),
+      "projectVcsBranch" -> build.branchName,
+      "projectVcsRevision" -> build.revision
+    )
+    MarkerContext(appendEntries(params.asJava))
+  }
+
   def buildAt(location: S3Object): Either[S3BuildError, S3Build] =
     location
       .fetchContentAsString()
       .leftMap[S3BuildError](S3BuildRetrievalError)
       .flatMap { s =>
         val s3BuildEither = parse(s)
-        if (s3BuildEither.isLeft) {
-          log.warn(s"Error parsing JSON from $location: $s3BuildEither")
+
+        s3BuildEither match {
+          case Left(err) => {
+            log.warn(
+              s"Error parsing JSON from $location, error: $err"
+            )
+          }
+          case Right(s3Build) => {
+            log.info(s"Successfully parsed JSON from $location")(
+              buildMarker(s3Build)
+            )
+          }
         }
+
         s3BuildEither.leftMap[S3BuildError](S3BuildParseError)
       }
 
