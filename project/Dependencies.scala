@@ -65,7 +65,7 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "3.0.6",
+      "com.gu.play-googleauth" %% "play-v30" % "4.0.0",
       "com.gu.play-secret-rotation" %% "play-v30" % "6.0.8",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "6.0.8",
       "org.pegdown" % "pegdown" % "1.6.0",
