@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.24.13"
     val jackson = "2.16.1"
-    val awsRds = "1.12.691"
+    val awsRds = "1.12.696"
     val enumeratumPlay = "1.8.0"
   }
 
