@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.25.38"
-    val jackson = "2.16.1"
+    val jackson = "2.16.2"
     val awsRds = "1.12.706"
     val enumeratumPlay = "1.8.0"
   }
@@ -26,10 +26,10 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.18" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.10.0",
-    "org.mockito" %% "mockito-scala" % "1.17.30" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.31" % Test
   )
 
   val magentaLibDeps =
@@ -49,7 +49,7 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240104-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.32.1",
+      "com.google.cloud" % "google-cloud-storage" % "2.37.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -65,16 +65,16 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "4.0.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "7.1.0",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "7.1.0",
+      "com.gu.play-googleauth" %% "play-v30" % "7.1.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "8.2.1",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.2.1",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "1.0.0-M11", // scala-steward:off,
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "1.8.1",
+      "com.gu" %% "anghammarad-client" % "2.0.0",
       "org.webjars" %% "webjars-play" % "3.0.1",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.2",
@@ -83,7 +83,7 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.29.4",
       "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.2",
+      "org.postgresql" % "postgresql" % "42.7.3",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
@@ -91,7 +91,7 @@ object Dependencies {
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.4.14"
+      "ch.qos.logback" % "logback-classic" % "1.5.6"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
