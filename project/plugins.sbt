@@ -1,7 +1,7 @@
 // keep in sync with the play version in Dependencies
 addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.2")
 
-addSbtPlugin("com.github.sbt" % "sbt-coffeescript" % "1.11.0")
+addSbtPlugin("com.github.sbt" % "sbt-coffeescript" % "2.0.1")
 addSbtPlugin(
   "com.typesafe.sbt" % "sbt-less" % "1.1.2"
 ) // scala-steward:off --  upgrading to 1.5 is causing a hard to debug error about mkdrip not existing.
