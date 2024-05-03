@@ -3,7 +3,7 @@ addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.2")
 
 addSbtPlugin("com.github.sbt" % "sbt-coffeescript" % "2.0.1")
 addSbtPlugin(
-  "com.typesafe.sbt" % "sbt-less" % "1.1.2"
+  "com.github.sbt" % "sbt-less" % "1.5.0"
 ) // scala-steward:off --  upgrading to 1.5 is causing a hard to debug error about mkdrip not existing.
 addSbtPlugin("com.github.sbt" % "sbt-digest" % "2.0.0")
 
