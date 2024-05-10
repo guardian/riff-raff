@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.25.38"
-    val jackson = "2.16.2"
+    val jackson = "2.17.0"
     val awsRds = "1.12.718"
     val enumeratumPlay = "1.8.0"
   }
@@ -65,9 +65,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "7.1.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "8.2.1",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.2.1",
+      "com.gu.play-googleauth" %% "play-v30" % "7.2.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "8.3.0",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.3.0",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "1.0.0-M11", // scala-steward:off,
