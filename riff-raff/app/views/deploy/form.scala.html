@@ -70,6 +70,15 @@
                 <button id="add-favourite-project-button" aria-label="Add to favourites" title="Add to favourites" disabled><i class="glyphicon glyphicon-star"></i></button>
             </div>
             @b3.text(deployForm("build"),  Symbol("_label") -> "Build", Symbol("id") -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", Symbol("class") -> "form-control input-md")
+
+            @b3.text(
+            deployForm("branch"),
+            Symbol("_label") -> "Branch",
+            Symbol("id") -> "branchInput",
+            Symbol("class") -> "form-control input-md",
+            Symbol("readonly") -> true
+            )
+
             @b3.select(
                 deployForm("stage"),
                 helper.options(prismLookup.stages.toList),
@@ -101,6 +110,15 @@
                         Symbol("_error") -> deployForm.globalError.map(_.withMessage("Please select an update strategy")),
                         Symbol("id") -> "updateStrategy"
                     )
+                </div>
+            </div>
+
+            <div class="form-group hidden" id="non-standard-prod-branch-checkbox">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" id="nonStandardBranchAcknowledgement" name="nonStandardBranchAcknowledgement" />
+                        I acknowledge this is a non-standard branch for PROD
+                    </label>
                 </div>
             </div>
 

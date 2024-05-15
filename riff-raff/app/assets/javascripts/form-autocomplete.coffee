@@ -3,6 +3,10 @@ menuOpen = false
 
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
+  $('#non-standard-prod-branch-checkbox').addClass('hidden')
+  $('button[value="preview"]').prop('disabled', false);
+  $('button[value="deploy"]').prop('disabled', false);
+  $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
 updateStageInfo = () ->
   elemProjectInput = $('#projectInput')
@@ -27,8 +31,18 @@ updateDeployInfo = () ->
   isExactMatch = elemProjectInput.hasClass("project-exact-match")
   selectedProject = elemProjectInput.val()
   selectedStage = $('#stage').val()
+  branch = $('#branchInput').val()
+  if selectedStage?.includes('PROD') and branch != 'main'
+    $('#non-standard-prod-branch-checkbox').removeClass('hidden')
+    $('button[value="preview"]').prop('disabled', true);
+    $('button[value="deploy"]').prop('disabled', true);
+  else
+    $('#non-standard-prod-branch-checkbox').addClass('hidden')
+    $('button[value="preview"]').prop('disabled', false);
+    $('button[value="deploy"]').prop('disabled', false);
+    $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
-  url = if selectedStage == ''
+    url = if selectedStage == ''
           jsRoutes.controllers.DeployController.deployHistory(selectedProject, undefined, isExactMatch).url
         else
           jsRoutes.controllers.DeployController.deployHistory(selectedProject, selectedStage, isExactMatch).url
@@ -142,6 +156,9 @@ $ ->
         updateBuildInfo( input.val() )
         updateStageInfo()
       select: (event,ui) ->
+        match = ui.item.label.match(/\[([^\]]+)\]/)
+        branch = if match? then match[1] else ''
+        $('#branchInput').val(branch)
         updateBuildInfo( input.val() )
         updateStageInfo()
       minLength:0
@@ -160,6 +177,11 @@ $ ->
   $('#buildInput').blur -> updateDeployInfo()
 
   $('#stage').change -> updateDeployInfo()
+
+  $('#nonStandardBranchAcknowledgement').change ->
+    isChecked = $(this).is(':checked')
+    $('button[value="preview"]').prop('disabled', !isChecked)
+    $('button[value="deploy"]').prop('disabled', !isChecked)
 
   updateDeployInfo()
 

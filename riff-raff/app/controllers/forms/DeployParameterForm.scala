@@ -15,6 +15,7 @@ import utils.Forms._
 case class DeployParameterForm(
     project: String,
     build: String,
+    branch: String,
     stage: String,
     action: String,
     selectedKeys: List[DeploymentKey],
@@ -43,6 +44,7 @@ object DeployParameterForm {
     mapping(
       "project" -> nonEmptyText,
       "build" -> nonEmptyText,
+      "branch" -> text,
       "stage" -> text,
       "action" -> nonEmptyText,
       "selectedKeys" -> list(deploymentKey),
