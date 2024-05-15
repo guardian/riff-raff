@@ -184,8 +184,8 @@ class DeployController(
       .filter(p => p.number.contains(term) || p.branchName.contains(term))
       .map { build =>
         val label =
-          "%s [%s] (%s)" format (build.number, build.branchName, shortFormat
-            .print(build.startTime))
+          "%s [%s] (%s) (%s)" format (build.number, build.branchName, shortFormat
+            .print(build.startTime), build.vcsURL.stripPrefix("https://github.com/"))
         Map("label" -> label, "value" -> build.number)
       }
     Ok(Json.toJson(possibleProjects))
