@@ -1,0 +1,6 @@
+#!/bin/bash
+# Connect to sbt process on port 9999.
+
+export SBT_EXTRA_PARAMS="$SBT_EXTRA_PARAMS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=9999"
+
+./sbt "$@"
