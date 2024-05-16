@@ -986,8 +986,10 @@ object AWS extends Loggable {
       resources: StsDeploymentResources
   ): StsAssumeRoleCredentialsProvider = {
     logger.info(s"building sts client for role $role")
+    val accountNumber = STS.getAccountNumber(resources.stsClient)
     val req: AssumeRoleRequest = AssumeRoleRequest.builder
       .roleSessionName(s"riffraff-session-${resources.deployId}")
+      .externalId(accountNumber)
       .roleArn(role)
       .build()
     StsAssumeRoleCredentialsProvider
