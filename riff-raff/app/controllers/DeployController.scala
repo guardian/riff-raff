@@ -182,11 +182,10 @@ class DeployController(
       .successfulBuilds(project)
       .filter(p => p.number.contains(term) || p.branchName.contains(term))
       .map { build =>
+        val repository = VCSInfo.normalise(build.vcsURL).getOrElse(build.vcsURL)
         val label =
           "%s [%s] (%s) (%s)" format (build.number, build.branchName, shortFormat
-            .print(build.startTime), VCSInfo
-            .normalise(build.vcsURL)
-            .getOrElse(build.vcsURL))
+            .print(build.startTime), repository)
         Map("label" -> label, "value" -> build.number)
       }
     Ok(Json.toJson(possibleProjects))
