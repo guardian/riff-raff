@@ -22,11 +22,10 @@ import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
-import play.utils.UriEncoding
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
-import utils.{ChangeFreeze, LogAndSquashBehaviour}
+import utils.{ChangeFreeze, LogAndSquashBehaviour, VCSInfo}
 import magenta.input.RiffRaffYamlReader
 
 class DeployController(
@@ -183,9 +182,10 @@ class DeployController(
       .successfulBuilds(project)
       .filter(p => p.number.contains(term) || p.branchName.contains(term))
       .map { build =>
+        val repository = VCSInfo.normalise(build.vcsURL).getOrElse(build.vcsURL)
         val label =
-          "%s [%s] (%s)" format (build.number, build.branchName, shortFormat
-            .print(build.startTime))
+          "%s [%s] (%s) (%s)" format (build.number, build.branchName, shortFormat
+            .print(build.startTime), repository)
         Map("label" -> label, "value" -> build.number)
       }
     Ok(Json.toJson(possibleProjects))
