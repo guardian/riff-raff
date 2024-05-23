@@ -202,12 +202,17 @@ object AutoScaling extends DeploymentType with BucketParameters {
           target.region,
           terminationGrace(pkg, target, reporter)
         ),
-        WaitForStabilization(
+        ResumeAlarmNotifications(autoScalingGroup, target.region),
+        WaitForCullToComplete(
           autoScalingGroup,
           secondsToWait(pkg, target, reporter),
           target.region
         ),
-        ResumeAlarmNotifications(autoScalingGroup, target.region)
+        WaitForStabilization(
+          autoScalingGroup,
+          secondsToWait(pkg, target, reporter),
+          target.region
+        )
       )
     }
     val groupsToUpdate: List[AutoScalingGroupInfo] =

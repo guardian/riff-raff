@@ -143,20 +143,21 @@ class AutoScalingTest
           DeployTarget(parameters(), stack, region)
         )
       val expected = List(
-        WaitForStabilization(testInfo, ofMinutes(5), Region("eu-west-1")),
-        CheckGroupSize(testInfo, Region("eu-west-1")),
-        SuspendAlarmNotifications(testInfo, Region("eu-west-1")),
-        TagCurrentInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        ProtectCurrentInstances(testInfo, Region("eu-west-1")),
-        DoubleSize(testInfo, Region("eu-west-1")),
-        HealthcheckGrace(testInfo, Region("eu-west-1"), ofSeconds(20)),
-        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
-        WarmupGrace(testInfo, Region("eu-west-1"), ofSeconds(1)),
-        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
-        CullInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        TerminationGrace(testInfo, Region("eu-west-1"), ofSeconds(10)),
-        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
-        ResumeAlarmNotifications(testInfo, Region("eu-west-1"))
+        WaitForStabilization(testInfo, ofMinutes(5), region),
+        CheckGroupSize(testInfo, region),
+        SuspendAlarmNotifications(testInfo, region),
+        TagCurrentInstancesWithTerminationTag(testInfo, region),
+        ProtectCurrentInstances(testInfo, region),
+        DoubleSize(testInfo, region),
+        HealthcheckGrace(testInfo, region, ofSeconds(20)),
+        WaitForStabilization(testInfo, ofMinutes(15), region),
+        WarmupGrace(testInfo, region, ofSeconds(1)),
+        WaitForStabilization(testInfo, ofMinutes(15), region),
+        CullInstancesWithTerminationTag(testInfo, region),
+        TerminationGrace(testInfo, region, ofSeconds(10)),
+        ResumeAlarmNotifications(testInfo, region),
+        WaitForCullToComplete(testInfo, ofMinutes(15), region),
+        WaitForStabilization(testInfo, ofMinutes(15), region)
       )
       actual shouldBe expected
     }
@@ -199,65 +200,37 @@ class AutoScalingTest
         )
       val expected = List(
         // All tasks for testOldCfnAsg
-        WaitForStabilization(testOldCfnAsg, ofMinutes(5), Region("eu-west-1")),
-        CheckGroupSize(testOldCfnAsg, Region("eu-west-1")),
-        SuspendAlarmNotifications(testOldCfnAsg, Region("eu-west-1")),
-        TagCurrentInstancesWithTerminationTag(
-          testOldCfnAsg,
-          Region("eu-west-1")
-        ),
-        ProtectCurrentInstances(testOldCfnAsg, Region("eu-west-1")),
-        DoubleSize(testOldCfnAsg, Region("eu-west-1")),
-        HealthcheckGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(20)),
-        WaitForStabilization(
-          testOldCfnAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        WarmupGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(1)),
-        WaitForStabilization(
-          testOldCfnAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        CullInstancesWithTerminationTag(testOldCfnAsg, Region("eu-west-1")),
-        TerminationGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(10)),
-        WaitForStabilization(
-          testOldCfnAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        ResumeAlarmNotifications(testOldCfnAsg, Region("eu-west-1")),
+        WaitForStabilization(testOldCfnAsg, ofMinutes(5), region),
+        CheckGroupSize(testOldCfnAsg, region),
+        SuspendAlarmNotifications(testOldCfnAsg, region),
+        TagCurrentInstancesWithTerminationTag(testOldCfnAsg, region),
+        ProtectCurrentInstances(testOldCfnAsg, region),
+        DoubleSize(testOldCfnAsg, region),
+        HealthcheckGrace(testOldCfnAsg, region, ofSeconds(20)),
+        WaitForStabilization(testOldCfnAsg, ofMinutes(15), region),
+        WarmupGrace(testOldCfnAsg, region, ofSeconds(1)),
+        WaitForStabilization(testOldCfnAsg, ofMinutes(15), region),
+        CullInstancesWithTerminationTag(testOldCfnAsg, region),
+        TerminationGrace(testOldCfnAsg, region, ofSeconds(10)),
+        ResumeAlarmNotifications(testOldCfnAsg, region),
+        WaitForCullToComplete(testOldCfnAsg, ofMinutes(15), region),
+        WaitForStabilization(testOldCfnAsg, ofMinutes(15), region),
         // All tasks for testNewCdkAsg
-        WaitForStabilization(testNewCdkAsg, ofMinutes(5), Region("eu-west-1")),
-        CheckGroupSize(testNewCdkAsg, Region("eu-west-1")),
-        SuspendAlarmNotifications(testNewCdkAsg, Region("eu-west-1")),
-        TagCurrentInstancesWithTerminationTag(
-          testNewCdkAsg,
-          Region("eu-west-1")
-        ),
-        ProtectCurrentInstances(testNewCdkAsg, Region("eu-west-1")),
-        DoubleSize(testNewCdkAsg, Region("eu-west-1")),
-        HealthcheckGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(20)),
-        WaitForStabilization(
-          testNewCdkAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        WarmupGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(1)),
-        WaitForStabilization(
-          testNewCdkAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        CullInstancesWithTerminationTag(testNewCdkAsg, Region("eu-west-1")),
-        TerminationGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(10)),
-        WaitForStabilization(
-          testNewCdkAsg,
-          ofMinutes(15),
-          Region("eu-west-1")
-        ),
-        ResumeAlarmNotifications(testNewCdkAsg, Region("eu-west-1"))
+        WaitForStabilization(testNewCdkAsg, ofMinutes(5), region),
+        CheckGroupSize(testNewCdkAsg, region),
+        SuspendAlarmNotifications(testNewCdkAsg, region),
+        TagCurrentInstancesWithTerminationTag(testNewCdkAsg, region),
+        ProtectCurrentInstances(testNewCdkAsg, region),
+        DoubleSize(testNewCdkAsg, region),
+        HealthcheckGrace(testNewCdkAsg, region, ofSeconds(20)),
+        WaitForStabilization(testNewCdkAsg, ofMinutes(15), region),
+        WarmupGrace(testNewCdkAsg, region, ofSeconds(1)),
+        WaitForStabilization(testNewCdkAsg, ofMinutes(15), region),
+        CullInstancesWithTerminationTag(testNewCdkAsg, region),
+        TerminationGrace(testNewCdkAsg, region, ofSeconds(10)),
+        ResumeAlarmNotifications(testNewCdkAsg, region),
+        WaitForCullToComplete(testNewCdkAsg, ofMinutes(15), region),
+        WaitForStabilization(testNewCdkAsg, ofMinutes(15), region)
       )
       actual shouldBe expected
     }
@@ -335,20 +308,21 @@ class AutoScalingTest
           DeployTarget(parameters(), stack, region)
         )
       val expected = List(
-        WaitForStabilization(testInfo, ofMinutes(5), Region("eu-west-1")),
-        CheckGroupSize(testInfo, Region("eu-west-1")),
-        SuspendAlarmNotifications(testInfo, Region("eu-west-1")),
-        TagCurrentInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        ProtectCurrentInstances(testInfo, Region("eu-west-1")),
-        DoubleSize(testInfo, Region("eu-west-1")),
-        HealthcheckGrace(testInfo, Region("eu-west-1"), ofSeconds(30)),
-        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
-        WarmupGrace(testInfo, Region("eu-west-1"), ofSeconds(20)),
-        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
-        CullInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        TerminationGrace(testInfo, Region("eu-west-1"), ofSeconds(11)),
-        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
-        ResumeAlarmNotifications(testInfo, Region("eu-west-1"))
+        WaitForStabilization(testInfo, ofMinutes(5), region),
+        CheckGroupSize(testInfo, region),
+        SuspendAlarmNotifications(testInfo, region),
+        TagCurrentInstancesWithTerminationTag(testInfo, region),
+        ProtectCurrentInstances(testInfo, region),
+        DoubleSize(testInfo, region),
+        HealthcheckGrace(testInfo, region, ofSeconds(30)),
+        WaitForStabilization(testInfo, ofMinutes(3), region),
+        WarmupGrace(testInfo, region, ofSeconds(20)),
+        WaitForStabilization(testInfo, ofMinutes(3), region),
+        CullInstancesWithTerminationTag(testInfo, region),
+        TerminationGrace(testInfo, region, ofSeconds(11)),
+        ResumeAlarmNotifications(testInfo, region),
+        WaitForCullToComplete(testInfo, ofMinutes(3), region),
+        WaitForStabilization(testInfo, ofMinutes(3), region)
       )
       actual shouldBe expected
     }
