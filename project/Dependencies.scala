@@ -49,7 +49,7 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240104-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.38.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.39.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
