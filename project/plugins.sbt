@@ -1,5 +1,5 @@
 // keep in sync with the play version in Dependencies
-addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.2")
+addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.3")
 
 addSbtPlugin("com.github.sbt" % "sbt-coffeescript" % "2.0.1")
 
