@@ -28,7 +28,7 @@ object Dependencies {
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.18" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
-    "org.typelevel" %% "cats-core" % "2.10.0",
+    "org.typelevel" %% "cats-core" % "2.12.0",
     "org.mockito" %% "mockito-scala" % "1.17.31" % Test
   )
 
@@ -65,7 +65,7 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "7.3.0",
+      "com.gu.play-googleauth" %% "play-v30" % "8.0.0",
       "com.gu.play-secret-rotation" %% "play-v30" % "8.3.1",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.3.1",
       "org.pegdown" % "pegdown" % "1.6.0",
