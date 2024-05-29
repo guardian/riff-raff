@@ -48,7 +48,7 @@ object Dependencies {
       "com.gu" %% "fastly-api-client" % "0.6.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
-      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240104-2.0.0",
+      "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240214-2.0.0",
       "com.google.cloud" % "google-cloud-storage" % "2.39.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
@@ -65,9 +65,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "7.2.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "8.3.0",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.3.0",
+      "com.gu.play-googleauth" %% "play-v30" % "7.3.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "8.3.1",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.3.1",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "1.0.0-M11", // scala-steward:off,
