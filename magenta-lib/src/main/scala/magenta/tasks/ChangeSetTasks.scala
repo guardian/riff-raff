@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
 import software.amazon.awssdk.services.cloudformation.model._
 import software.amazon.awssdk.services.s3.S3Client
 
+import java.time.Duration
 import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
 
@@ -150,7 +151,7 @@ class CreateChangeSetTask(
 class CheckChangeSetCreatedTask(
     region: Region,
     stackLookup: CloudFormationStackMetadata,
-    override val duration: Long
+    override val duration: Duration
 )(implicit val keyRing: KeyRing, artifactClient: S3Client)
     extends Task
     with RepeatedPollingCheck {

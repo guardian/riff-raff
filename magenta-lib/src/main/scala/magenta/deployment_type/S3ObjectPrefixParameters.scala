@@ -7,15 +7,24 @@ trait S3ObjectPrefixParameters {
   this: DeploymentType =>
 
   val prefixStage: Param[Boolean] =
-    Param("prefixStage", "Prefix the S3 bucket key with the target stage")
+    Param[Boolean](
+      "prefixStage",
+      "Prefix the S3 bucket key with the target stage"
+    )
       .default(true)
 
   val prefixPackage: Param[Boolean] =
-    Param("prefixPackage", "Prefix the S3 bucket key with the package name")
+    Param[Boolean](
+      "prefixPackage",
+      "Prefix the S3 bucket key with the package name"
+    )
       .default(true)
 
   val prefixStack: Param[Boolean] =
-    Param("prefixStack", "Prefix the S3 bucket key with the target stack")
+    Param[Boolean](
+      "prefixStack",
+      "Prefix the S3 bucket key with the target stack"
+    )
       .default(true)
 
   val prefixApp: Param[Boolean] = Param[Boolean](

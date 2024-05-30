@@ -95,7 +95,7 @@ class DeploymentTypeResolverTest
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register => List(Param[String]("param1")(register))
+        implicit register => List(Param[String]("param1"))
       )
     )
     val configErrors = DeploymentTypeResolver
@@ -111,7 +111,7 @@ class DeploymentTypeResolverTest
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register => List(Param[String]("param1", optional = true)(register))
+        implicit register => List(Param[String]("param1", optional = true))
       )
     )
     DeploymentTypeResolver
@@ -123,11 +123,9 @@ class DeploymentTypeResolverTest
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register =>
+        implicit register =>
           List(
-            Param[String]("param1", defaultValue = Some("defaultValue"))(
-              register
-            )
+            Param[String]("param1", defaultValue = Some("defaultValue"))
           )
       )
     )
@@ -140,12 +138,12 @@ class DeploymentTypeResolverTest
     val deploymentTypesWithParams = List(
       stubDeploymentType(
         Seq("upload", "deploy"),
-        register =>
+        implicit register =>
           List(
             Param[String](
               "param1",
               defaultValueFromContext = Some((pkg, _) => Right(pkg.name))
-            )(register)
+            )
           )
       )
     )

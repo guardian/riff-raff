@@ -20,6 +20,7 @@ import magenta.tasks.ASG.{TagAbsent, TagExists, TagMatch}
 import magenta.tasks._
 import org.mockito.ArgumentMatchersSugar
 import org.mockito.MockitoSugar
+import org.scalatest.{Inspectors, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, JsNumber, JsString, JsValue}
@@ -27,11 +28,14 @@ import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import java.time.Duration.{ofMinutes, ofSeconds}
 import scala.concurrent.ExecutionContext.global
 
 class AutoScalingTest
     extends AnyFlatSpec
     with Matchers
+    with Inspectors
+    with OptionValues
     with MockitoSugar
     with ArgumentMatchersSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
@@ -49,6 +53,15 @@ class AutoScalingTest
       .maxSize(10)
       .build()
     AutoScalingGroupInfo(asg, List(TagMatch("App", name)))
+  }
+
+  "AutoScaling parameters for durations" should "behave as documented and assume integers are in seconds" in {
+    import AutoScaling._
+    forAll(
+      Seq(secondsToWait, healthcheckGrace, warmupGrace, terminationGrace)
+    ) { param =>
+      param.parse(JsNumber(30)).value shouldEqual ofSeconds(30)
+    }
   }
 
   "AutoScalingGroupLookup.getTagRequirements" should "return the right tags for a basic app" in {
@@ -130,19 +143,19 @@ class AutoScalingTest
           DeployTarget(parameters(), stack, region)
         )
       val expected = List(
-        WaitForStabilization(testInfo, 5 * 60 * 1000, Region("eu-west-1")),
+        WaitForStabilization(testInfo, ofMinutes(5), Region("eu-west-1")),
         CheckGroupSize(testInfo, Region("eu-west-1")),
         SuspendAlarmNotifications(testInfo, Region("eu-west-1")),
         TagCurrentInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
         ProtectCurrentInstances(testInfo, Region("eu-west-1")),
         DoubleSize(testInfo, Region("eu-west-1")),
-        HealthcheckGrace(testInfo, Region("eu-west-1"), 20000),
-        WaitForStabilization(testInfo, 15 * 60 * 1000, Region("eu-west-1")),
-        WarmupGrace(testInfo, Region("eu-west-1"), 1000),
-        WaitForStabilization(testInfo, 15 * 60 * 1000, Region("eu-west-1")),
+        HealthcheckGrace(testInfo, Region("eu-west-1"), ofSeconds(20)),
+        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
+        WarmupGrace(testInfo, Region("eu-west-1"), ofSeconds(1)),
+        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
         CullInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        TerminationGrace(testInfo, Region("eu-west-1"), 10000),
-        WaitForStabilization(testInfo, 15 * 60 * 1000, Region("eu-west-1")),
+        TerminationGrace(testInfo, Region("eu-west-1"), ofSeconds(10)),
+        WaitForStabilization(testInfo, ofMinutes(15), Region("eu-west-1")),
         ResumeAlarmNotifications(testInfo, Region("eu-west-1"))
       )
       actual shouldBe expected
@@ -186,7 +199,7 @@ class AutoScalingTest
         )
       val expected = List(
         // All tasks for testOldCfnAsg
-        WaitForStabilization(testOldCfnAsg, 5 * 60 * 1000, Region("eu-west-1")),
+        WaitForStabilization(testOldCfnAsg, ofMinutes(5), Region("eu-west-1")),
         CheckGroupSize(testOldCfnAsg, Region("eu-west-1")),
         SuspendAlarmNotifications(testOldCfnAsg, Region("eu-west-1")),
         TagCurrentInstancesWithTerminationTag(
@@ -195,28 +208,28 @@ class AutoScalingTest
         ),
         ProtectCurrentInstances(testOldCfnAsg, Region("eu-west-1")),
         DoubleSize(testOldCfnAsg, Region("eu-west-1")),
-        HealthcheckGrace(testOldCfnAsg, Region("eu-west-1"), 20000),
+        HealthcheckGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(20)),
         WaitForStabilization(
           testOldCfnAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
-        WarmupGrace(testOldCfnAsg, Region("eu-west-1"), 1000),
+        WarmupGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(1)),
         WaitForStabilization(
           testOldCfnAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
         CullInstancesWithTerminationTag(testOldCfnAsg, Region("eu-west-1")),
-        TerminationGrace(testOldCfnAsg, Region("eu-west-1"), 10000),
+        TerminationGrace(testOldCfnAsg, Region("eu-west-1"), ofSeconds(10)),
         WaitForStabilization(
           testOldCfnAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
         ResumeAlarmNotifications(testOldCfnAsg, Region("eu-west-1")),
         // All tasks for testNewCdkAsg
-        WaitForStabilization(testNewCdkAsg, 5 * 60 * 1000, Region("eu-west-1")),
+        WaitForStabilization(testNewCdkAsg, ofMinutes(5), Region("eu-west-1")),
         CheckGroupSize(testNewCdkAsg, Region("eu-west-1")),
         SuspendAlarmNotifications(testNewCdkAsg, Region("eu-west-1")),
         TagCurrentInstancesWithTerminationTag(
@@ -225,23 +238,23 @@ class AutoScalingTest
         ),
         ProtectCurrentInstances(testNewCdkAsg, Region("eu-west-1")),
         DoubleSize(testNewCdkAsg, Region("eu-west-1")),
-        HealthcheckGrace(testNewCdkAsg, Region("eu-west-1"), 20000),
+        HealthcheckGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(20)),
         WaitForStabilization(
           testNewCdkAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
-        WarmupGrace(testNewCdkAsg, Region("eu-west-1"), 1000),
+        WarmupGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(1)),
         WaitForStabilization(
           testNewCdkAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
         CullInstancesWithTerminationTag(testNewCdkAsg, Region("eu-west-1")),
-        TerminationGrace(testNewCdkAsg, Region("eu-west-1"), 10000),
+        TerminationGrace(testNewCdkAsg, Region("eu-west-1"), ofSeconds(10)),
         WaitForStabilization(
           testNewCdkAsg,
-          15 * 60 * 1000,
+          ofMinutes(15),
           Region("eu-west-1")
         ),
         ResumeAlarmNotifications(testNewCdkAsg, Region("eu-west-1"))
@@ -322,19 +335,19 @@ class AutoScalingTest
           DeployTarget(parameters(), stack, region)
         )
       val expected = List(
-        WaitForStabilization(testInfo, 5 * 60 * 1000, Region("eu-west-1")),
+        WaitForStabilization(testInfo, ofMinutes(5), Region("eu-west-1")),
         CheckGroupSize(testInfo, Region("eu-west-1")),
         SuspendAlarmNotifications(testInfo, Region("eu-west-1")),
         TagCurrentInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
         ProtectCurrentInstances(testInfo, Region("eu-west-1")),
         DoubleSize(testInfo, Region("eu-west-1")),
-        HealthcheckGrace(testInfo, Region("eu-west-1"), 30000),
-        WaitForStabilization(testInfo, 3 * 60 * 1000, Region("eu-west-1")),
-        WarmupGrace(testInfo, Region("eu-west-1"), 20000),
-        WaitForStabilization(testInfo, 3 * 60 * 1000, Region("eu-west-1")),
+        HealthcheckGrace(testInfo, Region("eu-west-1"), ofSeconds(30)),
+        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
+        WarmupGrace(testInfo, Region("eu-west-1"), ofSeconds(20)),
+        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
         CullInstancesWithTerminationTag(testInfo, Region("eu-west-1")),
-        TerminationGrace(testInfo, Region("eu-west-1"), 11000),
-        WaitForStabilization(testInfo, 3 * 60 * 1000, Region("eu-west-1")),
+        TerminationGrace(testInfo, Region("eu-west-1"), ofSeconds(11)),
+        WaitForStabilization(testInfo, ofMinutes(3), Region("eu-west-1")),
         ResumeAlarmNotifications(testInfo, Region("eu-west-1"))
       )
       actual shouldBe expected

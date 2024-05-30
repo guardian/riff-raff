@@ -1,16 +1,14 @@
 package magenta
 package tasks
 
-import java.io.{File, InputStream, PipedInputStream, PipedOutputStream}
 import magenta.artifact._
+import magenta.deployment_type.param_reads.PatternValue
 import magenta.deployment_type.{
   LambdaFunction,
   LambdaFunctionName,
   LambdaFunctionTags,
-  LambdaLayer,
   LambdaLayerName
 }
-import magenta.deployment_type.param_reads.PatternValue
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
@@ -18,21 +16,20 @@ import software.amazon.awssdk.core.sync.{
   ResponseTransformer,
   RequestBody => AWSRequestBody
 }
-import software.amazon.awssdk.http.ContentStreamProvider
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.{
   GetObjectRequest,
   GetObjectResponse,
-  HeadObjectRequest,
   ObjectCannedACL,
   PutObjectRequest
 }
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.control.NonFatal
+import java.io.{File, PipedInputStream, PipedOutputStream}
+import java.time.Duration.{between, ofMillis, ofSeconds}
+import java.time.{Duration, Instant}
 import scala.collection.parallel.CollectionConverters._
+import scala.concurrent.{Await, Future}
+import scala.util.control.NonFatal
 
 case class S3Upload(
     region: Region,
@@ -163,6 +160,7 @@ case class S3Upload(
               is.close()
             }
 
+          import scala.concurrent.duration._
           Await.result(response, 5 minutes)
 
           logger.debug(
@@ -269,51 +267,51 @@ case class PutReq(
 }
 
 trait PollingCheck {
-  def duration: Long
+  def duration: Duration
 
   def check(reporter: DeployReporter, stopFlag: => Boolean)(
       theCheck: => Boolean
   ): Unit = {
-    val expiry = System.currentTimeMillis() + duration
+    val expiry = Instant.now().plus(duration)
 
-    def checkAttempt(currentAttempt: Int): Unit = {
-      if (!theCheck) {
-        if (stopFlag) {
-          reporter.info("Abandoning remaining checks as stop flag has been set")
-        } else {
-          val remainingTime = expiry - System.currentTimeMillis()
-          if (remainingTime > 0) {
-            val sleepyTime = calculateSleepTime(currentAttempt)
-            reporter.verbose(
-              f"Check failed on attempt #$currentAttempt (Will wait for a further ${remainingTime.toFloat / 1000} seconds, retrying again after ${sleepyTime.toFloat / 1000}s)"
-            )
-            Thread.sleep(sleepyTime)
-            checkAttempt(currentAttempt + 1)
-          } else {
-            reporter.fail(
-              s"Check failed to pass within $duration milliseconds (tried $currentAttempt times) - aborting"
-            )
-          }
+    def checkAttempt(currentAttempt: Int): Unit = if (!theCheck) {
+      if (stopFlag)
+        reporter.info("Abandoning remaining checks as stop flag has been set")
+      else {
+        val remainingTime = between(Instant.now(), expiry)
+        if (remainingTime.isNegative)
+          reporter.fail(
+            s"Check failed to pass within $duration milliseconds (tried $currentAttempt times) - aborting"
+          )
+        else {
+          val sleepyTime = calculateSleepTime(currentAttempt)
+          reporter.verbose(
+            f"Check failed on attempt #$currentAttempt (Will wait for a further ${remainingTime.toSeconds} seconds, retrying again after ${sleepyTime.toSeconds}s)"
+          )
+          Thread.sleep(sleepyTime.toMillis)
+          checkAttempt(currentAttempt + 1)
         }
       }
     }
+
     checkAttempt(1)
   }
 
-  def calculateSleepTime(currentAttempt: Int): Long
+  def calculateSleepTime(currentAttempt: Int): Duration
 }
 
 trait RepeatedPollingCheck extends PollingCheck {
 
-  def calculateSleepTime(currentAttempt: Int): Long = {
+  def calculateSleepTime(currentAttempt: Int): Duration = {
     val exponent = math.min(currentAttempt, 8)
-    math.min(math.pow(2, exponent).toLong * 100, 25000)
+    ofMillis(math.min(math.pow(2, exponent).toLong * 100, 25000))
   }
 }
 
 trait SlowRepeatedPollingCheck extends PollingCheck {
 
-  def calculateSleepTime(currentAttempt: Int): Long = 30000
+  def calculateSleepTime(currentAttempt: Int): Duration =
+    ofSeconds(30)
 }
 
 case class SayHello(host: Host)(implicit val keyRing: KeyRing) extends Task {

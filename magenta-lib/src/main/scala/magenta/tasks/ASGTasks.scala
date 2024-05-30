@@ -9,8 +9,8 @@ import software.amazon.awssdk.services.autoscaling.model.{
   LifecycleState,
   SetInstanceProtectionRequest
 }
-import software.amazon.awssdk.services.ec2.Ec2Client
 
+import java.time.Duration
 import scala.jdk.CollectionConverters._
 
 case class CheckGroupSize(info: AutoScalingGroupInfo, region: Region)(implicit
@@ -118,8 +118,12 @@ case class DoubleSize(info: AutoScalingGroupInfo, region: Region)(implicit
     s"Double the size of the auto-scaling group called $asgName"
 }
 
-sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing)
+sealed abstract class Pause(duration: Duration)(implicit val keyRing: KeyRing)
     extends ASGTask {
+  val purpose: String
+
+  def description: String = s"Wait extra ${duration.toMillis}ms to $purpose"
+
   def execute(
       asg: AutoScalingGroup,
       resources: DeploymentResources,
@@ -131,43 +135,40 @@ sealed abstract class Pause(durationMillis: Long)(implicit val keyRing: KeyRing)
         "Skipping pause as there are no instances and desired capacity is zero"
       )
     else
-      Thread.sleep(durationMillis)
+      Thread.sleep(duration.toMillis)
   }
 }
 
 case class HealthcheckGrace(
     info: AutoScalingGroupInfo,
     region: Region,
-    durationMillis: Long
+    duration: Duration
 )(implicit keyRing: KeyRing)
-    extends Pause(durationMillis) {
-  def description: String =
-    s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
+    extends Pause(duration) {
+  val purpose: String = "let Load Balancer report correctly"
 }
 
 case class WarmupGrace(
     info: AutoScalingGroupInfo,
     region: Region,
-    durationMillis: Long
+    duration: Duration
 )(implicit keyRing: KeyRing)
-    extends Pause(durationMillis) {
-  def description: String =
-    s"Wait extra ${durationMillis}ms to let instances in Load Balancer warm up"
+    extends Pause(duration) {
+  val purpose: String = "let instances in Load Balancer warm up"
 }
 
 case class TerminationGrace(
     info: AutoScalingGroupInfo,
     region: Region,
-    durationMillis: Long
+    duration: Duration
 )(implicit keyRing: KeyRing)
-    extends Pause(durationMillis) {
-  def description: String =
-    s"Wait extra ${durationMillis}ms to let Load Balancer report correctly"
+    extends Pause(duration) {
+  val purpose: String = "let Load Balancer report correctly"
 }
 
 case class WaitForStabilization(
     info: AutoScalingGroupInfo,
-    duration: Long,
+    duration: Duration,
     region: Region
 )(implicit val keyRing: KeyRing)
     extends ASGTask
