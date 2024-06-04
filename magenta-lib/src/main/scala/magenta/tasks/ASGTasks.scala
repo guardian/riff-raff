@@ -181,7 +181,7 @@ case class WaitForStabilization(
     ELB.withClient(keyRing, region, resources) { elbClient =>
       check(resources.reporter, stopFlag) {
         try {
-          ASG.isStabilized(ASG.refresh(asg, asgClient), elbClient) match {
+          ASG.isStabilized(ASG.refresh(asg), elbClient) match {
             case Left(reason) =>
               resources.reporter.verbose(reason)
               false
@@ -302,7 +302,9 @@ case class WaitForCullToComplete(
   )(implicit asgClient: AutoScalingClient): Unit =
     withEc2Client(keyRing, region, resources) { implicit ec2Client =>
       check(resources.reporter, stopFlag) {
-        CullSummary.forAsg(asg, resources.reporter).isCullComplete
+        CullSummary
+          .forAsg(ASG.refresh(asg), resources.reporter)
+          .isCullComplete
       }
     }
 

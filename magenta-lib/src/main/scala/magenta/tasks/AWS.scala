@@ -420,9 +420,8 @@ object ASG {
   }
 
   def refresh(
-      asg: AutoScalingGroup,
-      client: AutoScalingClient
-  ): AutoScalingGroup =
+      asg: AutoScalingGroup
+  )(implicit client: AutoScalingClient): AutoScalingGroup =
     client
       .describeAutoScalingGroups(
         DescribeAutoScalingGroupsRequest
