@@ -1,7 +1,9 @@
 package magenta.deployment_type
 
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage}
-import play.api.libs.json.{Json, Reads}
+import play.api.libs.json.{JsValue, Json, Reads}
+
+import java.time.Duration
 
 trait ParamRegister {
   def add(param: Param[_]): Unit
@@ -38,21 +40,24 @@ case class Param[T](
       (DeploymentPackage, DeployTarget) => Either[String, T]
     ] = None,
     deprecatedDefault: Boolean = false
-)(implicit register: ParamRegister) {
+)(implicit register: ParamRegister, reads: Reads[T], manifest: Manifest[T]) {
   register.add(this)
 
   val required =
     !optional && defaultValue.isEmpty && defaultValueFromContext.isEmpty
 
-  def get(pkg: DeploymentPackage)(implicit reads: Reads[T]): Option[T] =
+  def get(pkg: DeploymentPackage): Option[T] =
     pkg.pkgSpecificData
       .get(name)
-      .flatMap(jsValue => Json.fromJson[T](jsValue).asOpt)
+      .flatMap(jsValue => parse(jsValue))
+
+  def parse(jsValue: JsValue): Option[T] = Json.fromJson[T](jsValue).asOpt
+
   def apply(
       pkg: DeploymentPackage,
       target: DeployTarget,
       reporter: DeployReporter
-  )(implicit reads: Reads[T], manifest: Manifest[T]): T = {
+  ): T = {
     val maybeValue = get(pkg)
     val defaultFromContext = defaultValueFromContext.map(_(pkg, target))
 
@@ -95,4 +100,24 @@ case class Param[T](
   ) = {
     this.copy(defaultValueFromContext = Some(defaultFromContext))
   }
+}
+
+object Param {
+  private val ReadIntAsSeconds: Reads[Duration] =
+    Reads.of[Int].map(Duration.ofSeconds(_))
+
+  /** Create a parameter that represents a number of seconds to wait for
+    * something. Riff Raff has many existing parameters for setting durations
+    * where the values are *expected* to be in seconds, so this helper method
+    * makes that clear and ensures that the value is explicitly parsed as a
+    * duration in *seconds*.
+    */
+  def waitingSecondsFor(name: String, waitingOn: String)(implicit
+      register: ParamRegister
+  ): Param[Duration] =
+    Param[Duration](name, s"Number of seconds to wait for $waitingOn")(
+      register,
+      ReadIntAsSeconds,
+      implicitly[Manifest[Duration]]
+    )
 }

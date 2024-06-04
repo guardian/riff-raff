@@ -11,7 +11,8 @@ import magenta.tasks.gcp.GCP.DeploymentManagerApi.DeploymentBundle
 import magenta.{DeployReporter, KeyRing}
 import software.amazon.awssdk.services.s3.S3Client
 
-import scala.concurrent.duration._
+import java.time.Duration
+import java.time.Duration.ofMinutes
 
 object GcpDeploymentManager extends DeploymentType {
   val GCP_PROJECT_NAME_PRISM_KEY: String = "gcp:project-name"
@@ -23,12 +24,10 @@ object GcpDeploymentManager extends DeploymentType {
       |
       |""".stripMargin
 
-  val maxWaitParam: Param[Int] = Param[Int](
-    name = "maxWait",
-    documentation = """
-      |Number of seconds to wait for the deployment operations to complete
-      |""".stripMargin
-  ).default(1800) // half an hour
+  val maxWaitParam: Param[Duration] =
+    Param
+      .waitingSecondsFor("maxWait", "the deployment operations to complete")
+      .default(ofMinutes(30))
 
   val deploymentNameParam: Param[String] = Param(
     name = "deploymentName",
@@ -93,7 +92,7 @@ object GcpDeploymentManager extends DeploymentType {
         }
       implicit val artifactClient: S3Client = resources.artifactClient
 
-      val maxWaitDuration = maxWaitParam(pkg, target, reporter).seconds
+      val maxWaitDuration = maxWaitParam(pkg, target, reporter)
       val deploymentName = deploymentNameParam(pkg, target, reporter)
       val upsert = upsertParam(pkg, target, reporter)
       val preview = previewParam(pkg, target, reporter)

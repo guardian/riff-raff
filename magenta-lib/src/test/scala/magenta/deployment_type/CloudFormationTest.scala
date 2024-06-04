@@ -16,8 +16,8 @@ import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.{EitherValues, Inside}
-import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
+import org.scalatest.{EitherValues, Inside, OptionValues}
+import play.api.libs.json.{JsBoolean, JsNumber, JsString, JsValue, Json}
 import software.amazon.awssdk.services.cloudformation.model.{
   Change,
   ChangeSetType
@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.cloudformation.model.{
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 
+import java.time.Duration.ofSeconds
 import java.util.UUID
 import scala.concurrent.ExecutionContext.global
 
@@ -35,6 +36,7 @@ class CloudFormationTest
     extends AnyFlatSpec
     with Matchers
     with Inside
+    with OptionValues
     with EitherValues {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   implicit val reporter: DeployReporter =
@@ -85,6 +87,14 @@ class CloudFormationTest
           region
         )
       )
+  }
+
+  "parameters for durations" should "behave as documented and assume integers are in seconds" in {
+    cloudformationDeploymentType.secondsToWaitForChangeSetCreation
+      .parse(
+        JsNumber(30)
+      )
+      .value shouldEqual ofSeconds(30)
   }
 
   it should "generate the tasks in the correct order when manageStackPolicy is false" in {

@@ -16,6 +16,9 @@ import software.amazon.awssdk.services.autoscaling.model.AutoScalingGroup
 import magenta.tasks.{S3 => S3Tasks}
 import software.amazon.awssdk.services.ssm.SsmClient
 
+import java.time.Duration
+import java.time.Duration.{ofMinutes, ofSeconds}
+
 sealed trait MigrationTagRequirements
 case object NoMigration extends MigrationTagRequirements
 case object MustBePresent extends MigrationTagRequirements
@@ -88,22 +91,24 @@ object AutoScaling extends DeploymentType with BucketParameters {
       | - scale up, wait for the new instances to become healthy and then scale back down
     """.stripMargin
 
-  val secondsToWait = Param(
-    "secondsToWait",
-    "Number of seconds to wait for instances to enter service"
-  ).default(15 * 60)
-  val healthcheckGrace = Param(
-    "healthcheckGrace",
-    "Number of seconds to wait for the AWS api to stabilise"
-  ).default(20)
-  val warmupGrace = Param(
-    "warmupGrace",
-    "Number of seconds to wait for the instances in the load balancer to warm up"
-  ).default(1)
-  val terminationGrace = Param(
-    "terminationGrace",
-    "Number of seconds to wait for the AWS api to stabilise after instance termination"
-  ).default(10)
+  val secondsToWait: Param[Duration] = Param
+    .waitingSecondsFor("secondsToWait", "instances to enter service")
+    .default(ofMinutes(15))
+  val healthcheckGrace: Param[Duration] = Param
+    .waitingSecondsFor("healthcheckGrace", "the AWS api to stabilise")
+    .default(ofSeconds(20))
+  val warmupGrace: Param[Duration] = Param
+    .waitingSecondsFor(
+      "warmupGrace",
+      "the instances in the load balancer to warm up"
+    )
+    .default(ofSeconds(1))
+  val terminationGrace: Param[Duration] = Param
+    .waitingSecondsFor(
+      "terminationGrace",
+      "the AWS api to stabilise after instance termination"
+    )
+    .default(ofSeconds(10))
 
   val prefixStage = Param[Boolean](
     "prefixStage",
@@ -165,7 +170,7 @@ object AutoScaling extends DeploymentType with BucketParameters {
         autoScalingGroup: AutoScalingGroupInfo
     ): List[ASGTask] = {
       List(
-        WaitForStabilization(autoScalingGroup, 5 * 60 * 1000, target.region),
+        WaitForStabilization(autoScalingGroup, ofMinutes(5), target.region),
         CheckGroupSize(autoScalingGroup, target.region),
         SuspendAlarmNotifications(autoScalingGroup, target.region),
         TagCurrentInstancesWithTerminationTag(autoScalingGroup, target.region),
@@ -174,32 +179,32 @@ object AutoScaling extends DeploymentType with BucketParameters {
         HealthcheckGrace(
           autoScalingGroup,
           target.region,
-          healthcheckGrace(pkg, target, reporter) * 1000
+          healthcheckGrace(pkg, target, reporter)
         ),
         WaitForStabilization(
           autoScalingGroup,
-          secondsToWait(pkg, target, reporter) * 1000,
+          secondsToWait(pkg, target, reporter),
           target.region
         ),
         WarmupGrace(
           autoScalingGroup,
           target.region,
-          warmupGrace(pkg, target, reporter) * 1000
+          warmupGrace(pkg, target, reporter)
         ),
         WaitForStabilization(
           autoScalingGroup,
-          secondsToWait(pkg, target, reporter) * 1000,
+          secondsToWait(pkg, target, reporter),
           target.region
         ),
         CullInstancesWithTerminationTag(autoScalingGroup, target.region),
         TerminationGrace(
           autoScalingGroup,
           target.region,
-          terminationGrace(pkg, target, reporter) * 1000
+          terminationGrace(pkg, target, reporter)
         ),
         WaitForStabilization(
           autoScalingGroup,
-          secondsToWait(pkg, target, reporter) * 1000,
+          secondsToWait(pkg, target, reporter),
           target.region
         ),
         ResumeAlarmNotifications(autoScalingGroup, target.region)

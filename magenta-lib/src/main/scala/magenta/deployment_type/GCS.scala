@@ -9,13 +9,22 @@ object GCS extends DeploymentType {
   val documentation = "For uploading files into a GCS bucket."
 
   val prefixStage =
-    Param("prefixStage", "Prefix the GCS bucket key with the target stage")
+    Param[Boolean](
+      "prefixStage",
+      "Prefix the GCS bucket key with the target stage"
+    )
       .default(true)
   val prefixPackage =
-    Param("prefixPackage", "Prefix the GCS bucket key with the package name")
+    Param[Boolean](
+      "prefixPackage",
+      "Prefix the GCS bucket key with the package name"
+    )
       .default(true)
   val prefixStack =
-    Param("prefixStack", "Prefix the GCS bucket key with the target stack")
+    Param[Boolean](
+      "prefixStack",
+      "Prefix the GCS bucket key with the target stack"
+    )
       .default(true)
   val pathPrefixResource = Param[String](
     "pathPrefixResource",

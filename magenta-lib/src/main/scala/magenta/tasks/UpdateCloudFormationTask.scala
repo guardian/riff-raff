@@ -18,7 +18,6 @@ import magenta.{
   Stack,
   Stage
 }
-import org.joda.time.{DateTime, Duration}
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.{
@@ -31,21 +30,23 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.sts.StsClient
 
+import java.time.{Duration, Instant}
+import java.time.Duration.{between, ofMinutes, ofSeconds}
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
+import scala.math.Ordering.Implicits._
 
 /** A simple trait to aid with attempting an update multiple times in the case
   * that an update is already running.
   */
 trait RetryCloudFormationUpdate {
-  def duration: Long = 15 * 60 * 1000 // wait fifteen minutes
-  def calculateSleepTime(currentAttempt: Int): Long =
-    30 * 1000 // sleep 30 seconds
+  def duration: Duration = ofMinutes(15)
+  def calculateSleepTime(currentAttempt: Int): Duration = ofSeconds(30)
 
   def updateWithRetry[T](reporter: DeployReporter, stopFlag: => Boolean)(
       theUpdate: => T
   ): Option[T] = {
-    val expiry = System.currentTimeMillis() + duration
+    val expiry = Instant.now().plus(duration)
 
     def updateAttempt(currentAttempt: Int): Option[T] = {
       try {
@@ -62,18 +63,18 @@ trait RetryCloudFormationUpdate {
             )
             None
           } else {
-            val remainingTime = expiry - System.currentTimeMillis()
-            if (remainingTime > 0) {
-              val sleepyTime = calculateSleepTime(currentAttempt)
-              reporter.verbose(
-                f"Another update is running against this cloudformation stack, waiting for it to finish (tried $currentAttempt%s, will try again in ${sleepyTime.toFloat / 1000}%.1f, will give up in ${remainingTime.toFloat / 1000}%.1f)"
-              )
-              Thread.sleep(sleepyTime)
-              updateAttempt(currentAttempt + 1)
-            } else {
+            val remainingTime = between(Instant.now(), expiry)
+            if (remainingTime.isNegative)
               reporter.fail(
                 s"Update is still running after $duration milliseconds (tried $currentAttempt times) - aborting"
               )
+            else {
+              val sleepyTime = calculateSleepTime(currentAttempt)
+              reporter.verbose(
+                f"Another update is running against this cloudformation stack, waiting for it to finish (Will wait for a further ${remainingTime.toSeconds} seconds, retrying again after ${sleepyTime.toSeconds}s)"
+              )
+              Thread.sleep(sleepyTime.toMillis)
+              updateAttempt(currentAttempt + 1)
             }
           }
         case e: CloudFormationException =>
@@ -383,7 +384,7 @@ object UpdateCloudFormationTask extends Loggable {
         reporter,
         Some(1)
       )
-      val keyName = s"$stackName-${new DateTime().getMillis}"
+      val keyName = s"$stackName-${System.currentTimeMillis()}"
       reporter.verbose(
         s"Uploading template as $keyName to S3 bucket $bucketName"
       )
@@ -609,11 +610,8 @@ class CloudFormationStackEventPoller(
               s"No events found at all for stack $stackName"
             )
           case Some(e) =>
-            val age = new Duration(
-              new DateTime(e.timestamp().toEpochMilli),
-              new DateTime()
-            ).getStandardSeconds
-            if (age > 30) {
+            val age = Duration.between(e.timestamp(), Instant.now())
+            if (age > ofSeconds(30)) {
               resources.reporter.verbose(
                 "No recent IN_PROGRESS events found (nothing within last 30 seconds)"
               )

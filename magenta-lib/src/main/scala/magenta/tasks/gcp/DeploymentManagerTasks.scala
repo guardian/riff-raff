@@ -7,14 +7,15 @@ import magenta.tasks.{PollingCheck, Task}
 import magenta.tasks.gcp.GCP.DeploymentManagerApi._
 import magenta.tasks.gcp.GCPRetryHelper.Result
 
-import scala.concurrent.duration.FiniteDuration
+import java.time.Duration
+import java.time.Duration.ofSeconds
 
 object DeploymentManagerTasks {
   def updateTask(
       project: String,
       deploymentName: String,
       bundle: DeploymentBundle,
-      maxWait: FiniteDuration,
+      maxWait: Duration,
       upsert: Boolean,
       preview: Boolean
   )(implicit kr: KeyRing): Task = new Task with PollingCheck {
@@ -127,8 +128,9 @@ object DeploymentManagerTasks {
       }
     }
 
-    override def duration: Long = maxWait.toMillis
+    override def duration: Duration = maxWait
 
-    override def calculateSleepTime(currentAttempt: Int): Long = 5000
+    override def calculateSleepTime(currentAttempt: Int): Duration =
+      ofSeconds(5)
   }
 }
