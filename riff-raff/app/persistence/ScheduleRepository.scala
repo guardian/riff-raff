@@ -4,7 +4,7 @@ import java.util.UUID
 import ci.Trigger
 import org.scanamo.syntax._
 import org.scanamo.{DynamoFormat, Table}
-import org.scanamo.auto._
+import org.scanamo.generic.auto._
 import conf.Config
 import schedule.ScheduleConfig
 
@@ -12,8 +12,9 @@ class ScheduleRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](
-      Trigger.withName
-    )(_.toString)
+      Trigger.withName,
+      _.toString
+    )
 
   override val tablePrefix = "schedule-config"
 

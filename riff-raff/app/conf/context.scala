@@ -1,6 +1,5 @@
 package conf
 
-import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.profile.{
   ProfileCredentialsProvider => ProfileCredentialsProviderV1
 }
@@ -13,7 +12,6 @@ import com.amazonaws.auth.{
   InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1,
   SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1
 }
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder
 import com.amazonaws.services.sns.{
   AmazonSNSAsync,
   AmazonSNSAsyncClientBuilder => AmazonSNSAsyncClientBuilderV1
@@ -32,6 +30,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.sts.StsClient
 import utils.{DateFormats, UnnaturalOrdering}
 import riffraff.BuildInfo
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.ssm.SsmClient
 
 import scala.jdk.CollectionConverters._
@@ -161,11 +160,10 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
     lazy val regionName =
       getStringOpt("artifact.aws.region").getOrElse(defaultRegion)
     // Used by Scanamo which is not on the latest version of AWS SDK
-    val client = AmazonDynamoDBAsyncClientBuilder
-      .standard()
-      .withCredentials(legacyCredentialsProviderChain(None, None))
-      .withRegion(regionName)
-      .withClientConfiguration(new ClientConfiguration())
+    val client = DynamoDbClient
+      .builder()
+      .region(AWSRegion.of(regionName))
+      .credentialsProvider(credentialsProviderChain(None, None))
       .build()
   }
 

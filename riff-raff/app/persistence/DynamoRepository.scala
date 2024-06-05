@@ -17,13 +17,15 @@ abstract class DynamoRepository(config: Config) {
   val stage = if (config.stage == "DEV") "CODE" else config.stage
   lazy val tableName = s"$tablePrefix-$stage"
 
-  implicit val uuidFormat =
+  implicit val uuidFormat: DynamoFormat[UUID] =
     DynamoFormat.coercedXmap[UUID, String, IllegalArgumentException](
-      UUID.fromString
-    )(_.toString)
+      UUID.fromString,
+      _.toString
+    )
 
-  implicit val jodaStringFormat =
+  implicit val jodaStringFormat: DynamoFormat[DateTime] =
     DynamoFormat.coercedXmap[DateTime, String, IllegalArgumentException](
-      DateTime.parse
-    )(_.toString)
+      DateTime.parse,
+      _.toString
+    )
 }
