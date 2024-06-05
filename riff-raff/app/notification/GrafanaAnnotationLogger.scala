@@ -21,13 +21,36 @@ trait LogMarker {
 class GrafanaAnnotationLogger extends Lifecycle with Logging {
 
   val messageSub: Subscription = DeployReporter.messages.subscribe(message => {
-    message.stack.top match {
-      case StartContext(Deploy(parameters)) =>
-        log.info("Started deploy")(buildMarker(parameters))
-      case FailContext(Deploy(parameters)) =>
-        log.info("Failed deploy")(buildMarker(parameters))
-      case FinishContext(Deploy(parameters)) =>
-        log.info("Finished deploy")(buildMarker(parameters))
+    val top = message.stack.top
+    log.info(
+      s"Received message with stack top: ${top} of type: ${top.getClass}"
+    )
+
+    top match {
+      case sc: StartContext =>
+        log.info(s"Matched StartContext: $sc")
+        sc match {
+          case StartContext(Deploy(parameters)) =>
+            log.info("Started deploy")(buildMarker(parameters))
+          case _ =>
+            log.info(s"Unexpected StartContext: $sc")
+        }
+      case fc: FailContext =>
+        log.info(s"Matched FailContext: $fc")
+        fc match {
+          case FailContext(Deploy(parameters)) =>
+            log.info("Failed deploy")(buildMarker(parameters))
+          case _ =>
+            log.info(s"Unexpected FailContext: $fc")
+        }
+      case fsc: FinishContext =>
+        log.info(s"Matched FinishContext: $fsc")
+        fsc match {
+          case FinishContext(Deploy(parameters)) =>
+            log.info("Finished deploy")(buildMarker(parameters))
+          case _ =>
+            log.info(s"Unexpected FinishContext: $fsc")
+        }
       case _ =>
         log.info(
           s"Didn't match start/fail/finish context: ${message.stack.top}"
