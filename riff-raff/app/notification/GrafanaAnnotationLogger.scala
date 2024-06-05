@@ -29,6 +29,9 @@ class GrafanaAnnotationLogger extends Lifecycle with Logging {
       case FinishContext(Deploy(parameters)) =>
         log.info("Finished deploy")(buildMarker(parameters))
       case _ =>
+        log.info(
+          s"Didn't match start/fail/finish context: ${message.stack.top}"
+        )
     }
   })
 
@@ -43,7 +46,9 @@ class GrafanaAnnotationLogger extends Lifecycle with Logging {
     MarkerContext(appendEntries(params.asJava))
   }
 
-  override def init(): Unit = {}
+  override def init(): Unit = {
+    log.info("Initialised grafana annotation logger")
+  }
 
   override def shutdown(): Unit = { messageSub.unsubscribe() }
 }
