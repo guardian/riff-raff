@@ -41,7 +41,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .maxSize(10)
       .build()
     val info = AutoScalingGroupInfo(asg, Nil)
-    val asgClientMock = mock[AutoScalingClient]
+    implicit val asgClientMock = mock[AutoScalingClient]
 
     val p = DeploymentPackage(
       "test",
@@ -60,7 +60,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       mock[StsClient],
       global
     )
-    task.execute(asg, resources, stopFlag = false, asgClientMock)
+    task.execute(asg, resources, stopFlag = false)
 
     verify(asgClientMock).setDesiredCapacity(
       SetDesiredCapacityRequest
@@ -81,16 +81,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
       .build()
     val info = AutoScalingGroupInfo(asg, Nil)
 
-    val asgClientMock = mock[AutoScalingClient]
-
-    val p = DeploymentPackage(
-      "test",
-      App("app"),
-      Map.empty,
-      "testDeploymentType",
-      S3Path("artifact-bucket", "project/123/test"),
-      deploymentTypes
-    )
+    implicit val asgClientMock = mock[AutoScalingClient]
 
     val task = CheckGroupSize(info, Region("eu-west-1"))
 
@@ -103,7 +94,7 @@ class ASGTasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
     )
 
     val thrown = intercept[FailException](
-      task.execute(asg, resources, stopFlag = false, asgClientMock)
+      task.execute(asg, resources, stopFlag = false)
     )
 
     thrown.getMessage should startWith(

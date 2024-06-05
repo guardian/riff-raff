@@ -29,6 +29,7 @@ import java.time.Duration.{between, ofMillis, ofSeconds}
 import java.time.{Duration, Instant}
 import scala.collection.parallel.CollectionConverters._
 import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
 case class S3Upload(
@@ -274,22 +275,30 @@ trait PollingCheck {
   ): Unit = {
     val expiry = Instant.now().plus(duration)
 
-    def checkAttempt(currentAttempt: Int): Unit = if (!theCheck) {
-      if (stopFlag)
-        reporter.info("Abandoning remaining checks as stop flag has been set")
-      else {
-        val remainingTime = between(Instant.now(), expiry)
-        if (remainingTime.isNegative)
-          reporter.fail(
-            s"Check failed to pass within $duration milliseconds (tried $currentAttempt times) - aborting"
-          )
+    def checkAttempt(currentAttempt: Int): Unit = {
+      val checkResult =
+        Try(theCheck).recover { case NonFatal(e) =>
+          reporter.info(e.getMessage)
+          false
+        }.get // '.get' allows a fatal exception, like an OutOfMemoryError, to kill the process, which is what we want!
+
+      if (!checkResult) {
+        if (stopFlag)
+          reporter.info("Abandoning remaining checks as stop flag has been set")
         else {
-          val sleepyTime = calculateSleepTime(currentAttempt)
-          reporter.verbose(
-            f"Check failed on attempt #$currentAttempt (Will wait for a further ${remainingTime.toSeconds} seconds, retrying again after ${sleepyTime.toSeconds}s)"
-          )
-          Thread.sleep(sleepyTime.toMillis)
-          checkAttempt(currentAttempt + 1)
+          val remainingTime = between(Instant.now(), expiry)
+          if (remainingTime.isNegative)
+            reporter.fail(
+              s"Check failed to pass within $duration milliseconds (tried $currentAttempt times) - aborting"
+            )
+          else {
+            val sleepyTime = calculateSleepTime(currentAttempt)
+            reporter.verbose(
+              f"Check failed on attempt #$currentAttempt (Will wait for a further ${remainingTime.toSeconds} seconds, retrying again after ${sleepyTime.toSeconds}s)"
+            )
+            Thread.sleep(sleepyTime.toMillis)
+            checkAttempt(currentAttempt + 1)
+          }
         }
       }
     }

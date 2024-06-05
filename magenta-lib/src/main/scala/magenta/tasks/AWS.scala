@@ -403,9 +403,10 @@ object ASG {
 
   def cull(
       asg: AutoScalingGroup,
-      instance: ASGInstance,
-      asgClient: AutoScalingClient,
-      elbClient: ELB.Client
+      instance: ASGInstance
+  )(implicit
+      elbClient: ELB.Client,
+      asgClient: AutoScalingClient
   ): TerminateInstanceInAutoScalingGroupResponse = {
     ELB.deregister(elbNames(asg), elbTargetArns(asg), instance, elbClient)
 
@@ -419,9 +420,8 @@ object ASG {
   }
 
   def refresh(
-      asg: AutoScalingGroup,
-      client: AutoScalingClient
-  ): AutoScalingGroup =
+      asg: AutoScalingGroup
+  )(implicit client: AutoScalingClient): AutoScalingGroup =
     client
       .describeAutoScalingGroups(
         DescribeAutoScalingGroupsRequest
