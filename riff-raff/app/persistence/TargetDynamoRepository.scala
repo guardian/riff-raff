@@ -2,11 +2,9 @@ package persistence
 
 import ci.Target
 import org.scanamo.Table
-import org.scanamo.error.DynamoReadError
 import conf.Config
 import org.joda.time.DateTime
-import org.scanamo.auto._
-import org.scanamo.syntax._
+import org.scanamo.generic.auto._
 
 case class TargetId(
     targetKey: String,
@@ -42,7 +40,7 @@ class TargetDynamoRepository(config: Config) extends DynamoRepository(config) {
       target: Target,
       projectName: String,
       lastSeen: DateTime
-  ): Option[Either[DynamoReadError, TargetId]] =
+  ): Unit =
     exec(table.put(TargetId(target, projectName, lastSeen)))
 
   def get(targetKey: String, projectName: String): Option[TargetId] = {
@@ -58,6 +56,4 @@ class TargetDynamoRepository(config: Config) extends DynamoRepository(config) {
         _.matches(target)
       ) // make sure this is not a weird collision due to use of separator in fields
   }
-
-  def getAll: Seq[TargetId] = exec(table.scan()).flatMap(_.toOption)
 }

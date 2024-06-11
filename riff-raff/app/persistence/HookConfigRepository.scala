@@ -6,14 +6,15 @@ import org.scanamo.{DynamoFormat, Table}
 import notification.{HookConfig, HttpMethod}
 import cats.syntax.either._
 import conf.Config
-import org.scanamo.auto._
+import org.scanamo.generic.auto._
 
 class HookConfigRepository(config: Config) extends DynamoRepository(config) {
 
   implicit val httpMethodFormat =
     DynamoFormat.coercedXmap[HttpMethod, String, NoSuchElementException](
-      HttpMethod.apply
-    )(_.toString)
+      HttpMethod.apply,
+      _.toString
+    )
 
   override val tablePrefix = "hook-config"
 

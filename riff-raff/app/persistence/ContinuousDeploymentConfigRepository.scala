@@ -3,9 +3,8 @@ package persistence
 import java.util.UUID
 import ci.{ContinuousDeploymentConfig, Trigger}
 import org.scanamo.syntax._
-import org.scanamo.auto._
+import org.scanamo.generic.auto._
 import org.scanamo.{DynamoFormat, Table}
-import cats.syntax.either._
 import conf.Config
 
 class ContinuousDeploymentConfigRepository(config: Config)
@@ -13,8 +12,9 @@ class ContinuousDeploymentConfigRepository(config: Config)
 
   implicit val triggerModeFormat =
     DynamoFormat.coercedXmap[Trigger.Mode, String, NoSuchElementException](
-      Trigger.withName
-    )(_.toString)
+      Trigger.withName,
+      _.toString
+    )
 
   override val tablePrefix = "continuous-deployment-config"
 

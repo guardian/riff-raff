@@ -6,7 +6,7 @@ import org.scanamo.Table
 import restrictions.{RestrictionConfig, RestrictionsConfigRepository}
 import cats.syntax.either._
 import conf.Config
-import org.scanamo.auto._
+import org.scanamo.generic.auto._
 
 class RestrictionConfigDynamoRepository(config: Config)
     extends DynamoRepository(config)
