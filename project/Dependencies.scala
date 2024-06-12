@@ -49,7 +49,7 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240214-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.39.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.40.0",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -80,7 +80,7 @@ object Dependencies {
       "org.webjars" % "jquery-ui" % "1.13.3",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
-      "org.webjars" % "momentjs" % "2.29.4",
+      "org.webjars" % "momentjs" % "2.30.0",
       "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
       "org.postgresql" % "postgresql" % "42.7.3",
