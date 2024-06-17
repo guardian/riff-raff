@@ -184,8 +184,13 @@ class DeployController(
       .map { build =>
         val repository = VCSInfo.normalise(build.vcsURL).getOrElse(build.vcsURL)
         val label =
-          "%s [%s] (%s) (%s)" format (build.number, build.branchName, shortFormat
-            .print(build.startTime), repository)
+          "%s [%s] (%s) (%s)" format (
+            build.number,
+            build.branchName,
+            shortFormat
+              .print(build.startTime),
+            repository
+          )
         Map("label" -> label, "value" -> build.number)
       }
     Ok(Json.toJson(possibleProjects))
