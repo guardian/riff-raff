@@ -495,9 +495,12 @@ case class Graph[T](edges: Set[Edge[T]]) {
     *   if the graph cannot be traversed
     */
   def nodeList = {
-    traverse fold ({ error =>
-      throw new IllegalStateException(s"Couldn't traverse graph: $error")
-    }, identity)
+    traverse fold (
+      { error =>
+        throw new IllegalStateException(s"Couldn't traverse graph: $error")
+      },
+      identity
+    )
   }
 
   def allSuccesors(node: Node[T]): Set[Node[T]] = {
