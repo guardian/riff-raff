@@ -26,18 +26,32 @@
         <div class="col-md-8">
             <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage.name</h2>
 
-            @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
-                <small>This deploy started at @record.time.toString(DateFormats.Short) on @hostname</small>
-            }
-
-            <p>The update strategy for this deploy @if(record.isRunning) {is} else {was} @record.parameters.updateStrategy.entryName</p>
-
-            @for(vcs <- record.vcsInfo) {
-                <p>
-                    The commit for this deploy @if(record.isRunning) {is} else {was}
-                    <a href="@vcs.commitUrl">@vcs.revision</a>
-                </p>
-            }
+            <table class="table">
+                @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
+                    <tr>
+                        <th scope="row">Started</th>
+                        <td>
+                            @record.time.toString(DateFormats.Short) (on @hostname)
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <th scope="row">Deployer</th>
+                    <td>@record.deployerName</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update Strategy</th>
+                    <td>@record.parameters.updateStrategy.entryName</td>
+                </tr>
+                @for(vcs <- record.vcsInfo) {
+                    <tr>
+                        <th scope="row">Commit</th>
+                        <td>
+                            <a href="@vcs.commitUrl">@vcs.revision (in @vcs.repo)</a>
+                        </td>
+                    </tr>
+                }
+            </table>
         </div>
         <div class="col-md-4">
             @if(record.isStalled) {
