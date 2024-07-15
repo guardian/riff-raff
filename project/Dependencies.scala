@@ -5,9 +5,9 @@ object Dependencies {
 
   object Versions {
     val aws = "2.25.70"
-    val jackson = "2.17.1"
+    val jackson = "2.17.2"
     val awsRds = "1.12.757"
-    val enumeratumPlay = "1.8.0"
+    val enumeratumPlay = "1.8.1"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -26,10 +26,10 @@ object Dependencies {
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.12.0",
-    "org.mockito" %% "mockito-scala" % "1.17.31" % Test
+    "org.mockito" %% "mockito-scala" % "1.17.37" % Test
   )
 
   val magentaLibDeps =
@@ -49,7 +49,7 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20240214-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.40.0",
+      "com.google.cloud" % "google-cloud-storage" % "2.40.1",
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
@@ -65,9 +65,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "8.0.4",
-      "com.gu.play-secret-rotation" %% "play-v30" % "8.4.2",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.4.2",
+      "com.gu.play-googleauth" %% "play-v30" % "10.0.1",
+      "com.gu.play-secret-rotation" %% "play-v30" % "8.4.5",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.4.5",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "1.1.1",
@@ -80,7 +80,7 @@ object Dependencies {
       "org.webjars" % "jquery-ui" % "1.13.3",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
-      "org.webjars" % "momentjs" % "2.30.0",
+      "org.webjars" % "momentjs" % "2.30.1",
       "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
       "org.postgresql" % "postgresql" % "42.7.3",
