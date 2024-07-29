@@ -65,9 +65,9 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "10.0.1",
-      "com.gu.play-secret-rotation" %% "play-v30" % "8.4.5",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.4.5",
+      "com.gu.play-googleauth" %% "play-v30" % "11.0.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "9.0.1",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "9.0.1",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "1.1.1",
@@ -87,7 +87,7 @@ object Dependencies {
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
-      "org.apache.pekko" %% "pekko-testkit" % "1.0.2" % Test,
+      "org.apache.pekko" %% "pekko-testkit" % "1.0.3" % Test,
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
