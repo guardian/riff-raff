@@ -100,11 +100,11 @@ lazy val riffraff = project
       Test / fork := false,
       Test / testOptions += Tests.Setup(_ => {
         println(s"Starting Docker containers for tests")
-        "docker-compose up -d".!
+        "docker compose up -d".!
       }),
       Test / testOptions += Tests.Cleanup(_ => {
         println(s"Stopping Docker containers for tests")
-        "docker-compose rm --stop --force".!
+        "docker compose rm --stop --force".!
       }),
       Assets / LessKeys.less / includeFilter := "*.less",
       Assets / pipelineStages := Seq(digest)
