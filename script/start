@@ -9,7 +9,7 @@ for arg in "$@"; do
   fi
 done
 
-docker-compose up -d
+docker compose up -d
 
 if [ "$IS_DEBUG" == true ] ; then
   ./sbt-debug "project riffraff" "run"
