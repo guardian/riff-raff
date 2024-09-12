@@ -123,7 +123,6 @@ class AppComponents(
     LambdaLayer,
     AmiCloudFormationParameter,
     SelfDeploy,
-    GcpDeploymentManager,
     GCS
   )
 

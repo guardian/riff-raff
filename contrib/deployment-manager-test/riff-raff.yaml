@@ -1,9 +1,0 @@
-stacks: [ophan-data-lake]
-regions: [eu-west-1]
-deployments:
-  test:
-    type: gcp-deployment-manager
-    parameters:
-      deploymentName: riffraff
-      configPath: test.yaml
-      upsert: true
