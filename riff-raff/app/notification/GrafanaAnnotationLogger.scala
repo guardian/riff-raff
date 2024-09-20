@@ -47,7 +47,7 @@ class GrafanaAnnotationLogger(riffRaffUrl: String)
         "projectStage" -> parameters.stage.name,
         "projectDeployer" -> parameters.deployer.name,
         "projectHistoryTag" -> s"<a href=\"${riffRaffUrl}/deployment/history?projectName=${parameters.build.projectName}\">${parameters.build.projectName}</a>",
-        "projectDeploymentLink" -> s"<a href=\"${riffRaffUrl}/deployment/view/$deployId\">${parameters.build.id}</a>"
+        "projectDeploymentLink" -> s"<a target=\"_blank\" href=\"${riffRaffUrl}/deployment/view/$deployId\">${parameters.build.id}</a>"
       )
     MarkerContext(appendEntries(params.asJava))
   }
