@@ -19,7 +19,9 @@ trait LogMarker {
   def markerContents: Map[String, Any]
 }
 
-class GrafanaAnnotationLogger(riffRaffUrl: String) extends Lifecycle with Logging {
+class GrafanaAnnotationLogger(riffRaffUrl: String)
+    extends Lifecycle
+    with Logging {
 
   val messageSub: Subscription = DeployReporter.messages.subscribe(message => {
     val deployId = message.context.deployId
