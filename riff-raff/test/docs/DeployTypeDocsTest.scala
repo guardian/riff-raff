@@ -88,8 +88,7 @@ class DeployTypeDocsTest extends AnyFlatSpec with Matchers {
       new CloudFormation(EmptyBuildTags),
       Lambda,
       AmiCloudFormationParameter,
-      SelfDeploy,
-      GcpDeploymentManager
+      SelfDeploy
     )
     val result = DeployTypeDocs.generateDocs(availableDeploymentTypes)
     result.size shouldBe availableDeploymentTypes.size
