@@ -39,7 +39,7 @@ class GrafanaAnnotationLogger extends Lifecycle with Logging {
         "projectBuild" -> parameters.build.id,
         "projectStage" -> parameters.stage.name,
         "projectDeployer" -> parameters.deployer.name,
-        "projectHistoryTag" -> s"<a href=\"https://riffraff.gutools.co.uk/deployment/history?projectName=${parameters.deployer.name}\">${parameters.deployer.name}<a/>"
+        "projectHistoryTag" -> s"<a href=\"https://riffraff.gutools.co.uk/deployment/history?projectName=${parameters.build.projectName}\">${parameters.build.projectName}<a/>"
       )
     MarkerContext(appendEntries(params.asJava))
   }
