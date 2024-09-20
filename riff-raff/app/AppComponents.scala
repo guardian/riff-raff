@@ -222,7 +222,7 @@ class AppComponents(
     deployments,
     builds,
     targetResolver,
-    new GrafanaAnnotationLogger,
+    new GrafanaAnnotationLogger(config.urls.publicPrefix),
     hooksClient,
     new SummariseDeploysHousekeeping(config, datastore),
     continuousDeployment,

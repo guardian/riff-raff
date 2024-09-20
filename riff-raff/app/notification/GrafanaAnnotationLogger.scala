@@ -19,7 +19,7 @@ trait LogMarker {
   def markerContents: Map[String, Any]
 }
 
-class GrafanaAnnotationLogger extends Lifecycle with Logging {
+class GrafanaAnnotationLogger(riffRaffUrl: String) extends Lifecycle with Logging {
 
   val messageSub: Subscription = DeployReporter.messages.subscribe(message => {
     val deployId = message.context.deployId
@@ -44,8 +44,8 @@ class GrafanaAnnotationLogger extends Lifecycle with Logging {
         "projectBuild" -> parameters.build.id,
         "projectStage" -> parameters.stage.name,
         "projectDeployer" -> parameters.deployer.name,
-        "projectHistoryTag" -> s"<a href=\"https://riffraff.gutools.co.uk/deployment/history?projectName=${parameters.build.projectName}\">${parameters.build.projectName}</a>",
-        "projectDeploymentLink" -> s"<a href=\"https://riffraff.gutools.co.uk/deployment/view/$deployId\">${parameters.build.id}</a>"
+        "projectHistoryTag" -> s"<a href=\"${riffRaffUrl}/deployment/history?projectName=${parameters.build.projectName}\">${parameters.build.projectName}</a>",
+        "projectDeploymentLink" -> s"<a href=\"${riffRaffUrl}/deployment/view/$deployId\">${parameters.build.id}</a>"
       )
     MarkerContext(appendEntries(params.asJava))
   }
