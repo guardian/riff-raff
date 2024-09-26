@@ -8,9 +8,6 @@ import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
 import org.joda.time.DateTime
 
-import java.time.Duration
-import java.time.Duration.ofMinutes
-
 trait BuildTags {
   // Returns tags for a build, which should be added to the Cloudformation
   // stack. Tags are named with a `gu:` prefix.
@@ -93,13 +90,6 @@ class CloudFormation(tagger: BuildTags)
     documentation =
       "If set to true then the cloudformation stack will be created if it doesn't already exist"
   ).default(true)
-
-  val secondsToWaitForChangeSetCreation: Param[Duration] = Param
-    .waitingSecondsFor(
-      "secondsToWaitForChangeSetCreation",
-      "the change set to be created"
-    )
-    .default(ofMinutes(15))
 
   val manageStackPolicyDefault = true
   val manageStackPolicyLookupKey = "cloudformation:manage-stack-policy"
