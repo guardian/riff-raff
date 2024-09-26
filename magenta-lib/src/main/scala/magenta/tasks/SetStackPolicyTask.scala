@@ -211,7 +211,7 @@ class SetStackPolicyTask(
       stopFlag: => Boolean
   ): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-      val (stackName, changeSetType, _) =
+      val (stackName, changeSetType, _, _) =
         stackLookup.lookup(resources.reporter, cfnClient)
       val policyDoc =
         toPolicyDoc(stackPolicy, () => accountResourceTypes(cfnClient))

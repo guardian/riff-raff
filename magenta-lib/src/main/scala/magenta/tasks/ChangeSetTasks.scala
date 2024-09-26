@@ -42,7 +42,7 @@ class CreateChangeSetTask(
                 )
               )
 
-            val (stackName, changeSetType, existingParameters) =
+            val (stackName, changeSetType, existingParameters, currentTags) =
               stackLookup.lookup(resources.reporter, cfnClient)
 
             val template = processTemplate(
@@ -106,12 +106,15 @@ class CreateChangeSetTask(
               resources.reporter.verbose(s"Using execution role $role")
             )
 
+            val mergedTags = currentTags ++ stackTags
+            resources.reporter.info("Tags: " + mergedTags.mkString(", "))
+
             CloudFormation.createChangeSet(
               resources.reporter,
               stackLookup.changeSetName,
               changeSetType,
               stackName,
-              Some(stackTags),
+              Some(mergedTags),
               template,
               awsParameters,
               maybeExecutionRole,
@@ -162,7 +165,7 @@ class CheckChangeSetCreatedTask(
   ): Unit = {
     check(resources.reporter, stopFlag) {
       CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-        val (stackName, changeSetType, _) =
+        val (stackName, changeSetType, _, _) =
           stackLookup.lookup(resources.reporter, cfnClient)
         val changeSetName = stackLookup.changeSetName
         val changeSet = CloudFormation.describeChangeSetByName(
@@ -240,7 +243,8 @@ class ExecuteChangeSetTask(
       stopFlag: => Boolean
   ): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
+      val (stackName, _, _, _) =
+        stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       val changeSet = CloudFormation.describeChangeSetByName(
@@ -306,7 +310,8 @@ class DeleteChangeSetTask(
       stopFlag: => Boolean
   ): Unit = {
     CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
-      val (stackName, _, _) = stackLookup.lookup(resources.reporter, cfnClient)
+      val (stackName, _, _, _) =
+        stackLookup.lookup(resources.reporter, cfnClient)
       val changeSetName = stackLookup.changeSetName
 
       CloudFormation.deleteChangeSet(stackName, changeSetName, cfnClient)
