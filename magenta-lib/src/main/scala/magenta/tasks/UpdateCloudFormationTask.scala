@@ -98,7 +98,7 @@ class CloudFormationStackMetadata(
   def lookup(
       reporter: DeployReporter,
       cfnClient: CloudFormationClient
-  ): (String, ChangeSetType, List[ExistingParameter]) = {
+  ): (String, ChangeSetType, List[ExistingParameter], Map[String, String]) = {
     val existingStack = strategy match {
       case LookupByName(name) => CloudFormation.describeStack(name, cfnClient)
       case LookupByTags(tags) =>
@@ -123,7 +123,12 @@ class CloudFormationStackMetadata(
       reporter
     )
 
-    (stackName, changeSetType, stackParameters)
+    val currentTags: Map[String, String] = existingStack match {
+      case Some(stack) => stack.tags().asScala.map(t => t.key -> t.value).toMap
+      case _           => Map.empty
+    }
+
+    (stackName, changeSetType, stackParameters, currentTags)
   }
 }
 
