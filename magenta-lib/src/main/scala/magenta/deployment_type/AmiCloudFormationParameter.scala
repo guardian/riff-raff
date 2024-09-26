@@ -4,13 +4,11 @@ import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks.{
   CheckChangeSetCreatedTask,
-  CheckUpdateEventsTask,
   CloudFormationParameters,
   CloudFormationStackMetadata,
   CreateAmiUpdateChangeSetTask,
   DeleteChangeSetTask,
-  ExecuteChangeSetTask,
-  UpdateAmiCloudFormationParameterTask
+  ExecuteChangeSetTask
 }
 import org.joda.time.DateTime
 
@@ -85,18 +83,6 @@ object AmiCloudFormationParameter
           target.region,
           stackLookup
         )
-//        UpdateAmiCloudFormationParameterTask(
-//          target.region,
-//          cloudFormationStackLookupStrategy,
-//          amiParameterMap,
-//          getLatestAmi(pkg, target, reporter, resources.lookup),
-//          target.parameters.stage,
-//          target.stack
-//        ),
-//        new CheckUpdateEventsTask(
-//          target.region,
-//          cloudFormationStackLookupStrategy
-//        )
       )
     }
   }
