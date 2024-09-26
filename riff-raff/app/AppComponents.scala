@@ -108,8 +108,7 @@ class AppComponents(
 
       Map(
         "gu:build-tool" -> buildTool.getOrElse(default),
-        "gu:repo" -> repoUrl.getOrElse(default),
-        "gu:riff-raff:project" -> projectName
+        "gu:repo" -> repoUrl.getOrElse(default)
       )
     }
   }
