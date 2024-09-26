@@ -155,7 +155,7 @@ class CheckChangeSetCreatedTask(
     region: Region,
     stackLookup: CloudFormationStackMetadata,
     override val duration: Duration
-)(implicit val keyRing: KeyRing, artifactClient: S3Client)
+)(implicit val keyRing: KeyRing)
     extends Task
     with RepeatedPollingCheck {
 
@@ -236,7 +236,7 @@ class CheckChangeSetCreatedTask(
 class ExecuteChangeSetTask(
     region: Region,
     stackLookup: CloudFormationStackMetadata
-)(implicit val keyRing: KeyRing, artifactClient: S3Client)
+)(implicit val keyRing: KeyRing)
     extends Task {
   override def execute(
       resources: DeploymentResources,
@@ -303,7 +303,7 @@ class ExecuteChangeSetTask(
 class DeleteChangeSetTask(
     region: Region,
     stackLookup: CloudFormationStackMetadata
-)(implicit val keyRing: KeyRing, artifactClient: S3Client)
+)(implicit val keyRing: KeyRing)
     extends Task {
   override def execute(
       resources: DeploymentResources,
