@@ -17,6 +17,100 @@ import java.time.Duration
 import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
 
+class CreateAmiUpdateChangeSetTask(
+    region: Region,
+    stackLookup: CloudFormationStackMetadata,
+    val unresolvedParameters: CloudFormationParameters
+)(implicit val keyRing: KeyRing)
+    extends Task {
+
+  override def execute(
+      resources: DeploymentResources,
+      stopFlag: => Boolean
+  ): Unit = {
+    if (!stopFlag) {
+      CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
+        STS.withSTSclient(keyRing, region, resources) { stsClient =>
+          val accountNumber = STS.getAccountNumber(stsClient)
+
+          val (stackName, _, existingParameters, currentTags) =
+            stackLookup.lookup(resources.reporter, cfnClient)
+
+          val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
+          maybeExecutionRole.foreach(role =>
+            resources.reporter.verbose(s"Using execution role $role")
+          )
+
+          val parameters = CloudFormationParameters
+            .resolve(
+              resources.reporter,
+              unresolvedParameters,
+              accountNumber,
+              existingParameters.map(p => TemplateParameter(p.key, true)),
+              existingParameters
+            )
+            .fold(
+              resources.reporter.fail(_),
+              identity
+            )
+
+          val awsParameters =
+            CloudFormationParameters.convertInputParametersToAws(parameters)
+
+          val parametersString = awsParameters
+            .map { param =>
+              val v =
+                if (param.usePreviousValue) "PreviousValue"
+                else s"""Value: "${param.parameterValue}""""
+              s"${param.parameterKey} -> $v"
+            }
+            .mkString("; ")
+          resources.reporter.info(s"Parameters: $parametersString")
+
+          changedParamValues(existingParameters, parameters).foreach { change =>
+            resources.reporter.info(change)
+          }
+
+          CloudFormation.createParameterUpdateChangeSet(
+            client = cfnClient,
+            changeSetName = stackLookup.changeSetName,
+            stackName = stackName,
+            currentStackTags = currentTags,
+            parameters = awsParameters,
+            maybeRole = maybeExecutionRole
+          )
+        }
+      }
+    }
+  }
+
+  override def description: String =
+    s"Create change set ${stackLookup.changeSetName} for stack ${stackLookup.strategy} to update AMI parameters "
+
+  // TODO extract this from `CreateChangeSetTask` below to keep things DRY
+  def changedParamValues(
+      existingParams: List[ExistingParameter],
+      newParams: List[InputParameter]
+  ): List[String] = {
+    val keys =
+      (existingParams.map(_.key) ::: newParams.map(_.key)).sorted.distinct
+    val pairs = keys.map { key =>
+      (key, existingParams.find(_.key == key), newParams.find(_.key == key))
+    }
+    pairs.flatMap {
+      case (key, Some(_), None) => Some(s"Parameter $key has been removed")
+      case (key, None, Some(_)) => Some(s"Parameter $key has been added")
+      case (
+            key,
+            Some(ExistingParameter(_, present, _)),
+            Some(InputParameter(_, Some(future), false))
+          ) if future != present && present != "****" =>
+        Some(s"Parameter $key has changed from $present to $future")
+      case _ => None
+    }
+  }
+}
+
 class CreateChangeSetTask(
     region: Region,
     templatePath: S3Path,

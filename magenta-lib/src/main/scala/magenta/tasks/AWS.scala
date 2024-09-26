@@ -7,6 +7,11 @@ import magenta.deployment_type.{
   MustBePresent,
   MustNotBePresent
 }
+import magenta.tasks.CloudFormationParameters.InputParameter.toAWS
+import magenta.tasks.CloudFormationParameters.{
+  ExistingParameter,
+  InputParameter
+}
 import magenta.{
   ApiRoleCredentials,
   ApiStaticCredentials,
@@ -763,6 +768,34 @@ object CloudFormation {
         .roleARN(maybeRole.orNull)
         .build()
     )
+
+  /** Update the parameters of a CloudFormation stack using a change set.
+    */
+  def createParameterUpdateChangeSet(
+      client: CloudFormationClient,
+      changeSetName: String,
+      stackName: String,
+      currentStackTags: Map[String, String],
+      parameters: Seq[Parameter],
+      maybeRole: Option[String]
+  ): Unit = {
+    val cfnTags: Iterable[CfnTag] = currentStackTags.map { case (key, value) =>
+      CfnTag.builder().key(key).value(value).build()
+    }
+
+    val request = CreateChangeSetRequest
+      .builder()
+      .changeSetType(ChangeSetType.UPDATE)
+      .stackName(stackName)
+      .changeSetName(changeSetName)
+      .usePreviousTemplate(true)
+      .parameters(parameters.asJava)
+      .tags(cfnTags.toSeq: _*)
+      .capabilities(Capability.CAPABILITY_NAMED_IAM)
+      .roleARN(maybeRole.orNull)
+
+    client.createChangeSet(request.build())
+  }
 
   def createChangeSet(
       reporter: DeployReporter,

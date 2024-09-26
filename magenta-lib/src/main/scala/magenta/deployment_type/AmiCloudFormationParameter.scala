@@ -1,10 +1,18 @@
 package magenta.deployment_type
 
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
+import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks.{
+  CheckChangeSetCreatedTask,
   CheckUpdateEventsTask,
+  CloudFormationParameters,
+  CloudFormationStackMetadata,
+  CreateAmiUpdateChangeSetTask,
+  DeleteChangeSetTask,
+  ExecuteChangeSetTask,
   UpdateAmiCloudFormationParameterTask
 }
+import org.joda.time.DateTime
 
 object AmiCloudFormationParameter
     extends DeploymentType
@@ -31,20 +39,64 @@ object AmiCloudFormationParameter
       val cloudFormationStackLookupStrategy =
         getCloudFormationStackLookupStrategy(pkg, target, reporter)
 
-      // TODO wrap this CloudFormation update in a ChangeSet. See `Cloudformation.scala`.
+      val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
+
+      val stackLookup = new CloudFormationStackMetadata(
+        cloudFormationStackLookupStrategy,
+        changeSetName,
+
+        // We're updating an AMI. The stack should exist, so should never want to create it.
+        createStackIfAbsent = false
+      )
+
+      val stackTags = cloudFormationStackLookupStrategy match {
+        case LookupByTags(tags) => Some(tags)
+        case _                  => None
+      }
+
+      val amiLookupFn = getLatestAmi(pkg, target, reporter, resources.lookup)
+
+      val unresolvedParameters = new CloudFormationParameters(
+        target = target,
+        stackTags = stackTags,
+        amiParameterMap = amiParameterMap,
+        latestImage = amiLookupFn,
+
+        // Not expecting any user parameters in this deployment type
+        userParameters = Map.empty
+      )
+
       List(
-        UpdateAmiCloudFormationParameterTask(
-          target.region,
-          cloudFormationStackLookupStrategy,
-          amiParameterMap,
-          getLatestAmi(pkg, target, reporter, resources.lookup),
-          target.parameters.stage,
-          target.stack
+        new CreateAmiUpdateChangeSetTask(
+          region = target.region,
+          stackLookup = stackLookup,
+          unresolvedParameters = unresolvedParameters
         ),
-        new CheckUpdateEventsTask(
+        new CheckChangeSetCreatedTask(
           target.region,
-          cloudFormationStackLookupStrategy
+          stackLookup = stackLookup,
+          duration = secondsToWaitForChangeSetCreation(pkg, target, reporter)
+        ),
+        new ExecuteChangeSetTask(
+          target.region,
+          stackLookup
+        ),
+        new DeleteChangeSetTask(
+          target.region,
+          stackLookup
         )
+//        UpdateAmiCloudFormationParameterTask(
+//          target.region,
+//          cloudFormationStackLookupStrategy,
+//          amiParameterMap,
+//          getLatestAmi(pkg, target, reporter, resources.lookup),
+//          target.parameters.stage,
+//          target.stack
+//        ),
+//        new CheckUpdateEventsTask(
+//          target.region,
+//          cloudFormationStackLookupStrategy
+//        )
       )
     }
   }
