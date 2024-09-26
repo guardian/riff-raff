@@ -87,9 +87,17 @@ class CreateAmiUpdateChangeSetTask(
           val (stackName, _, existingParameters, currentTags) =
             stackLookup.lookup(resources.reporter, cfnClient)
 
+          resources.reporter.info(
+            "Creating Cloudformation change set to update AMI parameters"
+          )
+          resources.reporter.info(s"CloudFormation stack name: $stackName")
+          resources.reporter.info(
+            s"Change set name: ${stackLookup.changeSetName}"
+          )
+
           val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
           maybeExecutionRole.foreach(role =>
-            resources.reporter.verbose(s"Using execution role $role")
+            resources.reporter.verbose(s"Using execution role: $role")
           )
 
           val parameters = CloudFormationParameters
@@ -97,7 +105,9 @@ class CreateAmiUpdateChangeSetTask(
               resources.reporter,
               unresolvedParameters,
               accountNumber,
-              existingParameters.map(p => TemplateParameter(p.key, true)),
+              existingParameters.map(p =>
+                TemplateParameter(p.key, default = true)
+              ),
               existingParameters
             )
             .fold(
