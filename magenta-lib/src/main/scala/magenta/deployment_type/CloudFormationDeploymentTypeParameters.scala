@@ -7,6 +7,9 @@ import magenta.tasks.UpdateCloudFormationTask.{
 }
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, Lookup}
 
+import java.time.Duration
+import java.time.Duration.ofMinutes
+
 object CloudFormationDeploymentTypeParameters {
   type TagCriteria = Map[String, String]
   type CfnParam = String
@@ -100,6 +103,13 @@ trait CloudFormationDeploymentTypeParameters {
         |   `Encrypted` tag that is not `false`.
       """.stripMargin
   ).default(false)
+
+  val secondsToWaitForChangeSetCreation: Param[Duration] = Param
+    .waitingSecondsFor(
+      "secondsToWaitForChangeSetCreation",
+      "the change set to be created"
+    )
+    .default(ofMinutes(15))
 
   def getCloudFormationStackLookupStrategy(
       pkg: DeploymentPackage,
