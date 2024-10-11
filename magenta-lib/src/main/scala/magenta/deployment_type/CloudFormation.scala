@@ -1,6 +1,6 @@
 package magenta.deployment_type
 
-import magenta.Loggable
+import magenta.{Loggable, Strategy}
 import magenta.Strategy.{Dangerous, MostlyHarmless}
 import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
@@ -148,12 +148,15 @@ class CloudFormation(tagger: BuildTags)
 
       val changeSetName = s"${target.stack.name}-${new DateTime().getMillis}"
 
+      val minInServiceParameterMap = getMinInServiceTagRequirements(pkg, target)
+
       val unresolvedParameters = new CloudFormationParameters(
         target,
         stackTags,
         userParams,
         amiParameterMap,
-        amiLookupFn
+        amiLookupFn,
+        minInServiceParameterMap
       )
 
       val createNewStack = createStackIfAbsent(pkg, target, reporter)

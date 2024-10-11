@@ -490,6 +490,60 @@ object ASG {
     )
   }
 
+  def getMinInstancesInService(
+      tagRequirements: List[TagMatch],
+      client: AutoScalingClient,
+      reporter: DeployReporter
+  ): Int = {
+    groupWithTags(tagRequirements, client, reporter) match {
+      case Some(asg) =>
+        (asg.desiredCapacity, asg.maxSize) match {
+          case (desired, max) =>
+            val seventyFivePercent: Int = (max * 0.75).toInt
+            val minInstancesInService = Math.min(
+              seventyFivePercent,
+              desired
+            )
+
+            if (2 * desired <= max) {
+              reporter.info(
+                s"""
+                   |Deploying new instances all at once.
+                   |
+                   |Max=$max. Desired=$desired.
+                   |Setting MinInstancesInService=$minInstancesInService.
+                   |""".stripMargin
+              )
+            } else if (minInstancesInService < desired) {
+              reporter.warning(
+                s"""
+                   |Deploying new instances slower than usual.
+                   |
+                   |Max=$max. Desired=$desired.
+                   |Setting MinInstancesInService=$minInstancesInService.
+                   |This is 75% of max capacity, and less than desired capacity, meaning availability will be impacted.
+                   |""".stripMargin
+              )
+            } else {
+              reporter.warning(
+                s"""
+                   |Deploying new instances slower than usual.
+                   |
+                   |Max=$max. Desired=$desired.
+                   |Setting MinInstancesInService=$minInstancesInService.
+                   |""".stripMargin
+              )
+            }
+
+            minInstancesInService
+        }
+      case _ =>
+        reporter.fail(
+          s"No autoscaling group found with tags $tagRequirements. Creating a new stack? Initially choose the ${Strategy.Dangerous} strategy."
+        )
+    }
+  }
+
   def groupWithTags(
       tagRequirements: List[TagRequirement],
       client: AutoScalingClient,

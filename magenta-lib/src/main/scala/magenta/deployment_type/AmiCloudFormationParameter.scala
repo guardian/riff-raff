@@ -53,6 +53,7 @@ object AmiCloudFormationParameter
       }
 
       val amiLookupFn = getLatestAmi(pkg, target, reporter, resources.lookup)
+      val minInServiceParameterMap = getMinInServiceTagRequirements(pkg, target)
 
       val unresolvedParameters = new CloudFormationParameters(
         target = target,
@@ -61,7 +62,8 @@ object AmiCloudFormationParameter
         latestImage = amiLookupFn,
 
         // Not expecting any user parameters in this deployment type
-        userParameters = Map.empty
+        userParameters = Map.empty,
+        minInServiceParameterMap = minInServiceParameterMap
       )
 
       List(

@@ -568,7 +568,8 @@ class CloudFormationTest
       Map.empty,
       Map.empty,
       (_: CfnParam) =>
-        (_: String) => (_: String) => (_: Map[String, String]) => None
+        (_: String) => (_: String) => (_: Map[String, String]) => None,
+      Map.empty
     )
 
     val params = resolve(
@@ -580,7 +581,8 @@ class CloudFormationTest
         TemplateParameter("param3", default = true),
         TemplateParameter("Stage", default = true)
       ),
-      Nil
+      Nil,
+      Map.empty
     )
 
     params.right.value shouldBe List(InputParameter("Stage", "PROD"))
@@ -602,7 +604,8 @@ class CloudFormationTest
       Map.empty,
       Map.empty,
       (_: CfnParam) =>
-        (_: String) => (_: String) => (_: Map[String, String]) => None
+        (_: String) => (_: String) => (_: Map[String, String]) => None,
+      Map.empty
     )
 
     val params = resolve(
@@ -618,7 +621,8 @@ class CloudFormationTest
         ExistingParameter("param1", "value1", None),
         ExistingParameter("param3", "value3", None),
         ExistingParameter("Stage", "BOB", None)
-      )
+      ),
+      Map.empty
     )
 
     params.right.value should contain theSameElementsAs (List(
@@ -644,7 +648,8 @@ class CloudFormationTest
       Map.empty,
       Map.empty,
       (_: CfnParam) =>
-        (_: String) => (_: String) => (_: Map[String, String]) => None
+        (_: String) => (_: String) => (_: Map[String, String]) => None,
+      Map.empty
     )
 
     val params = resolve(
@@ -659,7 +664,8 @@ class CloudFormationTest
       List(
         ExistingParameter("param3", "value3", None),
         ExistingParameter("Stage", "PROD", None)
-      )
+      ),
+      Map.empty
     )
 
     params.right.value should contain theSameElementsAs (List(
@@ -686,7 +692,8 @@ class CloudFormationTest
       userParameters,
       Map.empty,
       (_: CfnParam) =>
-        (_: String) => (_: String) => (_: Map[String, String]) => None
+        (_: String) => (_: String) => (_: Map[String, String]) => None,
+      Map.empty
     )
 
     val params = resolve(
@@ -701,7 +708,8 @@ class CloudFormationTest
       List(
         ExistingParameter("param3", "value3", None),
         ExistingParameter("Stage", "PROD", None)
-      )
+      ),
+      Map.empty
     )
 
     params.right.value should contain theSameElementsAs (List(
@@ -727,7 +735,8 @@ class CloudFormationTest
       Map.empty,
       Map.empty,
       (_: CfnParam) =>
-        (_: String) => (_: String) => (_: Map[String, String]) => None
+        (_: String) => (_: String) => (_: Map[String, String]) => None,
+      Map.empty
     )
 
     val params = resolve(
@@ -742,7 +751,8 @@ class CloudFormationTest
       List(
         ExistingParameter("param3", "value3", None),
         ExistingParameter("Stage", "PROD", None)
-      )
+      ),
+      Map.empty
     )
 
     params.left.value should startWith("Missing parameters for param1:")
