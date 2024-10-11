@@ -1,6 +1,7 @@
 package magenta.tasks
 
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
+import magenta.tasks.ASG.TagMatch
 import magenta.tasks.CloudFormation._
 import magenta.tasks.UpdateCloudFormationTask.{
   CloudFormationStackLookupStrategy,
@@ -167,12 +168,13 @@ object CloudFormationStackMetadata {
 
 case class CloudFormationParameters(
     target: DeployTarget,
-    stackTags: Option[Map[String, String]],
+    stackTags: Option[Map[String, String]], // TODO remove this as its not used
     userParameters: Map[String, String],
     amiParameterMap: Map[CfnParam, TagCriteria],
     latestImage: CfnParam => String => String => Map[String, String] => Option[
       String
-    ]
+    ],
+    minInServiceParameterMap: Map[CfnParam, List[TagMatch]]
 )
 
 object CloudFormationParameters {
@@ -209,7 +211,8 @@ object CloudFormationParameters {
       cfnParameters: CloudFormationParameters,
       accountNumber: String,
       templateParameters: List[TemplateParameter],
-      existingParameters: List[ExistingParameter]
+      existingParameters: List[ExistingParameter],
+      minInServiceParameters: Map[CfnParam, Int]
   ): Either[String, List[InputParameter]] = {
 
     val resolvedAmiParameters: Map[String, String] =
@@ -237,8 +240,11 @@ object CloudFormationParameters {
       deployParameters = deploymentParameters,
       existingParameters = existingParameters,
       templateParameters = templateParameters,
-      specifiedParameters =
-        cfnParameters.userParameters ++ resolvedAmiParameters
+      specifiedParameters = {
+        cfnParameters.userParameters ++
+          resolvedAmiParameters ++
+          minInServiceParameters.map({ case (k, v) => k -> v.toString })
+      }
     )
     combined.map(convertParameters)
   }
