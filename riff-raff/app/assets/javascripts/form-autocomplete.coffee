@@ -19,6 +19,7 @@ updateStageInfo = () ->
       stageInput = $('#stage')
       stageInput.html(stageOptions)
       stageInput.prop('disabled', false)
+      updateDeployInfo()
   });
 
 updateDeployInfo = () ->
@@ -119,7 +120,7 @@ $ ->
     input.on('change', updateFavouriteButton)
     input.on('keyup', updateFavouriteButton)
 
-  $('#projectInput').blur updateDeployInfo
+  $('#projectInput').blur -> updateDeployInfo()
 
   $('#buildInput').each ->
     input = $(this)
@@ -154,10 +155,12 @@ $ ->
   $('#buildInput').on('input keyup',
     ->
       updateStageInfo()
+      updateDeployInfo()
   )
 
-  $('#stage').change ->
-    updateDeployInfo()
+  $('#buildInput').blur -> updateDeployInfo()
+
+  $('#stage').change -> updateDeployInfo()
 
   updateDeployInfo()
 
