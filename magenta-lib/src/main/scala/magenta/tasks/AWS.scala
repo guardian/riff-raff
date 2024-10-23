@@ -505,6 +505,7 @@ object ASG {
               desired
             )
 
+            // Happy path. We have enough headroom to double the instances, then half once healthy.
             if (2 * desired <= max) {
               reporter.info(
                 s"""
@@ -514,20 +515,27 @@ object ASG {
                    |Setting MinInstancesInService=$minInstancesInService.
                    |""".stripMargin
               )
-            } else if (minInstancesInService < desired) {
+            }
+
+            // We have to take some running instances out of service, at the cost of reduced service availability.
+            else if (minInstancesInService < desired) {
               reporter.warning(
                 s"""
-                   |Deploying new instances slower than usual.
+                   |Deploying new instances slowly, in multiple batches and impacting availability.
                    |
                    |Max=$max. Desired=$desired.
                    |Setting MinInstancesInService=$minInstancesInService.
-                   |This is 75% of max capacity, and less than desired capacity, meaning availability will be impacted.
+                   |This is 75% of max capacity, and less than desired capacity.
+                   |Availability will be impacted as ${desired - minInstancesInService} currently running instances will be used to perform this deploy.
                    |""".stripMargin
               )
-            } else {
+            }
+
+            // There isn't enough room to double capacity, but we don't have to take any instances out of service.
+            else {
               reporter.warning(
                 s"""
-                   |Deploying new instances slower than usual.
+                   |Deploying new instances slowly, in multiple batches.
                    |
                    |Max=$max. Desired=$desired.
                    |Setting MinInstancesInService=$minInstancesInService.
