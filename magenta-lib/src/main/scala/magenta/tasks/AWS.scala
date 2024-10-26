@@ -497,54 +497,50 @@ object ASG {
   ): Int = {
     groupWithTags(tagRequirements, client, reporter) match {
       case Some(asg) =>
-        (asg.desiredCapacity, asg.maxSize) match {
-          case (desired, max) =>
-            val seventyFivePercent: Int = (max * 0.75).toInt
-            val minInstancesInService = Math.min(
-              seventyFivePercent,
-              desired
-            )
+        val max = asg.maxSize
+        val desired = asg.desiredCapacity
+        val seventyFivePercent: Int = (max * 0.75).toInt
+        val minInstancesInService = Math.min(
+          seventyFivePercent,
+          desired
+        )
 
-            // Happy path. We have enough headroom to double the instances, then half once healthy.
-            if (2 * desired <= max) {
-              reporter.info(
-                s"""
-                   |Deploying new instances all at once.
-                   |
-                   |Max=$max. Desired=$desired.
-                   |Setting MinInstancesInService=$minInstancesInService.
-                   |""".stripMargin
-              )
-            }
-
-            // We have to take some running instances out of service, at the cost of reduced service availability.
-            else if (minInstancesInService < desired) {
-              reporter.warning(
-                s"""
-                   |Deploying new instances slowly, in multiple batches and impacting availability.
-                   |
-                   |Max=$max. Desired=$desired.
-                   |Setting MinInstancesInService=$minInstancesInService.
-                   |This is 75% of max capacity, and less than desired capacity.
-                   |Availability will be impacted as ${desired - minInstancesInService} currently running instances will be used to perform this deploy.
-                   |""".stripMargin
-              )
-            }
-
-            // There isn't enough room to double capacity, but we don't have to take any instances out of service.
-            else {
-              reporter.warning(
-                s"""
-                   |Deploying new instances slowly, in multiple batches.
-                   |
-                   |Max=$max. Desired=$desired.
-                   |Setting MinInstancesInService=$minInstancesInService.
-                   |""".stripMargin
-              )
-            }
-
-            minInstancesInService
+        // Happy path. We have enough headroom to double the instances, then half once healthy.
+        if (2 * desired <= max) {
+          reporter.info(
+            s"""Deploying new instances all at once.
+               |
+               |Max=$max. Desired=$desired.
+               |Setting MinInstancesInService=$minInstancesInService.
+               |""".stripMargin
+          )
         }
+
+        // We have to take some running instances out of service, at the cost of reduced service availability.
+        else if (minInstancesInService < desired) {
+          reporter.warning(
+            s"""Deploying new instances slowly, in multiple batches and impacting availability.
+               |
+               |Max=$max. Desired=$desired.
+               |Setting MinInstancesInService=$minInstancesInService.
+               |This is 75% of max capacity, and less than desired capacity.
+               |Availability will be impacted as ${desired - minInstancesInService} currently running instances will be used to perform this deploy.
+               |""".stripMargin
+          )
+        }
+
+        // There isn't enough room to double capacity, but we don't have to take any instances out of service.
+        else {
+          reporter.warning(
+            s"""Deploying new instances slowly, in multiple batches.
+               |
+               |Max=$max. Desired=$desired.
+               |Setting MinInstancesInService=$minInstancesInService.
+               |""".stripMargin
+          )
+        }
+
+        minInstancesInService
       case _ =>
         reporter.fail(
           s"No autoscaling group found with tags $tagRequirements. Creating a new stack? Initially choose the ${Strategy.Dangerous} strategy."

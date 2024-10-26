@@ -224,13 +224,13 @@ trait CloudFormationDeploymentTypeParameters {
           TagMatch("Stack", target.stack.name),
           TagMatch("Stage", target.parameters.stage.name)
         )
-        params.map({ case (cfnParam, tagRequirements) =>
+        params.map { case (cfnParam, tagRequirements) =>
           cfnParam -> {
-            tagRequirements
-              .map({ case (key, value) => TagMatch(key, value) })
-              .toList ++ stackStageTags
+            tagRequirements.map { case (key, value) =>
+              TagMatch(key, value)
+            }.toList ++ stackStageTags
           }
-        })
+        }
       case _ => Map.empty
     }
   }

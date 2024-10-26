@@ -125,9 +125,9 @@ class CreateAmiUpdateChangeSetTask(
                   resources.reporter,
                   unresolvedParameters,
                   accountNumber,
-                  existingParameters.map(p =>
+                  existingParameters.map { p =>
                     TemplateParameter(p.key, default = true)
-                  ),
+                  },
                   existingParameters,
                   minInServiceParameters
                 )

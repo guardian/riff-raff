@@ -565,7 +565,7 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
         desired: Int,
         tags: (String, String)*
     ): AutoScalingGroup = {
-      val awsTags = tags map { case (key, value) =>
+      val awsTags = tags.map { case (key, value) =>
         TagDescription.builder().key(key).value(value).build()
       }
       AutoScalingGroup

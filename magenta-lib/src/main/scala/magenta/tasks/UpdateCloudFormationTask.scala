@@ -240,11 +240,9 @@ object CloudFormationParameters {
       deployParameters = deploymentParameters,
       existingParameters = existingParameters,
       templateParameters = templateParameters,
-      specifiedParameters = {
-        cfnParameters.userParameters ++
-          resolvedAmiParameters ++
-          minInServiceParameters.map({ case (k, v) => k -> v.toString })
-      }
+      specifiedParameters = cfnParameters.userParameters ++
+        resolvedAmiParameters ++
+        minInServiceParameters.view.mapValues(_.toString)
     )
     combined.map(convertParameters)
   }
