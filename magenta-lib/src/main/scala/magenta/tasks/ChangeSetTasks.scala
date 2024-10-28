@@ -259,10 +259,8 @@ class CreateChangeSetTask(
                   existingParameters
                 )
 
-              resources.reporter.info("Creating Cloudformation change set")
-              resources.reporter.info(s"Stack name: $stackName")
               resources.reporter.info(
-                s"Change set name: ${stackLookup.changeSetName}"
+                s"Creating Cloudformation change set. CloudFormation stack=$stackName. Change set name=${stackLookup.changeSetName}"
               )
 
               val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
