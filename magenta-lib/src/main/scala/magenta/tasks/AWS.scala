@@ -508,23 +508,18 @@ object ASG {
         // Happy path. We have enough headroom to double the instances, then half once healthy.
         if (2 * desired <= max) {
           reporter.info(
-            s"""Deploying new instances all at once.
-               |
-               |Max=$max. Desired=$desired.
-               |Setting MinInstancesInService=$minInstancesInService.
-               |""".stripMargin
+            s"Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService."
           )
         }
 
-        // We have to take some running instances out of service, at the cost of reduced service availability.
+        // We have to take some running instances out of service, at the cost of possibly reducing service availability.
         else if (minInstancesInService < desired) {
           reporter.warning(
-            s"""Deploying new instances slowly, in multiple batches and impacting availability.
-               |
-               |Max=$max. Desired=$desired.
-               |Setting MinInstancesInService=$minInstancesInService.
-               |This is 75% of max capacity, and less than desired capacity.
-               |Availability will be impacted as ${desired - minInstancesInService} currently running instances will be used to perform this deploy.
+            s"""Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService.
+               |This deployment will temporarily reduce the number of in-service instances.
+               |The number of instances may go as low as $minInstancesInService, which is less than the current desired capacity of $desired.
+               |To ensure a quick deployment we cannot set "MinInstancesInService" to more than 75% of the maximum number of instances.
+               |You should consider increasing your application's maximum capacity so that we always have at least 25% headroom for deployments.
                |""".stripMargin
           )
         }
@@ -532,10 +527,10 @@ object ASG {
         // There isn't enough room to double capacity, but we don't have to take any instances out of service.
         else {
           reporter.warning(
-            s"""Deploying new instances slowly, in multiple batches.
-               |
-               |Max=$max. Desired=$desired.
-               |Setting MinInstancesInService=$minInstancesInService.
+            s"""Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService.
+               |This deployment will happen more slowly, in multiple steps.
+               |The current number of in-service instances will be preserved and the application will be updated in batches of at most ${max - minInstancesInService}.
+               |You could consider increasing your application's maximum capacity to double of your expected maximum so that deployments can happen in a single step.
                |""".stripMargin
           )
         }
