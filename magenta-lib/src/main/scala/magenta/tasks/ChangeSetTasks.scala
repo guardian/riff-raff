@@ -1,6 +1,8 @@
 package magenta.tasks
 
 import magenta.artifact.S3Path
+import magenta.deployment_type.CloudFormationDeploymentTypeParameters.CfnParam
+import magenta.tasks.ASG.TagMatch
 import magenta.tasks.CloudFormationParameters.{
   ExistingParameter,
   InputParameter,
@@ -8,6 +10,7 @@ import magenta.tasks.CloudFormationParameters.{
 }
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.{DeployReporter, DeploymentResources, KeyRing, Region}
+import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
 import software.amazon.awssdk.services.cloudformation.model.ChangeSetStatus._
 import software.amazon.awssdk.services.cloudformation.model._
@@ -82,53 +85,73 @@ class CreateAmiUpdateChangeSetTask(
     if (!stopFlag) {
       CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
         STS.withSTSclient(keyRing, region, resources) { stsClient =>
-          val accountNumber = STS.getAccountNumber(stsClient)
+          ASG.withAsgClient(keyRing, region, resources) { asgClient =>
+            {
+              val accountNumber = STS.getAccountNumber(stsClient)
 
-          val (stackName, _, existingParameters, currentTags) =
-            stackLookup.lookup(resources.reporter, cfnClient)
+              val (stackName, _, existingParameters, currentTags) =
+                stackLookup.lookup(resources.reporter, cfnClient)
 
-          resources.reporter.info(
-            "Creating Cloudformation change set to update AMI parameters"
-          )
-          resources.reporter.info(s"CloudFormation stack name: $stackName")
-          resources.reporter.info(
-            s"Change set name: ${stackLookup.changeSetName}"
-          )
+              resources.reporter.info(
+                "Creating Cloudformation change set to update AMI parameters"
+              )
+              resources.reporter.info(s"CloudFormation stack name: $stackName")
+              resources.reporter.info(
+                s"Change set name: ${stackLookup.changeSetName}"
+              )
 
-          val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
-          maybeExecutionRole.foreach(role =>
-            resources.reporter.verbose(s"Using execution role: $role")
-          )
+              val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
+              maybeExecutionRole.foreach(role =>
+                resources.reporter.verbose(s"Using execution role: $role")
+              )
 
-          val parameters = CloudFormationParameters
-            .resolve(
-              resources.reporter,
-              unresolvedParameters,
-              accountNumber,
-              existingParameters.map(p =>
-                TemplateParameter(p.key, default = true)
-              ),
-              existingParameters
-            )
-            .fold(
-              resources.reporter.fail(_),
-              identity
-            )
+              val cfnStackNameTag = TagMatch(
+                "aws:cloudformation:stack-name",
+                stackName
+              )
 
-          val awsParameters = convertInputParametersToAwsAndLog(
-            resources.reporter,
-            parameters,
-            existingParameters
-          )
+              val minInServiceParameters =
+                unresolvedParameters.minInServiceParameterMap.map {
+                  case (cfnParam, asgTagRequirements) =>
+                    cfnParam -> ASG.getMinInstancesInService(
+                      asgTagRequirements :+ cfnStackNameTag,
+                      asgClient,
+                      resources.reporter
+                    )
+                }
 
-          CloudFormation.createParameterUpdateChangeSet(
-            client = cfnClient,
-            changeSetName = stackLookup.changeSetName,
-            stackName = stackName,
-            currentStackTags = currentTags,
-            parameters = awsParameters,
-            maybeRole = maybeExecutionRole
-          )
+              val parameters = CloudFormationParameters
+                .resolve(
+                  resources.reporter,
+                  unresolvedParameters,
+                  accountNumber,
+                  existingParameters.map { p =>
+                    TemplateParameter(p.key, default = true)
+                  },
+                  existingParameters,
+                  minInServiceParameters
+                )
+                .fold(
+                  resources.reporter.fail(_),
+                  identity
+                )
+
+              val awsParameters = convertInputParametersToAwsAndLog(
+                resources.reporter,
+                parameters,
+                existingParameters
+              )
+
+              CloudFormation.createParameterUpdateChangeSet(
+                client = cfnClient,
+                changeSetName = stackLookup.changeSetName,
+                stackName = stackName,
+                currentStackTags = currentTags,
+                parameters = awsParameters,
+                maybeRole = maybeExecutionRole
+              )
+            }
+          }
         }
       }
     }
@@ -153,85 +176,113 @@ class CreateChangeSetTask(
       CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
         S3.withS3client(keyRing, region, resources = resources) { s3Client =>
           STS.withSTSclient(keyRing, region, resources) { stsClient =>
-            val accountNumber = STS.getAccountNumber(stsClient)
+            ASG.withAsgClient(keyRing, region, resources) { asgClient =>
+              val accountNumber = STS.getAccountNumber(stsClient)
 
-            val templateString = templatePath
-              .fetchContentAsString()
-              .right
-              .getOrElse(
-                resources.reporter.fail(
-                  s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}"
+              val templateString = templatePath
+                .fetchContentAsString()
+                .right
+                .getOrElse(
+                  resources.reporter.fail(
+                    s"Unable to locate cloudformation template s3://${templatePath.bucket}/${templatePath.key}"
+                  )
                 )
+
+              val (stackName, changeSetType, existingParameters, currentTags) =
+                stackLookup.lookup(resources.reporter, cfnClient)
+
+              val template = processTemplate(
+                stackName,
+                templateString,
+                s3Client,
+                stsClient,
+                region,
+                resources.reporter
               )
-
-            val (stackName, changeSetType, existingParameters, currentTags) =
-              stackLookup.lookup(resources.reporter, cfnClient)
-
-            val template = processTemplate(
-              stackName,
-              templateString,
-              s3Client,
-              stsClient,
-              region,
-              resources.reporter
-            )
-            val templateParameters = CloudFormation
-              .validateTemplate(template, cfnClient)
-              .parameters
-              .asScala
-              .toList
-              .map(tp =>
-                TemplateParameter(
-                  tp.parameterKey,
-                  Option(tp.defaultValue).isDefined
+              val templateParameters = CloudFormation
+                .validateTemplate(template, cfnClient)
+                .parameters
+                .asScala
+                .toList
+                .map(tp =>
+                  TemplateParameter(
+                    tp.parameterKey,
+                    Option(tp.defaultValue).isDefined
+                  )
                 )
+
+              val minInServiceParameters: Map[CfnParam, Int] =
+                changeSetType match {
+                  case ChangeSetType.UPDATE =>
+                    val cfnStackNameTag = TagMatch(
+                      "aws:cloudformation:stack-name",
+                      stackName
+                    )
+                    unresolvedParameters.minInServiceParameterMap.map {
+                      case (cfnParam, asgTagRequirements) =>
+                        cfnParam -> ASG.getMinInstancesInService(
+                          asgTagRequirements :+ cfnStackNameTag,
+                          asgClient,
+                          resources.reporter
+                        )
+                    }
+                  case ChangeSetType.CREATE =>
+                    resources.reporter.verbose(
+                      s"Creating a new CFN stack; using minInService parameters from template."
+                    )
+                    Map.empty
+                  case _ =>
+                    // This code path should never be reached. See `CloudFormationStackMetadata.getChangeSetType`.
+                    resources.reporter.fail(
+                      s"Unsupported change set type: $changeSetType"
+                    )
+                }
+
+              val parameters = CloudFormationParameters
+                .resolve(
+                  resources.reporter,
+                  unresolvedParameters,
+                  accountNumber,
+                  templateParameters,
+                  existingParameters,
+                  minInServiceParameters
+                )
+                .fold(
+                  resources.reporter.fail(_),
+                  identity
+                )
+
+              val awsParameters =
+                convertInputParametersToAwsAndLog(
+                  resources.reporter,
+                  parameters,
+                  existingParameters
+                )
+
+              resources.reporter.info(
+                s"Creating Cloudformation change set. CloudFormation stack=$stackName. Change set name=${stackLookup.changeSetName}"
               )
 
-            val parameters = CloudFormationParameters
-              .resolve(
+              val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
+              maybeExecutionRole.foreach(role =>
+                resources.reporter.verbose(s"Using execution role $role")
+              )
+
+              val mergedTags = currentTags ++ stackTags
+              resources.reporter.info("Tags: " + mergedTags.mkString(", "))
+
+              CloudFormation.createChangeSet(
                 resources.reporter,
-                unresolvedParameters,
-                accountNumber,
-                templateParameters,
-                existingParameters
+                stackLookup.changeSetName,
+                changeSetType,
+                stackName,
+                Some(mergedTags),
+                template,
+                awsParameters,
+                maybeExecutionRole,
+                cfnClient
               )
-              .fold(
-                resources.reporter.fail(_),
-                identity
-              )
-
-            val awsParameters =
-              convertInputParametersToAwsAndLog(
-                resources.reporter,
-                parameters,
-                existingParameters
-              )
-
-            resources.reporter.info("Creating Cloudformation change set")
-            resources.reporter.info(s"Stack name: $stackName")
-            resources.reporter.info(
-              s"Change set name: ${stackLookup.changeSetName}"
-            )
-
-            val maybeExecutionRole = CloudFormation.getExecutionRole(keyRing)
-            maybeExecutionRole.foreach(role =>
-              resources.reporter.verbose(s"Using execution role $role")
-            )
-
-            val mergedTags = currentTags ++ stackTags
-            resources.reporter.info("Tags: " + mergedTags.mkString(", "))
-
-            CloudFormation.createChangeSet(
-              resources.reporter,
-              stackLookup.changeSetName,
-              changeSetType,
-              stackName,
-              Some(mergedTags),
-              template,
-              awsParameters,
-              maybeExecutionRole,
-              cfnClient
-            )
+            }
           }
         }
       }

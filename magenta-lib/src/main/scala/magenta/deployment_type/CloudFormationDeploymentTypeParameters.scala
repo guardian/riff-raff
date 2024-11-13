@@ -1,11 +1,15 @@
 package magenta.deployment_type
 
+import magenta.deployment_type.CloudFormationDeploymentTypeParameters.CfnParam
+import magenta.tasks.ASG
+import magenta.tasks.ASG.TagMatch
 import magenta.tasks.UpdateCloudFormationTask.{
   CloudFormationStackLookupStrategy,
   LookupByName,
   LookupByTags
 }
 import magenta.{DeployReporter, DeployTarget, DeploymentPackage, Lookup}
+import software.amazon.awssdk.services.autoscaling.AutoScalingClient
 
 import java.time.Duration
 import java.time.Duration.ofMinutes
@@ -104,6 +108,24 @@ trait CloudFormationDeploymentTypeParameters {
       """.stripMargin
   ).default(false)
 
+  val minInstancesInServiceParameters = Param[Map[CfnParam, TagCriteria]](
+    "minInstancesInServiceParameters",
+    optional = true,
+    documentation = """Mapping between a CloudFormation parameter controlling the MinInstancesInService property of an ASG UpdatePolicy and the ASG.
+        |
+        |For example:
+        |```
+        |  minInstancesInServiceParameters:
+        |    MinInstancesInServiceForApi:
+        |      App: my-api
+        |    MinInstancesInServiceForFrontend:
+        |      App: my-frontend
+        |```
+        |This instructs Riff-Raff that the CFN parameter `MinInstancesInServiceForApi` relates to an ASG tagged `App=my-api`.
+        |Additional requirements of `Stack=<STACK BEING DEPLOYED>`, `Stage=<STAGE BEING DEPLOYED>` and `aws:cloudformation:stack-name=<CFN STACK BEING DEPLOYED>` are automatically added.
+      """.stripMargin
+  )
+
   val secondsToWaitForChangeSetCreation: Param[Duration] = Param
     .waitingSecondsFor(
       "secondsToWaitForChangeSetCreation",
@@ -190,5 +212,26 @@ trait CloudFormationDeploymentTypeParameters {
           }
         }
       }
+  }
+
+  def getMinInServiceTagRequirements(
+      pkg: DeploymentPackage,
+      target: DeployTarget
+  ): Map[CfnParam, List[TagMatch]] = {
+    minInstancesInServiceParameters.get(pkg) match {
+      case Some(params) =>
+        val stackStageTags = List(
+          TagMatch("Stack", target.stack.name),
+          TagMatch("Stage", target.parameters.stage.name)
+        )
+        params.map { case (cfnParam, tagRequirements) =>
+          cfnParam -> {
+            tagRequirements.map { case (key, value) =>
+              TagMatch(key, value)
+            }.toList ++ stackStageTags
+          }
+        }
+      case _ => Map.empty
+    }
   }
 }

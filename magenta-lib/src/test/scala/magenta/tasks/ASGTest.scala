@@ -398,6 +398,150 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
     ) shouldBe Right(())
   }
 
+  it should "calculate MinInstancesInService as desired when there is capacity to double" in {
+    val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
+
+    when(asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(
+      List(
+        AutoScalingGroupWithTags(
+          min = 3,
+          max = 6,
+          desired = 3,
+          "Stack" -> "playground",
+          "Stage" -> "PROD",
+          "App" -> "api",
+          "aws:cloudformation:stack-name" -> "playground-PROD-api"
+        )
+      ).asJava
+    )
+    when(
+      asgClientMock.describeAutoScalingGroupsPaginator()
+    ) thenReturn asgDescribeIterableMock
+
+    val minInstancesInService =
+      ASG.getMinInstancesInService(
+        List(
+          TagMatch("Stack", "playground"),
+          TagMatch("Stage", "PROD"),
+          TagMatch("App", "api"),
+          TagMatch("aws:cloudformation:stack-name", "playground-PROD-api")
+        ),
+        asgClientMock,
+        reporter
+      )
+
+    minInstancesInService shouldBe 3
+  }
+
+  it should "calculate MinInstancesInService as desired when partially scaled out" in {
+    val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
+
+    when(asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(
+      List(
+        AutoScalingGroupWithTags(
+          min = 3,
+          max = 9,
+          desired = 5,
+          "Stack" -> "playground",
+          "Stage" -> "PROD",
+          "App" -> "api",
+          "aws:cloudformation:stack-name" -> "playground-PROD-api"
+        )
+      ).asJava
+    )
+    when(
+      asgClientMock.describeAutoScalingGroupsPaginator()
+    ) thenReturn asgDescribeIterableMock
+
+    val minInstancesInService =
+      ASG.getMinInstancesInService(
+        List(
+          TagMatch("Stack", "playground"),
+          TagMatch("Stage", "PROD"),
+          TagMatch("App", "api"),
+          TagMatch("aws:cloudformation:stack-name", "playground-PROD-api")
+        ),
+        asgClientMock,
+        reporter
+      )
+
+    minInstancesInService shouldBe 5
+  }
+
+  it should "calculate MinInstancesInService as 75% of max when desired is high" in {
+    val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
+
+    when(asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(
+      List(
+        AutoScalingGroupWithTags(
+          min = 10,
+          max = 100,
+          desired = 80,
+          "Stack" -> "playground",
+          "Stage" -> "PROD",
+          "App" -> "api",
+          "aws:cloudformation:stack-name" -> "playground-PROD-api"
+        )
+      ).asJava
+    )
+    when(
+      asgClientMock.describeAutoScalingGroupsPaginator()
+    ) thenReturn asgDescribeIterableMock
+
+    val minInstancesInService =
+      ASG.getMinInstancesInService(
+        List(
+          TagMatch("Stack", "playground"),
+          TagMatch("Stage", "PROD"),
+          TagMatch("App", "api"),
+          TagMatch("aws:cloudformation:stack-name", "playground-PROD-api")
+        ),
+        asgClientMock,
+        reporter
+      )
+
+    minInstancesInService shouldBe 75
+  }
+
+  it should "calculate MinInstancesInService as 75% of max when fully scaled out" in {
+    val asgClientMock = mock[AutoScalingClient]
+    val asgDescribeIterableMock = mock[DescribeAutoScalingGroupsIterable]
+
+    when(asgDescribeIterableMock.autoScalingGroups()) thenReturn toSdkIterable(
+      List(
+        AutoScalingGroupWithTags(
+          min = 10,
+          max = 100,
+          desired = 100,
+          "Stack" -> "playground",
+          "Stage" -> "PROD",
+          "App" -> "api",
+          "aws:cloudformation:stack-name" -> "playground-PROD-api"
+        )
+      ).asJava
+    )
+    when(
+      asgClientMock.describeAutoScalingGroupsPaginator()
+    ) thenReturn asgDescribeIterableMock
+
+    val minInstancesInService =
+      ASG.getMinInstancesInService(
+        List(
+          TagMatch("Stack", "playground"),
+          TagMatch("Stage", "PROD"),
+          TagMatch("App", "api"),
+          TagMatch("aws:cloudformation:stack-name", "playground-PROD-api")
+        ),
+        asgClientMock,
+        reporter
+      )
+
+    minInstancesInService shouldBe 75
+  }
+
   object AutoScalingGroupWithTags {
     def apply(tags: (String, String)*): AutoScalingGroup = {
       val awsTags = tags map { case (key, value) =>
@@ -413,6 +557,23 @@ class ASGTest extends AnyFlatSpec with Matchers with MockitoSugar {
         .builder()
         .tags(awsTags.asJava)
         .loadBalancerNames(elbName)
+        .build()
+    }
+    def apply(
+        min: Int,
+        max: Int,
+        desired: Int,
+        tags: (String, String)*
+    ): AutoScalingGroup = {
+      val awsTags = tags.map { case (key, value) =>
+        TagDescription.builder().key(key).value(value).build()
+      }
+      AutoScalingGroup
+        .builder()
+        .tags(awsTags.asJava)
+        .minSize(min)
+        .maxSize(max)
+        .desiredCapacity(desired)
         .build()
     }
   }

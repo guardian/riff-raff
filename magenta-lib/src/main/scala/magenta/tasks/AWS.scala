@@ -490,6 +490,59 @@ object ASG {
     )
   }
 
+  def getMinInstancesInService(
+      tagRequirements: List[TagMatch],
+      client: AutoScalingClient,
+      reporter: DeployReporter
+  ): Int = {
+    groupWithTags(tagRequirements, client, reporter) match {
+      case Some(asg) =>
+        val max = asg.maxSize
+        val desired = asg.desiredCapacity
+        val seventyFivePercent: Int = (max * 0.75).toInt
+        val minInstancesInService = Math.min(
+          seventyFivePercent,
+          desired
+        )
+
+        // Happy path. We have enough headroom to double the instances, then half once healthy.
+        if (2 * desired <= max) {
+          reporter.info(
+            s"Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService."
+          )
+        }
+
+        // We have to take some running instances out of service, at the cost of possibly reducing service availability.
+        else if (minInstancesInService < desired) {
+          reporter.warning(
+            s"""Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService.
+               |This deployment will temporarily reduce the number of in-service instances.
+               |The number of instances may go as low as $minInstancesInService, which is less than the current desired capacity of $desired.
+               |To ensure a quick deployment we cannot set "MinInstancesInService" to more than 75% of the maximum number of instances.
+               |You should consider increasing your application's maximum capacity so that we always have at least 25% headroom for deployments.
+               |""".stripMargin
+          )
+        }
+
+        // There isn't enough room to double capacity, but we don't have to take any instances out of service.
+        else {
+          reporter.warning(
+            s"""Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService.
+               |This deployment will happen more slowly, in multiple steps.
+               |The current number of in-service instances will be preserved and the application will be updated in batches of at most ${max - minInstancesInService}.
+               |You could consider increasing your application's maximum capacity to double of your expected maximum so that deployments can happen in a single step.
+               |""".stripMargin
+          )
+        }
+
+        minInstancesInService
+      case _ =>
+        reporter.fail(
+          s"No autoscaling group found with tags $tagRequirements. Creating a new stack? Initially choose the ${Strategy.Dangerous} strategy."
+        )
+    }
+  }
+
   def groupWithTags(
       tagRequirements: List[TagRequirement],
       client: AutoScalingClient,
