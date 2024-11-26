@@ -74,7 +74,7 @@ object Dependencies {
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "3.0.0",
+      "com.gu" %% "anghammarad-client" % "4.0.0",
       "org.webjars" %% "webjars-play" % "3.0.1",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.13.3",
