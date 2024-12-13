@@ -21,12 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: corretto
-          java-version: 11
-          cache: sbt
+      - uses: guardian/setup-scala@v1
 
       # Seed the build number with last number from TeamCity.
       # This env var is used by the SBT build, and guardian/actions-riff-raff.
