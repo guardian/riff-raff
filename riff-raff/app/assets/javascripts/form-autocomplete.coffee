@@ -146,21 +146,17 @@ $ ->
         updateStageInfo()
       minLength:0
 
-  $('#buildInput').on('input keyup',
+  $('#buildInput').on('input',
     ->
       input = $(this)
       updateBuildInfo( input.val() )
+      updateStageInfo()
+      updateDeployInfo()
   )
 
   $('#buildInput').focus (e) ->
     if (!menuOpen)
       $(e.target).autocomplete("search")
-
-  $('#buildInput').on('input keyup',
-    ->
-      updateStageInfo()
-      updateDeployInfo()
-  )
 
   $('#buildInput').blur -> updateDeployInfo()
 
