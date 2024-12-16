@@ -151,7 +151,6 @@ $ ->
       input = $(this)
       updateBuildInfo( input.val() )
       updateStageInfo()
-      updateDeployInfo()
   )
 
   $('#buildInput').focus (e) ->
