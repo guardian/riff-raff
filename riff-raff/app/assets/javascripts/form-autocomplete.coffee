@@ -82,7 +82,9 @@ setupFavouriteHandlers = () ->
 
     elemProjectInput = $('#projectInput')
     elemProjectInput.val(project)
-    updateDeployInfo()
+
+    $('#buildInput').val('') # clear build input when project changed
+    updateStageInfo()
 
 renderFavourites = () ->
   container = $('#favourites-container')
@@ -121,6 +123,8 @@ $ ->
     input.on('keyup', updateFavouriteButton)
 
   $('#projectInput').blur -> updateDeployInfo()
+
+  $('#projectInput').change -> $('#buildInput').val('') # clear build input when project changed
 
   $('#buildInput').each ->
     input = $(this)
