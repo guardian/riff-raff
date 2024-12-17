@@ -9,14 +9,14 @@ inThisBuild(
     semanticdbEnabled := true,
     semanticdbOptions += "-P:semanticdb:synthetics:on",
     semanticdbVersion := scalafixSemanticdb.revision,
-    scalafixScalaBinaryVersion := "2.13",
+    scalaBinaryVersion := "2.13",
     scalafixDependencies += "org.scala-lang" %% "scala-rewrites" % "0.1.5"
   )
 )
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.13.14",
+  scalaVersion := "2.13.15",
   scalacOptions ++= Seq(
     "-feature",
     "-language:postfixOps,reflectiveCalls,implicitConversions",
