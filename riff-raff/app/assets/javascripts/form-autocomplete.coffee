@@ -82,7 +82,9 @@ setupFavouriteHandlers = () ->
 
     elemProjectInput = $('#projectInput')
     elemProjectInput.val(project)
-    updateDeployInfo()
+
+    $('#buildInput').val('') # clear build input when project changed
+    updateStageInfo()
 
 renderFavourites = () ->
   container = $('#favourites-container')
@@ -122,6 +124,8 @@ $ ->
 
   $('#projectInput').blur -> updateDeployInfo()
 
+  $('#projectInput').change -> $('#buildInput').val('') # clear build input when project changed
+
   $('#buildInput').each ->
     input = $(this)
     serverUrl = input.data('url')
@@ -142,21 +146,16 @@ $ ->
         updateStageInfo()
       minLength:0
 
-  $('#buildInput').on('input keyup',
+  $('#buildInput').on('input',
     ->
       input = $(this)
       updateBuildInfo( input.val() )
+      updateStageInfo()
   )
 
   $('#buildInput').focus (e) ->
     if (!menuOpen)
       $(e.target).autocomplete("search")
-
-  $('#buildInput').on('input keyup',
-    ->
-      updateStageInfo()
-      updateDeployInfo()
-  )
 
   $('#buildInput').blur -> updateDeployInfo()
 
