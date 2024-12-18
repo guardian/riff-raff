@@ -19,7 +19,7 @@ import org.joda.time.format.ISODateTimeFormat
 import controllers.routes
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.internal.util.EC2MetadataUtils
-import software.amazon.awssdk.regions.{Region, Region => AWSRegion}
+import software.amazon.awssdk.regions.{Region => AWSRegion}
 import software.amazon.awssdk.services.ec2.Ec2Client
 import software.amazon.awssdk.services.ec2.model.{DescribeTagsRequest, Filter}
 import software.amazon.awssdk.services.s3.S3Client
@@ -318,7 +318,7 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
     val snsClient: SnsAsyncClient =
       SnsAsyncClient
         .builder()
-        .region(Region.of(regionName))
+        .region(AWSRegion.of(regionName))
         .credentialsProvider(credentialsProviderChain(None, None))
         .build()
   }
