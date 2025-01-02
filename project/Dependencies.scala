@@ -5,9 +5,9 @@ object Dependencies {
 
   object Versions {
     val aws = "2.29.40"
-    val jackson = "2.17.2"
+    val jackson = "2.17.3"
     val awsRds = "1.12.780"
-    val enumeratumPlay = "1.8.1"
+    val enumeratumPlay = "1.8.2"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -49,8 +49,8 @@ object Dependencies {
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20241122-2.0.0",
-      "com.google.cloud" % "google-cloud-storage" % "2.40.1",
-      "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
+      "com.google.cloud" % "google-cloud-storage" % "2.46.0",
+      "org.scala-lang.modules" %% "scala-parallel-collections" % "1.1.0"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
@@ -65,33 +65,33 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "10.0.1",
-      "com.gu.play-secret-rotation" %% "play-v30" % "8.4.5",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "8.4.5",
+      "com.gu.play-googleauth" %% "play-v30" % "17.1.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "13.1.1",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "13.1.1",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
-      "org.scanamo" %% "scanamo" % "1.1.1",
+      "org.scanamo" %% "scanamo" % "3.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
-      "org.quartz-scheduler" % "quartz" % "2.3.2",
+      "org.quartz-scheduler" % "quartz" % "2.5.0",
       "com.gu" %% "anghammarad-client" % "4.0.0",
-      "org.webjars" %% "webjars-play" % "3.0.1",
+      "org.webjars" %% "webjars-play" % "3.0.2",
       "org.webjars" % "jquery" % "3.7.1",
-      "org.webjars" % "jquery-ui" % "1.13.3",
+      "org.webjars" % "jquery-ui" % "1.14.1",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
       "org.webjars" % "momentjs" % "2.30.1",
-      "net.logstash.logback" % "logstash-logback-encoder" % "7.4",
+      "net.logstash.logback" % "logstash-logback-encoder" % "8.0",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.3",
+      "org.postgresql" % "postgresql" % "42.7.4",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
-      "org.apache.pekko" %% "pekko-testkit" % "1.0.2" % Test,
+      "org.apache.pekko" %% "pekko-testkit" % "1.0.3" % Test,
       "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.5.6"
+      "ch.qos.logback" % "logback-classic" % "1.5.15"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
