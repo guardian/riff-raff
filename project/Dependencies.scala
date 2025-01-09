@@ -73,7 +73,7 @@ object Dependencies {
       "org.scanamo" %% "scanamo" % "1.1.1",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
-      "org.quartz-scheduler" % "quartz" % "2.3.2",
+      "org.quartz-scheduler" % "quartz" % "2.5.0",
       "com.gu" %% "anghammarad-client" % "4.0.0",
       "org.webjars" %% "webjars-play" % "3.0.1",
       "org.webjars" % "jquery" % "3.7.1",
