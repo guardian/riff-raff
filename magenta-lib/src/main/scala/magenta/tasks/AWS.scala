@@ -1137,7 +1137,9 @@ object AWS extends Loggable {
   class LoggingRetryCondition(retryCondition: RetryCondition)
       extends RetryCondition {
     private def exceptionInfo(e: Throwable): String = {
-      s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(e.getCause).map(e => exceptionInfo(e))}"
+      s"${e.getClass.getName} ${e.getMessage} Cause: ${Option(
+          e.getCause
+        ).map(e => exceptionInfo(e))}"
     }
     private def localRules(context: RetryPolicyContext): Boolean = {
       context.exception().getMessage.contains("Rate exceeded")
