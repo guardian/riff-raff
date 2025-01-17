@@ -5,7 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.29.40"
-    val jackson = "2.17.3"
+    val jackson = "2.18.2"
     val awsRds = "1.12.780"
     val enumeratumPlay = "1.8.2"
   }
@@ -65,7 +65,7 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "18.0.0",
+      "com.gu.play-googleauth" %% "play-v30" % "19.0.0",
       "com.gu.play-secret-rotation" %% "play-v30" % "13.1.2",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "13.1.2",
       "org.pegdown" % "pegdown" % "1.6.0",
@@ -83,7 +83,7 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.30.1",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.0",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.4",
+      "org.postgresql" % "postgresql" % "42.7.5",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
