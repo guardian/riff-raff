@@ -28,7 +28,7 @@ object Dependencies {
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
-    "org.typelevel" %% "cats-core" % "2.12.0",
+    "org.typelevel" %% "cats-core" % "2.13.0",
     "org.mockito" %% "mockito-scala" % "1.17.37" % Test
   )
 
