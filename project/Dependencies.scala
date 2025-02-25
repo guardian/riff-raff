@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.29.40"
+    val aws = "2.29.52"
     val jackson = "2.18.2"
     val awsRds = "1.12.780"
     val enumeratumPlay = "1.8.2"
@@ -45,7 +45,7 @@ object Dependencies {
       "software.amazon.awssdk" % "cloudformation" % Versions.aws,
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
-      "com.gu" %% "fastly-api-client" % "1.0.0",
+      "com.gu" %% "fastly-api-client" % "1.0.1",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "com.google.apis" % "google-api-services-deploymentmanager" % "v2-rev20250102-2.0.0",
