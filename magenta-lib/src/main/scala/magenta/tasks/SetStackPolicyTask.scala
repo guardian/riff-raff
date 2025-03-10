@@ -140,7 +140,9 @@ object StackPolicy {
       // Storage that persists outside of EC2 life-cycle
       "AWS::EFS::FileSystem",
       // Private types
-      "Guardian::DNS::RecordSet"
+      "Guardian::DNS::RecordSet",
+      // Nested stacks, which may contain any of the above!
+      "AWS::CloudFormation::Stack"
     )
 
   private[this] val ALLOW_ALL_POLICY =
