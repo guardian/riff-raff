@@ -24,7 +24,7 @@
 
     <div class="row">
         <div class="col-md-8">
-            <h2>Deploy of @record.buildName build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage.name</h2>
+            <h2>Deploy of <a href="@routes.DeployController.deployHistory(record.buildName, None, Some(true))">@record.buildName</a> build @record.buildId@record.metaData.get("branch").map{ branch=> [@branch]} in @record.stage.name</h2>
 
             <table class="table">
                 @record.metaData.get(deployment.Record.RIFFRAFF_HOSTNAME).map { hostname =>
