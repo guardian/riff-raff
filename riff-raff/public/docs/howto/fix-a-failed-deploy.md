@@ -1,5 +1,9 @@
 # Fixing a failed deploy
 
+> [!NOTE]
+> This guide is only necessary when using the legacy `autoscaling` deployment type.
+> When using the new [RollingUpdate deployment mechanism](https://docs.google.com/document/d/18M6nW6bknvFYjICMaSmDwkIisAuHsn4y_HSTdKu7Z-o/edit?tab=t.0), a failed deployment will automatically roll back.
+
 ## Background
 
 Normally your Auto-Scaling Group will be configured with a maximum capacity that is _twice_ (or sometimes _four times_) the 'desired'
