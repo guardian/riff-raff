@@ -21,6 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # We currently compile CoffeeScript via an SBT task.
+      # There is no explicit frontend project, so no package.json.
+      # Install Node to ensure the version is deterministic.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
       - uses: guardian/setup-scala@v1
 
       # Seed the build number with last number from TeamCity.
