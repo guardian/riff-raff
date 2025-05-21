@@ -1,7 +1,7 @@
 # Fixing a failed deploy
 
 > [!NOTE]
-> This guide is only necessary when using the legacy `autoscaling` deployment type.
+> This guide is only necessary when using the legacy [`autoscaling` deployment type](https://riffraff.gutools.co.uk/docs/magenta-lib/types#autoscaling).
 > When using the new [RollingUpdate deployment mechanism](https://docs.google.com/document/d/18M6nW6bknvFYjICMaSmDwkIisAuHsn4y_HSTdKu7Z-o/edit?tab=t.0), a failed deployment will automatically roll back.
 
 ## Background
