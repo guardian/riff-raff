@@ -512,16 +512,16 @@ object ASG {
           )
         }
 
-        // We have to take some running instances out of service, at the cost of possibly reducing service availability.
+        // There isn't enough headroom to deploy without taking instances out of service. In reality, this hasn't happened (yet...).
         else if (minInstancesInService < desired) {
-          reporter.warning(
-            s"""Max=$max. Desired=$desired. Setting MinInstancesInService=$minInstancesInService.
-               |This deployment will temporarily reduce the number of in-service instances.
-               |The number of instances may go as low as $minInstancesInService, which is less than the current desired capacity of $desired.
-               |To ensure a quick deployment we cannot set "MinInstancesInService" to more than 75% of the maximum number of instances.
+          val percentage = minInstancesInService / desired * 100
+          val difference = desired - minInstancesInService
+          reporter.fail(s"""
+               |Max=$max. Desired=$desired.
+               |MinInstancesInService calculated as $minInstancesInService ($percentage% of desired).
+               |Failing deployment to avoid disrupting service availability as we'd otherwise need to take $difference instances out of service.
                |You should consider increasing your application's maximum capacity so that we always have at least 25% headroom for deployments.
-               |""".stripMargin
-          )
+               |""".stripMargin)
         }
 
         // There isn't enough room to double capacity, but we don't have to take any instances out of service.
