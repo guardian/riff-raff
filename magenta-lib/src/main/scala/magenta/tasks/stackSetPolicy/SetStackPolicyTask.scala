@@ -1,6 +1,9 @@
 package magenta.tasks.stackSetPolicy
 
-import magenta.tasks.stackSetPolicy.StackPolicy.{accountResourceTypes, toPolicyDoc}
+import magenta.tasks.stackSetPolicy.StackPolicy.{
+  accountResourceTypes,
+  toPolicyDoc
+}
 import magenta.tasks.stackSetPolicy.generated.RegionCfnTypes
 import magenta.tasks.{CloudFormation, CloudFormationStackMetadata, Task}
 import magenta.{DeploymentResources, KeyRing, Region}
@@ -82,8 +85,14 @@ object StackPolicy {
     * @return
     *   A Set of Resource type names
     */
-  def accountResourceTypes(region: Region, client: CloudFormationClient): Set[String] = {
-    RegionCfnTypes.regionTypes.getOrElse(region.name, accountAwsResourceTypes(client)) ++ accountPrivateTypes(client)
+  def accountResourceTypes(
+      region: Region,
+      client: CloudFormationClient
+  ): Set[String] = {
+    RegionCfnTypes.regionTypes.getOrElse(
+      region.name,
+      accountAwsResourceTypes(client)
+    ) ++ accountPrivateTypes(client)
   }
 
   /** CFN resource types that have state or are likely to exist in external

@@ -6,7 +6,12 @@ import magenta.artifact.S3Path
 import magenta.deployment_type.CloudFormationDeploymentTypeParameters._
 import magenta.tasks.UpdateCloudFormationTask.LookupByTags
 import magenta.tasks._
-import magenta.tasks.stackSetPolicy.{AllowAllPolicy, DenyReplaceDeletePolicy, SetStackPolicyTask, StackPolicy}
+import magenta.tasks.stackSetPolicy.{
+  AllowAllPolicy,
+  DenyReplaceDeletePolicy,
+  SetStackPolicyTask,
+  StackPolicy
+}
 import org.joda.time.DateTime
 
 trait BuildTags {
