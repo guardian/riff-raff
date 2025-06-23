@@ -45,6 +45,21 @@ lazy val lib = project
       Test / testOptions += Tests.Argument("-oF")
     )
   )
+  .settings {
+
+    lazy val generateTypes = taskKey[Unit]("Download CloudFormation types into the source folder")
+
+    generateTypes := {
+      val className = "RegionCfnTypes"
+      val regions = List("eu-west-1")
+      val content: String = GenerateCfnTypes.generate("magenta.tasks.stackSetPolicy.generated", className, regions)
+      val targetFile = (Compile / scalaSource).value / "magenta" / "tasks" / "stackSetPolicy" / "generated" / (className + ".scala")
+      println(s"writing...${content.length} characters to ${targetFile.toString}")
+      IO.write(targetFile, content)
+      println("done")
+    }
+
+  }
 
 def env(propName: String): String =
   sys.env.get(propName).filter(_.trim.nonEmpty).getOrElse("DEV")
