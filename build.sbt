@@ -49,18 +49,30 @@ lazy val lib = project
   )
   .settings {
 
-    lazy val generateTypes = inputKey[Unit]("Download CloudFormation types into the source folder")
+    lazy val generateTypes =
+      inputKey[Unit]("Download CloudFormation types into the source folder")
 
     generateTypes := {
       val profileName = spaceDelimited("<arg>").parsed match {
         case profileName :: Nil => profileName
-        case other => throw new IllegalArgumentException(s"Syntax: generateTypes <awsProfileName>\n(got: $other)")
+        case other =>
+          throw new IllegalArgumentException(
+            s"Syntax: generateTypes <awsProfileName>\n(got: $other)"
+          )
       }
       val className = "RegionCfnTypes"
       val regions = List("eu-west-1")
-      val content: String = GenerateCfnTypes.generate("magenta.tasks.stackSetPolicy.generated", className, regions, profileName)
-      val targetFile = (Compile / scalaSource).value / "magenta" / "tasks" / "stackSetPolicy" / "generated" / (className + ".scala")
-      println(s"writing...${content.length} characters to ${targetFile.toString}")
+      val content: String = GenerateCfnTypes.generate(
+        "magenta.tasks.stackSetPolicy.generated",
+        className,
+        regions,
+        profileName
+      )
+      val targetFile =
+        (Compile / scalaSource).value / "magenta" / "tasks" / "stackSetPolicy" / "generated" / (className + ".scala")
+      println(
+        s"writing...${content.length} characters to ${targetFile.toString}"
+      )
       IO.write(targetFile, content)
       println("done")
     }
