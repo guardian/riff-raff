@@ -426,7 +426,16 @@ class CloudFormationStackEventPoller(
     reporter.info(
       s"${e.logicalResourceId} (${e.resourceType}): ${e.resourceStatusAsString}"
     )
-    if (e.resourceStatusReason != null) reporter.verbose(e.resourceStatusReason)
+
+    if (e.resourceStatusReason != null) {
+      // Surface detailed ASG messages by default. Particularly useful for when using the new RollingUpdate deployment mechanism.
+      if (e.resourceType == "AWS::AutoScaling::AutoScalingGroup") {
+        reporter.info(e.resourceStatusReason)
+      } else {
+        // Display all other messages in verbose mode.
+        reporter.verbose(e.resourceStatusReason)
+      }
+    }
   }
   private[this] def isStackEvent(stackName: String)(e: StackEvent): Boolean =
     e.resourceType == "AWS::CloudFormation::Stack" && e.logicalResourceId == stackName
