@@ -1,8 +1,10 @@
-import Dependencies._
-import Helpers._
+import Dependencies.*
+import Helpers.*
 import play.sbt.routes.RoutesKeys
+import sbt.Def.spaceDelimited
 import sbtbuildinfo.BuildInfoKeys.buildInfoKeys
-import scala.sys.process._
+
+import scala.sys.process.*
 
 inThisBuild(
   List(
@@ -45,6 +47,37 @@ lazy val lib = project
       Test / testOptions += Tests.Argument("-oF")
     )
   )
+  .settings {
+
+    lazy val generateTypes =
+      inputKey[Unit]("Download CloudFormation types into the source folder")
+
+    generateTypes := {
+      val profileName = spaceDelimited("<arg>").parsed match {
+        case profileName :: Nil => profileName
+        case other =>
+          throw new IllegalArgumentException(
+            s"Syntax: generateTypes <awsProfileName>\n(got: $other)"
+          )
+      }
+      val className = "RegionCfnTypes"
+      val regions = List("eu-west-1")
+      val content: String = GenerateCfnTypes.generate(
+        "magenta.tasks.stackSetPolicy.generated",
+        className,
+        regions,
+        profileName
+      )
+      val targetFile =
+        (Compile / scalaSource).value / "magenta" / "tasks" / "stackSetPolicy" / "generated" / (className + ".scala")
+      println(
+        s"writing...${content.length} characters to ${targetFile.toString}"
+      )
+      IO.write(targetFile, content)
+      println("done")
+    }
+
+  }
 
 def env(propName: String): String =
   sys.env.get(propName).filter(_.trim.nonEmpty).getOrElse("DEV")

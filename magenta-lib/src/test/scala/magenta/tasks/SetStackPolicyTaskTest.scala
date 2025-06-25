@@ -1,5 +1,10 @@
 package magenta.tasks
 
+import magenta.tasks.stackSetPolicy.{
+  AllowAllPolicy,
+  DenyReplaceDeletePolicy,
+  StackPolicy
+}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import software.amazon.awssdk.services.elasticloadbalancingv2.model.{
