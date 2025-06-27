@@ -9,7 +9,7 @@ Authentication is handled by Google. This obtains the users full name and e-mail
 provide an audit trail of deployments and other actions in the app.
 
 Google auth is implemented in two layers
-- Load Balancer layer: this component is defined in the main riff raff cloudformation template and uses [authenticate-oidc](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html#configure-user-authentication). The template relies on a secret stored in SSM.
+- Load Balancer layer: this component is defined in [the main riff raff cloudformation template](https://github.com/guardian/deploy-tools-platform/blob/main/cloudformation/riffraff/riffraff.template.yaml) and uses [authenticate-oidc](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html#configure-user-authentication). The template relies on a secret stored in SSM.
 - Application layer: this layer uses The Guardian's [Play Google Auth Module](https://github.com/guardian/play-googleauth) and is configured in the main [application.conf](https://github.com/guardian/riff-raff/blob/afb7e602e11acd7a07aae433c74be22976d8a7cd/riff-raff/conf/application.conf#L40-L41).
 
 To rotate the secrets, follow these steps:
