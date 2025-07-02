@@ -75,15 +75,15 @@ See the `TODO.txt` file in this project
 Riff-Raff is The Guardian's internally developed deployment platform that acts as a deployment orchestrator (not a CI tool). Written in Scala, it controls all production and staging deployments through a centralized interface and API.
 
 #### 💡 What Riff-Raff Is:
-- 🎯 A centralized service for managing deployments to AWS
+- 🎯 A centralized service for managing deployments to AWS, Fastly, and potentially anywhere else if a deployment type is added
 - 🔌 Integrated with GitHub Actions via an API
-- 🛡️ A layer of abstraction over infrastructure provisioning (CDK, CloudFormation)
+- 🛡️ A layer of abstraction over infrastructure provisioning (CloudFormation and others; CDK is not a deployment type but is built into CloudFormation)
 - 🚪 A gatekeeper for deployment safety, logging, permissions, and rollback
 
 #### ❌ What Riff-Raff Is Not:
 - 🏗️ A build server (GitHub Actions handles that)
 - 🐳 A container orchestrator (no dynamic compute spin-up)
-- ⚡ Triggered by AWS services (not S3 → EventBridge)
+- ⚡ Triggered by S3 bucket events (not by AWS EventBridge or similar)
 
 ---
 
@@ -94,10 +94,10 @@ Riff-Raff is The Guardian's internally developed deployment platform that acts a
 | Stage | Responsibility | Who Does It? |
 |-------|---------------|--------------|
 | **CI** | Build, test, upload artifacts | 🔧 GitHub Actions |
-| **Artifact Push** | Send ZIP, CDK, riff-raff.yaml to S3 | 🔧 GitHub Actions |
-| **Trigger Deployment** | Call deployment API | 🔧 GitHub Actions |
-| **Read + Deploy** | Read config, run deploys (CDK, Lambda, S3, etc.) | 🚀 Riff-Raff |
-| **Execute AWS API Calls** | CloudFormation, CDK, Lambda | 🚀 Riff-Raff (Scala app) |
+| **Artifact Push** | Send ZIP, riff-raff.yaml, CloudFormation JSON (built from CDK in CI) to S3 | 🔧 GitHub Actions |
+| **Trigger Deployment** | Write to S3 bucket to trigger deployment | 🔧 actions-riff-raff, legacy SBT/node plugins |
+| **Read + Deploy** | Riff-Raff polls S3 buckets, reads config, runs deploys (CloudFormation, Lambda, S3, Fastly, etc.) | 🚀 Riff-Raff |
+| **Execute API Calls** | AWS, Fastly, etc. | 🚀 Riff-Raff (Scala app) |
 
 ---
 
@@ -120,7 +120,6 @@ graph TB
         
         subgraph "AWS APIs"
             CF[☁️ CloudFormation]
-            CDK[🏗️ CDK]
             LAMBDA[⚡ Lambda]
             SNS[📢 SNS]
         end
@@ -138,7 +137,6 @@ graph TB
     RR --> RDS
     RR --> DDB
     RR --> CF
-    RR --> CDK
     RR --> LAMBDA
     RR --> SNS
 ```
@@ -148,6 +146,9 @@ graph TB
 - 🔑 Uses IAM roles for secure AWS API access
 - 🔗 Connects directly to AWS APIs using AWS SDKs (Java clients)
 - 🚫 No ECS jobs or Lambda as executor - deployments happen within the JVM process
+
+#### 🔥 Key Insight:
+> Riff-Raff is triggered by S3 bucket events. It polls S3 buckets to decide what to do, based on artifacts written by actions-riff-raff or legacy plugins.
 
 ---
 
@@ -188,7 +189,7 @@ s3://riff-raff-artifacts/
         ├── riff-raff.yaml        # Deployment configuration
         ├── build.json            # Build metadata
         └── packages/             # Deployment artifacts
-            ├── cdk.out/          # CDK synthesized templates
+            ├── cdk.out/          # CDK synthesized templates (built into CloudFormation JSON in CI)
             ├── lambda-code/      # Lambda function code
             └── static-assets/    # Static files for S3
 ```
@@ -199,12 +200,18 @@ s3://riff-raff-artifacts/
 
 ### ⚙️ Deployment Types
 
-Riff-Raff supports multiple deployment types:
+Riff-Raff supports multiple deployment types. For the full, up-to-date list, see the self-documenting deployment types page: [https://riffraff.gutools.co.uk/docs/magenta-lib/types](https://riffraff.gutools.co.uk/docs/magenta-lib/types)
+
+Example configuration:
 
 ```yaml
+# Global settings
+stacks: [membership]
+regions: [eu-west-1]
+allowedStages: [CODE, PROD]
+
+# Deployment definitions
 deployments:
-  cdk:
-    type: cdk
   lambda:
     type: aws-lambda
   static:
@@ -215,10 +222,9 @@ deployments:
 
 | Type | Description | Use Case |
 |------|-------------|----------|
-| **cdk** | 🏗️ CDK-generated templates | Modern infrastructure as code |
-| **cloud-formation** | ☁️ Raw JSON/YAML templates | Legacy CloudFormation stacks |
 | **aws-lambda** | ⚡ Update Lambda functions | Serverless applications |
 | **aws-s3** | 📦 Sync to S3 buckets | Static websites, assets |
+| **cloud-formation** | ☁️ Raw JSON/YAML templates | Legacy CloudFormation stacks |
 | **autoscaling** | 🔄 Update EC2 ASG apps | Traditional server applications |
 
 ---
@@ -250,7 +256,7 @@ deployments:
       cacheControl: max-age=3600
       
   infrastructure:
-    type: cdk
+    type: cloud-formation
     dependencies: [lambda]  # Deploy after lambda
     parameters:
       templatePath: cdk.out
