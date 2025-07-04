@@ -415,17 +415,212 @@ deployments:
 
 ---
 
-## ✅ Final Thoughts
+## Official Documentation & Useful Links
 
-Riff-Raff serves as The Guardian's single point of control for deployments, providing:
-
-- 🎯 **Centralized** deployment management
-- 🛡️ **Safe** deployment practices with rollback capabilities
-- 👁️ **Observable** deployment history and logging
-- 📈 **Scalable** architecture supporting high-frequency deployments
-
-> **No mystery, no magic** — just one clean API to deploy your world 🌍
+- [riff-raff.yaml reference](https://riffraff.gutools.co.uk/docs/reference/riff-raff.yaml.md)
+- [Magenta-lib types reference (CloudFormation, etc.)](https://riffraff.gutools.co.uk/docs/magenta-lib/types#cloudformation)
+- [Validate your riff-raff.yaml (syntax, config)](https://riffraff.gutools.co.uk/configuration/validation)
+- [Riff Raff Dashboard](https://riffraff.gutools.co.uk/)
 
 ---
 
-*For questions or contributions, see [CONTRIBUTING.md](./CONTRIBUTING.md) or reach out to the Platform team.*
+## Riff Raff Dashboard Overview
+
+Riff Raff provides a comprehensive web dashboard for managing deployments, viewing history, accessing configuration and documentation, and more. The dashboard is available at:
+
+**[https://riffraff.gutools.co.uk/](https://riffraff.gutools.co.uk/)**
+
+### Main Features (see screenshots below)
+- **Deploy tab:** Start a deployment, select your project, build, and stage. Mark projects as favourites for quick access.
+- **History tab:** View recent deployments, their status, deployer, time, branch, and more. Quickly spot failed or warning deployments.
+- **Deployment Resources:** Access resources related to deployments.
+- **Configuration menu:** Manage Continuous Deployment, Hooks, Authorisation, API keys, Restrictions, and Schedules.
+- **Documentation menu:** Access built-in guides on deployment types, configuration validation, troubleshooting failed deploys, and more.
+
+### Screenshots
+
+#### Deploy Screen
+![Deploy screen](./assets/riffraff_deploy.png)
+
+#### Configuration Menu
+![Configuration menu](./assets/riffraff_configuration.png)
+
+#### Documentation Menu
+![Documentation menu](./assets/riffraff_documentation.png)
+
+#### History Screen
+![History screen](./assets/riffraff_history.png)
+
+---
+
+## riff-raff.yaml Configuration Reference
+
+### Purpose
+The `riff-raff.yaml` file is the heart of your deployment configuration for Riff Raff. It defines what, how, and where to deploy. **Always use the Validate Template feature in Riff Raff to get fast feedback and avoid deployment errors.**
+
+---
+
+### Main Top-Level Keys
+
+| Key            | Description                                                                                               |
+|----------------|-----------------------------------------------------------------------------------------------------------|
+| `stacks`       | Default stack names (e.g. AWS accounts) for resources in this deploy. Can be overridden per deployment.   |
+| `regions`      | Default AWS regions for deployment. Can be overridden per deployment.                                     |
+| `allowedStages`| (Optional) List of permitted deployment stages (e.g. CODE, PROD).                                         |
+| `templates`    | Map of reusable deployment templates. Can be inherited and overridden by deployments.                     |
+| `deployments`  | Map of actual deployment steps. Each key is a deployment name, each value is a DeploymentOrTemplate.      |
+
+---
+
+### DeploymentOrTemplate Object Fields
+
+| Field             | Description                                                                                   |
+|-------------------|-----------------------------------------------------------------------------------------------|
+| `type`            | The deployment type (e.g. `autoscaling`, `aws-lambda`, etc.). Required unless using `template` |
+| `template`        | Name of a template to inherit from. Required unless using `type`                              |
+| `stacks`          | List of stacks for this deployment. Overrides global stacks.                                  |
+| `regions`         | List of AWS regions for this deployment. Overrides global regions.                            |
+| `actions`         | (Optional) List of actions to execute for this deployment type.                               |
+| `app`             | (Optional) App name for resource lookups. Defaults to deployment name.                        |
+| `contentDirectory`| (Optional) Directory for deployment assets. Defaults to deployment name.                       |
+| `dependencies`    | (Optional) List of deployments that must complete first.                                      |
+| `parameters`      | (Optional) Map of parameters for the deployment type.                                         |
+
+---
+
+### Minimal Example
+```yaml
+regions:
+  - eu-west-1
+stacks:
+  - deploy
+deployments:
+  prism:
+    type: autoscaling
+    parameters:
+      bucket: deploy-tools-dist
+```
+
+### Advanced Example with Templates and Overrides
+```yaml
+regions: [eu-west-1]
+stacks: [flexible, flexible-secondary]
+
+templates:
+  flexible:
+    type: autoscaling
+    parameters:
+      bucket: composer-dist
+
+deployments:
+  api:
+    template: flexible
+  composer-backend:
+    template: flexible
+  integration:
+    template: flexible
+    stacks: [flexible]
+```
+
+---
+
+### Deployment Types Overview
+
+| Type                   | Description                                                                 |
+|------------------------|-----------------------------------------------------------------------------|
+| `autoscaling`          | Deploy to an AWS autoscaling group (EC2).                                   |
+| `aws-lambda`           | Deploy and update AWS Lambda functions.                                     |
+| `aws-lambda-layer`     | Deploy and update Lambda layers.                                            |
+| `aws-s3`               | Upload files to an S3 bucket.                                               |
+| `cloud-formation`      | Update AWS CloudFormation stacks.                                           |
+| `fastly`               | Deploy VCL configs to Fastly CDN.                                           |
+| `fastly-compute`       | Deploy Compute@Edge packages to Fastly.                                     |
+| `gcp-gcs`              | Upload files to a GCP bucket.                                               |
+| `self-deploy`          | Special type for self-deploying Riff Raff itself.                           |
+
+---
+
+### Key Deployment Types: Actions & Parameters
+
+#### autoscaling
+- **Actions:** `uploadArtifacts`, `deploy`
+- **Key Parameters:**
+  - `bucket`: S3 bucket for artifacts
+  - `asgMigrationInProgress`: Deploy to two ASGs if true
+  - `healthcheckGrace`, `secondsToWait`, etc.: Various timing and prefix options
+
+#### aws-lambda
+- **Actions:** `uploadLambda`, `updateLambda`
+- **Key Parameters:**
+  - `bucket`: S3 bucket for Lambda code
+  - `functionNames` or `functions`: Lambda names and file mappings
+  - `fileName`: Archive name (default: `<packageName>.zip`)
+
+#### cloud-formation
+- **Actions:** `updateStack`
+- **Key Parameters:**
+  - `amiParametersToTags`, `amiTags`: AMI lookup
+  - `cloudFormationStackName`: Stack to update
+  - `templateParameters`, `templatePath`: Template and parameters
+  - `manageStackPolicy`: Manage stack update policies
+
+#### aws-s3
+- **Actions:** `uploadStaticFiles`
+- **Key Parameters:**
+  - `bucket`: S3 bucket for static files
+  - `cacheControl`, `publicReadAcl`, `mimeTypes`: Control headers and access
+  - `prefixApp`, `prefixStack`, `prefixStage`: Path structure
+
+---
+
+### Best Practices for riff-raff.yaml
+- **Always validate your riff-raff.yaml** before deploying ([validation tool](https://riffraff.gutools.co.uk/configuration/validation)).
+- Use templates to avoid repetition and keep configs DRY.
+- Use `allowedStages` to restrict where deployments can go.
+- Explicitly list dependencies to ensure correct deployment order.
+- Use descriptive deployment names and comments.
+- Prefer SSM keys and parameters for sensitive or environment-specific values.
+
+---
+
+**Remember:**
+- The [Validate Template](https://riffraff.gutools.co.uk/configuration/validation) page gives fast feedback on your config.
+- For more details and advanced options, see the [riff-raff.yaml reference](https://riffraff.gutools.co.uk/docs/reference/riff-raff.yaml.md).
+
+---
+
+## ⚠️ IMPORTANT: Manual Deployments for Membership CODE Environments
+
+<div style="color: red; border: 2px solid red; padding: 12px; font-weight: bold; background: #fff0f0">
+<strong>For <code>membership</code> projects in the <code>CODE</code> environment, deployments are <u>NOT</u> triggered automatically!</strong><br>
+You must trigger these deployments manually from the Riff Raff dashboard.
+This is a critical step – please ensure you always deploy CODE manually when working on membership services.
+</div>
+
+---
+
+## Validating Your riff-raff.yaml Before Deployment
+
+Before deploying, you can validate your `riff-raff.yaml` configuration file to check for syntax errors and configuration issues. This helps prevent failed deploys and ensures your config complies with Riff Raff requirements.
+
+- **Validate here:** [https://riffraff.gutools.co.uk/configuration/validation](https://riffraff.gutools.co.uk/configuration/validation)
+
+---
+
+## Best Practices & Tips
+- **Always validate your config before deploying.**
+- Use the dashboard documentation menu for up-to-date guides and troubleshooting.
+- Mark your most-used projects as favourites for faster access.
+- Check the deployment history for warnings, failures, or unusual activity.
+- For any environment with manual deploys (like `membership:CODE`), communicate with your team and document the deployment in the release notes.
+
+---
+
+## Additional Resources
+- [riff-raff.yaml full reference](https://riffraff.gutools.co.uk/docs/reference/riff-raff.yaml.md)
+- [Magenta-lib/types (CloudFormation, etc.)](https://riffraff.gutools.co.uk/docs/magenta-lib/types#cloudformation)
+- [Dashboard](https://riffraff.gutools.co.uk/)
+
+---
+
+For more details, see the in-app documentation or reach out to the DevX/Platform team.
