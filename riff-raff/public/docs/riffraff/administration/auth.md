@@ -13,14 +13,14 @@ Google auth is implemented in two layers
 - Application layer: this layer uses The Guardian's [Play Google Auth Module](https://github.com/guardian/play-googleauth) and is configured in the main [application.conf](https://github.com/guardian/riff-raff/blob/afb7e602e11acd7a07aae433c74be22976d8a7cd/riff-raff/conf/application.conf#L40-L41).
 
 To rotate the secrets, follow these steps:
-1. Create a new Client Secret in Riff Raff's Google Cloud project
-1. Patch the PROD and CODE application.conf to use the new secret
+1. Create a new Client Secret in Riff Raff's Google Cloud project.
+1. Patch the PROD and CODE application.conf to use the new secret.
 1. Update the `/INFRA/deploy/riff-raff/clientSecret` secret in AWS Secrets Manager.
 1. Update the [secret version id used in the CloudFormation template](https://github.com/guardian/deploy-tools-platform/blob/11730ea2841926148e98ab45e6d118bd1a133d27/cloudformation/riffraff/riffraff.template.yaml#L592). Merging your PR will trigger a [deployment to update the infrastructure](https://riffraff.gutools.co.uk/deployment/history?projectName=tools%3A%3Ariffraff-cloudformation&stage=PROD&pageSize=20&page=1).
-1. Use riff raff to deploy itself, which will re-run the application startup routine (including loading the updated `application.conf`) while keeping the same instance alive
-1. Disable the old credentials in the Google Cloud Project
-1. Log into Riff-Raff via an Incognito window to confirm that logging in (via both layers of auth) still works with the new secret
-1. Delete the old credentials in Riff Raff's Google Cloud project
+1. Use riff raff to deploy itself, which will re-run the application startup routine (including loading the updated `application.conf`) while keeping the same instance alive.
+1. Disable the old credentials in the Google Cloud Project.
+1. Log into Riff-Raff via an Incognito window to confirm that logging in (via both layers of auth) still works with the new secret.
+1. Delete the old credentials in Riff Raff's Google Cloud project.
 
 Authorisation
 -------------
