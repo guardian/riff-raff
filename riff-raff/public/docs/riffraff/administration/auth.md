@@ -13,6 +13,7 @@ Google auth is implemented in two layers
 - Application layer: this layer uses The Guardian's [Play Google Auth Module](https://github.com/guardian/play-googleauth) and is configured in the main [application.conf](https://github.com/guardian/riff-raff/blob/afb7e602e11acd7a07aae433c74be22976d8a7cd/riff-raff/conf/application.conf#L40-L41).
 
 To rotate the secrets, follow these steps:
+1. Send a message about this rotation in the DevX Chat channel; this encourages people to report any unexpected problems to us quickly.
 1. Create a new Client Secret in Riff Raff's Google Cloud project.
 1. Patch the PROD and CODE application.conf to use the new secret.
 1. Update the `/INFRA/deploy/riff-raff/clientSecret` secret in AWS Secrets Manager.
