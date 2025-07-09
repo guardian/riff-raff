@@ -18,7 +18,7 @@ To rotate the secrets, follow these steps:
 3. Update the secret in AWS Secrets Manager used by the cloudformation template.
 4. Use riff raff to deploy itself, which will re-run the application startup routine (including loading the updated `application.conf`) while keeping the same instance alive
 5. Disable the old credentials in the Google Cloud Project
-6. Wait for at least 2 or 3 hours to confirm the old credentials are no longer being used, as the turn around time for disabling credentials is slow and not deterministic
+6. Log into Riff-Raff via an incognito window to confirm that logging in (via both layers of auth) still works with the new secret
 7. Delete the old credentials in Riff Raff's Google Cloud project
 
 Authorisation
