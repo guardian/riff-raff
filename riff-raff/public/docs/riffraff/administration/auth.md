@@ -1,4 +1,4 @@
-<!--- prev:properties next:move -->
+<!--- prev:properties -->
 Authentication and Authorisation
 ================================
 
