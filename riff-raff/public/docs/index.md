@@ -25,7 +25,3 @@ Using Riff-Raff
  - [AWS S3 bucket configuration for uploads](riffraff/s3buckets.md)
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
  - [Restrictions](riffraff/restrictions.md) - how to restrict deployments
-
-Riff-Raff not picking up builds?
----------------
- - Usually, redeploying Riff-Raff fixes this; we use Riff-Raff itself to deploy itself 🎉. The deploy will complete immediately  but riffraff will only redeploy itself when there are no other running deploys. The last deploy time is shown in the bottom right of this page. 
