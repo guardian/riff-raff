@@ -1,8 +1,13 @@
 The riff-raff.yaml configuration file
 =====================================
 
-Whilst writing riff-raff.yaml files you are strongly advised to use the
+If you are using [@guardian/cdk](https://github.com/guardian/cdk) this file can now be generated automatically as
+part of your build. See https://github.com/guardian/cdk/tree/main/src/riff-raff-yaml-file#usage for more details.
+
+If you need to write or edit riff-raff.yaml files by hand you are strongly advised to use the
 [Validate Template feature](/configuration/validation) in Riff-Raff to get fast feedback.
+
+Here is some more information about the structure of this configuration file:
 
 ```yaml
 stacks:
