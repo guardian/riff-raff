@@ -1,15 +1,17 @@
 Configuring a project
 =====================
 
-To make a project deployable with riff-raff it needs:
+To make a project deployable with Riff-Raff it needs:
  
  - A [`riff-raff.yaml`](../reference/riff-raff.yaml.md) file that describes the deployment process
  - A [`build.json`](../reference/build.json.md) file that details the CI build
- - The two files above along with any assets uploaded into riff-raff's S3 artifact buckets
+ - The two files above along with any assets uploaded into Riff-Raff's S3 artifact buckets
 
-Both the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact) or
-[node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artifact) plugins will create the
-`build.json` for you and help you to upload the files to the S3 buckets correctly.
+[@guardian/cdk](https://github.com/guardian/cdk) can be used to generated the `riff-raff.yaml` file automatically as
+part of your build. See https://github.com/guardian/cdk/tree/main/src/riff-raff-yaml-file#usage for more details.
+
+[`actions-riff-raff`](https://github.com/guardian/actions-riff-raff) will create the
+`build.json` file for you and help you to upload the files to the S3 buckets correctly.
 
 Using SBT
 ---------
@@ -38,7 +40,7 @@ type docs](../magenta-lib/types#autoscaling)
 In order to make this work you need:
 
  1. An autoscaling group tagged with the stack, app and stage you wish to deploy to
- 1. A launch configuration (or pre-baked AMI) that will download the artifact from the S3 bucket
+ 1. A launch configuration that will download the artifact from the S3 bucket
  1. A riff-raff.yaml file containing:
      a. the regions and stacks that you want to deploy to (the stack is important - it must match the tags on the AWS 
         account credentials you wish to use and the stack tags on your autoscaling group)
