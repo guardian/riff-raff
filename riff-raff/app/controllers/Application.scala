@@ -63,6 +63,10 @@ class Menu(config: Config) {
     SingleMenuItem("History", routes.DeployController.history()),
     SingleMenuItem("Deploy", routes.DeployController.deploy),
     SingleMenuItem("Deployment Resources", routes.Application.deployInfoData),
+    SingleMenuItem(
+      "Validate riff-raff.yaml",
+      routes.Application.validationForm
+    ),
     DropDownMenuItem(
       "Configuration",
       Seq(
@@ -85,12 +89,12 @@ class Menu(config: Config) {
       "Documentation",
       Seq(
         SingleMenuItem(
-          "Deployment Types",
-          routes.Application.documentation("magenta-lib/types")
+          "Configuring a project",
+          routes.Application.documentation("howto/configure-a-project")
         ),
         SingleMenuItem(
-          "Validate configuration",
-          routes.Application.validationForm
+          "Deployment types",
+          routes.Application.documentation("magenta-lib/types")
         ),
         SingleMenuItem(
           "Fixing a failed deploy",
