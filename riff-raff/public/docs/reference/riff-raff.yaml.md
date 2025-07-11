@@ -149,21 +149,35 @@ Examples
 In order to understand how Riff-Raff interprets these files feel free to copy the YAML and paste it into Validate
 Template page in Riff-Raff.
 
-Here is a minimal auto scaling deploy example taken from [Prism](https://github.com/guardian/prism/blob/master/riff-raff.yaml).
+Here is an example of the configuration for an EC2-based application, where Riff-Raff is responsible for deploying
+the infrastructure (via CloudFormation) as well as application code changes:
 
 ```yaml
-regions:
-- eu-west-1
 stacks:
-- deploy
+  - deploy
+regions:
+  - eu-west-1
 deployments:
-  prism:
+  amigo:
     type: autoscaling
     parameters:
-      bucket: deploy-tools-dist
+    dependencies:
+      - cloudformation
+  cloudformation:
+    type: cloud-formation
+    app: amigo
+    parameters:
+      amiTags:
+        Recipe: arm64-jammy-java21-deploy-infrastructure
+        AmigoStage: PROD
+      amiEncrypted: true
+      templateStagePaths:
+        CODE: AMIgo-CODE.template.json
+        PROD: AMIgo-PROD.template.json
+      amiParameter: AMIAmigo
 ```
 
-This is a more complex example that uses templates and overrides at various levels. This also uses the JSON notation
+This is an example of how templates and overrides can be used. This example also uses the JSON notation
 for the arrays.
 
 ```yaml
@@ -173,8 +187,6 @@ stacks: [flexible, flexible-secondary]
 templates:
   flexible:
     type: autoscaling
-    parameters:
-      bucket: composer-dist
 
 deployments:
   api:
