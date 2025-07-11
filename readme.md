@@ -44,6 +44,3 @@ Riff-Raff polls our build server frequently and can be configured to automatical
 
 ## Contributing
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-## What is still left to do?
-See the `TODO.txt` file in this project
