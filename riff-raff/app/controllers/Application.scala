@@ -64,7 +64,7 @@ class Menu(config: Config) {
     SingleMenuItem("Deploy", routes.DeployController.deploy),
     SingleMenuItem("Deployment Resources", routes.Application.deployInfoData),
     SingleMenuItem(
-      "Validate configuration",
+      "Validate riff-raff.yaml",
       routes.Application.validationForm
     ),
     DropDownMenuItem(
@@ -93,7 +93,7 @@ class Menu(config: Config) {
           routes.Application.documentation("howto/configure-a-project")
         ),
         SingleMenuItem(
-          "Deployment Types",
+          "Deployment types",
           routes.Application.documentation("magenta-lib/types")
         ),
         SingleMenuItem(
