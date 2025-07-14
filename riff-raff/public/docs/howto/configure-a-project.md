@@ -1,17 +1,17 @@
 Configuring a project
 =====================
 
-To make a project deployable with Riff-Raff it needs:
+To make a project deployable with Riff-Raff the following files need to be uploaded into Riff-Raff's S3 buckets:
  
+ - Any artifacts for your project (e.g. a .deb file for your application and a CloudFormation template for infrastructure)
  - A [`riff-raff.yaml`](../reference/riff-raff.yaml.md) file that describes the deployment process
  - A [`build.json`](../reference/build.json.md) file that details the CI build
- - The two files above along with any assets uploaded into Riff-Raff's S3 artifact buckets
 
 [@guardian/cdk](https://github.com/guardian/cdk) can be used to generate the `riff-raff.yaml` file automatically as
 part of your build. See https://github.com/guardian/cdk/tree/main/src/riff-raff-yaml-file#usage for more details.
 
 [actions-riff-raff](https://github.com/guardian/actions-riff-raff) will create the
-`build.json` file for you and help you to upload the files to the S3 buckets correctly.
+`build.json` file for you and help you to upload the files to Riff-Raff's S3 buckets correctly.
 
 Setting up a new project
 ------------------------
