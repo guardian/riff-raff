@@ -177,8 +177,7 @@ deployments:
       amiParameter: AMIAmigo
 ```
 
-This is an example of how templates and overrides can be used. This example also uses the JSON notation
-for the arrays.
+This is an example of how templates and overrides can be used.
 
 ```yaml
 regions: [eu-west-1]
