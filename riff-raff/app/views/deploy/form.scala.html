@@ -70,6 +70,15 @@
                 <button id="add-favourite-project-button" aria-label="Add to favourites" title="Add to favourites" disabled><i class="glyphicon glyphicon-star"></i></button>
             </div>
             @b3.text(deployForm("build"),  Symbol("_label") -> "Build", Symbol("id") -> "buildInput", Symbol("data-url") -> "/deployment/request/autoComplete/build", Symbol("class") -> "form-control input-md")
+
+            @b3.text(
+            deployForm("branch"),
+            Symbol("_label") -> "Branch",
+            Symbol("id") -> "branchInput",
+            Symbol("class") -> "form-control input-md",
+            Symbol("readonly") -> true
+            )
+
             @b3.select(
                 deployForm("stage"),
                 helper.options(prismLookup.stages.toList),
@@ -81,6 +90,33 @@
                 Symbol("class") -> "form-control",
                 Symbol("disabled") -> true
             )
+
+            <script type="text/javascript">
+                document.addEventListener("DOMContentLoaded", function() {
+                    var buildInput = document.getElementById("buildInput");
+                    var branchInput = document.getElementById("branchInput");
+
+                    function extractBranch(buildText) {
+                        var match = buildText.match(/\[([^\]]+)\]/);
+                        return match ? match[1] : "not selected yet";
+                    }
+
+                    function updateBranch() {
+                        var buildText;
+                        if (buildInput.tagName === "SELECT") {
+                            var selectedOption = buildInput.options[buildInput.selectedIndex];
+                            buildText = selectedOption ? selectedOption.text : "";
+                        } else {
+                            buildText = buildInput.value;
+                        }
+                        branchInput.value = extractBranch(value) || "not selected yet";
+                    }
+
+                    buildInput.addEventListener("input", updateBranch);
+                    buildInput.addEventListener("change", updateBranch);
+                    updateBranch(); // Initial population
+                });
+            </script>
 
             <div class="form-group">
                 <span class="display-inline" role="button" data-toggle="collapse" href="#advanced" aria-expanded="false" aria-controls="advanced">

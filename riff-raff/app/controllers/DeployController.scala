@@ -346,6 +346,7 @@ class DeployController(
     val params = DeployParameterForm(
       record.buildName,
       record.buildId,
+      "",
       record.stage.name,
       "deploy",
       keys,
