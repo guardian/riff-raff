@@ -230,7 +230,10 @@ class DeployGroupRunner(
           branchName
         ) && record.stage == Stage("PROD")
       ) {
-        rootReporter.warning("Non-standard branch was deployed to PROD")
+        rootReporter.warning(
+          s"A branch ($branchName) other than main was deployed to PROD. This is a high-risk operation that is strongly discouraged." +
+            "\nSee https://riffraff.gutools.co.uk/docs/riffraff/prod-feature-branches.md for more details."
+        )
       }
     }
   }
