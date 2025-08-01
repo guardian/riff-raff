@@ -22,5 +22,6 @@ Using Riff-Raff
  - [Continuous Integration and Deployment](riffraff/hooksAndCD.md) - guide to the Riff-Raff hooks available to make continuous
  deployment easy
  - [External deploy requests](riffraff/externalRequest.md) - how to help a user start a deploy
+ - [Manually deploying feature branches to PROD](riffraff/prod-feature-branches.md) - guidance on which branches should be deployed to `PROD`
  - [Administration](riffraff/administration/) - details on how to configure Riff-Raff
  - [Restrictions](riffraff/restrictions.md) - how to restrict deployments
