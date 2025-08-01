@@ -228,7 +228,7 @@ class DeployGroupRunner(
       if (
         !widelyUsedDefaultBranchNames.contains(
           branchName
-        ) && record.stage == Stage("PROD")
+        ) && record.stage.name.startsWith("PROD")
       ) {
         rootReporter.warning(
           s"A branch ($branchName) other than main was deployed to PROD. This is a high-risk operation that is strongly discouraged." +
