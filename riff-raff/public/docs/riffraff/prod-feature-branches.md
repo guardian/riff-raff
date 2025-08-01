@@ -16,5 +16,5 @@ merging the PR. This should only be done when the team is in agreement that the 
 when an engineer is working alone on unreviewed code.
 
 In rare scenarios like this we might also need to take additional actions, such as sending comms to other engineers who
-might be working on the services or temporarily pausing CD. We should also aim to restore normal operations as quickly
+might be working on the service or temporarily pausing CD. We should also aim to restore normal operations as quickly
 as possible (i.e. re-enable CD, merge the change and allow Riff-Raff to deploy `main` to `PROD` as soon as this is safe).
