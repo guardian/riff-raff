@@ -3,9 +3,7 @@ menuOpen = false
 
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
-  $('#non-standard-prod-branch-checkbox').addClass('hidden')
-  $('button[value="preview"]').prop('disabled', false);
-  $('button[value="deploy"]').prop('disabled', false);
+  showProdBranchCheckboxAndEnDisableDeployButtons(false)
   $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
 updateStageInfo = () ->
@@ -26,6 +24,11 @@ updateStageInfo = () ->
       updateDeployInfo()
   });
 
+showProdBranchCheckboxAndEnDisableDeployButtons = (show) ->
+  $('#non-standard-prod-branch-checkbox').toggleClass('hidden', !show)
+  $('button[value="preview"]').prop('disabled', show)
+  $('button[value="deploy"]').prop('disabled', show)
+
 updateDeployInfo = () ->
   elemProjectInput = $('#projectInput')
   isExactMatch = elemProjectInput.hasClass("project-exact-match")
@@ -33,13 +36,9 @@ updateDeployInfo = () ->
   selectedStage = $('#stage').val()
   branch = $('#branchInput').val()
   if selectedStage?.includes('PROD') and branch != 'main'
-    $('#non-standard-prod-branch-checkbox').removeClass('hidden')
-    $('button[value="preview"]').prop('disabled', true);
-    $('button[value="deploy"]').prop('disabled', true);
+    showProdBranchCheckboxAndEnDisableDeployButtons(true)
   else
-    $('#non-standard-prod-branch-checkbox').addClass('hidden')
-    $('button[value="preview"]').prop('disabled', false);
-    $('button[value="deploy"]').prop('disabled', false);
+    showProdBranchCheckboxAndEnDisableDeployButtons(false)
     $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
   url = if selectedStage == ''
@@ -98,6 +97,7 @@ setupFavouriteHandlers = () ->
     elemProjectInput.val(project)
 
     $('#buildInput').val('') # clear build input when project changed
+    $('#branchInput').val('')
     updateStageInfo()
 
 renderFavourites = () ->
@@ -138,7 +138,9 @@ $ ->
 
   $('#projectInput').blur -> updateDeployInfo()
 
-  $('#projectInput').change -> $('#buildInput').val('') # clear build input when project changed
+  $('#projectInput').change ->
+    $('#buildInput').val('') # clear build input when project changed
+    $('#branchInput').val('')
 
   $('#buildInput').each ->
     input = $(this)
