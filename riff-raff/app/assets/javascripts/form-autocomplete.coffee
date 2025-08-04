@@ -3,7 +3,7 @@ menuOpen = false
 
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
-  showProdBranchCheckboxAndEnDisableDeployButtons(false)
+  showProdBranchCheckboxAndToggleDeployButtons(false)
   $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
 updateStageInfo = () ->
@@ -24,7 +24,7 @@ updateStageInfo = () ->
       updateDeployInfo()
   });
 
-showProdBranchCheckboxAndEnDisableDeployButtons = (show) ->
+showProdBranchCheckboxAndToggleDeployButtons = (show) ->
   $('#non-standard-prod-branch-checkbox').toggleClass('hidden', !show)
   $('button[value="preview"]').prop('disabled', show)
   $('button[value="deploy"]').prop('disabled', show)
@@ -36,9 +36,9 @@ updateDeployInfo = () ->
   selectedStage = $('#stage').val()
   branch = $('#branchInput').val()
   if selectedStage?.includes('PROD') and branch != 'main'
-    showProdBranchCheckboxAndEnDisableDeployButtons(true)
+    showProdBranchCheckboxAndToggleDeployButtons(true)
   else
-    showProdBranchCheckboxAndEnDisableDeployButtons(false)
+    showProdBranchCheckboxAndToggleDeployButtons(false)
     $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
   url = if selectedStage == ''
