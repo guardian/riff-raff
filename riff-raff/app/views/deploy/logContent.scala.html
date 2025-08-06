@@ -7,9 +7,24 @@
 @if(!record.isSummarised) {
     @record.report match {
         case report : DeployReportTree => {
-            <ul class="magenta-reporttree">
+            <div class="clearfix">
+                <div class="pull-right">
+                    <button
+                    type="button"
+                    aria-expanded="false"
+                    class="btn btn-default"
+                    data-toggle="collapse"
+                    role="button"
+                    data-target=".collapsing-node.magenta-reporttree:not(.in)"
+                    >
+                        🔽 expand all
+                    </button>
+                </div>
+
+                <ul class="magenta-reporttree">
                 @snippets.reportTree(report, 0)
-            </ul>
+                </ul>
+            </div>
             @logSummary(record)
         }
         case EmptyDeployReport => {
