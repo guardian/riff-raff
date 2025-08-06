@@ -3,6 +3,8 @@ menuOpen = false
 
 updateBuildInfo = (buildNumber) ->
   $('#build-info').load(jsRoutes.controllers.DeployController.buildInfo(selectedProject, buildNumber).url)
+  showProdBranchCheckboxAndToggleDeployButtons(false)
+  $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
 updateStageInfo = () ->
   elemProjectInput = $('#projectInput')
@@ -22,11 +24,22 @@ updateStageInfo = () ->
       updateDeployInfo()
   });
 
+showProdBranchCheckboxAndToggleDeployButtons = (show) ->
+  $('#non-standard-prod-branch-checkbox').toggleClass('hidden', !show)
+  $('button[value="preview"]').prop('disabled', show)
+  $('button[value="deploy"]').prop('disabled', show)
+
 updateDeployInfo = () ->
   elemProjectInput = $('#projectInput')
   isExactMatch = elemProjectInput.hasClass("project-exact-match")
   selectedProject = elemProjectInput.val()
   selectedStage = $('#stage').val()
+  branch = $('#branchInput').val()
+  if selectedStage?.includes('PROD') and branch != 'main'
+    showProdBranchCheckboxAndToggleDeployButtons(true)
+  else
+    showProdBranchCheckboxAndToggleDeployButtons(false)
+    $('#nonStandardBranchAcknowledgement').prop('checked', false)
 
   url = if selectedStage == ''
           jsRoutes.controllers.DeployController.deployHistory(selectedProject, undefined, isExactMatch).url
@@ -84,6 +97,7 @@ setupFavouriteHandlers = () ->
     elemProjectInput.val(project)
 
     $('#buildInput').val('') # clear build input when project changed
+    $('#branchInput').val('')
     updateStageInfo()
 
 renderFavourites = () ->
@@ -124,7 +138,9 @@ $ ->
 
   $('#projectInput').blur -> updateDeployInfo()
 
-  $('#projectInput').change -> $('#buildInput').val('') # clear build input when project changed
+  $('#projectInput').change ->
+    $('#buildInput').val('') # clear build input when project changed
+    $('#branchInput').val('')
 
   $('#buildInput').each ->
     input = $(this)
@@ -142,6 +158,9 @@ $ ->
         updateBuildInfo( input.val() )
         updateStageInfo()
       select: (event,ui) ->
+        match = ui.item.label.match(/\[([^\]]+)\]/)
+        branch = if match? then match[1] else ''
+        $('#branchInput').val(branch)
         updateBuildInfo( input.val() )
         updateStageInfo()
       minLength:0
@@ -160,6 +179,11 @@ $ ->
   $('#buildInput').blur -> updateDeployInfo()
 
   $('#stage').change -> updateDeployInfo()
+
+  $('#nonStandardBranchAcknowledgement').change ->
+    isChecked = $(this).is(':checked')
+    $('button[value="preview"]').prop('disabled', !isChecked)
+    $('button[value="deploy"]').prop('disabled', !isChecked)
 
   updateDeployInfo()
 
