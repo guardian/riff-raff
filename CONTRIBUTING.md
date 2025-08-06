@@ -6,7 +6,8 @@ First, and most importantly, thanks!
    - Java 11
    - SBT
    - Docker
-You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally.
+You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. if you
+do not run prism locally, you will need to be connected to the VPN when working remotely.
 
 2. Create configuration
 Create a configuration file at `~/.gu/riff-raff.conf`. At a minimum it looks like this,
@@ -24,6 +25,7 @@ replacing placeholders with appropriate values:
    lookup.prismUrl=<PRISM URL>
    lookup.source="prism"
    ```
+
 3. From the root of the repository, run:
 
    ```sh
