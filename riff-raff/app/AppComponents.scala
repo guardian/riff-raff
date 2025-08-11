@@ -1,5 +1,12 @@
 import ci._
-import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.gu.googleauth.{
+  AntiForgeryChecker,
+  AuthAction,
+  Filters,
+  GoogleAuthConfig,
+  GoogleGroupChecker
+}
 import com.gu.play.secretrotation.aws.parameterstore
 import com.gu.play.secretrotation.{
   RotatingSecretComponents,
@@ -32,7 +39,7 @@ import play.api.http.DefaultHttpErrorHandler
 import play.api.i18n.{I18nComponents, MessagesApi}
 import play.api.libs.ws.WSClient
 import play.api.libs.ws.ahc.AhcWSComponents
-import play.api.mvc.Results.InternalServerError
+import play.api.mvc.Results.{Forbidden, InternalServerError}
 import play.api.mvc.{AnyContent, RequestHeader, Result}
 import play.api.routing.Router
 import play.filters.csrf.CSRFComponents
@@ -42,8 +49,11 @@ import router.Routes
 import schedule.DeployScheduler
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.ssm.SsmClient
+import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 import utils._
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -62,7 +72,8 @@ class AppComponents(
     with EvolutionsComponents
     with DBComponents
     with HikariCPComponents
-    with Logging {
+    with Logging
+    with Filters {
 
   lazy val datastore: DataStore =
     new PostgresDatastoreOps(config, passwordProvider).buildDatastore()
@@ -77,17 +88,6 @@ class AppComponents(
       ssmClient = parameterstore.AwsSdkV2(config.auth.secretStateSupplierClient)
     )
   }
-
-  lazy val googleAuthConfig = GoogleAuthConfig(
-    clientId = config.auth.clientId,
-    clientSecret = config.auth.clientSecret,
-    redirectUrl = config.auth.redirectUrl,
-    domains = List(config.auth.domain),
-    antiForgeryChecker = AntiForgeryChecker(
-      secretStateSupplier,
-      AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration)
-    )
-  )
 
   // Lazy val needs to be accessed so that database evolutions are applied
   applicationEvolutions
@@ -188,11 +188,49 @@ class AppComponents(
   val scheduledDeployNotifier =
     new DeployFailureNotifications(config, targetResolver, prismLookup)
 
-  val authAction = new AuthAction[AnyContent](
-    googleAuthConfig,
+  override lazy val authConfig = GoogleAuthConfig(
+    clientId = config.auth.clientId,
+    clientSecret = config.auth.clientSecret,
+    redirectUrl = config.auth.redirectUrl,
+    domains = List(config.auth.domain),
+    antiForgeryChecker = AntiForgeryChecker(
+      secretStateSupplier,
+      AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration)
+    )
+  )
+
+  override lazy val groupChecker: GoogleGroupChecker = {
+    val getParameterRequest = GetParameterRequest
+      .builder()
+      .name(s"/${config.stage}/deploy/riff-raff/service-account-cert")
+      .withDecryption(true)
+      .build()
+    val serviceAccountCert =
+      ssmClient.getParameter(getParameterRequest).parameter().value()
+    val serviceAccount =
+      ServiceAccountCredentials.fromStream(
+        new ByteArrayInputStream(
+          serviceAccountCert.getBytes(StandardCharsets.UTF_8)
+        )
+      )
+    val impersonatedUser =
+      configuration.get[String]("auth.google.impersonatedUser")
+    new GoogleGroupChecker(impersonatedUser, serviceAccount)
+  }
+
+  private val authAction = new AuthAction[AnyContent](
+    authConfig,
     routes.Login.loginAction,
     controllerComponents.parsers.default
-  )(executionContext)
+  )(executionContext) andThen
+    // User must be in at least one of the required groups
+    requireGroup[AuthAction.UserIdentityRequest](
+      config.auth.allowedGroups.toSet,
+      _ =>
+        Forbidden.apply(
+          s"You must be part of one of the following Google Groups to access this functionality:\n\n${config.auth.allowedGroups.mkString("\n")}"
+        )
+    )
 
   override lazy val httpFilters = Seq(
     csrfFilter,
@@ -340,7 +378,7 @@ class AppComponents(
     datastore,
     controllerComponents,
     authAction,
-    googleAuthConfig
+    authConfig
   )
   val testingController = new Testing(
     config,

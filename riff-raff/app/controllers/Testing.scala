@@ -50,7 +50,7 @@ class Testing(
     datastore: DataStore,
     prismLookup: PrismLookup,
     documentStoreConverter: DocumentStoreConverter,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents,
     houseKeeping: ArtifactHousekeeping,
     deployments: Deployments
