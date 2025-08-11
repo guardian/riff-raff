@@ -114,7 +114,7 @@ class Application(
     menu: Menu,
     prismLookup: PrismLookup,
     deploymentTypes: Seq[DeploymentType],
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents,
     assets: Assets
 )(implicit
