@@ -1,7 +1,6 @@
 package controllers
 
 import java.util.UUID
-
 import com.gu.googleauth.AuthAction
 import conf.Config
 import deployment.Error
@@ -11,7 +10,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
 import restrictions.{RestrictionChecker, RestrictionConfig, RestrictionForm}
 
 import scala.util.Try
@@ -19,7 +18,7 @@ import scala.util.Try
 class Restrictions(
     config: Config,
     menu: Menu,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository,
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)

@@ -72,7 +72,7 @@ class Login(
     deployments: Deployments,
     datastore: DataStore,
     val controllerComponents: ControllerComponents,
-    val authAction: AuthAction[AnyContent],
+    val authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val authConfig: GoogleAuthConfig
 )(implicit val wsClient: WSClient, val executionContext: ExecutionContext)
     extends BaseController
