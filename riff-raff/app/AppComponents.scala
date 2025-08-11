@@ -1,28 +1,17 @@
 import ci._
-import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig}
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.gu.googleauth.{AntiForgeryChecker, AuthAction, GoogleAuthConfig, GoogleGroupChecker}
 import com.gu.play.secretrotation.aws.parameterstore
-import com.gu.play.secretrotation.{
-  RotatingSecretComponents,
-  SnapshotProvider,
-  TransitionTiming
-}
+import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
 import conf.{Config, Secrets}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
-import lifecycle.{
-  Lifecycle,
-  ShutdownWhenInactive,
-  TerminateInstanceWhenInactive
-}
+import lifecycle.{Lifecycle, ShutdownWhenInactive, TerminateInstanceWhenInactive}
 import magenta.deployment_type._
 import magenta.tasks.AWS
-import notification.{
-  DeployFailureNotifications,
-  GrafanaAnnotationLogger,
-  HooksClient
-}
+import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.BuiltInComponentsFromContext
@@ -42,8 +31,11 @@ import router.Routes
 import schedule.DeployScheduler
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.ssm.SsmClient
+import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 import utils._
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -77,17 +69,6 @@ class AppComponents(
       ssmClient = parameterstore.AwsSdkV2(config.auth.secretStateSupplierClient)
     )
   }
-
-  lazy val googleAuthConfig = GoogleAuthConfig(
-    clientId = config.auth.clientId,
-    clientSecret = config.auth.clientSecret,
-    redirectUrl = config.auth.redirectUrl,
-    domains = List(config.auth.domain),
-    antiForgeryChecker = AntiForgeryChecker(
-      secretStateSupplier,
-      AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration)
-    )
-  )
 
   // Lazy val needs to be accessed so that database evolutions are applied
   applicationEvolutions
@@ -187,6 +168,30 @@ class AppComponents(
   val artifactHousekeeper = new ArtifactHousekeeping(config, deployments)
   val scheduledDeployNotifier =
     new DeployFailureNotifications(config, targetResolver, prismLookup)
+
+  lazy val googleAuthConfig = GoogleAuthConfig(
+    clientId = config.auth.clientId,
+    clientSecret = config.auth.clientSecret,
+    redirectUrl = config.auth.redirectUrl,
+    domains = List(config.auth.domain),
+    antiForgeryChecker = AntiForgeryChecker(
+      secretStateSupplier,
+      AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration)
+    )
+  )
+
+  lazy val googleGroupChecker: GoogleGroupChecker = {
+    val getParameterRequest = GetParameterRequest.builder()
+      .name(s"/${config.stage}/deploy/riff-raff/service-account-cert")
+      .withDecryption(true)
+      .build()
+    val serviceAccountCert = ssmClient.getParameter(getParameterRequest).parameter().value()
+    val serviceAccount =
+      ServiceAccountCredentials.fromStream(new ByteArrayInputStream(serviceAccountCert.getBytes(StandardCharsets.UTF_8)))
+    val impersonatedUser =
+      configuration.get[String]("auth.google.impersonatedUser")
+    new GoogleGroupChecker(impersonatedUser, serviceAccount)
+  }
 
   val authAction = new AuthAction[AnyContent](
     googleAuthConfig,
@@ -340,7 +345,8 @@ class AppComponents(
     datastore,
     controllerComponents,
     authAction,
-    googleAuthConfig
+    googleAuthConfig,
+    googleGroupChecker
   )
   val testingController = new Testing(
     config,

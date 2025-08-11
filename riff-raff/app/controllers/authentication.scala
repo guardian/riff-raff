@@ -1,6 +1,8 @@
 package controllers
 
 import cats.data.EitherT
+import cats.instances.future._
+import cats.syntax.applicativeError._
 import com.gu.googleauth._
 import conf.Config
 import deployment.{DeployFilter, Deployments, Record}
@@ -73,7 +75,8 @@ class Login(
     datastore: DataStore,
     val controllerComponents: ControllerComponents,
     val authAction: AuthAction[AnyContent],
-    val authConfig: GoogleAuthConfig
+    val authConfig: GoogleAuthConfig,
+    val googleGroupChecker: GoogleGroupChecker
 )(implicit val wsClient: WSClient, val executionContext: ExecutionContext)
     extends BaseController
     with Logging
@@ -104,22 +107,51 @@ class Login(
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    import cats.instances.future._
+    processOauth2Callback()
+  }
+
+  // This code is borrowed from AMIgo, which also needs to check if a user is in one group out of a list of groups
+  // It should really be part of the Play Google Auth library
+  private def processOauth2Callback()(implicit
+      request: RequestHeader
+  ): Future[Result] = {
     (for {
       identity <- checkIdentity()
-      _ <- EitherT.fromEither[Future] {
-        if (validator.isAuthorised(identity)) Right(())
-        else
-          Left(
-            redirectWithError(
-              failureRedirectTarget,
-              validator.authorisationError(identity).getOrElse("Unknown error")
-            )
-          )
-      }
+      _ <- checkGoogleGroupMembership(identity)
     } yield {
+      log.info(s"User ${identity.email} successfully logged in")
       setupSessionWhenSuccessful(identity)
     }).merge
+  }
+
+  private def checkGoogleGroupMembership(
+      userIdentity: UserIdentity
+  ): EitherT[Future, Result, Unit] = {
+    val googleGroupsToCheck = config.auth.allowedGroups.toSet
+    googleGroupChecker
+      .retrieveGroupsFor(userIdentity.email)
+      .attemptT
+      .leftMap({ t =>
+        val message =
+          s"Could not look up Google groups for ${userIdentity.email}"
+
+        logger.warn(message, t)
+        redirectWithError(failureRedirectTarget, message)
+      })
+      .subflatMap { userGroups =>
+        {
+          if (userGroups.intersect(googleGroupsToCheck).nonEmpty) {
+            // user is in at least one of the Google groups
+            Right(())
+          } else {
+            val formattedGroups = googleGroupsToCheck.mkString(", ")
+            val message =
+              s"${userIdentity.email} does not belong to the any of the following Google groups: $formattedGroups"
+            logger.info(message)
+            Left(redirectWithError(failureRedirectTarget, message))
+          }
+        }
+      }
   }
 
   def logout = Action { implicit request =>
