@@ -21,7 +21,12 @@ import play.api.http.HttpEntity
 import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest

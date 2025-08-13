@@ -1,6 +1,11 @@
 package controllers
 
-import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import play.api.data.Forms._
 import play.api.data.Form
 import play.api.i18n.I18nSupport
