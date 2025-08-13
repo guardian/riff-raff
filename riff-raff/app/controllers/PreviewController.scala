@@ -10,7 +10,12 @@ import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import magenta.{Build, DeployParameters, Deployer, Loggable, Stage, Strategy}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
