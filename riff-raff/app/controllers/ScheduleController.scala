@@ -12,7 +12,12 @@ import play.api.data.Forms._
 import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 import schedule.{DeployScheduler, ScheduleConfig}
 

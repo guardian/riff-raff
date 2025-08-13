@@ -12,7 +12,12 @@ import play.api.data.format.Formatter
 import play.api.data.{Form, FormError}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{ActionBuilder, AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 
 case class HookForm(
