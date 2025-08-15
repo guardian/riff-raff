@@ -72,13 +72,13 @@ class PreviewController(
                 logger.info(s"Deployment keys: $deploymentKeys")
                 val form = DeployParameterForm.form.fill(
                   DeployParameterForm(
-                    preview.parameters.build.projectName,
-                    preview.parameters.build.id,
-                    "",
-                    preview.parameters.stage.name,
-                    "n/a",
-                    deploymentKeys,
-                    totalKeyCount,
+                    project = preview.parameters.build.projectName,
+                    build = preview.parameters.build.id,
+                    stage = preview.parameters.stage.name,
+                    branch = "",
+                    action = "n/a",
+                    selectedKeys = deploymentKeys,
+                    totalKeyCount = totalKeyCount,
                     updateStrategy = preview.parameters.updateStrategy
                   )
                 )
