@@ -7,7 +7,12 @@ import deployment.{DeployFilter, Deployments, PaginationView}
 import persistence.TargetDynamoRepository
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import utils.LogAndSquashBehaviour
 
 class TargetController(
@@ -15,7 +20,7 @@ class TargetController(
     menu: Menu,
     deployments: Deployments,
     targetDynamoRepository: TargetDynamoRepository,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)
     extends BaseController
