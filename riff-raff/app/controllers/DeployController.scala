@@ -348,14 +348,14 @@ class DeployController(
     }
 
     val params = DeployParameterForm(
-      record.buildName,
-      record.buildId,
-      "",
-      record.stage.name,
-      "deploy",
-      keys,
-      None,
-      record.parameters.updateStrategy
+      project = record.buildName,
+      build = record.buildId,
+      stage = record.stage.name,
+      branch = None,
+      action = "deploy",
+      selectedKeys = keys,
+      totalKeyCount = None,
+      updateStrategy = record.parameters.updateStrategy
     )
 
     val fields = DeployParameterForm.form.fill(params).data
