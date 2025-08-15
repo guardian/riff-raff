@@ -351,7 +351,7 @@ class DeployController(
       project = record.buildName,
       build = record.buildId,
       stage = record.stage.name,
-      branch = "",
+      branch = None,
       action = "deploy",
       selectedKeys = keys,
       totalKeyCount = None,

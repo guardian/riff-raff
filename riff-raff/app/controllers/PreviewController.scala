@@ -75,7 +75,7 @@ class PreviewController(
                     project = preview.parameters.build.projectName,
                     build = preview.parameters.build.id,
                     stage = preview.parameters.stage.name,
-                    branch = "",
+                    branch = None,
                     action = "n/a",
                     selectedKeys = deploymentKeys,
                     totalKeyCount = totalKeyCount,
