@@ -78,7 +78,7 @@ class Menu(config: Config) {
         SingleMenuItem(
           "Authorisation",
           routes.Login.authList,
-          enabled = config.auth.allowList.useDatabase
+          enabled = false
         ),
         SingleMenuItem("API keys", routes.Api.listKeys),
         SingleMenuItem("Restrictions", routes.Restrictions.list),
