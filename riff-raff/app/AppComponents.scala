@@ -1,35 +1,17 @@
 import ci._
 import com.google.auth.oauth2.ServiceAccountCredentials
-import com.gu.googleauth.{
-  AntiForgeryChecker,
-  AuthAction,
-  Filters,
-  GoogleAuthConfig,
-  GoogleGroupChecker
-}
+import com.gu.googleauth.{AntiForgeryChecker, AuthAction, Filters, GoogleAuthConfig, GoogleGroupChecker}
 import com.gu.play.secretrotation.aws.parameterstore
-import com.gu.play.secretrotation.{
-  RotatingSecretComponents,
-  SnapshotProvider,
-  TransitionTiming
-}
+import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
 import conf.{Config, Secrets}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
-import lifecycle.{
-  Lifecycle,
-  ShutdownWhenInactive,
-  TerminateInstanceWhenInactive
-}
+import lifecycle.{Lifecycle, ShutdownWhenInactive, TerminateInstanceWhenInactive}
 import magenta.deployment_type._
 import magenta.tasks.AWS
-import notification.{
-  DeployFailureNotifications,
-  GrafanaAnnotationLogger,
-  HooksClient
-}
+import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.BuiltInComponentsFromContext
@@ -54,6 +36,7 @@ import utils._
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.time.Duration.{ofHours, ofMinutes}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -215,7 +198,7 @@ class AppComponents(
       )
     val impersonatedUser =
       configuration.get[String]("auth.google.impersonatedUser")
-    new GoogleGroupChecker(impersonatedUser, serviceAccount)
+    new GoogleGroupChecker(impersonatedUser, serviceAccount, cacheDuration = Duration.ofMinutes(60))
   }
 
   private val authAction = new AuthAction[AnyContent](
