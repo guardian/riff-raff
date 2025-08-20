@@ -40,7 +40,7 @@ has 2-factor auth enabled will be able to login to Riff-Raff.
 However, we also provide a third level of authentication that runs whenever users attempt to use any of Riff-Raff's
 functionality. This third level checks that a user is in at least one authorised Google Group. Users who do not meet the
 Google Group requirements will be unable to use Riff-Raff's functionality. For more details on the allowed list of Google
-Groups, see[this doc](https://docs.google.com/document/d/1N8tCVRHVVctHVRBwpeiIppKHnUVwcX6zD6OJAJBsUXI/edit?tab=t.0#heading=h.10257g8spha5).
+Groups, see [this doc](https://docs.google.com/document/d/1N8tCVRHVVctHVRBwpeiIppKHnUVwcX6zD6OJAJBsUXI/edit?tab=t.0#heading=h.10257g8spha5).
 
 Note that this third level relies on a (secret) service account key. This is completely separate from the OAuth2 Client secret
 mentioned above and these can be rotated independently of each other.
