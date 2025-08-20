@@ -78,7 +78,7 @@ class Menu(config: Config) {
         SingleMenuItem(
           "Authorisation",
           routes.Login.authList,
-          enabled = config.auth.allowList.useDatabase
+          enabled = false
         ),
         SingleMenuItem("API keys", routes.Api.listKeys),
         SingleMenuItem("Restrictions", routes.Restrictions.list),
@@ -114,7 +114,7 @@ class Application(
     menu: Menu,
     prismLookup: PrismLookup,
     deploymentTypes: Seq[DeploymentType],
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents,
     assets: Assets
 )(implicit
