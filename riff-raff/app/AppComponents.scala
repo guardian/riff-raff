@@ -1,17 +1,37 @@
 import ci._
-import com.google.auth.oauth2.ServiceAccountCredentials
-import com.gu.googleauth.{AntiForgeryChecker, AuthAction, Filters, GoogleAuthConfig, GoogleGroupChecker}
+import com.google.auth.oauth2.GoogleCredentials
+import com.gu.googleauth.{
+  AntiForgeryChecker,
+  AuthAction,
+  Filters,
+  GoogleAuthConfig,
+  GoogleGroupChecker,
+  ServiceAccountHelper,
+  TwoFactorAuthChecker
+}
 import com.gu.play.secretrotation.aws.parameterstore
-import com.gu.play.secretrotation.{RotatingSecretComponents, SnapshotProvider, TransitionTiming}
+import com.gu.play.secretrotation.{
+  RotatingSecretComponents,
+  SnapshotProvider,
+  TransitionTiming
+}
 import conf.{Config, Secrets}
 import controllers._
 import deployment.preview.PreviewCoordinator
 import deployment.{DeploymentEngine, Deployments}
 import housekeeping.ArtifactHousekeeping
-import lifecycle.{Lifecycle, ShutdownWhenInactive, TerminateInstanceWhenInactive}
+import lifecycle.{
+  Lifecycle,
+  ShutdownWhenInactive,
+  TerminateInstanceWhenInactive
+}
 import magenta.deployment_type._
 import magenta.tasks.AWS
-import notification.{DeployFailureNotifications, GrafanaAnnotationLogger, HooksClient}
+import notification.{
+  DeployFailureNotifications,
+  GrafanaAnnotationLogger,
+  HooksClient
+}
 import persistence._
 import play.api.ApplicationLoader.Context
 import play.api.BuiltInComponentsFromContext
@@ -171,6 +191,31 @@ class AppComponents(
   val scheduledDeployNotifier =
     new DeployFailureNotifications(config, targetResolver, prismLookup)
 
+  lazy val serviceAccountCredentials = {
+    val getParameterRequest = GetParameterRequest
+      .builder()
+      .name(s"/${config.stage}/deploy/riff-raff/service-account-cert")
+      .withDecryption(true)
+      .build()
+    val serviceAccountCert =
+      ssmClient.getParameter(getParameterRequest).parameter().value()
+    ServiceAccountHelper.credentialsFrom(serviceAccountCert)
+  }
+
+  lazy val impersonatedUser =
+    configuration.get[String]("auth.google.impersonatedUser")
+
+  override lazy val groupChecker: GoogleGroupChecker = {
+    new GoogleGroupChecker(
+      impersonatedUser,
+      serviceAccountCredentials,
+      cacheDuration = Duration.ofMinutes(60)
+    )
+  }
+
+  lazy val googleDirectoryAPICredentials: GoogleCredentials =
+    serviceAccountCredentials.createDelegated(impersonatedUser)
+
   override lazy val authConfig = GoogleAuthConfig(
     clientId = config.auth.clientId,
     clientSecret = config.auth.clientSecret,
@@ -179,27 +224,10 @@ class AppComponents(
     antiForgeryChecker = AntiForgeryChecker(
       secretStateSupplier,
       AntiForgeryChecker.signatureAlgorithmFromPlay(httpConfiguration)
-    )
+    ),
+    twoFactorAuthChecker =
+      Some(new TwoFactorAuthChecker(googleDirectoryAPICredentials))
   )
-
-  override lazy val groupChecker: GoogleGroupChecker = {
-    val getParameterRequest = GetParameterRequest
-      .builder()
-      .name(s"/${config.stage}/deploy/riff-raff/service-account-cert")
-      .withDecryption(true)
-      .build()
-    val serviceAccountCert =
-      ssmClient.getParameter(getParameterRequest).parameter().value()
-    val serviceAccount =
-      ServiceAccountCredentials.fromStream(
-        new ByteArrayInputStream(
-          serviceAccountCert.getBytes(StandardCharsets.UTF_8)
-        )
-      )
-    val impersonatedUser =
-      configuration.get[String]("auth.google.impersonatedUser")
-    new GoogleGroupChecker(impersonatedUser, serviceAccount, cacheDuration = Duration.ofMinutes(60))
-  }
 
   private val authAction = new AuthAction[AnyContent](
     authConfig,

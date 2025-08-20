@@ -28,20 +28,21 @@ Here is a step-by-step guide, which we recommend following first for the CODE en
 Authorisation
 -------------
 
-There are a couple of different levels of authorisation.
+There are a few different levels of authorisation.
 
 The first level checks that the user is part of the Guardian organisation. This check actually runs at the load balancer
 layer _and_ the application layer[^1]. Users who are not part of the Guardian organisation won't be able to reach Riff-Raff's
 login screen.
 
-Any user who is part of the Guardian organisation will be able to login to Riff-Raff, but we also provide a second level
-of authentication that runs whenever users attempt to use any of Riff-Raff's functionality. 
+The second level checks that the user has 2-factor auth enabled. Any user who is part of the Guardian organisation and
+has 2-factor auth enabled will be able to login to Riff-Raff.
 
-This second level checks that a user is in at least one authorised Google Group. Users who do not meet the Google Group
-requirements will be unable to use Riff-Raff's functionality. For more details on the allowed list of Google Groups, see
-[this doc](https://docs.google.com/document/d/1N8tCVRHVVctHVRBwpeiIppKHnUVwcX6zD6OJAJBsUXI/edit?tab=t.0#heading=h.10257g8spha5).
+However, we also provide a third level of authentication that runs whenever users attempt to use any of Riff-Raff's
+functionality. This third level checks that a user is in at least one authorised Google Group. Users who do not meet the
+Google Group requirements will be unable to use Riff-Raff's functionality. For more details on the allowed list of Google
+Groups, see[this doc](https://docs.google.com/document/d/1N8tCVRHVVctHVRBwpeiIppKHnUVwcX6zD6OJAJBsUXI/edit?tab=t.0#heading=h.10257g8spha5).
 
-Note that this second level relies on a (secret) service account key. This is completely separate from the OAuth2 Client secret
+Note that this third level relies on a (secret) service account key. This is completely separate from the OAuth2 Client secret
 mentioned above and these can be rotated independently of each other.
 
 Our `CODE` and `PROD` environments use separate service account keys. We recommend rehearsing the rotation in `CODE` first
