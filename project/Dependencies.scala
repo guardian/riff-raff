@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.31.75"
+    val aws = "2.32.26"
     val jackson = "2.18.2"
     val awsRds = "1.12.788"
     val enumeratumPlay = "1.8.2"
@@ -74,7 +74,7 @@ object Dependencies {
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "5.0.0",
+      "com.gu" %% "anghammarad-client" % "6.0.0",
       "org.webjars" %% "webjars-play" % "3.0.2",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.14.1",
