@@ -209,6 +209,10 @@ class AppComponents(
     new GoogleGroupChecker(
       impersonatedUser,
       serviceAccountCredentials,
+      // If we revoke access by removing a user from a Google Group they will be able to continue using Riff-Raff until
+      // their cached list of groups expires (we can redeploy to speed this up if necessary).
+      // Similarly, if a user has tried to use Riff-Raff's functionality before being added to the correct Google Group,
+      // their cached list of groups will need to expire before they can use the tool.
       cacheDuration = Duration.ofMinutes(5)
     )
   }
