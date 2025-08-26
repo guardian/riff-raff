@@ -104,22 +104,7 @@ class Login(
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    import cats.instances.future._
-    (for {
-      identity <- checkIdentity()
-      _ <- EitherT.fromEither[Future] {
-        if (validator.isAuthorised(identity)) Right(())
-        else
-          Left(
-            redirectWithError(
-              failureRedirectTarget,
-              validator.authorisationError(identity).getOrElse("Unknown error")
-            )
-          )
-      }
-    } yield {
-      setupSessionWhenSuccessful(identity)
-    }).merge
+    processOauth2Callback()
   }
 
   def logout = Action { implicit request =>
