@@ -209,7 +209,7 @@ class AppComponents(
     new GoogleGroupChecker(
       impersonatedUser,
       serviceAccountCredentials,
-      cacheDuration = Duration.ofMinutes(60)
+      cacheDuration = Duration.ofMinutes(5)
     )
   }
 
