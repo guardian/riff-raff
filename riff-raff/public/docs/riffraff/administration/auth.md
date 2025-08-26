@@ -50,12 +50,10 @@ and then repeating the process in `PROD`.
 
 Here is a step-by-step guide for rotating the service account key:
 
-TODO - double check these work as expected
-
 1. (`PROD` only) Send a message about this rotation in the DevX Chat channel; this encourages people to report any unexpected problems to us quickly.
 1. Select the relevant service account from [Riff-Raff's Google Cloud project](https://console.cloud.google.com/iam-admin/serviceaccounts?project=guardian-riff-raff)
    and view its keys.
-1. Add a new key.
+1. Add a new key (select JSON as the type).
 1. Copy and paste the new key into the `/${STAGE}/deploy/riff-raff/service-account-cert` parameter in Parameter Store.
 1. Use Riff Raff to deploy itself, which will re-run the application startup routine (including loading the new parameter value) while keeping the same instance alive. (Note: when it comes to this process we use Riff Raff CODE to deploy CODE, and PROD to deploy PROD.)
 1. Deploy something else with Riff-Raff to confirm that the Google Group checks still run as expected.
