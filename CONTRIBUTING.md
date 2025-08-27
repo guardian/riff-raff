@@ -6,7 +6,7 @@ First, and most importantly, thanks!
    - Java 11
    - SBT
    - Docker
-You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. if you
+You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. If you
 do not run prism locally, you will need to be connected to the VPN when working remotely.
 
 2. Create configuration
