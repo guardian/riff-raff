@@ -72,7 +72,7 @@ class Login(
     deployments: Deployments,
     datastore: DataStore,
     val controllerComponents: ControllerComponents,
-    val authAction: AuthAction[AnyContent],
+    val authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val authConfig: GoogleAuthConfig
 )(implicit val wsClient: WSClient, val executionContext: ExecutionContext)
     extends BaseController
@@ -104,22 +104,7 @@ class Login(
   }
 
   def oauth2Callback = Action.async { implicit request =>
-    import cats.instances.future._
-    (for {
-      identity <- checkIdentity()
-      _ <- EitherT.fromEither[Future] {
-        if (validator.isAuthorised(identity)) Right(())
-        else
-          Left(
-            redirectWithError(
-              failureRedirectTarget,
-              validator.authorisationError(identity).getOrElse("Unknown error")
-            )
-          )
-      }
-    } yield {
-      setupSessionWhenSuccessful(identity)
-    }).merge
+    processOauth2Callback()
   }
 
   def logout = Action { implicit request =>

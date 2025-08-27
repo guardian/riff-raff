@@ -2,7 +2,6 @@ package controllers
 
 import java.net.{MalformedURLException, URL}
 import java.util.UUID
-
 import conf.Config
 import com.gu.googleauth.AuthAction
 import notification.{GET, HookConfig, HttpMethod}
@@ -13,7 +12,12 @@ import play.api.data.format.Formatter
 import play.api.data.{Form, FormError}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 
 case class HookForm(
@@ -30,7 +34,7 @@ class HooksController(
     config: Config,
     menu: Menu,
     prismLookup: PrismLookup,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     hookConfigRepository: HookConfigRepository,
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)

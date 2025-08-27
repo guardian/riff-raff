@@ -9,10 +9,10 @@ Authentication is handled by Google. This obtains the users full name and e-mail
 provide an audit trail of deployments and other actions in the app.
 
 Google auth is implemented in two layers
-- Load Balancer layer: this component is defined in [the main riff raff cloudformation template](https://github.com/guardian/deploy-tools-platform/blob/main/cloudformation/riffraff/riffraff.template.yaml) and uses [authenticate-oidc](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html#configure-user-authentication). It relies on a secret stored in SSM.
-- Application layer: this layer uses The Guardian's [Play Google Auth Module](https://github.com/guardian/play-googleauth) and relies on secrets and configuration defined in the main [application.conf](https://github.com/guardian/riff-raff/blob/afb7e602e11acd7a07aae433c74be22976d8a7cd/riff-raff/conf/application.conf#L40-L41) stored in S3.
+- Load Balancer layer: this component is defined in [the main riff raff cloudformation template](https://github.com/guardian/deploy-tools-platform/blob/main/cloudformation/riffraff/riffraff.template.yaml) and uses [authenticate-oidc](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html#configure-user-authentication). It relies on an OAuth2 Client secret stored in Secrets Manager.
+- Application layer: this layer uses The Guardian's [Play Google Auth Module](https://github.com/guardian/play-googleauth) and relies on the same OAuth2 Client secret which is defined in the main [application.conf](https://github.com/guardian/riff-raff/blob/afb7e602e11acd7a07aae433c74be22976d8a7cd/riff-raff/conf/application.conf#L40-L41) stored in S3.
 
-To rotate these secrets we recommend a workflow that minimises risk by making it easy to perform a rollback until the very last step. At a high level, it consists of creating a new secret while keeping the old one active, switching the application to the new one, and only then disabling and deleting the old secret.
+To rotate the OAuth2 Client secret we recommend a workflow that minimises risk by making it easy to perform a rollback until the very last step. At a high level, it consists of creating a new secret while keeping the old one active, switching the application to the new one, and only then disabling and deleting the old secret.
 
 Here is a step-by-step guide, which we recommend following first for the CODE environment and then on PROD:
 1. (PROD only) Send a message about this rotation in the DevX Chat channel; this encourages people to report any unexpected problems to us quickly.
@@ -28,19 +28,36 @@ Here is a step-by-step guide, which we recommend following first for the CODE en
 Authorisation
 -------------
 
-There are a couple of very simple layers of authorisation implemented.
+There are a few different levels of authorisation.
 
-The first layer is an allowlist of e-mail domains.  For example, this can be set up to allow only guardian.co.uk e-mail
-addresses to login and prevent users accidentally using their personal accounts.  This is configured in the application
-properties file.  When the property is empty, all domains are allowed.
+The first level checks that the user is part of the Guardian organisation. This check actually runs at the load balancer
+layer _and_ the application layer[^1]. Users who are not part of the Guardian organisation won't be able to reach Riff-Raff's
+login screen.
 
-The second layer is an allowlist of e-mail addresses themselves.  This can be set in the properties file as well and, as
-with the domain allowlist, will allow any user to log in when empty.
+The second level checks that the user has 2-factor auth enabled. Any user who is part of the Guardian organisation and
+has 2-factor auth enabled will be able to login to Riff-Raff.
 
-For more flexible authorisation however, it is also possible to use the database to allowlist addresses.  When enabled
-via the auth.allowlist.useDatabase property, a menu item will appear allowing any authorised user to add
-further users to the list.  These addresses are in addition to the property, although when the database option is
-enabled an empty property will no longer allow any user into the system.
+However, we also provide a third level of authentication that runs whenever users attempt to use any of Riff-Raff's
+functionality. This third level checks that a user is in at least one authorised Google Group. Users who do not meet the
+Google Group requirements will be unable to use Riff-Raff's functionality. For more details on the allowed list of Google
+Groups, see [this doc](https://docs.google.com/document/d/1N8tCVRHVVctHVRBwpeiIppKHnUVwcX6zD6OJAJBsUXI/edit?tab=t.0#heading=h.10257g8spha5).
 
-When enabling the database setting you'll need to ensure that at least one user is allowlisted to set up the first
-users.
+Note that this third level relies on a (secret) service account key. This is completely separate from the OAuth2 Client secret
+mentioned above and these can be rotated independently of each other.
+
+Our `CODE` and `PROD` environments use separate service account keys. We recommend rehearsing the rotation in `CODE` first
+and then repeating the process in `PROD`.
+
+Here is a step-by-step guide for rotating the service account key:
+
+1. (`PROD` only) Send a message about this rotation in the DevX Chat channel; this encourages people to report any unexpected problems to us quickly.
+1. Select the relevant service account from [Riff-Raff's Google Cloud project](https://console.cloud.google.com/iam-admin/serviceaccounts?project=guardian-riff-raff)
+   and view its keys.
+1. Add a new key (select JSON as the type).
+1. Copy and paste the new key into the `/${STAGE}/deploy/riff-raff/service-account-cert` parameter in Parameter Store.
+1. Use Riff Raff to deploy itself, which will re-run the application startup routine (including loading the new parameter value) while keeping the same instance alive. (Note: when it comes to this process we use Riff Raff CODE to deploy CODE, and PROD to deploy PROD.)
+1. Deploy something else with Riff-Raff to confirm that the Google Group checks still run as expected.
+1. Delete the old service account key in Riff Raff's Google Cloud project.
+
+[^1]: These checks rely on the same OAuth2 Client secret that we use for authentication and the rotation process for this
+secret is described above.
