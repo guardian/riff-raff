@@ -18,4 +18,4 @@ ThisBuild / libraryDependencySchemes ++= Seq(
 )
 
 // needed to generate cloudformation cache
-libraryDependencies += "software.amazon.awssdk" % "cloudformation" % "2.31.75"
+libraryDependencies += "software.amazon.awssdk" % "cloudformation" % "2.31.78"
