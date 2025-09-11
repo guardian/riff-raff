@@ -30,10 +30,11 @@ class CloudFormation(tagger: BuildTags)
   def documentation =
     """Update an AWS CloudFormation template by creating and executing a change set.
       |
-      |This type will populate the following parameters in a cloudformation template:
+      |This type will populate the following parameters if specified in the cloudformation template:
       |  - Stage (e.g. `CODE` or `PROD`)
       |  - Stack (e.g. `deploy` or `frontend`)
       |  - BuildId (i.e. the number of the build such as `543`)
+      |  - RiffRaffDeploymentId (i.e. the unique ID of the deployment)
       |
       |NOTE: It is strongly recommended you do _NOT_ set a desired-capacity on auto-scaling groups, managed
       |with CloudFormation templates deployed in this way, as otherwise any deployment will reset the

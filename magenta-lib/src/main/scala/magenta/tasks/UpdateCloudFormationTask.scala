@@ -233,7 +233,8 @@ object CloudFormationParameters {
     val deploymentParameters = Map(
       "Stage" -> cfnParameters.target.parameters.stage.name,
       "Stack" -> cfnParameters.target.stack.name,
-      "BuildId" -> cfnParameters.target.parameters.build.id
+      "BuildId" -> cfnParameters.target.parameters.build.id,
+      "RiffRaffDeploymentId" -> reporter.messageContext.deployId.toString
     )
 
     val combined = combineParameters(
