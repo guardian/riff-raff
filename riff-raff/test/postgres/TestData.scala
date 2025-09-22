@@ -1,7 +1,7 @@
 package postgres
 
 import java.util.UUID
-import controllers.{ApiKey, AuthorisationRecord}
+import controllers.ApiKey
 import magenta.RunState
 import magenta.Strategy.MostlyHarmless
 import org.joda.time.DateTime
@@ -25,12 +25,6 @@ object TestData {
     created = dateTime,
     lastUsed = Some(dateTime),
     callCounters = Map("history" -> 10)
-  )
-
-  def someAuth: AuthorisationRecord = new AuthorisationRecord(
-    email = "developer@gu.com",
-    approvedBy = "developer",
-    approvedDate = dateTime
   )
 
   def someDeploy: DeployRecordDocument = {

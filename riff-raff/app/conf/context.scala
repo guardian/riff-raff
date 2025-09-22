@@ -94,13 +94,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
   object auth {
     lazy val domains: List[String] = getStringList("auth.domains")
     lazy val allowedGroups: List[String] = getStringList("auth.allowedGroups")
-    object allowList {
-      lazy val useDatabase: Boolean =
-        getBooleanOpt("auth.allowlist.useDatabase").getOrElse(false)
-      lazy val addresses: List[String] = getStringList(
-        "auth.allowlist.addresses"
-      )
-    }
 
     lazy val clientId: String =
       getStringOpt("auth.clientId").getOrException("No client ID configured")

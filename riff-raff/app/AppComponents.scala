@@ -390,7 +390,6 @@ class AppComponents(
     config,
     menu,
     deployments,
-    datastore,
     controllerComponents,
     authAction,
     authConfig
