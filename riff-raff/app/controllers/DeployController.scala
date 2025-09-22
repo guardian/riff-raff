@@ -21,7 +21,12 @@ import play.api.http.HttpEntity
 import play.api.i18n.I18nSupport
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 import restrictions.RestrictionChecker
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
@@ -37,7 +42,7 @@ class DeployController(
     changeFreeze: ChangeFreeze,
     buildSource: Builds,
     s3Tag: S3Tag,
-    AuthAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     restrictionConfigDynamoRepository: RestrictionConfigDynamoRepository,
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)
@@ -46,14 +51,14 @@ class DeployController(
     with I18nSupport
     with LogAndSquashBehaviour {
 
-  def deploy = AuthAction { implicit request =>
+  def deploy = authAction { implicit request =>
     Ok(
       views.html.deploy
         .form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup)
     )
   }
 
-  def processForm = AuthAction { implicit request =>
+  def processForm = authAction { implicit request =>
     DeployParameterForm.form
       .bindFromRequest()
       .fold(
@@ -105,12 +110,12 @@ class DeployController(
       )
   }
 
-  def stop(uuid: String) = AuthAction { implicit request =>
+  def stop(uuid: String) = authAction { implicit request =>
     deployments.stop(UUID.fromString(uuid), request.user.fullName)
     Redirect(routes.DeployController.viewUUID(uuid))
   }
 
-  def viewUUID(uuidString: String, verbose: Boolean) = AuthAction {
+  def viewUUID(uuidString: String, verbose: Boolean) = authAction {
     implicit request =>
       val uuid = UUID.fromString(uuidString)
       val record = deployments.get(uuid)
@@ -121,16 +126,16 @@ class DeployController(
       )
   }
 
-  def updatesUUID(uuid: String) = AuthAction { implicit request =>
+  def updatesUUID(uuid: String) = authAction { implicit request =>
     val record = deployments.get(UUID.fromString(uuid))
     Ok(views.html.deploy.logContent(record))
   }
 
-  def history() = AuthAction { implicit request =>
+  def history() = authAction { implicit request =>
     Ok(views.html.deploy.history(config, menu)(prismLookup))
   }
 
-  def historyContent() = AuthAction { implicit request =>
+  def historyContent() = authAction { implicit request =>
     val records =
       try {
         deployments
@@ -163,7 +168,7 @@ class DeployController(
     )
   }
 
-  def autoCompleteProject(term: String) = AuthAction {
+  def autoCompleteProject(term: String) = authAction {
     val possibleProjects = buildSource.jobs
       .map(_.name)
       .filter(_.toLowerCase.contains(term.toLowerCase))
@@ -177,7 +182,7 @@ class DeployController(
     .forPattern("HH:mm d/M/yy")
     .withZone(DateTimeZone.forID("Europe/London"))
 
-  def autoCompleteBuild(project: String, term: String) = AuthAction {
+  def autoCompleteBuild(project: String, term: String) = authAction {
     val possibleProjects = buildSource
       .successfulBuilds(project)
       .filter(p => p.number.contains(term) || p.branchName.contains(term))
@@ -196,7 +201,7 @@ class DeployController(
     Ok(Json.toJson(possibleProjects))
   }
 
-  def allowedStages(project: String, id: String) = AuthAction { request =>
+  def allowedStages(project: String, id: String) = authAction { request =>
     val allStages = prismLookup.stages
     def asJsonResponse(stages: Seq[String]) =
       Ok(Json.toJson(stages).toString()).as("application/json")
@@ -245,7 +250,7 @@ class DeployController(
       project: String,
       maybeStage: Option[String],
       isExactMatchProjectName: Option[Boolean]
-  ) = AuthAction { request =>
+  ) = authAction { request =>
     if (project.trim.isEmpty) {
       Ok("")
     } else {
@@ -277,7 +282,7 @@ class DeployController(
     }
   }
 
-  def buildInfo(project: String, build: String) = AuthAction {
+  def buildInfo(project: String, build: String) = authAction {
     log.info(s"Getting build info for $project: $build")
     val buildTagTuple = for {
       b <- buildSource.build(project, build)
@@ -289,7 +294,7 @@ class DeployController(
     } getOrElse Ok("")
   }
 
-  def builds = AuthAction {
+  def builds = authAction {
     val header = Seq(
       "Build Type Name",
       "Build Number",
@@ -311,7 +316,7 @@ class DeployController(
       .as("text/csv")
   }
 
-  def deployConfirmation(deployFormJson: String) = AuthAction {
+  def deployConfirmation(deployFormJson: String) = authAction {
     implicit request =>
       val parametersJson = Json.parse(deployFormJson)
       Ok(
@@ -322,7 +327,7 @@ class DeployController(
       )
   }
 
-  def deployConfirmationExternal = AuthAction { implicit request =>
+  def deployConfirmationExternal = authAction { implicit request =>
     val form = DeployParameterForm.form.bindFromRequest()
     Ok(
       views.html.deploy
@@ -330,7 +335,7 @@ class DeployController(
     )
   }
 
-  def deployAgain = AuthAction { implicit request =>
+  def deployAgain = authAction { implicit request =>
     val form = DeployParameterForm.form.bindFromRequest()
     Ok(
       views.html.deploy
@@ -338,7 +343,7 @@ class DeployController(
     )
   }
 
-  def deployAgainUuid(uuidString: String) = AuthAction { implicit request =>
+  def deployAgainUuid(uuidString: String) = authAction { implicit request =>
     val uuid = UUID.fromString(uuidString)
     val record = deployments.get(uuid)
 
@@ -370,7 +375,7 @@ class DeployController(
     Redirect(url)
   }
 
-  def markAsFailed = AuthAction { implicit request =>
+  def markAsFailed = authAction { implicit request =>
     UuidForm.form
       .bindFromRequest()
       .fold(
@@ -387,12 +392,12 @@ class DeployController(
       )
   }
 
-  def dashboard(projects: String, search: Boolean) = AuthAction {
+  def dashboard(projects: String, search: Boolean) = authAction {
     implicit request =>
       Ok(views.html.deploy.dashboard(config, menu)(request, projects, search))
   }
 
-  def dashboardContent(projects: String, search: Boolean) = AuthAction {
+  def dashboardContent(projects: String, search: Boolean) = authAction {
     implicit request =>
       def go(terms: List[String]): Either[Throwable, List[String]] =
         terms match {
@@ -419,7 +424,7 @@ class DeployController(
       )
   }
 
-  def deployConfig(projectName: String, id: String) = AuthAction {
+  def deployConfig(projectName: String, id: String) = authAction {
     implicit request =>
       def pathAndContent(
           artifact: S3Artifact
@@ -449,7 +454,7 @@ class DeployController(
         .getOrElse(NotFound(s"Deploy file not found for $projectName $id"))
   }
 
-  def deployFiles(projectName: String, id: String) = AuthAction {
+  def deployFiles(projectName: String, id: String) = authAction {
     implicit request =>
       def pathAndContent(
           artifact: S3Artifact
@@ -481,7 +486,7 @@ class DeployController(
       }
   }
 
-  def getArtifactFile(key: String) = AuthAction { implicit request =>
+  def getArtifactFile(key: String) = authAction { implicit request =>
     val getObjectRequest = GetObjectRequest
       .builder()
       .bucket(config.artifact.aws.bucketName)
