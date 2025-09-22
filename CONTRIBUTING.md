@@ -9,10 +9,13 @@ First, and most importantly, thanks!
 You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. If you
 do not run prism locally, you will need to be connected to the VPN when working remotely.
 
-1. Create a configuration file at `~/.gu/riff-raff.conf`. There is an example configuration file (`DEV.conf`) in the private configuration
-bucket in the Deploy Tools account. Ask a DevX colleague if you're not sure how to find this.
+1. Obtain the private configuration by running this script from the root of the repository:
 
-1. From the root of the repository, run:
+   ```sh
+   ./script/setup
+   ```
+
+1. Start the application by running this script from the root of the repository:
 
    ```sh
    ./script/start
