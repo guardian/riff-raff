@@ -10,31 +10,18 @@ You will also require `Deploy Tools - Developer` permissions from Janus in order
 do not run prism locally, you will need to be connected to the VPN when working remotely.
 
 2. Create configuration
-Create a configuration file at `~/.gu/riff-raff.conf`. At a minimum it looks like this,
-replacing placeholders with appropriate values:
+Create a configuration file at `~/.gu/riff-raff.conf`. There is an example configuration file (`DEV.conf`) in the private configuration
+bucket in the Deploy Tools account. Ask a DevX colleague if you're not sure how to find this.
 
-   ```
-   artifact.aws.bucketName=<ARTIFACTS BUCKET NAME>
-   build.aws.bucketName=<BUILDS BUCKET NAME>
-   
-   db.default.url="jdbc:postgresql://localhost:7432/riffraff"
-   db.default.user="riffraff"
-   db.default.hostname="riffraff"
-   db.default.password="riffraff"
-   
-   lookup.prismUrl=<PRISM URL>
-   lookup.source="prism"
-   ```
-
-3. From the root of the repository, run:
+4. From the root of the repository, run:
 
    ```sh
    ./script/start
    ```
    
    Add `--debug` to attach a remote debugger on port 9999.
-4. Visit http://localhost:9000/
-5. Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/administration/properties
+5. Visit http://localhost:9000/
+6. Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/administration/properties
 
 ## Raising a PR
 It's worth reading the [Pull Request recommendations](https://github.com/guardian/recommendations/blob/main/pull-requests.md) first.
