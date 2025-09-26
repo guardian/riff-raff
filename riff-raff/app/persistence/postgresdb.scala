@@ -4,7 +4,7 @@ import java.sql.{Connection, DriverManager}
 import java.util.UUID
 
 import conf.Config
-import controllers.{ApiKey, AuthorisationRecord, Logging, SimpleDeployDetail}
+import controllers.{ApiKey, Logging, SimpleDeployDetail}
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState
 import org.apache.commons.dbcp2.{
@@ -43,46 +43,8 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
         DeployRecordDocument
       ),
       LogDocument.tableName -> getCollectionStats(LogDocument),
-      AuthorisationRecord.tableName -> getCollectionStats(AuthorisationRecord),
       ApiKey.tableName -> getCollectionStats(ApiKey)
     )
-
-  // Table: auth(email: String, content: jsonb)
-  def getAuthorisation(
-      email: String
-  ): Either[Throwable, Option[AuthorisationRecord]] =
-    logExceptions(Some(s"Requesting authorisation object for $email")) {
-      DB readOnly { implicit session =>
-        sql"SELECT content FROM auth WHERE email = $email"
-          .map(AuthorisationRecord(_))
-          .single()
-          .apply()
-      }
-    }
-
-  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]] =
-    logExceptions(Some("Requesting list of authorisation objects")) {
-      DB readOnly { implicit session =>
-        sql"SELECT content FROM auth".map(AuthorisationRecord(_)).list().apply()
-      }
-    }
-
-  def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit] =
-    logExceptions(Some(s"Creating auth object $auth")) {
-      DB localTx { implicit session =>
-        val json = Json.toJson(auth).toString()
-        sql"INSERT INTO auth (email, content) VALUES (${auth.email}, $json::jsonb) ON CONFLICT (email) DO UPDATE SET content = $json::jsonb"
-          .update()
-          .apply()
-      }
-    }
-
-  def deleteAuthorisation(email: String): Either[Throwable, Unit] =
-    logExceptions(Some(s"Deleting authorisation object for $email")) {
-      DB localTx { implicit session =>
-        sql"DELETE FROM auth WHERE email = $email".update().apply()
-      }
-    }
 
   // Table: apiKey(id: String, content: jsonb)
   def createApiKey(newKey: ApiKey): Unit =

@@ -75,11 +75,6 @@ class Menu(config: Config) {
           routes.ContinuousDeployController.list
         ),
         SingleMenuItem("Hooks", routes.HooksController.list),
-        SingleMenuItem(
-          "Authorisation",
-          routes.Login.authList,
-          enabled = false
-        ),
         SingleMenuItem("API keys", routes.Api.listKeys),
         SingleMenuItem("Restrictions", routes.Restrictions.list),
         SingleMenuItem("Schedules", routes.ScheduleController.list)
