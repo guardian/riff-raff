@@ -1,7 +1,7 @@
 -- !Ups
 
-DROP TABLE auth;
 DROP VIEW service_catalogue.riffraff_authorized_users;
+DROP TABLE auth;
 
 -- !Downs
 
