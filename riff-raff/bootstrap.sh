@@ -74,6 +74,7 @@ CONFIG_DESTINATION=${HOME}/.gu/riff-raff.conf
 aws s3 cp ${CONFIG_ORIGIN} ${CONFIG_DESTINATION} --region ${REGION}
 
 # Install the application that was packaged by the sbt-native-packager
+rm -rf ${HOME}/${APP}
 aws --region ${REGION} s3 cp s3://${APP_BUCKET}/${STACK}/${STAGE}/${APP}/${APP}.tgz /tmp/
 tar -C ${HOME} -xzf /tmp/${APP}.tgz
 
