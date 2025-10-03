@@ -73,8 +73,12 @@ mkdir -p ${HOME}/.gu
 CONFIG_DESTINATION=${HOME}/.gu/riff-raff.conf
 aws s3 cp ${CONFIG_ORIGIN} ${CONFIG_DESTINATION} --region ${REGION}
 
-# Install the application that was packaged by the sbt-native-packager
+# This script is designed to run multiple times on the same instance, so we need to delete all traces of the previous
+# build artifact before we extract the new one.
+# If we don't do this then config files from the previous build - such as evolutions - can remain on disk despite
+# deploying a new build.
 rm -rf ${HOME}/${APP}
+# Install the application that was packaged by the sbt-native-packager
 aws --region ${REGION} s3 cp s3://${APP_BUCKET}/${STACK}/${STAGE}/${APP}/${APP}.tgz /tmp/
 tar -C ${HOME} -xzf /tmp/${APP}.tgz
 
