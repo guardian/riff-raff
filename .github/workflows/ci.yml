@@ -41,6 +41,7 @@ jobs:
 
       - uses: guardian/actions-riff-raff@v4
         with:
+          commentingEnabled: false
           buildNumber: ${{ env.BUILD_NUMBER }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           roleArn: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
