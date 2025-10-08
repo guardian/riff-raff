@@ -6,7 +6,6 @@ object Dependencies {
   object Versions {
     val aws = "2.32.33"
     val jackson = "2.18.2"
-    val awsRds = "1.12.792"
     val enumeratumPlay = "1.8.2"
   }
 
@@ -88,7 +87,7 @@ object Dependencies {
       filters,
       ws,
       "org.apache.pekko" %% "pekko-testkit" % "1.0.3" % Test,
-      "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
+      "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
       "ch.qos.logback" % "logback-classic" % "1.5.16"
