@@ -193,17 +193,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
     }
   }
 
-  object logging {
-    lazy val verbose =
-      getStringOpt("logging").exists(_.equalsIgnoreCase("VERBOSE"))
-    lazy val accessKey = getStringOpt("logging.aws.accessKey")
-    lazy val secretKey = getStringOpt("logging.aws.secretKey")
-    lazy val regionName =
-      getStringOpt("logging.aws.region").getOrElse(defaultRegion)
-    lazy val credentialsProvider =
-      credentialsProviderChain(accessKey, secretKey)
-  }
-
   object lookup {
     lazy val prismUrl =
       getStringOpt("lookup.prismUrl").getOrException("Prism URL not specified")
