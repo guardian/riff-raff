@@ -1,17 +1,5 @@
 package conf
 
-import com.amazonaws.auth.profile.{
-  ProfileCredentialsProvider => ProfileCredentialsProviderV1
-}
-import com.amazonaws.auth.{
-  AWSCredentials => AWSCredentialsV1,
-  AWSCredentialsProvider => AWSCredentialsProviderV1,
-  AWSCredentialsProviderChain => AWSCredentialsProviderChainV1,
-  BasicAWSCredentials => BasicAWSCredentialsV1,
-  EnvironmentVariableCredentialsProvider => EnvironmentVariableCredentialsProviderV1,
-  InstanceProfileCredentialsProvider => InstanceProfileCredentialsProviderV1,
-  SystemPropertiesCredentialsProvider => SystemPropertiesCredentialsProviderV1
-}
 import com.typesafe.config.{Config => TypesafeConfig}
 import controllers.Logging
 import org.joda.time.DateTime
@@ -315,31 +303,6 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
         .region(AWSRegion.of(regionName))
         .credentialsProvider(credentialsProviderChain(None, None))
         .build()
-  }
-
-  /** Credentials for use with V1 of the AWS SDK. Considered legacy as, where
-    * possible, V2 of the AWS SDK should be used.
-    *
-    * @see
-    *   [[credentialsProviderChain]]
-    */
-  def legacyCredentialsProviderChain(
-      accessKey: Option[String] = None,
-      secretKey: Option[String] = None
-  ): AWSCredentialsProviderChainV1 = {
-    new AWSCredentialsProviderChainV1(
-      new AWSCredentialsProviderV1 {
-        override def getCredentials: AWSCredentialsV1 = (for {
-          key <- accessKey
-          secret <- secretKey
-        } yield new BasicAWSCredentialsV1(key, secret)).orNull
-        override def refresh(): Unit = {}
-      },
-      new EnvironmentVariableCredentialsProviderV1,
-      new SystemPropertiesCredentialsProviderV1,
-      new ProfileCredentialsProviderV1("deployTools"),
-      InstanceProfileCredentialsProviderV1.getInstance()
-    )
   }
 
   def credentialsProviderChain(
