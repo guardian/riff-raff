@@ -147,7 +147,7 @@ class AppComponents(
 
   val ssmClient = SsmClient
     .builder()
-    .credentialsProvider(config.credentialsProviderChain(None, None))
+    .credentialsProvider(config.credentialsProviderChain())
     .overrideConfiguration(AWS.clientConfiguration)
     .region(Region.of(config.credentials.regionName))
     .build()

@@ -14,7 +14,7 @@ class IAMPasswordProvider(conf: Config) extends PasswordProvider {
   private val generator = RdsClient
     .builder()
     .region(Region.of(conf.artifact.aws.regionName))
-    .credentialsProvider(conf.credentialsProviderChain(None, None))
+    .credentialsProvider(conf.credentialsProviderChain())
     .build()
     .utilities()
 
@@ -26,7 +26,7 @@ class IAMPasswordProvider(conf: Config) extends PasswordProvider {
 
       val authTokenRequest = GenerateAuthenticationTokenRequest
         .builder()
-        .credentialsProvider(conf.credentialsProviderChain(None, None))
+        .credentialsProvider(conf.credentialsProviderChain())
         .hostname(conf.postgres.hostname)
         .port(5432)
         .username(conf.postgres.user)
