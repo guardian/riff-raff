@@ -217,10 +217,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
         getStringOpt("artifact.aws.bucketName").getOrException(
           "Artifact bucket name not configured"
         )
-      lazy val accessKey = getStringOpt("artifact.aws.accessKey")
-      lazy val secretKey = getStringOpt("artifact.aws.secretKey")
       lazy val credentialsProvider =
-        credentialsProviderChain(accessKey, secretKey)
+        credentialsProviderChain(None, None)
       lazy val regionName =
         getStringOpt("artifact.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client
@@ -236,10 +234,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
       getIntOpt("build.pollingPeriodSeconds").getOrElse(10)
     object aws {
       implicit lazy val bucketName = getString("build.aws.bucketName")
-      lazy val accessKey = getStringOpt("build.aws.accessKey")
-      lazy val secretKey = getStringOpt("build.aws.secretKey")
       lazy val credentialsProvider =
-        credentialsProviderChain(accessKey, secretKey)
+        credentialsProviderChain(None, None)
       lazy val regionName =
         getStringOpt("build.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client
@@ -255,10 +251,8 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
       implicit lazy val bucketName: Option[String] = getStringOpt(
         "tag.aws.bucketName"
       )
-      lazy val accessKey: Option[String] = getStringOpt("tag.aws.accessKey")
-      lazy val secretKey: Option[String] = getStringOpt("tag.aws.secretKey")
       lazy val credentialsProvider: AwsCredentialsProvider =
-        credentialsProviderChain(accessKey, secretKey)
+        credentialsProviderChain(None, None)
       lazy val regionName: String =
         getStringOpt("tag.aws.region").getOrElse(defaultRegion)
       implicit lazy val client: S3Client = S3Client
