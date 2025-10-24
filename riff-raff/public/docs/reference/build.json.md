@@ -4,8 +4,8 @@ The build.json file
 The type ahead of the project name and build number and also the continuous deployment feature is powered by the
 `build.json` files that are created for each project.
 
-This file is normally created by the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact)
-or [node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artifact) plugin.
+This file is normally created by [actions-riff-raff](https://github.com/guardian/actions-riff-raff). It should not
+be created manually.
 
 ```json
 {  
@@ -20,7 +20,7 @@ or [node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-art
 
 ### projectName
 
-The name of the project. This is ued to identify and select the project in Riff-Raff.
+The name of the project. This is used to identify and select the project in Riff-Raff.
 
 _Required:_ Yes.
 

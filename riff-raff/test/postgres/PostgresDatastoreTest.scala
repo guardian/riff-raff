@@ -1,6 +1,6 @@
 package postgres
 
-import controllers.{ApiKey, AuthorisationRecord}
+import controllers.ApiKey
 import deployment.{DeployFilter, PaginationView}
 import magenta.RunState.ChildRunning
 import magenta.{TaskDetail, ThrowableDetail}
@@ -67,43 +67,6 @@ class PostgresDatastoreTest
 
           dbApiKey shouldBe defined
           dbApiKey.get.callCounters shouldBe Map("history" -> 11)
-        }
-      }
-    }
-  }
-
-  "Auth table" - {
-    def withFixture(test: => Any) = {
-      try test
-      finally {
-        DB localTx { implicit session =>
-          sql"DELETE FROM auth".update().apply()
-        }
-      }
-    }
-
-    def withAuth(test: AuthorisationRecord => Any) = {
-      val auth = someAuth
-      datastore.setAuthorisation(auth)
-      test(auth)
-    }
-
-    "create and read an auth by email" in {
-      withFixture {
-        withAuth { auth =>
-          val dbAuth = datastore.getAuthorisation(auth.email)
-
-          dbAuth shouldBe Symbol("right")
-          dbAuth.toOption.get shouldBe Some(auth)
-        }
-      }
-    }
-
-    "create and delete auth" in {
-      withFixture {
-        withAuth { auth =>
-          datastore.deleteAuthorisation(auth.email)
-          datastore.getAuthorisation(auth.email).toOption.get shouldBe None
         }
       }
     }

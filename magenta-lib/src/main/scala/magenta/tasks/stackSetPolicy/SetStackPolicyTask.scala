@@ -1,20 +1,14 @@
-package magenta.tasks
-import magenta.tasks.StackPolicy.{
+package magenta.tasks.stackSetPolicy
+
+import magenta.tasks.stackSetPolicy.StackPolicy.{
   accountResourceTypes,
-  allSensitiveResourceTypes,
   toPolicyDoc
 }
+import magenta.tasks.stackSetPolicy.generated.RegionCfnTypes
+import magenta.tasks.{CloudFormation, CloudFormationStackMetadata, Task}
 import magenta.{DeploymentResources, KeyRing, Region}
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient
-import software.amazon.awssdk.services.cloudformation.model.{
-  Category,
-  ChangeSetType,
-  ListTypesRequest,
-  RegistryType,
-  SetStackPolicyRequest,
-  TypeFilters,
-  Visibility
-}
+import software.amazon.awssdk.services.cloudformation.model._
 
 import scala.jdk.CollectionConverters._
 
@@ -91,8 +85,14 @@ object StackPolicy {
     * @return
     *   A Set of Resource type names
     */
-  def accountResourceTypes(client: CloudFormationClient): Set[String] = {
-    accountAwsResourceTypes(client) ++ accountPrivateTypes(client)
+  def accountResourceTypes(
+      region: Region,
+      client: CloudFormationClient
+  ): Set[String] = {
+    RegionCfnTypes.regionTypes.getOrElse(
+      region.name,
+      accountAwsResourceTypes(client)
+    ) ++ accountPrivateTypes(client)
   }
 
   /** CFN resource types that have state or are likely to exist in external
@@ -140,7 +140,9 @@ object StackPolicy {
       // Storage that persists outside of EC2 life-cycle
       "AWS::EFS::FileSystem",
       // Private types
-      "Guardian::DNS::RecordSet"
+      "Guardian::DNS::RecordSet",
+      // Nested stacks, which may contain any of the above!
+      "AWS::CloudFormation::Stack"
     )
 
   private[this] val ALLOW_ALL_POLICY =
@@ -214,7 +216,7 @@ class SetStackPolicyTask(
       val (stackName, changeSetType, _, _) =
         stackLookup.lookup(resources.reporter, cfnClient)
       val policyDoc =
-        toPolicyDoc(stackPolicy, () => accountResourceTypes(cfnClient))
+        toPolicyDoc(stackPolicy, () => accountResourceTypes(region, cfnClient))
 
       changeSetType match {
         case ChangeSetType.CREATE =>

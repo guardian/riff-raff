@@ -4,9 +4,8 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.29.52"
+    val aws = "2.32.33"
     val jackson = "2.18.2"
-    val awsRds = "1.12.780"
     val enumeratumPlay = "1.8.2"
   }
 
@@ -45,7 +44,7 @@ object Dependencies {
       "software.amazon.awssdk" % "cloudformation" % Versions.aws,
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
-      "com.gu" %% "fastly-api-client" % "1.0.1",
+      "com.gu" %% "fastly-api-client" % "1.0.2",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
@@ -63,16 +62,16 @@ object Dependencies {
     commonDeps ++ jacksonOverrides ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "19.0.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "13.1.2",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "13.1.2",
+      "com.gu.play-googleauth" %% "play-v30" % "24.1.2",
+      "com.gu.play-secret-rotation" %% "play-v30" % "14.3.4",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "14.3.4",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "3.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
-      "com.gu" %% "anghammarad-client" % "4.0.0",
+      "com.gu" %% "anghammarad-client" % "6.0.0",
       "org.webjars" %% "webjars-play" % "3.0.2",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.14.1",
@@ -81,12 +80,12 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.30.1",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.0",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.5",
+      "org.postgresql" % "postgresql" % "42.7.7",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
       "org.apache.pekko" %% "pekko-testkit" % "1.0.3" % Test,
-      "com.amazonaws" % "aws-java-sdk-rds" % Versions.awsRds,
+      "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
       "ch.qos.logback" % "logback-classic" % "1.5.16"

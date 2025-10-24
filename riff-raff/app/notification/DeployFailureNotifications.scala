@@ -87,13 +87,19 @@ class DeployFailureNotifications(
           ) ++ maybeAccountId
         }
     }) match {
+      case Right(_) if multiAccountDevXProject(parameters.build.projectName) =>
+        val targetOverride = GithubTeamSlug("devx-reliability-and-ops")
+        log.info(
+          s"Default notification targets for ${parameters.build.projectName} were overridden with $targetOverride"
+        )
+        List(targetOverride)
+      // This should be the typical case
       case Right(targets) => targets
-      case Left(error) => {
+      case Left(error) =>
         log.warn(
           s"Failed to identify notification targets for ${parameters.build.projectName} due to $error"
         )
         fallbackTargets
-      }
     }
   }
 
@@ -165,6 +171,25 @@ class DeployFailureNotifications(
       case _ =>
     }
   })
+
+  private def multiAccountDevXProject(projectName: String): Boolean = {
+
+    /* In the context of these projects, we are deploying to multiple AWS accounts / stacks.
+     By default, Riff-Raff will send Anghammarad a huge list of targets and the notifications are often sent
+     to surprising Chat channels/email addresses!
+
+     Consequently, in these special cases where we know that DevX should receive the notification, we override
+     the default behaviour.
+     */
+    val platformProjects = List(
+      "devx::aws-account-setup", // https://github.com/guardian/aws-account-setup
+      "elasticsearch-node-rotation", // https://github.com/guardian/elasticsearch-node-rotation
+      "guardian-dns-record-set-type", // https://github.com/guardian/cfn-private-resource-types
+      "tools::waf" // https://github.com/guardian/waf
+    )
+    platformProjects.contains(projectName)
+
+  }
 
   def init(): Unit = {}
 

@@ -1,7 +1,6 @@
 package deployment.actors
 
 import java.util.UUID
-
 import org.apache.pekko.actor.SupervisorStrategy.Stop
 import org.apache.pekko.actor.{
   Actor,
@@ -29,7 +28,8 @@ import magenta.{
   DeployContext,
   DeployReporter,
   DeployStoppedException,
-  DeploymentResources
+  DeploymentResources,
+  Stage
 }
 import org.joda.time.DateTime
 import resources.PrismLookup
@@ -164,6 +164,7 @@ class DeployGroupRunner(
     case Start =>
       try {
         warnDeprecatedBranch()
+        warnAboutNonStandardProdDeployment()
         self ! ContextCreated(createContext)
         self ! StartDeployment
       } catch {
@@ -219,6 +220,22 @@ class DeployGroupRunner(
       rootReporter.warning(
         "branch name 'master' is not inclusive, please rename - see https://github.com/guardian/master-to-main/blob/main/migrating.md"
       )
+  }
+
+  private def warnAboutNonStandardProdDeployment(): Unit = {
+    val widelyUsedDefaultBranchNames = List("main", "master")
+    record.metaData.get("branch").foreach { branchName =>
+      if (
+        !widelyUsedDefaultBranchNames.contains(
+          branchName
+        ) && record.stage.name.startsWith("PROD")
+      ) {
+        rootReporter.warning(
+          s"A branch ($branchName) other than main was deployed to PROD. This is a high-risk operation that is strongly discouraged in most scenarios." +
+            "\nSee https://riffraff.gutools.co.uk/docs/riffraff/prod-feature-branches.md for more details."
+        )
+      }
+    }
   }
 
   private def createContext: DeployContext = {

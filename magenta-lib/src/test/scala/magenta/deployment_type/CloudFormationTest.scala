@@ -14,6 +14,11 @@ import magenta.tasks.CloudFormationParameters.{
 }
 import magenta.tasks.UpdateCloudFormationTask._
 import magenta.tasks._
+import magenta.tasks.stackSetPolicy.{
+  AllowAllPolicy,
+  DenyReplaceDeletePolicy,
+  SetStackPolicyTask
+}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{EitherValues, Inside, OptionValues}

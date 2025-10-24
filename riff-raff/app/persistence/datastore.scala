@@ -1,13 +1,10 @@
 package persistence
 
 import conf.Config
-import controllers.{ApiKey, AuthorisationRecord, Logging}
-import org.joda.time.DateTime
+import controllers.ApiKey
 import play.api.Logger
 import scalikejdbc._
 import utils.Retriable
-
-import java.util.UUID
 
 trait CollectionStats {
   def dataSize: Long
@@ -57,13 +54,6 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
 
   def collectionStats: Map[String, CollectionStats] = Map.empty
 
-  def getAuthorisation(
-      email: String
-  ): Either[Throwable, Option[AuthorisationRecord]]
-  def getAuthorisationList: Either[Throwable, List[AuthorisationRecord]]
-  def setAuthorisation(auth: AuthorisationRecord): Either[Throwable, Unit]
-  def deleteAuthorisation(email: String): Either[Throwable, Unit]
-
   def createApiKey(newKey: ApiKey): Unit
   def getApiKeyList: Either[Throwable, Iterable[ApiKey]]
   def getApiKey(key: String): Option[ApiKey]
@@ -73,46 +63,4 @@ abstract class DataStore(config: Config) extends DocumentStore with Retriable {
   ): Option[ApiKey]
   def getApiKeyByApplication(application: String): Option[ApiKey]
   def deleteApiKey(key: String): Unit
-}
-
-class NoOpDataStore(config: Config) extends DataStore(config) with Logging {
-  import NoOpDataStore._
-
-  final def getAuthorisation(
-      email: String
-  ): Either[Throwable, Option[AuthorisationRecord]] = none
-  final def getAuthorisationList = nil
-  final def setAuthorisation(
-      auth: AuthorisationRecord
-  ): Either[Throwable, Unit] = unit
-  final def deleteAuthorisation(email: String): Either[Throwable, Unit] = unit
-
-  final def createApiKey(newKey: ApiKey): Unit = ()
-  final def getApiKeyList = nil
-  final def getApiKey(key: String): Option[ApiKey] = None
-  final def getAndUpdateApiKey(
-      key: String,
-      counter: Option[String] = None
-  ): Option[ApiKey] = None
-  final def getApiKeyByApplication(application: String): Option[ApiKey] = None
-  final def deleteApiKey(key: String): Unit = ()
-
-  final def findProjects = nil
-  final def writeDeploy(deploy: DeployRecordDocument) = ()
-  final def writeLog(log: LogDocument) = ()
-  final def deleteDeployLog(uuid: UUID) = ()
-  final def updateStatus(uuid: UUID, state: magenta.RunState) = ()
-  final def updateDeploySummary(
-      uuid: UUID,
-      totalTasks: Option[Int],
-      completedTasks: Int,
-      lastActivityTime: DateTime,
-      hasWarnings: Boolean
-  ) = ()
-  final def addMetaData(uuid: UUID, metaData: Map[String, String]) = ()
-}
-object NoOpDataStore {
-  private final val none = Right(None)
-  private final val nil = Right(Nil)
-  private final val unit = Right(())
 }

@@ -16,3 +16,6 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.3")
 ThisBuild / libraryDependencySchemes ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 )
+
+// needed to generate cloudformation cache
+libraryDependencies += "software.amazon.awssdk" % "cloudformation" % "2.31.78"

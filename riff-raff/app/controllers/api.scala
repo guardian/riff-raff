@@ -75,7 +75,7 @@ class Api(
     deploymentTypes: Seq[DeploymentType],
     datastore: DataStore,
     changeFreeze: ChangeFreeze,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)
     extends BaseController
