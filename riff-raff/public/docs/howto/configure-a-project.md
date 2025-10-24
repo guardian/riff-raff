@@ -1,45 +1,25 @@
 Configuring a project
 =====================
 
-To make a project deployable with riff-raff it needs:
+To make a project deployable with Riff-Raff the following files need to be uploaded into Riff-Raff's S3 buckets:
  
+ - Any artifacts for your project (e.g. a .deb file for your application and a CloudFormation template for infrastructure)
  - A [`riff-raff.yaml`](../reference/riff-raff.yaml.md) file that describes the deployment process
  - A [`build.json`](../reference/build.json.md) file that details the CI build
- - The two files above along with any assets uploaded into riff-raff's S3 artifact buckets
 
-Both the [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact) or
-[node-riffraff-artifact plugin](https://github.com/guardian/node-riffraff-artifact) plugins will create the
-`build.json` for you and help you to upload the files to the S3 buckets correctly.
+[@guardian/cdk](https://github.com/guardian/cdk) can be used to generate the `riff-raff.yaml` file automatically as
+part of your build. See https://github.com/guardian/cdk/tree/main/src/riff-raff-yaml-file#usage for more details.
 
-Using SBT
----------
+[actions-riff-raff](https://github.com/guardian/actions-riff-raff) will create the
+`build.json` file for you and help you to upload the files to Riff-Raff's S3 buckets correctly.
 
- 1. Add [sbt-riffraff-artifact plugin](https://github.com/guardian/sbt-riffraff-artifact) to your project (see the
-    docs in the repo)
- 1. Ensure there is a `riff-raff.yaml` either in the base directory of your project or in a resources directory (`conf/` 
-    for a play app)
- 1. Set up your CI server to run the appropriate task (this is correct as of version 0.9.x of the plugin, check the 
- docs on the plugin repo if you are using a later version):
-     a. If using TeamCity with the [S3 plugin](https://github.com/guardian/teamcity-s3-plugin) then you can choose to use 
-        the `riffRaffNotifyTeamcity` task
-     b. Otherwise, or if you are not sure, you should use the `riffRaffUpload` SBT task - you'll need to make sure that 
-        the `riffRaffUploadArtifactBucket` and `riffRaffUploadManifestBucket` settings are configured in your SBT file
- 1. It is recommended to set the `riffRaffManifestProjectName` - this is the name that you type into Riff-Raff when
-    starting a deployment
-    
-Using an autoscaling deployment type
-------------------------------------
+Setting up a new project
+------------------------
 
-The most common deployment uses the `autoscaling` deployment type. This uploads your artifacts to an S3 bucket,
-doubles the size of an autoscaling group (the new instances download the new artifact on boot), waits for the new
-instances to come into service and then terminates the old instances. For more details see the [autoscaling deployment
-type docs](../magenta-lib/types#autoscaling)
-
-In order to make this work you need:
-
- 1. An autoscaling group tagged with the stack, app and stage you wish to deploy to
- 1. A launch configuration (or pre-baked AMI) that will download the artifact from the S3 bucket
- 1. A riff-raff.yaml file containing:
-     a. the regions and stacks that you want to deploy to (the stack is important - it must match the tags on the AWS 
-        account credentials you wish to use and the stack tags on your autoscaling group)
-     a. a deployment of type `autoscaling` and an S3 target bucket location defined. By default Riff-Raff will use the value in the SSM parameter `/account/services/artifact.bucket`. This can be customised with `bucketSsmKey` if necessary. See https://riffraff.gutools.co.uk/docs/magenta-lib/types#autoscaling for full detail.
+ 1. Ensure that you are [using `GuRoot`](https://github.com/guardian/cdk/tree/main/src/riff-raff-yaml-file#usage) when 
+    instantiating your `cdk` stacks; this will produce a `riff-raff.yaml` file for you alongside CloudFormation templates
+    for the relevant stages.
+ 1. Configure [actions-riff-raff](https://github.com/guardian/actions-riff-raff) to upload your CloudFormation templates
+    and application build artifact as part of your CI build. This needs to happen _after_ you've run the `cdk synth`
+    command and built the application artifact.
+ 1. For most projects, you will also want to configure continuous deployment (CD) for the `main` branch in `PROD`.

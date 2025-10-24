@@ -2,7 +2,6 @@ package controllers
 
 import java.text.ParseException
 import java.util.{TimeZone, UUID}
-
 import com.gu.googleauth.AuthAction
 import conf.Config
 import org.joda.time.DateTime
@@ -13,7 +12,12 @@ import play.api.data.Forms._
 import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import resources.PrismLookup
 import schedule.{DeployScheduler, ScheduleConfig}
 
@@ -22,7 +26,7 @@ import scala.util.{Failure, Success, Try}
 class ScheduleController(
     config: Config,
     menu: Menu,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents,
     scheduleRepository: ScheduleRepository,
     prismLookup: PrismLookup,

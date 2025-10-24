@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -e
+
+BUCKET=$(aws ssm get-parameter --name /account/services/private.config.bucket --profile deployTools --region eu-west-1 | jq -r '.Parameter.Value')
+echo "Downloading configuration from S3 bucket $BUCKET"
+
+mkdir -p ~/.gu
+aws s3 cp "s3://$BUCKET/deploy/riff-raff/DEV.conf" ~/.gu/riff-raff.conf --profile deployTools

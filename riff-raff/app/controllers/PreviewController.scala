@@ -10,7 +10,12 @@ import magenta.input.{All, DeploymentKey, DeploymentKeysSelector}
 import magenta.{Build, DeployParameters, Deployer, Loggable, Stage, Strategy}
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -19,7 +24,7 @@ class PreviewController(
     config: Config,
     menu: Menu,
     coordinator: PreviewCoordinator,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     val controllerComponents: ControllerComponents
 )(implicit
     val wsClient: WSClient,
@@ -72,12 +77,13 @@ class PreviewController(
                 logger.info(s"Deployment keys: $deploymentKeys")
                 val form = DeployParameterForm.form.fill(
                   DeployParameterForm(
-                    preview.parameters.build.projectName,
-                    preview.parameters.build.id,
-                    preview.parameters.stage.name,
-                    "n/a",
-                    deploymentKeys,
-                    totalKeyCount,
+                    project = preview.parameters.build.projectName,
+                    build = preview.parameters.build.id,
+                    stage = preview.parameters.stage.name,
+                    branch = None,
+                    action = "n/a",
+                    selectedKeys = deploymentKeys,
+                    totalKeyCount = totalKeyCount,
                     updateStrategy = preview.parameters.updateStrategy
                   )
                 )

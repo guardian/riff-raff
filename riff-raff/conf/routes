@@ -89,11 +89,6 @@ GET         /loginAction                                    controllers.Login.lo
 GET         /oauth2callback                                 controllers.Login.oauth2Callback
 GET         /logout                                         controllers.Login.logout
 
-GET         /auth/list                                      controllers.Login.authList
-GET         /auth/new                                       controllers.Login.authForm
-POST        /auth/delete                                    controllers.Login.authDelete
-POST        /auth/save                                      controllers.Login.authSave
-
 # api endpoints
 GET         /apiKeys/list                                   controllers.Api.listKeys
 GET         /apiKeys/create                                 controllers.Api.createKeyForm

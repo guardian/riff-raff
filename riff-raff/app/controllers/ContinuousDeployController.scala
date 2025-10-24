@@ -1,12 +1,17 @@
 package controllers
 
-import play.api.mvc.{AnyContent, BaseController, ControllerComponents}
+import play.api.mvc.{
+  ActionBuilder,
+  AnyContent,
+  BaseController,
+  ControllerComponents
+}
 import play.api.data.Forms._
 import play.api.data.Form
 import play.api.i18n.I18nSupport
 import play.api.libs.ws.WSClient
-import java.util.UUID
 
+import java.util.UUID
 import org.joda.time.DateTime
 import ci.{ContinuousDeploymentConfig, Trigger}
 import com.gu.googleauth.AuthAction
@@ -20,7 +25,7 @@ class ContinuousDeployController(
     menu: Menu,
     changeFreeze: ChangeFreeze,
     prismLookup: PrismLookup,
-    authAction: AuthAction[AnyContent],
+    authAction: ActionBuilder[AuthAction.UserIdentityRequest, AnyContent],
     continuousDeploymentConfigRepository: ContinuousDeploymentConfigRepository,
     val controllerComponents: ControllerComponents
 )(implicit val wsClient: WSClient)
