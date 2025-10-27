@@ -79,7 +79,7 @@ object Dependencies {
       "org.webjars" % "jquery-ui" % "1.14.1",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
-      "org.webjars" % "momentjs" % "2.30.1",
+      "org.webjars" % "momentjs" % "2.30.1-1",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.1",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
       "org.postgresql" % "postgresql" % "42.7.8",
