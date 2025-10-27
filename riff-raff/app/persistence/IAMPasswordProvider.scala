@@ -1,34 +1,38 @@
 package persistence
 
 import java.time.{Duration, Instant}
-import com.amazonaws.services.rds.auth.{
-  GetIamAuthTokenRequest,
-  RdsIamAuthTokenGenerator
-}
 import conf.Config
 import magenta.`package`.logger
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.rds.RdsClient
+import software.amazon.awssdk.services.rds.model.GenerateAuthenticationTokenRequest
 
 import scala.util.{Failure, Success, Try}
 
 class IAMPasswordProvider(conf: Config) extends PasswordProvider {
-  private val generator = RdsIamAuthTokenGenerator
+
+  private val generator = RdsClient
     .builder()
-    .credentials(conf.legacyCredentialsProviderChain())
-    .region(conf.artifact.aws.regionName)
+    .region(Region.of(conf.artifact.aws.regionName))
+    .credentialsProvider(conf.credentialsProviderChain())
     .build()
+    .utilities()
 
   override def providePassword(): String = {
     if (conf.stage == "CODE" || conf.stage == "PROD") {
       logger.info(
         s"Fetching password for database ${conf.postgres.hostname}, stage=${conf.stage}."
       )
-      val authTokenRequest = GetIamAuthTokenRequest.builder
+
+      val authTokenRequest = GenerateAuthenticationTokenRequest
+        .builder()
+        .credentialsProvider(conf.credentialsProviderChain())
         .hostname(conf.postgres.hostname)
         .port(5432)
-        .userName(conf.postgres.user)
+        .username(conf.postgres.user)
         .build()
 
-      Try(generator.getAuthToken(authTokenRequest)) match {
+      Try(generator.generateAuthenticationToken(authTokenRequest)) match {
         case Success(value) =>
           value
         case Failure(exception) =>
