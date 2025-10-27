@@ -125,8 +125,7 @@ class AppComponents(
     Lambda,
     LambdaLayer,
     AmiCloudFormationParameter,
-    SelfDeploy,
-    GCS
+    SelfDeploy
   )
 
   val ioExecutionContext: ExecutionContext =
