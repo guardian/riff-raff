@@ -86,7 +86,7 @@ object Dependencies {
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
-      "org.apache.pekko" %% "pekko-testkit" % "1.0.3" % Test,
+      "org.apache.pekko" %% "pekko-testkit" % "1.2.1" % Test,
       "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
