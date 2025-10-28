@@ -64,7 +64,7 @@ object Dependencies {
       evolutions,
       jdbc,
       "com.gu.play-googleauth" %% "play-v30" % "28.1.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "14.3.4",
+      "com.gu.play-secret-rotation" %% "play-v30" % "14.5.2",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "14.5.2",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
