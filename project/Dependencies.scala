@@ -33,7 +33,7 @@ object Dependencies {
 
   val magentaLibDeps =
     commonDeps ++ jacksonOverrides ++ Seq(
-      "com.squareup.okhttp3" % "okhttp" % "5.2.1",
+      "com.squareup.okhttp3" % "okhttp" % "4.12.0",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
       "software.amazon.awssdk" % "s3" % Versions.aws,
