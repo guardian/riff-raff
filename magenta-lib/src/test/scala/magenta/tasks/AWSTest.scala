@@ -38,15 +38,17 @@ class AWSTest extends AnyFlatSpec with Matchers with MockitoSugar {
     val keyring = KeyRing(apiCredentials =
       Map(
         "aws" -> ApiStaticCredentials(
-          "aws-role",
-          "role",
-          "secret",
+          "aws",
+          "test-access-key-id",
+          "test-secret-access-key",
           Some("comment")
         )
       )
     )
     val provider = AWS.provider(keyring, deploymentResources)
-    provider.toString.contains("StaticCredentialsProvider") shouldBe true
+    val credentials = provider.resolveCredentials()
+    credentials.accessKeyId() shouldBe "test-access-key-id"
+    credentials.secretAccessKey() shouldBe "test-secret-access-key"
   }
 
   it should "throw an exception otherwise" in {
