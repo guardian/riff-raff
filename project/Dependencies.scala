@@ -5,8 +5,8 @@ object Dependencies {
 
   object Versions {
     val aws = "2.35.4"
-    val jackson = "2.18.2"
-    val enumeratumPlay = "1.8.2"
+    val jackson = "2.18.4"
+    val enumeratumPlay = "1.9.0"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -27,8 +27,8 @@ object Dependencies {
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
-    "org.typelevel" %% "cats-core" % "2.12.0",
-    "org.mockito" %% "mockito-scala" % "1.17.37" % Test
+    "org.typelevel" %% "cats-core" % "2.13.0",
+    "org.mockito" %% "mockito-scala" % "1.17.45" % Test
   )
 
   val magentaLibDeps =
@@ -68,20 +68,20 @@ object Dependencies {
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "14.3.4",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
-      "org.scanamo" %% "scanamo" % "3.0.0",
+      "org.scanamo" %% "scanamo" % "4.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
       "com.gu" %% "anghammarad-client" % "6.0.0",
-      "org.webjars" %% "webjars-play" % "3.0.2",
+      "org.webjars" %% "webjars-play" % "3.0.9",
       "org.webjars" % "jquery" % "3.7.1",
       "org.webjars" % "jquery-ui" % "1.14.1",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
-      "org.webjars" % "momentjs" % "2.30.1",
-      "net.logstash.logback" % "logstash-logback-encoder" % "8.0",
+      "org.webjars" % "momentjs" % "2.30.1-1",
+      "net.logstash.logback" % "logstash-logback-encoder" % "8.1",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.7",
+      "org.postgresql" % "postgresql" % "42.7.8",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
@@ -89,7 +89,7 @@ object Dependencies {
       "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.5.16"
+      "ch.qos.logback" % "logback-classic" % "1.5.20"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
