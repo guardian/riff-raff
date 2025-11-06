@@ -1,4 +1,3 @@
-version: '3'
 services:
   riffraff-db:
     container_name: riffraff-db
