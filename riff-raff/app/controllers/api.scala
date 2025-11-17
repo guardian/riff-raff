@@ -60,7 +60,7 @@ object ApiKeyGenerator {
           ('0' + (numeral - 52)).toChar
         case hyphen if hyphen == 62         => '-'
         case underscore if underscore == 63 => '_'
-        case default =>
+        case default                        =>
           throw new IllegalStateException("byte value out of expected range")
       }
     }.mkString
@@ -122,7 +122,7 @@ class Api(
         response \ "response" \ "status" match {
           case JsDefined(JsString("ok"))    => Ok(responseObject)
           case JsDefined(JsString("error")) => BadRequest(responseObject)
-          case _ =>
+          case _                            =>
             throw new IllegalStateException(
               "Response status missing or invalid"
             )
@@ -156,7 +156,7 @@ class Api(
           case Some(urlParam) =>
             datastore.getAndUpdateApiKey(urlParam, Some(counter)) match {
               case Some(apiKey) => f(new ApiRequest(apiKey, request))
-              case None =>
+              case None         =>
                 Unauthorized(
                   "The API key provided is not valid. Please check and try again."
                 )

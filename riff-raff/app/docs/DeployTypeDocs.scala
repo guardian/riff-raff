@@ -48,7 +48,7 @@ object DeployTypeDocs {
     ) match {
       case (Some(default), _)               => Some(default.toString)
       case (None, Some(Right(pkgFunction))) => Some(pkgFunction.toString)
-      case (None, Some(Left(error))) =>
+      case (None, Some(Left(error)))        =>
         Some(s"ERROR generating default: $error")
       case (_, _) => None
     }

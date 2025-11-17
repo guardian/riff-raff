@@ -45,7 +45,7 @@ object MessageState {
   ): MessageState = end match {
     case finish: FinishContext => FinishMessageState(message, finish, time, id)
     case fail: FailContext     => FailMessageState(message, fail, time, id)
-    case notValid =>
+    case notValid              =>
       throw new IllegalArgumentException(
         s"Provided end message not a valid end: $notValid"
       )

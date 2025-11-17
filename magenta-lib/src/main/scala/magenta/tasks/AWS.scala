@@ -196,7 +196,7 @@ object S3 {
       reporter: => DeployReporter
   ): String = {
     bucket match {
-      case BucketByName(name) => name
+      case BucketByName(name)     => name
       case BucketBySsmKey(ssmKey) =>
         try {
           val resolvedBucket = withSsmClient { SSM.getParameter(_, ssmKey) }
@@ -583,7 +583,7 @@ object ASG {
           s"No autoscaling group found with tags $tagRequirements. Creating a new stack? Initially choose the ${Strategy.Dangerous} strategy."
         )
       case List(singleGroup) => Some(singleGroup)
-      case groupList =>
+      case groupList         =>
         reporter.fail(
           s"More than one autoscaling group match for $tagRequirements (${groupList.map(_.autoScalingGroupARN).mkString(", ")}). Failing fast since this may be non-deterministic."
         )

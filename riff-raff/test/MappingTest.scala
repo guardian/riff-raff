@@ -90,7 +90,7 @@ class MappingTest
     tree.roots.size should be(1)
     tree.roots.head match {
       case LogDocument(_, _, None, DeployDocument, _) =>
-      case _ =>
+      case _                                          =>
         fail("Didn't get the expected document when trying to locate the root")
     }
   }

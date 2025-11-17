@@ -21,7 +21,7 @@ object PatternValue {
             ) { case (acc, (value, index)) =>
               val validated = Json.fromJson[PatternValue](value) match {
                 case JsSuccess(v, _) => Valid(List(v))
-                case JsError(e) =>
+                case JsError(e)      =>
                   Invalid(e.toList.map { case (p, valerr) =>
                     (JsPath \ index.toString) ++ p -> valerr
                   })

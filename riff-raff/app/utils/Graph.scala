@@ -21,7 +21,7 @@ object Graph {
   ): List[(LocalDate, Int)] = {
 
     zeroFillDays(deploysPerDay match {
-      case Nil => Nil
+      case Nil  => Nil
       case list =>
         list.reverse.prefixDate(lastDate).reverse.prefixDate(firstDate)
     })
@@ -30,8 +30,8 @@ object Graph {
   def zeroFillDays(
       deploysPerDay: List[(LocalDate, Int)]
   ): List[(LocalDate, Int)] = deploysPerDay match {
-    case Nil         => Nil
-    case head :: Nil => head :: Nil
+    case Nil                                        => Nil
+    case head :: Nil                                => head :: Nil
     case (date1, count1) :: (date2, count2) :: tail => {
       val nextDay = date1.plusDays(1)
       if (date2 == nextDay)

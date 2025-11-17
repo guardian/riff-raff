@@ -81,7 +81,7 @@ class DeployController(
           form.action match {
             case "preview" =>
               val maybeKeys = parameters.selector match {
-                case All => None
+                case All                          => None
                 case DeploymentKeysSelector(keys) =>
                   Some(DeploymentKey.asString(keys))
               }
@@ -401,7 +401,7 @@ class DeployController(
     implicit request =>
       def go(terms: List[String]): Either[Throwable, List[String]] =
         terms match {
-          case Nil => Right(Nil)
+          case Nil           => Right(Nil)
           case term :: terms =>
             for {
               psTerm <- deployments.findProjects.map(_.filter(_.contains(term)))
