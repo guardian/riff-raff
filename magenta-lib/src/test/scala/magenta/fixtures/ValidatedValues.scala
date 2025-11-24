@@ -19,7 +19,7 @@ trait ValidatedValues {
   implicit class ScalaTestValidated[E, A](validated: Validated[E, A]) {
     def valid: A = {
       validated match {
-        case Valid(value) => value
+        case Valid(value)    => value
         case Invalid(errors) =>
           throw new TestFailedException(
             s"$validated was not of type Valid",

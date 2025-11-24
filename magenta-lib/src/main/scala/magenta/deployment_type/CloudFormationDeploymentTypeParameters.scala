@@ -174,7 +174,7 @@ trait CloudFormationDeploymentTypeParameters {
           )
           parametersToTags
         case (Some(parametersToTags), _) => parametersToTags
-        case (None, Some(tags)) =>
+        case (None, Some(tags))          =>
           Map(amiParameter(pkg, target, reporter) -> tags)
         case _ => Map.empty
       }

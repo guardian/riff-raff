@@ -95,7 +95,7 @@ class DeployFailureNotifications(
         List(targetOverride)
       // This should be the typical case
       case Right(targets) => targets
-      case Left(error) =>
+      case Left(error)    =>
         log.warn(
           s"Failed to identify notification targets for ${parameters.build.projectName} due to $error"
         )
