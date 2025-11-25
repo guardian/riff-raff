@@ -393,7 +393,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
     val nodeToGraphMap: Map[Node[T], Graph[R]] = nodes.map(n => n -> f(n)).toMap
     // find all of the edges that we won't adjoin to another graph
     val allInternalEdges = nodeToGraphMap.flatMap {
-      case (StartNode, graph) => graph.edges -- graph.incoming(EndNode)
+      case (StartNode, graph)    => graph.edges -- graph.incoming(EndNode)
       case (ValueNode(_), graph) =>
         assert(
           !graph.isEmpty,
@@ -505,7 +505,7 @@ case class Graph[T](edges: Set[Edge[T]]) {
 
   def allSuccesors(node: Node[T]): Set[Node[T]] = {
     successors(node) match {
-      case s if s.isEmpty => Set.empty
+      case s if s.isEmpty  => Set.empty
       case nodesSuccessors =>
         nodesSuccessors ++ nodesSuccessors.flatMap(allSuccesors)
     }

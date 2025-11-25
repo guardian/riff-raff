@@ -87,7 +87,7 @@ trait S3ObjectPrefixParameters {
     } else {
       prefixFromStagePaths.get(target.parameters.stage.name) match {
         case Some(prefix) => prefix
-        case _ =>
+        case _            =>
           reporter.fail(
             s"""
                |Unable to locate prefix for stage ${target.parameters.stage.name}.

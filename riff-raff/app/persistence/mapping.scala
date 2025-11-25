@@ -54,7 +54,7 @@ object RecordConverter {
       stage = sourceParams.stage.name,
       tags = record.metaData,
       selector = sourceParams.selector match {
-        case All => AllDocument
+        case All                         => AllDocument
         case DeploymentKeysSelector(ids) =>
           DeploymentKeysSelectorDocument(
             ids.map(id =>
@@ -89,7 +89,7 @@ case class DocumentConverter(
     Build(deploy.parameters.projectName, deploy.parameters.buildId),
     Stage(deploy.parameters.stage),
     deploy.parameters.selector match {
-      case AllDocument => All
+      case AllDocument                          => All
       case DeploymentKeysSelectorDocument(keys) =>
         DeploymentKeysSelector(
           keys.map(key =>

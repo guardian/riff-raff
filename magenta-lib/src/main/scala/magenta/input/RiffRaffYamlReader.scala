@@ -48,7 +48,7 @@ object RiffRaffYamlReader {
     yamlToJson(yaml) match {
       case Success(json) =>
         Json.fromJson[RiffRaffDeployConfig](json) match {
-          case JsSuccess(config, _) => Valid(config)
+          case JsSuccess(config, _)    => Valid(config)
           case JsError(errors :: tail) =>
             val nelErrors = NEL(errors, tail)
             Invalid(

@@ -41,7 +41,7 @@ class ScheduleController(
   val quartzExpressionConstraint: Constraint[String] =
     Constraint("quartz.expression") { expression =>
       Try(CronExpression.validateExpression(expression)) match {
-        case Success(()) => Valid
+        case Success(())                 => Valid
         case Failure(pe: ParseException) =>
           Invalid(s"Invalid Quartz expression: ${pe.getMessage}")
         case Failure(_) => Invalid(s"Invalid Quartz expression")

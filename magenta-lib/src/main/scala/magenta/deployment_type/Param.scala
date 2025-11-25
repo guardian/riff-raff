@@ -81,7 +81,7 @@ case class Param[T](
       case (Some(userDefined), _, _)           => userDefined
       case (_, Some(default), _)               => default
       case (_, _, Some(Right(contextDefault))) => contextDefault
-      case (_, _, Some(Left(contextError))) =>
+      case (_, _, Some(Left(contextError)))    =>
         throw new NoSuchElementException(
           s"Error whilst generating default for parameter $name in package ${pkg.name} [${pkg.deploymentType.name}]: $contextError"
         )

@@ -201,7 +201,7 @@ object HttpMethod {
   def apply(stringRep: String): HttpMethod = stringRep match {
     case GET.serialised  => GET
     case POST.serialised => POST
-    case _ =>
+    case _               =>
       throw new IllegalArgumentException(
         s"Can't translate $stringRep to HTTP verb"
       )

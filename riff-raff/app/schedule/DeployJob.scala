@@ -125,7 +125,7 @@ object DeployJob extends Logging with LogAndSquashBehaviour {
       ).toOption.flatten
       result match {
         case Some(record) => Right(record)
-        case None =>
+        case None         =>
           Thread.sleep(1000)
           getLastDeploy(deployments, projectName, stage, attempts - 1)
       }

@@ -55,7 +55,7 @@ lazy val lib = project
     generateTypes := {
       val profileName = spaceDelimited("<arg>").parsed match {
         case profileName :: Nil => profileName
-        case other =>
+        case other              =>
           throw new IllegalArgumentException(
             s"Syntax: generateTypes <awsProfileName>\n(got: $other)"
           )

@@ -22,7 +22,7 @@ object StackPolicy {
       policy: StackPolicy,
       accountResourceTypes: () => Set[String]
   ): String = policy match {
-    case AllowAllPolicy => ALLOW_ALL_POLICY
+    case AllowAllPolicy          => ALLOW_ALL_POLICY
     case DenyReplaceDeletePolicy =>
       DENY_REPLACE_DELETE_POLICY(accountResourceTypes())
   }

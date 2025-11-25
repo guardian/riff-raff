@@ -155,7 +155,7 @@ object MessageDocument {
 
     override def reads(json: JsValue): JsResult[MessageDocument] =
       (json \ "_typeHint").as[String].replace("$", "") match {
-        case "persistence.DeployDocument" => JsSuccess(DeployDocument)
+        case "persistence.DeployDocument"   => JsSuccess(DeployDocument)
         case "persistence.TaskListDocument" =>
           JsSuccess(json.as[TaskListDocument])
         case "persistence.TaskRunDocument" =>
@@ -171,7 +171,7 @@ object MessageDocument {
         case "persistence.FinishContextDocument" =>
           JsSuccess(FinishContextDocument)
         case "persistence.FailContextDocument" => JsSuccess(FailContextDocument)
-        case "persistence.WarningDocument" =>
+        case "persistence.WarningDocument"     =>
           JsSuccess(json.as[WarningDocument])
         case hint =>
           throw new IllegalArgumentException(
@@ -193,7 +193,7 @@ object MessageDocument {
       case FinishContext(_)    => FinishContextDocument
       case FailContext(_)      => FailContextDocument
       case Warning(text)       => WarningDocument(text)
-      case StartContext(_) =>
+      case StartContext(_)     =>
         throw new IllegalArgumentException(
           "StartContext can not be turned into a MessageDocument"
         )
