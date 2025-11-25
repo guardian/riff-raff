@@ -47,9 +47,12 @@ lazy val lib = project
       Test / testOptions += Tests.Argument("-oF"),
       Test / fork := true,
       Test / javaOptions ++= Seq(
-        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-        "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
-        "--add-opens", "java.base/java.util=ALL-UNNAMED"
+        "--add-opens",
+        "java.base/java.lang=ALL-UNNAMED",
+        "--add-opens",
+        "java.base/java.lang.reflect=ALL-UNNAMED",
+        "--add-opens",
+        "java.base/java.util=ALL-UNNAMED"
       )
     )
   )
