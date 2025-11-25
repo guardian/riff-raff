@@ -3,7 +3,7 @@ First, and most importantly, thanks!
 
 ## Running locally
 1. Install the requirements 
-   - Java 11
+   - Java 17
    - SBT
    - Docker
 You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. If you

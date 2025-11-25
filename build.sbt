@@ -44,7 +44,13 @@ lazy val lib = project
   .settings(
     Seq(
       libraryDependencies ++= magentaLibDeps,
-      Test / testOptions += Tests.Argument("-oF")
+      Test / testOptions += Tests.Argument("-oF"),
+      Test / fork := true,
+      Test / javaOptions ++= Seq(
+        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+        "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
+        "--add-opens", "java.base/java.util=ALL-UNNAMED"
+      )
     )
   )
   .settings {
