@@ -5,8 +5,8 @@ object Dependencies {
 
   object Versions {
     val aws = "2.38.2"
-    val jackson = "2.18.4"
-    val enumeratumPlay = "1.9.0"
+    val jackson = "2.18.5"
+    val enumeratumPlay = "1.9.1"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -45,7 +45,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "2.0.2",
-      "joda-time" % "joda-time" % "2.13.0",
+      "joda-time" % "joda-time" % "2.13.1",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
