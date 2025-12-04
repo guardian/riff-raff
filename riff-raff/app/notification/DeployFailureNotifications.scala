@@ -185,7 +185,8 @@ class DeployFailureNotifications(
       "devx::aws-account-setup", // https://github.com/guardian/aws-account-setup
       "elasticsearch-node-rotation", // https://github.com/guardian/elasticsearch-node-rotation
       "guardian-dns-record-set-type", // https://github.com/guardian/cfn-private-resource-types
-      "tools::waf" // https://github.com/guardian/waf
+      "tools::waf", // https://github.com/guardian/waf
+      "devx::slo-alerts" // https://github.com/guardian/slo-alerts
     )
     platformProjects.contains(projectName)
 
