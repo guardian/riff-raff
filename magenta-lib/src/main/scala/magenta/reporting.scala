@@ -128,23 +128,6 @@ trait DeployReport {
       RunState.mostSignificant(acc, childState)
     }
   }
-
-  def getDescendant(path: List[Int]): Option[DeployReportTree] = {
-    patch match {
-      case Nil => None
-      case i :: is =>
-        if (isDefinedAt(children) i) {
-          val child: DeployReportTree = children(i)
-          if (is.empty) {
-            Some(child)
-          } else {
-            child.getDescendant(is)
-          }
-        } else {
-          None
-        }
-    }
-  }
 }
 
 object DeployReport {
