@@ -15,7 +15,7 @@
         }
 </script>
 
-@main(s"Deploy for ${record.buildName}", request, List("auto-refresh", "deploy-verbose", "stop-deploy", "notifications", "collapsing")) {
+@main(s"Deploy for ${record.buildName}", request, List("auto-refresh-deploy", "deploy-verbose", "stop-deploy", "notifications", "collapsing")) {
     <style>
     .visibility-verbose {
       display:@if(!verbose) {none} else {list-item};
