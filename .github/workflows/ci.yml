@@ -19,7 +19,7 @@ jobs:
       pull-requests: write #...to comment on PRs
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.1
 
       - uses: guardian/setup-scala@v1
 
