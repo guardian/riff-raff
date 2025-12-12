@@ -18,7 +18,7 @@ inThisBuild(
 
 val commonSettings = Seq(
   organization := "com.gu",
-  scalaVersion := "2.13.17",
+  scalaVersion := "2.13.18",
   scalacOptions ++= Seq(
     "-feature",
     "-language:postfixOps,reflectiveCalls,implicitConversions",
