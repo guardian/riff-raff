@@ -68,7 +68,7 @@ object Dependencies {
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "15.2.4",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
-      "org.scanamo" %% "scanamo" % "5.0.0",
+      "org.scanamo" %% "scanamo" % "6.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.3.2",
