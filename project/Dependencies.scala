@@ -5,8 +5,8 @@ object Dependencies {
 
   object Versions {
     val aws = "2.40.7"
-    val jackson = "2.18.5"
-    val enumeratumPlay = "1.9.1"
+    val jackson = "2.20.1"
+    val enumeratumPlay = "1.9.2"
   }
 
   // https://github.com/orgs/playframework/discussions/11222
@@ -89,7 +89,7 @@ object Dependencies {
       "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.5.22"
+      "ch.qos.logback" % "logback-classic" % "1.5.23"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
