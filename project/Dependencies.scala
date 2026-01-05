@@ -9,30 +9,20 @@ object Dependencies {
     val enumeratumPlay = "1.9.1"
   }
 
-  // https://github.com/orgs/playframework/discussions/11222
-  // We no longer have any vulnerabilities through Jackson but still need to define jackson dependencies.
-  // Jackson does not like having different versions of its packages installed.
-  private val jacksonOverrides = Seq(
-    "com.fasterxml.jackson.core" % "jackson-core",
-    "com.fasterxml.jackson.core" % "jackson-annotations",
-    "com.fasterxml.jackson.core" % "jackson-databind",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8",
-    "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310",
-    "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor",
-    "com.fasterxml.jackson.module" % "jackson-module-parameter-names",
-    "com.fasterxml.jackson.module" %% "jackson-module-scala"
-  ).map(_ % Versions.jackson)
-
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
     "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.13.0",
-    "org.mockito" %% "mockito-scala" % "2.0.0" % Test
+    "org.mockito" %% "mockito-scala" % "2.0.0" % Test,
+    // If we don't explicitly include this dependency at the correct version then we hit the following exception
+    // when running unit tests: com.fasterxml.jackson.databind.JsonMappingException.
+    // This seems to be because Play Framework is pulling in a different Jackson version.
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % Versions.jackson
   )
 
   val magentaLibDeps =
-    commonDeps ++ jacksonOverrides ++ Seq(
+    commonDeps ++ Seq(
       "com.squareup.okhttp3" % "okhttp" % "4.12.0",
       "software.amazon.awssdk" % "core" % Versions.aws,
       "software.amazon.awssdk" % "autoscaling" % Versions.aws,
@@ -60,7 +50,7 @@ object Dependencies {
     )
 
   val riffRaffDeps =
-    commonDeps ++ jacksonOverrides ++ Seq(
+    commonDeps ++ Seq(
       evolutions,
       jdbc,
       "com.gu.play-googleauth" %% "play-v30" % "29.0.0",
