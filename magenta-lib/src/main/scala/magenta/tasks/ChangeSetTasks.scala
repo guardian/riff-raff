@@ -304,7 +304,7 @@ class CheckChangeSetCreatedTask(
       resources: DeploymentResources,
       stopFlag: => Boolean
   ): Unit = {
-    check(resources.reporter, stopFlag) {
+    checkAwsResourceStatus(resources.reporter, stopFlag) {
       CloudFormation.withCfnClient(keyRing, region, resources) { cfnClient =>
         val (stackName, changeSetType, _, _) =
           stackLookup.lookup(resources.reporter, cfnClient)
