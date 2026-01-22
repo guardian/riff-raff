@@ -179,25 +179,15 @@ case class WaitForStabilization(
       stopFlag: => Boolean
   )(implicit asgClient: AutoScalingClient): Unit = {
     ELB.withClient(keyRing, region, resources) { elbClient =>
-      check(resources.reporter, stopFlag) {
-        try {
-          ASG.isStabilized(ASG.refresh(asg), elbClient) match {
-            case Left(reason) =>
-              resources.reporter.verbose(reason)
-              false
-            case Right(()) => true
-          }
-        } catch {
-          case e: AwsServiceException if isRateExceeded(e) =>
-            resources.reporter.info(e.getMessage)
+      checkAwsResourceStatus(resources.reporter, stopFlag) {
+        ASG.isStabilized(ASG.refresh(asg), elbClient) match {
+          case Left(reason) =>
+            resources.reporter.verbose(reason)
             false
+          case Right(()) => true
         }
       }
     }
-
-    // found this out by good old trial and error
-    def isRateExceeded(e: AwsServiceException) =
-      e.statusCode == 400 && e.isThrottlingException
   }
 
   lazy val description: String =
@@ -301,7 +291,7 @@ case class WaitForCullToComplete(
       stopFlag: => Boolean
   )(implicit asgClient: AutoScalingClient): Unit =
     withEc2Client(keyRing, region, resources) { implicit ec2Client =>
-      check(resources.reporter, stopFlag) {
+      checkAwsResourceStatus(resources.reporter, stopFlag) {
         CullSummary
           .forAsg(ASG.refresh(asg), resources.reporter)
           .isCullComplete

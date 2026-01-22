@@ -10,6 +10,7 @@ import magenta.deployment_type.{
   LambdaLayerName
 }
 import okhttp3.{FormBody, HttpUrl, OkHttpClient, Request}
+import software.amazon.awssdk.awscore.exception.AwsServiceException
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration
 import software.amazon.awssdk.core.internal.util.Mimetype
 import software.amazon.awssdk.core.sync.{
@@ -270,17 +271,22 @@ case class PutReq(
 trait PollingCheck {
   def duration: Duration
 
-  def check(reporter: DeployReporter, stopFlag: => Boolean)(
+  // According to trial and error from 2014(!)
+  def isRateExceeded(e: AwsServiceException) =
+    e.statusCode == 400 && e.isThrottlingException
+
+  def checkAwsResourceStatus(reporter: DeployReporter, stopFlag: => Boolean)(
       theCheck: => Boolean
   ): Unit = {
     val expiry = Instant.now().plus(duration)
 
     def checkAttempt(currentAttempt: Int): Unit = {
       val checkResult =
-        Try(theCheck).recover { case NonFatal(e) =>
-          reporter.info(e.getMessage)
-          false
-        }.get // '.get' allows a fatal exception, like an OutOfMemoryError, to kill the process, which is what we want!
+        Try(theCheck).recover {
+          case e: AwsServiceException if isRateExceeded(e) =>
+            reporter.info(e.getMessage)
+            false
+        }.get // Calling '.get' here allows other exceptions to force the deployment to fail, which is what we want!
 
       if (!checkResult) {
         if (stopFlag)
