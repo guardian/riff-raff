@@ -53,7 +53,7 @@ object Dependencies {
     commonDeps ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "32.0.1",
+      "com.gu.play-googleauth" %% "play-v30" % "32.0.2",
       "com.gu.play-secret-rotation" %% "play-v30" % "16.0.2",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "16.0.2",
       "org.pegdown" % "pegdown" % "1.6.0",
