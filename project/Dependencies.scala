@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.41.21"
     val jackson = "2.21.0"
-    val enumeratumPlay = "1.9.2"
+    val enumeratumPlay = "1.9.4"
   }
 
   val commonDeps = Seq(
