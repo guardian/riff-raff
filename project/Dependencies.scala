@@ -65,7 +65,7 @@ object Dependencies {
       "com.gu" %% "anghammarad-client" % "6.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1",
-      "org.webjars" % "jquery-ui" % "1.14.1",
+      "org.webjars" % "jquery-ui" % "1.14.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
       "org.webjars" % "momentjs" % "2.30.1-1",
