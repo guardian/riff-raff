@@ -13,7 +13,7 @@ deployments:
     app: riff-raff
     parameters:
       amiTags:
-        Recipe: arm64-focal-java11-deploy-infrastructure
+        Recipe: arm64-noble-java21-deploy-infrastructure
         AmigoStage: PROD
         BuiltBy: amigo
       amiEncrypted: true
