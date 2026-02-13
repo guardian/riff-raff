@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.41.21"
     val jackson = "2.21.0"
-    val enumeratumPlay = "1.9.2"
+    val enumeratumPlay = "1.9.4"
   }
 
   val commonDeps = Seq(
@@ -65,7 +65,7 @@ object Dependencies {
       "com.gu" %% "anghammarad-client" % "6.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1",
-      "org.webjars" % "jquery-ui" % "1.14.1",
+      "org.webjars" % "jquery-ui" % "1.14.2",
       "org.webjars" % "bootstrap" % "3.4.1", // scala-steward:off
       "org.webjars" % "jasny-bootstrap" % "3.1.3-2", // scala-steward:off
       "org.webjars" % "momentjs" % "2.30.1-1",
@@ -79,7 +79,7 @@ object Dependencies {
       "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.5.26"
+      "ch.qos.logback" % "logback-classic" % "1.5.29"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
