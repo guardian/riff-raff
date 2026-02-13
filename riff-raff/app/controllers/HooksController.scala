@@ -69,7 +69,9 @@ class HooksController(
       "URL is invalid",
       form =>
         try { URI.create(form.url).toURL; true }
-        catch { case _: MalformedURLException | _: IllegalArgumentException => false }
+        catch {
+          case _: MalformedURLException | _: IllegalArgumentException => false
+        }
     )
   )
 
