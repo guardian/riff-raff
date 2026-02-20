@@ -1,6 +1,6 @@
 package notification
 
-import java.net.URL
+import java.net.{URI, URL}
 import java.util.UUID
 
 import org.apache.pekko.actor.{Actor, ActorSystem, Props}
@@ -47,7 +47,7 @@ case class HookConfig(
   }
 
   def authFor(url: String): Option[Auth] =
-    Option(new URL(url).getUserInfo).flatMap { ui =>
+    Option(URI.create(url).toURL.getUserInfo).flatMap { ui =>
       ui.split(':') match {
         case Array(username, password) => Some(Auth(username, password))
         case _                         => None

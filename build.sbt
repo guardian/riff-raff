@@ -114,8 +114,8 @@ lazy val riffraff = project
       libraryDependencies ++= riffRaffDeps,
       Universal / javaOptions ++= Seq(
         s"-Dpidfile.path=/dev/null",
-        "-J-XX:MaxRAMFraction=2",
-        "-J-XX:InitialRAMFraction=2",
+        "-J-XX:MaxRAMPercentage=50",
+        "-J-XX:InitialRAMPercentage=50",
         "-J-XX:MaxMetaspaceSize=300m",
         "-J-Xlog:gc*",
         s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log"
