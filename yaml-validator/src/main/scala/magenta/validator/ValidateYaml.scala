@@ -1,12 +1,13 @@
 package magenta.validator
 
+import scala.io.Source
+import scala.util.{Failure, Success, Try}
+
 import cats.data.Validated.{Invalid, Valid}
+
 import magenta.deployment_type._
 import magenta.input.All
 import magenta.input.resolver.Resolver
-
-import scala.io.Source
-import scala.util.{Failure, Success, Try}
 
 /** A standalone command-line tool to validate riff-raff.yaml configuration
   * files.
@@ -27,11 +28,14 @@ object ValidateYaml {
     * tags. This doesn't affect structural validation of the YAML.
     */
   private object NoopBuildTags extends BuildTags {
-    def get(projectName: String, buildId: String): Map[String, String] =
+    override def get(
+        projectName: String,
+        buildId: String
+    ): Map[String, String] =
       Map.empty
   }
 
-  val deploymentTypes: Seq[DeploymentType] = Seq(
+  private val deploymentTypes: Seq[DeploymentType] = Seq(
     S3,
     AutoScaling,
     Fastly,
