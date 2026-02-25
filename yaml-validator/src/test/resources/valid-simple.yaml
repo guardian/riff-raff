@@ -1,0 +1,8 @@
+regions: [eu-west-1]
+stacks: [deploy]
+allowedStages: [CODE, PROD]
+deployments:
+  my-app:
+    type: autoscaling
+    parameters:
+      bucket: my-bucket

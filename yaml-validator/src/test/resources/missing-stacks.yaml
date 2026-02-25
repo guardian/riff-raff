@@ -1,0 +1,3 @@
+deployments:
+  my-app:
+    type: autoscaling

@@ -22,9 +22,9 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.utils.IoUtils
-import scala.collection.JavaConverters._
 
 import java.util.concurrent.Executors
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global

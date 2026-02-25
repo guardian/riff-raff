@@ -1,0 +1,7 @@
+regions: [eu-west-1]
+stacks: [deploy]
+deployments:
+  my-app:
+    type: autoscaling
+    dependencies:
+      - missing-dependency

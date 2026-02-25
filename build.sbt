@@ -33,7 +33,7 @@ val commonSettings = Seq(
 
 lazy val root = project
   .in(file("."))
-  .aggregate(lib, riffraff)
+  .aggregate(lib, riffraff, yamlValidator)
   .settings(
     name := "riff-raff"
   )
@@ -78,6 +78,16 @@ lazy val lib = project
     }
 
   }
+
+lazy val yamlValidator = project
+  .in(file("yaml-validator"))
+  .dependsOn(lib % "compile->compile;test->test")
+  .settings(commonSettings)
+  .settings(
+    name := "yaml-validator",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    Compile / run / mainClass := Some("magenta.validator.ValidateYaml")
+  )
 
 def env(propName: String): String =
   sys.env.get(propName).filter(_.trim.nonEmpty).getOrElse("DEV")

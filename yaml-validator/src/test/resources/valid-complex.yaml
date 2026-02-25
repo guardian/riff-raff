@@ -1,0 +1,22 @@
+regions: [eu-west-1]
+stacks: [deploy]
+deployments:
+  upload-assets:
+    type: aws-s3
+    parameters:
+      publicReadAcl: false
+      bucket: my-assets-bucket
+      cacheControl: public, max-age=315360000
+  update-cloudformation:
+    type: cloud-formation
+    dependencies:
+      - upload-assets
+  deploy-lambda:
+    type: aws-lambda
+    parameters:
+      bucket: lambda-deploy-bucket
+      functionNames:
+        - my-lambda-CODE-
+        - my-lambda-PROD-
+    dependencies:
+      - update-cloudformation
