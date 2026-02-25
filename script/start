@@ -12,8 +12,8 @@ done
 docker compose up -d
 
 if [ "$IS_DEBUG" == true ] ; then
-  ./sbt-debug "project riffraff" "run"
+  sbt -jvm-debug 9999 "project riffraff" "run"
 else
-  ./sbt "project riffraff" "run"
+  sbt "project riffraff" "run"
 fi
 

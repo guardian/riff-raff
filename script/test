@@ -12,7 +12,7 @@ done
 docker compose up -d
 
 if [ "$IS_DEBUG" == true ] ; then
-  ./sbt-debug test
+  sbt -jvm-debug 9999 test
 else
-  ./sbt test
+  sbt test
 fi

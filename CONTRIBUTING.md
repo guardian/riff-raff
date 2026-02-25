@@ -2,7 +2,7 @@
 First, and most importantly, thanks!
 
 ## Running locally
-1. Install the requirements 
+1. Install the requirements
    - Java 11
    - SBT
    - Docker
