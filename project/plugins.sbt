@@ -13,6 +13,8 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.14.5")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.6")
 
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.3.1")
+
 ThisBuild / libraryDependencySchemes ++= Seq(
   "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 )

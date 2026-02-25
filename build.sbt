@@ -85,8 +85,27 @@ lazy val yamlValidator = project
   .settings(commonSettings)
   .settings(
     name := "yaml-validator",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-    Compile / run / mainClass := Some("magenta.validator.ValidateYaml")
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+      "org.slf4j" % "slf4j-nop" % "2.0.16"
+    ),
+    Compile / run / mainClass := Some("magenta.validator.ValidateYaml"),
+    assembly / mainClass := Some("magenta.validator.ValidateYaml"),
+    assembly / assemblyJarName := "validate-yaml.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "MANIFEST.MF") =>
+        MergeStrategy.discard
+      case PathList("META-INF", "services", _*) =>
+        MergeStrategy.concat
+      case PathList("META-INF", _*) =>
+        MergeStrategy.discard
+      case "module-info.class" =>
+        MergeStrategy.discard
+      case x if x.endsWith(".class") =>
+        MergeStrategy.first
+      case _ =>
+        MergeStrategy.first
+    }
   )
 
 def env(propName: String): String =
