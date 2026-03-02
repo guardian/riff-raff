@@ -1,6 +1,6 @@
 package controllers
 
-import java.net.{MalformedURLException, URL}
+import java.net.{MalformedURLException, URI, URL}
 import java.util.UUID
 import conf.Config
 import com.gu.googleauth.AuthAction
@@ -68,8 +68,10 @@ class HooksController(
     )(HookForm.apply)(HookForm.unapply).verifying(
       "URL is invalid",
       form =>
-        try { new URL(form.url); true }
-        catch { case e: MalformedURLException => false }
+        try { URI.create(form.url).toURL; true }
+        catch {
+          case _: MalformedURLException | _: IllegalArgumentException => false
+        }
     )
   )
 
