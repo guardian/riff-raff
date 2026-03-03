@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.41.21"
+    val aws = "2.41.29"
     val jackson = "2.21.0"
     val enumeratumPlay = "1.9.5"
   }
