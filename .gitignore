@@ -10,6 +10,7 @@ readme.html
 .settings
 .cache
 .bsp/
+.DS_Store
 
 .bloop
 .metals

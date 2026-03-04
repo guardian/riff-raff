@@ -1,0 +1,63 @@
+name: Publish JSON Schema
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "magenta-lib/src/main/scala/magenta/**"
+      - "build.sbt"
+      - "project/**"
+  workflow_dispatch:
+
+jobs:
+  publish-schema:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Required to create/update releases
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: guardian/setup-scala@v1
+
+      - name: Generate JSON Schema
+        run: sbt lib/generateSchema
+
+      - name: Publish schema as GitHub Release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create or update the 'schema-latest' release with the generated schema.
+          # The stable download URL will be:
+          # https://github.com/guardian/riff-raff/releases/download/schema-latest/riff-raff-yaml-schema.json
+
+          TAG="schema-latest"
+          ASSET="contrib/riff-raff-yaml-schema.json"
+
+          # Delete existing release if it exists (so we can recreate it with updated notes)
+          gh release delete "$TAG" --yes 2>/dev/null || true
+
+          # Delete the tag so we can recreate it pointing to the latest commit
+          git push origin :"refs/tags/$TAG" 2>/dev/null || true
+
+          # Create a new release with the schema attached
+          gh release create "$TAG" "$ASSET" \
+            --title "riff-raff.yaml JSON Schema (latest)" \
+            --notes "Auto-generated JSON Schema for validating \`riff-raff.yaml\` files.
+
+          This release is automatically updated on every push to \`main\` that changes deployment type definitions.
+
+          **Stable download URL:**
+          \`\`\`
+          https://github.com/guardian/riff-raff/releases/download/schema-latest/riff-raff-yaml-schema.json
+          \`\`\`
+
+          **Usage with check-jsonschema:**
+          \`\`\`bash
+          pipx run check-jsonschema \\\\
+            --schemafile https://github.com/guardian/riff-raff/releases/download/schema-latest/riff-raff-yaml-schema.json \\\\
+            riff-raff.yaml
+          \`\`\`" \
+            --latest=false

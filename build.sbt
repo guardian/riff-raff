@@ -78,6 +78,21 @@ lazy val lib = project
     }
 
   }
+  .settings {
+
+    lazy val generateSchema =
+      taskKey[Unit](
+        "Generate JSON Schema for riff-raff.yaml from deployment type definitions"
+      )
+
+    // The schema generator resolves the output path itself (contrib/riff-raff-yaml-schema.json
+    // relative to the working directory), so no arguments are needed.
+    generateSchema :=
+      (Compile / runMain)
+        .toTask(" magenta.schema.GenerateJsonSchemaMain")
+        .value
+
+  }
 
 def env(propName: String): String =
   sys.env.get(propName).filter(_.trim.nonEmpty).getOrElse("DEV")

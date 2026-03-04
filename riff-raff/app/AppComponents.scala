@@ -116,17 +116,8 @@ class AppComponents(
     }
   }
 
-  val availableDeploymentTypes = Seq(
-    S3,
-    AutoScaling,
-    Fastly,
-    FastlyCompute,
-    new CloudFormation(DefaultBuildTags),
-    Lambda,
-    LambdaLayer,
-    AmiCloudFormationParameter,
-    SelfDeploy
-  )
+  val availableDeploymentTypes =
+    AllTypes.allDeploymentTypes(DefaultBuildTags)
 
   val ioExecutionContext: ExecutionContext =
     actorSystem.dispatchers.lookup("io-context")
