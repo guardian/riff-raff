@@ -15,7 +15,7 @@ object AllTypes {
     * tests).
     */
   object NoopBuildTags extends BuildTags {
-    def get(projectName: String, buildId: String): Map[String, String] =
+    override def get(projectName: String, buildId: String): Map[String, String] =
       Map.empty
   }
 
