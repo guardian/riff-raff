@@ -11,7 +11,8 @@ package magenta.deployment_type
 object AllTypes {
 
   /** A BuildTags implementation that returns no tags. Suitable for contexts
-    * where no runtime build information is available (schema generation, tests).
+    * where no runtime build information is available (schema generation,
+    * tests).
     */
   object NoopBuildTags extends BuildTags {
     def get(projectName: String, buildId: String): Map[String, String] =

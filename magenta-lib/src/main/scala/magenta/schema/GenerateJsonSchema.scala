@@ -35,11 +35,9 @@ object GenerateJsonSchema {
           "parameters" -> Json.obj(
             "properties" -> JsObject(
               allParamNames.map { name =>
-                name -> Json
-                  .obj(
-                    "description" -> paramDescription(name, deploymentTypes)
-                  )
-                  .asInstanceOf[JsValue]
+                name -> Json.obj(
+                  "description" -> paramDescription(name, deploymentTypes)
+                )
               }
             ),
             "additionalProperties" -> false
@@ -113,13 +111,13 @@ object GenerateJsonSchema {
       (fieldName, isOptional, enriched)
     }
 
-    val requiredFields = properties.collect {
-      case (name, false, _) => name
+    val requiredFields = properties.collect { case (name, false, _) =>
+      name
     }
 
     val propertiesObj = JsObject(
       properties.map { case (name, _, schema) =>
-        name -> schema.asInstanceOf[JsValue]
+        name -> (schema: JsValue)
       }
     )
 
@@ -147,9 +145,11 @@ object GenerateJsonSchema {
       val inner = tpe.typeArgs.head
       val (schema, _) = scalaTypeToJsonSchema(inner)
       (schema, true)
-    } else if (tpe <:< typeOf[List[(String, Any)]] || tpe <:< typeOf[
+    } else if (
+      tpe <:< typeOf[List[(String, Any)]] || tpe <:< typeOf[
         Map[String, Any]
-      ]) {
+      ]
+    ) {
       // Map[String, X] or List[(String, X)] — rendered as a YAML/JSON object
       (Json.obj("type" -> "object"), false)
     } else if (tpe <:< typeOf[List[Any]] || tpe <:< typeOf[Seq[Any]]) {
@@ -207,4 +207,3 @@ object GenerateJsonSchema {
     s"Used by: ${usedBy.mkString(", ")}"
   }
 }
-

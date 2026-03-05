@@ -4,7 +4,7 @@ import magenta.deployment_type.AllTypes
 import magenta.input.{DeploymentOrTemplate, RiffRaffDeployConfig}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 
 import scala.io.Source
 import scala.reflect.runtime.universe._
@@ -30,7 +30,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
 
   it should "produce valid JSON" in {
     // If Json.parse didn't throw, the output is valid JSON
-    parsed shouldBe a[play.api.libs.json.JsObject]
+    parsed shouldBe a[JsObject]
   }
 
   it should "be deterministic (same input produces same output)" in {
@@ -52,14 +52,14 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
       deploymentTypes.flatMap(_.params.map(_.name)).distinct.sorted
     val parametersSchema =
       (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties" \ "parameters" \ "properties")
-        .as[play.api.libs.json.JsObject]
+        .as[JsObject]
     parametersSchema.keys.toList.sorted shouldBe allParamNames
   }
 
   it should "have a property for every field in RiffRaffDeployConfig" in {
     val expectedFields = caseClassFieldNames[RiffRaffDeployConfig]
     val actualFields =
-      (parsed \ "properties").as[play.api.libs.json.JsObject].keys
+      (parsed \ "properties").as[JsObject].keys
     actualFields shouldBe expectedFields
   }
 
@@ -67,7 +67,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
     val expectedFields = caseClassFieldNames[DeploymentOrTemplate]
     val deploymentSchema =
       (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties")
-        .as[play.api.libs.json.JsObject]
+        .as[JsObject]
     deploymentSchema.keys shouldBe expectedFields
   }
 
@@ -97,7 +97,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
   it should "include the oneOf type/template constraint" in {
     val oneOf =
       (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "oneOf")
-        .as[List[play.api.libs.json.JsObject]]
+        .as[List[JsObject]]
     oneOf should have size 2
   }
 

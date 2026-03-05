@@ -2,29 +2,38 @@ package magenta.schema
 
 import magenta.deployment_type.AllTypes
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
+import scala.util.Try
 
 /** Entry point for the sbt generateSchema task. Writes the JSON Schema to the
   * path given as the first argument.
   */
 object GenerateJsonSchemaMain {
-  def main(args: Array[String]): Unit = {
-    val targetPath = args match {
-      case Array(path) => Paths.get(path)
-      case Array() =>
-        Paths.get("contrib", "riff-raff-yaml-schema.json")
-      case _ =>
-        throw new IllegalArgumentException(
-          "Usage: GenerateJsonSchemaMain [output-path]"
-        )
+
+  private def parseArgs(args: Array[String]): Either[String, Path] =
+    args match {
+      case Array(path) => Right(Paths.get(path))
+      case Array() => Right(Paths.get("contrib", "riff-raff-yaml-schema.json"))
+      case _       => Left("Usage: GenerateJsonSchemaMain [output-path]")
     }
 
-    val schema =
-      GenerateJsonSchema.generate(AllTypes.allDeploymentTypesForSchema)
+  private def writeFile(path: Path, content: String): Either[String, Unit] =
+    Try(Files.write(path, content.getBytes("UTF-8"))).toEither.left
+      .map(_.getMessage)
+      .map(_ => ())
 
-    Files.write(targetPath, schema.getBytes("UTF-8"))
-    println(
-      s"Wrote ${schema.length} characters to ${targetPath.toAbsolutePath}"
-    )
+  def main(args: Array[String]): Unit = {
+    val result = for {
+      targetPath <- parseArgs(args)
+      schema = GenerateJsonSchema.generate(AllTypes.allDeploymentTypesForSchema)
+      _ <- writeFile(targetPath, schema)
+    } yield s"Wrote ${schema.length} characters to ${targetPath.toAbsolutePath}"
+
+    result match {
+      case Right(message) => println(message)
+      case Left(error)    =>
+        System.err.println(s"Error: $error")
+        sys.exit(1)
+    }
   }
 }
