@@ -1,7 +1,5 @@
 package magenta.schema
 
-import magenta.deployment_type.AllTypes
-
 import java.nio.file.{Files, Path, Paths}
 import scala.util.Try
 
@@ -25,7 +23,7 @@ object GenerateJsonSchemaMain {
   def main(args: Array[String]): Unit = {
     val result = for {
       targetPath <- parseArgs(args)
-      schema = GenerateJsonSchema.generate(AllTypes.allDeploymentTypesForSchema)
+      schema = GenerateJsonSchema.generate(GenerateJsonSchema.deploymentTypes)
       _ <- writeFile(targetPath, schema)
     } yield s"Wrote ${schema.length} characters to ${targetPath.toAbsolutePath}"
 

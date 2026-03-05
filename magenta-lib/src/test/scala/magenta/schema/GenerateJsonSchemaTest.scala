@@ -1,6 +1,5 @@
 package magenta.schema
 
-import magenta.deployment_type.AllTypes
 import magenta.input.{DeploymentOrTemplate, RiffRaffDeployConfig}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,9 +10,11 @@ import scala.reflect.runtime.universe._
 
 class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
 
-  val deploymentTypes = AllTypes.allDeploymentTypesForSchema
+  val deploymentTypes = GenerateJsonSchema.deploymentTypes
   val schema = GenerateJsonSchema.generate(deploymentTypes)
   val parsed = Json.parse(schema)
+  val deploymentOrTemplateSchema =
+    parsed \ "properties" \ "deployments" \ "additionalProperties"
 
   "GenerateJsonSchema" should "match the expected schema snapshot" in {
     val expected = Source
@@ -29,7 +30,6 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
   }
 
   it should "produce valid JSON" in {
-    // If Json.parse didn't throw, the output is valid JSON
     parsed shouldBe a[JsObject]
   }
 
@@ -40,9 +40,8 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
 
   it should "include all deployment type names in the enum" in {
     val typeNames = deploymentTypes.map(_.name).sorted
-    // The enum appears inside templates and deployments additionalProperties
     val deploymentsSchema =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties" \ "type" \ "enum")
+      (deploymentOrTemplateSchema \ "properties" \ "type" \ "enum")
         .as[List[String]]
     deploymentsSchema shouldBe typeNames
   }
@@ -51,7 +50,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
     val allParamNames =
       deploymentTypes.flatMap(_.params.map(_.name)).distinct.sorted
     val parametersSchema =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties" \ "parameters" \ "properties")
+      (deploymentOrTemplateSchema \ "properties" \ "parameters" \ "properties")
         .as[JsObject]
     parametersSchema.keys.toList.sorted shouldBe allParamNames
   }
@@ -66,7 +65,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
   it should "have a property for every field in DeploymentOrTemplate" in {
     val expectedFields = caseClassFieldNames[DeploymentOrTemplate]
     val deploymentSchema =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties")
+      (deploymentOrTemplateSchema \ "properties")
         .as[JsObject]
     deploymentSchema.keys shouldBe expectedFields
   }
@@ -81,23 +80,18 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
   }
 
   it should "set additionalProperties to false for deployment-or-template" in {
-    val additionalProps =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "additionalProperties")
-        .as[Boolean]
-    additionalProps shouldBe false
+    (deploymentOrTemplateSchema \ "additionalProperties")
+      .as[Boolean] shouldBe false
   }
 
   it should "set additionalProperties to false for parameters" in {
-    val additionalProps =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "properties" \ "parameters" \ "additionalProperties")
-        .as[Boolean]
-    additionalProps shouldBe false
+    (deploymentOrTemplateSchema \ "properties" \ "parameters" \ "additionalProperties")
+      .as[Boolean] shouldBe false
   }
 
   it should "include the oneOf type/template constraint" in {
     val oneOf =
-      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "oneOf")
-        .as[List[JsObject]]
+      (deploymentOrTemplateSchema \ "oneOf").as[List[JsObject]]
     oneOf should have size 2
   }
 

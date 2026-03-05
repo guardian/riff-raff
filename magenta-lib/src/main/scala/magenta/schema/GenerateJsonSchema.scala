@@ -1,6 +1,6 @@
 package magenta.schema
 
-import magenta.deployment_type.DeploymentType
+import magenta.deployment_type.{AllTypes, BuildTags, DeploymentType}
 import magenta.input.{DeploymentOrTemplate, RiffRaffDeployConfig}
 import play.api.libs.json._
 
@@ -20,6 +20,14 @@ import scala.reflect.runtime.universe._
   * the schema — no manual changes needed here.
   */
 object GenerateJsonSchema {
+
+  private object NoopBuildTags extends BuildTags {
+    override def get(projectName: String, buildId: String): Map[String, String] =
+      Map.empty
+  }
+
+  val deploymentTypes: Seq[DeploymentType] =
+    AllTypes.allDeploymentTypes(NoopBuildTags)
 
   def generate(deploymentTypes: Seq[DeploymentType]): String = {
     val typeNames = deploymentTypes.map(_.name).sorted
