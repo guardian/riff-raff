@@ -14,7 +14,7 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
   val schema = GenerateJsonSchema.generate(deploymentTypes)
   val parsed = Json.parse(schema)
   val deploymentOrTemplateSchema =
-    parsed \ "properties" \ "deployments" \ "additionalProperties"
+    parsed \ "definitions" \ "deployment-or-template"
 
   "GenerateJsonSchema" should "match the expected schema snapshot" in {
     val expected = Source
@@ -84,6 +84,24 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
       .as[Boolean] shouldBe false
   }
 
+  it should "use $ref for templates and deployments" in {
+    val templatesRef =
+      (parsed \ "properties" \ "templates" \ "additionalProperties" \ "$ref")
+        .as[String]
+    val deploymentsRef =
+      (parsed \ "properties" \ "deployments" \ "additionalProperties" \ "$ref")
+        .as[String]
+    templatesRef shouldBe "#/definitions/deployment-or-template"
+    deploymentsRef shouldBe "#/definitions/deployment-or-template"
+  }
+
+  it should "include descriptions on deployment-or-template fields" in {
+    val typeDesc =
+      (deploymentOrTemplateSchema \ "properties" \ "type" \ "description")
+        .as[String]
+    typeDesc should not be empty
+  }
+
   it should "set additionalProperties to false for parameters" in {
     (deploymentOrTemplateSchema \ "properties" \ "parameters" \ "additionalProperties")
       .as[Boolean] shouldBe false
@@ -93,6 +111,28 @@ class GenerateJsonSchemaTest extends AnyFlatSpec with Matchers {
     val oneOf =
       (deploymentOrTemplateSchema \ "oneOf").as[List[JsObject]]
     oneOf should have size 2
+  }
+
+  it should "use an enum for region items" in {
+    val regionEnum =
+      (deploymentOrTemplateSchema \ "properties" \ "regions" \ "items" \ "enum")
+        .as[List[String]]
+    regionEnum should contain("eu-west-1")
+    regionEnum should contain("us-east-1")
+  }
+
+  it should "reject reserved keywords as deployment names" in {
+    val reservedNames =
+      (parsed \ "properties" \ "deployments" \ "propertyNames" \ "not" \ "enum")
+        .as[List[String]]
+    reservedNames should contain allOf ("type", "template", "stacks", "regions", "dependencies", "parameters")
+  }
+
+  it should "reject reserved keywords as template names" in {
+    val reservedNames =
+      (parsed \ "properties" \ "templates" \ "propertyNames" \ "not" \ "enum")
+        .as[List[String]]
+    reservedNames should contain allOf ("type", "template", "stacks", "regions", "dependencies", "parameters")
   }
 
   private def caseClassFieldNames[T: TypeTag]: Set[String] = {

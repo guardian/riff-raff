@@ -29,6 +29,48 @@ object GenerateJsonSchema {
   val deploymentTypes: Seq[DeploymentType] =
     AllTypes.allDeploymentTypes(NoopBuildTags)
 
+  private val definitionName = "deployment-or-template"
+  private val definitionRef =
+    Json.obj("$ref" -> s"#/definitions/$definitionName")
+
+  // No whitespace allowed in stack names
+  private val stackItemPattern = Json.obj("pattern" -> "^\\S+$")
+
+  // Known AWS regions — an enum gives better autocomplete and validation than a regex
+  private val awsRegions: Seq[String] = Seq(
+    "af-south-1",
+    "ap-east-1",
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-northeast-3",
+    "ap-south-1",
+    "ap-south-2",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ap-southeast-3",
+    "ap-southeast-4",
+    "ca-central-1",
+    "ca-west-1",
+    "eu-central-1",
+    "eu-central-2",
+    "eu-north-1",
+    "eu-south-1",
+    "eu-south-2",
+    "eu-west-1",
+    "eu-west-2",
+    "eu-west-3",
+    "il-central-1",
+    "me-central-1",
+    "me-south-1",
+    "sa-east-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2"
+  )
+  private val regionItemEnum =
+    Json.obj("enum" -> JsArray(awsRegions.map(JsString)))
+
   def generate(deploymentTypes: Seq[DeploymentType]): String = {
     val typeNames = deploymentTypes.map(_.name).sorted
     val allParamNames =
@@ -38,9 +80,37 @@ object GenerateJsonSchema {
       caseClassSchema[DeploymentOrTemplate](
         enrichments = Map(
           "type" -> Json.obj(
+            "description" -> "The type of deployment to perform",
             "enum" -> JsArray(typeNames.map(JsString))
           ),
+          "template" -> Json.obj(
+            "description" -> "The name of a template to inherit properties from"
+          ),
+          "stacks" -> Json.obj(
+            "description" -> "Stack tags for this deployment; it will be executed once per stack",
+            "items" -> stackItemPattern
+          ),
+          "regions" -> Json.obj(
+            "description" -> "Regions in which this deploy will be executed (defaults to eu-west-1)",
+            "items" -> regionItemEnum
+          ),
+          "allowedStages" -> Json.obj(
+            "description" -> "Supported stages for this deployment; attempts to deploy to an unlisted stage will fail"
+          ),
+          "actions" -> Json.obj(
+            "description" -> "Override the list of actions to execute for this deployment type"
+          ),
+          "app" -> Json.obj(
+            "description" -> "Override the app tag (defaults to the deployment name)"
+          ),
+          "contentDirectory" -> Json.obj(
+            "description" -> "Override the content directory for build output (defaults to the deployment name)"
+          ),
+          "dependencies" -> Json.obj(
+            "description" -> "Deployments that must complete before this one starts"
+          ),
           "parameters" -> Json.obj(
+            "description" -> "Parameters for the deployment type",
             "properties" -> JsObject(
               allParamNames.map { name =>
                 name -> Json.obj(
@@ -66,13 +136,28 @@ object GenerateJsonSchema {
         )
       )
 
+    // Deployment/template names that would clash with DeploymentOrTemplate
+    // field names should be rejected to catch indentation mistakes
+    val reservedNames = caseClassFieldNames[DeploymentOrTemplate]
+    val propertyNamesConstraint = Json.obj(
+      "propertyNames" -> Json.obj(
+        "not" -> Json.obj(
+          "enum" -> JsArray(reservedNames.map(JsString))
+        )
+      )
+    )
+
     val topLevelSchema = caseClassSchema[RiffRaffDeployConfig](
       enrichments = Map(
-        "templates" -> Json.obj(
-          "additionalProperties" -> deploymentOrTemplateSchema
+        "stacks" -> Json.obj("items" -> stackItemPattern),
+        "regions" -> Json.obj("items" -> regionItemEnum),
+        "templates" -> deepMerge(
+          Json.obj("additionalProperties" -> definitionRef),
+          propertyNamesConstraint
         ),
-        "deployments" -> Json.obj(
-          "additionalProperties" -> deploymentOrTemplateSchema
+        "deployments" -> deepMerge(
+          Json.obj("additionalProperties" -> definitionRef),
+          propertyNamesConstraint
         )
       )
     )
@@ -81,7 +166,10 @@ object GenerateJsonSchema {
       "$schema" -> "http://json-schema.org/draft-07/schema#",
       "$id" -> "https://github.com/guardian/riff-raff/releases/download/schema-latest/riff-raff-yaml-schema.json",
       "title" -> "Riff-Raff deployment configuration",
-      "description" -> "Schema for riff-raff.yaml deployment configuration files. Auto-generated from deployment type definitions."
+      "description" -> "Schema for riff-raff.yaml deployment configuration files. Auto-generated from deployment type definitions.",
+      "definitions" -> Json.obj(
+        definitionName -> deploymentOrTemplateSchema
+      )
     ) ++ topLevelSchema
 
     Json.prettyPrint(schema) + "\n"
@@ -213,5 +301,12 @@ object GenerateJsonSchema {
       .map(_.name)
       .sorted
     s"Used by: ${usedBy.mkString(", ")}"
+  }
+
+  /** Extract the field names of a case class via reflection. */
+  private def caseClassFieldNames[T: TypeTag]: Seq[String] = {
+    val tpe = typeOf[T]
+    val constructor = tpe.decl(termNames.CONSTRUCTOR).asMethod
+    constructor.paramLists.flatten.map(_.name.decodedName.toString)
   }
 }
