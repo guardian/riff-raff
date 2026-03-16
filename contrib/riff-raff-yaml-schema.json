@@ -3,19 +3,313 @@
   "$id": "https://raw.githubusercontent.com/guardian/riff-raff/ja-schema/contrib/riff-raff-yaml-schema.json",
   "title": "Riff-Raff deployment configuration",
   "description": "Schema for riff-raff.yaml deployment configuration files. Auto-generated from deployment type definitions.",
+  "definitions": {
+    "deployment-or-template": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The type of deployment to perform",
+          "enum": [
+            "ami-cloudformation-parameter",
+            "autoscaling",
+            "aws-lambda",
+            "aws-lambda-layer",
+            "aws-s3",
+            "cloud-formation",
+            "fastly",
+            "fastly-compute",
+            "self-deploy"
+          ]
+        },
+        "template": {
+          "type": "string",
+          "description": "The name of a template to inherit properties from"
+        },
+        "stacks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\S+$"
+          },
+          "uniqueItems": true,
+          "description": "Stack tags for this deployment; it will be executed once per stack"
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "af-south-1",
+              "ap-east-1",
+              "ap-northeast-1",
+              "ap-northeast-2",
+              "ap-northeast-3",
+              "ap-south-1",
+              "ap-south-2",
+              "ap-southeast-1",
+              "ap-southeast-2",
+              "ap-southeast-3",
+              "ap-southeast-4",
+              "ca-central-1",
+              "ca-west-1",
+              "eu-central-1",
+              "eu-central-2",
+              "eu-north-1",
+              "eu-south-1",
+              "eu-south-2",
+              "eu-west-1",
+              "eu-west-2",
+              "eu-west-3",
+              "il-central-1",
+              "me-central-1",
+              "me-south-1",
+              "sa-east-1",
+              "us-east-1",
+              "us-east-2",
+              "us-west-1",
+              "us-west-2"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "Regions in which this deploy will be executed (defaults to eu-west-1)"
+        },
+        "allowedStages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Supported stages for this deployment; attempts to deploy to an unlisted stage will fail"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Override the list of actions to execute for this deployment type"
+        },
+        "app": {
+          "type": "string",
+          "description": "Override the app tag (defaults to the deployment name)"
+        },
+        "contentDirectory": {
+          "type": "string",
+          "description": "Override the content directory for build output (defaults to the deployment name)"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true,
+          "description": "Deployments that must complete before this one starts"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters for the deployment type",
+          "properties": {
+            "amiEncrypted": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "amiParameter": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "amiParametersToTags": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "amiTags": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "appendStageToCloudFormationStackName": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "asgMigrationInProgress": {
+              "description": "Used by: autoscaling"
+            },
+            "bucket": {
+              "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute, self-deploy"
+            },
+            "bucketSsmKey": {
+              "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
+            },
+            "bucketSsmKeyStageParam": {
+              "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
+            },
+            "bucketSsmLookup": {
+              "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
+            },
+            "cacheControl": {
+              "description": "Used by: aws-s3"
+            },
+            "cloudFormationStackByTags": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "cloudFormationStackName": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "createStackIfAbsent": {
+              "description": "Used by: cloud-formation"
+            },
+            "fileName": {
+              "description": "Used by: aws-lambda, aws-lambda-layer"
+            },
+            "functionNames": {
+              "description": "Used by: aws-lambda"
+            },
+            "functions": {
+              "description": "Used by: aws-lambda"
+            },
+            "healthcheckGrace": {
+              "description": "Used by: autoscaling"
+            },
+            "layerName": {
+              "description": "Used by: aws-lambda-layer"
+            },
+            "lookupByTags": {
+              "description": "Used by: aws-lambda"
+            },
+            "manageStackPolicy": {
+              "description": "Used by: cloud-formation"
+            },
+            "mimeTypes": {
+              "description": "Used by: aws-s3"
+            },
+            "minInstancesInServiceParameters": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "prefixApp": {
+              "description": "Used by: autoscaling, aws-s3"
+            },
+            "prefixAppToKey": {
+              "description": "Used by: aws-lambda"
+            },
+            "prefixPackage": {
+              "description": "Used by: autoscaling, aws-s3"
+            },
+            "prefixStack": {
+              "description": "Used by: autoscaling, aws-lambda, aws-s3"
+            },
+            "prefixStackToKey": {
+              "description": "Used by: aws-lambda, aws-lambda-layer"
+            },
+            "prefixStage": {
+              "description": "Used by: autoscaling, aws-s3"
+            },
+            "prefixStagePaths": {
+              "description": "Used by: aws-s3"
+            },
+            "prefixStageToKey": {
+              "description": "Used by: aws-lambda"
+            },
+            "prependStackToCloudFormationStackName": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "publicReadAcl": {
+              "description": "Used by: autoscaling, aws-s3, self-deploy"
+            },
+            "secondsToWait": {
+              "description": "Used by: autoscaling"
+            },
+            "secondsToWaitForChangeSetCreation": {
+              "description": "Used by: ami-cloudformation-parameter, cloud-formation"
+            },
+            "surrogateControl": {
+              "description": "Used by: aws-s3"
+            },
+            "templateParameters": {
+              "description": "Used by: cloud-formation"
+            },
+            "templatePath": {
+              "description": "Used by: cloud-formation"
+            },
+            "templateStageParameters": {
+              "description": "Used by: cloud-formation"
+            },
+            "templateStagePaths": {
+              "description": "Used by: cloud-formation"
+            },
+            "terminationGrace": {
+              "description": "Used by: autoscaling"
+            },
+            "warmupGrace": {
+              "description": "Used by: autoscaling"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "type"
+          ],
+          "not": {
+            "required": [
+              "template"
+            ]
+          }
+        },
+        {
+          "required": [
+            "template"
+          ],
+          "not": {
+            "required": [
+              "type"
+            ]
+          }
+        }
+      ]
+    }
+  },
   "type": "object",
   "properties": {
     "stacks": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^\\S+$"
       },
       "uniqueItems": true
     },
     "regions": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "af-south-1",
+          "ap-east-1",
+          "ap-northeast-1",
+          "ap-northeast-2",
+          "ap-northeast-3",
+          "ap-south-1",
+          "ap-south-2",
+          "ap-southeast-1",
+          "ap-southeast-2",
+          "ap-southeast-3",
+          "ap-southeast-4",
+          "ca-central-1",
+          "ca-west-1",
+          "eu-central-1",
+          "eu-central-2",
+          "eu-north-1",
+          "eu-south-1",
+          "eu-south-2",
+          "eu-west-1",
+          "eu-west-2",
+          "eu-west-3",
+          "il-central-1",
+          "me-central-1",
+          "me-south-1",
+          "sa-east-1",
+          "us-east-1",
+          "us-east-2",
+          "us-west-1",
+          "us-west-2"
+        ]
       },
       "uniqueItems": true
     },
@@ -29,443 +323,45 @@
     "templates": {
       "type": "object",
       "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "ami-cloudformation-parameter",
-              "autoscaling",
-              "aws-lambda",
-              "aws-lambda-layer",
-              "aws-s3",
-              "cloud-formation",
-              "fastly",
-              "fastly-compute",
-              "self-deploy"
-            ]
-          },
-          "template": {
-            "type": "string"
-          },
-          "stacks": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "regions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "allowedStages": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "actions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "app": {
-            "type": "string"
-          },
-          "contentDirectory": {
-            "type": "string"
-          },
-          "dependencies": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "amiEncrypted": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiParameter": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiParametersToTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "appendStageToCloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "asgMigrationInProgress": {
-                "description": "Used by: autoscaling"
-              },
-              "bucket": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute, self-deploy"
-              },
-              "bucketSsmKey": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "bucketSsmKeyStageParam": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "bucketSsmLookup": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "cacheControl": {
-                "description": "Used by: aws-s3"
-              },
-              "cloudFormationStackByTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "cloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "createStackIfAbsent": {
-                "description": "Used by: cloud-formation"
-              },
-              "fileName": {
-                "description": "Used by: aws-lambda, aws-lambda-layer"
-              },
-              "functionNames": {
-                "description": "Used by: aws-lambda"
-              },
-              "functions": {
-                "description": "Used by: aws-lambda"
-              },
-              "healthcheckGrace": {
-                "description": "Used by: autoscaling"
-              },
-              "layerName": {
-                "description": "Used by: aws-lambda-layer"
-              },
-              "lookupByTags": {
-                "description": "Used by: aws-lambda"
-              },
-              "manageStackPolicy": {
-                "description": "Used by: cloud-formation"
-              },
-              "mimeTypes": {
-                "description": "Used by: aws-s3"
-              },
-              "minInstancesInServiceParameters": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "prefixApp": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixAppToKey": {
-                "description": "Used by: aws-lambda"
-              },
-              "prefixPackage": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixStack": {
-                "description": "Used by: autoscaling, aws-lambda, aws-s3"
-              },
-              "prefixStackToKey": {
-                "description": "Used by: aws-lambda, aws-lambda-layer"
-              },
-              "prefixStage": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixStagePaths": {
-                "description": "Used by: aws-s3"
-              },
-              "prefixStageToKey": {
-                "description": "Used by: aws-lambda"
-              },
-              "prependStackToCloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "publicReadAcl": {
-                "description": "Used by: autoscaling, aws-s3, self-deploy"
-              },
-              "secondsToWait": {
-                "description": "Used by: autoscaling"
-              },
-              "secondsToWaitForChangeSetCreation": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "surrogateControl": {
-                "description": "Used by: aws-s3"
-              },
-              "templateParameters": {
-                "description": "Used by: cloud-formation"
-              },
-              "templatePath": {
-                "description": "Used by: cloud-formation"
-              },
-              "templateStageParameters": {
-                "description": "Used by: cloud-formation"
-              },
-              "templateStagePaths": {
-                "description": "Used by: cloud-formation"
-              },
-              "terminationGrace": {
-                "description": "Used by: autoscaling"
-              },
-              "warmupGrace": {
-                "description": "Used by: autoscaling"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false,
-        "oneOf": [
-          {
-            "required": [
-              "type"
-            ],
-            "not": {
-              "required": [
-                "template"
-              ]
-            }
-          },
-          {
-            "required": [
-              "template"
-            ],
-            "not": {
-              "required": [
-                "type"
-              ]
-            }
-          }
-        ]
+        "$ref": "#/definitions/deployment-or-template"
+      },
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "type",
+            "template",
+            "stacks",
+            "regions",
+            "allowedStages",
+            "actions",
+            "app",
+            "contentDirectory",
+            "dependencies",
+            "parameters"
+          ]
+        }
       }
     },
     "deployments": {
       "type": "object",
       "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "ami-cloudformation-parameter",
-              "autoscaling",
-              "aws-lambda",
-              "aws-lambda-layer",
-              "aws-s3",
-              "cloud-formation",
-              "fastly",
-              "fastly-compute",
-              "self-deploy"
-            ]
-          },
-          "template": {
-            "type": "string"
-          },
-          "stacks": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "regions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "allowedStages": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "actions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "app": {
-            "type": "string"
-          },
-          "contentDirectory": {
-            "type": "string"
-          },
-          "dependencies": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "uniqueItems": true
-          },
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "amiEncrypted": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiParameter": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiParametersToTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "amiTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "appendStageToCloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "asgMigrationInProgress": {
-                "description": "Used by: autoscaling"
-              },
-              "bucket": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute, self-deploy"
-              },
-              "bucketSsmKey": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "bucketSsmKeyStageParam": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "bucketSsmLookup": {
-                "description": "Used by: autoscaling, aws-lambda, aws-lambda-layer, aws-s3, fastly-compute"
-              },
-              "cacheControl": {
-                "description": "Used by: aws-s3"
-              },
-              "cloudFormationStackByTags": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "cloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "createStackIfAbsent": {
-                "description": "Used by: cloud-formation"
-              },
-              "fileName": {
-                "description": "Used by: aws-lambda, aws-lambda-layer"
-              },
-              "functionNames": {
-                "description": "Used by: aws-lambda"
-              },
-              "functions": {
-                "description": "Used by: aws-lambda"
-              },
-              "healthcheckGrace": {
-                "description": "Used by: autoscaling"
-              },
-              "layerName": {
-                "description": "Used by: aws-lambda-layer"
-              },
-              "lookupByTags": {
-                "description": "Used by: aws-lambda"
-              },
-              "manageStackPolicy": {
-                "description": "Used by: cloud-formation"
-              },
-              "mimeTypes": {
-                "description": "Used by: aws-s3"
-              },
-              "minInstancesInServiceParameters": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "prefixApp": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixAppToKey": {
-                "description": "Used by: aws-lambda"
-              },
-              "prefixPackage": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixStack": {
-                "description": "Used by: autoscaling, aws-lambda, aws-s3"
-              },
-              "prefixStackToKey": {
-                "description": "Used by: aws-lambda, aws-lambda-layer"
-              },
-              "prefixStage": {
-                "description": "Used by: autoscaling, aws-s3"
-              },
-              "prefixStagePaths": {
-                "description": "Used by: aws-s3"
-              },
-              "prefixStageToKey": {
-                "description": "Used by: aws-lambda"
-              },
-              "prependStackToCloudFormationStackName": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "publicReadAcl": {
-                "description": "Used by: autoscaling, aws-s3, self-deploy"
-              },
-              "secondsToWait": {
-                "description": "Used by: autoscaling"
-              },
-              "secondsToWaitForChangeSetCreation": {
-                "description": "Used by: ami-cloudformation-parameter, cloud-formation"
-              },
-              "surrogateControl": {
-                "description": "Used by: aws-s3"
-              },
-              "templateParameters": {
-                "description": "Used by: cloud-formation"
-              },
-              "templatePath": {
-                "description": "Used by: cloud-formation"
-              },
-              "templateStageParameters": {
-                "description": "Used by: cloud-formation"
-              },
-              "templateStagePaths": {
-                "description": "Used by: cloud-formation"
-              },
-              "terminationGrace": {
-                "description": "Used by: autoscaling"
-              },
-              "warmupGrace": {
-                "description": "Used by: autoscaling"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false,
-        "oneOf": [
-          {
-            "required": [
-              "type"
-            ],
-            "not": {
-              "required": [
-                "template"
-              ]
-            }
-          },
-          {
-            "required": [
-              "template"
-            ],
-            "not": {
-              "required": [
-                "type"
-              ]
-            }
-          }
-        ]
+        "$ref": "#/definitions/deployment-or-template"
+      },
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "type",
+            "template",
+            "stacks",
+            "regions",
+            "allowedStages",
+            "actions",
+            "app",
+            "contentDirectory",
+            "dependencies",
+            "parameters"
+          ]
+        }
       }
     }
   },
