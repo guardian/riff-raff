@@ -6,7 +6,7 @@ object Dependencies {
   object Versions {
     val aws = "2.41.34"
     val jackson = "2.21.1"
-    val enumeratumPlay = "1.9.5"
+    val enumeratumPlay = "1.9.6"
   }
 
   val commonDeps = Seq(
@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "4.0.0",
-      "joda-time" % "joda-time" % "2.14.0",
+      "joda-time" % "joda-time" % "2.14.1",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
