@@ -5,6 +5,7 @@ object Dependencies {
 
   object Versions {
     val aws = "2.42.41"
+    val commonmark = "0.27.1"
     val jackson = "2.21.2"
     val enumeratumPlay = "1.9.7"
   }
@@ -56,7 +57,11 @@ object Dependencies {
       "com.gu.play-googleauth" %% "play-v30" % "35.0.0",
       "com.gu.play-secret-rotation" %% "play-v30" % "17.0.3",
       "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "17.0.5",
-      "org.pegdown" % "pegdown" % "1.6.0",
+      "org.commonmark" % "commonmark" % Versions.commonmark,
+      "org.commonmark" % "commonmark-ext-autolink" % Versions.commonmark,
+      "org.commonmark" % "commonmark-ext-gfm-strikethrough" % Versions.commonmark,
+      "org.commonmark" % "commonmark-ext-gfm-tables" % Versions.commonmark,
+      "org.commonmark" % "commonmark-ext-task-list-items" % Versions.commonmark,
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
       "org.scanamo" %% "scanamo" % "7.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,

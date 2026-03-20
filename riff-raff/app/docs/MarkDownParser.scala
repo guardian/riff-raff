@@ -1,41 +1,45 @@
 package docs
 
-import magenta.Loggable
-import org.parboiled.common.StringUtils
-import org.pegdown.FastEncoder._
-import org.pegdown.LinkRenderer.Rendering
-import org.pegdown.ast._
-import org.pegdown.{Extensions, LinkRenderer, PegDownProcessor}
+import org.commonmark.ext.autolink.AutolinkExtension
+import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
+import org.commonmark.ext.gfm.tables.TablesExtension
+import org.commonmark.ext.task.list.items.TaskListItemsExtension
+import org.commonmark.node.{AbstractVisitor, Link}
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
+
 import play.api.mvc.Call
 import play.twirl.api.Html
 
-import scala.util.Try
+object MarkDownParser {
 
-object MarkDownParser extends Loggable {
-  class CallLinkRenderer(urlToCall: String => Call) extends LinkRenderer {
-    override def render(node: ExpLinkNode, text: String): Rendering = {
-      val url = node.url
-      val relative = !(url.matches("^[a-zA-Z]://") || url.matches("^/"))
-      val modifiedUrl = if (relative) urlToCall(url).path else url
+  private val AbsoluteUrl = "^[a-zA-Z]+://".r
 
-      val rendering = new LinkRenderer.Rendering(modifiedUrl, text)
-      if (StringUtils.isEmpty(node.title)) rendering
-      else rendering.withAttribute("title", encode(node.title))
-    }
-  }
+  private val extensions = java.util.List.of(
+    AutolinkExtension.create(),
+    StrikethroughExtension.create(),
+    TablesExtension.create(),
+    TaskListItemsExtension.create()
+  )
+
+  private val parser = Parser.builder().extensions(extensions).build()
+  private val renderer = HtmlRenderer.builder().extensions(extensions).build()
 
   def toHtml(
       markDown: String,
-      linkRenderer: Option[LinkRenderer] = None
+      rewriteRelativeUrl: Option[String => Call] = None
   ): Html = {
-    Html(Try {
-      val pegDown = new PegDownProcessor(
-        Extensions.ALL - Extensions.HARDWRAPS - Extensions.ANCHORLINKS
-      )
-      linkRenderer match {
-        case Some(renderer) => pegDown.markdownToHtml(markDown, renderer)
-        case None           => pegDown.markdownToHtml(markDown)
-      }
-    }.getOrElse("Unable to parse markdown"))
+    val document = parser.parse(markDown)
+    rewriteRelativeUrl.foreach { urlToCall =>
+      document.accept(new AbstractVisitor {
+        override def visit(link: Link): Unit = {
+          val url = link.getDestination
+          if (AbsoluteUrl.findFirstIn(url).isEmpty && !url.startsWith("/"))
+            link.setDestination(urlToCall(url).path)
+          visitChildren(link)
+        }
+      })
+    }
+    Html(renderer.render(document))
   }
 }

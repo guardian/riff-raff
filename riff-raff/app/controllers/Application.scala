@@ -129,11 +129,7 @@ class Application(
       }
     val documentation = MarkDownParser.toHtml(
       markDown = documentationIndexContents,
-      linkRenderer = Some(
-        new docs.MarkDownParser.CallLinkRenderer(link =>
-          routes.Application.documentation(link)
-        )
-      )
+      rewriteRelativeUrl = Some(routes.Application.documentation)
     )
     Ok(views.html.index(config, menu)(request, documentation))
   }
