@@ -69,7 +69,7 @@ class S3BuildOps(config: Config) extends Logging {
             )
           }
           case Right(s3Build) => {
-            log.info(s"Successfully parsed JSON from $location")(
+            log.debug(s"Successfully parsed JSON from $location")(
               buildMarker(s3Build)
             )
           }
