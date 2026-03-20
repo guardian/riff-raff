@@ -118,7 +118,11 @@ lazy val riffraff = project
         "-J-XX:InitialRAMPercentage=50.0",
         "-J-XX:MaxMetaspaceSize=300m",
         "-J-Xlog:gc*",
-        s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log"
+        s"-J-Xlog:gc:/var/log/${packageName.value}/gc.log",
+        // pegdown/parboiled v1 uses deep reflection blocked by Java 21 modules
+        "-J--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "-J--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+        "-J--add-opens=java.base/java.util=ALL-UNNAMED"
       ),
       Universal / packageName := normalizedName.value,
       Universal / topLevelDirectory := Some(normalizedName.value),
