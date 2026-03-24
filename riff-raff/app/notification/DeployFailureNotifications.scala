@@ -113,7 +113,7 @@ class DeployFailureNotifications(
         subject = notificationContents.subject,
         message = notificationContents.message,
         sourceSystem = "riff-raff",
-        channel = All,
+        channel = Preferred(HangoutsChat),
         target = targets,
         actions = notificationContents.actions,
         topicArn = config.anghammarad.topicArn,
