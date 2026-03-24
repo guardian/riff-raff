@@ -94,7 +94,7 @@ class TerminateInstanceWhenInactive(
         sourceSystem = "riff-raff",
         target = List(Stack("deploy"), App("riff-raff"), Stage(config.stage)),
         actions = List.empty,
-        channel = All,
+        channel = HangoutsChat,
         topicArn = config.anghammarad.topicArn,
         client = config.anghammarad.snsClient
       )
