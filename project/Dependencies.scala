@@ -61,7 +61,7 @@ object Dependencies {
       "org.scanamo" %% "scanamo" % "6.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
-      "org.quartz-scheduler" % "quartz" % "2.5.0",
+      "org.quartz-scheduler" % "quartz" % "2.5.2",
       "com.gu" %% "anghammarad-client" % "6.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1", // scala-steward:off
