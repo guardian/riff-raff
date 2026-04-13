@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.42.26"
+    val aws = "2.42.31"
     val jackson = "2.21.1"
     val enumeratumPlay = "1.9.6"
   }
@@ -55,14 +55,14 @@ object Dependencies {
       jdbc,
       "com.gu.play-googleauth" %% "play-v30" % "35.0.0",
       "com.gu.play-secret-rotation" %% "play-v30" % "17.0.3",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "17.0.3",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "17.0.5",
       "org.pegdown" % "pegdown" % "1.6.0",
       "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B3", // scala-steward:off,
-      "org.scanamo" %% "scanamo" % "6.0.0",
+      "org.scanamo" %% "scanamo" % "7.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.5.0",
-      "com.gu" %% "anghammarad-client" % "6.0.0",
+      "com.gu" %% "anghammarad-client" % "7.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1", // scala-steward:off
       "org.webjars" % "jquery-ui" % "1.14.2",
