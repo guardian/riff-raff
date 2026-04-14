@@ -43,7 +43,9 @@ lazy val lib = project
   .settings(commonSettings)
   .settings(
     Seq(
-      libraryDependencies ++= magentaLibDeps,
+      libraryDependencies ++= magentaLibDeps ++ Seq(
+        "io.netty" % "netty-codec-http" % "4.2.12.Final"
+      ),
       Test / testOptions += Tests.Argument("-oF")
     )
   )
@@ -111,7 +113,9 @@ lazy val riffraff = project
       ),
       buildInfoOptions += BuildInfoOption.BuildTime,
       buildInfoPackage := "riffraff",
-      libraryDependencies ++= riffRaffDeps,
+      libraryDependencies ++= riffRaffDeps ++ Seq(
+        "io.netty" % "netty-codec-http" % "4.2.12.Final"
+      ),
       Universal / javaOptions ++= Seq(
         s"-Dpidfile.path=/dev/null",
         "-J-XX:MaxRAMFraction=2",
