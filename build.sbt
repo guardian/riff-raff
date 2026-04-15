@@ -113,9 +113,7 @@ lazy val riffraff = project
       ),
       buildInfoOptions += BuildInfoOption.BuildTime,
       buildInfoPackage := "riffraff",
-      libraryDependencies ++= riffRaffDeps ++ Seq(
-        "io.netty" % "netty-codec-http" % "4.2.12.Final"
-      ),
+      libraryDependencies ++= riffRaffDeps,
       Universal / javaOptions ++= Seq(
         s"-Dpidfile.path=/dev/null",
         "-J-XX:MaxRAMFraction=2",
