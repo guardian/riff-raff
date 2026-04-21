@@ -34,7 +34,7 @@ object Dependencies {
       "software.amazon.awssdk" % "cloudformation" % Versions.aws,
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
-      "com.gu" %% "fastly-api-client" % "4.0.0",
+      "com.gu" %% "fastly-api-client" % "4.0.1",
       "joda-time" % "joda-time" % "2.14.1",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
