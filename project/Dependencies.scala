@@ -14,7 +14,7 @@ object Dependencies {
     "org.scalatest" %% "scalatest" % "3.2.20" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.13.0",
-    "org.mockito" %% "mockito-scala" % "2.1.0" % Test,
+    "org.mockito" %% "mockito-scala" % "2.2.1" % Test,
     // If we don't explicitly include this dependency at the correct version then we hit the following exception
     // when running unit tests: com.fasterxml.jackson.databind.JsonMappingException.
     // This seems to be because Play Framework is pulling in a different Jackson version.
