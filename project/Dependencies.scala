@@ -6,12 +6,12 @@ object Dependencies {
   object Versions {
     val aws = "2.42.32"
     val jackson = "2.21.2"
-    val enumeratumPlay = "1.9.6"
+    val enumeratumPlay = "1.9.7"
   }
 
   val commonDeps = Seq(
     "io.reactivex" %% "rxscala" % "0.27.0",
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    "org.scalatest" %% "scalatest" % "3.2.20" % Test,
     "org.parboiled" %% "parboiled" % "2.5.1",
     "org.typelevel" %% "cats-core" % "2.13.0",
     "org.mockito" %% "mockito-scala" % "2.1.0" % Test,
@@ -61,7 +61,7 @@ object Dependencies {
       "org.scanamo" %% "scanamo" % "7.0.0",
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
-      "org.quartz-scheduler" % "quartz" % "2.5.0",
+      "org.quartz-scheduler" % "quartz" % "2.5.2",
       "com.gu" %% "anghammarad-client" % "7.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1", // scala-steward:off
