@@ -16,6 +16,7 @@ import magenta.{
   fixtures
 }
 import org.mockito.{ArgumentMatchers, MockitoSugar}
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, JsString, JsValue, Json}
@@ -316,7 +317,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient]
+    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
@@ -366,7 +367,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient]
+    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
@@ -423,7 +424,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient]
+    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
