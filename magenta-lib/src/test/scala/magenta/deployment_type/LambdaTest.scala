@@ -41,6 +41,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val stsClient: StsClient = mock[StsClient]
   val region = Region("eu-west-1")
   val deploymentTypes: Seq[Lambda.type] = Seq(Lambda)
+  private def ssmMockClient = mock[SsmClient](RETURNS_DEEP_STUBS)
 
   behavior of "Lambda deployment action uploadLambda"
 
@@ -317,7 +318,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
+    val ssmClient = ssmMockClient
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
@@ -367,7 +368,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
+    val ssmClient = ssmMockClient
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
@@ -424,7 +425,7 @@ class LambdaTest extends AnyFlatSpec with Matchers with MockitoSugar {
       deploymentTypes
     )
 
-    val ssmClient = mock[SsmClient](RETURNS_DEEP_STUBS)
+    val ssmClient = ssmMockClient
 
     when(
       ssmClient.getParameter(ArgumentMatchers.any(classOf[GetParameterRequest]))
