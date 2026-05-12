@@ -10,6 +10,7 @@ import magenta.deployment_type.param_reads.PatternValue
 import magenta.input.All
 import org.mockito.{ArgumentCaptor, ArgumentMatchers, MockitoSugar}
 import org.mockito.ArgumentMatchers._
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.scalatest.flatspec.AnyFlatSpec
@@ -33,6 +34,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   implicit val fakeKeyRing: KeyRing = KeyRing()
   val reporter =
     DeployReporter.rootReporterFor(UUID.randomUUID(), fixtures.parameters())
+  private def s3MockClient = mock[S3Client](RETURNS_DEEP_STUBS)
 
   "PutRec" should "create an upload request with correct permissions" in {
     val putRec = PutReq(
@@ -147,7 +149,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   "S3Upload" should "upload a single file to S3" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = s3MockClient
     val s3Client = mock[S3Client]
 
     val sourceBucket = "artifact-bucket"
@@ -224,7 +226,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "upload a directory to S3" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = s3MockClient
     val s3Client = mock[S3Client]
 
     val fileOne =
@@ -287,7 +289,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "upload a directory to S3 with no prefix" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = s3MockClient
     val s3Client = mock[S3Client]
 
     val fileOne =
@@ -345,7 +347,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "use different cache control" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = s3MockClient
     val fileOne =
       MagentaS3Object("artifact-bucket", "test/123/package/one.txt", 31)
     val fileTwo =
@@ -381,7 +383,7 @@ class TasksTest extends AnyFlatSpec with Matchers with MockitoSugar {
   }
 
   it should "use overridden mime type" in {
-    val artifactClient = mock[S3Client]
+    val artifactClient = s3MockClient
     val fileOne =
       MagentaS3Object("artifact-bucket", "test/123/package/one.test.txt", 31)
     val fileTwo =
