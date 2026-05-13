@@ -8,7 +8,6 @@ import org.commonmark.node.{AbstractVisitor, Link}
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 
-import play.api.mvc.Call
 import play.twirl.api.Html
 
 import scala.jdk.CollectionConverters._
@@ -33,16 +32,16 @@ object MarkDownParser {
 
   def toHtml(
       markDown: String,
-      rewriteRelativeUrl: Option[String => Call] = None
+      rewriteRelativeUrl: Option[String => String] = None
   ): Html = {
     Html(Try {
       val document = parser.parse(markDown)
-      rewriteRelativeUrl.foreach { urlToCall =>
+      rewriteRelativeUrl.foreach { rewrite =>
         document.accept(new AbstractVisitor {
           override def visit(link: Link): Unit = {
             Option(link.getDestination).foreach { url =>
               if (isRelativeUrl(url))
-                link.setDestination(urlToCall(url).path)
+                link.setDestination(rewrite(url))
             }
             visitChildren(link)
           }
