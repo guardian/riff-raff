@@ -13,7 +13,8 @@ import play.twirl.api.Html
 
 object MarkDownParser {
 
-  private val AbsoluteUrl = "^[a-zA-Z]+://".r
+  private def isRelativeUrl(url: String): Boolean =
+    !url.matches("^[a-zA-Z]+://.*") && !url.startsWith("/")
 
   private val extensions = java.util.List.of(
     AutolinkExtension.create(),
@@ -34,7 +35,7 @@ object MarkDownParser {
       document.accept(new AbstractVisitor {
         override def visit(link: Link): Unit = {
           val url = link.getDestination
-          if (AbsoluteUrl.findFirstIn(url).isEmpty && !url.startsWith("/"))
+          if (isRelativeUrl(url))
             link.setDestination(urlToCall(url).path)
           visitChildren(link)
         }
