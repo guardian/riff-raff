@@ -12,6 +12,7 @@ import play.api.mvc.Call
 import play.twirl.api.Html
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 object MarkDownParser {
 
@@ -34,18 +35,20 @@ object MarkDownParser {
       markDown: String,
       rewriteRelativeUrl: Option[String => Call] = None
   ): Html = {
-    val document = parser.parse(markDown)
-    rewriteRelativeUrl.foreach { urlToCall =>
-      document.accept(new AbstractVisitor {
-        override def visit(link: Link): Unit = {
-          Option(link.getDestination).foreach { url =>
-            if (isRelativeUrl(url))
-              link.setDestination(urlToCall(url).path)
+    Html(Try {
+      val document = parser.parse(markDown)
+      rewriteRelativeUrl.foreach { urlToCall =>
+        document.accept(new AbstractVisitor {
+          override def visit(link: Link): Unit = {
+            Option(link.getDestination).foreach { url =>
+              if (isRelativeUrl(url))
+                link.setDestination(urlToCall(url).path)
+            }
+            visitChildren(link)
           }
-          visitChildren(link)
-        }
-      })
-    }
-    Html(renderer.render(document))
+        })
+      }
+      renderer.render(document)
+    }.getOrElse("Unable to parse markdown"))
   }
 }
