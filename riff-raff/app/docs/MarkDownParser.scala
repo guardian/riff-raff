@@ -11,17 +11,21 @@ import org.commonmark.renderer.html.HtmlRenderer
 import play.api.mvc.Call
 import play.twirl.api.Html
 
+import scala.jdk.CollectionConverters._
+
 object MarkDownParser {
 
-  private def isRelativeUrl(url: String): Boolean =
-    !url.matches("^[a-zA-Z]+://.*") && !url.startsWith("/")
+  private val AbsoluteUrl = "^[a-zA-Z]+://".r
 
-  private val extensions = java.util.List.of(
+  private def isRelativeUrl(url: String): Boolean =
+    AbsoluteUrl.findPrefixOf(url).isEmpty && !url.startsWith("/")
+
+  private val extensions = List(
     AutolinkExtension.create(),
     StrikethroughExtension.create(),
     TablesExtension.create(),
     TaskListItemsExtension.create()
-  )
+  ).asJava
 
   private val parser = Parser.builder().extensions(extensions).build()
   private val renderer = HtmlRenderer.builder().extensions(extensions).build()
@@ -34,9 +38,10 @@ object MarkDownParser {
     rewriteRelativeUrl.foreach { urlToCall =>
       document.accept(new AbstractVisitor {
         override def visit(link: Link): Unit = {
-          val url = link.getDestination
-          if (isRelativeUrl(url))
-            link.setDestination(urlToCall(url).path)
+          Option(link.getDestination).foreach { url =>
+            if (isRelativeUrl(url))
+              link.setDestination(urlToCall(url).path)
+          }
           visitChildren(link)
         }
       })
