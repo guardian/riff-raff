@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "4.0.1",
-      "joda-time" % "joda-time" % "2.14.1",
+      "joda-time" % "joda-time" % "2.14.2",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
@@ -71,7 +71,7 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.30.1-1",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.1",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.10",
+      "org.postgresql" % "postgresql" % "42.7.11",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
