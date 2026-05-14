@@ -54,9 +54,9 @@ object Dependencies {
     commonDeps ++ Seq(
       evolutions,
       jdbc,
-      "com.gu.play-googleauth" %% "play-v30" % "35.0.0",
-      "com.gu.play-secret-rotation" %% "play-v30" % "17.0.3",
-      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "17.0.5",
+      "com.gu.play-googleauth" %% "play-v30" % "39.0.0",
+      "com.gu.play-secret-rotation" %% "play-v30" % "18.0.0",
+      "com.gu.play-secret-rotation" %% "aws-parameterstore-sdk-v2" % "18.0.0",
       "org.commonmark" % "commonmark" % Versions.commonmark,
       "org.commonmark" % "commonmark-ext-autolink" % Versions.commonmark,
       "org.commonmark" % "commonmark-ext-gfm-strikethrough" % Versions.commonmark,

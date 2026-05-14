@@ -1,6 +1,6 @@
 package controllers
 
-import java.net.{MalformedURLException, URL}
+import java.net.URI
 import java.util.UUID
 import conf.Config
 import com.gu.googleauth.AuthAction
@@ -19,6 +19,8 @@ import play.api.mvc.{
   ControllerComponents
 }
 import resources.PrismLookup
+
+import scala.util.Try
 
 case class HookForm(
     id: UUID,
@@ -67,9 +69,7 @@ class HooksController(
       "postBody" -> optional(text)
     )(HookForm.apply)(HookForm.unapply).verifying(
       "URL is invalid",
-      form =>
-        try { new URL(form.url); true }
-        catch { case e: MalformedURLException => false }
+      form => Try(URI.create(form.url).toURL).isSuccess
     )
   )
 
