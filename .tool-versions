@@ -1,1 +1,3 @@
 java corretto-21
+sbt 1
+github:guardian/devenv 20260522-111753
