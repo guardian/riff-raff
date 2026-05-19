@@ -1,1 +1,3 @@
-java corretto-11.0.25.9.1
+java corretto-11
+github:guardian/devenv 20260518-083717
+sbt 1
