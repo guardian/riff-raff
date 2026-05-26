@@ -16,6 +16,7 @@
     }
   },
   "forwardPorts" : [
+    9000
   ],
   "image" : "mcr.microsoft.com/devcontainers/base:ubuntu26.04",
   "remoteUser" : "vscode",

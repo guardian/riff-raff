@@ -18,9 +18,8 @@ modules:
 # image: "mcr.microsoft.com/devcontainers/base:ubuntu"
 
 # Optional: Ports to forward
-# forwardPorts:
-#   - 8080  # same port on host and container
-#   - "8000:9000"  # hostPort:containerPort
+forwardPorts:
+  - 9000
 
 # Optional: Mount directories from host to container
 # mounts:

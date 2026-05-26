@@ -1,7 +1,25 @@
 # Contributing
 First, and most importantly, thanks!
 
-## Running locally
+## Running locally in a dev container
+
+Open the devcontainer file.  Restart in container.  You will now have all tooling installed.
+
+You will also require `Deploy Tools - Read-only` permissions from Janus.
+
+1. Obtain the private configuration by running this script in the dev container:
+   ```sh
+   ./script/setup
+   ```
+1. Start the application by running this script in the dev container:
+   ```sh
+   ./script/start
+   ```
+   Add `--debug` to attach a remote debugger on port 9999.
+1. On the host laptop, visit http://localhost:9000/
+
+## Running locally on the host laptop
+
 1. Install the requirements 
    - Java 21
    - SBT
@@ -10,17 +28,13 @@ You will also require `Deploy Tools - Developer` permissions from Janus in order
 do not run prism locally, you will need to be connected to the VPN when working remotely.
 
 1. Obtain the private configuration by running this script from the root of the repository:
-
    ```sh
    ./script/setup
    ```
-
 1. Start the application by running this script from the root of the repository:
-
    ```sh
    ./script/start
    ```
-   
    Add `--debug` to attach a remote debugger on port 9999.
 1. Visit http://localhost:9000/
 1. Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/administration/properties
