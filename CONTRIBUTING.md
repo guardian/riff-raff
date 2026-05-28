@@ -1,28 +1,48 @@
 # Contributing
 First, and most importantly, thanks!
 
-## Running locally
-1. Install the requirements 
-   - Java 21
-   - SBT
-   - Docker
-You will also require `Deploy Tools - Developer` permissions from Janus in order to run locally. If you
-do not run prism locally, you will need to be connected to the VPN when working remotely.
+## Running locally 
 
-1. Obtain the private configuration by running this script from the root of the repository:
+### Credentials
 
+You will require `Deploy Tools - Developer` or `Deploy Tools - Read-only` permissions from Janus in order to run locally.
+If you do not run prism locally, you will need to be connected to the VPN when working remotely.
+
+### Running locally in a dev container
+
+Open the devcontainer file.  Restart in container.  You will now have all tooling installed.
+
+1. Paste your credentials into the dev container terminal
+1. Obtain the private configuration by running this script in the dev container:
    ```sh
    ./script/setup
    ```
-
-1. Start the application by running this script from the root of the repository:
-
+1. You may need to edit the allowedGroups to match your user groups
+1. Start the application by running this script in the dev container:
    ```sh
    ./script/start
    ```
-   
    Add `--debug` to attach a remote debugger on port 9999.
-1. Visit http://localhost:9000/
+
+### Running locally on the host laptop
+
+1. Install the required software - see .tool-versions for details
+1. Paste your credentials into the dev container terminal
+1. Obtain the private configuration by running this script from the root of the repository:
+   ```sh
+   ./script/setup
+   ```
+1. You may need to edit the allowedGroups to match your user groups
+1. Start the application by running this script from the root of the repository:
+   ```sh
+   ./script/start
+   ```
+   Add `--debug` to attach a remote debugger on port 9999.
+
+### Interacting with the service
+
+1. Visit http://localhost:9000/ on the host machine and login
+
 1. Details of how to configure Riff-Raff can then be found at http://localhost:9000/docs/riffraff/administration/properties
 
 ## Raising a PR
