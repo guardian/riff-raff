@@ -18,6 +18,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.ssm.SsmClient
 
+import java.net.URI
+
 import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
 
@@ -138,12 +140,21 @@ class Config(configuration: TypesafeConfig, startTime: DateTime)
   object dynamoDb {
     lazy val regionName =
       getStringOpt("artifact.aws.region").getOrElse(defaultRegion)
-    // Used by Scanamo which is not on the latest version of AWS SDK
-    val client = DynamoDbClient
-      .builder()
-      .region(AWSRegion.of(regionName))
-      .credentialsProvider(credentialsProviderChain())
-      .build()
+    val client = stage match {
+      case "DEV" =>
+        DynamoDbClient
+          .builder()
+          .region(AWSRegion.of(regionName))
+          .credentialsProvider(credentialsProviderChain())
+          .endpointOverride(URI.create("http://localhost:8000"))
+          .build()
+      case _ =>
+        DynamoDbClient
+          .builder()
+          .region(AWSRegion.of(regionName))
+          .credentialsProvider(credentialsProviderChain())
+          .build()
+    }
   }
 
   object freeze {
