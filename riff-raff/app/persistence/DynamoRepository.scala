@@ -13,8 +13,7 @@ abstract class DynamoRepository(config: Config) {
   def exec[A](ops: ScanamoOps[A]): A = Scanamo(client).exec(ops)
   def tablePrefix: String
 
-  // TODO set up Dynamo local
-  val stage = if (config.stage == "DEV") "CODE" else config.stage
+  val stage = config.stage
   lazy val tableName = s"$tablePrefix-$stage"
 
   implicit val uuidFormat: DynamoFormat[UUID] =
