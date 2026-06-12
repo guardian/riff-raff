@@ -3,7 +3,11 @@ package persistence
 import java.util.UUID
 
 import org.scanamo.Table
-import restrictions.{RestrictionConfig, RestrictionsConfigRepository}
+import restrictions.{
+  RestrictionChecker,
+  RestrictionConfig,
+  RestrictionsConfigRepository
+}
 import cats.syntax.either._
 import conf.Config
 import org.scanamo.generic.auto._
@@ -25,9 +29,9 @@ class RestrictionConfigDynamoRepository(config: Config)
     exec(table.scan()).flatMap(_.toOption)
 
   def getRestrictions(projectName: String): Seq[RestrictionConfig] =
-    exec(
-      table
-        .index("restriction-config-projectName")
-        .query("projectName" -> projectName)
-    ).flatMap(_.toOption)
+    exec(table.scan())
+      .flatMap(_.toOption)
+      .filter(r =>
+        RestrictionChecker.projectNameMatches(r.projectName, projectName)
+      )
 }

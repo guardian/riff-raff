@@ -66,6 +66,9 @@ class Restrictions(
     ).verifying(
       "Stage is invalid - should be a valid regular expression or contain no special values",
       form => Try(form.stage.r).isSuccess
+    ).verifying(
+      "Project name is invalid - should be a valid regular expression or contain no special values",
+      form => Try(form.projectName.r).isSuccess
     )
   )
 

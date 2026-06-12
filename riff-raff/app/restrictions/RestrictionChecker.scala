@@ -71,4 +71,12 @@ object RestrictionChecker {
     if (configStage.matches(""".*[$^.+*?()\[{|].*""")) {
       stage.matches(configStage)
     } else stage == configStage
+
+  def projectNameMatches(
+      configProjectName: String,
+      projectName: String
+  ): Boolean =
+    if (configProjectName.matches(""".*[$^.+*?()\[{|].*""")) {
+      projectName.matches(configProjectName)
+    } else configProjectName == projectName
 }

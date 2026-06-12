@@ -30,8 +30,24 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
 
   val testRestrictions = new RestrictionsConfigRepository {
     def getRestrictions(projectName: String) =
-      configs.filter(_.projectName == projectName)
+      configs.filter(c =>
+        RestrictionChecker.projectNameMatches(c.projectName, projectName)
+      )
     def getRestriction(id: UUID) = configs.find(_.id == id)
+  }
+
+  val wildcardConfigs: Seq[RestrictionConfig] = Seq(
+    makeConfig("testProject1", "PROD"),
+    makeConfig(".*", "PROD"),
+    makeConfig("testProject1::.*", "CODE")
+  )
+
+  val wildcardTestRestrictions = new RestrictionsConfigRepository {
+    def getRestrictions(projectName: String) =
+      wildcardConfigs.filter(c =>
+        RestrictionChecker.projectNameMatches(c.projectName, projectName)
+      )
+    def getRestriction(id: UUID) = wildcardConfigs.find(_.id == id)
   }
 
   "editable" should "run the editable path when there is no existing config" in {
@@ -271,6 +287,68 @@ class RestrictionCheckerTest extends AnyFlatSpec with Matchers {
     RestrictionChecker.stageMatches("PROD.*", "CODE") shouldBe false
     RestrictionChecker.stageMatches("PROD.*", "CODE-ZEBRA") shouldBe false
     RestrictionChecker.stageMatches("PROD.*", "ZEBRA-PROD") shouldBe false
+  }
+
+  "projectNameMatches" should "match a literal string" in {
+    RestrictionChecker.projectNameMatches(
+      "my-project",
+      "my-project"
+    ) shouldBe true
+  }
+
+  it should "not match different literals" in {
+    RestrictionChecker.projectNameMatches(
+      "my-project",
+      "other-project"
+    ) shouldBe false
+  }
+
+  it should "match a wildcard that matches all projects" in {
+    RestrictionChecker.projectNameMatches(".*", "any-project") shouldBe true
+  }
+
+  it should "match a prefix wildcard" in {
+    RestrictionChecker.projectNameMatches(
+      "deploy::.*",
+      "deploy::my-app"
+    ) shouldBe true
+  }
+
+  it should "not match a prefix wildcard for a different prefix" in {
+    RestrictionChecker.projectNameMatches(
+      "deploy::.*",
+      "other::my-app"
+    ) shouldBe false
+  }
+
+  "configsThatPreventDeploy with wildcard project" should "match a wildcard project restriction" in {
+    val restrictions = RestrictionChecker.configsThatPreventDeployment(
+      wildcardTestRestrictions,
+      "anyProject",
+      "PROD",
+      UserRequestSource(makeUser("test.user@example.com"))
+    )
+    restrictions should contain(wildcardConfigs(1))
+  }
+
+  it should "match a prefix wildcard project restriction" in {
+    val restrictions = RestrictionChecker.configsThatPreventDeployment(
+      wildcardTestRestrictions,
+      "testProject1::subproject",
+      "CODE",
+      UserRequestSource(makeUser("bad.user@example.com"))
+    )
+    restrictions should contain(wildcardConfigs(2))
+  }
+
+  it should "not match a prefix wildcard project for a different prefix" in {
+    val restrictions = RestrictionChecker.configsThatPreventDeployment(
+      wildcardTestRestrictions,
+      "otherProject::subproject",
+      "CODE",
+      UserRequestSource(makeUser("test.user@example.com"))
+    )
+    restrictions.filter(_.projectName == "testProject1::.*") shouldBe empty
   }
 
   def makeConfig(
