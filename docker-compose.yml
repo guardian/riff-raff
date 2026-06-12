@@ -17,9 +17,9 @@ services:
   dynamodb-local:
     container_name: riffraff-dynamodb
     image: amazon/dynamodb-local:latest
+    command: "-jar DynamoDBLocal.jar -sharedDb"
     ports:
     - 8000:8000
-    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
     healthcheck:
       test: ["CMD-SHELL", "curl -s -o /dev/null http://localhost:8000 || exit 1"]
       interval: 10s
@@ -45,28 +45,28 @@ services:
       aws dynamodb create-table $$ENDPOINT --table-name riffraff-target-ids-DEV \
         --attribute-definitions AttributeName=targetKey,AttributeType=S AttributeName=projectName,AttributeType=S \
         --key-schema AttributeName=targetKey,KeyType=HASH AttributeName=projectName,KeyType=RANGE \
-        --billing-mode PAY_PER_REQUEST 2>/dev/null || true
+        --billing-mode PAY_PER_REQUEST
 
       aws dynamodb create-table $$ENDPOINT --table-name riffraff-restriction-config-DEV \
         --attribute-definitions AttributeName=id,AttributeType=S AttributeName=projectName,AttributeType=S \
         --key-schema AttributeName=id,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
-        --global-secondary-indexes 'IndexName=restriction-config-projectName,KeySchema=[{AttributeName=projectName,KeyType=HASH},{AttributeName=id,KeyType=RANGE}],Projection={ProjectionType=ALL}' 2>/dev/null || true
+        --global-secondary-indexes 'IndexName=restriction-config-projectName,KeySchema=[{AttributeName=projectName,KeyType=HASH},{AttributeName=id,KeyType=RANGE}],Projection={ProjectionType=ALL}'
 
       aws dynamodb create-table $$ENDPOINT --table-name hook-config-DEV \
         --attribute-definitions AttributeName=id,AttributeType=S AttributeName=projectName,AttributeType=S \
         --key-schema AttributeName=id,KeyType=HASH \
         --billing-mode PAY_PER_REQUEST \
-        --global-secondary-indexes 'IndexName=hook-config-project,KeySchema=[{AttributeName=projectName,KeyType=HASH},{AttributeName=id,KeyType=RANGE}],Projection={ProjectionType=ALL}' 2>/dev/null || true
+        --global-secondary-indexes 'IndexName=hook-config-project,KeySchema=[{AttributeName=projectName,KeyType=HASH},{AttributeName=id,KeyType=RANGE}],Projection={ProjectionType=ALL}'
 
       aws dynamodb create-table $$ENDPOINT --table-name continuous-deployment-config-DEV \
         --attribute-definitions AttributeName=id,AttributeType=S \
         --key-schema AttributeName=id,KeyType=HASH \
-        --billing-mode PAY_PER_REQUEST 2>/dev/null || true
+        --billing-mode PAY_PER_REQUEST
 
       aws dynamodb create-table $$ENDPOINT --table-name schedule-config-DEV \
         --attribute-definitions AttributeName=id,AttributeType=S \
         --key-schema AttributeName=id,KeyType=HASH \
-        --billing-mode PAY_PER_REQUEST 2>/dev/null || true
+        --billing-mode PAY_PER_REQUEST
 
       echo "All DynamoDB tables ready."
