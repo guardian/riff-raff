@@ -52,9 +52,10 @@ class DeployController(
     with LogAndSquashBehaviour {
 
   def deploy = authAction { implicit request =>
+    val form = DeployParameterForm.form.bindFromRequest()
     Ok(
       views.html.deploy
-        .form(config, menu)(changeFreeze)(DeployParameterForm.form, prismLookup)
+        .form(config, menu)(changeFreeze)(form, prismLookup)
     )
   }
 
