@@ -1,7 +1,7 @@
 @import conf.Config
 @(config: Config, menu: Menu)(deployForm: Form[controllers.forms.DeployParameterForm], isExternal: Boolean)(implicit request: Security.AuthenticatedRequest[AnyContent, com.gu.googleauth.UserIdentity], messages: Messages)
 @import helper.CSRF
-@main("Deploy confirmation", request) {
+@main("Deploy confirmation", request, List("form-autocomplete")) {
 
     <h2>Deploy confirmation</h2>
 
@@ -42,4 +42,8 @@
     }
     }
 
+    <div class="col-md-6">
+        <div id="deploy-info"></div>
+        <div id="build-info"></div>
+    </div>
 }(config, menu)
