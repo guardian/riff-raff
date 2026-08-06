@@ -113,6 +113,7 @@ object StackPolicy {
       // loadbalancers
       "AWS::ElasticLoadBalancing::LoadBalancer",
       "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "AWS::ElasticLoadBalancingV2::TargetGroup",
       // cloudfront
       "AWS::CloudFront::Distribution",
       // API gateway
