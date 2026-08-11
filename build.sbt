@@ -43,9 +43,7 @@ lazy val lib = project
   .settings(commonSettings)
   .settings(
     Seq(
-      libraryDependencies ++= magentaLibDeps ++ Seq(
-        "io.netty" % "netty-codec-http" % "4.2.16.Final"
-      ),
+      libraryDependencies ++= magentaLibDeps,
       Test / testOptions += Tests.Argument("-oF")
     )
   )
