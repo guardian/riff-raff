@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "6.0.0",
-      "joda-time" % "joda-time" % "2.14.2",
+      "joda-time" % "joda-time" % "2.14.3",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
@@ -79,7 +79,7 @@ object Dependencies {
       "software.amazon.awssdk" % "rds" % Versions.aws,
       "org.scala-stm" %% "scala-stm" % "0.11.1",
       // Play 3.0 currently uses logback-classic 1.4.11 which is vulnerable to CVE-2023-45960
-      "ch.qos.logback" % "logback-classic" % "1.6.0"
+      "ch.qos.logback" % "logback-classic" % "1.6.1"
     ).map((m: ModuleID) =>
       // don't even ask why I need to do this
       m.excludeAll(
