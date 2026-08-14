@@ -1,7 +1,6 @@
 intervalId = null
 
 callbackList = $.Callbacks()
-preRefreshCallbackList = $.Callbacks()
 
 visibleHeight = ->
   window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight
@@ -38,19 +37,16 @@ enableRefresh = (interval=1000) ->
           wrapper = $(this)
           loading = wrapper.find(".loading")
           err = wrapper.find(".error")
-          content = wrapper.find(".content")
 
           loading.show()
 
-          preRefreshCallbackList.fire(content)
-
-          content.load(
+          $(this).find(".content").load(
             $(this).data("ajax-refresh"),
             (response, status) ->
               loading.hide()
               if status == "success"
                 err.hide()
-                callbackList.fire(content)
+                callbackList.fire()
                 if divBottomWasInView && wrapper.data("ajax-autoscroll") == true
                   scrollToBottom(wrapper.get(-1))
               else
@@ -74,15 +70,7 @@ addPostRefreshCallback = (callback) ->
 removePostRefreshCallBack = (callback) ->
   callbackList.remove callback
 
-addPreRefreshCallback = (callback) ->
-  preRefreshCallbackList.add callback
-
-removePreRefreshCallback = (callback) ->
-  preRefreshCallbackList.remove callback
-
 @autoRefresh = {
   postRefresh : addPostRefreshCallback
   remove: removePostRefreshCallBack
-  preRefresh: addPreRefreshCallback
-  removePreRefresh: removePreRefreshCallback
 }

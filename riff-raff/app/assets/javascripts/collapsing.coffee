@@ -1,44 +1,35 @@
+setIcon = (id, expanded) ->
+  icon = $('#'+id+'-icon')
+  if expanded
+    icon.removeClass('glyphicon-chevron-right').addClass('glyphicon-chevron-down')
+  else
+    icon.removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-right')
+
+# Remembers only nodes the user has explicitly expanded/collapsed (via a
+# click, not the tree's default open/closed state), so that choice survives
+# the periodic ajax refresh of the log content, which otherwise re-renders
+# the whole tree - and its default state - from scratch every time.
+userToggledState = {}
+
 setupCallbacks = ->
-  console.log 'setting up'
   $(".collapsing-node").on 'show.bs.collapse', (e) ->
-    iconId = e.target.id+'-icon'
-    element = $('#'+iconId)
-    element.removeClass('glyphicon-chevron-right')
-    element.addClass('glyphicon-chevron-down')
+    userToggledState[e.target.id] = true
+    setIcon(e.target.id, true)
   $(".collapsing-node").on 'hide.bs.collapse', (e) ->
-    iconId = e.target.id+'-icon'
-    element = $('#'+iconId)
-    element.removeClass('glyphicon-chevron-down')
-    element.addClass('glyphicon-chevron-right')
+    userToggledState[e.target.id] = false
+    setIcon(e.target.id, false)
 
-# Remembers which report-tree nodes the user has expanded/collapsed so that
-# state survives the periodic ajax refresh of the log content, which
-# otherwise re-renders the tree from scratch every time.
-collapseState = {}
-
-captureCollapseState = (content) ->
-  content.find(".collapsing-node").each ->
-    collapseState[$(this).attr('id')] = $(this).hasClass('in')
-
-restoreCollapseState = (content) ->
-  content.find(".collapsing-node").each ->
+applyUserToggledState = ->
+  $(".collapsing-node").each ->
     id = $(this).attr('id')
-    expanded = collapseState[id]
+    expanded = userToggledState[id]
     if expanded?
-      node = $(this)
-      icon = $('#'+id+'-icon')
-      if expanded
-        node.addClass('in')
-        icon.removeClass('glyphicon-chevron-right').addClass('glyphicon-chevron-down')
-      else
-        node.removeClass('in')
-        icon.removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-right')
+      if expanded then $(this).addClass('in') else $(this).removeClass('in')
+      setIcon(id, expanded)
 
 $ ->
   setupCallbacks()
   if (window.autoRefresh)
-    window.autoRefresh.preRefresh (content) ->
-      captureCollapseState(content)
-    window.autoRefresh.postRefresh (content) ->
-      restoreCollapseState(content)
+    window.autoRefresh.postRefresh ->
+      applyUserToggledState()
       setupCallbacks()
