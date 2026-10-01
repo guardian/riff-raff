@@ -10,8 +10,8 @@ jobs:
     steps:
       - name: Checkout branch
         id: checkout
-        uses: actions/checkout@v7.0.0
-      - uses: guardian/setup-scala@v1
+        uses: actions/checkout@v7.0.1
+      - uses: guardian/setup-scala@v2
       - name: Submit dependencies
         id: submit
         uses: scalacenter/sbt-dependency-submission@d84eef4c09e633bcf5f113bcad7fd5e9af1baee9 # v3.2.3
