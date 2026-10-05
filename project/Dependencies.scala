@@ -4,7 +4,7 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.52.0"
+    val aws = "2.52.1"
     val jackson = "2.22.3"
     val enumeratumPlay = "1.9.8"
   }
@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "7.0.0",
-      "joda-time" % "joda-time" % "2.14.3",
+      "joda-time" % "joda-time" % "2.14.4",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
@@ -62,7 +62,7 @@ object Dependencies {
       "software.amazon.awssdk" % "dynamodb" % Versions.aws,
       "software.amazon.awssdk" % "sns" % Versions.aws,
       "org.quartz-scheduler" % "quartz" % "2.5.2",
-      "com.gu" %% "anghammarad-client" % "8.0.0",
+      "com.gu" %% "anghammarad-client" % "9.0.0",
       "org.webjars" %% "webjars-play" % "3.0.10",
       "org.webjars" % "jquery" % "3.7.1", // scala-steward:off
       "org.webjars" % "jquery-ui" % "1.14.2+1",
