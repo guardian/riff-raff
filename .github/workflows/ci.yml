@@ -19,9 +19,9 @@ jobs:
       pull-requests: write #...to comment on PRs
 
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
-      - uses: guardian/setup-scala@v1
+      - uses: guardian/setup-scala@v2
 
       # Seed the build number with last number from TeamCity.
       # This env var is used by the SBT build, and guardian/actions-riff-raff.
