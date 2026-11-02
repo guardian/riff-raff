@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "8.0.0",
-      "joda-time" % "joda-time" % "2.14.4",
+      "joda-time" % "joda-time" % "2.15.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
