@@ -71,7 +71,7 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.31.0",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.1",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.13",
+      "org.postgresql" % "postgresql" % "42.7.14",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
