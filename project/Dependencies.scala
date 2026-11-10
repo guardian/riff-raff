@@ -4,8 +4,8 @@ import sbt._
 object Dependencies {
 
   object Versions {
-    val aws = "2.52.1"
-    val jackson = "2.22.3"
+    val aws = "2.57.3"
+    val jackson = "2.22.4"
     val enumeratumPlay = "1.9.8"
   }
 
@@ -35,7 +35,7 @@ object Dependencies {
       "software.amazon.awssdk" % "sts" % Versions.aws,
       "software.amazon.awssdk" % "ssm" % Versions.aws,
       "com.gu" %% "fastly-api-client" % "8.0.0",
-      "joda-time" % "joda-time" % "2.14.4",
+      "joda-time" % "joda-time" % "2.15.0",
       "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % Versions.jackson,
       "com.beachape" %% "enumeratum-play-json" % Versions.enumeratumPlay,
       "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
@@ -71,7 +71,7 @@ object Dependencies {
       "org.webjars" % "momentjs" % "2.31.0",
       "net.logstash.logback" % "logstash-logback-encoder" % "8.1",
       "org.scalikejdbc" %% "scalikejdbc" % "3.5.0", // scala-steward:off
-      "org.postgresql" % "postgresql" % "42.7.13",
+      "org.postgresql" % "postgresql" % "42.7.14",
       "com.beachape" %% "enumeratum-play" % Versions.enumeratumPlay,
       filters,
       ws,
