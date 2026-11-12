@@ -13,7 +13,7 @@ graph = (args) ->
 
   container = document.getElementById(args.container_id)
 
-  dataURL = "#{args.data_path}?#{params}&callback=?"
+  dataURL = "#{args.data_path}?#{params}"
 
   element = container.querySelector('.graph')
 
@@ -48,7 +48,11 @@ graph = (args) ->
 
     data
 
-  $.getJSON dataURL, (data) ->
+  $.ajax(
+    url: dataURL
+    dataType: 'json'
+    jsonp: false
+  ).done (data) ->
     graphArgs.series = tidyData(data.response.series)
     # console.log(graphArgs.series)
 
@@ -118,7 +122,11 @@ graph = (args) ->
     graph.update()
 
     refreshGraph = ->
-      $.getJSON dataURL, (data) ->
+      $.ajax(
+        url: dataURL
+        dataType: 'json'
+        jsonp: false
+      ).done (data) ->
         # so, the graph object copies a reference to graphArgs.series - we must update
         # that object not replace it
         # my original code here was: graphArgs.series = tidyData(data) but that didn't
