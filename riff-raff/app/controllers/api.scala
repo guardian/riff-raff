@@ -89,9 +89,6 @@ class Api(
     def apply[A](
         authenticatedRequest: ApiRequest[A]
     )(f: ApiRequest[A] => JsValue): Result = {
-      val jsonpCallback =
-        authenticatedRequest.queryString.get("callback").map(_.head)
-
       val response =
         try {
           f(authenticatedRequest)
@@ -115,18 +112,13 @@ class Api(
         case jsv: JsValue  => JsObject(Seq(("value", jsv)))
       }
 
-      jsonpCallback map { callback =>
-        Ok(s"$callback(${responseObject.toString})")
-          .as("application/javascript")
-      } getOrElse {
-        response \ "response" \ "status" match {
-          case JsDefined(JsString("ok"))    => Ok(responseObject)
-          case JsDefined(JsString("error")) => BadRequest(responseObject)
-          case _                            =>
-            throw new IllegalStateException(
-              "Response status missing or invalid"
-            )
-        }
+      response \ "response" \ "status" match {
+        case JsDefined(JsString("ok"))    => Ok(responseObject)
+        case JsDefined(JsString("error")) => BadRequest(responseObject)
+        case _                            =>
+          throw new IllegalStateException(
+            "Response status missing or invalid"
+          )
       }
     }
 
