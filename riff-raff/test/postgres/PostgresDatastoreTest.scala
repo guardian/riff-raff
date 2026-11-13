@@ -70,6 +70,72 @@ class PostgresDatastoreTest
         }
       }
     }
+
+    "an SQL injection payload in a missing key does not update any api keys" in {
+      withFixture {
+        val apiKeys = List(someApiKey, someApiKey)
+        apiKeys.foreach(datastore.createApiKey)
+
+        datastore.getAndUpdateApiKey(
+          "' OR '1'='1' --",
+          Some("history")
+        ) shouldBe None
+
+        apiKeys.foreach { apiKey =>
+          datastore.getApiKey(apiKey.key) shouldBe Some(apiKey)
+        }
+      }
+    }
+
+    "an SQL injection payload in an existing key updates only that literal key" in {
+      withFixture {
+        val apiKey = someApiKey.copy(
+          key = "' OR '1'='1' --",
+          lastUsed = Some(DateTime.now().minusDays(1))
+        )
+        val otherApiKey = someApiKey
+        datastore.createApiKey(apiKey)
+        datastore.createApiKey(otherApiKey)
+
+        val updated = datastore.getAndUpdateApiKey(apiKey.key, Some("history"))
+
+        updated shouldBe defined
+        updated.get.lastUsed shouldBe defined
+        updated.get.lastUsed.get.isAfter(apiKey.lastUsed.get) shouldBe true
+        updated.get shouldBe apiKey.copy(
+          lastUsed = updated.get.lastUsed,
+          callCounters = Map("history" -> 11L)
+        )
+        datastore.getApiKey(apiKey.key) shouldBe updated
+        datastore.getApiKey(otherApiKey.key) shouldBe Some(otherApiKey)
+      }
+    }
+
+    "an SQL injection payload in a counter is stored and incremented literally" in {
+      withFixture {
+        val apiKey = someApiKey.copy(
+          lastUsed = Some(DateTime.now().minusDays(1))
+        )
+        val otherApiKey = someApiKey
+        val counter = "history'}; UPDATE apiKey SET content = '{}'::jsonb; --"
+        datastore.createApiKey(apiKey)
+        datastore.createApiKey(otherApiKey)
+
+        (1L to 2L).foreach { count =>
+          val updated = datastore.getAndUpdateApiKey(apiKey.key, Some(counter))
+
+          updated shouldBe defined
+          updated.get.lastUsed shouldBe defined
+          updated.get.lastUsed.get.isAfter(apiKey.lastUsed.get) shouldBe true
+          updated.get shouldBe apiKey.copy(
+            lastUsed = updated.get.lastUsed,
+            callCounters = apiKey.callCounters + (counter -> count)
+          )
+          datastore.getApiKey(apiKey.key) shouldBe updated
+          datastore.getApiKey(otherApiKey.key) shouldBe Some(otherApiKey)
+        }
+      }
+    }
   }
 
   "Deploy table" - {
