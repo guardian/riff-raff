@@ -89,21 +89,13 @@ class PostgresDatastore(config: Config) extends DataStore(config) with Logging {
 
       val q: SQLSyntax = counterOpt match {
         case Some(counter) =>
-          val content: String = s"""
-        jsonb_set(
-            content || '{"lastUsed": "$now"}',
-            '{callCounters, $counter}',
-            (COALESCE(content->'callCounters'->>'$counter','0')::int + 1)::text::jsonb
-        )
-        """
-          SQLSyntax.createUnsafely(s"""
-          UPDATE
-              apiKey
-          SET
-              content = $content
-          WHERE
-              key = '$key';
-          """)
+          sqls"""UPDATE apiKey
+                 SET content = jsonb_set(
+                   content || jsonb_build_object('lastUsed', $now),
+                   ARRAY['callCounters', $counter],
+                   (COALESCE(content->'callCounters'->>$counter, '0')::int + 1)::text::jsonb
+                 )
+                 WHERE key = $key"""
         case None =>
           sqls"""UPDATE apiKey SET content = content || '{"lastUsed": "$now"}'::jsonb WHERE key = $key"""
       }
