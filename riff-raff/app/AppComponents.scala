@@ -249,7 +249,8 @@ class AppComponents(
   override lazy val httpFilters = Seq(
     csrfFilter,
     gzipFilter,
-    new HstsFilter()(executionContext)
+    new HstsFilter()(executionContext),
+    new RequestLoggingFilter(materializer)
   ) // TODO (this would require an upgrade of the management-play lib) ++ PlayRequestMetrics.asFilters
 
   val deployScheduler =
