@@ -160,64 +160,6 @@ class Api(
         }
       }
     }
-
-  }
-
-  val applicationForm = Form(
-    "application" -> nonEmptyText.verifying(
-      "Application name already exists",
-      datastore.getApiKeyByApplication(_).isEmpty
-    )
-  )
-
-  val apiKeyForm = Form(
-    "key" -> nonEmptyText
-  )
-
-  def createKeyForm = authAction { implicit request =>
-    Ok(views.html.api.form(config, menu)(applicationForm))
-  }
-
-  def createKey = authAction { implicit request =>
-    applicationForm
-      .bindFromRequest()
-      .fold(
-        errors => BadRequest(views.html.api.form(config, menu)(errors)),
-        applicationName => {
-          val randomKey = ApiKeyGenerator.newKey()
-          val key = ApiKey(
-            applicationName,
-            randomKey,
-            request.user.fullName,
-            new DateTime()
-          )
-          datastore.createApiKey(key)
-          Redirect(routes.Api.listKeys)
-        }
-      )
-  }
-
-  def listKeys = authAction { implicit request =>
-    datastore.getApiKeyList.fold(
-      (t: Throwable) =>
-        InternalServerError(
-          views.html.errorContent(t, "Could not fetch API keys")
-        ),
-      (ks: Iterable[ApiKey]) =>
-        Ok(views.html.api.list(config, menu)(request, ks))
-    )
-  }
-
-  def delete = authAction { implicit request =>
-    apiKeyForm
-      .bindFromRequest()
-      .fold(
-        errors => Redirect(routes.Api.listKeys),
-        apiKey => {
-          datastore.deleteApiKey(apiKey)
-          Redirect(routes.Api.listKeys)
-        }
-      )
   }
 
   def historyGraph = ApiJsonEndpoint.withAuthAccess { implicit request =>
