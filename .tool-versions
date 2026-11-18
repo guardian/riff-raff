@@ -1,5 +1,5 @@
 java corretto-21
 sbt 1
-github:guardian/devenv 20260930-111347
+github:guardian/devenv 20261111-131338
 aqua:aws/aws-cli 2
 node 24
